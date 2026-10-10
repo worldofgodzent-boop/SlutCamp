@@ -373,6 +373,11 @@ addColumnIfMissing('models', 'explicit_join_cents', 'INTEGER NOT NULL DEFAULT 25
 addColumnIfMissing('models', 'explicit_mic_join_cents', 'INTEGER NOT NULL DEFAULT 1500');
 addColumnIfMissing('platform_stats', 'explicit_entry_cents', 'INTEGER NOT NULL DEFAULT 499');
 
+// One-time: rename admin display name (never show real name to models/fans)
+try {
+  db.prepare(`UPDATE users SET display_name = 'Asce (Admin)' WHERE username = 'admin' AND display_name = 'Corry (Admin)'`).run();
+} catch (e) { /* already renamed */ }
+
 // Seed the safety keyword list (admin can edit these later in Settings)
 const DEFAULT_KEYWORDS = [
   'snapchat', 'snap', 'instagram', 'ig', 'whatsapp', 'telegram', 'kik',
@@ -598,7 +603,7 @@ function seed() {
   const count = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
   if (count > 0) return;
 
-  createUser('admin', 'admin123', 'admin', 'Corry (Admin)', '1990-01-01');
+  createUser('admin', 'admin123', 'admin', 'Asce (Admin)', '1990-01-01');
 
   const bunnyId = createUser('bunny', 'model123', 'model', 'Bunny', '1998-05-14');
   db.prepare(`UPDATE models SET bio = ?, per_message_cents = 149,

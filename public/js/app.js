@@ -478,13 +478,13 @@ function renderAuthBody(mode, role) {
         <div class="d">Chat & video call the models</div></div>
       <div class="role-card ${role === 'model' ? 'selected' : ''}" id="r-model">
         <div class="emoji">💃</div><div class="t">I'm a Model</div>
-        <div class="d">Get paid to chat (Corry verifies you)</div></div>
+        <div class="d">Get paid to chat (Asce verifies you)</div></div>
       <label class="field">Display name<input class="input" id="a-name" maxlength="40"></label>
       <label class="field">Username<input class="input" id="a-user" autocomplete="username"></label>
       <label class="field">Password (6+ characters)${pwField('a-pass', 'new-password')}</label>
       <label class="field">Date of birth<input class="input" id="a-dob" type="date"></label>
       <div class="age-box">🔞 <b>18+ only.</b> You must be 18 or older to use SlutCamp.
-        ${role === 'model' ? 'Models must also complete ID verification with Corry (2257).' : 'Full ID verification is required before purchasing credits.'}</div>
+        ${role === 'model' ? 'Models must also complete ID verification with Asce (2257).' : 'Full ID verification is required before purchasing credits.'}</div>
       <label class="checkbox-row"><input type="checkbox" id="a-18">
         <span>I confirm I am <b>18 years or older</b>.</span></label>
       <button class="btn" id="a-go">Create account</button>`;
@@ -540,7 +540,7 @@ async function vInviteSignup(code) {
       <div class="screen"><div class="card" style="text-align:center">
         <div style="font-size:40px">⛔</div>
         <div style="font-weight:800;margin:8px 0">This invite link is invalid,<br>already used, or revoked.</div>
-        <div class="muted small">Ask Corry for a fresh invite link.</div>
+        <div class="muted small">Ask Asce for a fresh invite link.</div>
         <button class="btn ghost" style="margin-top:12px" onclick="show('landing',{})">← Back to browsing</button>
       </div></div>`;
     return;
@@ -552,13 +552,13 @@ async function vInviteSignup(code) {
     <div class="screen">
       <div class="card" style="background:linear-gradient(135deg,#3b1d6e,#1a0f2e);text-align:center">
         <div style="font-size:18px;font-weight:800">💰 Get paid to chat with fans</div>
-        <div class="muted small" style="margin-top:4px">$1.49 per text · $3.99/min video · tips & PPV unlocks<br>Weekly payouts from Corry</div>
+        <div class="muted small" style="margin-top:4px">$1.49 per text · $3.99/min video · tips & PPV unlocks<br>Weekly payouts from Asce</div>
       </div>
       <label class="field">Display name (your stage name)<input class="input" id="i-name" maxlength="40"></label>
       <label class="field">Username<input class="input" id="i-user" autocomplete="username"></label>
       <label class="field">Password (6+ characters)${pwField('i-pass', 'new-password')}</label>
       <label class="field">Date of birth<input class="input" id="i-dob" type="date"></label>
-      <div class="age-box">🔞 <b>18+ only.</b> Corry will verify your ID in person (2257 compliance) before you go live.</div>
+      <div class="age-box">🔞 <b>18+ only.</b> Asce will verify your ID in person (2257 compliance) before you go live.</div>
       <label class="checkbox-row"><input type="checkbox" id="i-18">
         <span>I confirm I am <b>18 years or older</b>.</span></label>
       <button class="btn" id="i-go">Create model account</button>
@@ -771,7 +771,7 @@ async function vModelEarnings() {
             <b style="color:var(--green)">${fmt(r.earned_cents)}</b>
           </div>`).join('') || '<div class="muted">No earnings yet — go online and chat! 💬</div>'}
       </div>
-      <div class="muted small" style="text-align:center">Payouts are sent by Corry. Available balance updates after each message.</div>
+      <div class="muted small" style="text-align:center">Payouts are sent by Asce. Available balance updates after each message.</div>
     </div>`;
 }
 
