@@ -138,6 +138,7 @@ html, body {
 .list-item + .list-item { border-top: 1px solid rgba(139,92,246,.1); }
 .list-item .title { font-weight: 700; font-size: 16px; }
 .list-item .preview {
+  display: block;
   color: var(--muted); font-size: 13px; white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis; max-width: 100%;
 }
