@@ -401,6 +401,7 @@ async function vLanding() {
             </span><br>
             <span class="preview">${esc(m.bio).slice(0, 70)}</span><br>
             <span class="small" style="color:var(--pink);font-weight:700">${fmt(m.per_message_cents)}/msg · ${fmt(m.per_minute_cents)}/min video</span>
+            ${m.schedule_summary ? `<br><span class="small muted">📅 Usually live: ${esc(m.schedule_summary)}</span>` : ''}
             ${m.is_live ? `<br><span class="small" style="color:#f87171;font-weight:800">▶ Watch free preview — tap to join</span>` : ''}
           </span>
           <span style="font-size:22px">›</span>
@@ -648,6 +649,7 @@ async function vFanModels() {
               <span class="small" style="color:${m.is_online ? 'var(--green)' : 'var(--muted)'}">● ${m.is_online ? 'Online now' : 'Offline'}</span></span><br>
             <span class="preview">${esc(m.bio).slice(0, 70)}</span><br>
             <span class="small" style="color:var(--pink);font-weight:700">${fmt(m.per_message_cents)}/msg · ${fmt(m.per_minute_cents)}/min video</span>
+            ${m.schedule_summary ? `<br><span class="small muted">📅 Usually live: ${esc(m.schedule_summary)}</span>` : ''}
             ${m.is_live ? `<br><span class="small" style="color:#f87171;font-weight:800">▶ Watch free preview — tap to join</span>` : ''}
           </span><span style="font-size:22px">›</span>
         </button>`).join('')}
@@ -670,6 +672,8 @@ async function vFanLive() {
   await refreshMe();
   const { data } = await api('/live');
   const streams = data.live || [];
+  const { data: schedData } = await api('/live/schedule');
+  const upcoming = (schedData.upcoming || []).slice(0, 10);
   app.innerHTML = `
     <div class="header"><h1>🔴 Live now</h1>
       <div><span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span></div></div>
@@ -686,6 +690,18 @@ async function vFanLive() {
         </button>`).join('') || `
         <div class="empty"><div class="big">📺</div>No one's live right now.<br>
           <span class="small">Check back soon — your favorite models go live without warning 😈</span></div>`}
+      ${upcoming.length ? `
+      <div style="font-weight:800;margin:18px 0 10px">📅 Coming up</div>
+      ${upcoming.map((u) => `
+        <div class="list-item" style="background:var(--card);border-radius:14px;margin-bottom:10px;border:1px solid rgba(139,92,246,.18);cursor:default">
+          <span class="avatar-wrap">${avatarHTML(u.model_name, '', u.photo_url)}</span>
+          <span class="grow">
+            <span class="title">${esc(u.model_name)}</span><br>
+            ${u.title ? `<span class="small" style="color:#fff;font-weight:700">${esc(u.title)}</span><br>` : ''}
+            <span class="small muted">📅 ${u.day_label} ${u.time_label}</span><br>
+            <span class="small" style="color:var(--gold);font-weight:700">⏱ ${bookingCountdown(u.starts_at)}</span>
+          </span>
+        </div>`).join('')}` : ''}
     </div>`;
   app.querySelectorAll('[data-stream]').forEach((b) => {
     b.onclick = () => watchLive(parseInt(b.dataset.stream));
@@ -1006,6 +1022,69 @@ function handleBookingPush(m) {
   }
 }
 
+// Bottom sheet: book a private 1-on-1 live (date + time + duration, pay upfront)
+function openBookingSheet(modelId, modelName, rateCents) {
+  const rate = rateCents || 399;
+  const today = new Date();
+  const minDate = today.toISOString().slice(0, 10);
+  const maxD = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const maxDate = maxD.toISOString().slice(0, 10);
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet-backdrop';
+  sheet.innerHTML = `
+    <div class="sheet">
+      <div style="font-weight:800;font-size:18px;margin-bottom:4px">📅 Book ${esc(modelName)}</div>
+      <div class="muted small" style="margin-bottom:12px">Private 1-on-1 live · ${fmt(rate)}/min · paid upfront</div>
+      <label class="field">Date<input class="input" id="bk-date" type="date" min="${minDate}" max="${maxDate}" value="${minDate}"></label>
+      <label class="field">Time<input class="input" id="bk-time" type="time" value="20:00"></label>
+      <div class="field">Duration
+        <div class="row" style="gap:8px;margin-top:6px" id="bk-durs">
+          ${[15, 30, 60].map((d, i) => `
+            <button class="btn ${i === 1 ? '' : 'ghost'} small" data-dur="${d}"
+              style="flex:1">${d} min<br><span class="small">${fmt(rate * d)}</span></button>`).join('')}
+        </div></div>
+      <div class="row" style="margin:12px 0;align-items:center">
+        <span class="grow" style="font-weight:800">Total</span>
+        <b id="bk-total" style="font-size:20px;color:var(--green)">${fmt(rate * 30)}</b>
+      </div>
+      <button class="btn" id="bk-pay">Pay & Request</button>
+      <button class="btn ghost" id="bk-cancel" style="margin-top:8px">Cancel</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  let dur = 30;
+  const close = () => sheet.remove();
+  sheet.querySelectorAll('[data-dur]').forEach((b) => b.onclick = () => {
+    dur = parseInt(b.dataset.dur);
+    sheet.querySelectorAll('[data-dur]').forEach((x) => x.classList.add('ghost'));
+    b.classList.remove('ghost');
+    sheet.querySelector('#bk-total').textContent = fmt(rate * dur);
+  });
+  sheet.querySelector('#bk-cancel').onclick = close;
+  sheet.onclick = (e) => { if (e.target === sheet) close(); };
+  sheet.querySelector('#bk-pay').onclick = async () => {
+    const date = sheet.querySelector('#bk-date').value;
+    const time = sheet.querySelector('#bk-time').value;
+    if (!date || !time) return toast('Pick a date and time');
+    const scheduled_at = new Date(`${date}T${time}`).getTime();
+    if (!scheduled_at || scheduled_at < Date.now() + 60 * 60 * 1000)
+      return toast('Book at least 1 hour ahead');
+    const btn = sheet.querySelector('#bk-pay');
+    btn.disabled = true;
+    const { status, data } = await api('/bookings', {
+      method: 'POST', body: JSON.stringify({ model_id: modelId, scheduled_at, duration_min: dur }) });
+    if (status === 200) {
+      close();
+      toast(`⏳ Request sent! She'll confirm soon.`);
+      show('bookings', {});
+    } else {
+      btn.disabled = false;
+      toast(data.error === 'insufficient_credits'
+        ? `Need ${fmt(data.needed_cents)} — top up first 💰`
+        : (data.message || 'Could not book.'));
+    }
+  };
+}
+
 async function vModelSettings() {
   await refreshMe();
   const m = S.model;
@@ -1033,6 +1112,22 @@ async function vModelSettings() {
         <label class="field">🎙️ Explicit mic join: <b id="s-ejm-label">${fmt(m.explicit_mic_join_cents || 1500)}</b>
           <input type="range" id="s-ejm" min="500" max="10000" step="100" value="${m.explicit_mic_join_cents || 1500}" style="width:100%"></label>
         <button class="btn" id="s-ej-save" style="margin-top:8px">Save stage rates</button>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:6px">📅 My Live Schedule</div>
+        <div class="muted small" style="margin-bottom:10px">Set regular weekly times, go live spontaneously anytime, or both. Fans see your schedule on the Live tab.</div>
+        <div id="sched-list"><span class="muted small">Loading…</span></div>
+        <div class="row" style="gap:8px;margin-top:10px">
+          <select class="input" id="sched-day" style="flex:1">
+            <option value="1">Monday</option><option value="2">Tuesday</option>
+            <option value="3">Wednesday</option><option value="4">Thursday</option>
+            <option value="5">Friday</option><option value="6">Saturday</option>
+            <option value="0">Sunday</option>
+          </select>
+          <input class="input" id="sched-time" type="time" value="20:00" style="flex:1">
+        </div>
+        <input class="input" id="sched-title" placeholder="Title (optional) — e.g. Late night hangout" maxlength="60" style="margin-top:8px">
+        <button class="btn" id="sched-add" style="margin-top:8px">Add slot</button>
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:6px">Bio</div>
@@ -1081,6 +1176,29 @@ async function vModelSettings() {
       method: 'PUT', body: JSON.stringify({ explicit_join_cents, explicit_mic_join_cents }) });
     toast(status === 200 ? '✅ Stage rates saved!' : 'Could not save.');
     if (status === 200) refreshMe();
+  };
+  // Live schedule slots
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  async function loadSched() {
+    const { data } = await api('/model/schedule');
+    const slots = data.slots || [];
+    $('#sched-list').innerHTML = slots.length ? slots.map((s) => `
+      <div class="row" style="align-items:center;margin-bottom:6px">
+        <span class="grow">📅 <b>${DAYS[s.day_of_week]}</b> ${esc(s.start_time)}${s.title ? ` — ${esc(s.title)}` : ''}</span>
+        <button class="btn small ghost" data-sched-del="${s.id}">✕</button>
+      </div>`).join('') : '<span class="muted small">No regular slots — add one above, or just go live whenever.</span>';
+    $('#sched-list').querySelectorAll('[data-sched-del]').forEach((b) => b.onclick = async () => {
+      await api(`/model/schedule/${b.dataset.schedDel}`, { method: 'DELETE' });
+      loadSched();
+    });
+  }
+  loadSched();
+  $('#sched-add').onclick = async () => {
+    const { status, data } = await api('/model/schedule', { method: 'POST',
+      body: JSON.stringify({ day_of_week: parseInt($('#sched-day').value),
+        start_time: $('#sched-time').value, title: $('#sched-title').value }) });
+    if (status === 200) { $('#sched-title').value = ''; loadSched(); toast('✅ Slot added!'); }
+    else toast(data.error === 'duplicate' ? 'That slot already exists.' : 'Could not add slot.');
   };
   $('#s-photo').onclick = () => {
     const inp = document.createElement('input');
@@ -1154,6 +1272,9 @@ async function vChat(params) {
   };
   const vb = $('#c-video');
   if (vb) vb.onclick = startCall;
+  const bb = $('#c-book');
+  if (bb) bb.onclick = () => openBookingSheet(conv.other.id, conv.other.display_name,
+    conv.other.per_minute_cents || 399);
   const pb = $('#c-plus');
   if (pb) pb.onclick = openActionSheet;
 
@@ -2836,7 +2957,8 @@ async function vAdmin() {
   const { data: stats } = await api('/admin/stats');
   const tabs = [
     ['dash', '📊 Home'], ['chats', '👀 Chats'], ['safety', '🛡️ Safety'], ['live', '🔴 Live'],
-    ['models', '💃 Models'], ['invites', '✉️ Invites'], ['payouts', '💸 Payouts'], ['fans', '🧑 Fans'], ['more', '⚙️ More'],
+    ['models', '💃 Models'], ['invites', '✉️ Invites'], ['payouts', '💸 Payouts'], ['fans', '🧑 Fans'],
+    ['bookings', '📅 Bookings'], ['more', '⚙️ More'],
   ];
   let body = '';
   if (tab === 'dash') body = await adminDashBody(stats);
@@ -2847,6 +2969,7 @@ async function vAdmin() {
   else if (tab === 'invites') body = await adminInvitesBody();
   else if (tab === 'payouts') body = await adminPayoutsBody();
   else if (tab === 'fans') body = await adminFansBody();
+  else if (tab === 'bookings') body = await adminBookingsBody();
   else body = await adminMoreBody(stats);
 
   app.innerHTML = `
@@ -3108,6 +3231,23 @@ async function adminFansBody() {
           <button class="btn small ${f.banned ? 'success' : 'danger'}" data-ban="${f.id}">${f.banned ? 'Unban' : 'Ban'}</button>
         </div>
       </div>`).join('') || '<div class="empty">No fans yet.</div>'}`;
+}
+
+async function adminBookingsBody() {
+  const { data } = await api('/admin/bookings');
+  const bookings = data.bookings || [];
+  const badge = (s) => ({ pending: '⏳', approved: '✅', declined: '❌', cancelled: '🚫',
+    completed: '🏁', in_progress: '🔴', no_show: '👻', refunded: '💸' }[s] || s);
+  return `
+    <div style="font-weight:800;margin-bottom:10px">📅 Private bookings (latest first)</div>
+    ${bookings.map((b) => `
+      <div class="card" style="padding:10px;margin-bottom:8px">
+        <div class="row" style="align-items:center">
+          <span class="grow"><b>${esc(b.fan_name)}</b> → <b>${esc(b.model_name)}</b><br>
+            <span class="small muted">${bookingWhen(b.scheduled_at)} · ${b.duration_min}min · <b style="color:var(--green)">${fmt(b.total_cents)}</b></span></span>
+          <span>${badge(b.status)} <span class="small muted">${b.status.replace('_', ' ')}</span></span>
+        </div>
+      </div>`).join('') || '<div class="empty">No bookings yet.</div>'}`;
 }
 
 async function adminMoreBody(s) {

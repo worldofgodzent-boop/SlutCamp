@@ -359,6 +359,33 @@ CREATE TABLE IF NOT EXISTS live_join_requests (
   created_at       TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_ljr_session ON live_join_requests(session_id, status);
+
+-- Private 1-on-1 booked lives: fan pays upfront (rate x duration), model approves.
+CREATE TABLE IF NOT EXISTS bookings (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  model_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  fan_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  scheduled_at  INTEGER NOT NULL,
+  duration_min  INTEGER NOT NULL,
+  total_cents   INTEGER NOT NULL,
+  rate_cents    INTEGER NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'pending',
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  decided_at    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_bookings_model ON bookings(model_id, status, scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_bookings_fan ON bookings(fan_id, status, scheduled_at);
+
+-- Model's recurring weekly PUBLIC live schedule (e.g. Fridays 8pm)
+CREATE TABLE IF NOT EXISTS live_schedule (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  model_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day_of_week INTEGER NOT NULL,
+  start_time  TEXT NOT NULL,
+  title       TEXT NOT NULL DEFAULT '',
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_sched_model ON live_schedule(model_id);
 -- Safety flags on group stream chat (separate from 1-on-1 conversation incidents)
 CREATE TABLE IF NOT EXISTS stream_flags (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -392,6 +419,7 @@ addColumnIfMissing('live_join_requests', 'is_explicit', 'INTEGER NOT NULL DEFAUL
 addColumnIfMissing('live_join_requests', 'mode', "TEXT NOT NULL DEFAULT 'video'");
 addColumnIfMissing('models', 'explicit_join_cents', 'INTEGER NOT NULL DEFAULT 2500');
 addColumnIfMissing('models', 'explicit_mic_join_cents', 'INTEGER NOT NULL DEFAULT 1500');
+addColumnIfMissing('calls', 'booking_id', 'INTEGER REFERENCES bookings(id)');
 addColumnIfMissing('platform_stats', 'explicit_entry_cents', 'INTEGER NOT NULL DEFAULT 499');
 
 // One-time: rename admin display name (never show real name to models/fans)
@@ -686,10 +714,15 @@ app.get('/api/models', (req, res) => {
     WHERE u.role = 'model' AND u.banned = 0
     ORDER BY ls.id DESC, m.is_online DESC, u.display_name ASC
   `).all();
-  res.json({ models: rows.map((r) => ({
-    ...r,
-    is_live: !!r.live_session_id,
-  })) });
+  res.json({ models: rows.map((r) => {
+    const sched = db.prepare(`SELECT day_of_week, start_time FROM live_schedule
+      WHERE model_id = ? ORDER BY day_of_week, start_time`).all(r.id);
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const summary = sched.length
+      ? sched.map((s) => `${days[s.day_of_week]} ${s.start_time.replace(/^0/, '')}`).join(', ')
+      : '';
+    return { ...r, is_live: !!r.live_session_id, schedule_summary: summary };
+  }) });
 });
 
 /* ------------------------------------------------------------------ */
@@ -1337,14 +1370,21 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
   const { bio, per_message_cents, per_minute_cents, per_voice_cents, explicit_rate_cents,
           explicit_join_cents, explicit_mic_join_cents, is_online } = req.body || {};
   const updates = [], params = [];
+  // Model-settable 1-on-1 rates (tighter ranges than the admin override)
+  const rateRange = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+  const badRate = (v, lo, hi) => v !== undefined && !rateRange(v, lo, hi);
+  if (badRate(per_message_cents, 50, 1000) || badRate(per_minute_cents, 100, 2000) ||
+      badRate(per_voice_cents, 50, 1000))
+    return res.status(400).json({ error: 'bad_rate',
+      message: 'Rates out of range.' });
   if (typeof bio === 'string') { updates.push('bio = ?'); params.push(bio.slice(0, 280)); }
-  if (Number.isInteger(per_message_cents) && per_message_cents >= 0 && per_message_cents <= 5000) {
+  if (rateRange(per_message_cents, 50, 1000)) {
     updates.push('per_message_cents = ?'); params.push(per_message_cents);
   }
-  if (Number.isInteger(per_minute_cents) && per_minute_cents >= 0 && per_minute_cents <= 10000) {
+  if (rateRange(per_minute_cents, 100, 2000)) {
     updates.push('per_minute_cents = ?'); params.push(per_minute_cents);
   }
-  if (Number.isInteger(per_voice_cents) && per_voice_cents >= 0 && per_voice_cents <= 5000) {
+  if (rateRange(per_voice_cents, 50, 1000)) {
     updates.push('per_voice_cents = ?'); params.push(per_voice_cents);
   }
   if (Number.isInteger(explicit_rate_cents) && explicit_rate_cents >= 0 && explicit_rate_cents <= 20000) {
@@ -1464,6 +1504,16 @@ function endCall(callId, reason) {
   const timer = activeCallTimers.get(callId);
   if (timer) { clearInterval(timer); activeCallTimers.delete(callId); }
   db.prepare(`UPDATE calls SET status = 'ended', ended_at = datetime('now') WHERE id = ?`).run(callId);
+  // A private booked session ending marks the booking completed
+  if (call.booking_id) {
+    db.prepare(`UPDATE bookings SET status = 'completed', decided_at = datetime('now')
+                WHERE id = ? AND status = 'in_progress'`).run(call.booking_id);
+    const b = db.prepare('SELECT * FROM bookings WHERE id = ?').get(call.booking_id);
+    if (b) {
+      pushToUser(b.fan_id, { type: 'booking:completed', booking_id: b.id });
+      pushToUser(b.model_id, { type: 'booking:completed', booking_id: b.id });
+    }
+  }
   pushToSubject(`u:${call.fan_id}`, { type: 'call:ended', call_id: callId, reason: reason || 'ended' });
   pushToSubject(`u:${call.model_id}`, { type: 'call:ended', call_id: callId, reason: reason || 'ended' });
 }
@@ -2232,6 +2282,290 @@ app.get('/api/live/:id/stage', identMiddleware, requireUser, (req, res) => {
     out.my_stage = stageJSON(myStage);
   }
   res.json(out);
+});
+
+/* ------------------------------------------------------------------ */
+/* BOOKINGS — private 1-on-1 scheduled lives (fan pays upfront)        */
+/* ------------------------------------------------------------------ */
+
+const BOOKING_DURATIONS = [15, 30, 60];
+const BOOKING_MAX_DAYS = 7;
+const BOOKING_NOSHOW_MIN = 15;
+const BOOKING_FAN_CANCEL_HOURS = 1;
+
+function bookingFor(b, userId) {
+  const isFan = b.fan_id === userId;
+  const otherId = isFan ? b.model_id : b.fan_id;
+  const u = db.prepare('SELECT id, display_name, username FROM users WHERE id = ?').get(otherId);
+  let photo_url = '';
+  if (isFan) {
+    const m = db.prepare('SELECT photo_url FROM models WHERE user_id = ?').get(b.model_id);
+    if (m) photo_url = m.photo_url || '';
+  }
+  return {
+    id: b.id, model_id: b.model_id, fan_id: b.fan_id,
+    scheduled_at: b.scheduled_at, duration_min: b.duration_min,
+    total_cents: b.total_cents, rate_cents: b.rate_cents,
+    status: b.status, created_at: b.created_at, decided_at: b.decided_at,
+    other_name: u ? u.display_name : '?', other_photo_url: photo_url,
+    is_fan_side: isFan,
+  };
+}
+
+// No-show: approved booking, model never started within 15 min of scheduled time
+function checkNoShow(b) {
+  if (!b || b.status !== 'approved') return b;
+  if (Date.now() > b.scheduled_at + BOOKING_NOSHOW_MIN * 60 * 1000) {
+    db.prepare(`UPDATE bookings SET status = 'no_show', decided_at = datetime('now') WHERE id = ?`)
+      .run(b.id);
+    refundFan(b.fan_id, b.model_id, b.total_cents, 'booking_no_show',
+      `📅 Booking #${b.id} no-show — model never started, refunded`);
+    pushToUser(b.fan_id, { type: 'booking:no_show', booking_id: b.id,
+      refunded_cents: b.total_cents,
+      balance_cents: getWallet(b.fan_id).credits_cents });
+    pushToUser(b.model_id, { type: 'booking:no_show', booking_id: b.id });
+    return db.prepare('SELECT * FROM bookings WHERE id = ?').get(b.id);
+  }
+  return b;
+}
+
+// Auto-complete in-progress bookings whose scheduled end has passed
+function settleFinishedBookings() {
+  const now = Date.now();
+  const rows = db.prepare(`SELECT * FROM bookings WHERE status = 'in_progress'`).all();
+  for (const b of rows) {
+    if (now > b.scheduled_at + b.duration_min * 60 * 1000) {
+      db.prepare(`UPDATE bookings SET status = 'completed', decided_at = datetime('now') WHERE id = ?`)
+        .run(b.id);
+      pushToUser(b.fan_id, { type: 'booking:completed', booking_id: b.id });
+      pushToUser(b.model_id, { type: 'booking:completed', booking_id: b.id });
+    }
+  }
+}
+
+// Fan requests a private booked live — pays upfront
+app.post('/api/bookings', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const modelId = parseInt(req.body.model_id);
+  const scheduledAt = parseInt(req.body.scheduled_at);
+  const durationMin = parseInt(req.body.duration_min);
+  const model = db.prepare(`
+    SELECT u.id, u.display_name, u.banned, m.per_minute_cents FROM users u
+    JOIN models m ON m.user_id = u.id
+    WHERE u.id = ? AND u.role = 'model'`).get(modelId);
+  if (!model || model.banned) return res.status(404).json({ error: 'model_not_found' });
+  if (!BOOKING_DURATIONS.includes(durationMin))
+    return res.status(400).json({ error: 'bad_duration' });
+  const now = Date.now();
+  if (!Number.isInteger(scheduledAt) || scheduledAt < now + 60 * 60 * 1000)
+    return res.status(400).json({ error: 'too_soon',
+      message: 'Book at least 1 hour ahead.' });
+  if (scheduledAt > now + BOOKING_MAX_DAYS * 24 * 60 * 60 * 1000)
+    return res.status(400).json({ error: 'too_far',
+      message: 'Bookings open up to 7 days ahead.' });
+  const total = model.per_minute_cents * durationMin;
+  try {
+    chargeFan(req.user.id, model.id, total, 'booking',
+      `📅 Private ${durationMin}min live with ${model.display_name}`);
+  } catch (e) {
+    if (e.message === 'insufficient_credits')
+      return res.status(402).json({ error: 'insufficient_credits',
+        needed_cents: total, balance_cents: getWallet(req.user.id).credits_cents });
+    throw e;
+  }
+  const info = db.prepare(`INSERT INTO bookings
+    (model_id, fan_id, scheduled_at, duration_min, total_cents, rate_cents)
+    VALUES (?,?,?,?,?,?)`)
+    .run(model.id, req.user.id, scheduledAt, durationMin, total, model.per_minute_cents);
+  const bid = Number(info.lastInsertRowid);
+  const when = new Date(scheduledAt);
+  pushToUser(model.id, { type: 'booking:request', booking_id: bid,
+    fan_id: req.user.id, fan_name: req.user.display_name,
+    scheduled_at: scheduledAt, duration_min: durationMin, total_cents: total });
+  res.json({ ok: true, booking_id: bid, total_cents: total,
+    balance_cents: getWallet(req.user.id).credits_cents });
+});
+
+// Model approves a booking request
+app.post('/api/bookings/:id/approve', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const b = db.prepare('SELECT * FROM bookings WHERE id = ?').get(req.params.id);
+  if (!b || b.status !== 'pending') return res.status(404).json({ error: 'not_found' });
+  if (b.model_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+  db.prepare(`UPDATE bookings SET status = 'approved', decided_at = datetime('now') WHERE id = ?`)
+    .run(b.id);
+  pushToUser(b.fan_id, { type: 'booking:approved', booking_id: b.id,
+    scheduled_at: b.scheduled_at, duration_min: b.duration_min });
+  res.json({ ok: true });
+});
+
+// Model declines — instant full refund
+app.post('/api/bookings/:id/decline', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const b = db.prepare('SELECT * FROM bookings WHERE id = ?').get(req.params.id);
+  if (!b || b.status !== 'pending') return res.status(404).json({ error: 'not_found' });
+  if (b.model_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+  db.prepare(`UPDATE bookings SET status = 'declined', decided_at = datetime('now') WHERE id = ?`)
+    .run(b.id);
+  refundFan(b.fan_id, b.model_id, b.total_cents, 'booking_refund',
+    `📅 Booking #${b.id} declined — refunded`);
+  pushToUser(b.fan_id, { type: 'booking:declined', booking_id: b.id,
+    refunded_cents: b.total_cents, balance_cents: getWallet(b.fan_id).credits_cents });
+  res.json({ ok: true, refunded_cents: b.total_cents });
+});
+
+// Cancel: fan ≥1h before → refund; fan <1h → no refund; model → always refund
+app.post('/api/bookings/:id/cancel', identMiddleware, requireUser, (req, res) => {
+  const b = db.prepare('SELECT * FROM bookings WHERE id = ?').get(req.params.id);
+  if (!b) return res.status(404).json({ error: 'not_found' });
+  if (!['pending', 'approved'].includes(b.status))
+    return res.status(409).json({ error: 'not_cancellable' });
+  const isModel = req.user.role === 'model' && b.model_id === req.user.id;
+  const isFan = req.user.role === 'fan' && b.fan_id === req.user.id;
+  if (!isModel && !isFan) return res.status(403).json({ error: 'forbidden' });
+  let refunded = 0;
+  if (isModel || Date.now() < b.scheduled_at - BOOKING_FAN_CANCEL_HOURS * 60 * 60 * 1000) {
+    refunded = b.total_cents;
+    refundFan(b.fan_id, b.model_id, b.total_cents, 'booking_refund',
+      `📅 Booking #${b.id} cancelled by ${isModel ? 'model' : 'fan'} — refunded`);
+  }
+  db.prepare(`UPDATE bookings SET status = 'cancelled', decided_at = datetime('now') WHERE id = ?`)
+    .run(b.id);
+  const otherId = isModel ? b.fan_id : b.model_id;
+  pushToUser(otherId, { type: 'booking:cancelled', booking_id: b.id,
+    refunded_cents: refunded, by: isModel ? 'model' : 'fan',
+    balance_cents: isModel ? getWallet(b.fan_id).credits_cents : undefined });
+  res.json({ ok: true, refunded_cents: refunded });
+});
+
+// Model starts the private session at (or near) the scheduled time
+app.post('/api/bookings/:id/start', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const b = db.prepare('SELECT * FROM bookings WHERE id = ?').get(req.params.id);
+  if (!b || b.status !== 'approved') return res.status(404).json({ error: 'not_found' });
+  if (b.model_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+  db.prepare(`UPDATE bookings SET status = 'in_progress', decided_at = datetime('now') WHERE id = ?`)
+    .run(b.id);
+  pushToUser(b.fan_id, { type: 'booking:live', booking_id: b.id,
+    message: "🔴 She's live! Tap to join your private session." });
+  res.json({ ok: true });
+});
+
+// Either party opens the private video session (prepaid — rate 0, no per-minute billing)
+app.post('/api/bookings/:id/call', identMiddleware, requireUser, (req, res) => {
+  const b = db.prepare('SELECT * FROM bookings WHERE id = ?').get(req.params.id);
+  if (!b) return res.status(404).json({ error: 'not_found' });
+  if (b.fan_id !== req.user.id && b.model_id !== req.user.id)
+    return res.status(403).json({ error: 'forbidden' });
+  if (!['approved', 'in_progress'].includes(b.status))
+    return res.status(409).json({ error: 'not_ready' });
+  if (b.status === 'approved') {
+    db.prepare(`UPDATE bookings SET status = 'in_progress', decided_at = datetime('now') WHERE id = ?`)
+      .run(b.id);
+  }
+  const existing = db.prepare(`SELECT * FROM calls WHERE booking_id = ? AND status != 'ended'
+    ORDER BY id DESC`).get(b.id);
+  const otherId = req.user.id === b.fan_id ? b.model_id : b.fan_id;
+  const other = db.prepare('SELECT display_name FROM users WHERE id = ?').get(otherId);
+  if (existing) return res.json({ ok: true, call_id: existing.id, resumed: true,
+    other_id: otherId, other_name: other ? other.display_name : '?' });
+  const info = db.prepare('INSERT INTO calls (fan_id, model_id, rate_cents, booking_id) VALUES (?,?,0,?)')
+    .run(b.fan_id, b.model_id, b.id);
+  res.json({ ok: true, call_id: Number(info.lastInsertRowid),
+    other_id: otherId, other_name: other ? other.display_name : '?' });
+});
+
+// Upcoming bookings for the logged-in user (both roles), with no-show settling
+app.get('/api/bookings', identMiddleware, requireUser, (req, res) => {
+  settleFinishedBookings();
+  const col = req.user.role === 'model' ? 'model_id' : 'fan_id';
+  const rows = db.prepare(`SELECT * FROM bookings WHERE ${col} = ?
+    AND status IN ('pending','approved','in_progress')
+    ORDER BY scheduled_at ASC`).all(req.user.id);
+  const out = rows.map((b) => bookingFor(checkNoShow(b), req.user.id));
+  res.json({ bookings: out });
+});
+
+// Admin: all bookings
+app.get('/api/admin/bookings', ...adminOnly, (req, res) => {
+  const rows = db.prepare(`
+    SELECT b.*, um.display_name AS model_name, uf.display_name AS fan_name
+    FROM bookings b
+    JOIN users um ON um.id = b.model_id
+    JOIN users uf ON uf.id = b.fan_id
+    ORDER BY b.scheduled_at DESC LIMIT 100`).all();
+  res.json({ bookings: rows });
+});
+
+/* ------------------------------------------------------------------ */
+/* PUBLIC LIVE SCHEDULE — model's recurring weekly slots               */
+/* ------------------------------------------------------------------ */
+
+// Next occurrences of a weekly slot within the next 7 days (unix ms)
+function upcomingSlotTimes(dayOfWeek, startTime, daysOut) {
+  const out = [];
+  const [hh, mm] = String(startTime).split(':').map((x) => parseInt(x) || 0);
+  const now = new Date();
+  for (let d = 0; d <= (daysOut == null ? 7 : daysOut); d++) {
+    const dt = new Date(now.getTime() + d * 24 * 60 * 60 * 1000);
+    if (dt.getDay() === dayOfWeek) {
+      dt.setHours(hh, mm, 0, 0);
+      if (dt.getTime() > Date.now()) out.push(dt.getTime());
+    }
+  }
+  return out;
+}
+
+// Model: list her weekly schedule slots
+app.get('/api/model/schedule', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const slots = db.prepare('SELECT * FROM live_schedule WHERE model_id = ? ORDER BY day_of_week, start_time')
+    .all(req.user.id);
+  res.json({ slots });
+});
+
+// Model: add a weekly schedule slot
+app.post('/api/model/schedule', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const day = parseInt(req.body.day_of_week);
+  const time = String(req.body.start_time || '').slice(0, 5);
+  const title = String(req.body.title || '').trim().slice(0, 60);
+  if (!Number.isInteger(day) || day < 0 || day > 6)
+    return res.status(400).json({ error: 'bad_day' });
+  if (!/^\d{2}:\d{2}$/.test(time))
+    return res.status(400).json({ error: 'bad_time' });
+  const dup = db.prepare(`SELECT 1 FROM live_schedule
+    WHERE model_id = ? AND day_of_week = ? AND start_time = ?`)
+    .get(req.user.id, day, time);
+  if (dup) return res.status(409).json({ error: 'duplicate' });
+  const info = db.prepare(`INSERT INTO live_schedule (model_id, day_of_week, start_time, title)
+    VALUES (?,?,?,?)`).run(req.user.id, day, time, title);
+  res.json({ ok: true, id: Number(info.lastInsertRowid) });
+});
+
+// Model: delete a schedule slot
+app.delete('/api/model/schedule/:id', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const s = db.prepare('SELECT * FROM live_schedule WHERE id = ?').get(req.params.id);
+  if (!s) return res.status(404).json({ error: 'not_found' });
+  if (s.model_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+  db.prepare('DELETE FROM live_schedule WHERE id = ?').run(s.id);
+  res.json({ ok: true });
+});
+
+// Public: upcoming scheduled lives across models (next 7 days)
+app.get('/api/live/schedule', (req, res) => {
+  const slots = db.prepare(`
+    SELECT ls.*, u.display_name AS model_name, m.photo_url, m.is_online
+    FROM live_schedule ls
+    JOIN users u ON u.id = ls.model_id
+    JOIN models m ON m.user_id = ls.model_id
+    WHERE u.banned = 0 AND u.role = 'model'`).all();
+  const out = [];
+  for (const s of slots) {
+    for (const at of upcomingSlotTimes(s.day_of_week, s.start_time, 7)) {
+      out.push({ model_id: s.model_id, model_name: s.model_name,
+        photo_url: s.photo_url || '', is_online: !!s.is_online,
+        title: s.title || '', starts_at: at,
+        day_label: new Date(at).toLocaleDateString('en-US', { weekday: 'short' }),
+        time_label: new Date(at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) });
+    }
+  }
+  out.sort((a, b) => a.starts_at - b.starts_at);
+  res.json({ upcoming: out.slice(0, 50) });
 });
 
 // GET top-3 gifters leaderboard for a stream
