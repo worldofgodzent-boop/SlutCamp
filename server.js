@@ -36,6 +36,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Uploads dir for PPV media + voice notes (served only via authed /api/media/:id/file)
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+// Model profile photos are public (fans see them on the grid).
+// PPV media + voice notes stay private: only files prefixed "photo-" are served here.
+// Everything else in uploads/ is still served only via authed /api/media/:id/file.
+app.use('/uploads', (req, res, next) => {
+  if (/^\/photo-[a-f0-9]+\.(jpg|png|webp)$/.test(req.path)) return next();
+  return res.status(404).end();
+}, express.static(UPLOAD_DIR));
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -46,6 +53,22 @@ const upload = multer({
   limits: { fileSize: 30 * 1024 * 1024 }, // 30MB cap (short videos)
   fileFilter: (req, file, cb) => {
     const ok = /^(image\/(jpeg|png|webp)|video\/mp4|audio\/(mp4|mpeg|ogg|webm|wav|x-m4a))/.test(file.mimetype);
+    cb(ok ? null : new Error('bad_file_type'), ok);
+  },
+});
+
+// Profile photos: images only, 5MB cap
+const photoUpload = multer({
+  storage: multer.diskStorage({
+    destination: UPLOAD_DIR,
+    filename: (req, file, cb) => {
+      const ext = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' }[file.mimetype] || '.jpg';
+      cb(null, 'photo-' + crypto.randomBytes(16).toString('hex') + ext);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ok = /^image\/(jpeg|png|webp)$/.test(file.mimetype);
     cb(ok ? null : new Error('bad_file_type'), ok);
   },
 });
@@ -306,6 +329,7 @@ function addColumnIfMissing(table, col, def) {
 addColumnIfMissing('messages', 'media_id', 'INTEGER REFERENCES media_items(id)');
 addColumnIfMissing('models', 'per_voice_cents', 'INTEGER NOT NULL DEFAULT 299');
 addColumnIfMissing('models', 'explicit_rate_cents', 'INTEGER NOT NULL DEFAULT 499');
+addColumnIfMissing('models', 'photo_url', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('live_sessions', 'title', "TEXT NOT NULL DEFAULT ''");
 
 // Seed the safety keyword list (admin can edit these later in Settings)
@@ -544,7 +568,7 @@ app.post('/api/guest/token', (req, res) => {
 app.get('/api/models', (req, res) => {
   const rows = db.prepare(`
     SELECT u.id, u.display_name, m.bio, m.per_message_cents,
-           m.per_minute_cents, m.per_voice_cents, m.is_online,
+           m.per_minute_cents, m.per_voice_cents, m.is_online, m.photo_url,
            ls.id AS live_session_id, ls.explicit_rate_cents AS live_explicit_rate_cents
     FROM users u JOIN models m ON m.user_id = u.id
     LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live'
@@ -670,6 +694,7 @@ function otherParty(conv, ident) {
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(otherId);
   const m = u.role === 'model' ? db.prepare('SELECT * FROM models WHERE user_id = ?').get(otherId) : null;
   return { ...getUserPublic(u), is_online: m ? !!m.is_online : false,
+           photo_url: m ? (m.photo_url || '') : '',
            per_message_cents: m ? m.per_message_cents : 0,
            per_minute_cents: m ? m.per_minute_cents : 0 };
 }
@@ -1220,6 +1245,27 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
   res.json({ model: db.prepare('SELECT * FROM models WHERE user_id = ?').get(req.user.id) });
 });
 
+// Swap a model's profile photo; deletes the old file so no orphans linger
+function setModelPhoto(userId, file) {
+  const old = db.prepare('SELECT photo_url FROM models WHERE user_id = ?').get(userId);
+  if (old && old.photo_url) {
+    const oldPath = path.join(UPLOAD_DIR, path.basename(old.photo_url));
+    if (oldPath.startsWith(UPLOAD_DIR + path.sep)) {
+      try { fs.unlinkSync(oldPath); } catch (e) { /* already gone */ }
+    }
+  }
+  const photo_url = '/uploads/' + path.basename(file.path);
+  db.prepare('UPDATE models SET photo_url = ? WHERE user_id = ?').run(photo_url, userId);
+  return photo_url;
+}
+
+// Model uploads her own profile photo
+app.post('/api/model/photo', identMiddleware, requireUser, requireRole('model'),
+  photoUpload.single('photo'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'no_photo' });
+    res.json({ ok: true, photo_url: setModelPhoto(req.user.id, req.file) });
+  });
+
 app.get('/api/model/earnings', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const wallet = getWallet(req.user.id);
   const byFan = db.prepare(`
@@ -1424,10 +1470,11 @@ app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
 app.get('/api/live', (req, res) => {
   const rows = db.prepare(`
     SELECT ls.id AS session_id, ls.title, ls.explicit_rate_cents, ls.started_at,
-           u.id AS model_id, u.display_name AS model_name,
+           u.id AS model_id, u.display_name AS model_name, mo.photo_url AS model_photo_url,
            (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS viewers,
            (SELECT COALESCE(SUM(gross_cents),0) FROM gift_events WHERE session_id = ls.id) AS gift_cents
     FROM live_sessions ls JOIN users u ON u.id = ls.model_id
+    LEFT JOIN models mo ON mo.user_id = u.id
     WHERE ls.status = 'live' AND u.banned = 0`).all();
   res.json({ live: rows });
 });
@@ -1828,7 +1875,7 @@ app.post('/api/admin/safety/ban-guest', ...adminOnly, (req, res) => {
 app.get('/api/admin/models', ...adminOnly, (req, res) => {
   res.json({ models: db.prepare(`
     SELECT u.id, u.username, u.display_name, u.banned, u.created_at,
-           m.bio, m.per_message_cents, m.per_minute_cents, m.is_online,
+           m.bio, m.per_message_cents, m.per_minute_cents, m.is_online, m.photo_url,
            w.earnings_cents, w.paid_out_cents,
            (w.earnings_cents - w.paid_out_cents) AS pending_cents
     FROM users u JOIN models m ON m.user_id = u.id JOIN wallets w ON w.user_id = u.id
@@ -1872,6 +1919,17 @@ app.delete('/api/admin/models/:id', ...adminOnly, (req, res) => {
   if (!u) return res.status(404).json({ error: 'not_found' });
   db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
   res.json({ ok: true });
+});
+
+// Admin sets a model's profile photo
+app.post('/api/admin/models/:id/photo', ...adminOnly, photoUpload.single('photo'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'no_photo' });
+  const u = db.prepare(`SELECT * FROM users WHERE id = ? AND role = 'model'`).get(req.params.id);
+  if (!u) {
+    try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
+    return res.status(404).json({ error: 'not_found' });
+  }
+  res.json({ ok: true, photo_url: setModelPhoto(u.id, req.file) });
 });
 
 /* ---- Model invite links ---- */

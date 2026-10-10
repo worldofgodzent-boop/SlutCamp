@@ -39,8 +39,9 @@ document.addEventListener('click', (e) => {
   b.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
 });
 
-// Gradient avatar from a name (no photos needed for MVP)
-function avatarHTML(name, cls) {
+// Avatar: model photo if set, otherwise gradient initial
+function avatarHTML(name, cls, photoUrl) {
+  if (photoUrl) return `<div class="avatar ${cls || ''}"><img src="${esc(photoUrl)}" alt=""></div>`;
   const hues = [[265, 320], [300, 340], [220, 280], [280, 310]];
   const h = hues[(name || '?').length % hues.length];
   const initial = esc((name || '?').trim().charAt(0).toUpperCase());
@@ -131,6 +132,18 @@ async function api(path, opts) {
   if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
   else if (S.guestToken) headers['X-Guest-Token'] = S.guestToken;
   const r = await fetch('/api' + path, Object.assign({}, opts, { headers }));
+  let data = {};
+  try { data = await r.json(); } catch (e) { /* non-JSON */ }
+  return { status: r.status, data };
+}
+
+/* POST a single file via multipart (no JSON content-type — browser sets the boundary) */
+async function apiUpload(path, file, field) {
+  const fd = new FormData();
+  fd.append(field || 'photo', file);
+  const headers = {};
+  if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
+  const r = await fetch('/api' + path, { method: 'POST', headers, body: fd });
   let data = {};
   try { data = await r.json(); } catch (e) { /* non-JSON */ }
   return { status: r.status, data };
@@ -330,7 +343,7 @@ async function vLanding() {
       </div>
       ${models.map((m) => `
         <button class="list-item" data-model="${m.id}" data-live="${m.live_session_id || ''}" style="background:var(--card);border-radius:14px;margin-bottom:10px;border:1px solid rgba(139,92,246,.18)">
-          <span class="avatar-wrap">${avatarHTML(m.display_name)}
+          <span class="avatar-wrap">${avatarHTML(m.display_name, '', m.photo_url)}
             ${m.is_online ? '<span class="online-dot"></span>' : ''}</span>
           <span class="grow">
             <span class="title">${esc(m.display_name)}
@@ -575,7 +588,7 @@ async function vFanModels() {
     <div class="screen">
       ${models.map((m) => `
         <button class="list-item" data-model="${m.id}" data-live="${m.live_session_id || ''}" style="background:var(--card);border-radius:14px;margin-bottom:10px;border:1px solid rgba(139,92,246,.18)">
-          <span class="avatar-wrap">${avatarHTML(m.display_name)}
+          <span class="avatar-wrap">${avatarHTML(m.display_name, '', m.photo_url)}
             ${m.is_online ? '<span class="online-dot"></span>' : ''}</span>
           <span class="grow">
             <span class="title">${esc(m.display_name)}
@@ -611,7 +624,7 @@ async function vFanLive() {
     <div class="screen">
       ${streams.map((s) => `
         <button class="list-item" data-stream="${s.session_id}" style="background:var(--card);border-radius:14px;margin-bottom:10px;border:1px solid rgba(239,68,68,.35)">
-          <span class="avatar-wrap">${avatarHTML(s.model_name)}<span class="online-dot"></span></span>
+          <span class="avatar-wrap">${avatarHTML(s.model_name, '', s.model_photo_url)}<span class="online-dot"></span></span>
           <span class="grow">
             <span class="title">${esc(s.model_name)} <span class="live-badge">🔴 LIVE</span></span><br>
             ${s.title ? `<span class="preview" style="font-weight:700;color:#fff">${esc(s.title)}</span><br>` : ''}
@@ -643,7 +656,7 @@ async function vChatList(role) {
     <div class="screen" style="padding:8px">
       ${convs.map((c) => `
         <button class="list-item" data-conv="${c.id}">
-          ${avatarHTML(c.other.display_name, 'sm')}
+          ${avatarHTML(c.other.display_name, 'sm', c.other.photo_url)}
           <span class="grow">
             <span class="title">${esc(c.other.display_name)}
               ${c.is_paused ? ' <span class="small" style="color:var(--red)">⏸ paused</span>' : ''}</span><br>
@@ -741,6 +754,14 @@ async function vModelSettings() {
         <textarea class="input" id="s-bio" rows="3" maxlength="280">${esc(m.bio)}</textarea>
         <button class="btn" id="s-bio-save">Save bio</button>
       </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:6px">My Photo</div>
+        <div class="row" style="align-items:center">
+          ${avatarHTML(m.display_name || (S.user && S.user.display_name) || '?', 'sm', m.photo_url)}
+          <span class="grow muted small">Fans see this next to your name in chats and on the model grid.</span>
+        </div>
+        <button class="btn ghost" id="s-photo" style="margin-top:8px">📷 Change my photo</button>
+      </div>
       <button class="btn ghost" id="s-logout">Log out</button>
     </div>`;
   $('#s-save').onclick = async () => {
@@ -757,6 +778,22 @@ async function vModelSettings() {
     const { status } = await api('/model/profile', {
       method: 'PUT', body: JSON.stringify({ bio: $('#s-bio').value }) });
     toast(status === 200 ? '✅ Bio saved!' : 'Could not save.');
+  };
+  $('#s-photo').onclick = () => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*';
+    inp.onchange = async () => {
+      const file = inp.files[0];
+      if (!file) return;
+      toast('Uploading photo…');
+      const { status, data } = await apiUpload('/model/photo', file);
+      if (status === 200 && data.ok) {
+        toast('📷 Photo updated!');
+        await refreshMe();
+        show('modelSettings', {});
+      } else toast('Upload failed — use a JPG/PNG under 5MB.');
+    };
+    inp.click();
   };
   $('#s-logout').onclick = () => logout();
 }
@@ -780,7 +817,7 @@ async function vChat(params) {
   app.innerHTML = `
     <div class="chat-header">
       <button class="icon-btn" id="c-back">‹</button>
-      ${avatarHTML(other.display_name, 'sm')}
+      ${avatarHTML(other.display_name, 'sm', other.photo_url)}
       <div class="grow">
         <div class="name">${esc(other.display_name)}</div>
         <div class="status">${conv.is_paused ? '⏸ Paused' : (other.is_online ? '🟢 online' : '⚫ offline')}</div>
@@ -1969,7 +2006,7 @@ async function adminModelsBody() {
     ${models.map((m) => `
       <div class="card" style="padding:12px">
         <div class="row">
-          ${avatarHTML(m.display_name, 'sm')}
+          ${avatarHTML(m.display_name, 'sm', m.photo_url)}
           <span class="grow"><b>${esc(m.display_name)}</b> <span class="small muted">@${esc(m.username)}</span><br>
             <span class="small" style="color:${m.is_online ? 'var(--green)' : 'var(--muted)'}">● ${m.is_online ? 'Online' : 'Offline'}</span>
             <span class="small muted"> · ${fmt(m.per_message_cents)}/msg · ${fmt(m.per_minute_cents)}/min</span><br>
@@ -1977,6 +2014,7 @@ async function adminModelsBody() {
         </div>
         <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
           <button class="btn small ghost" data-m-edit="${m.id}">✏️ Rates</button>
+          <button class="btn small ghost" data-m-photo="${m.id}">📷 Photo</button>
           <button class="btn small ghost" data-m-toggle="${m.id}">${m.banned ? "✅ Reactivate" : "⏸️ Deactivate"}</button>
           <button class="btn small danger" data-m-del="${m.id}">Remove</button>
         </div>
@@ -2277,6 +2315,21 @@ function wireAdminBody(tab) {
       if (!confirm('Remove this model permanently?')) return;
       await api(`/admin/models/${b.dataset.mDel}`, { method: 'DELETE' });
       show('admin', {});
+    };
+  });
+  document.querySelectorAll('[data-m-photo]').forEach((b) => {
+    b.onclick = () => {
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'image/*';
+      inp.onchange = async () => {
+        const file = inp.files[0];
+        if (!file) return;
+        toast('Uploading photo…');
+        const { status, data } = await apiUpload(`/admin/models/${b.dataset.mPhoto}/photo`, file);
+        if (status === 200 && data.ok) { toast('📷 Photo updated!'); show('admin', {}); }
+        else toast('Upload failed — use a JPG/PNG under 5MB.');
+      };
+      inp.click();
     };
   });
   go('#nm-add', async () => {
