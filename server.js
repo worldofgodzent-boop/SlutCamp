@@ -348,7 +348,9 @@ addColumnIfMissing('models', 'explicit_rate_cents', 'INTEGER NOT NULL DEFAULT 49
 addColumnIfMissing('models', 'photo_url', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('live_sessions', 'title', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('live_viewers', 'explicit_until', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('live_viewers', 'explicit_paid', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'explicit_gift_grace_sec', 'INTEGER NOT NULL DEFAULT 180');
+addColumnIfMissing('platform_stats', 'explicit_entry_cents', 'INTEGER NOT NULL DEFAULT 499');
 
 // Seed the safety keyword list (admin can edit these later in Settings)
 const DEFAULT_KEYWORDS = [
@@ -391,6 +393,13 @@ const getGiftGraceSec = () => {
   const r = db.prepare('SELECT explicit_gift_grace_sec FROM platform_stats WHERE id = 1').get();
   const s = r && r.explicit_gift_grace_sec;
   return Number.isInteger(s) && s >= 30 && s <= 3600 ? s : 180;
+};
+
+// Explicit entry fee: one-time charge per viewer to unblur when she goes explicit (cents)
+const getEntryCents = () => {
+  const r = db.prepare('SELECT explicit_entry_cents FROM platform_stats WHERE id = 1').get();
+  const s = r && r.explicit_entry_cents;
+  return Number.isInteger(s) && s >= 100 && s <= 10000 ? s : 499;
 };
 
 const getWallet = (userId) =>
@@ -1406,11 +1415,11 @@ const livePayTimers = new Map(); // "sessionId:fanId" -> interval
 
 function liveTimerKey(sessionId, fanId) { return `${sessionId}:${fanId}`; }
 
-function stopLivePayTimer(sessionId, fanId) {
+function stopLivePayTimer(sessionId, fanId, clearDb = true) {
   const k = liveTimerKey(sessionId, fanId);
   const t = livePayTimers.get(k);
   if (t) { clearInterval(t); livePayTimers.delete(k); }
-  db.prepare('UPDATE live_viewers SET is_paying = 0 WHERE session_id = ? AND fan_id = ?')
+  if (clearDb) db.prepare('UPDATE live_viewers SET is_paying = 0 WHERE session_id = ? AND fan_id = ?')
     .run(sessionId, fanId);
 }
 
@@ -1516,13 +1525,15 @@ app.post('/api/live/:id/join', identMiddleware, requireUser, requireRole('fan'),
   pushToUser(sess.model_id, { type: 'live:viewer-joined', session_id: sess.id,
     fan_id: req.user.id, fan_name: req.user.display_name });
   const model = db.prepare('SELECT display_name FROM users WHERE id = ?').get(sess.model_id);
-  const me = db.prepare('SELECT explicit_until, is_paying FROM live_viewers WHERE session_id = ? AND fan_id = ?')
+  const me = db.prepare('SELECT explicit_until, is_paying, explicit_paid FROM live_viewers WHERE session_id = ? AND fan_id = ?')
     .get(sess.id, req.user.id);
   res.json({ ok: true, session_id: sess.id, model_id: sess.model_id,
     model_name: model.display_name, title: sess.title || '',
     explicit_rate_cents: sess.explicit_rate_cents, is_explicit: !!sess.is_explicit,
     is_paying: !!(me && me.is_paying), explicit_until: me ? me.explicit_until : 0,
-    explicit_grace_sec: getGiftGraceSec(), priority: currentPriority(sess.id) });
+    explicit_paid: !!(me && me.explicit_paid),
+    explicit_grace_sec: getGiftGraceSec(), explicit_entry_cents: getEntryCents(),
+    priority: currentPriority(sess.id) });
 });
 
 // Fan starts paying the explicit per-minute rate (unblurs)
@@ -1537,15 +1548,46 @@ app.post('/api/live/:id/pay', identMiddleware, requireUser, requireRole('fan'), 
     return res.status(402).json({ error: 'insufficient_credits',
       needed_cents: sess.explicit_rate_cents,
       balance_cents: getWallet(req.user.id).credits_cents });
-  db.prepare('UPDATE live_viewers SET is_paying = 1 WHERE session_id = ? AND fan_id = ?')
+  db.prepare('UPDATE live_viewers SET is_paying = 1, explicit_paid = 1 WHERE session_id = ? AND fan_id = ?')
     .run(sess.id, req.user.id);
   db.prepare(`INSERT INTO blur_events (session_id, fan_id, event, detail)
               VALUES (?,?,'paid','explicit_unblur')`).run(sess.id, req.user.id);
-  stopLivePayTimer(sess.id, req.user.id); // clear any stale timer first
+  stopLivePayTimer(sess.id, req.user.id, false); // clear any stale timer (keep is_paying=1)
   livePayTimers.set(liveTimerKey(sess.id, req.user.id),
     setInterval(() => billLiveMinute(sess.id, req.user.id), 60 * 1000));
   res.json({ ok: true, rate_cents: sess.explicit_rate_cents,
     balance_cents: getWallet(req.user.id).credits_cents });
+});
+
+// STAGE 1 — Explicit entry fee: one-time per-viewer charge to unblur when she
+// goes explicit. This is the gate; gifts are the upkeep (stage 2). 70/30 split.
+app.post('/api/live/:id/explicit-entry', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const sess = liveSessionOr404(req, res);
+  if (!sess) return;
+  if (!sess.is_explicit) return res.status(400).json({ error: 'not_explicit' });
+  const viewer = db.prepare('SELECT * FROM live_viewers WHERE session_id = ? AND fan_id = ?')
+    .get(sess.id, req.user.id);
+  if (!viewer) return res.status(403).json({ error: 'join_first' });
+  if (viewer.explicit_paid) return res.status(409).json({ error: 'already_paid' });
+  const entryCents = getEntryCents();
+  try {
+    chargeFan(req.user.id, sess.model_id, entryCents, 'live_explicit_entry',
+      `Explicit entry on stream #${sess.id}`);
+    // Entry also starts the gift grace timer — upkeep begins immediately
+    const explicitUntil = Date.now() + getGiftGraceSec() * 1000;
+    db.prepare('UPDATE live_viewers SET explicit_paid = 1, explicit_until = ? WHERE session_id = ? AND fan_id = ?')
+      .run(explicitUntil, sess.id, req.user.id);
+    db.prepare(`INSERT INTO blur_events (session_id, fan_id, event, detail)
+                VALUES (?,?,'paid','explicit_entry')`).run(sess.id, req.user.id);
+    res.json({ ok: true, explicit_until: explicitUntil,
+      explicit_grace_sec: getGiftGraceSec(),
+      balance_cents: getWallet(req.user.id).credits_cents });
+  } catch (e) {
+    if (e.message === 'insufficient_credits')
+      return res.status(402).json({ error: 'insufficient_credits',
+        needed_cents: entryCents, balance_cents: getWallet(req.user.id).credits_cents });
+    throw e;
+  }
 });
 
 // Fan stops paying (back to free blurred preview)
@@ -1563,14 +1605,18 @@ app.post('/api/live/:id/mode', identMiddleware, requireUser, requireRole('model'
   if (!sess || sess.model_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
   const isExplicit = req.body.is_explicit ? 1 : 0;
   db.prepare('UPDATE live_sessions SET is_explicit = ? WHERE id = ?').run(isExplicit, sess.id);
-  if (!isExplicit) {
+  if (isExplicit) {
+    // Fresh explicit session — everyone must pay the entry fee again (entry is the gate)
+    db.prepare('UPDATE live_viewers SET explicit_paid = 0, explicit_until = 0 WHERE session_id = ?').run(sess.id);
+  } else {
     // Explicit over — everyone's gift grace expires immediately
-    db.prepare('UPDATE live_viewers SET explicit_until = 0 WHERE session_id = ?').run(sess.id);
+    db.prepare('UPDATE live_viewers SET explicit_paid = 0, explicit_until = 0 WHERE session_id = ?').run(sess.id);
   }
   db.prepare(`INSERT INTO blur_events (session_id, event, detail)
               VALUES (?,?,'manual_mode')`).run(sess.id, isExplicit ? 'explicit_on' : 'explicit_off');
   pushLiveViewers(sess.id, { type: 'live:explicit', session_id: sess.id, is_explicit: !!isExplicit,
-    explicit_rate_cents: sess.explicit_rate_cents, explicit_grace_sec: getGiftGraceSec() });
+    explicit_rate_cents: sess.explicit_rate_cents, explicit_grace_sec: getGiftGraceSec(),
+    explicit_entry_cents: getEntryCents() });
   res.json({ ok: true, is_explicit: !!isExplicit });
 });
 
@@ -2212,6 +2258,13 @@ app.put('/api/admin/settings', ...adminOnly, (req, res) => {
       return res.status(400).json({ error: 'bad_grace' });
     db.prepare('UPDATE platform_stats SET explicit_gift_grace_sec = ? WHERE id = 1').run(g);
     out.explicit_gift_grace_sec = g;
+  }
+  if (req.body.explicit_entry_cents !== undefined) {
+    const e = parseInt(req.body.explicit_entry_cents);
+    if (!Number.isInteger(e) || e < 100 || e > 10000)
+      return res.status(400).json({ error: 'bad_entry' });
+    db.prepare('UPDATE platform_stats SET explicit_entry_cents = ? WHERE id = 1').run(e);
+    out.explicit_entry_cents = e;
   }
   res.json(out);
 });

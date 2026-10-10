@@ -223,11 +223,13 @@ function handleWS(m) {
   } else if (m.type === 'live:viewer-left' && S.live && S.live.role === 'model' && m.session_id === S.live.sessionId) {
     liveModelRemoveViewer(m.fan_id);
   } else if (m.type === 'live:explicit' && S.live && S.live.role === 'fan' && m.session_id === S.live.sessionId) {
+    if (m.explicit_entry_cents) S.live.entryCents = m.explicit_entry_cents;
     onLiveExplicitSignal(m.is_explicit, m.explicit_rate_cents, 'manual');
   } else if (m.type === 'live:ended' && S.live && m.session_id === S.live.sessionId) {
     endLiveView('Stream ended.');
   } else if (m.type === 'live:tick' && S.live && S.live.role === 'fan' && m.session_id === S.live.sessionId) {
     S.live.paying = true;
+    S.live.entryPaid = true; // per-minute billing implies entry-paid server-side
     if (m.balance_cents != null && S.wallet) S.wallet.credits_cents = m.balance_cents;
     updateLivePayHUD();
   } else if (m.type === 'live:pay_stopped' && S.live && S.live.role === 'fan' && m.session_id === S.live.sessionId) {
@@ -1615,6 +1617,10 @@ async function sendGift(giftId, sheet) {
     // Pay-to-play: any gift unblurs THIS viewer for the grace period.
     if (data.explicit_until && L.isExplicit && S.live && S.live.sessionId === L.sessionId) {
       L.explicitUntil = data.explicit_until;
+      // AI-detected explicit is client-side only — the server never enforced an
+      // entry fee there, so the first gift counts as entry too.
+      // Manual explicit keeps the strict gate: gifts never bypass entry.
+      if (!L.entryPaid && L.explicitSource !== 'manual') L.entryPaid = true;
       applyLiveBlur(false);
       startGiftCountdown();
       toast('🎁 Gift sent — your view stays clear! 🔓');
@@ -1792,6 +1798,8 @@ async function watchLive(sessionId) {
              paying: !!data.is_paying, blurred: false, monitorOn: false, aiReady: false,
              countdownInt: null, giftCountdownInt: null, title: data.title || '',
              isExplicit: !!data.is_explicit, explicitUntil: data.explicit_until || 0,
+             entryPaid: !!data.explicit_paid, entryCents: data.explicit_entry_cents || 499,
+             explicitSource: data.is_explicit ? 'manual' : null,
              graceSec: data.explicit_grace_sec || 180,
              chat: [], gifts: [], leaderboard: [] };
   show('liveWatch', {});
@@ -1937,8 +1945,18 @@ function onLiveExplicitSignal(isExplicit, rateCents, source) {
   if (!L || L.role !== 'fan') return;
   if (isExplicit) {
     L.isExplicit = true;
+    // Manual toggle = fresh explicit session: server reset everyone's entry,
+    // so this viewer must pay the entry fee again (stage 1 gate).
+    // AI-detected explicit: server doesn't track it, keep existing entryPaid.
+    // Once manual, AI signals can't downgrade the strict gate.
+    if (source === 'manual') {
+      L.entryPaid = false;
+      L.explicitSource = 'manual';
+    } else if (!L.explicitSource) {
+      L.explicitSource = 'ai';
+    }
     if (source === 'manual' && rateCents) L.explicitRate = rateCents;
-    // Paying ($4.99/min) or gift grace still active → stay unblurred
+    // Paying ($/min) or gift grace still active → stay unblurred
     if (L.paying || isGiftClear(L)) return;
     if (source === 'ai') {
       api(`/live/${L.sessionId}/blur-event`, { method: 'POST',
@@ -1949,6 +1967,8 @@ function onLiveExplicitSignal(isExplicit, rateCents, source) {
     // Explicit over — grace expires for everyone, back to clear
     L.isExplicit = false;
     L.explicitUntil = 0;
+    L.entryPaid = false;
+    L.explicitSource = null;
     stopGiftCountdown();
     applyLiveBlur(false);
   }
@@ -1965,12 +1985,20 @@ function applyLiveBlur(on, rateCents, source) {
     if (ov) {
       ov.classList.remove('hidden');
       const title = $('#live-blur-title');
-      if (title) title.textContent = source === 'gift_expired'
-        ? "😈 She's still going… send a gift to unblur!"
-        : "She's getting explicit…";
       const pb = $('#live-pay-btn');
-      pb.textContent = `🔓 Pay ${fmt(rateCents || L.explicitRate)}/min to keep watching`;
-      pb.onclick = livePayExplicit;
+      // STAGE 1 — entry fee gate: never paid entry and not on per-minute pay
+      const entryWall = !L.entryPaid && !L.paying;
+      if (entryWall) {
+        if (title) title.textContent = "🔞 She's explicit! Pay the entry fee to unblur";
+        pb.textContent = `🔓 Pay ${fmt(L.entryCents || 499)} to unblur`;
+        pb.onclick = payExplicitEntry;
+      } else {
+        if (title) title.textContent = source === 'gift_expired'
+          ? "😈 She's still going… send a gift to unblur!"
+          : "She's getting explicit…";
+        pb.textContent = `🔓 Pay ${fmt(rateCents || L.explicitRate)}/min to keep watching`;
+        pb.onclick = livePayExplicit;
+      }
       const gb = $('#live-gift-btn');
       if (gb) gb.onclick = () => {
         ov.classList.add('hidden');
@@ -1984,9 +2012,9 @@ function applyLiveBlur(on, rateCents, source) {
       };
       const cd = $('#live-countdown');
       clearInterval(L.countdownInt);
-      if (source === 'gift_expired') {
-        // Grace ran out — no kick, they keep audio + chat blurred.
-        // Any gift unblurs them again.
+      if (source === 'gift_expired' || entryWall) {
+        // Grace ran out or entry not paid — no kick, they keep audio + chat blurred.
+        // Pay the entry fee (stage 1) or send any gift (stage 2) to unblur.
         if (cd) cd.textContent = '';
       } else {
         let secs = 30;
@@ -2020,6 +2048,7 @@ async function livePayExplicit() {
   const { status, data } = await api(`/live/${L.sessionId}/pay`, { method: 'POST' });
   if (status === 200) {
     L.paying = true;
+    L.entryPaid = true; // per-minute pay counts as entry-paid: stopping drops to gift loop, not entry wall
     stopGiftCountdown();
     applyLiveBlur(false);
     if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
@@ -2027,6 +2056,33 @@ async function livePayExplicit() {
     toast(`🔓 Unblurred — ${fmt(data.rate_cents)}/min`);
   } else if (status === 402) {
     toast(`Need ${fmt(data.needed_cents)} — top up 💰`);
+  } else {
+    toast('Payment failed.');
+  }
+}
+
+// STAGE 1 — pay the one-time explicit entry fee. On success the gift grace
+// timer (stage 2 upkeep) starts immediately.
+async function payExplicitEntry() {
+  const L = S.live;
+  if (!L) return;
+  const { status, data } = await api(`/live/${L.sessionId}/explicit-entry`, { method: 'POST' });
+  if (status === 200) {
+    L.entryPaid = true;
+    L.explicitUntil = data.explicit_until || 0;
+    if (data.explicit_grace_sec) L.graceSec = data.explicit_grace_sec;
+    if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
+    applyLiveBlur(false);
+    startGiftCountdown();
+    toast(`🔓 You're in! Keep sending gifts to stay clear 🎁`);
+  } else if (status === 402) {
+    toast(`Need ${fmt(data.needed_cents)} — top up 💰`);
+    showBuyCredits(data.needed_cents);
+  } else if (status === 409) {
+    // Server says already paid (e.g. paid on another device) — sync up
+    L.entryPaid = true;
+    applyLiveBlur(false);
+    toast('Already paid — enjoy the show 🔓');
   } else {
     toast('Payment failed.');
   }
@@ -2375,6 +2431,15 @@ async function adminMoreBody(s) {
       </div>
     </div>
     <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🔞 Explicit entry fee</div>
+      <div class="muted small">One-time charge per fan to unblur when she goes explicit. After entry, gifts keep them clear.</div>
+      <div class="row" style="margin-top:8px">
+        <span><b>$</b></span>
+        <input class="input" id="set-entry" type="number" min="1" max="100" step="0.50" value="${((s.explicit_entry_cents || 499) / 100).toFixed(2)}" style="margin-top:0;max-width:100px">
+        <button class="btn small" id="set-entry-go">Save</button>
+      </div>
+    </div>
+    <div class="card">
       <div style="font-weight:800;margin-bottom:6px">Default pricing for new models</div>
       <div class="muted small">Text: $1.49 · Video: $3.99/min (models can adjust their own)</div>
     </div>
@@ -2658,6 +2723,14 @@ function wireAdminBody(tab) {
     const { status } = await api('/admin/settings', {
       method: 'PUT', body: JSON.stringify({ explicit_gift_grace_sec }) });
     toast(status === 200 ? `✅ Gift grace set to ${mins} min` : 'Use 1–60 minutes');
+    if (status === 200) show('admin', {});
+  });
+  go('#set-entry-go', async () => {
+    const dollars = parseFloat($('#set-entry').value);
+    const explicit_entry_cents = Math.round(dollars * 100);
+    const { status } = await api('/admin/settings', {
+      method: 'PUT', body: JSON.stringify({ explicit_entry_cents }) });
+    toast(status === 200 ? `✅ Entry fee set to $${dollars.toFixed(2)}` : 'Use $1.00–$100.00');
     if (status === 200) show('admin', {});
   });
 }
