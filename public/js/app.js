@@ -181,6 +181,7 @@ function wsConnect() {
 }
 
 function handleWS(m) {
+  if (m.type && m.type.startsWith('booking:')) { handleBookingPush(m); return; }
   if (m.type === 'chat:new' && S.view === 'chat' && S.conv && m.conversation_id === S.conv.id) {
     S.messages.push(m.message);
     renderMessages();
@@ -311,10 +312,12 @@ const TABS = {
     { id: 'models', ico: '🔥', label: 'Models', view: 'fanModels' },
     { id: 'live', ico: '🔴', label: 'Live', view: 'fanLive' },
     { id: 'chats', ico: '💬', label: 'Chats', view: 'fanChats' },
+    { id: 'book', ico: '📅', label: 'Bookings', view: 'bookings' },
     { id: 'wallet', ico: '💰', label: 'Wallet', view: 'wallet' },
   ],
   model: [
     { id: 'chats', ico: '💬', label: 'Chats', view: 'modelChats' },
+    { id: 'book', ico: '📅', label: 'Bookings', view: 'bookings' },
     { id: 'earn', ico: '💵', label: 'Earnings', view: 'modelEarnings' },
     { id: 'settings', ico: '⚙️', label: 'Settings', view: 'modelSettings' },
   ],
@@ -365,6 +368,7 @@ function show(view, params) {
     modelChats: vModelChats, modelEarnings: vModelEarnings, modelSettings: vModelSettings,
     admin: vAdmin, chat: vChat,
     liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch,
+    bookings: vBookings, terms: vTerms,
   };
   (VIEWS[view] || vLanding)(params || {});
   if (view === 'liveBroadcast' || view === 'liveWatch') tabbar.classList.add('hidden');
@@ -407,7 +411,7 @@ async function vLanding() {
       <div style="text-align:center;margin-top:10px">
         <button class="btn ghost" id="share-app" style="border-color:var(--pink);color:var(--pink)">📤 Share SlutCamp</button>
       </div>
-      <p class="muted small" style="text-align:center;margin-top:16px">18+ only. By chatting you agree to the Terms.</p>
+      <p class="muted small" style="text-align:center;margin-top:16px">18+ only. By chatting you agree to the <a href="javascript:void(0)" id="go-terms" style="color:var(--pink)">Terms</a>.</p>
     </div>`;
   app.querySelectorAll('[data-model]').forEach((b) => {
     b.onclick = () => {
@@ -420,6 +424,8 @@ async function vLanding() {
   if (gl) gl.onclick = () => show('auth', {});
   const sh = $('#share-app');
   if (sh) sh.onclick = shareApp;
+  const gt = $('#go-terms');
+  if (gt) gt.onclick = () => show('terms', {});
 }
 
 /* Share the app via native share sheet, fallback to copy link */
@@ -844,6 +850,162 @@ async function vModelEarnings() {
   };
 }
 
+/* ---------------- BOOKINGS — private 1-on-1 scheduled lives ---------------- */
+
+function bookingCountdown(at) {
+  const ms = at - Date.now();
+  if (ms <= 0) return 'now!';
+  const m = Math.floor(ms / 60000);
+  if (m < 60) return `in ${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 48) return `in ${h}h ${m % 60}m`;
+  return `in ${Math.floor(h / 24)}d ${h % 24}h`;
+}
+
+function bookingWhen(at) {
+  const d = new Date(at);
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
+    ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+async function vBookings() {
+  const { data } = await api('/bookings');
+  const bookings = data.bookings || [];
+  const isModel = S.user.role === 'model';
+  const pending = bookings.filter((b) => b.status === 'pending');
+  const upcoming = bookings.filter((b) => b.status === 'approved' || b.status === 'in_progress');
+  app.innerHTML = `
+    <div class="header"><h1>Bookings 📅</h1>
+      <div class="sub">Private 1-on-1 lives — paid upfront</div></div>
+    <div class="screen">
+      ${isModel && pending.length ? `
+      <div class="card" style="border-color:var(--gold)">
+        <div style="font-weight:800;margin-bottom:8px">⏳ ${pending.length} request${pending.length > 1 ? 's' : ''} waiting</div>
+        ${pending.map((b) => `
+          <div class="row" style="margin-bottom:10px;align-items:center">
+            <span class="grow"><b>${esc(b.other_name)}</b><br>
+              <span class="small muted">${bookingWhen(b.scheduled_at)} · ${b.duration_min}min · <b style="color:var(--green)">${fmt(b.total_cents)}</b></span></span>
+          </div>
+          <div class="row" style="gap:8px;margin-bottom:12px">
+            <button class="btn small" data-bk-approve="${b.id}">✅ Approve</button>
+            <button class="btn small ghost" data-bk-decline="${b.id}">❌ Decline</button>
+          </div>`).join('')}
+      </div>` : ''}
+      ${upcoming.length ? upcoming.map((b) => {
+        const canGoLive = isModel && b.status === 'approved' &&
+          Date.now() > b.scheduled_at - 15 * 60 * 1000;
+        const canJoin = !isModel && b.status === 'in_progress';
+        const waitingLive = !isModel && b.status === 'approved';
+        return `
+        <div class="card">
+          <div class="row" style="align-items:center">
+            ${b.other_photo_url ? `<div class="avatar sm"><img src="${esc(b.other_photo_url)}" alt=""></div>` : ''}
+            <span class="grow"><b>${b.status === 'in_progress' ? '🔴 LIVE NOW' : '📅'} ${esc(b.other_name)}</b><br>
+              <span class="small muted">${bookingWhen(b.scheduled_at)} · ${b.duration_min}min · ${fmt(b.total_cents)}</span><br>
+              <span class="small" style="color:var(--gold);font-weight:700">${b.status === 'in_progress' ? 'In progress' : '⏱ ' + bookingCountdown(b.scheduled_at)}</span></span>
+          </div>
+          <div class="row" style="gap:8px;margin-top:10px">
+            ${canGoLive ? `<button class="btn small" data-bk-start="${b.id}">🔴 Go Live Now</button>` : ''}
+            ${canJoin ? `<button class="btn small" data-bk-join="${b.id}">📹 Join Private Session</button>` : ''}
+            ${waitingLive ? `<span class="small muted">She'll go live at the scheduled time — you'll get a ping 📲</span>` : ''}
+            ${['pending', 'approved'].includes(b.status) ? `<button class="btn small ghost" data-bk-cancel="${b.id}">Cancel</button>` : ''}
+          </div>
+        </div>`;
+      }).join('') : (!pending.length ? `
+      <div class="empty"><div class="big">📅</div>
+        ${isModel ? 'No bookings yet. Fans can book you from chat — your per-minute rate × duration, paid upfront.' : 'No bookings yet. Tap 📅 on a model\'s chat to book a private live.'}
+      </div>` : '')}
+    </div>`;
+  // Wire buttons
+  app.querySelectorAll('[data-bk-approve]').forEach((b) => b.onclick = async () => {
+    const { status } = await api(`/bookings/${b.dataset.bkApprove}/approve`, { method: 'POST' });
+    toast(status === 200 ? '✅ Booking confirmed!' : 'Could not approve.');
+    show('bookings', {});
+  });
+  app.querySelectorAll('[data-bk-decline]').forEach((b) => b.onclick = async () => {
+    const { status, data } = await api(`/bookings/${b.dataset.bkDecline}/decline`, { method: 'POST' });
+    toast(status === 200 ? `Declined — ${fmt(data.refunded_cents)} refunded to fan.` : 'Could not decline.');
+    show('bookings', {});
+  });
+  app.querySelectorAll('[data-bk-cancel]').forEach((b) => b.onclick = async () => {
+    if (!confirm('Cancel this booking?')) return;
+    const { status, data } = await api(`/bookings/${b.dataset.bkCancel}/cancel`, { method: 'POST' });
+    toast(status === 200
+      ? (data.refunded_cents ? `Cancelled — ${fmt(data.refunded_cents)} refunded.` : 'Cancelled (no refund — inside 1 hour).')
+      : 'Could not cancel.');
+    show('bookings', {});
+  });
+  app.querySelectorAll('[data-bk-start]').forEach((b) => b.onclick = async () => {
+    const { status } = await api(`/bookings/${b.dataset.bkStart}/start`, { method: 'POST' });
+    if (status !== 200) return toast('Could not start.');
+    startBookingCall(parseInt(b.dataset.bkStart), true);
+  });
+  app.querySelectorAll('[data-bk-join]').forEach((b) => b.onclick = () => {
+    startBookingCall(parseInt(b.dataset.bkJoin), false);
+  });
+}
+
+// Open the prepaid private video session for a booking (reuses 1-on-1 call UI)
+async function startBookingCall(bookingId, isModel) {
+  const { status, data } = await api(`/bookings/${bookingId}/call`, { method: 'POST' });
+  if (status !== 200) return toast('Could not open session.');
+  const callId = data.call_id;
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  } catch (e) { return toast('Camera/mic permission needed 📹'); }
+  pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
+  pc.onicecandidate = (e) => {
+    if (e.candidate && S.ws) S.ws.send(JSON.stringify({ type: 'signal', to: data.other_id,
+      payload: { kind: 'ice', call_id: callId, candidate: e.candidate } }));
+  };
+  pc.ontrack = (e) => { $('#remote-video').srcObject = e.streams[0]; };
+  if (!isModel) {
+    // Fan initiates the WebRTC offer to the model
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    S.ws.send(JSON.stringify({ type: 'signal', to: data.other_id,
+      payload: { kind: 'invite', call_id: callId, sdp: offer,
+                 from_name: S.user.display_name, rate: 0, booking: true } }));
+    S.call = { id: callId, rate: 0, seconds: 0, minutes: 0, role: 'fan', bookingId };
+    toast('Calling… waiting for her to pick up 📞');
+  } else {
+    // Model waits for the fan's offer (or initiates if fan already waiting)
+    S.call = { id: callId, rate: 0, seconds: 0, minutes: 0, role: 'model', bookingId,
+               from: data.other_id, fromName: data.other_name };
+    $('#call-name').textContent = data.other_name || 'Fan';
+    $('#call-overlay').classList.remove('hidden');
+    toast('Waiting for fan to join… 📹');
+  }
+  $('#active-call').classList.remove('hidden');
+  $('#local-video').srcObject = localStream;
+  $('#call-timer').textContent = 'Private session 💋';
+  callTimerInt = setInterval(() => { S.call.seconds++; updateCallHUD(); }, 1000);
+}
+
+// Handle booking WS pushes
+function handleBookingPush(m) {
+  if (!S.user) return;
+  if (m.type === 'booking:request' && S.user.role === 'model') {
+    toast(`📅 ${m.fan_name} booked you!`, 4000);
+    if (S.view === 'bookings') show('bookings', {});
+  } else if (m.type === 'booking:approved' && S.user.role === 'fan') {
+    toast('✅ She confirmed your booking!', 4000);
+    if (S.view === 'bookings') show('bookings', {});
+  } else if ((m.type === 'booking:declined' || m.type === 'booking:no_show' ||
+              m.type === 'booking:cancelled') && S.user.role === 'fan') {
+    toast(m.type === 'booking:cancelled' && !m.refunded_cents
+      ? 'Booking cancelled (no refund — inside 1 hour).'
+      : `Refunded ${fmt(m.refunded_cents || 0)}`, 4000);
+    if (S.view === 'bookings') show('bookings', {});
+  } else if (m.type === 'booking:live' && S.user.role === 'fan') {
+    toast("🔴 She's live! Tap to join your private session.", 5000);
+    if (S.view === 'bookings') show('bookings', {});
+  } else if (m.type === 'booking:completed') {
+    if (S.view === 'bookings') show('bookings', {});
+  }
+}
+
 async function vModelSettings() {
   await refreshMe();
   const m = S.model;
@@ -851,10 +1013,14 @@ async function vModelSettings() {
     <div class="header"><h1>Settings ⚙️</h1></div>
     <div class="screen">
       <div class="card">
-        <div style="font-weight:800;margin-bottom:6px">Your rates</div>
-        <label class="field">Per text message ($)<input class="input" id="s-msg" type="number" step="0.01" min="0" value="${(m.per_message_cents / 100).toFixed(2)}"></label>
-        <label class="field">Per minute video call ($)<input class="input" id="s-min" type="number" step="0.01" min="0" value="${(m.per_minute_cents / 100).toFixed(2)}"></label>
-        <label class="field">Per voice note ($)<input class="input" id="s-voice" type="number" step="0.01" min="0" value="${((m.per_voice_cents || 299) / 100).toFixed(2)}"></label>
+        <div style="font-weight:800;margin-bottom:6px">💵 My Rates</div>
+        <div class="muted small" style="margin-bottom:10px">What fans pay for 1-on-1 with you. You set these — Asce can also adjust them.</div>
+        <label class="field">💬 Per text: <b id="s-msg-label">${fmt(m.per_message_cents || 149)}</b>
+          <input type="range" id="s-msg" min="50" max="1000" step="25" value="${m.per_message_cents || 149}" style="width:100%"></label>
+        <label class="field">📹 Per minute video: <b id="s-min-label">${fmt(m.per_minute_cents || 399)}</b>
+          <input type="range" id="s-min" min="100" max="2000" step="25" value="${m.per_minute_cents || 399}" style="width:100%"></label>
+        <label class="field">🎙️ Per voice note: <b id="s-voice-label">${fmt(m.per_voice_cents || 299)}</b>
+          <input type="range" id="s-voice" min="50" max="1000" step="25" value="${m.per_voice_cents || 299}" style="width:100%"></label>
         <label class="field">Live explicit rate — per minute ($)<input class="input" id="s-exp" type="number" step="0.01" min="0" value="${((m.explicit_rate_cents || 499) / 100).toFixed(2)}"></label>
         <div class="muted small" style="margin-top:6px">Fans watch your live stream free until the AI detects explicit content (or you tap "Go Explicit") — then they pay this rate per minute to keep watching unblurred.</div>
         <button class="btn" id="s-save">Save rates</button>
@@ -884,15 +1050,20 @@ async function vModelSettings() {
       <button class="btn ghost" id="s-logout">Log out</button>
     </div>`;
   $('#s-save').onclick = async () => {
-    const per_message_cents = Math.round(parseFloat($('#s-msg').value || '0') * 100);
-    const per_minute_cents = Math.round(parseFloat($('#s-min').value || '0') * 100);
-    const per_voice_cents = Math.round(parseFloat($('#s-voice').value || '0') * 100);
+    const per_message_cents = parseInt($('#s-msg').value);
+    const per_minute_cents = parseInt($('#s-min').value);
+    const per_voice_cents = parseInt($('#s-voice').value);
     const explicit_rate_cents = Math.round(parseFloat($('#s-exp').value || '0') * 100);
     const { status } = await api('/model/profile', {
       method: 'PUT', body: JSON.stringify({ per_message_cents, per_minute_cents, per_voice_cents, explicit_rate_cents }) });
     toast(status === 200 ? '✅ Rates saved!' : 'Could not save.');
     if (status === 200) refreshMe();
   };
+  // My Rates sliders — live label updates
+  const sMsg = $('#s-msg'), sMin = $('#s-min'), sVoice = $('#s-voice');
+  if (sMsg) sMsg.oninput = () => { $('#s-msg-label').textContent = fmt(parseInt(sMsg.value)); };
+  if (sMin) sMin.oninput = () => { $('#s-min-label').textContent = fmt(parseInt(sMin.value)); };
+  if (sVoice) sVoice.oninput = () => { $('#s-voice-label').textContent = fmt(parseInt(sVoice.value)); };
   $('#s-bio-save').onclick = async () => {
     const { status } = await api('/model/profile', {
       method: 'PUT', body: JSON.stringify({ bio: $('#s-bio').value }) });
@@ -956,6 +1127,7 @@ async function vChat(params) {
       </div>
       ${!isModel && !S.user ? `<span class="small" style="color:var(--pink);font-weight:700">🎁 ${conv.free_remaining} free left</span>` : ''}
       ${canVideo ? `<button class="icon-btn" id="c-video" title="Video call">📹</button>` : ''}
+      ${S.user && S.user.role === 'fan' ? `<button class="icon-btn" id="c-book" title="Book private live">📅</button>` : ''}
     </div>
     ${conv.is_paused ? `
       <div class="rate-hint" style="background:rgba(248,113,113,.12);color:#fca5a5;font-weight:700">
@@ -3343,3 +3515,59 @@ $('#call-hangup').onclick = hangupCall;
   wsConnect();
   show('landing', {});
 })();
+
+/* ---------------- TERMS OF SERVICE ---------------- */
+
+function vTerms() {
+  tabbar.classList.add('hidden');
+  app.innerHTML = `
+    <div class="header">
+      <h1>Slut<span class="logo">Camp</span> 📜</h1>
+      <div class="sub">Terms of Service · Last updated October 10, 2026</div>
+    </div>
+    <div class="screen">
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">1. 18+ Only</div>
+        <div class="small muted">SlutCamp is strictly for adults 18 and older. By using this app you confirm you are at least 18. Models must complete ID verification with Asce before going live (18 U.S.C. §2257 compliance).</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">2. How Fans Pay</div>
+        <div class="small muted">Fans buy credits and spend them on chats, calls, gifts, live access, priority messages, stage joins, and bookings. Your first 3 messages with each model are free — after that, texts cost $1.49 each (or the model's own rate). Unused credits stay in your wallet. <b>Spent credits are non-refundable.</b></div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">3. Model Rates</div>
+        <div class="small muted">Models set their own rates: per-message, per-minute video, per voice note, and their explicit stage-join rates ($5–$100). Rates are shown before you pay. The platform may set default rates which models can adjust within the allowed ranges.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">4. Revenue Split & Payouts</div>
+        <div class="small muted">Models keep <b>60%</b> of everything fans spend on them; the platform keeps 40%. Payouts are sent by Asce (currently processed manually). Models add their bank details in the app and request withdrawals anytime; pending requests are paid out on Asce's schedule.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">5. Live Streams & Explicit Content</div>
+        <div class="small muted">Group streams are free to watch; explicit viewing requires a paid entry fee plus ongoing gifts to stay unblurred. Stage joins (video or mic) are 3 minutes, then timed out — re-pay to return. The model approves every stage join; declined requests are refunded in full. Priority messages are paid banners with optional paid voice.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">6. Bookings</div>
+        <div class="small muted">Private 1-on-1 lives are booked in advance and paid upfront. The model must accept. Fan cancellation 1+ hour before = full refund; inside 1 hour = no refund. Model cancellation or no-show (15 min late) = full refund to the fan.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">7. Model Access</div>
+        <div class="small muted">Model accounts are invite-only. Asce may deactivate or remove any model account at any time, for any reason. Deactivated models keep earned balances available for withdrawal.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">8. Safety & Conduct</div>
+        <div class="small muted">Sharing contact info, payment handles, or attempting to take transactions off-platform will get your messages blocked and may get your account banned. Racial slurs and hate speech are blocked. All chats and streams are monitored for safety.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">9. No Refunds on Spent Credits</div>
+        <div class="small muted">Once credits are spent on messages, calls, gifts, entries, priorities, joins, or bookings, they are gone — no refunds, no chargebacks through the app. Unused wallet credits are not redeemable for cash (fans).</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">10. Changes</div>
+        <div class="small muted">Features, prices, rates, and these terms may change at any time. Continued use means you accept the current terms.</div>
+      </div>
+      <p class="muted small" style="text-align:center;margin:16px 0">These terms are a plain-language summary, not legal advice.<br>Operated by World of Godz Entertainment LLC.</p>
+      <button class="btn ghost" id="t-back">← Back</button>
+    </div>`;
+  $('#t-back').onclick = () => history.length > 1 ? history.back() : show('landing', {});
+}
