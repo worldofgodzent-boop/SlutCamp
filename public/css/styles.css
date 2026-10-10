@@ -529,3 +529,18 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 .pm-tier.selected { outline: 2px solid var(--pink); background: rgba(236,72,153,.18); }
 #tts-mute-btn { background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.25);
   border-radius: 10px; font-size: 17px; padding: 4px 8px; }
+
+/* --- Fan join-live stage --- */
+.stage-notice { background: linear-gradient(135deg, #8b5cf6, #3b82f6); border-radius: 12px;
+  padding: 10px 14px; color: #fff; font-weight: 700; font-size: 14px; text-align: center;
+  margin-bottom: 8px; box-shadow: 0 4px 20px rgba(139,92,246,.5); }
+.stage-notice.stage-live { background: linear-gradient(135deg, #ec4899, #8b5cf6); font-size: 16px;
+  animation: stagePulse 1.6s ease-in-out infinite; }
+@keyframes stagePulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+.stage-req-card { display: flex; align-items: center; gap: 8px; background: rgba(139,92,246,.15);
+  border: 1px solid rgba(139,92,246,.4); border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; }
+#stage-pip { position: relative; margin-bottom: 8px; }
+#stage-video { width: 100%; max-height: 220px; border-radius: 14px; background: #000; object-fit: cover; }
+.stage-info { font-weight: 800; font-size: 14px; color: #fff; background: rgba(0,0,0,.55);
+  border-radius: 10px; padding: 6px 10px; margin: 6px 0; text-align: center; font-variant-numeric: tabular-nums; }
+#stage-drop-btn { width: 100%; }
