@@ -295,7 +295,7 @@ CREATE TABLE IF NOT EXISTS gifts (
   sort_order INTEGER NOT NULL DEFAULT 0
 );
 
--- Gift send events (70/30 split like everything else)
+-- Gift send events (split via platform commission_pct)
 CREATE TABLE IF NOT EXISTS gift_events (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
   session_id     INTEGER NOT NULL REFERENCES live_sessions(id) ON DELETE CASCADE,
@@ -1643,7 +1643,7 @@ app.post('/api/live/:id/pay', identMiddleware, requireUser, requireRole('fan'), 
 });
 
 // STAGE 1 — Explicit entry fee: one-time per-viewer charge to unblur when she
-// goes explicit. This is the gate; gifts are the upkeep (stage 2). 70/30 split.
+// goes explicit. This is the gate; gifts are the upkeep (stage 2). Split via platform commission_pct.
 app.post('/api/live/:id/explicit-entry', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
   const sess = liveSessionOr404(req, res);
   if (!sess) return;
@@ -1856,7 +1856,7 @@ const PRIORITY_TIERS = [
 // Paid add-on: speak the priority message out loud via TTS (cents)
 const VOICE_FEE_CENTS = 300;
 
-// Fan "join live": flat fee to request on-camera stage time (cents), 70/30 split.
+// Fan "join live": flat fee to request on-camera stage time (cents). Split via platform commission_pct.
 // Model approves each request; decline = full refund. One fan on stage at a time.
 const JOIN_FEE_CENTS = 1000;
 // Explicit join: if the stream is explicit when the fan requests, the fee is higher.
