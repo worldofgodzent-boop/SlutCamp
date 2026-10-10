@@ -509,3 +509,23 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 .pw-wrap .input { padding-right: 44px; width: 100%; box-sizing: border-box; }
 .pw-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 20px; cursor: pointer; padding: 6px; opacity: .75; }
 .pw-eye:active { opacity: 1; }
+
+/* ---------- Priority messages (paid banner + TTS) ---------- */
+#priority-banner {
+  position: absolute; top: calc(100px + env(safe-area-inset-top)); left: 12px; right: 12px; z-index: 6;
+}
+.pm-banner {
+  background: linear-gradient(135deg, #f59e0b, #ec4899 60%, #8b5cf6);
+  border-radius: 14px; padding: 10px 14px; color: #fff;
+  box-shadow: 0 4px 28px rgba(236,72,153,.55);
+  animation: pmSlide .35s ease;
+}
+.pm-head { display: flex; justify-content: space-between; align-items: center;
+  font-weight: 800; font-size: 13px; letter-spacing: .5px; }
+#priority-countdown { font-variant-numeric: tabular-nums; font-size: 15px; }
+.pm-from { font-weight: 800; font-size: 15px; margin-top: 2px; }
+.pm-body { font-weight: 700; font-size: 19px; margin-top: 2px; overflow-wrap: break-word; }
+@keyframes pmSlide { from { transform: translateY(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
+.pm-tier.selected { outline: 2px solid var(--pink); background: rgba(236,72,153,.18); }
+#tts-mute-btn { background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.25);
+  border-radius: 10px; font-size: 17px; padding: 4px 8px; }

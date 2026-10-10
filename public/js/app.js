@@ -260,6 +260,9 @@ function handleWS(m) {
       refreshMe();
     }
     loadLeaderboard();
+  } else if (m.type === 'live:priority' && S.live && m.session_id === S.live.sessionId) {
+    // Paid priority banner — one at a time, dedup by id (our own expiry-fetch may race this)
+    if (m.priority && m.priority.id !== S.live.priorityId) showPriorityBanner(m.priority);
   } else if (m.type === 'safety:stream_flag' && S.user && S.user.role === 'admin') {
     toast(`🚨 Stream flag: "${m.matched}" by ${m.sender_name} (${m.total_strikes} strikes)`, 4000);
   }
@@ -1458,6 +1461,7 @@ function vLiveBroadcast() {
         <span id="live-viewer-count" class="live-viewers">0 watching</span>
       </div>
       ${L.title ? `<div class="live-title">${esc(L.title)}</div>` : ''}
+      <div id="priority-banner" class="hidden"></div>
       <div id="live-leaderboard" class="live-leaderboard hidden"></div>
       <div id="stream-chat" class="stream-chat"></div>
       <div class="stream-chat-input">
@@ -1623,6 +1627,145 @@ async function sendGift(giftId, sheet) {
   }
 }
 
+/* ---------------- PRIORITY MESSAGES (paid banner + TTS) ---------------- */
+
+const PRIORITY_TIERS = [
+  { price_cents: 200,  duration_sec: 5 },
+  { price_cents: 500,  duration_sec: 10 },
+  { price_cents: 1000, duration_sec: 15 },
+  { price_cents: 2000, duration_sec: 20 },
+  { price_cents: 3000, duration_sec: 30 },
+];
+
+function ttsMuted() {
+  try { return localStorage.getItem('slutcamp_tts_muted') === '1'; } catch (e) { return false; }
+}
+
+function speakPriority(fanName, message) {
+  if (ttsMuted()) return;
+  if (!('speechSynthesis' in window)) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(fanName + ' says: ' + message);
+    u.rate = 1;
+    speechSynthesis.speak(u);
+  } catch (e) { /* TTS unavailable — banner still shows */ }
+}
+
+function stopPriorityBanner() {
+  const L = S.live;
+  if (L && L.priorityTimerInt) { clearInterval(L.priorityTimerInt); L.priorityTimerInt = null; }
+  const el = $('#priority-banner');
+  if (el) { el.classList.add('hidden'); el.innerHTML = ''; }
+  try { speechSynthesis.cancel(); } catch (e) {}
+}
+
+function showPriorityBanner(p) {
+  const L = S.live;
+  if (!L || !p) return;
+  stopPriorityBanner();
+  const el = $('#priority-banner');
+  if (!el) return;
+  L.priorityId = p.id;
+  el.classList.remove('hidden');
+  el.innerHTML = `
+    <div class="pm-banner">
+      <div class="pm-head"><span>📢 PRIORITY</span><span id="priority-countdown"></span></div>
+      <div class="pm-from">${esc(p.fan_name)}</div>
+      <div class="pm-body">${esc(p.message)}</div>
+    </div>`;
+  speakPriority(p.fan_name, p.message);
+  const tick = () => {
+    if (!S.live || S.live.sessionId !== L.sessionId) { stopPriorityBanner(); return; }
+    const ms = p.ends_at - Date.now();
+    if (ms <= 0) {
+      stopPriorityBanner();
+      // Ask the server for the next queued message (it advances the queue and
+      // broadcasts the next banner via WS; this fetch is the fallback path)
+      api(`/live/${L.sessionId}/priority`).then(({ status, data }) => {
+        if (status === 200 && data && data.priority && S.live &&
+            S.live.sessionId === L.sessionId && data.priority.id !== L.priorityId)
+          showPriorityBanner(data.priority);
+      }).catch(() => {});
+      return;
+    }
+    const s = Math.ceil(ms / 1000);
+    const cd = $('#priority-countdown');
+    if (cd) cd.textContent = `📢 0:${String(Math.min(s, 99)).padStart(2, '0')}`;
+  };
+  tick();
+  L.priorityTimerInt = setInterval(tick, 500);
+}
+
+function openPriorityPanel() {
+  const L = S.live;
+  if (!L || L.role !== 'fan') return;
+  let sheet = $('#priority-sheet');
+  if (sheet) sheet.remove();
+  sheet = document.createElement('div');
+  sheet.id = 'priority-sheet';
+  sheet.className = 'sheet-backdrop';
+  sheet.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-title">📢 Priority Message <span class="muted small">· ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span></div>
+      <div class="muted small" style="margin-bottom:8px">Your message shows across the stream for <b>everyone</b> + gets read out loud. More $ = longer on screen (max 30s).</div>
+      <textarea class="input" id="pm-text" rows="2" maxlength="120" placeholder="Say it loud… 😈"></textarea>
+      <div class="muted small" style="text-align:right"><span id="pm-count">0</span>/120</div>
+      <div class="gift-grid">
+        ${PRIORITY_TIERS.map((t, i) => `
+          <button class="gift-item pm-tier" data-tier="${i}">
+            <span class="gift-price">${fmt(t.price_cents)}</span>
+            <span class="gift-name">→ ${t.duration_sec}s on screen</span>
+          </button>`).join('')}
+      </div>
+      <button class="btn" id="pm-send" style="margin-top:10px">Send 📢 · <span id="pm-send-price">${fmt(PRIORITY_TIERS[1].price_cents)}</span></button>
+      <button class="btn ghost" id="pm-close" style="margin-top:8px">Close</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  let picked = 1;
+  const mark = () => {
+    sheet.querySelectorAll('.pm-tier').forEach((b) =>
+      b.classList.toggle('selected', parseInt(b.dataset.tier) === picked));
+    const sp = $('#pm-send-price');
+    if (sp) sp.textContent = fmt(PRIORITY_TIERS[picked].price_cents);
+  };
+  const ta = $('#pm-text');
+  ta.oninput = () => { const c = $('#pm-count'); if (c) c.textContent = ta.value.length; };
+  sheet.querySelectorAll('.pm-tier').forEach((b) => {
+    b.onclick = () => { picked = parseInt(b.dataset.tier); mark(); };
+  });
+  mark();
+  const close = () => sheet.remove();
+  $('#pm-close').onclick = close;
+  sheet.onclick = (e) => { if (e.target === sheet) close(); };
+  $('#pm-send').onclick = () => sendPriority(picked, ta.value.trim());
+  setTimeout(() => ta.focus(), 100);
+}
+
+async function sendPriority(tierIndex, message) {
+  const L = S.live;
+  if (!L) return;
+  if (!message) return toast('Type your message first ✍️');
+  const { status, data } = await api(`/live/${L.sessionId}/priority`, {
+    method: 'POST', body: JSON.stringify({ tier_index: tierIndex, message }) });
+  const sheet = $('#priority-sheet');
+  if (sheet) sheet.remove();
+  if (status === 200) {
+    if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
+    // The banner itself arrives via WS broadcast (live:priority) for everyone
+    toast(data.showing_now
+      ? `📢 You're LIVE for ${data.duration_sec}s!`
+      : `📢 Priority sent! You're #${data.position_in_queue} in queue`, 3000);
+  } else if (status === 423) {
+    toast(`⚠️ Priority blocked — not allowed. (${data.strikes || 0}/3 strikes)`, 3500);
+  } else if (status === 402) {
+    toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500);
+    showBuyCredits(data.needed_cents);
+  } else {
+    toast('Priority message failed.');
+  }
+}
+
 /* --- FAN: watch (group stream) --- */
 
 async function watchLive(sessionId) {
@@ -1655,6 +1798,7 @@ async function watchLive(sessionId) {
   loadStreamChat();
   loadLeaderboard();
   updateLivePayHUD();
+  if (data.priority) showPriorityBanner(data.priority);
 
   if (data.is_explicit) {
     $('#live-ai-status').textContent = '🔞 Model is explicit right now';
@@ -1692,8 +1836,10 @@ function vLiveWatch() {
         <span class="live-badge">🔴 LIVE</span>
         <span class="live-viewers">${esc(L.modelName || '')}</span>
         <span id="live-ai-status" class="live-viewers">🛡️ AI monitor starting…</span>
+        <button id="tts-mute-btn" class="icon-btn" style="margin-left:auto" aria-label="Toggle voice">🔊</button>
       </div>
       ${L.title ? `<div class="live-title">${esc(L.title)}</div>` : ''}
+      <div id="priority-banner" class="hidden"></div>
       <div id="live-leaderboard" class="live-leaderboard hidden"></div>
       <div id="live-pay-hud" class="hidden"></div>
       <div id="live-gift-hud" class="hidden"></div>
@@ -1702,6 +1848,7 @@ function vLiveWatch() {
         <input id="stream-chat-box" class="input" placeholder="Chat is FREE — say hi! 💬" maxlength="500" autocomplete="off">
         <button class="btn small" id="stream-chat-send" style="margin:0">➤</button>
         <button class="btn small" id="gift-open-btn" style="margin:0;background:linear-gradient(135deg,#ec4899,#8b5cf6)">🎁</button>
+        <button class="btn small" id="priority-open-btn" style="margin:0;background:linear-gradient(135deg,#f59e0b,#ef4444)" aria-label="Send priority message">📢</button>
       </div>
       <div class="live-controls">
         <button class="btn ghost" id="live-leave-btn">Leave stream</button>
@@ -1718,6 +1865,17 @@ function vLiveWatch() {
   $('#stream-chat-send').onclick = sendIt;
   sendBox.onkeydown = (e) => { if (e.key === 'Enter') sendIt(); };
   $('#gift-open-btn').onclick = openGiftPanel;
+  $('#priority-open-btn').onclick = openPriorityPanel;
+  const ttsBtn = $('#tts-mute-btn');
+  const syncTtsBtn = () => { if (ttsBtn) ttsBtn.textContent = ttsMuted() ? '🔇' : '🔊'; };
+  syncTtsBtn();
+  if (ttsBtn) ttsBtn.onclick = () => {
+    const m = !ttsMuted();
+    try { localStorage.setItem('slutcamp_tts_muted', m ? '1' : '0'); } catch (e) {}
+    if (m) { try { speechSynthesis.cancel(); } catch (e) {} }
+    syncTtsBtn();
+    toast(m ? '🔇 Priority voice muted' : '🔊 Priority voice on');
+  };
   renderStreamChat();
   renderLeaderboard();
 }
@@ -1919,6 +2077,10 @@ function endLiveView(msg) {
     clearInterval(L.countdownInt);
     clearInterval(L.giftCountdownInt);
     L.giftCountdownInt = null;
+    clearInterval(L.priorityTimerInt);
+    L.priorityTimerInt = null;
+    L.priorityId = null;
+    try { speechSynthesis.cancel(); } catch (e) {}
     if (L.role === 'fan') {
       api(`/live/${L.sessionId}/leave`, { method: 'POST' }).catch(() => {});
       if (L.pc) { try { L.pc.close(); } catch (e) {} }
