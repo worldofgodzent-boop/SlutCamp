@@ -1,9 +1,9 @@
 /*
  * SlutCamp — service worker.
- * Cache-first app shell so the app opens instantly and "installs" properly.
- * API calls and WebSockets always go to the network (never cached).
+ * Network-first for the app shell (always fresh updates when online),
+ * cache fallback when offline. API, realtime, and uploads never cached.
  */
-const CACHE = 'slutcamp-v1';
+const CACHE = 'slutcamp-v2';
 const SHELL = [
   '/',
   '/index.html',
@@ -28,15 +28,31 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+// App shell files: network first (fresh updates), cache fallback offline.
+// Icons/manifest: cache first (rarely change).
+const NETWORK_FIRST = ['/', '/index.html', '/css/styles.css', '/js/app.js'];
+
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  // Never cache API or realtime traffic
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws')) return;
-  e.respondWith(
-    caches.match(e.request).then((hit) => hit || fetch(e.request).then((res) => {
-      const copy = res.clone();
-      caches.open(CACHE).then((c) => c.put(e.request, copy));
-      return res;
-    }).catch(() => caches.match('/index.html')))
-  );
+  // Never cache API, realtime, or uploaded photos
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws') ||
+      url.pathname.startsWith('/uploads/')) return;
+
+  if (NETWORK_FIRST.includes(url.pathname)) {
+    e.respondWith(
+      fetch(e.request).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(e.request, copy));
+        return res;
+      }).catch(() => caches.match(e.request).then((hit) => hit || caches.match('/index.html')))
+    );
+  } else {
+    e.respondWith(
+      caches.match(e.request).then((hit) => hit || fetch(e.request).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(e.request, copy));
+        return res;
+      }).catch(() => caches.match('/index.html')))
+    );
+  }
 });
