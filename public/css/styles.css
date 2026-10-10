@@ -488,3 +488,9 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
   75% { transform: scale(1.05); opacity: 1; }
   100% { transform: scale(.9); opacity: 0; }
 }
+
+/* Password visibility toggle */
+.pw-wrap { position: relative; }
+.pw-wrap .input { padding-right: 44px; width: 100%; box-sizing: border-box; }
+.pw-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 20px; cursor: pointer; padding: 6px; opacity: .75; }
+.pw-eye:active { opacity: 1; }

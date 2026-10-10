@@ -23,6 +23,22 @@ function toast(msg, ms) {
   t._h = setTimeout(() => t.classList.add('hidden'), ms || 2600);
 }
 
+/* Password field with 👁️ show/hide toggle */
+function pwField(id, autocomplete) {
+  return `<div class="pw-wrap"><input class="input" id="${id}" type="password" autocomplete="${autocomplete || 'current-password'}">` +
+    `<button type="button" class="pw-eye" data-pw="${id}" aria-label="Show password">👁️</button></div>`;
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-pw]');
+  if (!b) return;
+  const inp = document.getElementById(b.dataset.pw);
+  if (!inp) return;
+  const show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  b.textContent = show ? '🙈' : '👁️';
+  b.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+});
+
 // Gradient avatar from a name (no photos needed for MVP)
 function avatarHTML(name, cls) {
   const hues = [[265, 320], [300, 340], [220, 280], [280, 310]];
@@ -398,7 +414,7 @@ function renderAuthBody(mode, role) {
   if (mode === 'login') {
     body.innerHTML = `
       <label class="field">Username<input class="input" id="a-user" autocomplete="username"></label>
-      <label class="field">Password<input class="input" id="a-pass" type="password" autocomplete="current-password"></label>
+      <label class="field">Password${pwField('a-pass', 'current-password')}</label>
       <button class="btn" id="a-go">Log in</button>`;
     $('#a-go').onclick = doLogin;
   } else {
@@ -411,7 +427,7 @@ function renderAuthBody(mode, role) {
         <div class="d">Get paid to chat (Corry verifies you)</div></div>
       <label class="field">Display name<input class="input" id="a-name" maxlength="40"></label>
       <label class="field">Username<input class="input" id="a-user" autocomplete="username"></label>
-      <label class="field">Password (6+ characters)<input class="input" id="a-pass" type="password" autocomplete="new-password"></label>
+      <label class="field">Password (6+ characters)${pwField('a-pass', 'new-password')}</label>
       <label class="field">Date of birth<input class="input" id="a-dob" type="date"></label>
       <div class="age-box">🔞 <b>18+ only.</b> You must be 18 or older to use SlutCamp.
         ${role === 'model' ? 'Models must also complete ID verification with Corry (2257).' : 'Full ID verification is required before purchasing credits.'}</div>
@@ -486,7 +502,7 @@ async function vInviteSignup(code) {
       </div>
       <label class="field">Display name (your stage name)<input class="input" id="i-name" maxlength="40"></label>
       <label class="field">Username<input class="input" id="i-user" autocomplete="username"></label>
-      <label class="field">Password (6+ characters)<input class="input" id="i-pass" type="password" autocomplete="new-password"></label>
+      <label class="field">Password (6+ characters)${pwField('i-pass', 'new-password')}</label>
       <label class="field">Date of birth<input class="input" id="i-dob" type="date"></label>
       <div class="age-box">🔞 <b>18+ only.</b> Corry will verify your ID in person (2257 compliance) before you go live.</div>
       <label class="checkbox-row"><input type="checkbox" id="i-18">
@@ -1969,7 +1985,7 @@ async function adminModelsBody() {
     <div class="card"><div style="font-weight:800;margin-bottom:6px">➕ Add model</div>
       <label class="field">Display name<input class="input" id="nm-name"></label>
       <label class="field">Username<input class="input" id="nm-user"></label>
-      <label class="field">Password<input class="input" id="nm-pass" type="password"></label>
+      <label class="field">Password${pwField('nm-pass', 'new-password')}</label>
       <label class="field">Bio<textarea class="input" id="nm-bio" rows="2"></textarea></label>
       <button class="btn" id="nm-add">Add model</button>
       <div class="muted small" style="margin-top:6px">Verify her ID in person (2257) before she goes live.</div>
