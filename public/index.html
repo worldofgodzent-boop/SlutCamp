@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- Mobile-first viewport: no pinch-zoom weirdness, notch-safe -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>SlutCamp</title>
+<meta name="description" content="Chat with SlutCamp models. 18+ only.">
+<meta name="theme-color" content="#150b26">
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SlutCamp">
+<link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<!-- The whole app renders inside #app. Simple on purpose. -->
+<div id="phone">
+  <div id="app"></div>
+  <nav id="tabbar" class="hidden"></nav>
+</div>
+
+<!-- Incoming call overlay -->
+<div id="call-overlay" class="hidden">
+  <div class="call-card">
+    <div id="call-avatar" class="avatar xl"></div>
+    <h2 id="call-name">Incoming call</h2>
+    <p id="call-sub" class="muted">Video call</p>
+    <div class="call-actions">
+      <button id="call-decline" class="btn-call decline" aria-label="Decline">✕</button>
+      <button id="call-accept" class="btn-call accept" aria-label="Accept">📞</button>
+    </div>
+  </div>
+</div>
+
+<!-- Active call screen -->
+<div id="active-call" class="hidden">
+  <video id="remote-video" autoplay playsinline></video>
+  <video id="local-video" autoplay playsinline muted></video>
+  <div class="call-hud">
+    <div id="call-timer">00:00</div>
+    <div id="call-cost" class="muted">$0.00</div>
+    <button id="call-hangup" class="btn-call decline">✕</button>
+  </div>
+</div>
+
+<!-- Toast notifications -->
+<div id="toast" class="hidden"></div>
+
+<!-- Install banner (Android/Chrome). iOS gets manual instructions. -->
+<div id="install-banner" class="hidden">
+  <span>📲 Install SlutCamp on your home screen</span>
+  <button id="install-btn" class="btn small">Install</button>
+  <button id="install-dismiss" class="btn small ghost">Later</button>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+  // Register the service worker (offline app shell). Fails silently if unsupported.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
