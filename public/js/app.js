@@ -233,8 +233,14 @@ function handleWS(m) {
   } else if (m.type === 'live:pay_stopped' && S.live && S.live.role === 'fan' && m.session_id === S.live.sessionId) {
     S.live.paying = false;
     if (m.balance_cents != null && S.wallet) S.wallet.credits_cents = m.balance_cents;
-    toast('Out of credits — back to free preview.');
-    applyLiveBlur(true, S.live.explicitRate, 'manual');
+    updateLivePayHUD();
+    if (S.live.isExplicit && !isGiftClear(S.live)) {
+      toast('Out of credits — back to free preview.');
+      applyLiveBlur(true, S.live.explicitRate, 'manual');
+    } else if (!S.live.isExplicit) {
+      applyLiveBlur(false);
+    }
+    // else: gift grace still active → stays unblurred
   } else if (m.type === 'live:chat' && S.live && m.message && m.message.session_id === S.live.sessionId) {
     S.live.chat = S.live.chat || [];
     S.live.chat.push(m.message);
@@ -1557,11 +1563,13 @@ function pushGiftToChat(gift, fanName) {
   renderStreamChat();
 }
 
-async function openGiftPanel() {
+async function openGiftPanel(onClose) {
   const L = S.live;
   if (!L || L.role !== 'fan') return;
   const { data } = await api('/gifts');
   const gifts = data.gifts || [];
+  const explicitHint = L.isExplicit
+    ? `<div class="muted small" style="margin-top:4px">🎁 Any gift keeps your view clear while she's explicit 🔓</div>` : '';
   // Reuse the action-sheet pattern
   let sheet = $('#gift-sheet');
   if (sheet) sheet.remove();
@@ -1570,7 +1578,7 @@ async function openGiftPanel() {
   sheet.className = 'sheet-backdrop';
   sheet.innerHTML = `
     <div class="sheet">
-      <div class="sheet-title">🎁 Send a gift <span class="muted small">· ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span></div>
+      <div class="sheet-title">🎁 Send a gift <span class="muted small">· ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span>${explicitHint}</div>
       <div class="gift-grid">
         ${gifts.map((g) => `
           <button class="gift-item" data-gift="${g.id}">
@@ -1582,8 +1590,9 @@ async function openGiftPanel() {
       <button class="btn ghost" id="gift-close" style="margin-top:10px">Close</button>
     </div>`;
   document.body.appendChild(sheet);
-  $('#gift-close').onclick = () => sheet.remove();
-  sheet.onclick = (e) => { if (e.target === sheet) sheet.remove(); };
+  const close = () => { sheet.remove(); if (onClose) onClose(); };
+  $('#gift-close').onclick = close;
+  sheet.onclick = (e) => { if (e.target === sheet) close(); };
   sheet.querySelectorAll('[data-gift]').forEach((b) => {
     b.onclick = () => sendGift(parseInt(b.dataset.gift), sheet);
   });
@@ -1599,6 +1608,13 @@ async function sendGift(giftId, sheet) {
     if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
     // Server broadcasts live:gift to everyone; our own animation comes via WS.
     // Fallback: if WS is slow, the broadcast will still arrive.
+    // Pay-to-play: any gift unblurs THIS viewer for the grace period.
+    if (data.explicit_until && L.isExplicit && S.live && S.live.sessionId === L.sessionId) {
+      L.explicitUntil = data.explicit_until;
+      applyLiveBlur(false);
+      startGiftCountdown();
+      toast('🎁 Gift sent — your view stays clear! 🔓');
+    }
   } else if (status === 402) {
     toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500);
     showBuyCredits(data.needed_cents);
@@ -1630,16 +1646,23 @@ async function watchLive(sessionId) {
 
   S.live = { sessionId, role: 'fan', pc, modelId: data.model_id,
              modelName: data.model_name, explicitRate: data.explicit_rate_cents,
-             paying: false, blurred: false, monitorOn: false, aiReady: false,
-             countdownInt: null, title: data.title || '',
+             paying: !!data.is_paying, blurred: false, monitorOn: false, aiReady: false,
+             countdownInt: null, giftCountdownInt: null, title: data.title || '',
+             isExplicit: !!data.is_explicit, explicitUntil: data.explicit_until || 0,
+             graceSec: data.explicit_grace_sec || 180,
              chat: [], gifts: [], leaderboard: [] };
   show('liveWatch', {});
   loadStreamChat();
   loadLeaderboard();
+  updateLivePayHUD();
 
   if (data.is_explicit) {
     $('#live-ai-status').textContent = '🔞 Model is explicit right now';
-    applyLiveBlur(true, data.explicit_rate_cents, 'manual');
+    if (!S.live.paying && !(S.live.explicitUntil > Date.now())) {
+      applyLiveBlur(true, data.explicit_rate_cents, 'manual');
+    } else if (S.live.explicitUntil > Date.now()) {
+      startGiftCountdown();
+    }
   } else {
     NSFW.ensure().then((ok) => {
       const s2 = $('#live-ai-status');
@@ -1658,8 +1681,9 @@ function vLiveWatch() {
       <video id="live-remote" autoplay playsinline></video>
       <div id="live-blur-overlay" class="hidden">
         <div style="font-size:52px">🔞</div>
-        <div style="font-weight:800;font-size:19px;margin:8px 0">She's getting explicit…</div>
+        <div id="live-blur-title" style="font-weight:800;font-size:19px;margin:8px 0">She's getting explicit…</div>
         <button class="btn" id="live-pay-btn">Pay to keep watching</button>
+        <button class="btn ghost" id="live-gift-btn" style="margin-top:8px">🎁 Send a gift to unblur</button>
         <div class="muted small" id="live-countdown" style="margin-top:8px"></div>
         <button class="btn ghost" id="live-stay-free" style="margin-top:8px">Keep watching free (blurred)</button>
       </div>
@@ -1672,6 +1696,7 @@ function vLiveWatch() {
       ${L.title ? `<div class="live-title">${esc(L.title)}</div>` : ''}
       <div id="live-leaderboard" class="live-leaderboard hidden"></div>
       <div id="live-pay-hud" class="hidden"></div>
+      <div id="live-gift-hud" class="hidden"></div>
       <div id="stream-chat" class="stream-chat fan"></div>
       <div class="stream-chat-input fan">
         <input id="stream-chat-box" class="input" placeholder="Chat is FREE — say hi! 💬" maxlength="500" autocomplete="off">
@@ -1710,16 +1735,63 @@ function startLiveMonitor() {
   }, 2000);
 }
 
+/* Gift grace: ANY gift keeps this viewer's screen unblurred for graceSec.
+   Per-viewer — one fan's gifts never affect another fan's blur state. */
+function isGiftClear(L) { return !!(L && L.explicitUntil && L.explicitUntil > Date.now()); }
+
+function stopGiftCountdown() {
+  const L = S.live;
+  if (L && L.giftCountdownInt) { clearInterval(L.giftCountdownInt); L.giftCountdownInt = null; }
+  const el = $('#live-gift-hud');
+  if (el) el.classList.add('hidden');
+}
+
+function startGiftCountdown() {
+  const L = S.live;
+  if (!L || L.role !== 'fan') return;
+  stopGiftCountdown();
+  const el = $('#live-gift-hud');
+  const tick = () => {
+    if (!S.live || S.live.sessionId !== L.sessionId) { stopGiftCountdown(); return; }
+    const ms = L.explicitUntil - Date.now();
+    if (ms <= 0) {
+      stopGiftCountdown();
+      // Grace expired — screen goes blurry again (audio + chat keep working).
+      // Send another gift any time to unblur.
+      if (L.isExplicit && !L.paying) applyLiveBlur(true, L.explicitRate, 'gift_expired');
+      return;
+    }
+    const s = Math.ceil(ms / 1000);
+    const mm = Math.floor(s / 60), ss = String(s % 60).padStart(2, '0');
+    if (el) {
+      el.classList.remove('hidden');
+      el.innerHTML = s <= 30
+        ? `<span class="gift-warn">⏳ Almost blurry! Send any gift to keep watching 👀 — ${mm}:${ss}</span>`
+        : `<span>🔓 Clear for ${mm}:${ss} — send a gift to stay clear! 🎁</span>`;
+    }
+  };
+  tick();
+  L.giftCountdownInt = setInterval(tick, 1000);
+}
+
 function onLiveExplicitSignal(isExplicit, rateCents, source) {
   const L = S.live;
   if (!L || L.role !== 'fan') return;
-  if (isExplicit && !L.paying) {
+  if (isExplicit) {
+    L.isExplicit = true;
+    if (source === 'manual' && rateCents) L.explicitRate = rateCents;
+    // Paying ($4.99/min) or gift grace still active → stay unblurred
+    if (L.paying || isGiftClear(L)) return;
     if (source === 'ai') {
       api(`/live/${L.sessionId}/blur-event`, { method: 'POST',
         body: JSON.stringify({ event: 'auto_blur', detail: 'nsfwjs Porn/Hentai>0.7' }) }).catch(() => {});
     }
     applyLiveBlur(true, rateCents, source);
-  } else if (!isExplicit && L.blurred && !L.paying) {
+  } else {
+    // Explicit over — grace expires for everyone, back to clear
+    L.isExplicit = false;
+    L.explicitUntil = 0;
+    stopGiftCountdown();
     applyLiveBlur(false);
   }
 }
@@ -1734,26 +1806,47 @@ function applyLiveBlur(on, rateCents, source) {
     if (v) v.classList.add('blurred');
     if (ov) {
       ov.classList.remove('hidden');
+      const title = $('#live-blur-title');
+      if (title) title.textContent = source === 'gift_expired'
+        ? "😈 She's still going… send a gift to unblur!"
+        : "She's getting explicit…";
       const pb = $('#live-pay-btn');
       pb.textContent = `🔓 Pay ${fmt(rateCents || L.explicitRate)}/min to keep watching`;
       pb.onclick = livePayExplicit;
-      let secs = 30;
-      clearInterval(L.countdownInt);
-      const cd = $('#live-countdown');
-      const tick = () => {
-        if (!S.live || S.live.sessionId !== L.sessionId) { clearInterval(L.countdownInt); return; }
-        if (cd) cd.textContent = secs > 0 ? `Free preview ends in ${secs}s` : '';
-        if (secs-- <= 0) {
-          clearInterval(L.countdownInt);
-          api(`/live/${L.sessionId}/blur-event`, { method: 'POST',
-            body: JSON.stringify({ event: 'timeout_kick', detail: source || 'ai' }) }).catch(() => {});
-          endLiveView('Preview over — pay to keep watching!');
-        }
+      const gb = $('#live-gift-btn');
+      if (gb) gb.onclick = () => {
+        ov.classList.add('hidden');
+        openGiftPanel(() => {
+          // Closed without gifting and still blurred → bring the prompt back
+          if (S.live && S.live.sessionId === L.sessionId &&
+              S.live.blurred && !S.live.paying && !isGiftClear(S.live)) {
+            ov.classList.remove('hidden');
+          }
+        });
       };
-      tick();
-      L.countdownInt = setInterval(tick, 1000);
-      api(`/live/${L.sessionId}/blur-event`, { method: 'POST',
-        body: JSON.stringify({ event: 'paywall_shown', detail: source || 'ai' }) }).catch(() => {});
+      const cd = $('#live-countdown');
+      clearInterval(L.countdownInt);
+      if (source === 'gift_expired') {
+        // Grace ran out — no kick, they keep audio + chat blurred.
+        // Any gift unblurs them again.
+        if (cd) cd.textContent = '';
+      } else {
+        let secs = 30;
+        const tick = () => {
+          if (!S.live || S.live.sessionId !== L.sessionId) { clearInterval(L.countdownInt); return; }
+          if (cd) cd.textContent = secs > 0 ? `Free preview ends in ${secs}s` : '';
+          if (secs-- <= 0) {
+            clearInterval(L.countdownInt);
+            api(`/live/${L.sessionId}/blur-event`, { method: 'POST',
+              body: JSON.stringify({ event: 'timeout_kick', detail: source || 'ai' }) }).catch(() => {});
+            endLiveView('Preview over — pay to keep watching!');
+          }
+        };
+        tick();
+        L.countdownInt = setInterval(tick, 1000);
+        api(`/live/${L.sessionId}/blur-event`, { method: 'POST',
+          body: JSON.stringify({ event: 'paywall_shown', detail: source || 'ai' }) }).catch(() => {});
+      }
     }
   } else {
     L.blurred = false;
@@ -1769,6 +1862,7 @@ async function livePayExplicit() {
   const { status, data } = await api(`/live/${L.sessionId}/pay`, { method: 'POST' });
   if (status === 200) {
     L.paying = true;
+    stopGiftCountdown();
     applyLiveBlur(false);
     if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
     updateLivePayHUD();
@@ -1823,6 +1917,8 @@ function endLiveView(msg) {
   if (L) {
     clearInterval(liveMonitorInt);
     clearInterval(L.countdownInt);
+    clearInterval(L.giftCountdownInt);
+    L.giftCountdownInt = null;
     if (L.role === 'fan') {
       api(`/live/${L.sessionId}/leave`, { method: 'POST' }).catch(() => {});
       if (L.pc) { try { L.pc.close(); } catch (e) {} }
@@ -2108,6 +2204,15 @@ async function adminMoreBody(s) {
       </div>
     </div>
     <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🎁 Gift grace period (explicit streams)</div>
+      <div class="muted small">When she's explicit, ANY gift keeps a fan's view clear for this long. No gift in time → blurry again.</div>
+      <div class="row" style="margin-top:8px">
+        <input class="input" id="set-grace" type="number" min="1" max="60" value="${Math.round((s.explicit_gift_grace_sec || 180) / 60)}" style="margin-top:0;max-width:100px">
+        <span><b>minutes</b></span>
+        <button class="btn small" id="set-grace-go">Save</button>
+      </div>
+    </div>
+    <div class="card">
       <div style="font-weight:800;margin-bottom:6px">Default pricing for new models</div>
       <div class="muted small">Text: $1.49 · Video: $3.99/min (models can adjust their own)</div>
     </div>
@@ -2383,6 +2488,14 @@ function wireAdminBody(tab) {
     const { status } = await api('/admin/settings', {
       method: 'PUT', body: JSON.stringify({ commission_pct }) });
     toast(status === 200 ? `✅ Commission set to ${commission_pct}%` : 'Use 0–90');
+    if (status === 200) show('admin', {});
+  });
+  go('#set-grace-go', async () => {
+    const mins = parseInt($('#set-grace').value);
+    const explicit_gift_grace_sec = mins * 60;
+    const { status } = await api('/admin/settings', {
+      method: 'PUT', body: JSON.stringify({ explicit_gift_grace_sec }) });
+    toast(status === 200 ? `✅ Gift grace set to ${mins} min` : 'Use 1–60 minutes');
     if (status === 200) show('admin', {});
   });
 }

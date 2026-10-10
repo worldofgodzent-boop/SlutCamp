@@ -405,6 +405,20 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
   background: rgba(0,0,0,.6); border: 1px solid var(--pink);
   padding: 10px 14px; border-radius: 14px; font-weight: 800; font-size: 15px;
 }
+#live-gift-hud {
+  position: absolute; top: calc(60px + env(safe-area-inset-top)); left: 12px; right: 12px; z-index: 5;
+  background: rgba(0,0,0,.6); border: 1px solid var(--green);
+  padding: 10px 14px; border-radius: 14px; font-weight: 800; font-size: 15px;
+  text-align: center; color: #fff;
+}
+#live-gift-hud .gift-warn {
+  color: #ffd166;
+  animation: gift-warn-pulse 1s ease-in-out infinite;
+}
+@keyframes gift-warn-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .45; }
+}
 
 /* ---------- Group live: stream chat ---------- */
 .live-title {

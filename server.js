@@ -331,6 +331,8 @@ addColumnIfMissing('models', 'per_voice_cents', 'INTEGER NOT NULL DEFAULT 299');
 addColumnIfMissing('models', 'explicit_rate_cents', 'INTEGER NOT NULL DEFAULT 499');
 addColumnIfMissing('models', 'photo_url', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('live_sessions', 'title', "TEXT NOT NULL DEFAULT ''");
+addColumnIfMissing('live_viewers', 'explicit_until', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('platform_stats', 'explicit_gift_grace_sec', 'INTEGER NOT NULL DEFAULT 180');
 
 // Seed the safety keyword list (admin can edit these later in Settings)
 const DEFAULT_KEYWORDS = [
@@ -366,6 +368,13 @@ if (giftCount === 0) {
 
 const getCommission = () =>
   db.prepare('SELECT commission_pct FROM platform_stats WHERE id = 1').get().commission_pct;
+
+// Gift grace period: how long ANY gift keeps a viewer's screen unblurred during explicit (seconds)
+const getGiftGraceSec = () => {
+  const r = db.prepare('SELECT explicit_gift_grace_sec FROM platform_stats WHERE id = 1').get();
+  const s = r && r.explicit_gift_grace_sec;
+  return Number.isInteger(s) && s >= 30 && s <= 3600 ? s : 180;
+};
 
 const getWallet = (userId) =>
   db.prepare('SELECT * FROM wallets WHERE user_id = ?').get(userId);
@@ -1490,9 +1499,13 @@ app.post('/api/live/:id/join', identMiddleware, requireUser, requireRole('fan'),
   pushToUser(sess.model_id, { type: 'live:viewer-joined', session_id: sess.id,
     fan_id: req.user.id, fan_name: req.user.display_name });
   const model = db.prepare('SELECT display_name FROM users WHERE id = ?').get(sess.model_id);
+  const me = db.prepare('SELECT explicit_until, is_paying FROM live_viewers WHERE session_id = ? AND fan_id = ?')
+    .get(sess.id, req.user.id);
   res.json({ ok: true, session_id: sess.id, model_id: sess.model_id,
     model_name: model.display_name, title: sess.title || '',
-    explicit_rate_cents: sess.explicit_rate_cents, is_explicit: !!sess.is_explicit });
+    explicit_rate_cents: sess.explicit_rate_cents, is_explicit: !!sess.is_explicit,
+    is_paying: !!(me && me.is_paying), explicit_until: me ? me.explicit_until : 0,
+    explicit_grace_sec: getGiftGraceSec() });
 });
 
 // Fan starts paying the explicit per-minute rate (unblurs)
@@ -1533,10 +1546,14 @@ app.post('/api/live/:id/mode', identMiddleware, requireUser, requireRole('model'
   if (!sess || sess.model_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
   const isExplicit = req.body.is_explicit ? 1 : 0;
   db.prepare('UPDATE live_sessions SET is_explicit = ? WHERE id = ?').run(isExplicit, sess.id);
+  if (!isExplicit) {
+    // Explicit over — everyone's gift grace expires immediately
+    db.prepare('UPDATE live_viewers SET explicit_until = 0 WHERE session_id = ?').run(sess.id);
+  }
   db.prepare(`INSERT INTO blur_events (session_id, event, detail)
               VALUES (?,?,'manual_mode')`).run(sess.id, isExplicit ? 'explicit_on' : 'explicit_off');
   pushLiveViewers(sess.id, { type: 'live:explicit', session_id: sess.id, is_explicit: !!isExplicit,
-    explicit_rate_cents: sess.explicit_rate_cents });
+    explicit_rate_cents: sess.explicit_rate_cents, explicit_grace_sec: getGiftGraceSec() });
   res.json({ ok: true, is_explicit: !!isExplicit });
 });
 
@@ -1643,6 +1660,16 @@ app.post('/api/live/:id/gift', identMiddleware, requireUser, requireRole('fan'),
       VALUES (?,?,?,?,?,?)`)
       .run(sess.id, req.user.id, gift.id, gift.price_cents, modelCents, platformCents);
 
+    // Pay-to-play loop: ANY gift keeps this viewer's screen unblurred for the
+    // grace period. Per-viewer — one fan's gifts never affect another fan.
+    // (Set unconditionally; the client only honors it while the stream is explicit,
+    // which also covers client-side AI-detected explicit.)
+    const explicitUntil = Date.now() + getGiftGraceSec() * 1000;
+    db.prepare('UPDATE live_viewers SET explicit_until = ? WHERE session_id = ? AND fan_id = ?')
+      .run(explicitUntil, sess.id, req.user.id);
+    db.prepare(`INSERT INTO blur_events (session_id, fan_id, event, detail)
+                VALUES (?,?,'gift_unblur','explicit_grace')`).run(sess.id, req.user.id);
+
     const payload = { type: 'live:gift', session_id: sess.id,
       gift: { emoji: gift.emoji, name: gift.name, price_cents: gift.price_cents },
       fan_id: req.user.id, fan_name: req.user.display_name,
@@ -1651,7 +1678,8 @@ app.post('/api/live/:id/gift', identMiddleware, requireUser, requireRole('fan'),
     pushToAdmins({ type: 'live:gift_admin', session_id: sess.id,
       model_id: sess.model_id, fan_name: req.user.display_name,
       gift: gift.emoji + ' ' + gift.name, gross_cents: gift.price_cents });
-    res.json({ ok: true, balance_cents: getWallet(req.user.id).credits_cents });
+    res.json({ ok: true, balance_cents: getWallet(req.user.id).credits_cents,
+      explicit_until: explicitUntil, explicit_grace_sec: getGiftGraceSec() });
   } catch (e) {
     if (e.message === 'insufficient_credits')
       return res.status(402).json({ error: 'insufficient_credits',
@@ -2041,11 +2069,22 @@ app.post('/api/admin/payouts/:id', ...adminOnly, (req, res) => {
 });
 
 app.put('/api/admin/settings', ...adminOnly, (req, res) => {
-  const pct = parseInt(req.body.commission_pct);
-  if (!Number.isInteger(pct) || pct < 0 || pct > 90)
-    return res.status(400).json({ error: 'bad_commission' });
-  db.prepare('UPDATE platform_stats SET commission_pct = ? WHERE id = 1').run(pct);
-  res.json({ ok: true, commission_pct: pct });
+  const out = { ok: true };
+  if (req.body.commission_pct !== undefined) {
+    const pct = parseInt(req.body.commission_pct);
+    if (!Number.isInteger(pct) || pct < 0 || pct > 90)
+      return res.status(400).json({ error: 'bad_commission' });
+    db.prepare('UPDATE platform_stats SET commission_pct = ? WHERE id = 1').run(pct);
+    out.commission_pct = pct;
+  }
+  if (req.body.explicit_gift_grace_sec !== undefined) {
+    const g = parseInt(req.body.explicit_gift_grace_sec);
+    if (!Number.isInteger(g) || g < 30 || g > 3600)
+      return res.status(400).json({ error: 'bad_grace' });
+    db.prepare('UPDATE platform_stats SET explicit_gift_grace_sec = ? WHERE id = 1').run(g);
+    out.explicit_gift_grace_sec = g;
+  }
+  res.json(out);
 });
 
 /* ------------------------------------------------------------------ */
