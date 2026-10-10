@@ -330,6 +330,9 @@ async function vLanding() {
       <div style="text-align:center;margin-top:14px">
         ${S.user ? '' : `<button class="btn ghost" id="go-login">Log in / Sign up</button>`}
       </div>
+      <div style="text-align:center;margin-top:10px">
+        <button class="btn ghost" id="share-app" style="border-color:var(--pink);color:var(--pink)">📤 Share SlutCamp</button>
+      </div>
       <p class="muted small" style="text-align:center;margin-top:16px">18+ only. By chatting you agree to the Terms.</p>
     </div>`;
   app.querySelectorAll('[data-model]').forEach((b) => {
@@ -341,6 +344,22 @@ async function vLanding() {
   });
   const gl = $('#go-login');
   if (gl) gl.onclick = () => show('auth', {});
+  const sh = $('#share-app');
+  if (sh) sh.onclick = shareApp;
+}
+
+/* Share the app via native share sheet, fallback to copy link */
+async function shareApp() {
+  const url = location.origin;
+  const data = { title: 'SlutCamp', text: 'Chat & video call the models on SlutCamp 🔥 18+ only', url };
+  if (navigator.share) {
+    try { await navigator.share(data); } catch (e) { /* user cancelled */ }
+  } else if (navigator.clipboard) {
+    try { await navigator.clipboard.writeText(url); toast('Link copied — send it to your boys 📤'); }
+    catch (e) { toast(url); }
+  } else {
+    prompt('Copy your SlutCamp link:', url);
+  }
 }
 
 async function openChatWithModel(modelId) {
