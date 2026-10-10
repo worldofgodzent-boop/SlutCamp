@@ -295,6 +295,10 @@ function handleWS(m) {
     toast(`${stageModeEmoji(reqMode)} ${m.request.fan_name} wants to join (${stageModeLabel(reqMode)} · ${fmt(fee)})!${m.request.is_explicit ? ' 🔞' : ''}`, 4000);
   } else if (m.type === 'live:join-request-cancelled' && S.live && S.live.role === 'model' && m.session_id === S.live.sessionId) {
     renderStageRequests();
+  } else if (m.type === 'withdrawal:decided' && S.user && S.user.role === 'model') {
+    if (m.status === 'paid') toast(`💸 ${fmt(m.amount_cents)} is on its way to your bank!`, 4000);
+    else toast(`Withdrawal ${fmt(m.amount_cents)} was not approved${m.note ? ': ' + m.note : ''} — funds are still available.`, 4000);
+    if (S.view === 'modelEarnings') show('modelEarnings', {});
   } else if (m.type === 'safety:stream_flag' && S.user && S.user.role === 'admin') {
     toast(`🚨 Stream flag: "${m.matched}" by ${m.sender_name} (${m.total_strikes} strikes)`, 4000);
   }
@@ -603,6 +607,7 @@ async function refreshMe() {
   const { status, data } = await api('/me');
   if (status === 200) {
     S.user = data.user; S.wallet = data.wallet; S.model = data.model || null;
+    if (data.commission_pct !== undefined) S.commissionPct = data.commission_pct;
   } else if (status === 401 || status === 403) {
     logout(false);
   }
@@ -756,13 +761,50 @@ async function vWallet() {
 
 async function vModelEarnings() {
   const { data } = await api('/model/earnings');
+  const { data: acctData } = await api('/model/payout-account');
+  const { data: wdData } = await api('/model/withdrawals');
+  const acct = acctData.account;
+  const wds = wdData.withdrawals || [];
+  const wdBadge = (s) => s === 'pending' ? '⏳ Pending' : s === 'paid' ? '✅ Paid' : '❌ Rejected';
   app.innerHTML = `
-    <div class="header"><h1>Earnings 💵</h1><div class="sub">You keep ${100 - (S.commissionPct || 30)}% of everything</div></div>
+    <div class="header"><h1>Earnings 💵</h1><div class="sub">You keep ${100 - (S.commissionPct || 40)}% of everything</div></div>
     <div class="screen">
       <div class="stat-grid">
         <div class="stat"><div class="n" style="color:var(--green)">${fmt(data.pending_cents)}</div><div class="l">Available for payout</div></div>
         <div class="stat"><div class="n">${fmt(data.earnings_cents)}</div><div class="l">Total earned</div></div>
       </div>
+      <div class="card" style="margin-top:12px">
+        <div style="font-weight:800;margin-bottom:8px">💸 Payouts</div>
+        <div class="row" style="margin-bottom:8px"><span class="grow muted small">Bank account</span>
+          ${acct ? `<b class="small">•••• ${esc(acct.account_last4)}</b>` : '<span class="small" style="color:var(--pink)">Not set</span>'}</div>
+        ${acct ? `
+          <div class="muted small" style="margin-bottom:8px">${esc(acct.holder_name)} · Routing ${esc(acct.routing_number)}</div>
+          <div class="row">
+            <input class="input" id="wd-amount" type="number" step="0.01" min="0" placeholder="Amount $" style="margin-top:0">
+            <button class="btn small success" id="wd-go">Withdraw</button>
+          </div>
+          <div class="muted small" style="margin-top:6px">Available to withdraw: <b style="color:var(--green)">${fmt(wdData.available_cents)}</b></div>
+        ` : ''}
+        <div id="bank-form" class="${acct ? 'hidden' : ''}" style="margin-top:8px">
+          <div style="font-weight:700;margin-bottom:6px">${acct ? 'Update bank account' : 'Add bank account'}</div>
+          <label class="field">Account holder name<input class="input" id="ba-holder" maxlength="80" value="${acct ? esc(acct.holder_name) : ''}"></label>
+          <label class="field">Routing number (9 digits)<input class="input" id="ba-routing" inputmode="numeric" maxlength="9" value="${acct ? esc(acct.routing_number) : ''}"></label>
+          <label class="field">Account number${pwField('ba-account', 'off')}</label>
+          <button class="btn" id="ba-save" style="margin-top:8px">Save bank account</button>
+          <div class="muted small" style="margin-top:6px">🔒 Only Asce sees your full account number, to send your money.</div>
+        </div>
+        ${acct ? `<button class="btn ghost small" id="ba-toggle" style="margin-top:8px">✏️ Update bank account</button>` : ''}
+      </div>
+      ${wds.length ? `
+      <div class="card" style="margin-top:12px">
+        <div style="font-weight:800;margin-bottom:8px">Withdrawal history</div>
+        ${wds.map((w) => `
+          <div class="row small" style="padding:6px 0;border-top:1px solid rgba(139,92,246,.1)">
+            <span class="grow"><b>${fmt(w.amount_cents)}</b> <span class="muted">· ${timeHM(w.requested_at)}</span>
+              ${w.note ? `<br><span class="muted">${esc(w.note)}</span>` : ''}</span>
+            <span>${wdBadge(w.status)}</span>
+          </div>`).join('')}
+      </div>` : ''}
       <div class="card" style="margin-top:12px">
         <div style="font-weight:800;margin-bottom:8px">Per fan</div>
         ${(data.by_fan || []).map((r) => `
@@ -773,6 +815,33 @@ async function vModelEarnings() {
       </div>
       <div class="muted small" style="text-align:center">Payouts are sent by Asce. Available balance updates after each message.</div>
     </div>`;
+
+  const baSave = $('#ba-save');
+  if (baSave) baSave.onclick = async () => {
+    baSave.disabled = true;
+    const body = { holder_name: $('#ba-holder').value.trim(),
+      routing_number: $('#ba-routing').value.trim(), account_number: $('#ba-account').value.trim() };
+    const { status } = await api('/model/payout-account', { method: 'POST', body: JSON.stringify(body) });
+    if (status === 200) { toast('✅ Bank account saved'); show('modelEarnings', {}); }
+    else { toast('Check the fields — routing needs 9 digits'); baSave.disabled = false; }
+  };
+  const baToggle = $('#ba-toggle');
+  if (baToggle) baToggle.onclick = () => { $('#bank-form').classList.toggle('hidden'); };
+  const wdGo = $('#wd-go');
+  if (wdGo) wdGo.onclick = async () => {
+    const amount_cents = Math.round(parseFloat($('#wd-amount').value || '0') * 100);
+    if (!amount_cents || amount_cents <= 0) return toast('Enter an amount');
+    wdGo.disabled = true;
+    const { status, data: wd } = await api('/model/withdrawals', {
+      method: 'POST', body: JSON.stringify({ amount_cents }) });
+    if (status === 200) { toast('⏳ Withdrawal requested — Asce will send it soon'); show('modelEarnings', {}); }
+    else {
+      toast(status === 400 && wd.error === 'insufficient_funds'
+        ? `Not enough available (${fmt(wd.available_cents || 0)})`
+        : 'Could not request withdrawal');
+      wdGo.disabled = false;
+    }
+  };
 }
 
 async function vModelSettings() {
@@ -2808,7 +2877,29 @@ async function adminInvitesBody() {
 
 async function adminPayoutsBody() {
   const { data } = await api('/admin/payouts');
+  const { data: wdData } = await api('/admin/withdrawals');
+  const wds = (wdData && wdData.withdrawals) || [];
+  const pending = wds.filter((w) => w.status === 'pending');
+  const done = wds.filter((w) => w.status !== 'pending');
+  const wdBadge = (s) => s === 'pending' ? '⏳ Pending' : s === 'paid' ? '✅ Paid' : '❌ Rejected';
   return `
+    ${pending.length ? `<h3>⏳ Withdrawal requests (${pending.length})</h3>` : ''}
+    ${pending.map((w) => `
+      <div class="card" style="padding:12px;border-color:var(--pink)">
+        <div class="row"><span class="grow"><b>${esc(w.model_name)}</b> <span class="small muted">@${esc(w.model_username)}</span><br>
+          <span class="small muted">${timeHM(w.requested_at)}</span></span>
+          <b style="color:var(--green);font-size:18px">${fmt(w.amount_cents)}</b></div>
+        <div class="small" style="margin-top:8px;background:rgba(0,0,0,.25);border-radius:8px;padding:8px">
+          🏦 <b>${esc(w.holder_name || '—')}</b><br>
+          Routing: <b>${esc(w.routing_number || '—')}</b><br>
+          Account: <b>${esc(w.account_number || '—')}</b>
+        </div>
+        <div class="row" style="margin-top:8px;gap:6px">
+          <button class="btn small success" data-wd-pay="${w.id}">✅ Mark paid</button>
+          <button class="btn small danger" data-wd-reject="${w.id}">Reject</button>
+        </div>
+      </div>`).join('')}
+    <h3>Model balances</h3>
     ${(data.payouts || []).map((p) => `
       <div class="card" style="padding:12px">
         <div class="row"><span class="grow"><b>${esc(p.display_name)}</b><br>
@@ -2820,7 +2911,11 @@ async function adminPayoutsBody() {
             <button class="btn small success" data-pay="${p.id}">Mark paid</button>
           </div>` : ''}
       </div>`).join('')}
-    <h3>History</h3>
+    ${done.length ? `<h3>Withdrawal history</h3>` : ''}
+    ${done.map((w) => `
+      <div class="row small" style="padding:6px 0"><span class="grow">${esc(w.model_name)} — <b>${fmt(w.amount_cents)}</b></span>
+        <span>${wdBadge(w.status)}</span> <span class="muted">${timeHM(w.decided_at || w.requested_at)}</span></div>`).join('')}
+    <h3>Payout history</h3>
     ${(data.history || []).map((h) => `
       <div class="row small" style="padding:6px 0"><span class="grow">${esc(h.model_name)} — ${fmt(h.gross_cents)}</span>
         <span class="muted">${timeHM(h.created_at)}</span></div>`).join('') || '<div class="muted">No payouts yet.</div>'}`;
@@ -3122,6 +3217,25 @@ function wireAdminBody(tab) {
     };
   });
 
+  // Withdrawal requests
+  document.querySelectorAll('[data-wd-pay]').forEach((b) => {
+    b.onclick = async () => {
+      b.disabled = true;
+      const { status } = await api(`/admin/withdrawals/${b.dataset.wdPay}/pay`, { method: 'POST' });
+      toast(status === 200 ? '✅ Withdrawal marked as paid' : 'Could not mark paid');
+      if (status === 200) show('admin', {}); else b.disabled = false;
+    };
+  });
+  document.querySelectorAll('[data-wd-reject]').forEach((b) => {
+    b.onclick = async () => {
+      if (!confirm('Reject this withdrawal? The funds stay available to her.')) return;
+      b.disabled = true;
+      const { status } = await api(`/admin/withdrawals/${b.dataset.wdReject}/reject`, { method: 'POST' });
+      toast(status === 200 ? 'Withdrawal rejected' : 'Could not reject');
+      if (status === 200) show('admin', {}); else b.disabled = false;
+    };
+  });
+
   // Fans
   document.querySelectorAll('[data-credit]').forEach((b) => {
     b.onclick = async () => {
@@ -3219,7 +3333,7 @@ $('#call-hangup').onclick = hangupCall;
       await refreshMe();
       wsConnect();
       if (S.user.role === 'admin') return show('admin', {});
-      if (S.user.role === 'model') { S.commissionPct = 30; return show('modelChats', {}); }
+      if (S.user.role === 'model') { return show('modelChats', {}); }
       return show('fanModels', {});
     }
     S.token = null;

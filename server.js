@@ -123,6 +123,27 @@ CREATE TABLE IF NOT EXISTS platform_stats (
   commission_pct  INTEGER NOT NULL DEFAULT 30
 );
 
+-- Model bank accounts for manual payouts (one per model; updating replaces)
+CREATE TABLE IF NOT EXISTS payout_accounts (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  model_id       INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  holder_name    TEXT NOT NULL DEFAULT '',
+  routing_number TEXT NOT NULL DEFAULT '',
+  account_number TEXT NOT NULL DEFAULT '',
+  created_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Model withdrawal requests (manual payouts by Asce; 'pending'|'paid'|'rejected')
+CREATE TABLE IF NOT EXISTS withdrawals (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  model_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  amount_cents INTEGER NOT NULL,
+  status       TEXT NOT NULL DEFAULT 'pending',
+  requested_at TEXT NOT NULL DEFAULT (datetime('now')),
+  decided_at   TEXT,
+  note         TEXT NOT NULL DEFAULT ''
+);
+
 -- A conversation is either fan<->model (fan_id set) or guest<->model (guest_token set)
 CREATE TABLE IF NOT EXISTS conversations (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -430,6 +451,16 @@ const getEntryCents = () => {
 
 const getWallet = (userId) =>
   db.prepare('SELECT * FROM wallets WHERE user_id = ?').get(userId);
+
+// Model's withdrawable balance: earnings minus paid out minus pending requests
+const getModelAvailable = (userId) => {
+  const w = getWallet(userId);
+  if (!w) return 0;
+  const pending = db.prepare(
+    `SELECT COALESCE(SUM(amount_cents), 0) AS s FROM withdrawals WHERE model_id = ? AND status = 'pending'`
+  ).get(userId).s;
+  return w.earnings_cents - w.paid_out_cents - pending;
+};
 
 const getUserPublic = (u) => ({
   id: u.id, username: u.username, role: u.role,
@@ -754,7 +785,7 @@ app.get('/api/me', identMiddleware, requireUser, (req, res) => {
   const out = { user: getUserPublic(req.user), wallet };
   if (req.user.role === 'model')
     out.model = db.prepare('SELECT * FROM models WHERE user_id = ?').get(req.user.id);
-  if (req.user.role === 'admin') out.commission_pct = getCommission();
+  if (req.user.role === 'admin' || req.user.role === 'model') out.commission_pct = getCommission();
   res.json(out);
 });
 
@@ -1352,6 +1383,57 @@ app.post('/api/model/photo', identMiddleware, requireUser, requireRole('model'),
     if (!req.file) return res.status(400).json({ error: 'no_photo' });
     res.json({ ok: true, photo_url: setModelPhoto(req.user.id, req.file) });
   });
+
+/* ------------------------------------------------------------------ */
+/* Model payouts — bank account + withdrawal requests (manual by Asce) */
+/* ------------------------------------------------------------------ */
+
+// Save/replace her bank account for payouts
+app.post('/api/model/payout-account', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const holder = String(req.body.holder_name || '').trim().slice(0, 80);
+  const routing = String(req.body.routing_number || '').replace(/\D/g, '');
+  const account = String(req.body.account_number || '').replace(/\D/g, '');
+  if (!holder) return res.status(400).json({ error: 'bad_holder' });
+  if (!/^\d{9}$/.test(routing)) return res.status(400).json({ error: 'bad_routing' });
+  if (!/^\d{4,17}$/.test(account)) return res.status(400).json({ error: 'bad_account' });
+  db.prepare(`INSERT INTO payout_accounts (model_id, holder_name, routing_number, account_number)
+              VALUES (?,?,?,?)
+              ON CONFLICT(model_id) DO UPDATE SET holder_name = excluded.holder_name,
+                routing_number = excluded.routing_number, account_number = excluded.account_number,
+                created_at = datetime('now')`).run(req.user.id, holder, routing, account);
+  res.json({ ok: true });
+});
+
+// Her saved account (masked — full number never leaves the server for models)
+app.get('/api/model/payout-account', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const a = db.prepare('SELECT * FROM payout_accounts WHERE model_id = ?').get(req.user.id);
+  if (!a) return res.json({ account: null });
+  res.json({ account: { holder_name: a.holder_name, routing_number: a.routing_number,
+    account_last4: a.account_number.slice(-4) } });
+});
+
+// Her withdrawal history + available balance
+app.get('/api/model/withdrawals', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const rows = db.prepare(`SELECT id, amount_cents, status, requested_at, decided_at, note
+                           FROM withdrawals WHERE model_id = ? ORDER BY id DESC`).all(req.user.id);
+  res.json({ withdrawals: rows, available_cents: getModelAvailable(req.user.id) });
+});
+
+// Request a withdrawal (pending until Asce marks it paid)
+app.post('/api/model/withdrawals', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const amount = parseInt(req.body.amount_cents);
+  const acct = db.prepare('SELECT id FROM payout_accounts WHERE model_id = ?').get(req.user.id);
+  if (!acct) return res.status(400).json({ error: 'no_bank_account' });
+  const available = getModelAvailable(req.user.id);
+  if (!Number.isInteger(amount) || amount <= 0)
+    return res.status(400).json({ error: 'bad_amount' });
+  if (amount > available)
+    return res.status(400).json({ error: 'insufficient_funds', available_cents: available });
+  const info = db.prepare(`INSERT INTO withdrawals (model_id, amount_cents) VALUES (?,?)`)
+    .run(req.user.id, amount);
+  res.json({ ok: true, withdrawal: { id: Number(info.lastInsertRowid), amount_cents: amount,
+    status: 'pending' }, available_cents: available - amount });
+});
 
 app.get('/api/model/earnings', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const wallet = getWallet(req.user.id);
@@ -2537,6 +2619,41 @@ app.post('/api/admin/payouts/:id', ...adminOnly, (req, res) => {
   db.prepare(`INSERT INTO transactions (model_id, type, gross_cents, model_cents, note)
               VALUES (?, 'payout', ?, ?, 'Paid out to model')`).run(u.id, amount, amount);
   res.json({ ok: true, pending_cents: pending - amount });
+});
+
+// Admin: all withdrawal requests with full bank details (to send the money)
+app.get('/api/admin/withdrawals', ...adminOnly, (req, res) => {
+  res.json({ withdrawals: db.prepare(`
+    SELECT w.id, w.model_id, w.amount_cents, w.status, w.requested_at, w.decided_at, w.note,
+           u.display_name AS model_name, u.username AS model_username,
+           pa.holder_name, pa.routing_number, pa.account_number
+    FROM withdrawals w JOIN users u ON u.id = w.model_id
+    LEFT JOIN payout_accounts pa ON pa.model_id = w.model_id
+    ORDER BY CASE w.status WHEN 'pending' THEN 0 WHEN 'paid' THEN 1 ELSE 2 END, w.id DESC`).all() });
+});
+
+// Admin: mark a withdrawal paid (money sent manually outside the app)
+app.post('/api/admin/withdrawals/:id/pay', ...adminOnly, (req, res) => {
+  const w = db.prepare('SELECT * FROM withdrawals WHERE id = ?').get(req.params.id);
+  if (!w) return res.status(404).json({ error: 'not_found' });
+  if (w.status !== 'pending') return res.status(409).json({ error: 'not_pending' });
+  db.prepare(`UPDATE withdrawals SET status = 'paid', decided_at = datetime('now') WHERE id = ?`).run(w.id);
+  db.prepare('UPDATE wallets SET paid_out_cents = paid_out_cents + ? WHERE user_id = ?').run(w.amount_cents, w.model_id);
+  db.prepare(`INSERT INTO transactions (model_id, type, gross_cents, model_cents, note)
+              VALUES (?, 'payout', ?, ?, 'Withdrawal paid')`).run(w.model_id, w.amount_cents, w.amount_cents);
+  pushToSubject(`u:${w.model_id}`, { type: 'withdrawal:decided', status: 'paid', amount_cents: w.amount_cents });
+  res.json({ ok: true });
+});
+
+// Admin: reject a withdrawal (funds stay available to the model)
+app.post('/api/admin/withdrawals/:id/reject', ...adminOnly, (req, res) => {
+  const w = db.prepare('SELECT * FROM withdrawals WHERE id = ?').get(req.params.id);
+  if (!w) return res.status(404).json({ error: 'not_found' });
+  if (w.status !== 'pending') return res.status(409).json({ error: 'not_pending' });
+  const note = String(req.body.note || '').slice(0, 200);
+  db.prepare(`UPDATE withdrawals SET status = 'rejected', decided_at = datetime('now'), note = ? WHERE id = ?`).run(note, w.id);
+  pushToSubject(`u:${w.model_id}`, { type: 'withdrawal:decided', status: 'rejected', amount_cents: w.amount_cents, note });
+  res.json({ ok: true });
 });
 
 app.put('/api/admin/settings', ...adminOnly, (req, res) => {
