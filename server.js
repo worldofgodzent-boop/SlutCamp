@@ -306,6 +306,22 @@ CREATE TABLE IF NOT EXISTS gift_events (
 );
 CREATE INDEX IF NOT EXISTS idx_gift_stream ON gift_events(session_id, id);
 
+-- Priority messages: fans pay for banner screen time during group streams.
+-- One shows at a time; the rest queue FIFO. More spend = longer on screen (max 30s).
+CREATE TABLE IF NOT EXISTS priority_messages (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id   INTEGER NOT NULL REFERENCES live_sessions(id) ON DELETE CASCADE,
+  fan_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  fan_name     TEXT NOT NULL DEFAULT '',
+  message      TEXT NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  duration_sec INTEGER NOT NULL,
+  status       TEXT NOT NULL DEFAULT 'queued',
+  ends_at      INTEGER NOT NULL DEFAULT 0,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_pm_session ON priority_messages(session_id, status, id);
+
 -- Safety flags on group stream chat (separate from 1-on-1 conversation incidents)
 CREATE TABLE IF NOT EXISTS stream_flags (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -340,6 +356,7 @@ const DEFAULT_KEYWORDS = [
   'twitter dm', 'cashapp', 'cash app', 'venmo', 'zelle', 'paypal',
   'real name', 'where do you live', 'meet up', 'meetup', 'address',
   'phone number', 'call me', 'text me', 'my number',
+  'nigger', 'wetback', 'wet back',
 ];
 const kwCount = db.prepare('SELECT COUNT(*) AS c FROM safety_keywords').get().c;
 if (kwCount === 0) {
@@ -1505,7 +1522,7 @@ app.post('/api/live/:id/join', identMiddleware, requireUser, requireRole('fan'),
     model_name: model.display_name, title: sess.title || '',
     explicit_rate_cents: sess.explicit_rate_cents, is_explicit: !!sess.is_explicit,
     is_paying: !!(me && me.is_paying), explicit_until: me ? me.explicit_until : 0,
-    explicit_grace_sec: getGiftGraceSec() });
+    explicit_grace_sec: getGiftGraceSec(), priority: currentPriority(sess.id) });
 });
 
 // Fan starts paying the explicit per-minute rate (unblurs)
@@ -1688,6 +1705,116 @@ app.post('/api/live/:id/gift', identMiddleware, requireUser, requireRole('fan'),
   }
 });
 
+/* ---------------- PRIORITY MESSAGES (paid banner + TTS on group streams) ---------------- */
+
+// Pricing tiers: more spend = longer on screen, max 30s
+const PRIORITY_TIERS = [
+  { price_cents: 200,  duration_sec: 5 },
+  { price_cents: 500,  duration_sec: 10 },
+  { price_cents: 1000, duration_sec: 15 },
+  { price_cents: 2000, duration_sec: 20 },
+  { price_cents: 3000, duration_sec: 30 },
+];
+
+function priorityJSON(pm) {
+  return { id: pm.id, fan_id: pm.fan_id, fan_name: pm.fan_name, message: pm.message,
+           amount_cents: pm.amount_cents, duration_sec: pm.duration_sec, ends_at: pm.ends_at };
+}
+
+// Returns the currently-showing priority message, advancing the FIFO queue as needed.
+// Broadcasts live:priority over WS whenever a new message starts showing.
+function currentPriority(sessionId) {
+  const now = Date.now();
+  let showing = db.prepare(
+    `SELECT * FROM priority_messages WHERE session_id = ? AND status = 'showing' ORDER BY id LIMIT 1`)
+    .get(sessionId);
+  if (showing && showing.ends_at <= now) {
+    db.prepare(`UPDATE priority_messages SET status = 'done' WHERE id = ?`).run(showing.id);
+    showing = null;
+  }
+  if (!showing) {
+    const next = db.prepare(
+      `SELECT * FROM priority_messages WHERE session_id = ? AND status = 'queued' ORDER BY id LIMIT 1`)
+      .get(sessionId);
+    if (next) {
+      const endsAt = Date.now() + next.duration_sec * 1000;
+      db.prepare(`UPDATE priority_messages SET status = 'showing', ends_at = ? WHERE id = ?`)
+        .run(endsAt, next.id);
+      showing = { ...next, status: 'showing', ends_at: endsAt };
+      pushLiveAll(sessionId, { type: 'live:priority', session_id: sessionId,
+        priority: priorityJSON(showing) });
+    }
+  }
+  return showing ? priorityJSON(showing) : null;
+}
+
+// POST send a priority message during a group stream (fan pays per tier)
+app.post('/api/live/:id/priority', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const sess = liveSessionOr404(req, res);
+  if (!sess) return;
+  const viewer = db.prepare('SELECT * FROM live_viewers WHERE session_id = ? AND fan_id = ?')
+    .get(sess.id, req.user.id);
+  if (!viewer) return res.status(403).json({ error: 'join_first' });
+  const tier = PRIORITY_TIERS[req.body.tier_index];
+  if (!tier) return res.status(400).json({ error: 'bad_tier' });
+  const message = String(req.body.message || '').trim().slice(0, 120);
+  if (!message) return res.status(400).json({ error: 'empty_message' });
+
+  // SAFETY FIRST — scan BEFORE charging. Blocked = 423 + strike, no charge.
+  const matched = safetyScan(message);
+  if (matched) {
+    const key = `u:${req.user.id}`;
+    const total = addStrike(key);
+    db.prepare(`INSERT INTO stream_flags (session_id, sender_id, sender_name, flagged_text, matched)
+                VALUES (?,?,?,?,?)`)
+      .run(sess.id, req.user.id, req.user.display_name, message.slice(0, 300), matched);
+    pushToAdmins({ type: 'safety:stream_flag', session_id: sess.id,
+      sender_name: req.user.display_name, matched, total_strikes: total });
+    pushToUser(req.user.id, { type: 'live:chat_blocked', session_id: sess.id,
+      warning: `⚠️ Priority message blocked — "${matched}" is not allowed. (${total}/3 strikes)` });
+    return res.status(423).json({ error: 'blocked', matched, strikes: total });
+  }
+
+  try {
+    const { modelCents, platformCents } = chargeFan(
+      req.user.id, sess.model_id, tier.price_cents, 'priority',
+      `📢 Priority message (${tier.duration_sec}s) on stream #${sess.id}`);
+    const info = db.prepare(`INSERT INTO priority_messages
+      (session_id, fan_id, fan_name, message, amount_cents, duration_sec, status)
+      VALUES (?,?,?,?,?,?, 'queued')`)
+      .run(sess.id, req.user.id, req.user.display_name, message,
+           tier.price_cents, tier.duration_sec);
+    const mineId = Number(info.lastInsertRowid);
+    // Promote immediately if nothing is showing (broadcasts live:priority)
+    const current = currentPriority(sess.id);
+    const showingNow = !!(current && current.id === mineId);
+    // Queue position: 1 = showing now, otherwise count of active messages ahead + 1
+    const ahead = db.prepare(
+      `SELECT COUNT(*) AS n FROM priority_messages
+       WHERE session_id = ? AND status IN ('queued','showing') AND id < ?`)
+      .get(sess.id, mineId).n;
+    pushToAdmins({ type: 'live:priority_admin', session_id: sess.id,
+      model_id: sess.model_id, fan_name: req.user.display_name,
+      amount_cents: tier.price_cents, duration_sec: tier.duration_sec });
+    res.json({ ok: true, duration_sec: tier.duration_sec,
+      balance_cents: getWallet(req.user.id).credits_cents,
+      showing_now: showingNow, position_in_queue: showingNow ? 1 : ahead + 1 });
+  } catch (e) {
+    if (e.message === 'insufficient_credits')
+      return res.status(402).json({ error: 'insufficient_credits',
+        needed_cents: tier.price_cents, balance_cents: getWallet(req.user.id).credits_cents });
+    throw e;
+  }
+});
+
+// GET current priority message state (advances the queue; client polls when its banner expires)
+app.get('/api/live/:id/priority', identMiddleware, requireUser, (req, res) => {
+  const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
+  if (!sess) return res.status(404).json({ error: 'not_found' });
+  if (!isLiveParticipant(sess, req.user)) return res.status(403).json({ error: 'join_first' });
+  res.json({ priority: currentPriority(sess.id) });
+});
+
 // GET top-3 gifters leaderboard for a stream
 app.get('/api/live/:id/leaderboard', identMiddleware, requireUser, (req, res) => {
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
@@ -1711,7 +1838,9 @@ app.get('/api/admin/live', ...adminOnly, (req, res) => {
            (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS viewers,
            (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id AND is_paying = 1) AS paying_viewers,
            (SELECT COALESCE(SUM(gross_cents),0) FROM gift_events WHERE session_id = ls.id) AS gift_cents,
-           (SELECT COUNT(*) FROM gift_events WHERE session_id = ls.id) AS gift_count
+           (SELECT COUNT(*) FROM gift_events WHERE session_id = ls.id) AS gift_count,
+           (SELECT COALESCE(SUM(amount_cents),0) FROM priority_messages WHERE session_id = ls.id) AS priority_cents,
+           (SELECT COUNT(*) FROM priority_messages WHERE session_id = ls.id) AS priority_count
     FROM live_sessions ls JOIN users u ON u.id = ls.model_id
     ORDER BY ls.id DESC LIMIT 50`).all();
   const events = db.prepare(`
