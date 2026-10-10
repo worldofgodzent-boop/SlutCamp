@@ -105,7 +105,9 @@ CREATE TABLE IF NOT EXISTS models (
   bio              TEXT NOT NULL DEFAULT '',
   per_message_cents INTEGER NOT NULL DEFAULT 149,
   per_minute_cents  INTEGER NOT NULL DEFAULT 399,
-  is_online        INTEGER NOT NULL DEFAULT 0
+  is_online        INTEGER NOT NULL DEFAULT 0,
+  explicit_join_cents INTEGER NOT NULL DEFAULT 2500,
+  explicit_mic_join_cents INTEGER NOT NULL DEFAULT 1500
 );
 
 CREATE TABLE IF NOT EXISTS wallets (
@@ -332,6 +334,7 @@ CREATE TABLE IF NOT EXISTS live_join_requests (
   status           TEXT NOT NULL DEFAULT 'pending',
   stage_started_at INTEGER NOT NULL DEFAULT 0,
   is_explicit      INTEGER NOT NULL DEFAULT 0,
+  mode             TEXT NOT NULL DEFAULT 'video',
   created_at       TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_ljr_session ON live_join_requests(session_id, status);
@@ -365,6 +368,9 @@ addColumnIfMissing('live_viewers', 'explicit_paid', 'INTEGER NOT NULL DEFAULT 0'
 addColumnIfMissing('platform_stats', 'explicit_gift_grace_sec', 'INTEGER NOT NULL DEFAULT 180');
 addColumnIfMissing('priority_messages', 'voice', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_join_requests', 'is_explicit', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('live_join_requests', 'mode', "TEXT NOT NULL DEFAULT 'video'");
+addColumnIfMissing('models', 'explicit_join_cents', 'INTEGER NOT NULL DEFAULT 2500');
+addColumnIfMissing('models', 'explicit_mic_join_cents', 'INTEGER NOT NULL DEFAULT 1500');
 addColumnIfMissing('platform_stats', 'explicit_entry_cents', 'INTEGER NOT NULL DEFAULT 499');
 
 // Seed the safety keyword list (admin can edit these later in Settings)
@@ -1292,7 +1298,8 @@ app.post('/api/credits/buy', identMiddleware, requireUser, requireRole('fan'), (
 /* ------------------------------------------------------------------ */
 
 app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model'), (req, res) => {
-  const { bio, per_message_cents, per_minute_cents, per_voice_cents, explicit_rate_cents, is_online } = req.body || {};
+  const { bio, per_message_cents, per_minute_cents, per_voice_cents, explicit_rate_cents,
+          explicit_join_cents, explicit_mic_join_cents, is_online } = req.body || {};
   const updates = [], params = [];
   if (typeof bio === 'string') { updates.push('bio = ?'); params.push(bio.slice(0, 280)); }
   if (Number.isInteger(per_message_cents) && per_message_cents >= 0 && per_message_cents <= 5000) {
@@ -1306,6 +1313,12 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
   }
   if (Number.isInteger(explicit_rate_cents) && explicit_rate_cents >= 0 && explicit_rate_cents <= 20000) {
     updates.push('explicit_rate_cents = ?'); params.push(explicit_rate_cents);
+  }
+  if (Number.isInteger(explicit_join_cents) && explicit_join_cents >= 500 && explicit_join_cents <= 10000) {
+    updates.push('explicit_join_cents = ?'); params.push(explicit_join_cents);
+  }
+  if (Number.isInteger(explicit_mic_join_cents) && explicit_mic_join_cents >= 500 && explicit_mic_join_cents <= 10000) {
+    updates.push('explicit_mic_join_cents = ?'); params.push(explicit_mic_join_cents);
   }
   if (is_online === 0 || is_online === 1) { updates.push('is_online = ?'); params.push(is_online); }
   if (!updates.length) return res.status(400).json({ error: 'nothing_to_update' });
@@ -1525,7 +1538,8 @@ app.post('/api/live/:id/leave', identMiddleware, requireUser, requireRole('fan')
     WHERE session_id = ? AND fan_id = ? AND status = 'pending'`)
     .get(sess.id, req.user.id);
   if (myPending) {
-    const fee = myPending.is_explicit ? EXPLICIT_JOIN_FEE_CENTS : JOIN_FEE_CENTS;
+    const fee = stageJoinFee(!!myPending.is_explicit, myPending.mode || 'video',
+      modelJoinRates(sess.model_id));
     db.prepare(`UPDATE live_join_requests SET status = 'declined' WHERE id = ?`).run(myPending.id);
     refundFan(req.user.id, sess.model_id, fee, 'live_join_refund',
       `🎥 Left stream — join request refunded`);
@@ -1548,7 +1562,7 @@ app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
   for (const v of viewers) stopLivePayTimer(sess.id, v.fan_id);
   // Join-live cleanup: pending requests auto-declined + refunded; active stage dropped (no refund)
   for (const r of pendingStageReqs(sess.id)) {
-    const fee = r.is_explicit ? EXPLICIT_JOIN_FEE_CENTS : JOIN_FEE_CENTS;
+    const fee = stageJoinFee(!!r.is_explicit, r.mode || 'video', modelJoinRates(sess.model_id));
     db.prepare(`UPDATE live_join_requests SET status = 'declined' WHERE id = ?`).run(r.id);
     refundFan(r.fan_id, sess.model_id, fee, 'live_join_refund',
       `🎥 Stream ended — join request refunded`);
@@ -1588,12 +1602,15 @@ app.post('/api/live/:id/join', identMiddleware, requireUser, requireRole('fan'),
   const model = db.prepare('SELECT display_name FROM users WHERE id = ?').get(sess.model_id);
   const me = db.prepare('SELECT explicit_until, is_paying, explicit_paid FROM live_viewers WHERE session_id = ? AND fan_id = ?')
     .get(sess.id, req.user.id);
+  const jr = modelJoinRates(sess.model_id);
   res.json({ ok: true, session_id: sess.id, model_id: sess.model_id,
     model_name: model.display_name, title: sess.title || '',
     explicit_rate_cents: sess.explicit_rate_cents, is_explicit: !!sess.is_explicit,
     is_paying: !!(me && me.is_paying), explicit_until: me ? me.explicit_until : 0,
     explicit_paid: !!(me && me.explicit_paid),
     explicit_grace_sec: getGiftGraceSec(), explicit_entry_cents: getEntryCents(),
+    explicit_join_cents: jr.explicit_join_cents,
+    explicit_mic_join_cents: jr.explicit_mic_join_cents,
     priority: currentPriority(sess.id) });
 });
 
@@ -1840,8 +1857,31 @@ const JOIN_FEE_CENTS = 1000;
 // Explicit join: if the stream is explicit when the fan requests, the fee is higher.
 // The explicit stage fee COVERS viewing — no separate explicit entry fee needed.
 const EXPLICIT_JOIN_FEE_CENTS = 2500;
+// Mic-only join: audio only, no camera. Cheaper than video (regular / explicit tiers).
+const MIC_JOIN_FEE_CENTS = 500;
+const EXPLICIT_MIC_JOIN_FEE_CENTS = 1500;
 // Stage time limit: approved fan auto-kicked after this many minutes (no refund).
 const STAGE_MINUTES = 3;
+
+// Stage join price by explicit tier and mode ('video' | 'mic').
+// Regular (non-explicit) prices are fixed platform-wide; explicit tiers come
+// from the MODEL's own rates (she sets them in Settings).
+function modelJoinRates(modelId) {
+  const m = db.prepare(`SELECT explicit_join_cents, explicit_mic_join_cents FROM models WHERE user_id = ?`)
+    .get(modelId);
+  return {
+    explicit_join_cents: m && Number.isInteger(m.explicit_join_cents) ? m.explicit_join_cents : 2500,
+    explicit_mic_join_cents: m && Number.isInteger(m.explicit_mic_join_cents) ? m.explicit_mic_join_cents : 1500,
+  };
+}
+function stageJoinFee(isExplicit, mode, rates) {
+  if (isExplicit) {
+    const r = rates || { explicit_join_cents: EXPLICIT_JOIN_FEE_CENTS,
+                         explicit_mic_join_cents: EXPLICIT_MIC_JOIN_FEE_CENTS };
+    return mode === 'mic' ? r.explicit_mic_join_cents : r.explicit_join_cents;
+  }
+  return mode === 'mic' ? MIC_JOIN_FEE_CENTS : JOIN_FEE_CENTS;
+}
 
 function priorityJSON(pm) {
   return { id: pm.id, fan_id: pm.fan_id, fan_name: pm.fan_name, message: pm.message,
@@ -1946,15 +1986,15 @@ app.get('/api/live/:id/priority', identMiddleware, requireUser, (req, res) => {
 });
 
 /* ---------------- FAN JOIN LIVE (pay to request, model approves) ----------------
-   Fan pays JOIN_FEE_CENTS to request on-camera stage time. Model approves or
-   declines (decline = full refund). One fan on stage at a time; stage time is
-   capped at STAGE_MINUTES (auto-drop, no refund). Fan video goes to the MODEL
-   only (peer-to-peer); other viewers see a stage indicator in chat. */
+   Fan pays to request stage time: VIDEO ($10/$25) or MIC-ONLY audio ($5/$15).
+   Model approves each request; decline = full refund. One fan on stage at a time;
+   stage time is capped at STAGE_MINUTES (auto-drop, no refund). Fan media goes
+   to the MODEL only (peer-to-peer); other viewers see a stage indicator in chat. */
 
 function stageJSON(r) {
   if (!r) return null;
   return { id: r.id, fan_id: r.fan_id, fan_name: r.fan_name, status: r.status,
-           is_explicit: !!r.is_explicit,
+           is_explicit: !!r.is_explicit, mode: r.mode || 'video',
            stage_ends_at: r.stage_started_at
              ? r.stage_started_at + STAGE_MINUTES * 60 * 1000 : 0 };
 }
@@ -1984,8 +2024,8 @@ function dropStageFan(sessionId, reason) {
   return active;
 }
 
-// Fan requests stage time. If she's explicit right now it's the EXPLICIT tier ($25);
-// otherwise the regular $10. Charged immediately; refunded if declined.
+// Fan requests stage time. Mode: 'video' ($10/$25) or 'mic' audio-only ($5/$15).
+// If she's explicit right now it's the EXPLICIT tier. Charged immediately; refunded if declined.
 app.post('/api/live/:id/join-request', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ? AND status = \'live\'')
     .get(req.params.id);
@@ -2001,23 +2041,26 @@ app.post('/api/live/:id/join-request', identMiddleware, requireUser, requireRole
     .get(sess.id, req.user.id);
   if (mine) return res.status(409).json({ error: 'already_pending', request_id: mine.id });
   const isExplicitJoin = !!sess.is_explicit;
-  const fee = isExplicitJoin ? EXPLICIT_JOIN_FEE_CENTS : JOIN_FEE_CENTS;
+  const mode = req.body && req.body.mode === 'mic' ? 'mic' : 'video';
+  const rates = modelJoinRates(sess.model_id);
+  const fee = stageJoinFee(isExplicitJoin, mode, rates);
+  const modeLabel = mode === 'mic' ? 'mic-only 🎙️' : 'video 🎥';
   try {
     chargeFan(req.user.id, sess.model_id, fee, 'live_join_request',
-      `🎥 Join-live request (${isExplicitJoin ? 'explicit' : 'regular'}) on stream #${sess.id}`);
+      `${mode === 'mic' ? '🎙️' : '🎥'} Join-live request (${modeLabel}, ${isExplicitJoin ? 'explicit' : 'regular'}) on stream #${sess.id}`);
   } catch (e) {
     if (e.message === 'insufficient_credits')
       return res.status(402).json({ error: 'insufficient_credits',
         needed_cents: fee, balance_cents: getWallet(req.user.id).credits_cents });
     throw e;
   }
-  const info = db.prepare(`INSERT INTO live_join_requests (session_id, fan_id, is_explicit) VALUES (?,?,?)`)
-    .run(sess.id, req.user.id, isExplicitJoin ? 1 : 0);
+  const info = db.prepare(`INSERT INTO live_join_requests (session_id, fan_id, is_explicit, mode) VALUES (?,?,?,?)`)
+    .run(sess.id, req.user.id, isExplicitJoin ? 1 : 0, mode);
   const rid = Number(info.lastInsertRowid);
   pushToUser(sess.model_id, { type: 'live:join-request', session_id: sess.id,
     request: { id: rid, fan_id: req.user.id, fan_name: req.user.display_name,
-               is_explicit: isExplicitJoin } });
-  res.json({ ok: true, request_id: rid, is_explicit: isExplicitJoin, fee_cents: fee,
+               is_explicit: isExplicitJoin, mode } });
+  res.json({ ok: true, request_id: rid, is_explicit: isExplicitJoin, mode, fee_cents: fee,
     balance_cents: getWallet(req.user.id).credits_cents });
 });
 
@@ -2039,15 +2082,16 @@ app.post('/api/live/join-requests/:rid/approve', identMiddleware, requireUser, r
       .run(sess.id, r.fan_id);
   }
   const fan = db.prepare('SELECT display_name FROM users WHERE id = ?').get(r.fan_id);
+  const mode = r.mode || 'video';
   const stage = { id: r.id, fan_id: r.fan_id, fan_name: fan.display_name,
-                  is_explicit: !!r.is_explicit,
+                  is_explicit: !!r.is_explicit, mode,
                   stage_ends_at: now + STAGE_MINUTES * 60 * 1000 };
   pushToUser(r.fan_id, { type: 'live:join-approved', session_id: sess.id,
-    request_id: r.id, stage_ends_at: stage.stage_ends_at, is_explicit: !!r.is_explicit });
+    request_id: r.id, stage_ends_at: stage.stage_ends_at, is_explicit: !!r.is_explicit, mode });
   pushLiveAll(sess.id, { type: 'live:stage', session_id: sess.id, stage });
   pushToAdmins({ type: 'live:join_admin', session_id: sess.id, model_id: sess.model_id,
     fan_name: fan.display_name,
-    amount_cents: r.is_explicit ? EXPLICIT_JOIN_FEE_CENTS : JOIN_FEE_CENTS });
+    amount_cents: stageJoinFee(!!r.is_explicit, mode, modelJoinRates(sess.model_id)) });
   res.json({ ok: true, stage });
 });
 
@@ -2057,10 +2101,10 @@ app.post('/api/live/join-requests/:rid/decline', identMiddleware, requireUser, r
   if (!r || r.status !== 'pending') return res.status(404).json({ error: 'not_found' });
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(r.session_id);
   if (!sess || sess.model_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
-  const fee = r.is_explicit ? EXPLICIT_JOIN_FEE_CENTS : JOIN_FEE_CENTS;
+  const fee = stageJoinFee(!!r.is_explicit, r.mode || 'video', modelJoinRates(sess.model_id));
   db.prepare(`UPDATE live_join_requests SET status = 'declined' WHERE id = ?`).run(r.id);
   refundFan(r.fan_id, sess.model_id, fee, 'live_join_refund',
-    `🎥 Join-live declined on stream #${sess.id} — refunded`);
+    `${(r.mode || 'video') === 'mic' ? '🎙️' : '🎥'} Join-live declined on stream #${sess.id} — refunded`);
   pushToUser(r.fan_id, { type: 'live:join-declined', session_id: sess.id,
     request_id: r.id, refunded_cents: fee,
     balance_cents: getWallet(r.fan_id).credits_cents });
@@ -2085,13 +2129,15 @@ app.get('/api/live/:id/stage', identMiddleware, requireUser, (req, res) => {
   const out = { stage: stageJSON(activeStageReq(sess.id)) };
   if (req.user.role === 'model' && sess.model_id === req.user.id) {
     out.pending = pendingStageReqs(sess.id).map((r) =>
-      ({ id: r.id, fan_id: r.fan_id, fan_name: r.fan_name, is_explicit: !!r.is_explicit }));
+      ({ id: r.id, fan_id: r.fan_id, fan_name: r.fan_name, is_explicit: !!r.is_explicit,
+         mode: r.mode || 'video' }));
   } else {
     const mine = db.prepare(`SELECT r.*, u.display_name AS fan_name FROM live_join_requests r
       JOIN users u ON u.id = r.fan_id
       WHERE r.session_id = ? AND r.fan_id = ? AND r.status = 'pending'`)
       .get(sess.id, req.user.id);
-    out.my_pending = mine ? { id: mine.id, fan_name: mine.fan_name } : null;
+    out.my_pending = mine ? { id: mine.id, fan_name: mine.fan_name, mode: mine.mode || 'video',
+      is_explicit: !!mine.is_explicit } : null;
     const myStage = db.prepare(`SELECT r.*, u.display_name AS fan_name FROM live_join_requests r
       JOIN users u ON u.id = r.fan_id
       WHERE r.session_id = ? AND r.fan_id = ? AND r.status = 'approved'`)

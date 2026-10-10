@@ -542,6 +542,25 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
   border: 1px solid rgba(139,92,246,.4); border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; }
 #stage-pip { position: relative; margin-bottom: 8px; }
 #stage-video { width: 100%; max-height: 220px; border-radius: 14px; background: #000; object-fit: cover; }
+#stage-mic { display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: linear-gradient(135deg, #3b1d6e, #1a0f2e); border: 1px solid rgba(139,92,246,.4);
+  border-radius: 14px; padding: 26px 12px; margin-bottom: 4px; position: relative; overflow: hidden; }
+#stage-mic.hidden { display: none; }
+.stage-mic-emoji { font-size: 44px; position: relative; z-index: 1; animation: micBob 1.2s ease-in-out infinite; }
+.stage-mic-pulse { position: absolute; width: 90px; height: 90px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(236,72,153,.45), transparent 70%);
+  animation: micPulse 1.6s ease-out infinite; }
+@keyframes micBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes micPulse { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(1.6); opacity: 0; } }
 .stage-info { font-weight: 800; font-size: 14px; color: #fff; background: rgba(0,0,0,.55);
   border-radius: 10px; padding: 6px 10px; margin: 6px 0; text-align: center; font-variant-numeric: tabular-nums; }
 #stage-drop-btn { width: 100%; }
+
+/* Range sliders (model explicit stage rates) */
+input[type="range"] { -webkit-appearance: none; appearance: none; height: 8px; border-radius: 4px;
+  background: linear-gradient(90deg, #ec4899, #8b5cf6); outline: none; margin: 10px 0; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none;
+  width: 26px; height: 26px; border-radius: 50%; background: #fff;
+  border: 3px solid #ec4899; box-shadow: 0 2px 8px rgba(236,72,153,.5); cursor: pointer; }
+input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%;
+  background: #fff; border: 3px solid #ec4899; box-shadow: 0 2px 8px rgba(236,72,153,.5); cursor: pointer; }

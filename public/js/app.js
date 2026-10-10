@@ -271,18 +271,18 @@ function handleWS(m) {
       if (m.stage && m.stage.fan_id === S.user.id) {
         // Our own approval arrives via live:join-approved; ignore duplicate
       } else if (m.stage) {
-        showStageNotice(m.stage.fan_name);
+        showStageNotice(m.stage.fan_name, m.stage.mode);
       } else {
         hideStageBanner();
       }
     }
   } else if (m.type === 'live:join-approved' && S.live && S.live.role === 'fan' && m.session_id === S.live.sessionId) {
-    onStageApproved({ fan_id: S.user.id, stage_ends_at: m.stage_ends_at }, false);
+    onStageApproved({ fan_id: S.user.id, stage_ends_at: m.stage_ends_at, mode: m.mode }, false);
   } else if (m.type === 'live:join-declined' && S.live && S.live.role === 'fan' && m.session_id === S.live.sessionId) {
     S.live.stagePending = false;
     if (m.balance_cents != null && S.wallet) S.wallet.credits_cents = m.balance_cents;
     hideStageBanner();
-    toast('She passed this time 😅 — $10 refunded to your wallet.', 3500);
+    toast(`She passed this time 😅 — ${fmt(m.refunded_cents || 0)} refunded to your wallet.`, 3500);
   } else if (m.type === 'live:stage-ended' && S.live && S.live.role === 'fan' && m.session_id === S.live.sessionId) {
     stopStageStream();
     showStageBanner('ended');
@@ -290,8 +290,9 @@ function handleWS(m) {
     else if (m.reason === 'dropped') toast('She moved on — thanks for the show! 🎥', 3000);
   } else if (m.type === 'live:join-request' && S.live && S.live.role === 'model' && m.session_id === S.live.sessionId) {
     renderStageRequests();
-    const fee = m.request.is_explicit ? EXPLICIT_JOIN_FEE_CENTS : JOIN_FEE_CENTS;
-    toast(`🎥 ${m.request.fan_name} wants to join your live (${fmt(fee)})!${m.request.is_explicit ? ' 🔞' : ''}`, 4000);
+    const reqMode = (m.request && m.request.mode) || 'video';
+    const fee = stageJoinFee(!!m.request.is_explicit, reqMode);
+    toast(`${stageModeEmoji(reqMode)} ${m.request.fan_name} wants to join (${stageModeLabel(reqMode)} · ${fmt(fee)})!${m.request.is_explicit ? ' 🔞' : ''}`, 4000);
   } else if (m.type === 'live:join-request-cancelled' && S.live && S.live.role === 'model' && m.session_id === S.live.sessionId) {
     renderStageRequests();
   } else if (m.type === 'safety:stream_flag' && S.user && S.user.role === 'admin') {
@@ -790,6 +791,15 @@ async function vModelSettings() {
         <button class="btn" id="s-save">Save rates</button>
       </div>
       <div class="card">
+        <div style="font-weight:800;margin-bottom:6px">🔞 Explicit stage rates</div>
+        <div class="muted small" style="margin-bottom:10px">What fans pay to join you <b>on camera/mic while you're explicit</b>. Regular (non-explicit) joins stay $10 video / $5 mic.</div>
+        <label class="field">🎥 Explicit video join: <b id="s-ejv-label">${fmt(m.explicit_join_cents || 2500)}</b>
+          <input type="range" id="s-ejv" min="500" max="10000" step="100" value="${m.explicit_join_cents || 2500}" style="width:100%"></label>
+        <label class="field">🎙️ Explicit mic join: <b id="s-ejm-label">${fmt(m.explicit_mic_join_cents || 1500)}</b>
+          <input type="range" id="s-ejm" min="500" max="10000" step="100" value="${m.explicit_mic_join_cents || 1500}" style="width:100%"></label>
+        <button class="btn" id="s-ej-save" style="margin-top:8px">Save stage rates</button>
+      </div>
+      <div class="card">
         <div style="font-weight:800;margin-bottom:6px">Bio</div>
         <textarea class="input" id="s-bio" rows="3" maxlength="280">${esc(m.bio)}</textarea>
         <button class="btn" id="s-bio-save">Save bio</button>
@@ -818,6 +828,19 @@ async function vModelSettings() {
     const { status } = await api('/model/profile', {
       method: 'PUT', body: JSON.stringify({ bio: $('#s-bio').value }) });
     toast(status === 200 ? '✅ Bio saved!' : 'Could not save.');
+  };
+  // Explicit stage rate sliders — live label updates
+  const ejv = $('#s-ejv'), ejm = $('#s-ejm');
+  if (ejv) ejv.oninput = () => { $('#s-ejv-label').textContent = fmt(parseInt(ejv.value)); };
+  if (ejm) ejm.oninput = () => { $('#s-ejm-label').textContent = fmt(parseInt(ejm.value)); };
+  const ejSave = $('#s-ej-save');
+  if (ejSave) ejSave.onclick = async () => {
+    const explicit_join_cents = parseInt(ejv.value);
+    const explicit_mic_join_cents = parseInt(ejm.value);
+    const { status } = await api('/model/profile', {
+      method: 'PUT', body: JSON.stringify({ explicit_join_cents, explicit_mic_join_cents }) });
+    toast(status === 200 ? '✅ Stage rates saved!' : 'Could not save.');
+    if (status === 200) refreshMe();
   };
   $('#s-photo').onclick = () => {
     const inp = document.createElement('input');
@@ -1495,6 +1518,7 @@ function vLiveBroadcast() {
       <div id="priority-banner" class="hidden"></div>
       <div id="stage-pip" class="hidden">
         <video id="stage-video" autoplay playsinline class="hidden"></video>
+        <div id="stage-mic" class="hidden"><span class="stage-mic-emoji">🎙️</span><span class="stage-mic-pulse"></span></div>
         <div id="stage-info" class="stage-info"></div>
         <button class="btn small danger" id="stage-drop-btn">Drop ⏏️</button>
       </div>
@@ -1537,13 +1561,15 @@ async function renderStageRequests() {
     const { status, data } = await api(`/live/${L.sessionId}/stage`);
     if (status !== 200 || !data || !S.live || S.live.sessionId !== L.sessionId) return;
     const pend = data.pending || [];
-    box.innerHTML = pend.map((r) => `
+    box.innerHTML = pend.map((r) => {
+      const mode = r.mode || 'video';
+      return `
       <div class="stage-req-card">
-        <span class="grow">🎥 <b>${esc(r.fan_name)}</b> wants to join${r.is_explicit ? ' 🔞' : ''}
-          <span class="muted small">(${fmt(r.is_explicit ? EXPLICIT_JOIN_FEE_CENTS : JOIN_FEE_CENTS)})</span></span>
+        <span class="grow">${stageModeEmoji(mode)} <b>${esc(r.fan_name)}</b> wants to join (${stageModeLabel(mode)})${r.is_explicit ? ' 🔞' : ''}
+          <span class="muted small">(${fmt(stageJoinFee(!!r.is_explicit, mode))})</span></span>
         <button class="btn small" data-approve="${r.id}">✅</button>
         <button class="btn small danger" data-decline="${r.id}">❌</button>
-      </div>`).join('');
+      </div>`; }).join('');
     box.querySelectorAll('[data-approve]').forEach((b) => {
       b.onclick = () => stageApprove(parseInt(b.dataset.approve));
     });
@@ -1562,7 +1588,8 @@ async function stageApprove(rid) {
   if (status === 200 && data.stage) {
     showStagePip(data.stage);
     renderStageRequests();
-    toast(`🎥 ${data.stage.fan_name} is on stage!`, 3000);
+    const mode = data.stage.mode || 'video';
+    toast(`${stageModeEmoji(mode)} ${data.stage.fan_name} is on ${mode === 'mic' ? 'mic' : 'stage'}!`, 3000);
   } else if (status === 409) {
     toast('Someone is already on stage!');
     renderStageRequests();
@@ -1570,8 +1597,8 @@ async function stageApprove(rid) {
 }
 
 async function stageDecline(rid) {
-  const { status } = await api(`/live/join-requests/${rid}/decline`, { method: 'POST' });
-  if (status === 200) { toast('Declined — $10 refunded to them.'); renderStageRequests(); }
+  const { status, data } = await api(`/live/join-requests/${rid}/decline`, { method: 'POST' });
+  if (status === 200) { toast(`Declined — ${fmt(data.refunded_cents || 0)} refunded to them.`); renderStageRequests(); }
   else toast('Could not decline.');
 }
 
@@ -1587,9 +1614,20 @@ function showStagePip(stage) {
   const L = S.live;
   if (!L) return;
   L.stageReqId = stage.id;
+  const mode = stage.mode || 'video';
+  L.stageMode = mode;
   const wrap = $('#stage-pip');
   const info = $('#stage-info');
   if (wrap) wrap.classList.remove('hidden');
+  // Mic mode: show speaking indicator, hide video element
+  const v = $('#stage-video');
+  const mic = $('#stage-mic');
+  if (mode === 'mic') {
+    if (v) { v.srcObject = null; v.classList.add('hidden'); }
+    if (mic) mic.classList.remove('hidden');
+  } else {
+    if (mic) mic.classList.add('hidden');
+  }
   const dropBtn = $('#stage-drop-btn');
   if (dropBtn) dropBtn.onclick = () => stageDrop('dropped');
   // Countdown to auto-drop (3-min stage limit)
@@ -1609,7 +1647,7 @@ function showStagePip(stage) {
     }
     const s = Math.ceil(ms / 1000);
     if (info) info.innerHTML =
-      `🎥 <b>${esc(stage.fan_name)}</b> on stage — ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} left`;
+      `${stageModeEmoji(mode)} <b>${esc(stage.fan_name)}</b> on ${mode === 'mic' ? 'mic' : 'stage'} — ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} left`;
   };
   tick();
   L.stageCountdownInt = setInterval(tick, 1000);
@@ -1622,11 +1660,16 @@ function hideStagePip() {
     L.stageReqId = null;
     if (L.stagePC) { try { L.stagePC.close(); } catch (e) {} L.stagePC = null; }
     L.stageFanId = null;
+    L.stageMode = null;
   }
   const wrap = $('#stage-pip');
   if (wrap) wrap.classList.add('hidden');
   const v = $('#stage-video');
   if (v) { v.srcObject = null; v.classList.add('hidden'); }
+  const mic = $('#stage-mic');
+  if (mic) mic.classList.add('hidden');
+  const a = $('#stage-audio');
+  if (a) { a.srcObject = null; a.remove(); }
 }
 
 /* ---------------- GROUP STREAM: chat, gifts, leaderboard (shared) ---------------- */
@@ -1922,12 +1965,35 @@ async function sendPriority(tierIndex, message, voice) {
   }
 }
 
-/* ---------------- FAN JOIN LIVE (pay $10, model approves, 3-min stage) ---------------- */
+/* ---------------- FAN JOIN LIVE (pay to request, model approves, 3-min stage) ---------------- */
 
-// Mirrors server JOIN_FEE_CENTS / EXPLICIT_JOIN_FEE_CENTS / STAGE_MINUTES
+// Mirrors server JOIN_FEE_CENTS / EXPLICIT_JOIN_FEE_CENTS / MIC_JOIN_FEE_CENTS /
+// EXPLICIT_MIC_JOIN_FEE_CENTS / STAGE_MINUTES
 const JOIN_FEE_CENTS = 1000;
 const EXPLICIT_JOIN_FEE_CENTS = 2500;
+const MIC_JOIN_FEE_CENTS = 500;
+const EXPLICIT_MIC_JOIN_FEE_CENTS = 1500;
 const STAGE_MINUTES = 3;
+
+function stageJoinFee(explicit, mode) {
+  const L = S.live;
+  if (explicit) {
+    // Fan watch view: rates from the join response
+    if (L && Number.isInteger(L.explicitJoinCents) && Number.isInteger(L.explicitMicJoinCents)) {
+      return mode === 'mic' ? L.explicitMicJoinCents : L.explicitJoinCents;
+    }
+    // Model broadcast view: her own rates from S.model
+    if (S.model && Number.isInteger(S.model.explicit_join_cents)) {
+      return mode === 'mic'
+        ? (S.model.explicit_mic_join_cents || 1500)
+        : S.model.explicit_join_cents;
+    }
+    return mode === 'mic' ? EXPLICIT_MIC_JOIN_FEE_CENTS : EXPLICIT_JOIN_FEE_CENTS;
+  }
+  return mode === 'mic' ? MIC_JOIN_FEE_CENTS : JOIN_FEE_CENTS;
+}
+const stageModeEmoji = (mode) => mode === 'mic' ? '🎙️' : '🎥';
+const stageModeLabel = (mode) => mode === 'mic' ? 'Mic only' : 'Video';
 
 async function loadStageState() {
   const L = S.live;
@@ -1939,27 +2005,34 @@ async function loadStageState() {
       showStageNotice(data.stage.fan_name);
     if (L.role === 'fan') {
       if (data.my_stage) onStageApproved(data.my_stage, true);
-      else if (data.my_pending) showStageBanner('pending');
+      else if (data.my_pending) { L.stagePending = true; showStageBanner('pending', data.my_pending.mode); }
       else hideStageBanner();
     }
   } catch (e) { /* ignore */ }
 }
 
-function showStageNotice(fanName) {
+function showStageNotice(fanName, mode) {
   const el = $('#stage-banner');
   if (!el) return;
   el.classList.remove('hidden');
-  el.innerHTML = `<div class="stage-notice">🎥 <b>${esc(fanName)}</b> is on stage with her!</div>`;
+  const m = mode || 'video';
+  el.innerHTML = `<div class="stage-notice">${stageModeEmoji(m)} <b>${esc(fanName)}</b> is on ${m === 'mic' ? 'mic' : 'stage'} with her!</div>`;
 }
 
 function showStageBanner(state, extra) {
   const el = $('#stage-banner');
   if (!el) return;
   el.classList.remove('hidden');
+  const L = S.live;
   if (state === 'pending') {
-    el.innerHTML = `<div class="stage-notice">🎥 Request sent — waiting for her… 👀<br><span class="muted small">$10 held until she decides</span></div>`;
+    const mode = extra || 'video';
+    const fee = L ? stageJoinFee(!!L.isExplicit, mode) : 0;
+    el.innerHTML = `<div class="stage-notice">${stageModeEmoji(mode)} Request sent — waiting for her… 👀<br><span class="muted small">${fmt(fee)} held until she decides</span></div>`;
   } else if (state === 'onstage') {
-    el.innerHTML = `<div class="stage-notice stage-live">📹 <b>YOU'RE ON STAGE!</b> She's seeing you live 🔥</div>`;
+    const mode = extra || 'video';
+    el.innerHTML = mode === 'mic'
+      ? `<div class="stage-notice stage-live">🎙️ <b>YOU'RE ON MIC!</b> She's hearing you live 🔥</div>`
+      : `<div class="stage-notice stage-live">📹 <b>YOU'RE ON STAGE!</b> She's seeing you live 🔥</div>`;
   } else if (state === 'ended') {
     const L = S.live;
     const fee = (L && L.isExplicit) ? EXPLICIT_JOIN_FEE_CENTS : JOIN_FEE_CENTS;
@@ -1978,18 +2051,50 @@ async function requestStageJoin() {
   const L = S.live;
   if (!L || L.role !== 'fan') return;
   if (L.stagePending || L.stagePC) return;
+  openStageModeSheet();
+}
+
+// Fan picks Video or Mic-only, then confirms the request
+function openStageModeSheet() {
+  const L = S.live;
+  if (!L) return;
   const explicit = !!L.isExplicit;
-  const fee = explicit ? EXPLICIT_JOIN_FEE_CENTS : JOIN_FEE_CENTS;
-  const label = explicit
-    ? `🎥 Join her EXPLICIT live on camera for ${fmt(fee)}?\n\nShe approves each request. You get ${STAGE_MINUTES} minutes on stage. The explicit fee covers your viewing too — no extra entry fee. Declined = full refund.`
-    : `🎥 Join her LIVE on camera for ${fmt(fee)}?\n\nShe approves each request. You get ${STAGE_MINUTES} minutes on stage. Declined = full refund.`;
-  if (!confirm(label)) return;
-  const { status, data } = await api(`/live/${L.sessionId}/join-request`, { method: 'POST' });
+  const vFee = stageJoinFee(explicit, 'video');
+  const mFee = stageJoinFee(explicit, 'mic');
+  let sheet = $('#stage-mode-sheet');
+  if (sheet) sheet.remove();
+  sheet = document.createElement('div');
+  sheet.id = 'stage-mode-sheet';
+  sheet.className = 'sheet-backdrop';
+  sheet.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-title">🎙️ Join her live ${explicit ? '🔞' : ''}</div>
+      <div class="muted small" style="margin-bottom:10px">She approves each request. ${STAGE_MINUTES} minutes on stage. Declined = full refund.${explicit ? ' Explicit fee covers your viewing too.' : ''}</div>
+      <button class="sheet-btn" id="sm-video">🎥 Video — <b>${fmt(vFee)}</b><br><span class="muted small">She sees you on camera</span></button>
+      <button class="sheet-btn" id="sm-mic">🎙️ Mic only — <b>${fmt(mFee)}</b><br><span class="muted small">She hears you, no camera</span></button>
+      <button class="sheet-btn cancel" id="sm-cancel">Cancel</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  const close = () => sheet.remove();
+  $('#sm-cancel').onclick = close;
+  sheet.onclick = (e) => { if (e.target === sheet) close(); };
+  $('#sm-video').onclick = () => { close(); sendStageRequest('video'); };
+  $('#sm-mic').onclick = () => { close(); sendStageRequest('mic'); };
+}
+
+async function sendStageRequest(mode) {
+  const L = S.live;
+  if (!L || L.role !== 'fan') return;
+  if (L.stagePending || L.stagePC) return;
+  const explicit = !!L.isExplicit;
+  const fee = stageJoinFee(explicit, mode);
+  const { status, data } = await api(`/live/${L.sessionId}/join-request`, {
+    method: 'POST', body: JSON.stringify({ mode }) });
   if (status === 200) {
     L.stagePending = true;
     if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
-    showStageBanner('pending');
-    toast(`🎥 Request sent (${fmt(data.fee_cents)})! Waiting for her… 👀`, 3000);
+    showStageBanner('pending', mode);
+    toast(`${stageModeEmoji(mode)} Request sent (${fmt(data.fee_cents)})! Waiting for her… 👀`, 3000);
   } else if (status === 402) {
     toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500);
     showBuyCredits(data.needed_cents);
@@ -1997,7 +2102,7 @@ async function requestStageJoin() {
     toast("She's with someone right now — try again soon! 👀", 3000);
   } else if (status === 409 && data.error === 'already_pending') {
     L.stagePending = true;
-    showStageBanner('pending');
+    showStageBanner('pending', mode);
   } else {
     toast('Could not send request.');
   }
@@ -2007,11 +2112,16 @@ async function onStageApproved(stage, silent) {
   const L = S.live;
   if (!L || L.role !== 'fan') return;
   L.stagePending = false;
+  const mode = stage.mode || 'video';
+  L.stageMode = mode;
   hideStageBanner();
-  showStageBanner('onstage');
-  // Publish camera to the model (peer-to-peer; she sees you, viewers see a notice)
+  showStageBanner('onstage', mode);
+  // Publish to the model (peer-to-peer; she sees/hears you, viewers see a notice)
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true });
+    const constraints = mode === 'mic'
+      ? { audio: true, video: false }
+      : { video: { facingMode: 'user' }, audio: true };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
     L.stageStream = stream;
     const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
     stream.getTracks().forEach((t) => pc.addTrack(t, stream));
@@ -2021,10 +2131,10 @@ async function onStageApproved(stage, silent) {
     L.stagePC = pc;
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    liveSignal(L.modelId, L.sessionId, { kind: 'stage-offer', sdp: offer });
-    if (!silent) toast("You're ON! 📹 She's seeing you live!", 3000);
+    liveSignal(L.modelId, L.sessionId, { kind: 'stage-offer', sdp: offer, mode });
+    if (!silent) toast(mode === 'mic' ? "You're ON! 🎙️ She's hearing you live!" : "You're ON! 📹 She's seeing you live!", 3000);
   } catch (e) {
-    toast('Camera/mic permission needed for stage 📹');
+    toast(mode === 'mic' ? 'Mic permission needed for stage 🎙️' : 'Camera/mic permission needed for stage 📹');
     stopStageStream();
   }
 }
@@ -2066,6 +2176,8 @@ async function watchLive(sessionId) {
              countdownInt: null, giftCountdownInt: null, title: data.title || '',
              isExplicit: !!data.is_explicit, explicitUntil: data.explicit_until || 0,
              entryPaid: !!data.explicit_paid, entryCents: data.explicit_entry_cents || 499,
+             explicitJoinCents: data.explicit_join_cents || 2500,
+             explicitMicJoinCents: data.explicit_mic_join_cents || 1500,
              explicitSource: data.is_explicit ? 'manual' : null,
              graceSec: data.explicit_grace_sec || 180,
              chat: [], gifts: [], leaderboard: [] };
@@ -2394,14 +2506,29 @@ async function handleLiveSignal(m) {
       }
     } else if (S.live.role === 'model') {
       if (p.kind === 'stage-offer') {
-        // Incoming stage video from an approved fan (peer-to-peer, model sees them)
+        // Incoming stage media from an approved fan (peer-to-peer, model sees/hears them)
+        if (p.mode) S.live.stageMode = p.mode;
         if (S.live.stagePC) { try { S.live.stagePC.close(); } catch (e) {} }
         const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
         S.live.stagePC = pc;
         S.live.stageFanId = m.from;
         pc.ontrack = (e) => {
-          const v = $('#stage-video');
-          if (v) { v.srcObject = e.streams[0]; v.classList.remove('hidden'); }
+          const isMic = (S.live && S.live.stageMode) === 'mic';
+          if (isMic) {
+            // Audio-only: play through a hidden audio element, show mic indicator
+            let a = $('#stage-audio');
+            if (!a) {
+              a = document.createElement('audio');
+              a.id = 'stage-audio'; a.autoplay = true;
+              $('#stage-pip').appendChild(a);
+            }
+            a.srcObject = e.streams[0];
+            const mic = $('#stage-mic');
+            if (mic) mic.classList.remove('hidden');
+          } else {
+            const v = $('#stage-video');
+            if (v) { v.srcObject = e.streams[0]; v.classList.remove('hidden'); }
+          }
           const wrap = $('#stage-pip');
           if (wrap) wrap.classList.remove('hidden');
         };
