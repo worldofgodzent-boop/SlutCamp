@@ -2134,6 +2134,16 @@ async function uploadMedia(file, kind, priceCents, durationSec) {
 let voiceRec = null, voiceChunks = [], voiceStartTs = 0, voiceTimerInt = null;
 
 function startVoiceRecord() {
+  // Ask for mic FIRST, before showing any overlay (iOS blocks prompts behind overlays)
+  toast('Requesting mic access… 🎤');
+  navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+    startVoiceUI(stream);
+  }).catch(() => {
+    toast('Mic permission needed — allow mic access in your browser settings 🎤', 4000);
+  });
+}
+
+function startVoiceUI(stream) {
   const ov = document.createElement('div');
   ov.id = 'voice-ov';
   ov.innerHTML = `
@@ -2148,10 +2158,16 @@ function startVoiceRecord() {
   ov.style.cssText = 'position:fixed;inset:0;z-index:150;background:rgba(10,5,20,.92);display:flex;align-items:center;justify-content:center;padding:20px';
   document.body.appendChild(ov);
 
-  navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+  try {
     const mime = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4'
       : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
     voiceRec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+  } catch (e) {
+    stream.getTracks().forEach((t) => t.stop());
+    ov.remove();
+    toast('Voice recording not supported on this device 🎤');
+    return;
+  }
     voiceChunks = [];
     voiceRec.ondataavailable = (e) => { if (e.data.size) voiceChunks.push(e.data); };
     voiceRec.onstop = () => {
@@ -2174,10 +2190,6 @@ function startVoiceRecord() {
       m.style.transform = on ? 'scale(1)' : 'scale(1.25)';
       on = !on;
     }, 400);
-  }).catch(() => {
-    ov.remove();
-    toast('Mic permission needed 🎤');
-  });
 
   $('#voice-stop').onclick = () => {
     const secs = Math.max(1, Math.round((Date.now() - voiceStartTs) / 1000));
