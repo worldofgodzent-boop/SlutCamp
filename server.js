@@ -2928,6 +2928,16 @@ function pushLiveAll(sessionId, event) {
   if (sess) pushToUser(sess.model_id, event);
 }
 
+// Debug: check disk status (temporary)
+app.get('/api/debug/disk', (req, res) => {
+  const fs = require('fs');
+  res.json({
+    data_dir: typeof DATA_DIR !== 'undefined' ? DATA_DIR : 'undefined',
+    data_exists: fs.existsSync('/data'),
+    data_contents: fs.existsSync('/data') ? fs.readdirSync('/data') : [],
+  });
+});
+
 // Model: check if she has an active live session (for "Back to Live" button)
 app.get('/api/live/my-session', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const sess = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`)
