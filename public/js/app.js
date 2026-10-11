@@ -1701,8 +1701,33 @@ async function renderTaxCard(containerId) {
       <div class="small muted">${p.tax_id_type === 'ein' ? 'EIN' : 'SSN'}: <b>${esc(p.tax_id_masked)}</b></div>
       <div class="small muted">${esc(p.address_line1)}${p.address_line2 ? ', ' + esc(p.address_line2) : ''}<br>${esc(p.city)}, ${esc(p.state)} ${esc(p.zip)}</div>
       <div class="muted small" style="margin-top:6px">🔒 Your SSN/EIN is encrypted — only the last 4 are shown.</div>
+      ${p.electronic_1099_consent
+        ? `<div class="small" style="margin-top:8px;color:var(--green)">📧 Digital 1099 delivery: <b>ON</b></div>
+           <button class="btn ghost small" id="tax-1099" style="margin-top:8px">📄 Download my 1099 summary</button>`
+        : `<div class="small muted" style="margin-top:8px">📧 Digital 1099 delivery: <b>OFF</b> — update your info below to turn it on.</div>`}
       <button class="btn ghost small" id="tax-edit" style="margin-top:8px">✏️ Update tax info</button>`;
     $('#tax-edit').onclick = () => renderTaxForm(box, p);
+    const b1099 = $('#tax-1099');
+    if (b1099) b1099.onclick = async () => {
+      const year = new Date().getFullYear();
+      const { status, data } = await api(`/tax-profile/1099/${year}`);
+      if (status !== 200) return toast(data.message || 'Could not load 1099');
+      const w = window.open('', '_blank');
+      w.document.write(`<html><head><title>1099 Summary ${year}</title><meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>body{font-family:sans-serif;max-width:600px;margin:20px auto;padding:20px}h1{font-size:22px}.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #ddd}</style>
+        </head><body>
+        <h1>📄 Earnings Summary ${year} (1099-NEC)</h1>
+        <p><b>Payer:</b> Phoenix WOG LLC</p>
+        <p><b>Recipient:</b> ${data.recipient.legal_name}<br>
+        ${data.recipient.address_line1}<br>${data.recipient.city}, ${data.recipient.state} ${data.recipient.zip}<br>
+        Tax ID: ${data.recipient.tax_id_masked}</p>
+        <div class="row"><span>Total paid out (${year}):</span><b>$${data.total_dollars}</b></div>
+        <p style="margin-top:16px;font-size:14px;color:#555">${data.note}</p>
+        <p style="font-size:12px;color:#888">This is a summary for your records. The official 1099-NEC is filed with the IRS.</p>
+        <button onclick="window.print()" style="padding:12px 24px;font-size:16px;margin-top:12px">🖨️ Print / Save PDF</button>
+        </body></html>`);
+      w.document.close();
+    };
     return;
   }
   renderTaxForm(box, null);
@@ -1733,6 +1758,10 @@ function renderTaxForm(box, p) {
       <label class="field" style="flex:1">ZIP<input class="input" id="tax-zip" inputmode="numeric" maxlength="10" value="${v('zip')}" placeholder="12345"></label>
     </div>
     <button class="btn" id="tax-save" style="margin-top:8px">💾 Save tax info</button>
+    <label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;cursor:pointer">
+      <input type="checkbox" id="tax-econsent" style="margin-top:4px" ${p && p.electronic_1099_consent ? 'checked' : ''}>
+      <span class="small">📧 I agree to receive my 1099 tax form <b>digitally</b> (in the app) instead of by mail. I can download it anytime.</span>
+    </label>
     <div class="muted small" style="margin-top:6px">🔒 Encrypted on our server. Only Asce can use this for your 1099 — it's never shown to fans.</div>`;
   $('#tax-save').onclick = async () => {
     const body = {
@@ -1740,6 +1769,7 @@ function renderTaxForm(box, p) {
       tax_id_type: $('#tax-idtype').value, tax_id: $('#tax-id').value,
       address_line1: $('#tax-addr1').value, address_line2: $('#tax-addr2').value,
       city: $('#tax-city').value, state: $('#tax-state').value, zip: $('#tax-zip').value,
+      electronic_1099_consent: $('#tax-econsent').checked,
     };
     const btn = $('#tax-save');
     btn.disabled = true;

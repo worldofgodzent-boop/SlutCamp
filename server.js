@@ -218,7 +218,9 @@ CREATE TABLE IF NOT EXISTS tax_profiles (
   state           TEXT NOT NULL DEFAULT '',
   zip             TEXT NOT NULL DEFAULT '',
   submitted_at    TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+  updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  electronic_1099_consent INTEGER NOT NULL DEFAULT 0,
+  electronic_1099_consent_at TEXT
 );
 
 -- Fraud/chargeback protection: every credit purchase attempt (velocity checks)
@@ -544,6 +546,8 @@ addColumnIfMissing('live_viewers', 'explicit_paid', 'INTEGER NOT NULL DEFAULT 0'
 addColumnIfMissing('platform_stats', 'explicit_gift_grace_sec', 'INTEGER NOT NULL DEFAULT 180');
 addColumnIfMissing('messages', 'gift_json', 'TEXT'); // TikTok-style gift payload on chat gift messages
 addColumnIfMissing('invite_links', 'expires_at', "TEXT NOT NULL DEFAULT (datetime('now', '+6 hours'))");
+addColumnIfMissing('tax_profiles', 'electronic_1099_consent', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('tax_profiles', 'electronic_1099_consent_at', 'TEXT');
 // Backfill: existing invites without expiry get 6h from creation
 db.exec(`UPDATE invite_links SET expires_at = datetime(created_at, '+6 hours') WHERE expires_at IS NULL OR expires_at = ''`);
 addColumnIfMissing('priority_messages', 'voice', 'INTEGER NOT NULL DEFAULT 0');
@@ -2635,10 +2639,34 @@ function validateTaxProfile(body, existing) {
 
 // Her/partner tax profile (masked — the full tax ID never leaves the server)
 app.get('/api/tax-profile', identMiddleware, requireUser, requireRole('model', 'recruiter'), (req, res) => {
-  const p = db.prepare('SELECT legal_name, business_name, tax_id_type, tax_id_last4, address_line1, address_line2, city, state, zip, submitted_at, updated_at FROM tax_profiles WHERE user_id = ?').get(req.user.id);
+  const p = db.prepare('SELECT legal_name, business_name, tax_id_type, tax_id_last4, address_line1, address_line2, city, state, zip, submitted_at, updated_at, electronic_1099_consent, electronic_1099_consent_at FROM tax_profiles WHERE user_id = ?').get(req.user.id);
   if (!p) return res.json({ profile: null });
   const masked = p.tax_id_type === 'ein' ? `XX-XXXX${p.tax_id_last4}` : `***-**-${p.tax_id_last4}`;
-  res.json({ profile: { ...p, tax_id_masked: masked }, key_ephemeral: taxKeyIsEphemeral() });
+  res.json({ profile: { ...p, tax_id_masked: masked, electronic_1099_consent: !!p.electronic_1099_consent }, key_ephemeral: taxKeyIsEphemeral() });
+});
+
+// Model downloads her 1099-NEC summary (digital delivery)
+app.get('/api/tax-profile/1099/:year', identMiddleware, requireUser, requireRole('model', 'recruiter'), (req, res) => {
+  const year = parseInt(req.params.year);
+  if (!year || year < 2020 || year > 2100) return res.status(400).json({ error: 'bad_year' });
+  const p = db.prepare('SELECT * FROM tax_profiles WHERE user_id = ?').get(req.user.id);
+  if (!p) return res.status(404).json({ error: 'no_tax_profile' });
+  if (!p.electronic_1099_consent) return res.status(403).json({ error: 'no_consent', message: 'You must consent to electronic delivery first.' });
+  // Total paid out to this model in the year (payouts = what goes on the 1099)
+  const paid = db.prepare(`SELECT COALESCE(SUM(amount_cents), 0) AS total FROM payouts
+    WHERE user_id = ? AND status = 'paid' AND strftime('%Y', paid_at) = ?`)
+    .get(req.user.id, String(year));
+  const total = paid.total || 0;
+  res.json({
+    year, total_cents: total, total_dollars: (total / 100).toFixed(2),
+    recipient: { legal_name: p.legal_name, address_line1: p.address_line1,
+      address_line2: p.address_line2, city: p.city, state: p.state, zip: p.zip,
+      tax_id_masked: p.tax_id_type === 'ein' ? `XX-XXXX${p.tax_id_last4}` : `***-**-${p.tax_id_last4}` },
+    payer: { name: 'Phoenix WOG LLC' },
+    note: total >= 60000
+      ? 'You earned $600 or more. A 1099-NEC will be filed with the IRS.'
+      : 'You earned under $600. No 1099-NEC filing required, but report this income on your taxes.',
+  });
 });
 
 // Submit/update tax profile (W-9 info)
@@ -2655,16 +2683,19 @@ app.post('/api/tax-profile', identMiddleware, requireUser, requireRole('model', 
     last4 = v.tax_id.slice(-4);
     idType = v.tax_id_type;
   }
-  db.prepare(`INSERT INTO tax_profiles (user_id, legal_name, business_name, tax_id_type, tax_id_encrypted, tax_id_last4, address_line1, address_line2, city, state, zip)
-              VALUES (?,?,?,?,?,?,?,?,?,?,?)
+  db.prepare(`INSERT INTO tax_profiles (user_id, legal_name, business_name, tax_id_type, tax_id_encrypted, tax_id_last4, address_line1, address_line2, city, state, zip, electronic_1099_consent, electronic_1099_consent_at)
+              VALUES (?,?,?,?,?,?,?,?,?,?,?, ?, CASE WHEN ? = 1 THEN datetime('now') ELSE NULL END)
               ON CONFLICT(user_id) DO UPDATE SET legal_name = excluded.legal_name,
                 business_name = excluded.business_name, tax_id_type = excluded.tax_id_type,
                 tax_id_encrypted = excluded.tax_id_encrypted, tax_id_last4 = excluded.tax_id_last4,
                 address_line1 = excluded.address_line1, address_line2 = excluded.address_line2,
                 city = excluded.city, state = excluded.state, zip = excluded.zip,
+                electronic_1099_consent = excluded.electronic_1099_consent,
+                electronic_1099_consent_at = excluded.electronic_1099_consent_at,
                 updated_at = datetime('now')`).run(
     req.user.id, v.legal_name, v.business_name, idType, enc, last4,
-    v.address_line1, v.address_line2, v.city, v.state, v.zip);
+    v.address_line1, v.address_line2, v.city, v.state, v.zip,
+    req.body.electronic_1099_consent ? 1 : 0, req.body.electronic_1099_consent ? 1 : 0);
   res.json({ ok: true, tax_id_last4: last4, tax_id_type: idType });
 });
 
