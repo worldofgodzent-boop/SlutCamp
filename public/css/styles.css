@@ -198,6 +198,17 @@ label.field { display: block; margin-top: 14px; font-size: 14px; font-weight: 60
 }
 .btn-live:active { transform: scale(.96); box-shadow: 0 1px 4px rgba(255,59,48,.3); }
 
+/* Blue book 1-on-1 button in chat header — prominent and tappable */
+.btn-book {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 8px 14px; border: none; border-radius: 999px; cursor: pointer;
+  background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff;
+  font-size: 14px; font-weight: 700; font-family: inherit; white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(59,130,246,.4); flex-shrink: 0;
+  -webkit-appearance: none; appearance: none;
+}
+.btn-book:active { transform: scale(.95); }
+
 /* ---------- Chat screen (WhatsApp style) ---------- */
 .chat-header {
   display: flex; align-items: center; gap: 10px;

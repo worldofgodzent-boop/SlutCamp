@@ -322,7 +322,8 @@ function handleWS(m) {
     renderStageRequests();
     const reqMode = (m.request && m.request.mode) || 'video';
     const fee = stageJoinFee(!!m.request.is_explicit, reqMode);
-    toast(`${stageModeEmoji(reqMode)} ${m.request.fan_name} wants to join (${stageModeLabel(reqMode)} · ${fmt(fee)})!${m.request.is_explicit ? ' 🔞' : ''}`, 4000);
+    // Show a dedicated modal with big buttons — impossible to miss or block
+    showStageRequestModal(m.request, fee);
     // Fallback: if the API call fails, render from WS data directly
     setTimeout(() => {
       const box = $('#stage-requests');
@@ -1872,7 +1873,7 @@ async function vChat(params) {
       </div>
       ${!isModel && !S.user ? `<span class="small" style="color:var(--pink);font-weight:700">🎁 ${conv.free_remaining} free left</span>` : ''}
       ${canVideo ? `<button class="icon-btn" id="c-video" title="Video call">📹</button>` : ''}
-      ${S.user && S.user.role === 'fan' ? `<button class="icon-btn" id="c-book" title="Book private live">📅</button>` : ''}
+      ${S.user && S.user.role === 'fan' ? `<button class="btn-book" id="c-book" title="Book a private 1-on-1 live">📅 Book 1-on-1</button>` : ''}
     </div>
     ${conv.is_paused ? `
       <div class="rate-hint" style="background:rgba(248,113,113,.12);color:#fca5a5;font-weight:700">
@@ -2610,6 +2611,40 @@ function vLiveBroadcast() {
     if (S.live && S.live.role === 'model') renderStageRequests();
     else clearInterval(S.live.stagePoll);
   }, 5000);
+}
+
+/* Stage request modal — big tappable approve/decline, can't be missed */
+function showStageRequestModal(req, fee) {
+  if (!req || !req.id) return;
+  // Remove any existing modal
+  const old = $('#stage-req-modal');
+  if (old) old.remove();
+  const mode = req.mode || 'video';
+  const ov = document.createElement('div');
+  ov.id = 'stage-req-modal';
+  ov.innerHTML = `
+    <div style="position:fixed;inset:0;z-index:300;background:rgba(5,2,12,.75);display:flex;align-items:center;justify-content:center;padding:24px" id="srm-bg">
+      <div class="card" style="max-width:360px;width:100%;text-align:center;border:2px solid var(--purple)">
+        <div style="font-size:48px;margin-bottom:8px">${stageModeEmoji(mode)}</div>
+        <h3 style="margin:0 0 4px"><b>${esc(req.fan_name)}</b> wants to join!</h3>
+        <p class="muted" style="margin:0 0 16px">${stageModeLabel(mode)} · ${fmt(fee)}${req.is_explicit ? ' 🔞' : ''}</p>
+        <div style="display:flex;gap:12px">
+          <button class="btn success" id="srm-approve" style="flex:1;padding:16px;font-size:18px">✅ Let them in</button>
+          <button class="btn danger" id="srm-decline" style="flex:1;padding:16px;font-size:18px">❌ Decline</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  $('#srm-approve').onclick = async () => {
+    ov.remove();
+    await stageApprove(req.id);
+  };
+  $('#srm-decline').onclick = async () => {
+    ov.remove();
+    await stageDecline(req.id);
+  };
+  // Tapping outside dismisses (but request stays in the list)
+  $('#srm-bg').onclick = (e) => { if (e.target.id === 'srm-bg') ov.remove(); };
 }
 
 /* --- MODEL: stage requests + active stage fan (3-min limit) --- */
