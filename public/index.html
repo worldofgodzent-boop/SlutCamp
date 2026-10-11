@@ -16,6 +16,20 @@
 <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
+<!-- 18+ age gate: shown before anything else until confirmed -->
+<div id="age-gate" class="hidden">
+  <div class="age-gate-card">
+    <h1 class="age-gate-logo">SLUT<span>CAMP</span></h1>
+    <div class="age-gate-q">VERIFY YOUR AGE</div>
+    <p class="age-gate-sub">Enter your date of birth. You must be 18 or older to enter.</p>
+    <form id="age-form">
+      <input id="age-dob" type="date" class="age-input" min="1900-01-01" required>
+      <p id="age-error" class="age-error hidden"></p>
+      <button type="submit" class="btn age-yes" style="width:100%;margin-top:12px">VERIFY & ENTER</button>
+    </form>
+  </div>
+</div>
+
 <!-- The whole app renders inside #app. Simple on purpose. -->
 <div id="phone">
   <div id="app"></div>

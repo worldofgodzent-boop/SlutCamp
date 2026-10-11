@@ -4151,9 +4151,63 @@ $('#call-accept').onclick = acceptCall;
 $('#call-decline').onclick = declineCall;
 $('#call-hangup').onclick = hangupCall;
 
+/* ---------------- 18+ age gate ---------------- */
+// Resolves when the visitor has verified they are 18+. Shows a full-screen
+// date-of-birth gate on every load where the localStorage flag is missing.
+function checkAgeGate() {
+  return new Promise((resolve) => {
+    if (localStorage.getItem('slutcamp_age_ok') === '1') return resolve();
+    const gate = $('#age-gate');
+    gate.classList.remove('hidden');
+    // Set max to today so future dates can't be picked
+    const dob = $('#age-dob');
+    dob.max = new Date().toISOString().slice(0, 10);
+    $('#age-form').onsubmit = (e) => {
+      e.preventDefault();
+      const err = $('#age-error');
+      err.classList.add('hidden');
+      const val = dob.value;
+      if (!val) {
+        err.textContent = 'Please enter your date of birth.';
+        err.classList.remove('hidden');
+        return;
+      }
+      const parts = val.split('-').map(Number);
+      const birth = new Date(parts[0], parts[1] - 1, parts[2]);
+      const now = new Date();
+      // Validate the date is real (catches Feb 30 etc.) and in a sane range
+      if (isNaN(birth.getTime()) ||
+          birth.getFullYear() !== parts[0] ||
+          birth.getMonth() !== parts[1] - 1 ||
+          birth.getDate() !== parts[2] ||
+          birth > now || parts[0] < 1900) {
+        err.textContent = 'Please enter a valid date of birth.';
+        err.classList.remove('hidden');
+        return;
+      }
+      let age = now.getFullYear() - birth.getFullYear();
+      const hadBirthday = now.getMonth() > birth.getMonth() ||
+        (now.getMonth() === birth.getMonth() && now.getDate() >= birth.getDate());
+      if (!hadBirthday) age--;
+      if (age >= 18) {
+        localStorage.setItem('slutcamp_age_ok', '1');
+        gate.classList.add('hidden');
+        resolve();
+      } else {
+        gate.querySelector('.age-gate-card').innerHTML =
+          '<h1 class="age-gate-logo">SLUT<span>CAMP</span></h1>' +
+          '<div class="age-gate-denied">You must be 18 or older to enter SlutCamp.</div>' +
+          '<p><a href="https://www.google.com">← Back to Google</a></p>';
+      }
+    };
+  });
+}
+
 /* ---------------- boot ---------------- */
 
 (async function boot() {
+  // Age gate first — nothing else renders until confirmed 18+
+  await checkAgeGate();
   // Secret admin route: #boss → dedicated admin login (not linked anywhere in UI)
   if (window.location.hash === '#boss') {
     await ensureGuest();
