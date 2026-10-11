@@ -2131,11 +2131,14 @@ function closeActionSheet() {
 }
 
 function pickPpvFile(kind) {
-  const input = $('#ppv-file');
+  // iOS Safari blocks clicks on display:none inputs — create a visible-but-offscreen one
+  const input = document.createElement('input');
+  input.type = 'file';
   input.accept = kind === 'ppv_video' ? 'video/*' : 'image/*';
+  input.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.01;z-index:9999;';
   input.onchange = () => {
     const f = input.files[0];
-    input.value = '';
+    input.remove();
     if (!f) return;
     if (f.size > 30 * 1024 * 1024) return toast('File too big — 30MB max.');
     const def = kind === 'ppv_video' ? '9.99' : '4.99';
@@ -2145,6 +2148,7 @@ function pickPpvFile(kind) {
     if (!Number.isFinite(price) || (price !== 0 && (price < 100 || price > 10000))) return toast('Enter 0 for free, or $1–$100');
     uploadMedia(f, kind, price, 0);
   };
+  document.body.appendChild(input);
   input.click();
 }
 
