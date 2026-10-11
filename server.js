@@ -1316,6 +1316,12 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
     const isModelSender = req.ident.kind === 'user' && req.ident.user.role === 'model';
     const isFanSender = !isModelSender;
 
+    // Fans can ONLY send voice notes — no picture/video uploads, ever.
+    if (isFanSender && kind !== 'voice') {
+      fs.unlink(req.file.path, () => {});
+      return res.status(403).json({ error: 'fans_cannot_upload_media' });
+    }
+
     // Price: models set whatever they want for PPV/voice. Fans' voice notes = normal message billing.
     let priceCents = 0;
     if (isModelSender && kind !== 'voice') {
