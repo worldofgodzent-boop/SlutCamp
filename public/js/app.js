@@ -2565,7 +2565,17 @@ function vLiveBroadcast() {
   if (!L) return show('modelChats', {});
   app.innerHTML = `
     <div class="live-wrap">
-      <video id="live-local" autoplay playsinline muted></video>
+      <div id="live-split" class="live-split">
+        <div class="split-pane" id="split-model">
+          <video id="live-local" autoplay playsinline muted></video>
+          <div class="split-name" id="split-model-name">${esc(S.model?.display_name || 'You')}</div>
+        </div>
+        <div class="split-pane hidden" id="split-fan">
+          <video id="stage-video" autoplay playsinline muted class="hidden"></video>
+          <div id="stage-mic" class="hidden"><span class="stage-mic-emoji">🎙️</span><span class="stage-mic-pulse"></span></div>
+          <div class="split-name" id="split-fan-name"></div>
+        </div>
+      </div>
       <div class="live-top">
         <span class="live-badge">🔴 LIVE</span>
         <span id="live-viewer-count" class="live-viewers">0 watching</span>
@@ -2574,8 +2584,6 @@ function vLiveBroadcast() {
       <div id="priority-banner" class="hidden"></div>
       <div id="gift-stack"></div>
       <div id="stage-pip" class="hidden">
-        <video id="stage-video" autoplay playsinline muted class="hidden"></video>
-        <div id="stage-mic" class="hidden"><span class="stage-mic-emoji">🎙️</span><span class="stage-mic-pulse"></span></div>
         <div id="stage-info" class="stage-info"></div>
         <button class="btn small danger" id="stage-drop-btn">Drop ⏏️</button>
       </div>
@@ -2716,6 +2724,13 @@ function showStagePip(stage) {
   const wrap = $('#stage-pip');
   const info = $('#stage-info');
   if (wrap) wrap.classList.remove('hidden');
+  // TikTok-style split screen: show fan pane alongside model
+  const splitFan = $('#split-fan');
+  const splitWrap = $('#live-split');
+  const fanName = $('#split-fan-name');
+  if (splitFan) splitFan.classList.remove('hidden');
+  if (splitWrap) splitWrap.classList.add('has-fan');
+  if (fanName) fanName.textContent = stage.fan_name || 'Fan';
   // Mic mode: show speaking indicator, hide video element
   const v = $('#stage-video');
   const mic = $('#stage-mic');
@@ -2761,6 +2776,11 @@ function hideStagePip() {
   }
   const wrap = $('#stage-pip');
   if (wrap) wrap.classList.add('hidden');
+  // Hide split-screen fan pane
+  const splitFan = $('#split-fan');
+  const splitWrap = $('#live-split');
+  if (splitFan) splitFan.classList.add('hidden');
+  if (splitWrap) splitWrap.classList.remove('has-fan');
   const v = $('#stage-video');
   if (v) { v.srcObject = null; v.classList.add('hidden'); }
   const mic = $('#stage-mic');
@@ -3893,7 +3913,7 @@ async function handleLiveSignal(m) {
             if (!a) {
               a = document.createElement('audio');
               a.id = 'stage-audio'; a.autoplay = true; a.playsInline = true;
-              $('#stage-pip').appendChild(a);
+              $('#split-fan').appendChild(a);
             }
             a.srcObject = e.streams[0];
             // iOS Safari blocks autoplay — explicitly play on user gesture context
@@ -3905,7 +3925,7 @@ async function handleLiveSignal(m) {
                 btn.className = 'btn small';
                 btn.textContent = '🔊 Tap to hear them';
                 btn.onclick = () => { a.play().then(() => btn.remove()).catch(() => {}); };
-                $('#stage-pip').appendChild(btn);
+                $('#split-fan').appendChild(btn);
               }
             });
             const mic = $('#stage-mic');
@@ -3924,7 +3944,7 @@ async function handleLiveSignal(m) {
                 if (!a) {
                   a = document.createElement('audio');
                   a.id = 'stage-audio-video'; a.autoplay = true; a.playsInline = true;
-                  $('#stage-pip').appendChild(a);
+                  $('#split-fan').appendChild(a);
                 }
                 a.srcObject = new MediaStream(audioTracks);
                 a.play().catch(() => {});

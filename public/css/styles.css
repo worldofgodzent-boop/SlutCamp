@@ -659,6 +659,21 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
   border-radius: 10px; padding: 6px 10px; margin: 6px 0; text-align: center; font-variant-numeric: tabular-nums; }
 #stage-drop-btn { width: 100%; }
 
+/* TikTok-style split screen: model on top, fan below (portrait) */
+.live-split { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.split-pane { position: relative; border-radius: 14px; overflow: hidden; background: #000; min-height: 200px; }
+.split-pane video { width: 100%; height: 100%; max-height: 300px; object-fit: cover; display: block; }
+.split-pane .hidden { display: none; }
+.split-name {
+  position: absolute; left: 8px; bottom: 8px; z-index: 2;
+  background: rgba(0,0,0,.6); color: #fff; font-size: 13px; font-weight: 700;
+  padding: 4px 10px; border-radius: 999px;
+}
+#split-fan.hidden { display: none; }
+/* When fan joins, both panes share the space equally */
+.live-split.has-fan .split-pane { flex: 1; min-height: 180px; }
+.live-split.has-fan .split-pane video { max-height: 240px; }
+
 /* Range sliders (model explicit stage rates) */
 input[type="range"] { -webkit-appearance: none; appearance: none; height: 8px; border-radius: 4px;
   background: linear-gradient(90deg, #ec4899, #8b5cf6); outline: none; margin: 10px 0; }
