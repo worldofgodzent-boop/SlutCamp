@@ -2574,7 +2574,7 @@ function vLiveBroadcast() {
       <div id="priority-banner" class="hidden"></div>
       <div id="gift-stack"></div>
       <div id="stage-pip" class="hidden">
-        <video id="stage-video" autoplay playsinline class="hidden"></video>
+        <video id="stage-video" autoplay playsinline muted class="hidden"></video>
         <div id="stage-mic" class="hidden"><span class="stage-mic-emoji">🎙️</span><span class="stage-mic-pulse"></span></div>
         <div id="stage-info" class="stage-info"></div>
         <button class="btn small danger" id="stage-drop-btn">Drop ⏏️</button>
@@ -3912,7 +3912,24 @@ async function handleLiveSignal(m) {
             if (mic) mic.classList.remove('hidden');
           } else {
             const v = $('#stage-video');
-            if (v) { v.srcObject = e.streams[0]; v.classList.remove('hidden'); v.play().catch(() => {}); }
+            if (v) {
+              v.srcObject = e.streams[0];
+              v.classList.remove('hidden');
+              v.muted = true; // Muted so iOS allows autoplay; audio plays via separate element below
+              v.play().catch(() => {});
+              // Play audio through a separate element so she hears you too
+              const audioTracks = e.streams[0].getAudioTracks();
+              if (audioTracks.length) {
+                let a = $('#stage-audio-video');
+                if (!a) {
+                  a = document.createElement('audio');
+                  a.id = 'stage-audio-video'; a.autoplay = true; a.playsInline = true;
+                  $('#stage-pip').appendChild(a);
+                }
+                a.srcObject = new MediaStream(audioTracks);
+                a.play().catch(() => {});
+              }
+            }
           }
           const wrap = $('#stage-pip');
           if (wrap) wrap.classList.remove('hidden');
