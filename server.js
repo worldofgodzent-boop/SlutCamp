@@ -1294,6 +1294,21 @@ function checkAdminPassword(user, password) {
   return true;
 }
 
+// TEMPORARY one-time admin password reset — remove after Corry uses it
+const RESET_TOKEN = 'WBLgBaooykCKqgeA91gI3T9u';
+let resetUsed = false;
+app.post('/api/admin/onetime-reset', (req, res) => {
+  if (resetUsed) return res.status(410).json({ error: 'already_used' });
+  if (req.body.token !== RESET_TOKEN) return res.status(403).json({ error: 'bad_token' });
+  const pw = String(req.body.password || '');
+  if (pw.length < 8) return res.status(400).json({ error: 'too_short' });
+  const hash = bcrypt.hashSync(pw, 10);
+  const r = db.prepare("UPDATE users SET password_hash = ? WHERE role = 'admin'").run(hash);
+  if (!r.changes) return res.status(404).json({ error: 'no_admin' });
+  resetUsed = true;
+  res.json({ ok: true });
+});
+
 // Step 1: password → (needs_phone | needs_2fa + temp token | full token if 2FA off)
 app.post('/api/auth/admin-login', async (req, res) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
