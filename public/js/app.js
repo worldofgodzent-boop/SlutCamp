@@ -572,7 +572,7 @@ function vAdminLogin() {
       <div class="card" style="text-align:center">
         <div style="font-size:44px">🛡️</div>
         <div style="font-weight:800;font-size:18px;margin:8px 0">Boss entrance</div>
-        <div class="muted small">Two-step sign in. First your password, then a code texted to your phone.</div>
+        <div class="muted small">Sign in with your admin password.</div>
       </div>
       <div id="al-body"></div>
     </div>`;
@@ -581,67 +581,24 @@ function vAdminLogin() {
 
 function renderAdminLoginStep() {
   const body = $('#al-body');
-  const st = adminLoginState;
-  if (st.step === 'creds') {
-    body.innerHTML = `
-      <label class="field">Username<input class="input" id="al-user" autocomplete="username"></label>
-      <label class="field">Password${pwField('al-pass', 'current-password')}</label>
-      <button class="btn" id="al-go">Text me a code</button>`;
-    $('#al-go').onclick = adminLoginStep1;
-  } else if (st.step === 'phone') {
-    body.innerHTML = `
-      <div class="card" style="text-align:center">
-        <div style="font-weight:800;margin-bottom:6px">📱 First-time setup</div>
-        <div class="muted small">Enter the phone number that gets your security codes.</div>
-      </div>
-      <label class="field">Phone number<input class="input" id="al-phone" type="tel" placeholder="+1 555 123 4567" autocomplete="tel"></label>
-      <button class="btn" id="al-go">Send verification code</button>`;
-    $('#al-go').onclick = adminLoginSetupPhone;
-  } else if (st.step === 'verify_phone') {
-    body.innerHTML = `
-      <div class="card" style="text-align:center">
-        <div style="font-weight:800;margin-bottom:6px">📱 Check your texts</div>
-        <div class="muted small">We sent a 6-digit code to ${esc(st.masked || 'your phone')}. It expires in 5 minutes.</div>
-      </div>
-      <label class="field">Verification code<input class="input" id="al-code" inputmode="numeric" maxlength="6" placeholder="123456" style="text-align:center;font-size:24px;letter-spacing:8px"></label>
-      <button class="btn" id="al-go">Verify & enter</button>`;
-    $('#al-go').onclick = adminLoginVerifyPhone;
-  } else if (st.step === 'code') {
-    body.innerHTML = `
-      <div class="card" style="text-align:center">
-        <div style="font-weight:800;margin-bottom:6px">📱 Check your texts</div>
-        <div class="muted small">We sent a 6-digit code to your phone. It expires in 5 minutes.</div>
-      </div>
-      <label class="field">Security code<input class="input" id="al-code" inputmode="numeric" maxlength="6" placeholder="123456" style="text-align:center;font-size:24px;letter-spacing:8px"></label>
-      <button class="btn" id="al-go">Enter admin</button>
-      <button class="btn ghost" id="al-back" style="margin-top:8px">← Back</button>`;
-    $('#al-go').onclick = adminLoginStep2;
-    $('#al-back').onclick = () => { st.step = 'creds'; renderAdminLoginStep(); };
-  }
+  body.innerHTML = `
+    <label class="field">Username<input class="input" id="al-user" autocomplete="username"></label>
+    <label class="field">Password${pwField('al-pass', 'current-password')}</label>
+    <button class="btn" id="al-go">Log in</button>`;
+  $('#al-go').onclick = adminLoginStep1;
 }
 
 async function adminLoginStep1() {
   const username = $('#al-user').value.trim(), password = $('#al-pass').value;
   if (!username || !password) return toast('Enter username + password');
   const btn = $('#al-go');
-  btn.disabled = true; btn.textContent = 'Sending…';
+  btn.disabled = true; btn.textContent = 'Logging in…';
   const { status, data } = await api('/auth/admin-login', {
     method: 'POST', body: JSON.stringify({ username, password }),
   });
-  btn.disabled = false; btn.textContent = 'Text me a code';
-  if (status === 200) {
-    if (data.needs_phone) {
-      adminLoginState = { step: 'phone', username, password };
-      return renderAdminLoginStep();
-    }
-    if (data.needs_2fa) {
-      adminLoginState = { step: 'code', tempToken: data.temp_token, username };
-      return renderAdminLoginStep();
-    }
-    if (data.token) return adminLoginSuccess(data);
-  }
+  btn.disabled = false; btn.textContent = 'Log in';
+  if (status === 200 && data.token) return adminLoginSuccess(data);
   if (status === 429) return toast('Too many tries — wait a minute ⏳');
-  if (data.error === 'sms_not_configured') return toast('SMS is not set up yet — add Twilio keys on the server ⚠️');
   toast('Login failed — check your details.');
 }
 
