@@ -423,6 +423,8 @@ function show(view, params) {
     view = 'modelContract';
   }
   S.view = view;
+  // Admin gets a wide desktop layout on big screens (phone layout stays on mobile)
+  document.body.classList.toggle('admin-wide', view === 'admin');
   renderTabbar();
   renderBell();
   window.scrollTo(0, 0);
