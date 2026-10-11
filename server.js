@@ -1339,7 +1339,7 @@ app.post('/api/admin/onetime-reset', (req, res) => {
   res.json({ ok: true });
 });
 
-// Step 1: password → (needs_phone | needs_2fa + temp token | full token if 2FA off)
+// Step 1: password → full session (SMS 2FA disabled per Corry Oct 10, 2026)
 app.post('/api/auth/admin-login', async (req, res) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   if (adminRateLimited(ip)) return res.status(429).json({ error: 'too_many_attempts' });
@@ -1347,16 +1347,6 @@ app.post('/api/auth/admin-login', async (req, res) => {
   const user = getAdminUser(username);
   if (!checkAdminPassword(user, password)) return res.status(401).json({ error: 'bad_login' });
 
-  const { phone, on } = getAdmin2FAState();
-  if (!phone) return res.json({ needs_phone: true });
-
-  if (on) {
-    const code = issueSmsCode(user.id);
-    const sent = await sendAdminSMS(phone, `SlutCamp admin code: ${code}. Expires in 5 min.`);
-    if (!sent.ok) return res.status(500).json({ error: sent.error });
-    return res.json({ needs_2fa: true, temp_token: createAdminTempToken(user.id) });
-  }
-  // 2FA not on (shouldn't happen after setup, but don't lock out)
   const token = createSession(user.id);
   res.json({ token, user: getUserPublic(user) });
 });
