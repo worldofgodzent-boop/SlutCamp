@@ -4756,6 +4756,122 @@ app.get(/^\/(?!api\/).*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+/* ------------------------------------------------------------------ */
+/* Biweekly cleanup — every Saturday, delete chat content older than    */
+/* 14 days (texts, photos, videos, voice notes) to save disk space.    */
+/* Financial records (transactions, payouts) are NEVER touched.         */
+/* ------------------------------------------------------------------ */
+
+function runBiweeklyCleanup() {
+  const cutoff = `datetime('now', '-14 days')`;
+  let filesDeleted = 0, bytesFreed = 0;
+
+  // 1. Delete old media files from disk
+  const oldMedia = db.prepare(
+    `SELECT id, file_path FROM media_items WHERE created_at < ${cutoff}`).all();
+  for (const m of oldMedia) {
+    try {
+      const fp = path.isAbsolute(m.file_path) ? m.file_path : path.join(__dirname, m.file_path);
+      if (fs.existsSync(fp)) {
+        bytesFreed += fs.statSync(fp).size;
+        fs.unlinkSync(fp);
+        filesDeleted++;
+      }
+    } catch (e) { /* already gone */ }
+  }
+  // 2. Delete old model profile photos (photo-*.jpg in uploads, not current)
+  const currentPhotos = new Set(
+    db.prepare(`SELECT photo_url FROM models WHERE photo_url != ''`).all().map((r) => r.photo_url));
+  try {
+    for (const f of fs.readdirSync(UPLOAD_DIR)) {
+      if (!/^photo-[a-f0-9]+\.(jpg|png|webp)$/.test(f)) continue;
+      const url = '/uploads/' + f;
+      if (currentPhotos.has(url)) continue;
+      const fp = path.join(UPLOAD_DIR, f);
+      const stat = fs.statSync(fp);
+      const ageMs = Date.now() - stat.mtimeMs;
+      if (ageMs > 14 * 24 * 3600 * 1000) {
+        bytesFreed += stat.size;
+        fs.unlinkSync(fp);
+        filesDeleted++;
+      }
+    }
+  } catch (e) { /* dir missing */ }
+
+  // 3. Delete old chat messages + media records + stream chat
+  const msgDel = db.prepare(`DELETE FROM messages WHERE created_at < ${cutoff}`).run();
+  const mediaDel = db.prepare(`DELETE FROM media_items WHERE created_at < ${cutoff}`).run();
+  const streamDel = db.prepare(`DELETE FROM stream_chat WHERE created_at < ${cutoff}`).run();
+  // 4. Clean up orphaned unlock records for deleted media
+  db.prepare(`DELETE FROM media_unlocks WHERE media_id NOT IN (SELECT id FROM media_items)`).run();
+
+  const result = {
+    ran_at: new Date().toISOString(),
+    messages_deleted: msgDel.changes,
+    media_records_deleted: mediaDel.changes,
+    stream_messages_deleted: streamDel.changes,
+    files_deleted: filesDeleted,
+    mb_freed: Math.round(bytesFreed / 1024 / 1024 * 10) / 10,
+  };
+  db.prepare(`INSERT INTO platform_stats (id, earnings_cents, commission_pct) VALUES (1, 0, 30)
+    ON CONFLICT(id) DO NOTHING`).run();
+  // Store last cleanup result in a simple key-value spot
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS cleanup_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, ran_at TEXT NOT NULL,
+      messages_deleted INTEGER DEFAULT 0, media_records_deleted INTEGER DEFAULT 0,
+      stream_messages_deleted INTEGER DEFAULT 0, files_deleted INTEGER DEFAULT 0,
+      mb_freed REAL DEFAULT 0)`);
+    db.prepare(`INSERT INTO cleanup_log (ran_at, messages_deleted, media_records_deleted,
+      stream_messages_deleted, files_deleted, mb_freed) VALUES (?,?,?,?,?,?)`)
+      .run(result.ran_at, result.messages_deleted, result.media_records_deleted,
+           result.stream_messages_deleted, result.files_deleted, result.mb_freed);
+  } catch (e) { /* log table failed, skip */ }
+  console.log(`🧹 Biweekly cleanup: ${result.messages_deleted} msgs, ${result.files_deleted} files, ${result.mb_freed}MB freed`);
+  // Notify admin
+  try { pushToAdmins({ type: 'cleanup:done', ...result }); } catch (e) { /* ignore */ }
+  return result;
+}
+
+// Check every hour: Saturday biweekly cleanup + emergency cleanup at 50% disk
+let lastCleanupWeek = '';
+setInterval(() => {
+  const now = new Date();
+  // Emergency: if disk is over 50% full, clean up NOW regardless of schedule
+  try {
+    const { execSync } = require('child_process');
+    const out = execSync(`df -k "${DATA_DIR}" | tail -1`).toString();
+    const parts = out.trim().split(/\s+/);
+    const pct = parseInt(parts[4] ? parts[4].replace('%', '') : '0');
+    if (pct >= 50) {
+      console.log(`🧹 Emergency cleanup: disk at ${pct}%`);
+      runBiweeklyCleanup();
+      return;
+    }
+  } catch (e) { /* df failed, skip */ }
+  // Regular schedule: every other Saturday
+  if (now.getDay() !== 6) return; // Saturday only
+  if (now.getDay() !== 6) return; // Saturday only
+  const weekKey = `${now.getFullYear()}-W${Math.ceil(now.getDate() / 7)}-${now.getMonth()}`;
+  // Only run every OTHER Saturday (biweekly)
+  const weekNum = Math.floor(now.getTime() / (7 * 24 * 3600 * 1000));
+  if (weekNum % 2 !== 0) return;
+  if (lastCleanupWeek === weekKey) return;
+  lastCleanupWeek = weekKey;
+  runBiweeklyCleanup();
+}, 3600 * 1000);
+
+// Admin: trigger cleanup manually + view history
+app.post('/api/admin/cleanup', ...adminOnly, (req, res) => {
+  res.json(runBiweeklyCleanup());
+});
+app.get('/api/admin/cleanup', ...adminOnly, (req, res) => {
+  try {
+    const log = db.prepare('SELECT * FROM cleanup_log ORDER BY id DESC LIMIT 10').all();
+    res.json({ log });
+  } catch (e) { res.json({ log: [] }); }
+});
+
 server.listen(PORT, () => {
   console.log(`SlutCamp running → http://localhost:${PORT}`);
   console.log('Seeded logins: admin/admin123 · bunny|stacey|bella/model123 · fandemo/fan123');
