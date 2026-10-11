@@ -30,6 +30,42 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 const PORT = process.env.PORT || 3000;
 
+/* ---- W-9 tax-ID encryption (AES-256-GCM) ---- */
+// TAX_ENC_KEY is hashed to 32 bytes. If unset, we generate an EPHEMERAL key and
+// warn loudly: encrypted rows can't be decrypted after a restart without the key.
+// Set TAX_ENC_KEY on Render (long random string) and back it up in the Secure Vault.
+let _taxKey = null, _taxKeyEphemeral = false;
+function taxKey() {
+  if (_taxKey) return _taxKey;
+  const raw = process.env.TAX_ENC_KEY || '';
+  if (raw) {
+    _taxKey = crypto.createHash('sha256').update(raw, 'utf8').digest();
+  } else {
+    _taxKey = crypto.randomBytes(32);
+    _taxKeyEphemeral = true;
+    console.warn('[TAX] ⚠️  TAX_ENC_KEY is not set — using an EPHEMERAL encryption key. ' +
+      'Tax IDs submitted now will be UNREADABLE after the next server restart. ' +
+      'Set TAX_ENC_KEY env var to a long random string and back it up.');
+  }
+  return _taxKey;
+}
+function encTax(plain) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', taxKey(), iv);
+  const ct = Buffer.concat([cipher.update(String(plain), 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return [iv.toString('base64'), ct.toString('base64'), tag.toString('base64')].join(':');
+}
+function decTax(stored) {
+  if (!stored) return '';
+  const parts = String(stored).split(':');
+  if (parts.length !== 3) throw new Error('tax_decrypt_bad_format');
+  const d = crypto.createDecipheriv('aes-256-gcm', taxKey(), Buffer.from(parts[0], 'base64'));
+  d.setAuthTag(Buffer.from(parts[2], 'base64'));
+  return Buffer.concat([d.update(Buffer.from(parts[1], 'base64')), d.final()]).toString('utf8');
+}
+function taxKeyIsEphemeral() { taxKey(); return _taxKeyEphemeral; }
+
 app.use(express.json({ limit: '256kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -67,6 +103,27 @@ const photoUpload = multer({
     },
   }),
   limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ok = /^image\/(jpeg|png|webp)$/.test(file.mimetype);
+    cb(ok ? null : new Error('bad_file_type'), ok);
+  },
+});
+
+// ID verification images: SENSITIVE PII. Stored OUTSIDE uploads/ in a private
+// dir that is never served statically — admin views them only via the
+// authenticated /api/admin/id-verifications/:id/photo/:which endpoint.
+const ID_DIR = path.join(__dirname, 'private', 'id_verification');
+if (!fs.existsSync(ID_DIR)) fs.mkdirSync(ID_DIR, { recursive: true });
+
+const idUpload = multer({
+  storage: multer.diskStorage({
+    destination: ID_DIR,
+    filename: (req, file, cb) => {
+      const ext = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' }[file.mimetype] || '.jpg';
+      cb(null, 'idv-' + crypto.randomBytes(16).toString('hex') + ext);
+    },
+  }),
+  limits: { fileSize: 8 * 1024 * 1024 }, // 8MB per ID photo
   fileFilter: (req, file, cb) => {
     const ok = /^image\/(jpeg|png|webp)$/.test(file.mimetype);
     cb(ok ? null : new Error('bad_file_type'), ok);
@@ -142,6 +199,61 @@ CREATE TABLE IF NOT EXISTS withdrawals (
   requested_at TEXT NOT NULL DEFAULT (datetime('now')),
   decided_at   TEXT,
   note         TEXT NOT NULL DEFAULT ''
+);
+
+-- W-9 / 1099 tax profiles for models & partners (IRS: 1099-NEC at $600+/year).
+-- tax_id_encrypted is AES-256-GCM ciphertext (see encTax/decTax); only tax_id_last4
+-- ever leaves the server. Filing happens outside the app (accountant/tax software).
+CREATE TABLE IF NOT EXISTS tax_profiles (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id         INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  legal_name      TEXT NOT NULL DEFAULT '',
+  business_name   TEXT NOT NULL DEFAULT '',
+  tax_id_type     TEXT NOT NULL DEFAULT 'ssn' CHECK(tax_id_type IN ('ssn','ein')),
+  tax_id_encrypted TEXT NOT NULL DEFAULT '',
+  tax_id_last4    TEXT NOT NULL DEFAULT '',
+  address_line1   TEXT NOT NULL DEFAULT '',
+  address_line2   TEXT NOT NULL DEFAULT '',
+  city            TEXT NOT NULL DEFAULT '',
+  state           TEXT NOT NULL DEFAULT '',
+  zip             TEXT NOT NULL DEFAULT '',
+  submitted_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Fraud/chargeback protection: every credit purchase attempt (velocity checks)
+CREATE TABLE IF NOT EXISTS purchase_attempts (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id          INTEGER REFERENCES users(id),
+  package_id       TEXT,
+  amount_cents     INTEGER NOT NULL,
+  card_fingerprint TEXT,
+  ip               TEXT,
+  status           TEXT NOT NULL, -- 'pending' | 'completed' | 'failed' | 'blocked'
+  note             TEXT,
+  created_at       TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Admin-issued refunds (linked to purchases for dispute cross-checks)
+CREATE TABLE IF NOT EXISTS refunds (
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id             INTEGER NOT NULL REFERENCES users(id),
+  purchase_attempt_id INTEGER REFERENCES purchase_attempts(id),
+  model_id            INTEGER REFERENCES users(id),
+  amount_cents        INTEGER NOT NULL,
+  reason              TEXT,
+  created_at          TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Chargeback / payment disputes
+CREATE TABLE IF NOT EXISTS disputes (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id         INTEGER REFERENCES users(id),
+  transaction_ref TEXT,
+  amount_cents    INTEGER NOT NULL,
+  reason          TEXT,
+  status          TEXT NOT NULL DEFAULT 'open', -- 'open' | 'won' | 'lost'
+  created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- A conversation is either fan<->model (fan_id set) or guest<->model (guest_token set)
@@ -439,6 +551,9 @@ addColumnIfMissing('calls', 'booking_id', 'INTEGER REFERENCES bookings(id)');
 addColumnIfMissing('platform_stats', 'explicit_entry_cents', 'INTEGER NOT NULL DEFAULT 499');
 addColumnIfMissing('platform_stats', 'admin_phone', 'TEXT');
 addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0');
+// Fraud protection: account status ('active' | 'frozen') + ledger IP on every money row
+addColumnIfMissing('users', 'status', "TEXT NOT NULL DEFAULT 'active'");
+addColumnIfMissing('transactions', 'ip', 'TEXT');
 
 // --- Recruiters/partners: who recruited each model ---
 db.exec(`
@@ -510,6 +625,79 @@ CREATE TABLE IF NOT EXISTS contract_signatures (
   ip TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_contract_signatures_user ON contract_signatures(user_id);
+
+-- Model ID verification for 18 U.S.C. §2257 compliance.
+-- ID images are sensitive PII stored in private/id_verification/ (never served statically).
+CREATE TABLE IF NOT EXISTS id_verifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  model_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
+  id_front_path TEXT,
+  id_back_path TEXT,
+  selfie_path TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
+  submitted_at TEXT NOT NULL DEFAULT (datetime('now')),
+  reviewed_at TEXT,
+  reviewer_note TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_id_verifications_status ON id_verifications(status);
+
+-- Follows: fans follow models to get "she's live" notifications
+CREATE TABLE IF NOT EXISTS follows (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  fan_id INTEGER NOT NULL,
+  model_id INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(fan_id, model_id)
+);
+CREATE INDEX IF NOT EXISTS idx_follows_model ON follows(model_id);
+CREATE INDEX IF NOT EXISTS idx_follows_fan ON follows(fan_id);
+
+-- In-app notifications (bell icon)
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  type TEXT NOT NULL DEFAULT 'general',
+  title TEXT NOT NULL,
+  body TEXT,
+  link TEXT,
+  read INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, id);
+
+-- Web Push subscriptions (browser push; needs VAPID keys to actually send)
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT,
+  auth TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_pushsubs_user ON push_subscriptions(user_id);
+
+-- Model tip menu: custom tip items she defines (e.g. "💋 Blow a kiss — $5")
+CREATE TABLE IF NOT EXISTS tip_menus (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  model_id INTEGER NOT NULL,
+  emoji TEXT NOT NULL DEFAULT '💰',
+  label TEXT NOT NULL,
+  price_cents INTEGER NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_tipmenus_model ON tip_menus(model_id, sort_order);
+
+-- Tip menu purchase log
+CREATE TABLE IF NOT EXISTS tip_sends (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  fan_id INTEGER NOT NULL,
+  model_id INTEGER NOT NULL,
+  menu_id INTEGER,
+  price_cents INTEGER NOT NULL,
+  context TEXT NOT NULL DEFAULT 'profile',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_tipsends_model ON tip_sends(model_id, id);
 `);
 
 // Seed the safety keyword list (admin can edit these later in Settings)
@@ -604,6 +792,7 @@ const getModelAvailable = (userId) => {
 const getUserPublic = (u) => ({
   id: u.id, username: u.username, role: u.role,
   display_name: u.display_name, banned: !!u.banned,
+  status: u.status || 'active',
 });
 
 const fmt$ = (c) => '$' + (c / 100).toFixed(2); // server-side money formatter (cents → $x.xx)
@@ -627,7 +816,8 @@ function splitPayment(grossCents, modelUserId) {
 }
 
 // Move money: fan pays grossCents. Throws Error('insufficient_credits') if short.
-function chargeFan(fanId, modelId, grossCents, type, note) {
+// ip is recorded on the ledger row for fraud/chargeback evidence.
+function chargeFan(fanId, modelId, grossCents, type, note, ip = null) {
   const wallet = getWallet(fanId);
   if (!wallet || wallet.credits_cents < grossCents) throw new Error('insufficient_credits');
   const { modelCents, platformCents, recruiterCents, recruiterId, recruiterUserId } = splitPayment(grossCents, modelId);
@@ -643,16 +833,16 @@ function chargeFan(fanId, modelId, grossCents, type, note) {
         .run(recruiterCents, recruiterUserId);
     }
     db.prepare(`INSERT INTO transactions
-      (fan_id, model_id, type, gross_cents, model_cents, platform_cents, recruiter_id, recruiter_cents, note)
-      VALUES (?,?,?,?,?,?,?,?,?)`)
-      .run(fanId, modelId, type, grossCents, modelCents, platformCents, recruiterId, recruiterCents, note || null);
+      (fan_id, model_id, type, gross_cents, model_cents, platform_cents, recruiter_id, recruiter_cents, note, ip)
+      VALUES (?,?,?,?,?,?,?,?,?,?)`)
+      .run(fanId, modelId, type, grossCents, modelCents, platformCents, recruiterId, recruiterCents, note || null, ip);
   });
   return { modelCents, platformCents, recruiterCents };
 }
 
 /* Reverse a charge: fan gets grossCents back; model + platform earnings reduced.
    Used when the model declines a paid join-live request (full refund). */
-function refundFan(fanId, modelId, grossCents, type, note) {
+function refundFan(fanId, modelId, grossCents, type, note, ip = null) {
   const { modelCents, platformCents, recruiterCents, recruiterId, recruiterUserId } = splitPayment(grossCents, modelId);
   txn(() => {
     db.prepare('UPDATE wallets SET credits_cents = credits_cents + ? WHERE user_id = ?')
@@ -666,9 +856,9 @@ function refundFan(fanId, modelId, grossCents, type, note) {
         .run(recruiterCents, recruiterUserId);
     }
     db.prepare(`INSERT INTO transactions
-      (fan_id, model_id, type, gross_cents, model_cents, platform_cents, recruiter_id, recruiter_cents, note)
-      VALUES (?,?,?,?,?,?,?,?,?)`)
-      .run(fanId, modelId, type, -grossCents, -modelCents, -platformCents, recruiterId, -recruiterCents, note || null);
+      (fan_id, model_id, type, gross_cents, model_cents, platform_cents, recruiter_id, recruiter_cents, note, ip)
+      VALUES (?,?,?,?,?,?,?,?,?,?)`)
+      .run(fanId, modelId, type, -grossCents, -modelCents, -platformCents, recruiterId, -recruiterCents, note || null, ip);
   });
   return { modelCents, platformCents, recruiterCents };
 }
@@ -757,6 +947,7 @@ function getIdentity(req) {
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
     if (!user) return null;
     if (user.banned) return { kind: 'banned' };
+    if (user.status === 'frozen') return { kind: 'frozen' };
     return { kind: 'user', user };
   }
   const g = req.headers['x-guest-token'] || (req.body && req.body.guest_token) || req.query.guest_token;
@@ -770,10 +961,18 @@ function getIdentity(req) {
 const subjectKey = (ident) =>
   ident.kind === 'user' ? `u:${ident.user.id}` : `g:${ident.token}`;
 
+// Client IP (Render sits behind a proxy — trust x-forwarded-for first hop)
+const clientIp = (req) => {
+  const fwd = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  return fwd || req.ip || (req.socket && req.socket.remoteAddress) || '';
+};
+
 function identMiddleware(req, res, next) {
   const ident = getIdentity(req);
   if (!ident) return res.status(401).json({ error: 'not_logged_in' });
   if (ident.kind === 'banned') return res.status(403).json({ error: 'banned' });
+  if (ident.kind === 'frozen') return res.status(403).json({ error: 'account_frozen',
+    message: 'Your account has been frozen due to a billing dispute. Contact support.' });
   req.ident = ident;
   next();
 }
@@ -800,10 +999,64 @@ function pushToSubject(key, event) {
 }
 const pushToUser = (userId, e) => pushToSubject(`u:${userId}`, e);
 
+/* ---------------- notifications + web push ----------------
+   notifyUser(): writes an in-app notification row, pushes it live over WS,
+   and attempts a Web Push (requires VAPID keys — see below).
+   Web Push setup: set env VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
+   and `npm install web-push`. Without keys, in-app + WS notifications still
+   work; sendWebPush logs a one-time note and returns. */
+let _webPushWarned = false;
+async function sendWebPush(userId, payload) {
+  const pub = process.env.VAPID_PUBLIC_KEY, priv = process.env.VAPID_PRIVATE_KEY;
+  if (!pub || !priv) {
+    if (!_webPushWarned) {
+      _webPushWarned = true;
+      console.log('[push] VAPID keys not configured — Web Push disabled. ' +
+        'Set VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY/VAPID_SUBJECT and install web-push to enable.');
+    }
+    return { sent: 0, skipped: true };
+  }
+  let webpush;
+  try { webpush = require('web-push'); }
+  catch (e) { console.log('[push] web-push package not installed — run: npm install web-push'); return { sent: 0, skipped: true }; }
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:admin@slutcamp.app', pub, priv);
+  const subs = db.prepare('SELECT * FROM push_subscriptions WHERE user_id = ?').all(userId);
+  let sent = 0;
+  for (const s of subs) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+        JSON.stringify(payload));
+      sent++;
+    } catch (e) {
+      // 410 Gone / 404 = dead subscription — clean it up
+      if (e.statusCode === 410 || e.statusCode === 404)
+        db.prepare('DELETE FROM push_subscriptions WHERE id = ?').run(s.id);
+    }
+  }
+  return { sent, skipped: false };
+}
+
+function notifyUser(userId, type, title, body, link) {
+  const info = db.prepare(
+    `INSERT INTO notifications (user_id, type, title, body, link) VALUES (?,?,?,?,?)`)
+    .run(userId, type, title, body || null, link || null);
+  const n = db.prepare('SELECT * FROM notifications WHERE id = ?').get(info.lastInsertRowid);
+  pushToUser(userId, { type: 'notification:new', notification: n });
+  sendWebPush(userId, { title, body: body || '', link: link || '/' }).catch(() => {});
+  return n;
+}
+
 // Notify every online admin about something (safety incidents, etc.)
 function pushToAdmins(event) {
   const admins = db.prepare(`SELECT id FROM users WHERE role = 'admin'`).all();
   for (const a of admins) pushToUser(a.id, event);
+}
+
+// 2257 ID verification: a model must be approved before going live or receiving paid chats
+function isIdVerified(modelUserId) {
+  const r = db.prepare('SELECT status FROM id_verifications WHERE model_id = ?').get(modelUserId);
+  return !!(r && r.status === 'approved');
 }
 
 /* ------------------------------------------------------------------ */
@@ -1003,6 +1256,8 @@ app.post('/api/auth/login', (req, res) => {
   if (!user || !bcrypt.compareSync(password || '', user.password_hash))
     return res.status(401).json({ error: 'bad_login' });
   if (user.banned) return res.status(403).json({ error: 'banned' });
+  if (user.status === 'frozen') return res.status(403).json({ error: 'account_frozen',
+    message: 'Your account has been frozen due to a billing dispute. Contact support.' });
   // Admin can ONLY log in via the secret admin route (#boss). Never here.
   if (user.role === 'admin') return res.status(403).json({ error: 'not_here' });
 
@@ -1267,6 +1522,9 @@ app.post('/api/conversations/start', identMiddleware, (req, res) => {
     SELECT u.id FROM users u JOIN models m ON m.user_id = u.id
     WHERE u.id = ? AND u.role = 'model' AND u.banned = 0`).get(req.body.model_id);
   if (!model) return res.status(404).json({ error: 'model_not_found' });
+  if (!isIdVerified(model.id))
+    return res.status(403).json({ error: 'id_verification_required',
+      message: 'This model is not available right now.' });
 
   let conv;
   if (req.ident.kind === 'user') {
@@ -1311,6 +1569,10 @@ app.post('/api/messages', identMiddleware, (req, res) => {
   if (conv.is_paused)
     return res.status(423).json({ error: 'chat_paused',
       message: '⚠️ This chat is paused by the safety monitor.' });
+  // Unverified models cannot receive any chat activity (paid or otherwise)
+  if (!isIdVerified(conv.model_id))
+    return res.status(403).json({ error: 'id_verification_required',
+      message: '🪪 This model must complete ID verification before chatting.' });
 
   const isModelSender = req.ident.kind === 'user' && req.ident.user.role === 'model';
 
@@ -1377,7 +1639,7 @@ app.post('/api/messages', identMiddleware, (req, res) => {
       const model = db.prepare('SELECT * FROM models WHERE user_id = ?').get(conv.model_id);
       costCents = model.per_message_cents;
       try {
-        chargeFan(req.ident.user.id, conv.model_id, costCents, 'message', 'Chat message');
+        chargeFan(req.ident.user.id, conv.model_id, costCents, 'message', 'Chat message', clientIp(req));
       } catch (e) {
         return res.status(402).json({ error: 'insufficient_credits', needed_cents: costCents,
           balance_cents: getWallet(req.ident.user.id).credits_cents });
@@ -1457,7 +1719,8 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
     let priceCents = 0;
     if (isModelSender && kind !== 'voice') {
       priceCents = parseInt(req.body.price_cents) || 0;
-      if (priceCents < 0 || priceCents > 100000) { fs.unlink(req.file.path, () => {}); return res.status(400).json({ error: 'bad_price' }); }
+      // PPV price: $1–$100, or $0 for a free preview (unlocked for everyone)
+      if (priceCents !== 0 && (priceCents < 100 || priceCents > 10000)) { fs.unlink(req.file.path, () => {}); return res.status(400).json({ error: 'bad_price', message: 'PPV price must be $1–$100 (or $0 for a free preview).' }); }
     } else if (isModelSender && kind === 'voice') {
       const m = db.prepare('SELECT per_voice_cents FROM models WHERE user_id = ?').get(req.ident.user.id);
       priceCents = parseInt(req.body.price_cents);
@@ -1485,7 +1748,7 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
         const model = db.prepare('SELECT * FROM models WHERE user_id = ?').get(conv.model_id);
         costCents = model.per_message_cents;
         try {
-          chargeFan(req.ident.user.id, conv.model_id, costCents, 'message', 'Voice note message');
+          chargeFan(req.ident.user.id, conv.model_id, costCents, 'message', 'Voice note message', clientIp(req));
         } catch (e) {
           fs.unlink(req.file.path, () => {});
           return res.status(402).json({ error: 'insufficient_credits', needed_cents: costCents,
@@ -1551,7 +1814,7 @@ app.post('/api/media/:id/unlock', identMiddleware, requireUser, requireRole('fan
   const type = media.kind === 'voice' ? 'voice' : 'ppv';
   try {
     chargeFan(req.user.id, conv.model_id, media.price_cents, type,
-      `${MEDIA_LABELS[media.kind]} unlock`);
+      `${MEDIA_LABELS[media.kind]} unlock`, clientIp(req));
   } catch (e) {
     return res.status(402).json({ error: 'insufficient_credits', needed_cents: media.price_cents,
       balance_cents: getWallet(req.user.id).credits_cents });
@@ -1645,7 +1908,7 @@ app.post('/api/tips', identMiddleware, requireUser, requireRole('fan'), (req, re
   if (!conv || conv.fan_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
 
   try {
-    chargeFan(req.user.id, conv.model_id, amountCents, 'tip', 'Fan tip');
+    chargeFan(req.user.id, conv.model_id, amountCents, 'tip', 'Fan tip', clientIp(req));
   } catch (e) {
     return res.status(402).json({ error: 'insufficient_credits', needed_cents: amountCents,
       balance_cents: getWallet(req.user.id).credits_cents });
@@ -1667,15 +1930,226 @@ app.post('/api/tips', identMiddleware, requireUser, requireRole('fan'), (req, re
 });
 
 /* ------------------------------------------------------------------ */
+/* Follows + notifications + tip menu                                 */
+/* ------------------------------------------------------------------ */
+
+// Web Push: public VAPID key (null until configured — see sendWebPush notes)
+app.get('/api/push/vapid-key', (req, res) => {
+  res.json({ key: process.env.VAPID_PUBLIC_KEY || null });
+});
+
+// Fan: toggle follow on a model (for "she's live" notifications)
+app.post('/api/follows/:modelId', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const modelId = parseInt(req.params.modelId);
+  const model = db.prepare('SELECT id FROM users WHERE id = ? AND role = ?').get(modelId, 'model');
+  if (!model) return res.status(404).json({ error: 'model_not_found' });
+  const existing = db.prepare('SELECT id FROM follows WHERE fan_id = ? AND model_id = ?')
+    .get(req.user.id, modelId);
+  if (existing) {
+    db.prepare('DELETE FROM follows WHERE id = ?').run(existing.id);
+    return res.json({ following: false });
+  }
+  db.prepare('INSERT INTO follows (fan_id, model_id) VALUES (?,?)').run(req.user.id, modelId);
+  res.json({ following: true });
+});
+
+// Fan: list of model ids they follow
+app.get('/api/follows', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const rows = db.prepare('SELECT model_id FROM follows WHERE fan_id = ?').all(req.user.id);
+  res.json({ following: rows.map((r) => r.model_id) });
+});
+
+// Notifications: list (newest first)
+app.get('/api/notifications', identMiddleware, requireUser, (req, res) => {
+  const rows = db.prepare(
+    `SELECT * FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 50`).all(req.user.id);
+  const unread = db.prepare(
+    `SELECT COUNT(*) AS c FROM notifications WHERE user_id = ? AND read = 0`).get(req.user.id).c;
+  res.json({ notifications: rows, unread });
+});
+
+// Notifications: mark read (all, or { ids: [...] })
+app.post('/api/notifications/read', identMiddleware, requireUser, (req, res) => {
+  const ids = Array.isArray(req.body.ids) ? req.body.ids.map((x) => parseInt(x)).filter(Number.isInteger) : null;
+  if (ids && ids.length) {
+    const ph = ids.map(() => '?').join(',');
+    db.prepare(`UPDATE notifications SET read = 1 WHERE user_id = ? AND id IN (${ph})`)
+      .run(req.user.id, ...ids);
+  } else {
+    db.prepare('UPDATE notifications SET read = 1 WHERE user_id = ?').run(req.user.id);
+  }
+  res.json({ ok: true });
+});
+
+// Web Push: save a browser subscription (called from the frontend after permission)
+app.post('/api/push/subscribe', identMiddleware, requireUser, (req, res) => {
+  const { endpoint, p256dh, auth } = req.body || {};
+  if (!endpoint || typeof endpoint !== 'string' || endpoint.length > 2000)
+    return res.status(400).json({ error: 'bad_subscription' });
+  db.prepare(`INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth)
+              VALUES (?,?,?,?)
+              ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id,
+                p256dh = excluded.p256dh, auth = excluded.auth`)
+    .run(req.user.id, endpoint, String(p256dh || '').slice(0, 500), String(auth || '').slice(0, 500));
+  res.json({ ok: true, web_push_ready: !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) });
+});
+
+// Web Push: remove a subscription
+app.post('/api/push/unsubscribe', identMiddleware, requireUser, (req, res) => {
+  const { endpoint } = req.body || {};
+  if (endpoint) db.prepare('DELETE FROM push_subscriptions WHERE user_id = ? AND endpoint = ?')
+    .run(req.user.id, endpoint);
+  res.json({ ok: true });
+});
+
+// Tip menu: public read (anyone can see a model's menu)
+// Default tip menu for models who haven't set their own (Corry: "models are lazy")
+const DEFAULT_TIP_MENU = [
+  { emoji: '💋', label: 'Blow a kiss', price_cents: 500 },
+  { emoji: '🎵', label: 'Song request', price_cents: 1000 },
+  { emoji: '💃', label: 'Twerk for you', price_cents: 2500 },
+  { emoji: '👙', label: 'Outfit change', price_cents: 3000 },
+  { emoji: '🔥', label: 'Spicy pic', price_cents: 5000 },
+];
+app.get('/api/models/:id/tip-menu', (req, res) => {
+  const modelId = parseInt(req.params.id);
+  let items = db.prepare(
+    `SELECT id, emoji, label, price_cents FROM tip_menus WHERE model_id = ? ORDER BY sort_order, id`)
+    .all(modelId);
+  if (!items.length) items = DEFAULT_TIP_MENU.map((t, i) => ({ id: 'default-' + i, ...t }));
+  res.json({ items });
+});
+
+// Tip menu: model creates an item
+app.post('/api/model/tip-menu', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const emoji = String(req.body.emoji || '💰').slice(0, 8);
+  const label = String(req.body.label || '').trim().slice(0, 60);
+  const priceCents = parseInt(req.body.price_cents);
+  if (!label) return res.status(400).json({ error: 'bad_label' });
+  if (!Number.isInteger(priceCents) || priceCents < 100 || priceCents > 100000)
+    return res.status(400).json({ error: 'bad_price', message: 'Price must be $1–$1,000.' });
+  const maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM tip_menus WHERE model_id = ?')
+    .get(req.user.id).m;
+  const info = db.prepare(
+    `INSERT INTO tip_menus (model_id, emoji, label, price_cents, sort_order) VALUES (?,?,?,?,?)`)
+    .run(req.user.id, emoji, label, priceCents, maxOrder + 1);
+  res.json({ ok: true, id: Number(info.lastInsertRowid) });
+});
+
+// Tip menu: model updates an item
+app.put('/api/model/tip-menu/:id', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const item = db.prepare('SELECT * FROM tip_menus WHERE id = ? AND model_id = ?')
+    .get(req.params.id, req.user.id);
+  if (!item) return res.status(404).json({ error: 'not_found' });
+  const emoji = req.body.emoji !== undefined ? String(req.body.emoji).slice(0, 8) : item.emoji;
+  const label = req.body.label !== undefined ? String(req.body.label).trim().slice(0, 60) : item.label;
+  const priceCents = req.body.price_cents !== undefined ? parseInt(req.body.price_cents) : item.price_cents;
+  if (!label) return res.status(400).json({ error: 'bad_label' });
+  if (!Number.isInteger(priceCents) || priceCents < 100 || priceCents > 100000)
+    return res.status(400).json({ error: 'bad_price' });
+  db.prepare('UPDATE tip_menus SET emoji = ?, label = ?, price_cents = ? WHERE id = ?')
+    .run(emoji, label, priceCents, item.id);
+  res.json({ ok: true });
+});
+
+// Tip menu: model deletes an item
+app.delete('/api/model/tip-menu/:id', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const r = db.prepare('DELETE FROM tip_menus WHERE id = ? AND model_id = ?')
+    .run(req.params.id, req.user.id);
+  if (!r.changes) return res.status(404).json({ error: 'not_found' });
+  res.json({ ok: true });
+});
+
+// POST /api/models/:id/tip — fan buys a tip-menu item { menu_id, context: 'profile'|'live'|'chat' }
+app.post('/api/models/:id/tip', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const modelId = parseInt(req.params.id);
+  const model = db.prepare('SELECT * FROM users WHERE id = ? AND role = ?').get(modelId, 'model');
+  if (!model) return res.status(404).json({ error: 'model_not_found' });
+  let item = db.prepare('SELECT * FROM tip_menus WHERE id = ? AND model_id = ?')
+    .get(req.body.menu_id, modelId);
+  if (!item && String(req.body.menu_id).startsWith('default-')) {
+    const idx = parseInt(String(req.body.menu_id).replace('default-', ''));
+    const d = DEFAULT_TIP_MENU[idx];
+    if (d) item = { id: req.body.menu_id, model_id: modelId, ...d };
+  }
+  if (!item) return res.status(404).json({ error: 'menu_item_not_found' });
+  const context = ['live', 'chat', 'profile'].includes(req.body.context) ? req.body.context : 'profile';
+
+  try {
+    chargeFan(req.user.id, modelId, item.price_cents, 'tip_menu',
+      `💰 ${item.emoji} ${item.label}`, clientIp(req));
+  } catch (e) {
+    if (e.message === 'insufficient_credits')
+      return res.status(402).json({ error: 'insufficient_credits', needed_cents: item.price_cents,
+        balance_cents: getWallet(req.user.id).credits_cents });
+    throw e;
+  }
+  db.prepare(`INSERT INTO tip_sends (fan_id, model_id, menu_id, price_cents, context)
+              VALUES (?,?,?,?,?)`)
+    .run(req.user.id, modelId, item.id, item.price_cents, context);
+
+  // Notify the model (in-app + WS). Fans don't need a row for their own tip.
+  notifyUser(modelId, 'tip', `💰 ${req.user.display_name || 'A fan'} tipped ${item.emoji} ${item.label}!`,
+    `${fmt$(item.price_cents)} tip received`, null);
+  pushToUser(modelId, { type: 'tip:received', fan_id: req.user.id,
+    fan_name: req.user.display_name || 'A fan',
+    emoji: item.emoji, label: item.label, price_cents: item.price_cents, context });
+
+  res.json({ ok: true, emoji: item.emoji, label: item.label, price_cents: item.price_cents,
+    balance_cents: getWallet(req.user.id).credits_cents });
+});
+
+/* ------------------------------------------------------------------ */
 /* Credits (STUBBED — CCBill/Segpay plugs in here later)               */
 /* ------------------------------------------------------------------ */
 
 const CREDIT_PACKAGES = [
-  { id: 'p10',  credits_cents: 1000,  price_cents: 1000,  label: '$10' },
-  { id: 'p25',  credits_cents: 2500,  price_cents: 2500,  label: '$25' },
-  { id: 'p50',  credits_cents: 5000,  price_cents: 5000,  label: '$50' },
-  { id: 'p100', credits_cents: 10000, price_cents: 10000, label: '$100' },
+  { id: 'p10',  credits_cents: 1000,  price_cents: 1000,  label: '$10',  descriptor: '10 credits for SlutCamp' },
+  { id: 'p25',  credits_cents: 2500,  price_cents: 2500,  label: '$25',  descriptor: '25 credits for SlutCamp' },
+  { id: 'p50',  credits_cents: 5000,  price_cents: 5000,  label: '$50',  descriptor: '50 credits for SlutCamp' },
+  { id: 'p100', credits_cents: 10000, price_cents: 10000, label: '$100', descriptor: '100 credits for SlutCamp' },
 ];
+
+/* ------------------------------------------------------------------ */
+/* Fraud protection: purchase velocity checks                          */
+/* ------------------------------------------------------------------ */
+
+// Returns { ok:true } or { ok:false, error, message }. Every attempt (blocked
+// or not) is logged to purchase_attempts by the caller.
+function checkPurchaseVelocity(userId, amountCents, cardFingerprint) {
+  // 1. More than 3 attempts in 10 minutes → block
+  const recent = db.prepare(`SELECT COUNT(*) AS c FROM purchase_attempts
+    WHERE user_id = ? AND created_at > datetime('now', '-10 minutes')`).get(userId).c;
+  if (recent >= 3) return { ok: false, error: 'too_many_attempts',
+    message: 'Too many purchase attempts. Please wait 10 minutes and try again.' };
+  // 2. New accounts (< 7 days old): max $500 in completed purchases per 24h
+  const u = db.prepare('SELECT created_at FROM users WHERE id = ?').get(userId);
+  if (u) {
+    const ageDays = (Date.now() - new Date(u.created_at + 'Z').getTime()) / 86400000;
+    if (ageDays < 7) {
+      const spent24 = db.prepare(`SELECT COALESCE(SUM(amount_cents), 0) AS s FROM purchase_attempts
+        WHERE user_id = ? AND status = 'completed' AND created_at > datetime('now', '-1 day')`).get(userId).s;
+      if (spent24 + amountCents > 50000) return { ok: false, error: 'new_account_limit',
+        message: 'New accounts are limited to $500 in purchases per day.' };
+    }
+  }
+  // 3. Same card failing 3x in an hour → 1-hour cooldown
+  if (cardFingerprint) {
+    const fails = db.prepare(`SELECT COUNT(*) AS c FROM purchase_attempts
+      WHERE card_fingerprint = ? AND status = 'failed'
+      AND created_at > datetime('now', '-1 hour')`).get(cardFingerprint).c;
+    if (fails >= 3) return { ok: false, error: 'card_cooldown',
+      message: 'This payment method has failed too many times. Please wait 1 hour and try again.' };
+  }
+  return { ok: true };
+}
+
+function logPurchaseAttempt(userId, pkg, amountCents, cardFingerprint, ip, status, note) {
+  db.prepare(`INSERT INTO purchase_attempts
+    (user_id, package_id, amount_cents, card_fingerprint, ip, status, note)
+    VALUES (?,?,?,?,?,?,?)`)
+    .run(userId, pkg ? pkg.id : null, amountCents, cardFingerprint, ip, status, note || null);
+}
 
 // Model independent-contractor agreement (served to models for signing)
 const CONTRACT_VERSION = '1.0';
@@ -1739,8 +2213,23 @@ app.get('/api/credits/packages', (req, res) => {
 });
 
 app.post('/api/credits/buy', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const pkg = CREDIT_PACKAGES.find((p) => p.id === (req.body && req.body.package));
+  if (!pkg) return res.status(400).json({ error: 'bad_package' });
+  const ip = clientIp(req);
+  const cardFingerprint = String((req.body && req.body.card_fingerprint) || '').slice(0, 64) || null;
+  // Velocity check FIRST — blocks fraud before the processor is ever touched.
+  const v = checkPurchaseVelocity(req.user.id, pkg.price_cents, cardFingerprint);
+  if (!v.ok) {
+    logPurchaseAttempt(req.user.id, pkg, pkg.price_cents, cardFingerprint, ip, 'blocked', v.error);
+    return res.status(429).json({ error: v.error, message: v.message });
+  }
+  // Processor not connected yet — record the attempt so the audit trail is complete.
+  // When CCBill/Segpay plugs in: run the real charge here, then set status to
+  // 'completed' (and credit the wallet) or 'failed' (card declined).
+  logPurchaseAttempt(req.user.id, pkg, pkg.price_cents, cardFingerprint, ip, 'pending', 'processor_not_connected');
   res.status(501).json({ error: 'payment_not_connected',
-    message: 'Payment processor coming soon — CCBill/Segpay will plug in here.' });
+    message: 'Payment processor coming soon — CCBill/Segpay will plug in here.',
+    descriptor: pkg.descriptor });
 });
 
 /* ------------------------------------------------------------------ */
@@ -1852,6 +2341,217 @@ app.get('/api/admin/contracts', identMiddleware, requireUser, requireRole('admin
 });
 
 /* ------------------------------------------------------------------ */
+/* Model ID verification (2257) — sensitive PII, admin-only review      */
+/* ------------------------------------------------------------------ */
+
+// Model: check her own verification status
+app.get('/api/model/id-verification', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const v = db.prepare(`SELECT status, submitted_at, reviewed_at, reviewer_note
+                        FROM id_verifications WHERE model_id = ?`).get(req.user.id);
+  res.json({ verification: v || null, verified: isIdVerified(req.user.id) });
+});
+
+// Model: submit ID front + ID back + selfie holding the ID
+app.post('/api/model/id-verification', identMiddleware, requireUser, requireRole('model'),
+  (req, res) => {
+    idUpload.fields([
+      { name: 'id_front', maxCount: 1 },
+      { name: 'id_back', maxCount: 1 },
+      { name: 'selfie', maxCount: 1 },
+    ])(req, res, (err) => {
+      if (err) return res.status(400).json({ error: 'bad_file',
+        message: 'Use JPG/PNG photos under 8MB each.' });
+      const f = req.files || {};
+      const front = f.id_front && f.id_front[0];
+      const back = f.id_back && f.id_back[0];
+      const selfie = f.selfie && f.selfie[0];
+      const cleanup = () => [front, back, selfie].forEach((x) => { if (x) fs.unlink(x.path, () => {}); });
+      if (!front || !back || !selfie) {
+        cleanup();
+        return res.status(400).json({ error: 'missing_files',
+          message: 'ID front, ID back, and a selfie holding your ID are all required.' });
+      }
+      // Resubmits replace the previous submission's files
+      const prev = db.prepare(`SELECT id_front_path, id_back_path, selfie_path
+                               FROM id_verifications WHERE model_id = ?`).get(req.user.id);
+      if (prev) [prev.id_front_path, prev.id_back_path, prev.selfie_path]
+        .forEach((p) => { if (p) fs.unlink(p, () => {}); });
+      db.prepare(`INSERT INTO id_verifications (model_id, id_front_path, id_back_path, selfie_path,
+                    status, submitted_at, reviewed_at, reviewer_note)
+                  VALUES (?, ?, ?, ?, 'pending', datetime('now'), NULL, '')
+                  ON CONFLICT(model_id) DO UPDATE SET
+                    id_front_path = excluded.id_front_path,
+                    id_back_path = excluded.id_back_path,
+                    selfie_path = excluded.selfie_path,
+                    status = 'pending',
+                    submitted_at = excluded.submitted_at,
+                    reviewed_at = NULL,
+                    reviewer_note = ''`)
+        .run(req.user.id, front.path, back.path, selfie.path);
+      pushToAdmins({ type: 'id_verification:submitted', model_id: req.user.id,
+        model_name: req.user.display_name });
+      res.json({ ok: true, status: 'pending' });
+    });
+  });
+
+// Admin: list all ID verifications (pending first)
+app.get('/api/admin/id-verifications', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+  const rows = db.prepare(`
+    SELECT v.id, v.model_id, v.status, v.submitted_at, v.reviewed_at, v.reviewer_note,
+           u.display_name, u.username
+    FROM id_verifications v JOIN users u ON u.id = v.model_id
+    ORDER BY CASE v.status WHEN 'pending' THEN 0 WHEN 'rejected' THEN 1 ELSE 2 END,
+             v.submitted_at DESC
+  `).all();
+  res.json({ verifications: rows });
+});
+
+// Single-use photo tokens so <img> tags can load ID photos without a Bearer header
+const idPhotoTokens = new Map(); // token -> { verificationId, adminId, expires }
+app.post('/api/admin/id-verifications/:id/photo-token', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+  const v = db.prepare('SELECT id FROM id_verifications WHERE id = ?').get(req.params.id);
+  if (!v) return res.status(404).json({ error: 'not_found' });
+  const token = crypto.randomBytes(24).toString('hex');
+  idPhotoTokens.set(token, { verificationId: v.id, adminId: req.user.id,
+    expires: Date.now() + 120 * 1000 });
+  res.json({ token });
+});
+
+// Admin: view one ID photo (Bearer auth OR single-use ?t= token). Sensitive PII — never cached.
+app.get('/api/admin/id-verifications/:id/photo/:which', (req, res) => {
+  const which = req.params.which;
+  if (!['front', 'back', 'selfie'].includes(which))
+    return res.status(400).json({ error: 'bad_which' });
+  let adminId = null;
+  if (req.query.t) {
+    const ft = idPhotoTokens.get(req.query.t);
+    if (ft && ft.verificationId === Number(req.params.id) && ft.expires > Date.now()) {
+      adminId = ft.adminId;
+      idPhotoTokens.delete(req.query.t); // single use
+    } else return res.status(403).json({ error: 'bad_token' });
+  } else {
+    const ident = getIdentity(req);
+    if (!ident || ident.kind !== 'user' || ident.user.role !== 'admin')
+      return res.status(401).json({ error: 'login_required' });
+    adminId = ident.user.id;
+  }
+  if (!adminId) return res.status(403).json({ error: 'forbidden' });
+  const v = db.prepare(`SELECT id_front_path, id_back_path, selfie_path
+                        FROM id_verifications WHERE id = ?`).get(req.params.id);
+  if (!v) return res.status(404).json({ error: 'not_found' });
+  const p = which === 'front' ? v.id_front_path
+    : which === 'back' ? v.id_back_path : v.selfie_path;
+  if (!p || !p.startsWith(ID_DIR) || !fs.existsSync(p))
+    return res.status(404).json({ error: 'not_found' });
+  const ext = path.extname(p).toLowerCase();
+  res.setHeader('Content-Type', ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg');
+  res.setHeader('Cache-Control', 'private, no-store');
+  fs.createReadStream(p).pipe(res);
+});
+
+// Admin: approve an ID verification
+app.post('/api/admin/id-verifications/:id/approve', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+  const v = db.prepare('SELECT * FROM id_verifications WHERE id = ?').get(req.params.id);
+  if (!v) return res.status(404).json({ error: 'not_found' });
+  db.prepare(`UPDATE id_verifications SET status = 'approved', reviewed_at = datetime('now'),
+              reviewer_note = '' WHERE id = ?`).run(v.id);
+  pushToSubject(`u:${v.model_id}`, { type: 'id_verified', status: 'approved' });
+  res.json({ ok: true });
+});
+
+// Admin: reject an ID verification (with note so she knows what to fix)
+app.post('/api/admin/id-verifications/:id/reject', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+  const v = db.prepare('SELECT * FROM id_verifications WHERE id = ?').get(req.params.id);
+  if (!v) return res.status(404).json({ error: 'not_found' });
+  const note = String(req.body.note || '').trim().slice(0, 300);
+  db.prepare(`UPDATE id_verifications SET status = 'rejected', reviewed_at = datetime('now'),
+              reviewer_note = ? WHERE id = ?`).run(note, v.id);
+  pushToSubject(`u:${v.model_id}`, { type: 'id_verified', status: 'rejected', note });
+  res.json({ ok: true });
+});
+
+/* ------------------------------------------------------------------ */
+/* Admin: W-9 / 1099 tax dashboard + CSV export (no tax IDs in export) */
+/* ------------------------------------------------------------------ */
+
+// Everyone who gets paid: models + partners. Paid-this-year = SUM of 'paid'
+// withdrawals decided in the current calendar year. $600+ (60000¢) triggers 1099.
+function taxDashboardRows() {
+  return db.prepare(`
+    SELECT u.id, u.username, u.display_name, u.role, u.banned,
+           COALESCE(r.name, u.display_name) AS earner_name,
+           r.city AS recruiter_city,
+           tp.id AS has_tax, tp.legal_name, tp.business_name, tp.tax_id_type,
+           tp.tax_id_last4, tp.city AS tax_city, tp.state AS tax_state, tp.submitted_at,
+           COALESCE((
+             SELECT SUM(w.amount_cents) FROM withdrawals w
+             WHERE w.model_id = u.id AND w.status = 'paid'
+               AND strftime('%Y', COALESCE(w.decided_at, w.requested_at)) = strftime('%Y', 'now')
+           ), 0) AS paid_this_year_cents
+    FROM users u
+    LEFT JOIN recruiters r ON r.user_id = u.id
+    LEFT JOIN tax_profiles tp ON tp.user_id = u.id
+    WHERE u.role IN ('model', 'recruiter')
+    ORDER BY paid_this_year_cents DESC, u.display_name
+  `).all();
+}
+
+app.get('/api/admin/tax', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+  const rows = taxDashboardRows().map((r) => ({
+    id: r.id, username: r.username, display_name: r.display_name, role: r.role,
+    earner_name: r.earner_name, recruiter_city: r.recruiter_city, banned: !!r.banned,
+    has_tax: !!r.has_tax, legal_name: r.legal_name, business_name: r.business_name,
+    tax_id_type: r.tax_id_type,
+    tax_id_masked: r.has_tax
+      ? (r.tax_id_type === 'ein' ? `XX-XXXX${r.tax_id_last4}` : `***-**-${r.tax_id_last4}`) : null,
+    tax_city: r.tax_city, tax_state: r.tax_state, submitted_at: r.submitted_at,
+    paid_this_year_cents: r.paid_this_year_cents,
+    // IRS 1099-NEC threshold: $600 paid in the year
+    needs_1099: r.paid_this_year_cents >= 60000,
+    missing_tax: r.paid_this_year_cents >= 60000 && !r.has_tax,
+  }));
+  res.json({ earners: rows, year: new Date().getFullYear(), threshold_cents: 60000,
+    key_ephemeral: taxKeyIsEphemeral() });
+});
+
+function csvCell(v) {
+  const s = String(v == null ? '' : v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+// CSV for the accountant: legal names, addresses, totals — NO tax IDs.
+app.get('/api/admin/tax/export', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+  const year = new Date().getFullYear();
+  const rows = db.prepare(`
+    SELECT tp.legal_name, tp.business_name, tp.tax_id_type, tp.address_line1, tp.address_line2,
+           tp.city, tp.state, tp.zip, u.display_name, u.username, u.role,
+           COALESCE((
+             SELECT SUM(w.amount_cents) FROM withdrawals w
+             WHERE w.model_id = u.id AND w.status = 'paid'
+               AND strftime('%Y', COALESCE(w.decided_at, w.requested_at)) = strftime('%Y', 'now')
+           ), 0) AS paid_cents
+    FROM tax_profiles tp JOIN users u ON u.id = tp.user_id
+    WHERE u.role IN ('model', 'recruiter')
+    ORDER BY tp.legal_name
+  `).all();
+  const header = ['legal_name', 'business_name', 'id_type', 'address_line1', 'address_line2',
+    'city', 'state', 'zip', 'display_name', 'username', 'role', 'paid_year', 'paid_cents', 'paid_dollars'];
+  const lines = [header.join(',')];
+  for (const r of rows) {
+    lines.push([
+      r.legal_name, r.business_name, r.tax_id_type === 'ein' ? 'EIN' : 'SSN',
+      r.address_line1, r.address_line2, r.city, r.state, r.zip,
+      r.display_name, r.username, r.role, year, r.paid_cents,
+      (r.paid_cents / 100).toFixed(2),
+    ].map(csvCell).join(','));
+  }
+  const csv = lines.join('\r\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="slutcamp-1099-export-${year}.csv"`);
+  res.send('﻿' + csv); // BOM so Excel opens it as UTF-8
+});
+
+/* ------------------------------------------------------------------ */
 /* Model payouts — bank account + withdrawal requests (manual by Asce) */
 /* ------------------------------------------------------------------ */
 
@@ -1891,6 +2591,9 @@ app.post('/api/model/withdrawals', identMiddleware, requireUser, requireRole('mo
   const amount = parseInt(req.body.amount_cents);
   const acct = db.prepare('SELECT id FROM payout_accounts WHERE model_id = ?').get(req.user.id);
   if (!acct) return res.status(400).json({ error: 'no_bank_account' });
+  // IRS: W-9 info required before any payout can be issued
+  const tax = db.prepare('SELECT id FROM tax_profiles WHERE user_id = ?').get(req.user.id);
+  if (!tax) return res.status(400).json({ error: 'no_tax_info' });
   const available = getModelAvailable(req.user.id);
   if (!Number.isInteger(amount) || amount <= 0)
     return res.status(400).json({ error: 'bad_amount' });
@@ -1900,6 +2603,72 @@ app.post('/api/model/withdrawals', identMiddleware, requireUser, requireRole('mo
     .run(req.user.id, amount);
   res.json({ ok: true, withdrawal: { id: Number(info.lastInsertRowid), amount_cents: amount,
     status: 'pending' }, available_cents: available - amount });
+});
+
+/* W-9 / 1099 tax profiles — models & partners (SSN/EIN encrypted at rest) */
+/* ------------------------------------------------------------------ */
+
+const US_STATES = new Set(('AL,AK,AZ,AR,CA,CO,CT,DE,DC,FL,GA,HI,ID,IL,IN,IA,KS,KY,LA,ME,MD,' +
+  'MA,MI,MN,MS,MO,MT,NE,NV,NH,NJ,NM,NY,NC,ND,OH,OK,OR,PA,RI,SC,SD,TN,TX,UT,VT,' +
+  'VA,WA,WV,WI,WY,PR,GU,VI,AS,MP').split(','));
+
+function validateTaxProfile(body, existing) {
+  const legal_name = String(body.legal_name || '').trim().slice(0, 120);
+  const business_name = String(body.business_name || '').trim().slice(0, 120);
+  const tax_id_type = body.tax_id_type === 'ein' ? 'ein' : 'ssn';
+  const tax_id = String(body.tax_id || '').replace(/\D/g, '');
+  const address_line1 = String(body.address_line1 || '').trim().slice(0, 120);
+  const address_line2 = String(body.address_line2 || '').trim().slice(0, 120);
+  const city = String(body.city || '').trim().slice(0, 80);
+  const state = String(body.state || '').trim().toUpperCase().slice(0, 4);
+  const zip = String(body.zip || '').trim().slice(0, 12);
+  if (legal_name.length < 2) return { error: 'bad_legal_name' };
+  // tax_id may be omitted when updating other fields (keeps the stored one)
+  if (tax_id && !/^\d{9}$/.test(tax_id)) return { error: 'bad_tax_id' };
+  if (!tax_id && !existing) return { error: 'bad_tax_id' };
+  if (!address_line1) return { error: 'bad_address' };
+  if (city.length < 2) return { error: 'bad_city' };
+  if (!US_STATES.has(state)) return { error: 'bad_state' };
+  if (!/^\d{5}(-\d{4})?$/.test(zip)) return { error: 'bad_zip' };
+  return {
+    ok: true, legal_name, business_name, tax_id_type, tax_id,
+    address_line1, address_line2, city, state, zip,
+  };
+}
+
+// Her/partner tax profile (masked — the full tax ID never leaves the server)
+app.get('/api/tax-profile', identMiddleware, requireUser, requireRole('model', 'recruiter'), (req, res) => {
+  const p = db.prepare('SELECT legal_name, business_name, tax_id_type, tax_id_last4, address_line1, address_line2, city, state, zip, submitted_at, updated_at FROM tax_profiles WHERE user_id = ?').get(req.user.id);
+  if (!p) return res.json({ profile: null });
+  const masked = p.tax_id_type === 'ein' ? `XX-XXXX${p.tax_id_last4}` : `***-**-${p.tax_id_last4}`;
+  res.json({ profile: { ...p, tax_id_masked: masked }, key_ephemeral: taxKeyIsEphemeral() });
+});
+
+// Submit/update tax profile (W-9 info)
+app.post('/api/tax-profile', identMiddleware, requireUser, requireRole('model', 'recruiter'), (req, res) => {
+  const existing = db.prepare('SELECT * FROM tax_profiles WHERE user_id = ?').get(req.user.id);
+  const v = validateTaxProfile(req.body, existing);
+  if (v.error) return res.status(400).json({ error: v.error });
+  let enc = existing ? existing.tax_id_encrypted : '';
+  let last4 = existing ? existing.tax_id_last4 : '';
+  let idType = existing ? existing.tax_id_type : v.tax_id_type;
+  if (v.tax_id) {
+    try { enc = encTax(v.tax_id); }
+    catch (e) { return res.status(503).json({ error: 'tax_unavailable' }); }
+    last4 = v.tax_id.slice(-4);
+    idType = v.tax_id_type;
+  }
+  db.prepare(`INSERT INTO tax_profiles (user_id, legal_name, business_name, tax_id_type, tax_id_encrypted, tax_id_last4, address_line1, address_line2, city, state, zip)
+              VALUES (?,?,?,?,?,?,?,?,?,?,?)
+              ON CONFLICT(user_id) DO UPDATE SET legal_name = excluded.legal_name,
+                business_name = excluded.business_name, tax_id_type = excluded.tax_id_type,
+                tax_id_encrypted = excluded.tax_id_encrypted, tax_id_last4 = excluded.tax_id_last4,
+                address_line1 = excluded.address_line1, address_line2 = excluded.address_line2,
+                city = excluded.city, state = excluded.state, zip = excluded.zip,
+                updated_at = datetime('now')`).run(
+    req.user.id, v.legal_name, v.business_name, idType, enc, last4,
+    v.address_line1, v.address_line2, v.city, v.state, v.zip);
+  res.json({ ok: true, tax_id_last4: last4, tax_id_type: idType });
 });
 
 app.get('/api/model/earnings', identMiddleware, requireUser, requireRole('model'), (req, res) => {
@@ -2018,11 +2787,11 @@ app.get('/api/calls/:id', identMiddleware, requireUser, (req, res) => {
   res.json({ call });
 });
 
-const adminOnly = [identMiddleware, requireUser, requireRole('admin')];
-
 /* ------------------------------------------------------------------ */
 /* Admin SMS 2FA settings (Twilio)                                     */
 /* ------------------------------------------------------------------ */
+
+const adminOnly = [identMiddleware, requireUser, requireRole('admin')];
 
 // 2FA status
 app.get('/api/admin/2fa', ...adminOnly, (req, res) => {
@@ -2129,6 +2898,9 @@ function pushLiveAll(sessionId, event) {
 
 // Model starts a live cam session
 app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  if (!isIdVerified(req.user.id))
+    return res.status(403).json({ error: 'id_verification_required',
+      message: '🪪 ID verification required — upload your ID in Settings → ID Verification to go live.' });
   const existing = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`)
     .get(req.user.id);
   if (existing) return res.status(409).json({ error: 'already_live', session_id: existing.id });
@@ -2140,6 +2912,15 @@ app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), 
     'INSERT INTO live_sessions (model_id, explicit_rate_cents, title) VALUES (?,?,?)')
     .run(req.user.id, explicit_rate_cents, title);
   db.prepare('UPDATE models SET is_online = 1 WHERE user_id = ?').run(req.user.id);
+  // Notify followers: "she's live!"
+  const me = db.prepare('SELECT display_name FROM users WHERE id = ?').get(req.user.id);
+  const followers = db.prepare('SELECT fan_id FROM follows WHERE model_id = ?').all(req.user.id);
+  for (const f of followers) {
+    notifyUser(f.fan_id, 'live',
+      `🔴 ${me.display_name} just went live!`,
+      title ? `“${title}” — tap to watch.` : 'Tap to watch her now.',
+      '/#live');
+  }
   res.json({ session_id: Number(info.lastInsertRowid), explicit_rate_cents, title });
 });
 
@@ -2163,7 +2944,7 @@ app.post('/api/live/:id/leave', identMiddleware, requireUser, requireRole('fan')
       modelJoinRates(sess.model_id));
     db.prepare(`UPDATE live_join_requests SET status = 'declined' WHERE id = ?`).run(myPending.id);
     refundFan(req.user.id, sess.model_id, fee, 'live_join_refund',
-      `🎥 Left stream — join request refunded`);
+      `🎥 Left stream — join request refunded`, clientIp(req));
     pushToUser(sess.model_id, { type: 'live:join-request-cancelled',
       session_id: sess.id, request_id: myPending.id });
   }
@@ -2186,7 +2967,7 @@ app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
     const fee = stageJoinFee(!!r.is_explicit, r.mode || 'video', modelJoinRates(sess.model_id));
     db.prepare(`UPDATE live_join_requests SET status = 'declined' WHERE id = ?`).run(r.id);
     refundFan(r.fan_id, sess.model_id, fee, 'live_join_refund',
-      `🎥 Stream ended — join request refunded`);
+      `🎥 Stream ended — join request refunded`, clientIp(req));
     pushToUser(r.fan_id, { type: 'live:join-declined', session_id: sess.id,
       request_id: r.id, refunded_cents: fee,
       balance_cents: getWallet(r.fan_id).credits_cents });
@@ -2271,7 +3052,7 @@ app.post('/api/live/:id/explicit-entry', identMiddleware, requireUser, requireRo
   const entryCents = getEntryCents();
   try {
     chargeFan(req.user.id, sess.model_id, entryCents, 'live_explicit_entry',
-      `Explicit entry on stream #${sess.id}`);
+      `Explicit entry on stream #${sess.id}`, clientIp(req));
     // Entry also starts the gift grace timer — upkeep begins immediately
     const explicitUntil = Date.now() + getGiftGraceSec() * 1000;
     db.prepare('UPDATE live_viewers SET explicit_paid = 1, explicit_until = ? WHERE session_id = ? AND fan_id = ?')
@@ -2414,10 +3195,10 @@ app.get('/api/gifts', (req, res) => {
 // Core: fan sends a virtual gift on a live stream. Charges via splitPayment
 // (model 60%, platform/recruiter split), logs gift_events, refreshes the viewer's
 // explicit grace timer, and broadcasts to all viewers + the model + admins.
-function sendLiveGift(sess, fanId, gift) {
+function sendLiveGift(sess, fanId, gift, ip = null) {
   const { modelCents, platformCents } = chargeFan(
     fanId, sess.model_id, gift.price_cents, 'gift',
-    `${gift.emoji} ${gift.name} on stream #${sess.id}`);
+    `${gift.emoji} ${gift.name} on stream #${sess.id}`, ip);
   db.prepare(`INSERT INTO gift_events
     (session_id, fan_id, gift_id, gross_cents, model_cents, platform_cents)
     VALUES (?,?,?,?,?,?)`)
@@ -2456,7 +3237,7 @@ app.post('/api/live/:id/gift', identMiddleware, requireUser, requireRole('fan'),
   if (!gift) return res.status(404).json({ error: 'gift_not_found' });
 
   try {
-    const { explicitUntil, balanceCents } = sendLiveGift(sess, req.user.id, gift);
+    const { explicitUntil, balanceCents } = sendLiveGift(sess, req.user.id, gift, clientIp(req));
     db.prepare(`INSERT INTO gift_sends (fan_id, model_id, gift_id, price_cents, context, session_id)
       VALUES (?,?,?,?, 'live', ?)`)
       .run(req.user.id, sess.model_id, gift.id, gift.price_cents, sess.id);
@@ -2490,7 +3271,7 @@ app.post('/api/gifts/send', identMiddleware, requireUser, requireRole('fan'), (r
       .get(sess.id, req.user.id);
     if (!viewer) return res.status(403).json({ error: 'join_first' });
     try {
-      const { explicitUntil, balanceCents } = sendLiveGift(sess, req.user.id, gift);
+      const { explicitUntil, balanceCents } = sendLiveGift(sess, req.user.id, gift, clientIp(req));
       db.prepare(`INSERT INTO gift_sends (fan_id, model_id, gift_id, price_cents, context, session_id)
         VALUES (?,?,?,?, 'live', ?)`)
         .run(req.user.id, modelId, gift.id, gift.price_cents, sess.id);
@@ -2512,7 +3293,7 @@ app.post('/api/gifts/send', identMiddleware, requireUser, requireRole('fan'), (r
 
   try {
     chargeFan(req.user.id, modelId, gift.price_cents, 'gift',
-      `🎁 ${gift.emoji} ${gift.name} in chat`);
+      `🎁 ${gift.emoji} ${gift.name} in chat`, clientIp(req));
   } catch (e) {
     if (e.message === 'insufficient_credits')
       return res.status(402).json({ error: 'insufficient_credits',
@@ -2653,7 +3434,7 @@ app.post('/api/live/:id/priority', identMiddleware, requireUser, requireRole('fa
   try {
     const { modelCents, platformCents } = chargeFan(
       req.user.id, sess.model_id, totalCents, 'priority',
-      `📢 Priority message (${tier.duration_sec}s${wantVoice ? ' + voice' : ''}) on stream #${sess.id}`);
+      `📢 Priority message (${tier.duration_sec}s${wantVoice ? ' + voice' : ''}) on stream #${sess.id}`, clientIp(req));
     const info = db.prepare(`INSERT INTO priority_messages
       (session_id, fan_id, fan_name, message, amount_cents, duration_sec, voice, status)
       VALUES (?,?,?,?,?,?,?, 'queued')`)
@@ -2752,7 +3533,7 @@ app.post('/api/live/:id/join-request', identMiddleware, requireUser, requireRole
   const modeLabel = mode === 'mic' ? 'mic-only 🎙️' : 'video 🎥';
   try {
     chargeFan(req.user.id, sess.model_id, fee, 'live_join_request',
-      `${mode === 'mic' ? '🎙️' : '🎥'} Join-live request (${modeLabel}, ${isExplicitJoin ? 'explicit' : 'regular'}) on stream #${sess.id}`);
+      `${mode === 'mic' ? '🎙️' : '🎥'} Join-live request (${modeLabel}, ${isExplicitJoin ? 'explicit' : 'regular'}) on stream #${sess.id}`, clientIp(req));
   } catch (e) {
     if (e.message === 'insufficient_credits')
       return res.status(402).json({ error: 'insufficient_credits',
@@ -2809,7 +3590,7 @@ app.post('/api/live/join-requests/:rid/decline', identMiddleware, requireUser, r
   const fee = stageJoinFee(!!r.is_explicit, r.mode || 'video', modelJoinRates(sess.model_id));
   db.prepare(`UPDATE live_join_requests SET status = 'declined' WHERE id = ?`).run(r.id);
   refundFan(r.fan_id, sess.model_id, fee, 'live_join_refund',
-    `${(r.mode || 'video') === 'mic' ? '🎙️' : '🎥'} Join-live declined on stream #${sess.id} — refunded`);
+    `${(r.mode || 'video') === 'mic' ? '🎙️' : '🎥'} Join-live declined on stream #${sess.id} — refunded`, clientIp(req));
   pushToUser(r.fan_id, { type: 'live:join-declined', session_id: sess.id,
     request_id: r.id, refunded_cents: fee,
     balance_cents: getWallet(r.fan_id).credits_cents });
@@ -2933,7 +3714,7 @@ app.post('/api/bookings', identMiddleware, requireUser, requireRole('fan'), (req
   const total = model.per_minute_cents * durationMin;
   try {
     chargeFan(req.user.id, model.id, total, 'booking',
-      `📅 Private ${durationMin}min live with ${model.display_name}`);
+      `📅 Private ${durationMin}min live with ${model.display_name}`, clientIp(req));
   } catch (e) {
     if (e.message === 'insufficient_credits')
       return res.status(402).json({ error: 'insufficient_credits',
@@ -2973,7 +3754,7 @@ app.post('/api/bookings/:id/decline', identMiddleware, requireUser, requireRole(
   db.prepare(`UPDATE bookings SET status = 'declined', decided_at = datetime('now') WHERE id = ?`)
     .run(b.id);
   refundFan(b.fan_id, b.model_id, b.total_cents, 'booking_refund',
-    `📅 Booking #${b.id} declined — refunded`);
+    `📅 Booking #${b.id} declined — refunded`, clientIp(req));
   pushToUser(b.fan_id, { type: 'booking:declined', booking_id: b.id,
     refunded_cents: b.total_cents, balance_cents: getWallet(b.fan_id).credits_cents });
   res.json({ ok: true, refunded_cents: b.total_cents });
@@ -2992,7 +3773,7 @@ app.post('/api/bookings/:id/cancel', identMiddleware, requireUser, (req, res) =>
   if (isModel || Date.now() < b.scheduled_at - BOOKING_FAN_CANCEL_HOURS * 60 * 60 * 1000) {
     refunded = b.total_cents;
     refundFan(b.fan_id, b.model_id, b.total_cents, 'booking_refund',
-      `📅 Booking #${b.id} cancelled by ${isModel ? 'model' : 'fan'} — refunded`);
+      `📅 Booking #${b.id} cancelled by ${isModel ? 'model' : 'fan'} — refunded`, clientIp(req));
   }
   db.prepare(`UPDATE bookings SET status = 'cancelled', decided_at = datetime('now') WHERE id = ?`)
     .run(b.id);
@@ -3237,6 +4018,7 @@ app.get('/api/admin/stats', ...adminOnly, (req, res) => {
       (SELECT COUNT(*) FROM calls WHERE status = 'active') AS active_calls,
       (SELECT COUNT(*) FROM safety_incidents WHERE status = 'open') AS open_incidents,
       (SELECT COUNT(*) FROM strikes WHERE flagged = 1) AS flagged_accounts,
+      (SELECT COUNT(*) FROM dmca_notices WHERE status IN ('received','under_review')) AS open_dmca,
       (SELECT COALESCE(SUM(gross_cents),0) FROM transactions
         WHERE type IN ('message','call','tip','ppv','voice','live_explicit','gift')) AS gross_volume_cents`).get();
   res.json({ ...stats, ...counts });
@@ -3574,8 +4356,8 @@ app.post('/api/admin/fans/:id/credits', ...adminOnly, (req, res) => {
   const u = db.prepare(`SELECT id FROM users WHERE id = ? AND role = 'fan'`).get(req.params.id);
   if (!u) return res.status(404).json({ error: 'not_found' });
   db.prepare('UPDATE wallets SET credits_cents = credits_cents + ? WHERE user_id = ?').run(amount, u.id);
-  db.prepare(`INSERT INTO transactions (fan_id, type, gross_cents, note)
-              VALUES (?, 'credit_grant', ?, 'Admin credit grant')`).run(u.id, amount);
+  db.prepare(`INSERT INTO transactions (fan_id, type, gross_cents, note, ip)
+              VALUES (?, 'credit_grant', ?, 'Admin credit grant', ?)`).run(u.id, amount, clientIp(req));
   res.json({ ok: true, balance_cents: getWallet(u.id).credits_cents });
 });
 
@@ -3602,8 +4384,8 @@ app.post('/api/admin/payouts/:id', ...adminOnly, (req, res) => {
   if (!Number.isInteger(amount) || amount <= 0 || amount > pending)
     return res.status(400).json({ error: 'bad_amount', pending_cents: pending });
   db.prepare('UPDATE wallets SET paid_out_cents = paid_out_cents + ? WHERE user_id = ?').run(amount, u.id);
-  db.prepare(`INSERT INTO transactions (model_id, type, gross_cents, model_cents, note)
-              VALUES (?, 'payout', ?, ?, 'Paid out to model')`).run(u.id, amount, amount);
+  db.prepare(`INSERT INTO transactions (model_id, type, gross_cents, model_cents, note, ip)
+              VALUES (?, 'payout', ?, ?, 'Paid out to model', ?)`).run(u.id, amount, amount, clientIp(req));
   res.json({ ok: true, pending_cents: pending - amount });
 });
 
@@ -3625,8 +4407,8 @@ app.post('/api/admin/withdrawals/:id/pay', ...adminOnly, (req, res) => {
   if (w.status !== 'pending') return res.status(409).json({ error: 'not_pending' });
   db.prepare(`UPDATE withdrawals SET status = 'paid', decided_at = datetime('now') WHERE id = ?`).run(w.id);
   db.prepare('UPDATE wallets SET paid_out_cents = paid_out_cents + ? WHERE user_id = ?').run(w.amount_cents, w.model_id);
-  db.prepare(`INSERT INTO transactions (model_id, type, gross_cents, model_cents, note)
-              VALUES (?, 'payout', ?, ?, 'Withdrawal paid')`).run(w.model_id, w.amount_cents, w.amount_cents);
+  db.prepare(`INSERT INTO transactions (model_id, type, gross_cents, model_cents, note, ip)
+              VALUES (?, 'payout', ?, ?, 'Withdrawal paid', ?)`).run(w.model_id, w.amount_cents, w.amount_cents, clientIp(req));
   pushToSubject(`u:${w.model_id}`, { type: 'withdrawal:decided', status: 'paid', amount_cents: w.amount_cents });
   res.json({ ok: true });
 });
@@ -3640,6 +4422,152 @@ app.post('/api/admin/withdrawals/:id/reject', ...adminOnly, (req, res) => {
   db.prepare(`UPDATE withdrawals SET status = 'rejected', decided_at = datetime('now'), note = ? WHERE id = ?`).run(note, w.id);
   pushToSubject(`u:${w.model_id}`, { type: 'withdrawal:decided', status: 'rejected', amount_cents: w.amount_cents, note });
   res.json({ ok: true });
+});
+
+/* ------------------------------------------------------------------ */
+/* Fraud/chargeback protection: refunds, disputes, account freeze       */
+/* ------------------------------------------------------------------ */
+
+// Admin: issue a refund to a fan.
+// - With model_id: full clawback — fan gets credits back, model's (and
+//   platform/recruiter's) earnings are reduced via the same split ratios.
+// - Without model_id: pure credit grant reversal (fan gets credits, platform absorbs).
+// Every refund is recorded in `refunds` so a later chargeback on the same
+// purchase can be detected (refund + dispute = instant freeze).
+app.post('/api/admin/refunds', ...adminOnly, (req, res) => {
+  const userId = parseInt(req.body.user_id);
+  const amountCents = parseInt(req.body.amount_cents);
+  const reason = String(req.body.reason || '').slice(0, 300);
+  const modelId = req.body.model_id ? parseInt(req.body.model_id) : null;
+  const purchaseAttemptId = req.body.purchase_attempt_id ? parseInt(req.body.purchase_attempt_id) : null;
+  if (!Number.isInteger(userId) || !Number.isInteger(amountCents) || amountCents <= 0 || amountCents > 1000000)
+    return res.status(400).json({ error: 'bad_request', message: 'Invalid user or amount.' });
+  if (!reason) return res.status(400).json({ error: 'bad_request', message: 'A reason is required.' });
+  const fan = db.prepare(`SELECT id FROM users WHERE id = ? AND role = 'fan'`).get(userId);
+  if (!fan) return res.status(404).json({ error: 'fan_not_found' });
+  if (modelId) {
+    const model = db.prepare(`SELECT id FROM users WHERE id = ? AND role = 'model'`).get(modelId);
+    if (!model) return res.status(404).json({ error: 'model_not_found' });
+    const { modelCents } = splitPayment(amountCents, modelId);
+    if (getWallet(modelId).earnings_cents < modelCents)
+      return res.status(400).json({ error: 'insufficient_model_earnings',
+        message: 'Model has not earned enough to cover this clawback.' });
+  }
+  const ip = clientIp(req);
+  // refundFan() runs its own txn — insert the refund record first, then apply
+  // money movement. If money movement fails, the refund record is rolled back.
+  const refundInfo = db.prepare(`INSERT INTO refunds
+    (user_id, purchase_attempt_id, model_id, amount_cents, reason)
+    VALUES (?,?,?,?,?)`).run(userId, purchaseAttemptId, modelId, amountCents, reason);
+  const refundId = Number(refundInfo.lastInsertRowid);
+  try {
+    if (modelId) {
+      refundFan(userId, modelId, amountCents, 'refund', `Admin refund: ${reason}`, ip);
+    } else {
+      txn(() => {
+        db.prepare('UPDATE wallets SET credits_cents = credits_cents + ? WHERE user_id = ?')
+          .run(amountCents, userId);
+        db.prepare(`INSERT INTO transactions (fan_id, type, gross_cents, note, ip)
+                    VALUES (?, 'refund', ?, ?, ?)`)
+          .run(userId, amountCents, `Admin refund: ${reason}`, ip);
+      });
+    }
+  } catch (e) {
+    db.prepare(`DELETE FROM refunds WHERE id = ?`).run(refundId);
+    return res.status(400).json({ error: 'refund_failed', message: e.message });
+  }
+  pushToSubject(`u:${userId}`, { type: 'refund:issued', amount_cents: amountCents, reason });
+  res.json({ ok: true, refund_id: refundId, balance_cents: getWallet(userId).credits_cents });
+});
+
+// Admin: list all refunds
+app.get('/api/admin/refunds', ...adminOnly, (req, res) => {
+  const rows = db.prepare(`
+    SELECT r.*, uf.display_name AS fan_name, uf.username AS fan_username,
+           um.display_name AS model_name
+    FROM refunds r
+    JOIN users uf ON uf.id = r.user_id
+    LEFT JOIN users um ON um.id = r.model_id
+    ORDER BY r.id DESC LIMIT 200`).all();
+  res.json({ refunds: rows });
+});
+
+// Admin: list disputes
+app.get('/api/admin/disputes', ...adminOnly, (req, res) => {
+  const rows = db.prepare(`
+    SELECT d.*, u.display_name AS fan_name, u.username AS fan_username, u.status AS account_status
+    FROM disputes d LEFT JOIN users u ON u.id = d.user_id
+    ORDER BY CASE d.status WHEN 'open' THEN 0 ELSE 1 END, d.id DESC LIMIT 200`).all();
+  res.json({ disputes: rows });
+});
+
+// Admin: file a dispute (chargeback). AUTO-FREEZE: if the fan already received
+// a refund for this purchase and now disputes it too, the account is frozen
+// instantly and all sessions are killed.
+app.post('/api/admin/disputes', ...adminOnly, (req, res) => {
+  const userId = parseInt(req.body.user_id);
+  const amountCents = parseInt(req.body.amount_cents);
+  const transactionRef = String(req.body.transaction_ref || '').slice(0, 120);
+  const reason = String(req.body.reason || '').slice(0, 300);
+  const purchaseAttemptId = req.body.purchase_attempt_id ? parseInt(req.body.purchase_attempt_id) : null;
+  if (!Number.isInteger(userId) || !Number.isInteger(amountCents) || amountCents <= 0)
+    return res.status(400).json({ error: 'bad_request' });
+  const fan = db.prepare(`SELECT id FROM users WHERE id = ?`).get(userId);
+  if (!fan) return res.status(404).json({ error: 'user_not_found' });
+  const info = db.prepare(`INSERT INTO disputes
+    (user_id, transaction_ref, amount_cents, reason, status) VALUES (?,?,?,?, 'open')`)
+    .run(userId, transactionRef || null, amountCents, reason || null);
+  const disputeId = Number(info.lastInsertRowid);
+  // Double-dip check: refund already issued for this purchase?
+  let doubleDip = false;
+  if (purchaseAttemptId) {
+    doubleDip = !!db.prepare(`SELECT id FROM refunds WHERE user_id = ? AND purchase_attempt_id = ?`)
+      .get(userId, purchaseAttemptId);
+  } else {
+    doubleDip = !!db.prepare(`SELECT id FROM refunds WHERE user_id = ? AND amount_cents = ?`)
+      .get(userId, amountCents);
+  }
+  let frozen = false;
+  if (doubleDip) {
+    db.prepare(`UPDATE users SET status = 'frozen' WHERE id = ?`).run(userId);
+    for (const [tok, uid] of sessions) if (uid === userId) sessions.delete(tok);
+    frozen = true;
+  }
+  res.json({ ok: true, dispute_id: disputeId, auto_frozen: frozen });
+});
+
+// Admin: update dispute status
+app.put('/api/admin/disputes/:id', ...adminOnly, (req, res) => {
+  const status = String(req.body.status || '');
+  if (!['open', 'won', 'lost'].includes(status)) return res.status(400).json({ error: 'bad_status' });
+  const d = db.prepare('SELECT id FROM disputes WHERE id = ?').get(req.params.id);
+  if (!d) return res.status(404).json({ error: 'not_found' });
+  db.prepare(`UPDATE disputes SET status = ? WHERE id = ?`).run(status, req.params.id);
+  res.json({ ok: true });
+});
+
+// Admin: freeze / unfreeze a fan account
+app.post('/api/admin/fans/:id/freeze', ...adminOnly, (req, res) => {
+  const u = db.prepare(`SELECT id FROM users WHERE id = ? AND role = 'fan'`).get(req.params.id);
+  if (!u) return res.status(404).json({ error: 'not_found' });
+  db.prepare(`UPDATE users SET status = 'frozen' WHERE id = ?`).run(u.id);
+  for (const [tok, uid] of sessions) if (uid === u.id) sessions.delete(tok);
+  res.json({ ok: true });
+});
+app.post('/api/admin/fans/:id/unfreeze', ...adminOnly, (req, res) => {
+  const u = db.prepare(`SELECT id FROM users WHERE id = ? AND role = 'fan'`).get(req.params.id);
+  if (!u) return res.status(404).json({ error: 'not_found' });
+  db.prepare(`UPDATE users SET status = 'active' WHERE id = ?`).run(u.id);
+  res.json({ ok: true });
+});
+
+// Admin: recent purchase attempts (fraud review)
+app.get('/api/admin/purchase-attempts', ...adminOnly, (req, res) => {
+  const rows = db.prepare(`
+    SELECT pa.*, u.display_name AS fan_name, u.username AS fan_username
+    FROM purchase_attempts pa LEFT JOIN users u ON u.id = pa.user_id
+    ORDER BY pa.id DESC LIMIT 200`).all();
+  res.json({ attempts: rows });
 });
 
 app.put('/api/admin/settings', ...adminOnly, (req, res) => {
@@ -3774,4 +4702,72 @@ app.get(/^\/(?!api\/).*/, (req, res) => {
 server.listen(PORT, () => {
   console.log(`SlutCamp running → http://localhost:${PORT}`);
   console.log('Seeded logins: admin/admin123 · bunny|stacey|bella/model123 · fandemo/fan123');
+});
+
+/* ------------------------------------------------------------------ */
+/* DMCA takedown process                                                */
+/* ------------------------------------------------------------------ */
+db.exec(`
+CREATE TABLE IF NOT EXISTS dmca_notices (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  reporter_name TEXT NOT NULL DEFAULT '',
+  reporter_email TEXT NOT NULL DEFAULT '',
+  work_description TEXT NOT NULL DEFAULT '',
+  urls TEXT NOT NULL DEFAULT '',
+  statement_confirmed INTEGER NOT NULL DEFAULT 0,
+  signature TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'received' CHECK(status IN ('received','under_review','actioned','rejected')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  resolved_at TEXT,
+  admin_note TEXT NOT NULL DEFAULT ''
+)`);
+
+// Simple per-IP rate limit for the public DMCA form: 5/hour
+const dmcaAttempts = new Map();
+function dmcaRateOk(req) {
+  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().slice(0, 64);
+  const now = Date.now(), rec = dmcaAttempts.get(ip);
+  if (!rec || now - rec.resetAt > 3600_000) { dmcaAttempts.set(ip, { count: 1, resetAt: now }); return true; }
+  if (rec.count >= 5) return false;
+  rec.count++; return true;
+}
+
+// Public: file a takedown notice
+app.post('/api/dmca/report', (req, res) => {
+  if (!dmcaRateOk(req)) return res.status(429).json({ error: 'too_many' });
+  const b = req.body || {};
+  const name = String(b.name || '').trim().slice(0, 120);
+  const email = String(b.email || '').trim().slice(0, 160);
+  const work = String(b.work_description || '').trim().slice(0, 4000);
+  const urls = String(b.urls || '').trim().slice(0, 4000);
+  const signature = String(b.signature || '').trim().slice(0, 120);
+  const confirmed = b.statement_confirmed === true || b.statement_confirmed === 1;
+  if (!name || !email || !work || !urls || !signature || !confirmed)
+    return res.status(400).json({ error: 'missing_fields' });
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'bad_email' });
+  const id = db.prepare(`INSERT INTO dmca_notices
+    (reporter_name, reporter_email, work_description, urls, statement_confirmed, signature)
+    VALUES (?,?,?,?,1,?)`).run(name, email, work, urls, signature).lastInsertRowid;
+  pushToAdmins({ type: 'dmca:new', id, reporter_name: name });
+  res.json({ ok: true, id });
+});
+
+// Admin: list notices
+app.get('/api/admin/dmca', ...adminOnly, (req, res) => {
+  const notices = db.prepare('SELECT * FROM dmca_notices ORDER BY created_at DESC LIMIT 200').all();
+  res.json({ notices });
+});
+
+// Admin: update status + note
+app.post('/api/admin/dmca/:id/status', ...adminOnly, (req, res) => {
+  const n = db.prepare('SELECT * FROM dmca_notices WHERE id = ?').get(req.params.id);
+  if (!n) return res.status(404).json({ error: 'not_found' });
+  const status = String((req.body || {}).status || '');
+  if (!['received','under_review','actioned','rejected'].includes(status))
+    return res.status(400).json({ error: 'bad_status' });
+  const note = String((req.body || {}).admin_note || '').slice(0, 2000);
+  db.prepare(`UPDATE dmca_notices SET status = ?, admin_note = ?,
+    resolved_at = CASE WHEN ? IN ('actioned','rejected') THEN datetime('now') ELSE resolved_at END
+    WHERE id = ?`).run(status, note, status, n.id);
+  res.json({ ok: true });
 });

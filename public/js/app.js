@@ -226,6 +226,14 @@ function handleWS(m) {
   } else if (m.type === 'safety:incident' && S.user && S.user.role === 'admin') {
     toast(`🚨 Safety flag: "${m.incident.matched}" (${m.incident.total_strikes} strikes)`, 4000);
     if (S.view === 'admin' && S.adminTab === 'safety') show('admin', {});
+  } else if (m.type === 'notification:new' && m.notification) {
+    refreshNotifBadge();
+    toast(m.notification.title, 4000);
+    if (m.notification.type === 'live' && S.view === 'notifications') show('notifications', {});
+  } else if (m.type === 'tip:received' && S.user && S.user.role === 'model') {
+    showGiftAnim(m.emoji, m.fan_name);
+    toast(`💰 ${m.fan_name} tipped ${m.emoji} ${m.label} (${fmt(m.price_cents)})!`, 4000);
+    if (typeof refreshMe === 'function') refreshMe();
   } else if (m.type === 'media:unlocked' && S.view === 'chat' && S.conv && m.conversation_id === S.conv.id) {
     toast(`💰 ${fmt(m.amount_cents)} unlock! Nice!`);
     if (S.user && S.user.role === 'model') refreshMe();
@@ -386,6 +394,7 @@ function show(view, params) {
   }
   S.view = view;
   renderTabbar();
+  renderBell();
   window.scrollTo(0, 0);
   const VIEWS = {
     landing: vLanding, auth: vAuth,
@@ -395,7 +404,7 @@ function show(view, params) {
     liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch,
     bookings: vBookings, terms: vTerms,
     adminLogin: vAdminLogin, modelContract: vModelContract,
-    recruiter: vRecruiter,
+    recruiter: vRecruiter, notifications: vNotifications, dmca: vDmca,
   };
   (VIEWS[view] || vLanding)(params || {});
   if (view === 'liveBroadcast' || view === 'liveWatch') tabbar.classList.add('hidden');
@@ -439,7 +448,7 @@ async function vLanding() {
       <div style="text-align:center;margin-top:10px">
         <button class="btn ghost" id="share-app" style="border-color:var(--pink);color:var(--pink)">📤 Share SlutCamp</button>
       </div>
-      <p class="muted small" style="text-align:center;margin-top:16px">18+ only. By chatting you agree to the <a href="javascript:void(0)" id="go-terms" style="color:var(--pink)">Terms</a>.</p>
+      <p class="muted small" style="text-align:center;margin-top:16px">18+ only. By chatting you agree to the <a href="javascript:void(0)" id="go-terms" style="color:var(--pink)">Terms</a> · <a href="javascript:void(0)" id="go-dmca" style="color:var(--pink)">DMCA</a>.</p>
     </div>`;
   app.querySelectorAll('[data-model]').forEach((b) => {
     b.onclick = () => {
@@ -454,6 +463,8 @@ async function vLanding() {
   if (sh) sh.onclick = shareApp;
   const gt = $('#go-terms');
   if (gt) gt.onclick = () => show('terms', {});
+  const gd = $('#go-dmca');
+  if (gd) gd.onclick = () => show('dmca', {});
 }
 
 /* Share the app via native share sheet, fallback to copy link */
@@ -476,6 +487,8 @@ async function openChatWithModel(modelId) {
     method: 'POST', body: JSON.stringify({ model_id: modelId }),
   });
   if (status === 200) show('chat', { conv: data.conversation });
+  else if (data && data.error === 'id_verification_required')
+    toast('This model is not available right now.');
   else toast('Could not open chat.');
 }
 
@@ -835,6 +848,8 @@ async function afterLogin(data) {
   S.user = data.user;
   wsConnect();
   await refreshMe();
+  renderBell();
+  subscribePush();
   if (S.user.role === 'admin') show('admin', {});
   else if (S.user.role === 'model') {
     await checkContractGate();
@@ -880,6 +895,8 @@ async function vFanModels() {
   const { data } = await api('/models');
   const models = data.models || [];
   await refreshMe();
+  let following = [];
+  try { const f = await api('/follows'); following = f.data.following || []; } catch (e) {}
   app.innerHTML = `
     <div class="header"><h1>Slut<span class="logo">Camp</span></h1>
       <div><span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span></div></div>
@@ -896,7 +913,9 @@ async function vFanModels() {
             <span class="small" style="color:var(--pink);font-weight:700">${fmt(m.per_message_cents)}/msg · ${fmt(m.per_minute_cents)}/min video</span>
             ${m.schedule_summary ? `<br><span class="small muted">📅 Usually live: ${esc(m.schedule_summary)}</span>` : ''}
             ${m.is_live ? `<br><span class="small" style="color:#f87171;font-weight:800">▶ Watch free preview — tap to join</span>` : ''}
-          </span><span style="font-size:22px">›</span>
+          </span>
+          <span class="follow-btn ${following.includes(m.id) ? 'following' : ''}" data-follow="${m.id}" title="Follow for live notifications">${following.includes(m.id) ? '❤️' : '🤍'}</span>
+          <span style="font-size:22px">›</span>
         </button>`).join('')}
     </div>`;
   app.querySelectorAll('[data-model]').forEach((b) => {
@@ -905,6 +924,9 @@ async function vFanModels() {
       if (liveId) return watchLive(parseInt(liveId));
       openChatWithModel(parseInt(b.dataset.model));
     };
+  });
+  app.querySelectorAll('[data-follow]').forEach((f) => {
+    f.onclick = (e) => { e.stopPropagation(); toggleFollow(parseInt(f.dataset.follow), f); };
   });
 }
 
@@ -1011,6 +1033,7 @@ async function vWallet() {
           <span style="font-size:28px">🪙</span>
           <span class="amt">${p.credits_cents / 100} credits</span>
           <span class="price">${p.label}</span>
+          ${p.descriptor ? `<span class="muted small" style="width:100%">${esc(p.descriptor)}</span>` : ''}
         </button>`).join('')}
       <button class="btn ghost" id="w-logout">Log out</button>
     </div>`;
@@ -1047,6 +1070,17 @@ async function vModelEarnings() {
           <b style="color:var(--green)">${fmt(data.gifts_cents)}</b></div>
         <div class="muted small" style="margin-top:4px">Your 60% cut of every gift 💰</div>
       </div>` : ''}
+      <div class="card" style="margin-top:12px">
+        <div style="font-weight:800;margin-bottom:8px">📊 Revenue breakdown</div>
+        ${(data.by_type || []).map((r) => {
+          const labels = { message: '💬 Chat messages', call: '📹 Video calls', tip: '💸 Tips',
+            ppv: '🔒 PPV unlocks', voice: '🎤 Voice notes', live_explicit: '🔥 Explicit live', gift: '🎁 Gifts' };
+          return `
+          <div class="row" style="padding:8px 0;border-top:1px solid rgba(139,92,246,.1)">
+            <span class="grow"><b>${labels[r.type] || esc(r.type)}</b> <span class="muted small">· ${r.n} payment${r.n === 1 ? '' : 's'}</span></span>
+            <b style="color:var(--green)">${fmt(r.earned_cents)}</b>
+          </div>`; }).join('') || '<div class="muted">No earnings yet — go online and chat! 💬</div>'}
+      </div>
       <div class="card" style="margin-top:12px">
         <div style="font-weight:800;margin-bottom:8px">💸 Payouts</div>
         <div class="row" style="margin-bottom:8px"><span class="grow muted small">Bank account</span>
@@ -1112,7 +1146,10 @@ async function vModelEarnings() {
     else {
       toast(status === 400 && wd.error === 'insufficient_funds'
         ? `Not enough available (${fmt(wd.available_cents || 0)})`
+        : status === 400 && wd.error === 'no_tax_info'
+        ? '🧾 Add your tax info in Settings to withdraw — required by the IRS for payouts.'
         : 'Could not request withdrawal');
+      if (status === 400 && wd.error === 'no_tax_info') show('modelSettings', {});
       wdGo.disabled = false;
     }
   };
@@ -1188,6 +1225,7 @@ async function vRecruiter() {
             <span>${wdBadge(w.status)}</span>
           </div>`).join('')}
       </div>` : ''}
+      <div class="card" id="tax-card" style="margin-top:12px"><div class="muted small">Loading tax info…</div></div>
       <button class="btn ghost" id="r-logout" style="margin-top:12px">Log out</button>
     </div>`;
 
@@ -1218,10 +1256,17 @@ async function vRecruiter() {
     else {
       toast(status === 400 && wd.error === 'insufficient_funds'
         ? `Not enough available (${fmt(wd.available_cents || 0)})`
+        : status === 400 && wd.error === 'no_tax_info'
+        ? '🧾 Add your tax info below to withdraw — required by the IRS for payouts.'
         : 'Could not request withdrawal');
+      if (status === 400 && wd.error === 'no_tax_info') {
+        const tc = $('#tax-card');
+        if (tc) tc.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       wdGo.disabled = false;
     }
   };
+  renderTaxCard('tax-card');
 }
 
 /* ---------------- BOOKINGS — private 1-on-1 scheduled lives ---------------- */
@@ -1446,9 +1491,26 @@ function openBookingSheet(modelId, modelName, rateCents) {
 async function vModelSettings() {
   await refreshMe();
   const m = S.model;
+  const { data: idvData } = await api('/model/id-verification');
+  const idv = (idvData && idvData.verification) || null;
+  const idvStatus = idv ? idv.status : 'none';
+  const idvBanner = idvStatus === 'approved'
+    ? `<div class="card" style="border-color:var(--green)"><div style="font-weight:800;color:var(--green)">✅ ID Verified</div><div class="small muted">Your identity is verified. You're cleared to chat and go live.</div></div>`
+    : idvStatus === 'pending'
+    ? `<div class="card" style="border-color:var(--yellow)"><div style="font-weight:800;color:var(--yellow)">⏳ ID Under Review</div><div class="small muted">Submitted ${esc(idv.submitted_at || '')}. Asce will review it soon — you can't chat or go live until it's approved.</div></div>`
+    : `<div class="card" style="border-color:var(--red)">
+        <div style="font-weight:800;margin-bottom:6px">🪪 ID Verification ${idvStatus === 'rejected' ? '<span style="color:var(--red)">— Action Needed</span>' : '<span style="color:var(--red)">— Required</span>'}</div>
+        ${idvStatus === 'rejected' ? `<div class="small" style="color:var(--red);margin-bottom:8px">Rejected${idv.reviewer_note ? `: ${esc(idv.reviewer_note)}` : ''} — please resubmit.</div>` : ''}
+        <div class="muted small" style="margin-bottom:10px">Federal law (18 U.S.C. §2257) requires us to verify your identity and age before you can chat with fans or go live. Upload a clear photo of:<br>1️⃣ Government ID — <b>front</b><br>2️⃣ Government ID — <b>back</b><br>3️⃣ A <b>selfie of you holding the ID</b> next to your face<br>Your documents are kept private and only reviewed by Asce.</div>
+        <label class="field">ID front<input class="input" type="file" id="idv-front" accept="image/*"></label>
+        <label class="field">ID back<input class="input" type="file" id="idv-back" accept="image/*"></label>
+        <label class="field">Selfie holding ID<input class="input" type="file" id="idv-selfie" accept="image/*"></label>
+        <button class="btn" id="idv-submit">Submit for verification</button>
+      </div>`;
   app.innerHTML = `
     <div class="header"><h1>Settings ⚙️</h1></div>
     <div class="screen">
+      ${idvBanner}
       <div class="card">
         <div style="font-weight:800;margin-bottom:6px">💵 My Rates</div>
         <div class="muted small" style="margin-bottom:10px">What fans pay for 1-on-1 with you. You set these — Asce can also adjust them.</div>
@@ -1500,7 +1562,19 @@ async function vModelSettings() {
         </div>
         <button class="btn ghost" id="s-photo" style="margin-top:8px">📷 Change my photo</button>
       </div>
+      <div class="card" id="tax-card"><div class="muted small">Loading tax info…</div></div>
       <button class="btn ghost" id="s-logout">Log out</button>
+      <div class="card" id="tipmenu-card" style="margin-top:12px">
+        <div style="font-weight:800;margin-bottom:6px">💰 Tip Menu</div>
+        <div class="muted small" style="margin-bottom:10px">Fans pick from your menu and pay instantly — like TikTok gifts but your own custom list. You keep 60% of every tip.</div>
+        <div id="tipmenu-list"><span class="muted small">Loading…</span></div>
+        <div class="row" style="gap:8px;margin-top:10px">
+          <input class="input" id="tm-emoji" placeholder="😈" maxlength="8" style="flex:0 0 52px;text-align:center;font-size:20px">
+          <input class="input" id="tm-label" placeholder="e.g. Blow a kiss" maxlength="60" style="flex:2">
+          <input class="input" id="tm-price" type="number" step="0.01" min="1" max="1000" placeholder="$" style="flex:1">
+        </div>
+        <button class="btn" id="tm-add" style="margin-top:8px">➕ Add tip item</button>
+      </div>
     </div>`;
   $('#s-save').onclick = async () => {
     const per_message_cents = parseInt($('#s-msg').value);
@@ -1575,6 +1649,152 @@ async function vModelSettings() {
     inp.click();
   };
   $('#s-logout').onclick = () => logout();
+  renderTaxCard('tax-card');
+  // 💰 Tip menu CRUD
+  async function loadTipMenu() {
+    const { data } = await api(`/models/${S.user.id}/tip-menu`);
+    const items = data.items || [];
+    const list = $('#tipmenu-list');
+    if (!list) return;
+    list.innerHTML = items.length ? items.map((t) => `
+      <div class="row" style="align-items:center;margin-bottom:6px;gap:8px">
+        <span style="font-size:22px">${t.emoji}</span>
+        <span class="grow"><b>${esc(t.label)}</b> <span class="muted small">${fmt(t.price_cents)}</span></span>
+        <button class="btn small ghost" data-tm-edit="${t.id}">✏️</button>
+        <button class="btn small ghost" data-tm-del="${t.id}">✕</button>
+      </div>`).join('')
+      : '<span class="muted small">No tip items yet — add your first one above!</span>';
+    list.querySelectorAll('[data-tm-del]').forEach((b) => b.onclick = async () => {
+      if (!confirm('Delete this tip item?')) return;
+      await api(`/model/tip-menu/${b.dataset.tmDel}`, { method: 'DELETE' });
+      loadTipMenu();
+    });
+    list.querySelectorAll('[data-tm-edit]').forEach((b) => b.onclick = async () => {
+      const item = items.find((x) => x.id == b.dataset.tmEdit);
+      const label = prompt('Label:', item.label);
+      if (label === null) return;
+      const price = prompt('Price ($):', (item.price_cents / 100).toFixed(2));
+      if (price === null) return;
+      const emoji = prompt('Emoji:', item.emoji) || item.emoji;
+      const { status } = await api(`/model/tip-menu/${item.id}`, { method: 'PUT',
+        body: JSON.stringify({ emoji, label, price_cents: Math.round(parseFloat(price) * 100) }) });
+      toast(status === 200 ? '✅ Updated!' : 'Could not update.');
+      if (status === 200) loadTipMenu();
+    });
+  }
+  loadTipMenu();
+  const tmAdd = $('#tm-add');
+  if (tmAdd) tmAdd.onclick = async () => {
+    const emoji = $('#tm-emoji').value.trim() || '💰';
+    const label = $('#tm-label').value.trim();
+    const price = parseFloat($('#tm-price').value);
+    if (!label) return toast('Give the tip item a name.');
+    if (!price || price < 1 || price > 1000) return toast('Price must be $1–$1,000.');
+    const { status } = await api('/model/tip-menu', { method: 'POST',
+      body: JSON.stringify({ emoji, label, price_cents: Math.round(price * 100) }) });
+    if (status === 200) {
+      $('#tm-emoji').value = ''; $('#tm-label').value = ''; $('#tm-price').value = '';
+      loadTipMenu();
+      toast('✅ Tip item added!');
+    } else toast('Could not add tip item.');
+  };
+  // 🪪 ID verification submit (3 files via multipart)
+  const idvBtn = $('#idv-submit');
+  if (idvBtn) idvBtn.onclick = async () => {
+    const front = $('#idv-front').files[0], back = $('#idv-back').files[0], selfie = $('#idv-selfie').files[0];
+    if (!front || !back || !selfie) return toast('Please attach all 3 photos.');
+    for (const f of [front, back, selfie]) {
+      if (!/^image\/(jpeg|png|webp)$/.test(f.type)) return toast('Photos must be JPG or PNG.');
+      if (f.size > 8 * 1024 * 1024) return toast('Each photo must be under 8MB.');
+    }
+    toast('Uploading ID…');
+    idvBtn.disabled = true;
+    const fd = new FormData();
+    fd.append('id_front', front); fd.append('id_back', back); fd.append('selfie', selfie);
+    const headers = {};
+    if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
+    let status = 0, data = {};
+    try {
+      const r = await fetch('/api/model/id-verification', { method: 'POST', headers, body: fd });
+      status = r.status;
+      try { data = await r.json(); } catch (e) { /* non-JSON */ }
+    } catch (e) { /* network */ }
+    idvBtn.disabled = false;
+    if (status === 200 && data.ok) {
+      toast('✅ Submitted! Asce will review your ID soon.');
+      show('modelSettings', {});
+    } else toast(data.message || 'Upload failed — try again.');
+  };
+}
+
+/* ---------------- W-9 TAX INFO (models + partners, shared) ---------------- */
+// Renders the tax-info card into a container: masked "on file" view or the W-9 form.
+const US_STATE_OPTS = ['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'];
+
+async function renderTaxCard(containerId) {
+  const box = document.getElementById(containerId);
+  if (!box) return;
+  const { status, data } = await api('/tax-profile');
+  if (status !== 200) { box.innerHTML = '<div class="muted small">Could not load tax info.</div>'; return; }
+  const p = data.profile;
+  if (p) {
+    box.innerHTML = `
+      <div style="font-weight:800;margin-bottom:6px">🧾 Tax Info <span style="color:var(--green);font-size:13px">✓ On file</span></div>
+      <div class="small" style="margin-bottom:4px"><b>${esc(p.legal_name)}</b>${p.business_name ? ` <span class="muted">(${esc(p.business_name)})</span>` : ''}</div>
+      <div class="small muted">${p.tax_id_type === 'ein' ? 'EIN' : 'SSN'}: <b>${esc(p.tax_id_masked)}</b></div>
+      <div class="small muted">${esc(p.address_line1)}${p.address_line2 ? ', ' + esc(p.address_line2) : ''}<br>${esc(p.city)}, ${esc(p.state)} ${esc(p.zip)}</div>
+      <div class="muted small" style="margin-top:6px">🔒 Your SSN/EIN is encrypted — only the last 4 are shown.</div>
+      <button class="btn ghost small" id="tax-edit" style="margin-top:8px">✏️ Update tax info</button>`;
+    $('#tax-edit').onclick = () => renderTaxForm(box, p);
+    return;
+  }
+  renderTaxForm(box, null);
+}
+
+function renderTaxForm(box, p) {
+  const v = (k) => p ? esc(p[k] || '') : '';
+  box.innerHTML = `
+    <div style="font-weight:800;margin-bottom:6px">🧾 Tax Info (W-9)</div>
+    <div class="muted small" style="margin-bottom:10px">Required by the IRS before you can withdraw payouts. This is the info that goes on your 1099 at tax time.</div>
+    <label class="field">Legal name (as on your tax return)<input class="input" id="tax-legal" maxlength="120" value="${v('legal_name')}" placeholder="Jane A. Doe"></label>
+    <label class="field">Business name (optional)<input class="input" id="tax-biz" maxlength="120" value="${v('business_name')}" placeholder="Leave blank if none"></label>
+    <div class="row" style="gap:8px">
+      <label class="field" style="flex:1">ID type
+        <select class="input" id="tax-idtype">
+          <option value="ssn"${p && p.tax_id_type === 'ssn' ? ' selected' : ''}>SSN</option>
+          <option value="ein"${p && p.tax_id_type === 'ein' ? ' selected' : ''}>EIN</option>
+        </select></label>
+      <label class="field" style="flex:2">${p ? 'Tax ID (leave blank to keep current)' : 'SSN or EIN (9 digits)'}<input class="input" id="tax-id" inputmode="numeric" maxlength="11" placeholder="${p ? '••••' : '123-45-6789'}"></label>
+    </div>
+    <label class="field">Street address<input class="input" id="tax-addr1" maxlength="120" value="${v('address_line1')}" placeholder="123 Main St"></label>
+    <label class="field">Apt / Suite (optional)<input class="input" id="tax-addr2" maxlength="120" value="${v('address_line2')}"></label>
+    <div class="row" style="gap:8px">
+      <label class="field" style="flex:2">City<input class="input" id="tax-city" maxlength="80" value="${v('city')}"></label>
+      <label class="field" style="flex:1">State
+        <select class="input" id="tax-state">${US_STATE_OPTS.map((s) =>
+          `<option value="${s}"${p && p.state === s ? ' selected' : ''}>${s}</option>`).join('')}</select></label>
+      <label class="field" style="flex:1">ZIP<input class="input" id="tax-zip" inputmode="numeric" maxlength="10" value="${v('zip')}" placeholder="12345"></label>
+    </div>
+    <button class="btn" id="tax-save" style="margin-top:8px">💾 Save tax info</button>
+    <div class="muted small" style="margin-top:6px">🔒 Encrypted on our server. Only Asce can use this for your 1099 — it's never shown to fans.</div>`;
+  $('#tax-save').onclick = async () => {
+    const body = {
+      legal_name: $('#tax-legal').value, business_name: $('#tax-biz').value,
+      tax_id_type: $('#tax-idtype').value, tax_id: $('#tax-id').value,
+      address_line1: $('#tax-addr1').value, address_line2: $('#tax-addr2').value,
+      city: $('#tax-city').value, state: $('#tax-state').value, zip: $('#tax-zip').value,
+    };
+    const btn = $('#tax-save');
+    btn.disabled = true;
+    const { status, data } = await api('/tax-profile', { method: 'POST', body: JSON.stringify(body) });
+    if (status === 200) { toast('✅ Tax info saved'); return renderTaxCard(box.id); }
+    btn.disabled = false;
+    const errs = { bad_legal_name: 'Enter your legal name', bad_tax_id: 'Enter a valid 9-digit SSN or EIN',
+      bad_address: 'Enter your street address', bad_city: 'Enter your city',
+      bad_state: 'Pick your state', bad_zip: 'Enter a valid ZIP (12345)',
+      tax_unavailable: 'Tax service is down — try again in a bit' };
+    toast(errs[data.error] || 'Could not save — check the fields');
+  };
 }
 
 /* ---------------- CHAT SCREEN (shared) ---------------- */
@@ -1618,6 +1838,7 @@ async function vChat(params) {
     <div class="chat-input-bar">
       ${!conv.is_paused ? `<button class="icon-btn" id="c-plus" title="More">＋</button>` : ''}
       ${!conv.is_paused && S.user && S.user.role === 'fan' ? `<button class="icon-btn" id="c-gift" title="Send a gift">🎁</button>` : ''}
+      ${!conv.is_paused && S.user && S.user.role === 'fan' ? `<button class="icon-btn" id="c-tipmenu" title="Tip menu">💰</button>` : ''}
       <input id="c-input" placeholder="${conv.is_paused ? 'Chat paused' : 'Message…'}" ${conv.is_paused ? 'disabled' : ''} autocomplete="off">
       <button class="send-btn" id="c-send" ${conv.is_paused ? 'disabled' : ''}>➤</button>
     </div>
@@ -1640,6 +1861,8 @@ async function vChat(params) {
   if (pb) pb.onclick = openActionSheet;
   const gb = $('#c-gift');
   if (gb) gb.onclick = openChatGiftPanel;
+  const tmb = $('#c-tipmenu');
+  if (tmb) tmb.onclick = () => openTipMenuSheet(S.conv.other.id, S.conv.other.display_name, 'chat');
 
   $('#c-back').onclick = () => {
     if (!S.user) show('landing', {});
@@ -1789,6 +2012,8 @@ async function sendMessage() {
     show('chat', { conv: S.conv, keepMessages: true });
     return toast('⚠️ This chat is paused.');
   }
+  if (status === 403 && data.error === 'id_verification_required')
+    return toast('🪪 This model must complete ID verification before chatting.');
   toast('Could not send.');
 }
 
@@ -1861,10 +2086,10 @@ function pickPpvFile(kind) {
     if (!f) return;
     if (f.size > 30 * 1024 * 1024) return toast('File too big — 30MB max.');
     const def = kind === 'ppv_video' ? '9.99' : '4.99';
-    const priceStr = prompt(`Set your unlock price for this ${kind === 'ppv_video' ? 'video' : 'photo'} ($):`, def);
+    const priceStr = prompt(`Set your unlock price for this ${kind === 'ppv_video' ? 'video' : 'photo'} ($1–$100, or 0 for free):`, def);
     if (priceStr === null) return; // cancelled
     const price = Math.round(parseFloat(priceStr || '0') * 100);
-    if (!Number.isFinite(price) || price < 0 || price > 100000) return toast('Enter a price like 4.99');
+    if (!Number.isFinite(price) || (price !== 0 && (price < 100 || price > 10000))) return toast('Enter 0 for free, or $1–$100');
     uploadMedia(f, kind, price, 0);
   };
   input.click();
@@ -2168,6 +2393,8 @@ async function startLiveBroadcast() {
     method: 'POST', body: JSON.stringify({ title: (title || '').trim() }) });
   if (status !== 200) {
     if (data.error === 'already_live') return toast('You are already live!');
+    if (data.error === 'id_verification_required')
+      return toast('🪪 ID verification required — upload your ID in Settings → ID Verification first.');
     return toast('Could not go live.');
   }
   let stream;
@@ -2468,6 +2695,157 @@ function showGiftAnim(emoji, fanName) {
   ov.classList.remove('hidden');
   clearTimeout(showGiftAnim._t);
   showGiftAnim._t = setTimeout(() => ov.classList.add('hidden'), 2200);
+}
+
+/* ---------------- NOTIFICATIONS (bell + follows) ---------------- */
+
+// Floating bell — rendered once, badge updates on login and WS pushes
+function renderBell() {
+  let bell = $('#notif-bell');
+  if (!S.user) { if (bell) bell.remove(); return; }
+  if (!bell) {
+    bell = document.createElement('button');
+    bell.id = 'notif-bell';
+    bell.className = 'notif-bell';
+    bell.title = 'Notifications';
+    bell.innerHTML = '🔔<span class="notif-badge hidden" id="notif-badge"></span>';
+    bell.onclick = () => show('notifications', {});
+    document.body.appendChild(bell);
+  }
+  refreshNotifBadge();
+}
+
+async function refreshNotifBadge() {
+  const badge = $('#notif-badge');
+  if (!badge || !S.user) return;
+  try {
+    const { data } = await api('/notifications');
+    const n = data.unread || 0;
+    badge.textContent = n > 99 ? '99+' : n;
+    badge.classList.toggle('hidden', !n);
+  } catch (e) { /* ignore */ }
+}
+
+async function vNotifications() {
+  const { data } = await api('/notifications');
+  const notifs = data.notifications || [];
+  app.innerHTML = `
+    <div class="header"><h1>🔔 Notifications</h1>
+      <div><button class="btn ghost small" id="notif-read-all">Mark all read</button></div></div>
+    <div class="screen">
+      ${notifs.map((n) => `
+        <button class="list-item ${n.read ? '' : 'unread'}" data-notif="${n.id}" data-link="${esc(n.link || '')}">
+          <span class="grow">
+            <span class="title">${esc(n.title)}</span><br>
+            ${n.body ? `<span class="preview">${esc(n.body)}</span><br>` : ''}
+            <span class="small muted">${new Date((n.created_at || '').replace(' ', 'T') + 'Z').toLocaleString()}</span>
+          </span>${n.read ? '' : '<span class="unread-dot"></span>'}
+        </button>`).join('') || '<div class="empty"><div class="big">🔔</div>Nothing yet.<br><span class="small">Follow models to get notified when they go live.</span></div>'}
+    </div>`;
+  $('#notif-read-all').onclick = async () => {
+    await api('/notifications/read', { method: 'POST' });
+    refreshNotifBadge();
+    show('notifications', {});
+  };
+  app.querySelectorAll('[data-notif]').forEach((b) => {
+    b.onclick = async () => {
+      await api('/notifications/read', { method: 'POST',
+        body: JSON.stringify({ ids: [parseInt(b.dataset.notif)] }) });
+      refreshNotifBadge();
+      const link = b.dataset.link;
+      if (link === '/#live' && S.user && S.user.role === 'fan') show('fanLive', {});
+      else show('notifications', {});
+    };
+  });
+}
+
+// Fan: follow/unfollow a model (enables "she's live" notifications)
+async function toggleFollow(modelId, btn) {
+  const { data } = await api(`/follows/${modelId}`, { method: 'POST' });
+  if (btn) {
+    btn.textContent = data.following ? '❤️' : '🤍';
+    btn.classList.toggle('following', data.following);
+    toast(data.following
+      ? "❤️ Following — you'll be notified when she goes live!"
+      : '🤍 Unfollowed');
+  }
+  return data.following;
+}
+
+// Web Push: subscribe this browser (needs VAPID keys server-side to actually deliver)
+async function subscribePush() {
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (!('Notification' in window)) return;
+    const { data } = await api('/push/vapid-key');
+    if (!data.key) return; // VAPID not configured — in-app notifications still work
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return;
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const key = Uint8Array.from(atob(data.key.replace(/-/g, '+').replace(/_/g, '/')),
+        (c) => c.charCodeAt(0));
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+    }
+    const j = sub.toJSON();
+    await api('/push/subscribe', { method: 'POST',
+      body: JSON.stringify({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth }) });
+  } catch (e) { /* push is best-effort — in-app notifications still work */ }
+}
+
+/* ---------------- TIP MENU (fan-facing) ---------------- */
+
+async function openTipMenuSheet(modelId, modelName, context) {
+  const { data } = await api(`/models/${modelId}/tip-menu`);
+  const items = data.items || [];
+  const balance = S.wallet ? S.wallet.credits_cents : 0;
+  let sheet = $('#tip-sheet');
+  if (sheet) sheet.remove();
+  sheet = document.createElement('div');
+  sheet.id = 'tip-sheet';
+  sheet.className = 'sheet-backdrop';
+  sheet.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-title">💰 ${esc(modelName)}'s Tip Menu
+        <span class="muted small">· ${fmt(balance)}</span></div>
+      <div class="muted small" style="margin-bottom:10px">Pick something fun — she'll do it for you 😈</div>
+      <div class="tip-list">
+        ${items.map((t) => `
+          <button class="tip-item" data-tip="${t.id}">
+            <span class="tip-emoji">${t.emoji}</span>
+            <span class="grow"><span class="title">${esc(t.label)}</span></span>
+            <span class="tip-price">${fmt(t.price_cents)}</span>
+          </button>`).join('') || '<div class="muted">No tip menu yet — check back soon!</div>'}
+      </div>
+      <button class="btn ghost" id="tip-close" style="margin-top:10px">Close</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  const close = () => sheet.remove();
+  $('#tip-close').onclick = close;
+  sheet.onclick = (e) => { if (e.target === sheet) close(); };
+  sheet.querySelectorAll('[data-tip]').forEach((b) => {
+    b.onclick = () => sendTip(parseInt(b.dataset.tip), modelId, modelName, context);
+  });
+}
+
+async function sendTip(menuId, modelId, modelName, context) {
+  const sheet = $('#tip-sheet');
+  if (sheet) sheet.remove();
+  const { status, data } = await api(`/models/${modelId}/tip`, {
+    method: 'POST',
+    body: JSON.stringify({ menu_id: menuId, context: context || 'profile' }),
+  });
+  if (status === 402) {
+    toast(`Not enough credits — you need ${fmt(data.needed_cents)}.`);
+    if (typeof showBuyCredits === 'function') showBuyCredits(data.needed_cents);
+    return;
+  }
+  if (status === 200) {
+    if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
+    showGiftAnim(data.emoji, `You tipped ${data.label}`);
+    toast(`💰 ${data.emoji} ${data.label} sent to ${modelName}!`);
+  }
 }
 
 // Stacked gift ticker: recent gifts float up the side, TikTok-style
@@ -3060,6 +3438,7 @@ function vLiveWatch() {
         <input id="stream-chat-box" class="input" placeholder="Chat is FREE — say hi! 💬" maxlength="500" autocomplete="off">
         <button class="btn small" id="stream-chat-send" style="margin:0">➤</button>
         <button class="btn small" id="gift-open-btn" style="margin:0;background:linear-gradient(135deg,#ec4899,#8b5cf6)">🎁</button>
+        <button class="btn small" id="tipmenu-open-btn" style="margin:0;background:linear-gradient(135deg,#f59e0b,#f97316)" aria-label="Tip menu">💰</button>
         <button class="btn small" id="priority-open-btn" style="margin:0;background:linear-gradient(135deg,#f59e0b,#ef4444)" aria-label="Send priority message">📢</button>
         <button class="btn small" id="stage-join-btn" style="margin:0;background:linear-gradient(135deg,#8b5cf6,#3b82f6)" aria-label="Join live on camera">🎥</button>
       </div>
@@ -3080,6 +3459,8 @@ function vLiveWatch() {
   sendBox.onkeydown = (e) => { if (e.key === 'Enter') sendIt(); };
   lockCopyForFans($('#stream-chat'), sendBox);
   $('#gift-open-btn').onclick = openGiftPanel;
+  const tmob = $('#tipmenu-open-btn');
+  if (tmob && S.live) tmob.onclick = () => openTipMenuSheet(S.live.modelId, S.live.modelName || 'her', 'live');
   $('#priority-open-btn').onclick = openPriorityPanel;
   $('#stage-join-btn').onclick = requestStageJoin;
   loadStageState();
@@ -3428,7 +3809,8 @@ async function vAdmin() {
   const tabs = [
     ['dash', '📊 Home'], ['chats', '👀 Chats'], ['safety', '🛡️ Safety'], ['live', '🔴 Live'],
     ['models', '💃 Models'], ['invites', '✉️ Invites'], ['payouts', '💸 Payouts'], ['fans', '🧑 Fans'],
-    ['bookings', '📅 Bookings'], ['contracts', '📝 Contracts'], ['partners', '🤝 Partners'], ['more', '⚙️ More'],
+    ['bookings', '📅 Bookings'], ['contracts', '📝 Contracts'], ['idchecks', '🪪 ID Checks'], ['partners', '🤝 Partners'],
+    ['refunds', '💳 Refunds'], ['disputes', '⚠️ Disputes'], ['tax', '🧾 Tax'], ['dmca', '⚖️ DMCA'], ['more', '⚙️ More'],
   ];
   let body = '';
   if (tab === 'dash') body = await adminDashBody(stats);
@@ -3441,14 +3823,19 @@ async function vAdmin() {
   else if (tab === 'fans') body = await adminFansBody();
   else if (tab === 'bookings') body = await adminBookingsBody();
   else if (tab === 'contracts') body = await adminContractsBody();
+  else if (tab === 'idchecks') body = await adminIdChecksBody();
   else if (tab === 'partners') body = await adminPartnersBody();
+  else if (tab === 'refunds') body = await adminRefundsBody();
+  else if (tab === 'disputes') body = await adminDisputesBody();
+  else if (tab === 'tax') body = await adminTaxBody();
+  else if (tab === 'dmca') body = await adminDmcaBody();
   else body = await adminMoreBody(stats);
 
   app.innerHTML = `
     <div class="header"><h1>Moderator 🛡️</h1><div class="sub">Hey Corry — everything at a glance</div></div>
     <div class="screen">
       <div class="tabs">${tabs.map(([id, l]) =>
-        `<button data-atab="${id}" class="${tab === id ? 'active' : ''}">${l}${id === 'safety' && stats.open_incidents ? ` <span class="unread-badge">${stats.open_incidents}</span>` : ''}</button>`).join('')}
+        `<button data-atab="${id}" class="${tab === id ? 'active' : ''}">${l}${id === 'safety' && stats.open_incidents ? ` <span class="unread-badge">${stats.open_incidents}</span>` : ''}${id === 'dmca' && stats.open_dmca ? ` <span class="unread-badge">${stats.open_dmca}</span>` : ''}</button>`).join('')}
       </div>
       <div id="admin-body">${body}</div>
     </div>`;
@@ -3734,6 +4121,60 @@ async function adminContractsBody() {
   `;
 }
 
+async function adminIdChecksBody() {
+  const { data } = await api('/admin/id-verifications');
+  const rows = (data && data.verifications) || [];
+  const pending = rows.filter((r) => r.status === 'pending');
+  const decided = rows.filter((r) => r.status !== 'pending');
+  // Fetch single-use photo tokens for pending reviews so <img> tags can load them
+  for (const r of pending) {
+    try {
+      const { data: t } = await api(`/admin/id-verifications/${r.id}/photo-token`, { method: 'POST' });
+      r._tok = t && t.token;
+    } catch (e) { r._tok = null; }
+  }
+  const photoRow = (r, which, label) => r._tok
+    ? `<div style="flex:1;min-width:120px"><div class="small muted" style="margin-bottom:4px">${label}</div>
+       <img src="/api/admin/id-verifications/${r.id}/photo/${which}?t=${r._tok}"
+            style="width:100%;border-radius:8px;border:1px solid var(--border)" loading="lazy"></div>`
+    : `<div class="small muted" style="flex:1">Photo unavailable</div>`;
+  const badge = (s) => ({ pending: '⏳ Pending', approved: '✅ Approved', rejected: '❌ Rejected' }[s] || s);
+  return `
+    <div style="font-weight:800;margin-bottom:10px">🪪 Model ID verification <span class="small muted">(18 U.S.C. §2257)</span></div>
+    <div class="small muted" style="margin-bottom:12px">Models cannot chat with fans or go live until you approve their ID. Photos are private — only visible here.</div>
+    ${pending.length ? `
+      <h3 style="color:var(--yellow)">⏳ Awaiting review (${pending.length})</h3>
+      ${pending.map((r) => `
+        <div class="card" style="padding:12px;margin-bottom:10px;border-color:var(--yellow)">
+          <div class="row" style="align-items:center;margin-bottom:8px">
+            <span class="grow"><b>${esc(r.display_name)}</b> <span class="small muted">@${esc(r.username)}</span><br>
+              <span class="small muted">Submitted ${esc(r.submitted_at || '')}</span></span>
+          </div>
+          <div class="row" style="gap:8px;margin-bottom:10px">
+            ${photoRow(r, 'front', 'ID front')}
+            ${photoRow(r, 'back', 'ID back')}
+            ${photoRow(r, 'selfie', 'Selfie + ID')}
+          </div>
+          <div class="row" style="gap:8px">
+            <button class="btn small" data-idv-approve="${r.id}" style="flex:1">✅ Approve</button>
+            <button class="btn small danger" data-idv-reject="${r.id}" style="flex:1">❌ Reject</button>
+          </div>
+        </div>`).join('')}
+    ` : '<div class="small muted" style="margin-bottom:12px">No pending verifications. 🎉</div>'}
+    ${decided.length ? `
+      <h3>Reviewed (${decided.length})</h3>
+      ${decided.map((r) => `
+        <div class="card" style="padding:10px;margin-bottom:8px">
+          <b>${esc(r.display_name)}</b> <span class="small muted">@${esc(r.username)}</span><br>
+          <span class="small">${badge(r.status)}</span>
+          <span class="small muted"> · reviewed ${esc(r.reviewed_at || '')}</span>
+          ${r.reviewer_note ? `<br><span class="small muted">Note: ${esc(r.reviewer_note)}</span>` : ''}
+          ${r.status === 'rejected' ? ` <button class="btn small ghost" data-idv-approve="${r.id}">Approve anyway</button>` : ''}
+        </div>`).join('')}
+    ` : ''}
+  `;
+}
+
 async function adminBookingsBody() {
   const { data } = await api('/admin/bookings');
   const bookings = data.bookings || [];
@@ -3784,6 +4225,48 @@ async function adminPartnersBody() {
         </div>
       </div>`;
     }).join('') || '<div class="empty">No partners yet.</div>'}`;
+}
+
+async function adminTaxBody() {
+  const { status, data } = await api('/admin/tax');
+  if (status !== 200) return '<div class="muted">Could not load tax dashboard.</div>';
+  const earners = data.earners || [];
+  const missing = earners.filter((e) => e.missing_tax);
+  const need1099 = earners.filter((e) => e.needs_1099);
+  return `
+    <h3 style="margin:4px 0 10px">🧾 Tax — W-9 / 1099 (${data.year})</h3>
+    <div class="muted small" style="margin-bottom:10px">
+      IRS rule: anyone paid <b>$600+</b> in the year needs a 1099-NEC. Filing itself happens with your accountant — this page tracks who's on file and exports the data they need.
+      ${data.key_ephemeral ? '<br><span style="color:var(--red)">⚠️ TAX_ENC_KEY is not set — tax IDs are encrypted with a temporary key and will be unreadable after a server restart. Set the env var.</span>' : ''}
+    </div>
+    <div class="stat-grid" style="margin-bottom:12px">
+      <div class="stat"><div class="n">${earners.length}</div><div class="l">Earners (models + partners)</div></div>
+      <div class="stat"><div class="n">${earners.filter((e) => e.has_tax).length}</div><div class="l">W-9 on file</div></div>
+      <div class="stat"><div class="n" style="color:${need1099.length ? 'var(--pink)' : 'inherit'}">${need1099.length}</div><div class="l">$600+ paid (need 1099)</div></div>
+      <div class="stat"><div class="n" style="color:${missing.length ? 'var(--red)' : 'inherit'}">${missing.length}</div><div class="l">⚠️ $600+ but NO tax info</div></div>
+    </div>
+    ${missing.length ? `
+    <div class="card" style="border-color:rgba(248,113,113,.5);padding:12px;margin-bottom:12px">
+      <div style="font-weight:800;color:var(--red);margin-bottom:6px">⚠️ Action needed — paid $600+ with no W-9 on file</div>
+      ${missing.map((e) => `<div class="small" style="padding:4px 0"><b>${esc(e.earner_name)}</b> <span class="muted">@${esc(e.username)} · ${e.role}</span> — paid <b style="color:var(--red)">${fmt(e.paid_this_year_cents)}</b> this year</div>`).join('')}
+      <div class="muted small" style="margin-top:6px">They can't request more withdrawals until they add tax info. Tell them to fill it in under Settings → Tax Info.</div>
+    </div>` : ''}
+    <button class="btn" id="tax-export" style="margin-bottom:12px">📥 Export 1099 CSV for accountant</button>
+    <div class="muted small" style="margin-bottom:10px">CSV has legal names, addresses, and totals — <b>no tax IDs</b> (those stay encrypted).</div>
+    ${earners.map((e) => `
+      <div class="card" style="padding:10px 12px;${e.missing_tax ? 'border-color:rgba(248,113,113,.5)' : ''}">
+        <div class="row" style="align-items:center">
+          <span class="grow">
+            <b>${esc(e.earner_name)}</b> <span class="small muted">@${esc(e.username)} · ${e.role === 'recruiter' ? `🤝 partner${e.recruiter_city ? ' · ' + esc(e.recruiter_city) : ''}` : '💃 model'}</span>
+            ${e.banned ? ' <span class="small" style="color:var(--red)">deactivated</span>' : ''}<br>
+            <span class="small">Paid ${data.year}: <b style="color:${e.needs_1099 ? 'var(--pink)' : 'inherit'}">${fmt(e.paid_this_year_cents)}</b></span>
+            ${e.needs_1099 ? ' <span class="small" style="color:var(--pink)">· needs 1099</span>' : ''}
+          </span>
+          ${e.has_tax
+            ? `<span class="small" style="color:var(--green)">✓ W-9 on file<br><span class="muted">${e.tax_id_type === 'ein' ? 'EIN' : 'SSN'} ${esc(e.tax_id_masked)}${e.tax_city ? ` · ${esc(e.tax_city)}, ${esc(e.tax_state)}` : ''}</span></span>`
+            : `<span class="small" style="color:${e.missing_tax ? 'var(--red)' : 'var(--pink)'}">${e.missing_tax ? '⚠️ NO TAX INFO' : 'No tax info yet'}</span>`}
+        </div>
+      </div>`).join('') || '<div class="empty">No earners yet.</div>'}`;
 }
 
 async function adminMoreBody(s) {
@@ -3844,10 +4327,108 @@ async function adminMoreBody(s) {
     <button class="btn ghost" id="a-logout">Log out</button>`;
 }
 
+/* ---------------- ADMIN: 💳 Refunds ---------------- */
+async function adminRefundsBody() {
+  const { data } = await api('/admin/refunds');
+  const refunds = data.refunds || [];
+  return `
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">💳 Issue refund</div>
+      <div class="muted small" style="margin-bottom:8px">Fan gets credits back. Add the model to claw back her cut too (split reversed).</div>
+      <label class="field">Fan user ID<input class="input" id="rf-user" type="number" min="1" placeholder="Fan's user ID"></label>
+      <label class="field">Amount $<input class="input" id="rf-amount" type="number" step="0.01" min="0.01" placeholder="25.00"></label>
+      <label class="field">Model user ID (optional — for clawback)<input class="input" id="rf-model" type="number" min="1" placeholder="Blank = credits only"></label>
+      <label class="field">Reason (required)<input class="input" id="rf-reason" maxlength="300" placeholder="e.g. duplicate charge, fan complaint"></label>
+      <button class="btn" id="rf-go">Issue refund</button>
+    </div>
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:8px">Refund history</div>
+      ${refunds.length ? refunds.map((r) => `
+        <div class="row" style="padding:8px 0;border-bottom:1px solid var(--line)">
+          <span class="grow"><b>${esc(r.fan_name || r.fan_username || ('#' + r.user_id))}</b>
+            <span class="small" style="color:var(--red)">−${fmt(r.amount_cents)}</span><br>
+            <span class="small muted">${esc(r.reason || '')}${r.model_name ? ` · clawed back from ${esc(r.model_name)}` : ' · credits only'}</span><br>
+            <span class="small muted">${esc(r.created_at || '')}</span></span>
+        </div>`).join('') : '<div class="muted small">No refunds issued.</div>'}
+    </div>`;
+}
+
+/* ---------------- ADMIN: ⚠️ Disputes ---------------- */
+async function adminDisputesBody() {
+  const { data } = await api('/admin/disputes');
+  const { data: attData } = await api('/admin/purchase-attempts');
+  const disputes = data.disputes || [];
+  const attempts = (attData.attempts || []).slice(0, 50);
+  const badge = (s) => s === 'open'
+    ? '<span class="small" style="color:var(--red)">🔴 open</span>'
+    : s === 'won' ? '<span class="small" style="color:var(--green)">✅ won</span>'
+    : '<span class="small muted">❌ lost</span>';
+  return `
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">⚠️ File dispute (chargeback)</div>
+      <div class="muted small" style="margin-bottom:8px">If this fan already got a refund for the same purchase, their account freezes automatically.</div>
+      <label class="field">Fan user ID<input class="input" id="dp-user" type="number" min="1"></label>
+      <label class="field">Amount $<input class="input" id="dp-amount" type="number" step="0.01" min="0.01"></label>
+      <label class="field">Processor reference<input class="input" id="dp-ref" maxlength="120" placeholder="Chargeback ID from processor"></label>
+      <label class="field">Purchase attempt ID (optional)<input class="input" id="dp-purchase" type="number" min="1"></label>
+      <label class="field">Reason<input class="input" id="dp-reason" maxlength="300"></label>
+      <button class="btn" id="dp-go">File dispute</button>
+    </div>
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:8px">Disputes</div>
+      ${disputes.length ? disputes.map((d) => `
+        <div class="row" style="padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:center">
+          <span class="grow"><b>${esc(d.fan_name || d.fan_username || ('#' + d.user_id))}</b>
+            ${d.account_status === 'frozen' ? ' <span class="small" style="color:var(--red)">🧊 FROZEN</span>' : ''}
+            ${badge(d.status)}<br>
+            <span class="small" style="color:var(--red)">${fmt(d.amount_cents)}</span>
+            <span class="small muted"> · ${esc(d.transaction_ref || 'no ref')} · ${esc(d.reason || '')}</span><br>
+            <span class="small muted">${esc(d.created_at || '')}</span></span>
+          <span style="display:flex;gap:6px;margin-top:6px">
+            ${d.status === 'open' ? `
+              <button class="btn small success" data-dp-win="${d.id}">Won</button>
+              <button class="btn small danger" data-dp-lose="${d.id}">Lost</button>` : ''}
+            ${d.account_status !== 'frozen'
+              ? `<button class="btn small danger" data-dp-freeze="${d.user_id}">Freeze</button>`
+              : `<button class="btn small" data-dp-unfreeze="${d.user_id}">Unfreeze</button>`}
+          </span>
+        </div>`).join('') : '<div class="muted small">No disputes filed.</div>'}
+    </div>
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:8px">🕵️ Recent purchase attempts</div>
+      ${attempts.length ? attempts.map((a) => `
+        <div class="row" style="padding:6px 0;border-bottom:1px solid var(--line)">
+          <span class="grow small"><b>${esc(a.fan_name || a.fan_username || ('#' + a.user_id))}</b>
+            · ${fmt(a.amount_cents)} · <span class="muted">${esc(a.status)}</span>
+            ${a.status === 'blocked' ? ' <span style="color:var(--red)">⛔</span>' : ''}<br>
+            <span class="muted">${esc(a.ip || 'no ip')} · ${esc(a.created_at || '')}${a.note ? ' · ' + esc(a.note) : ''}</span></span>
+        </div>`).join('') : '<div class="muted small">No attempts yet.</div>'}
+    </div>`;
+}
+
 function wireAdminBody(tab) {
   const go = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
   go('#go-safety', () => { S.adminTab = 'safety'; show('admin', {}); });
   go('#a-logout', () => logout());
+
+  // 🧾 Tax — CSV export for the accountant (download via fetch → blob)
+  go('#tax-export', async () => {
+    toast('Preparing CSV…');
+    try {
+      const headers = {};
+      if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
+      const r = await fetch('/api/admin/tax/export', { headers });
+      if (!r.ok) throw new Error('bad');
+      const blob = await r.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `slutcamp-1099-export-${new Date().getFullYear()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+      toast('📥 CSV downloaded');
+    } catch (e) { toast('Could not export CSV'); }
+  });
 
   // 🔐 Two-Step Auth card
   go('#tfa-change', () => {
@@ -4229,6 +4810,93 @@ function wireAdminBody(tab) {
     toast(status === 200 ? `✅ Entry fee set to $${dollars.toFixed(2)}` : 'Use $1.00–$100.00');
     if (status === 200) show('admin', {});
   });
+
+  // ⚖️ DMCA notices
+  document.querySelectorAll('[data-dmca-save]').forEach((b) => {
+    b.onclick = async () => {
+      const id = b.dataset.dmcaSave;
+      const status = $('#dmca-status-' + id).value;
+      const admin_note = $('#dmca-note-' + id).value;
+      b.disabled = true;
+      const { status: http } = await api(`/admin/dmca/${id}/status`, {
+        method: 'POST', body: JSON.stringify({ status, admin_note }) });
+      toast(http === 200 ? '✅ Notice updated' : 'Something went wrong');
+      if (http === 200) show('admin', {});
+      else b.disabled = false;
+    };
+  });
+
+  // 🪪 ID Checks — approve / reject with note
+  if (tab === 'idchecks') {
+    app.querySelectorAll('[data-idv-approve]').forEach((b) => b.onclick = async () => {
+      const id = b.dataset.idvApprove;
+      if (!confirm('Approve this ID verification?')) return;
+      const { status } = await api(`/admin/id-verifications/${id}/approve`, { method: 'POST' });
+      toast(status === 200 ? '✅ ID approved — she can now chat and go live.' : 'Could not approve.');
+      if (status === 200) show('admin', {});
+    });
+    app.querySelectorAll('[data-idv-reject]').forEach((b) => b.onclick = async () => {
+      const id = b.dataset.idvReject;
+      const note = prompt('Rejection reason (shown to her so she knows what to fix):', 'Photo unclear — please retake');
+      if (note === null) return; // cancelled
+      const { status } = await api(`/admin/id-verifications/${id}/reject`, {
+        method: 'POST', body: JSON.stringify({ note }) });
+      toast(status === 200 ? 'ID rejected — she can resubmit.' : 'Could not reject.');
+      if (status === 200) show('admin', {});
+    });
+  }
+
+  // 💳 Refunds — issue
+  go('#rf-go', async () => {
+    const userId = parseInt($('#rf-user').value);
+    const amount = parseFloat($('#rf-amount').value);
+    const modelVal = $('#rf-model').value.trim();
+    const reason = $('#rf-reason').value.trim();
+    if (!userId || !(amount > 0) || !reason) return toast('Fill in fan, amount, and reason.');
+    if (!confirm(`Refund $${amount.toFixed(2)} in credits to fan #${userId}?${modelVal ? ` Model #${modelVal} will be clawed back.` : ''}`)) return;
+    const { status, data } = await api('/admin/refunds', { method: 'POST',
+      body: JSON.stringify({ user_id: userId, amount_cents: Math.round(amount * 100),
+        model_id: modelVal ? parseInt(modelVal) : null, reason }) });
+    toast(status === 200 ? '✅ Refund issued' : (data.message || data.error || 'Refund failed.'));
+    if (status === 200) show('admin', {});
+  });
+
+  // ⚠️ Disputes — file, resolve, freeze/unfreeze
+  go('#dp-go', async () => {
+    const userId = parseInt($('#dp-user').value);
+    const amount = parseFloat($('#dp-amount').value);
+    if (!userId || !(amount > 0)) return toast('Fill in fan and amount.');
+    const body = { user_id: userId, amount_cents: Math.round(amount * 100),
+      transaction_ref: $('#dp-ref').value.trim(), reason: $('#dp-reason').value.trim() };
+    const pVal = $('#dp-purchase').value.trim();
+    if (pVal) body.purchase_attempt_id = parseInt(pVal);
+    const { status, data } = await api('/admin/disputes', { method: 'POST', body: JSON.stringify(body) });
+    if (status === 200) {
+      toast(data.auto_frozen ? '🧊 Dispute filed — account FROZEN (refund + dispute double-dip)' : '⚠️ Dispute filed');
+      show('admin', {});
+    } else toast('Could not file dispute.');
+  });
+  app.querySelectorAll('[data-dp-win]').forEach((b) => b.onclick = async () => {
+    const { status } = await api(`/admin/disputes/${b.dataset.dpWin}`,
+      { method: 'PUT', body: JSON.stringify({ status: 'won' }) });
+    if (status === 200) show('admin', {});
+  });
+  app.querySelectorAll('[data-dp-lose]').forEach((b) => b.onclick = async () => {
+    const { status } = await api(`/admin/disputes/${b.dataset.dpLose}`,
+      { method: 'PUT', body: JSON.stringify({ status: 'lost' }) });
+    if (status === 200) show('admin', {});
+  });
+  app.querySelectorAll('[data-dp-freeze]').forEach((b) => b.onclick = async () => {
+    if (!confirm('Freeze this account? They will be logged out immediately.')) return;
+    const { status } = await api(`/admin/fans/${b.dataset.dpFreeze}/freeze`, { method: 'POST' });
+    toast(status === 200 ? '🧊 Account frozen' : 'Could not freeze.');
+    if (status === 200) show('admin', {});
+  });
+  app.querySelectorAll('[data-dp-unfreeze]').forEach((b) => b.onclick = async () => {
+    const { status } = await api(`/admin/fans/${b.dataset.dpUnfreeze}/unfreeze`, { method: 'POST' });
+    toast(status === 200 ? '✅ Account unfrozen' : 'Could not unfreeze.');
+    if (status === 200) show('admin', {});
+  });
 }
 
 /* ---------------- PWA install ---------------- */
@@ -4420,10 +5088,11 @@ function vTerms() {
         <div style="font-weight:800;margin-bottom:8px">10. Changes</div>
         <div class="small muted">Features, prices, rates, and these terms may change at any time. Continued use means you accept the current terms.</div>
       </div>
-      <p class="muted small" style="text-align:center;margin:16px 0">These terms are a plain-language summary, not legal advice.<br>Operated by World of Godz Entertainment LLC.</p>
+      <p class="muted small" style="text-align:center;margin:16px 0">These terms are a plain-language summary, not legal advice.<br>Operated by World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Copyright takedown →</a></p>
       <button class="btn ghost" id="t-back">← Back</button>
     </div>`;
   $('#t-back').onclick = () => history.length > 1 ? history.back() : show('landing', {});
+  $('#t-dmca').onclick = () => show('dmca', {});
 }
 
 /* ---------------- MODEL CONTRACT (sign before first use) ---------------- */
@@ -4508,3 +5177,104 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('blur', () => document.body.classList.add('bg-blur'));
 window.addEventListener('focus', () => document.body.classList.remove('bg-blur'));
+
+/* ---------------- DMCA: public takedown page ---------------- */
+
+function vDmca() {
+  tabbar.classList.add('hidden');
+  app.innerHTML = `
+    <div class="header">
+      <h1>Slut<span class="logo">Camp</span> ⚖️</h1>
+      <div class="sub">DMCA / Copyright</div>
+    </div>
+    <div class="screen">
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">What is this?</div>
+        <div class="small muted">If you believe content on SlutCamp infringes your copyright, you can file a takedown notice under the Digital Millennium Copyright Act (DMCA). We review every notice and remove infringing content promptly.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">📮 Designated copyright agent</div>
+        <div class="small muted">DMCA Agent, World of Godz Entertainment LLC<br>
+        Email: <b>dmca@slutcamp.app</b><br>
+        <span class="small" style="opacity:.7">(Mailing address: to be provided)</span></div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:10px">📝 File a takedown notice</div>
+        <div class="small muted" style="margin-bottom:10px">Fill this out completely. False claims carry penalties under 17 U.S.C. §512(f).</div>
+        <label class="field">Your full name<input class="input" id="dm-name" maxlength="120" placeholder="Jane Doe"></label>
+        <label class="field">Your email<input class="input" id="dm-email" type="email" maxlength="160" placeholder="you@example.com"></label>
+        <label class="field">Describe the copyrighted work<input class="input" id="dm-work" maxlength="4000" placeholder="e.g. my photo series 'Summer 2026', published at…"></label>
+        <label class="field">SlutCamp URL(s) where it appears (one per line)<textarea class="input" id="dm-urls" rows="3" maxlength="4000" placeholder="https://slutcamp.onrender.com/…"></textarea></label>
+        <label class="small" style="display:flex;gap:8px;align-items:flex-start;margin:10px 0">
+          <input type="checkbox" id="dm-goodfaith" style="margin-top:3px">
+          <span class="muted">I have a good-faith belief that the use of the material above is not authorized by the copyright owner, its agent, or the law. I swear under penalty of perjury that the information in this notice is accurate and that I am the copyright owner or authorized to act on the owner's behalf.</span>
+        </label>
+        <label class="field">Electronic signature (type your full name)<input class="input" id="dm-sig" maxlength="120" placeholder="Jane Doe"></label>
+        <button class="btn" id="dm-submit">Submit takedown notice</button>
+        <div id="dm-result" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">↩️ Counter-notice (for models)</div>
+        <div class="small muted">If your content was removed and you believe it was a mistake or misidentification, you may file a counter-notice. Email <b>dmca@slutcamp.app</b> with: your name and contact info, the URL(s) removed, a statement under penalty of perjury that you have a good-faith belief the material was removed by mistake, and your typed signature. If the original complainant doesn't file a court action within 10–14 business days, we may restore the content.</div>
+      </div>
+      <p class="muted small" style="text-align:center;margin:16px 0">This page is a plain-language summary, not legal advice.<br>Operated by World of Godz Entertainment LLC.</p>
+      <button class="btn ghost" id="dm-back">← Back</button>
+    </div>`;
+  $('#dm-back').onclick = () => history.length > 1 ? history.back() : show('landing', {});
+  $('#dm-submit').onclick = async () => {
+    const btn = $('#dm-submit');
+    const body = {
+      name: $('#dm-name').value.trim(),
+      email: $('#dm-email').value.trim(),
+      work_description: $('#dm-work').value.trim(),
+      urls: $('#dm-urls').value.trim(),
+      signature: $('#dm-sig').value.trim(),
+      statement_confirmed: $('#dm-goodfaith').checked,
+    };
+    if (!body.name || !body.email || !body.work_description || !body.urls || !body.signature)
+      return toast('Fill in every field');
+    if (!body.statement_confirmed) return toast('Check the good-faith statement');
+    btn.disabled = true;
+    const { status, data } = await api('/dmca/report', { method: 'POST', body: JSON.stringify(body) });
+    if (status === 200) {
+      $('#dm-result').innerHTML = `<div class="card" style="border-color:var(--green)"><div style="font-weight:800;color:var(--green)">✅ Notice received (ref #${data.id})</div><div class="small muted" style="margin-top:4px">We'll review it and respond to ${esc(body.email)}.</div></div>`;
+      ['dm-name','dm-email','dm-work','dm-urls','dm-sig'].forEach((id) => { $('#' + id).value = ''; });
+      $('#dm-goodfaith').checked = false;
+    } else if (status === 429) toast('Too many reports — try again later');
+    else toast(data.error === 'bad_email' ? 'Check your email address' : 'Something went wrong — try again');
+    btn.disabled = false;
+  };
+}
+
+/* ---------------- DMCA: admin queue ---------------- */
+
+async function adminDmcaBody() {
+  const { data } = await api('/admin/dmca');
+  const notices = data.notices || [];
+  const statusLabel = { received: '📥 Received', under_review: '👀 Under review', actioned: '✅ Actioned', rejected: '⛔ Rejected' };
+  return `
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">⚖️ Takedown notices</div>
+      <div class="muted small">${notices.filter((n) => n.status === 'received' || n.status === 'under_review').length} open · ${notices.length} total</div>
+    </div>
+    ${notices.map((n) => `
+      <div class="card" style="padding:12px">
+        <div class="row" style="align-items:center">
+          <span class="grow"><b>${esc(n.reporter_name)}</b> <span class="small muted">&lt;${esc(n.reporter_email)}&gt;</span><br>
+          <span class="small muted">Filed ${esc(n.created_at)}${n.resolved_at ? ` · resolved ${esc(n.resolved_at)}` : ''}</span></span>
+          <span class="small" style="font-weight:800">${statusLabel[n.status] || n.status}</span>
+        </div>
+        <div class="small" style="margin-top:8px"><b>Work:</b> ${esc(n.work_description)}</div>
+        <div class="small" style="margin-top:6px;word-break:break-all"><b>URLs:</b><br>${esc(n.urls).replace(/\n/g, '<br>')}</div>
+        <div class="small muted" style="margin-top:6px"><b>Signature:</b> ${esc(n.signature)} · ✅ good-faith statement confirmed</div>
+        <div class="row" style="margin-top:10px;gap:6px;flex-wrap:wrap">
+          <label class="field" style="flex:1;min-width:140px;margin:0">Status
+            <select class="input" id="dmca-status-${n.id}">
+              ${['received','under_review','actioned','rejected'].map((s) => `<option value="${s}"${n.status === s ? ' selected' : ''}>${statusLabel[s]}</option>`).join('')}
+            </select>
+          </label>
+        </div>
+        <label class="field">Admin note<textarea class="input" id="dmca-note-${n.id}" rows="2" maxlength="2000" placeholder="What you did / decided…">${esc(n.admin_note)}</textarea></label>
+        <button class="btn small" data-dmca-save="${n.id}">💾 Save status</button>
+      </div>`).join('') || '<div class="empty"><div class="big">⚖️</div>No takedown notices.</div>'}`;
+}
