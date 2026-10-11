@@ -329,6 +329,21 @@ CREATE TABLE IF NOT EXISTS gift_events (
 );
 CREATE INDEX IF NOT EXISTS idx_gift_stream ON gift_events(session_id, id);
 
+-- Unified gift send log (TikTok-style gifts in chat and on live streams)
+CREATE TABLE IF NOT EXISTS gift_sends (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  fan_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  model_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  gift_id         INTEGER NOT NULL REFERENCES gifts(id),
+  price_cents     INTEGER NOT NULL,
+  context         TEXT NOT NULL DEFAULT 'live' CHECK(context IN ('chat','live')),
+  conversation_id INTEGER REFERENCES conversations(id) ON DELETE SET NULL,
+  session_id      INTEGER REFERENCES live_sessions(id) ON DELETE SET NULL,
+  created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_giftsends_model ON gift_sends(model_id, id);
+CREATE INDEX IF NOT EXISTS idx_giftsends_conv ON gift_sends(conversation_id, id);
+
 -- Priority messages: fans pay for banner screen time during group streams.
 -- One shows at a time; the rest queue FIFO. More spend = longer on screen (max 30s).
 CREATE TABLE IF NOT EXISTS priority_messages (
@@ -414,6 +429,7 @@ addColumnIfMissing('live_sessions', 'title', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('live_viewers', 'explicit_until', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_viewers', 'explicit_paid', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'explicit_gift_grace_sec', 'INTEGER NOT NULL DEFAULT 180');
+addColumnIfMissing('messages', 'gift_json', 'TEXT'); // TikTok-style gift payload on chat gift messages
 addColumnIfMissing('priority_messages', 'voice', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_join_requests', 'is_explicit', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_join_requests', 'mode', "TEXT NOT NULL DEFAULT 'video'");
@@ -510,19 +526,45 @@ if (kwCount === 0) {
   for (const kw of DEFAULT_KEYWORDS) ins.run(kw);
 }
 
-// Seed the virtual gift catalog (admin can edit prices/add/remove later)
-const DEFAULT_GIFTS = [
-  ['🌹', 'Rose', 100],
-  ['💋', 'Kiss', 500],
-  ['🔥', 'Fire', 1000],
-  ['💎', 'Diamond', 2500],
-  ['🚗', 'Sports Car', 5000],
-  ['🚀', 'Rocket', 10000],
+// Seed the virtual gift catalog (admin can edit prices/add/remove later).
+// TikTok-style emoji gift tiers.
+const TIKTOK_GIFTS = [
+  ['❤️', 'Heart', 100],
+  ['🌹', 'Rose', 200],
+  ['🍦', 'Ice Cream', 500],
+  ['🧸', 'Teddy', 800],
+  ['💎', 'Diamond', 1000],
+  ['🔥', 'Fire', 1500],
+  ['👑', 'Crown', 2000],
+  ['🚀', 'Rocket', 5000],
+  ['🏆', 'Trophy', 10000],
 ];
+// Legacy catalog prices — migration only retouches gifts still at these defaults,
+// so anything the admin customized is left alone.
+const LEGACY_GIFT_PRICES = {
+  '🌹|Rose': 100, '💋|Kiss': 500, '🔥|Fire': 1000,
+  '💎|Diamond': 2500, '🚗|Sports Car': 5000, '🚀|Rocket': 10000,
+};
 const giftCount = db.prepare('SELECT COUNT(*) AS c FROM gifts').get().c;
 if (giftCount === 0) {
   const ins = db.prepare('INSERT INTO gifts (emoji, name, price_cents, sort_order) VALUES (?,?,?,?)');
-  DEFAULT_GIFTS.forEach(([emoji, name, price], i) => ins.run(emoji, name, price, i));
+  TIKTOK_GIFTS.forEach(([emoji, name, price], i) => ins.run(emoji, name, price, i));
+} else {
+  // One-time migration to the TikTok tiers: insert missing gifts in price order,
+  // update prices that are still at legacy defaults.
+  const findGift = db.prepare('SELECT * FROM gifts WHERE emoji = ? AND name = ?');
+  const insGift = db.prepare('INSERT INTO gifts (emoji, name, price_cents, sort_order) VALUES (?,?,?,?)');
+  const updPrice = db.prepare('UPDATE gifts SET price_cents = ? WHERE id = ?');
+  const priceRank = db.prepare('SELECT COUNT(*) AS n FROM gifts WHERE price_cents < ?');
+  for (const [emoji, name, price] of TIKTOK_GIFTS) {
+    const row = findGift.get(emoji, name);
+    if (!row) {
+      insGift.run(emoji, name, price, priceRank.get(price).n);
+    } else {
+      const legacy = LEGACY_GIFT_PRICES[emoji + '|' + name];
+      if (legacy != null && row.price_cents === legacy) updPrice.run(price, row.id);
+    }
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -1866,15 +1908,19 @@ app.get('/api/model/earnings', identMiddleware, requireUser, requireRole('model'
     SELECT COALESCE(u.display_name, 'Guest Fan') AS fan_name,
            SUM(t.model_cents) AS earned_cents, COUNT(*) AS payments
     FROM transactions t LEFT JOIN users u ON u.id = t.fan_id
-    WHERE t.model_id = ? AND t.type IN ('message','call','tip','ppv','voice','live_explicit')
+    WHERE t.model_id = ? AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift')
     GROUP BY t.fan_id ORDER BY earned_cents DESC`).all(req.user.id);
   const byType = db.prepare(`
     SELECT t.type, SUM(t.model_cents) AS earned_cents, COUNT(*) AS n
     FROM transactions t
-    WHERE t.model_id = ? AND t.type IN ('message','call','tip','ppv','voice','live_explicit')
+    WHERE t.model_id = ? AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift')
     GROUP BY t.type`).all(req.user.id);
+  const gifts = db.prepare(`
+    SELECT COALESCE(SUM(t.model_cents), 0) AS gifts_cents, COUNT(*) AS gift_count
+    FROM transactions t WHERE t.model_id = ? AND t.type = 'gift' AND t.model_cents > 0`).get(req.user.id);
   res.json({ earnings_cents: wallet.earnings_cents, paid_out_cents: wallet.paid_out_cents,
-    pending_cents: wallet.earnings_cents - wallet.paid_out_cents, by_fan: byFan, by_type: byType });
+    pending_cents: wallet.earnings_cents - wallet.paid_out_cents, by_fan: byFan, by_type: byType,
+    gifts_cents: gifts.gifts_cents, gift_count: gifts.gift_count });
 });
 
 /* ------------------------------------------------------------------ */
@@ -2361,9 +2407,43 @@ app.post('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
 // GET the virtual gift catalog (public, enabled only)
 app.get('/api/gifts', (req, res) => {
   res.json({ gifts: db.prepare(
-    'SELECT id, emoji, name, price_cents FROM gifts WHERE enabled = 1 ORDER BY sort_order, price_cents'
+    'SELECT id, emoji, name, price_cents FROM gifts WHERE enabled = 1 ORDER BY price_cents, sort_order'
   ).all() });
 });
+
+// Core: fan sends a virtual gift on a live stream. Charges via splitPayment
+// (model 60%, platform/recruiter split), logs gift_events, refreshes the viewer's
+// explicit grace timer, and broadcasts to all viewers + the model + admins.
+function sendLiveGift(sess, fanId, gift) {
+  const { modelCents, platformCents } = chargeFan(
+    fanId, sess.model_id, gift.price_cents, 'gift',
+    `${gift.emoji} ${gift.name} on stream #${sess.id}`);
+  db.prepare(`INSERT INTO gift_events
+    (session_id, fan_id, gift_id, gross_cents, model_cents, platform_cents)
+    VALUES (?,?,?,?,?,?)`)
+    .run(sess.id, fanId, gift.id, gift.price_cents, modelCents, platformCents);
+
+  // Pay-to-play loop: ANY gift keeps this viewer's screen unblurred for the
+  // grace period. Per-viewer — one fan's gifts never affect another fan.
+  // (Set unconditionally; the client only honors it while the stream is explicit,
+  // which also covers client-side AI-detected explicit.)
+  const explicitUntil = Date.now() + getGiftGraceSec() * 1000;
+  db.prepare('UPDATE live_viewers SET explicit_until = ? WHERE session_id = ? AND fan_id = ?')
+    .run(explicitUntil, sess.id, fanId);
+  db.prepare(`INSERT INTO blur_events (session_id, fan_id, event, detail)
+              VALUES (?,?,'gift_unblur','explicit_grace')`).run(sess.id, fanId);
+
+  const fanName = db.prepare('SELECT display_name FROM users WHERE id = ?').get(fanId).display_name;
+  const payload = { type: 'live:gift', session_id: sess.id,
+    gift: { emoji: gift.emoji, name: gift.name, price_cents: gift.price_cents },
+    fan_id: fanId, fan_name: fanName,
+    balance_cents: getWallet(fanId).credits_cents };
+  pushLiveAll(sess.id, payload);
+  pushToAdmins({ type: 'live:gift_admin', session_id: sess.id,
+    model_id: sess.model_id, fan_name: fanName,
+    gift: gift.emoji + ' ' + gift.name, gross_cents: gift.price_cents });
+  return { explicitUntil, balanceCents: getWallet(fanId).credits_cents };
+}
 
 // POST send a virtual gift during a group stream
 app.post('/api/live/:id/gift', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
@@ -2376,33 +2456,11 @@ app.post('/api/live/:id/gift', identMiddleware, requireUser, requireRole('fan'),
   if (!gift) return res.status(404).json({ error: 'gift_not_found' });
 
   try {
-    const { modelCents, platformCents } = chargeFan(
-      req.user.id, sess.model_id, gift.price_cents, 'gift',
-      `${gift.emoji} ${gift.name} on stream #${sess.id}`);
-    db.prepare(`INSERT INTO gift_events
-      (session_id, fan_id, gift_id, gross_cents, model_cents, platform_cents)
-      VALUES (?,?,?,?,?,?)`)
-      .run(sess.id, req.user.id, gift.id, gift.price_cents, modelCents, platformCents);
-
-    // Pay-to-play loop: ANY gift keeps this viewer's screen unblurred for the
-    // grace period. Per-viewer — one fan's gifts never affect another fan.
-    // (Set unconditionally; the client only honors it while the stream is explicit,
-    // which also covers client-side AI-detected explicit.)
-    const explicitUntil = Date.now() + getGiftGraceSec() * 1000;
-    db.prepare('UPDATE live_viewers SET explicit_until = ? WHERE session_id = ? AND fan_id = ?')
-      .run(explicitUntil, sess.id, req.user.id);
-    db.prepare(`INSERT INTO blur_events (session_id, fan_id, event, detail)
-                VALUES (?,?,'gift_unblur','explicit_grace')`).run(sess.id, req.user.id);
-
-    const payload = { type: 'live:gift', session_id: sess.id,
-      gift: { emoji: gift.emoji, name: gift.name, price_cents: gift.price_cents },
-      fan_id: req.user.id, fan_name: req.user.display_name,
-      balance_cents: getWallet(req.user.id).credits_cents };
-    pushLiveAll(sess.id, payload);
-    pushToAdmins({ type: 'live:gift_admin', session_id: sess.id,
-      model_id: sess.model_id, fan_name: req.user.display_name,
-      gift: gift.emoji + ' ' + gift.name, gross_cents: gift.price_cents });
-    res.json({ ok: true, balance_cents: getWallet(req.user.id).credits_cents,
+    const { explicitUntil, balanceCents } = sendLiveGift(sess, req.user.id, gift);
+    db.prepare(`INSERT INTO gift_sends (fan_id, model_id, gift_id, price_cents, context, session_id)
+      VALUES (?,?,?,?, 'live', ?)`)
+      .run(req.user.id, sess.model_id, gift.id, gift.price_cents, sess.id);
+    res.json({ ok: true, balance_cents: balanceCents,
       explicit_until: explicitUntil, explicit_grace_sec: getGiftGraceSec() });
   } catch (e) {
     if (e.message === 'insufficient_credits')
@@ -2410,6 +2468,78 @@ app.post('/api/live/:id/gift', identMiddleware, requireUser, requireRole('fan'),
         needed_cents: gift.price_cents, balance_cents: getWallet(req.user.id).credits_cents });
     throw e;
   }
+});
+
+// POST /api/gifts/send — unified TikTok-style gift endpoint.
+// { model_id, gift_id, context: 'chat'|'live', conversation_id?, session_id? }
+// Chat: drops a gift message in the conversation. Live: sends on the stream.
+app.post('/api/gifts/send', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const gift = db.prepare('SELECT * FROM gifts WHERE id = ? AND enabled = 1').get(req.body.gift_id);
+  if (!gift) return res.status(404).json({ error: 'gift_not_found' });
+  const modelId = parseInt(req.body.model_id);
+  const model = db.prepare('SELECT * FROM users WHERE id = ? AND role = ?').get(modelId, 'model');
+  if (!model) return res.status(404).json({ error: 'model_not_found' });
+  const context = req.body.context === 'live' ? 'live' : 'chat';
+
+  if (context === 'live') {
+    const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ? AND status = ?')
+      .get(req.body.session_id, 'live');
+    if (!sess || sess.model_id !== modelId)
+      return res.status(404).json({ error: 'stream_not_found' });
+    const viewer = db.prepare('SELECT * FROM live_viewers WHERE session_id = ? AND fan_id = ?')
+      .get(sess.id, req.user.id);
+    if (!viewer) return res.status(403).json({ error: 'join_first' });
+    try {
+      const { explicitUntil, balanceCents } = sendLiveGift(sess, req.user.id, gift);
+      db.prepare(`INSERT INTO gift_sends (fan_id, model_id, gift_id, price_cents, context, session_id)
+        VALUES (?,?,?,?, 'live', ?)`)
+        .run(req.user.id, modelId, gift.id, gift.price_cents, sess.id);
+      res.json({ ok: true, context: 'live', balance_cents: balanceCents,
+        explicit_until: explicitUntil, explicit_grace_sec: getGiftGraceSec() });
+    } catch (e) {
+      if (e.message === 'insufficient_credits')
+        return res.status(402).json({ error: 'insufficient_credits',
+          needed_cents: gift.price_cents, balance_cents: getWallet(req.user.id).credits_cents });
+      throw e;
+    }
+    return;
+  }
+
+  // context === 'chat'
+  const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(req.body.conversation_id);
+  if (!conv || conv.fan_id !== req.user.id || conv.model_id !== modelId)
+    return res.status(404).json({ error: 'not_found' });
+
+  try {
+    chargeFan(req.user.id, modelId, gift.price_cents, 'gift',
+      `🎁 ${gift.emoji} ${gift.name} in chat`);
+  } catch (e) {
+    if (e.message === 'insufficient_credits')
+      return res.status(402).json({ error: 'insufficient_credits',
+        needed_cents: gift.price_cents, balance_cents: getWallet(req.user.id).credits_cents });
+    throw e;
+  }
+  db.prepare(`INSERT INTO gift_sends (fan_id, model_id, gift_id, price_cents, context, conversation_id)
+    VALUES (?,?,?,?, 'chat', ?)`)
+    .run(req.user.id, modelId, gift.id, gift.price_cents, conv.id);
+
+  // Drop a gift message in the chat so both sides see the animation + history
+  const giftPayload = { emoji: gift.emoji, name: gift.name, price_cents: gift.price_cents };
+  const msgId = db.prepare(
+    `INSERT INTO messages (conversation_id, sender_id, body, gift_json) VALUES (?,?,?,?)`
+  ).run(conv.id, req.user.id, '🎁 sent a gift', JSON.stringify(giftPayload)).lastInsertRowid;
+  db.prepare(`UPDATE conversations SET updated_at = datetime('now') WHERE id = ?`).run(conv.id);
+  const msg = db.prepare(`
+    SELECT m.*, u.display_name AS sender_name, u.role AS sender_role
+    FROM messages m LEFT JOIN users u ON u.id = m.sender_id WHERE m.id = ?`).get(msgId);
+  const full = { ...msg, sender_name: msg.sender_name, sender_role: msg.sender_role,
+    gift: giftPayload };
+  pushToSubject(`u:${conv.model_id}`, { type: 'chat:new', conversation_id: conv.id, message: full });
+  pushToSubject(`u:${req.user.id}`, { type: 'chat:new', conversation_id: conv.id, message: full });
+
+  res.json({ ok: true, context: 'chat', gift: giftPayload,
+    fan_name: req.user.display_name,
+    balance_cents: getWallet(req.user.id).credits_cents });
 });
 
 /* ---------------- PRIORITY MESSAGES (paid banner + TTS on group streams) ---------------- */
@@ -3108,7 +3238,7 @@ app.get('/api/admin/stats', ...adminOnly, (req, res) => {
       (SELECT COUNT(*) FROM safety_incidents WHERE status = 'open') AS open_incidents,
       (SELECT COUNT(*) FROM strikes WHERE flagged = 1) AS flagged_accounts,
       (SELECT COALESCE(SUM(gross_cents),0) FROM transactions
-        WHERE type IN ('message','call','tip','ppv','voice','live_explicit')) AS gross_volume_cents`).get();
+        WHERE type IN ('message','call','tip','ppv','voice','live_explicit','gift')) AS gross_volume_cents`).get();
   res.json({ ...stats, ...counts });
 });
 
@@ -3424,7 +3554,7 @@ app.get('/api/admin/fans', ...adminOnly, (req, res) => {
   res.json({ fans: db.prepare(`
     SELECT u.id, u.username, u.display_name, u.banned, u.created_at, w.credits_cents,
            (SELECT COALESCE(SUM(gross_cents),0) FROM transactions t
-             WHERE t.fan_id = u.id AND t.type IN ('message','call')) AS spent_cents
+             WHERE t.fan_id = u.id AND t.type IN ('message','call','gift')) AS spent_cents
     FROM users u JOIN wallets w ON w.user_id = u.id
     WHERE u.role = 'fan' ORDER BY spent_cents DESC LIMIT 200`).all() });
 });

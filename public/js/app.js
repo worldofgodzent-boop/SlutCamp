@@ -195,6 +195,9 @@ function handleWS(m) {
     S.messages.push(m.message);
     renderMessages();
     api(`/conversations/${S.conv.id}/read`, { method: 'POST' });
+    // TikTok-style gift: emoji flies across the screen for both sides
+    const gg = giftOf(m.message);
+    if (gg) flyGiftAnim(gg.emoji, m.message.sender_name || 'Someone', gg.name);
   } else if (m.type === 'chat:new') {
     refreshTabBadges();
   } else if (m.type === 'chat:read' && S.view === 'chat' && S.conv && m.conversation_id === S.conv.id) {
@@ -260,8 +263,9 @@ function handleWS(m) {
   } else if (m.type === 'live:chat_blocked' && S.live && m.session_id === S.live.sessionId) {
     toast(m.warning || '⚠️ Message blocked', 3500);
   } else if (m.type === 'live:gift' && S.live && m.session_id === S.live.sessionId) {
-    // Animated gift overlay for everyone watching
+    // Animated gift overlay for everyone watching + stacked ticker
     showGiftAnim(m.gift.emoji, m.fan_name);
+    pushGiftStack(m.gift.emoji, m.fan_name);
     pushGiftToChat(m.gift, m.fan_name);
     if (m.balance_cents != null && S.wallet &&
         S.user && S.user.role === 'fan' && S.user.id === m.fan_id) {
@@ -1036,6 +1040,13 @@ async function vModelEarnings() {
         <div class="stat"><div class="n" style="color:var(--green)">${fmt(data.pending_cents)}</div><div class="l">Available for payout</div></div>
         <div class="stat"><div class="n">${fmt(data.earnings_cents)}</div><div class="l">Total earned</div></div>
       </div>
+      ${data.gift_count ? `
+      <div class="card" style="margin-top:12px">
+        <div style="font-weight:800;margin-bottom:8px">🎁 Gifts received</div>
+        <div class="row"><span class="grow muted small">${data.gift_count} gift${data.gift_count === 1 ? '' : 's'} from fans</span>
+          <b style="color:var(--green)">${fmt(data.gifts_cents)}</b></div>
+        <div class="muted small" style="margin-top:4px">Your 60% cut of every gift 💰</div>
+      </div>` : ''}
       <div class="card" style="margin-top:12px">
         <div style="font-weight:800;margin-bottom:8px">💸 Payouts</div>
         <div class="row" style="margin-bottom:8px"><span class="grow muted small">Bank account</span>
@@ -1606,6 +1617,7 @@ async function vChat(params) {
     <div id="typing-ind" class="rate-hint hidden"><i>typing…</i></div>
     <div class="chat-input-bar">
       ${!conv.is_paused ? `<button class="icon-btn" id="c-plus" title="More">＋</button>` : ''}
+      ${!conv.is_paused && S.user && S.user.role === 'fan' ? `<button class="icon-btn" id="c-gift" title="Send a gift">🎁</button>` : ''}
       <input id="c-input" placeholder="${conv.is_paused ? 'Chat paused' : 'Message…'}" ${conv.is_paused ? 'disabled' : ''} autocomplete="off">
       <button class="send-btn" id="c-send" ${conv.is_paused ? 'disabled' : ''}>➤</button>
     </div>
@@ -1626,6 +1638,8 @@ async function vChat(params) {
     conv.other.per_minute_cents || 399);
   const pb = $('#c-plus');
   if (pb) pb.onclick = openActionSheet;
+  const gb = $('#c-gift');
+  if (gb) gb.onclick = openChatGiftPanel;
 
   $('#c-back').onclick = () => {
     if (!S.user) show('landing', {});
@@ -1706,8 +1720,10 @@ function renderMessages() {
     const mine = meId ? m.sender_id === meId : m.guest_token === meGuest;
     const ticks = mine && m.sender_id
       ? (m.is_read ? ' <span style="color:#7dd3fc">✓✓</span>' : ' <span>✓</span>') : '';
-    return `<div class="msg ${mine ? 'out' : 'in'}">${m.is_tip ? '💸 ' : ''}${esc(m.body)}${mediaHTML(m)}
-      <div class="meta">${timeHM(m.created_at)}${m.cost_cents ? ` · <span class="cost">-${fmt(m.cost_cents)}</span>` : ''}${ticks}</div>
+    const g = giftOf(m);
+    const bodyHTML = g ? giftBubbleHTML(g) : `${m.is_tip ? '💸 ' : ''}${esc(m.body)}${mediaHTML(m)}`;
+    return `<div class="msg ${mine ? 'out' : 'in'}${g ? ' gift-msg' : ''}">${bodyHTML}
+      <div class="meta">${timeHM(m.created_at)}${m.cost_cents && !g ? ` · <span class="cost">-${fmt(m.cost_cents)}</span>` : ''}${ticks}</div>
     </div>`;
   }).join('');
   box.scrollTop = box.scrollHeight;
@@ -2227,6 +2243,7 @@ function vLiveBroadcast() {
       </div>
       ${L.title ? `<div class="live-title">${esc(L.title)}</div>` : ''}
       <div id="priority-banner" class="hidden"></div>
+      <div id="gift-stack"></div>
       <div id="stage-pip" class="hidden">
         <video id="stage-video" autoplay playsinline class="hidden"></video>
         <div id="stage-mic" class="hidden"><span class="stage-mic-emoji">🎙️</span><span class="stage-mic-pulse"></span></div>
@@ -2453,6 +2470,18 @@ function showGiftAnim(emoji, fanName) {
   showGiftAnim._t = setTimeout(() => ov.classList.add('hidden'), 2200);
 }
 
+// Stacked gift ticker: recent gifts float up the side, TikTok-style
+function pushGiftStack(emoji, fanName) {
+  const rail = $('#gift-stack');
+  if (!rail) return;
+  const el = document.createElement('div');
+  el.className = 'gift-stack-item';
+  el.innerHTML = `<span class="gift-stack-emoji">${emoji}</span><span class="gift-stack-from">${esc(fanName)}</span>`;
+  rail.appendChild(el);
+  while (rail.children.length > 6) rail.firstChild.remove();
+  setTimeout(() => { el.classList.add('fade'); setTimeout(() => el.remove(), 900); }, 4200);
+}
+
 function pushGiftToChat(gift, fanName) {
   const L = S.live;
   if (!L) return;
@@ -2518,6 +2547,89 @@ async function sendGift(giftId, sheet) {
       startGiftCountdown();
       toast('🎁 Gift sent — your view stays clear! 🔓');
     }
+  } else if (status === 402) {
+    toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500);
+    showBuyCredits(data.needed_cents);
+  } else {
+    toast('Gift failed.');
+  }
+}
+
+/* ---------------- CHAT GIFTS (TikTok-style emoji gifts in 1:1 chat) ---------------- */
+
+// Parse the gift payload off a message (live WS attach or persisted gift_json)
+function giftOf(m) {
+  if (m && m.gift && m.gift.emoji) return m.gift;
+  if (m && m.gift_json) {
+    try { const g = JSON.parse(m.gift_json); if (g && g.emoji) return g; } catch (e) { /* ignore */ }
+  }
+  return null;
+}
+
+function giftBubbleHTML(g) {
+  return `<div class="chat-gift">
+    <div class="chat-gift-emoji">${g.emoji}</div>
+    <div class="chat-gift-name">🎁 ${esc(g.name)}</div>
+    <div class="chat-gift-price">${fmt(g.price_cents)}</div>
+  </div>`;
+}
+
+// Full-screen fly-across animation: the emoji soars across with the fan's name
+function flyGiftAnim(emoji, fanName, giftName) {
+  const ov = document.createElement('div');
+  ov.className = 'gift-fly';
+  ov.innerHTML = `<div class="gift-fly-emoji">${emoji}</div>
+    <div class="gift-fly-from">${esc(fanName)} sent ${emoji} ${esc(giftName || '')}!</div>`;
+  document.body.appendChild(ov);
+  setTimeout(() => ov.remove(), 2800);
+}
+
+async function openChatGiftPanel() {
+  if (!S.conv || !S.user || S.user.role !== 'fan') return;
+  const { data } = await api('/gifts');
+  const gifts = data.gifts || [];
+  const balance = S.wallet ? S.wallet.credits_cents : 0;
+  let sheet = $('#gift-sheet');
+  if (sheet) sheet.remove();
+  sheet = document.createElement('div');
+  sheet.id = 'gift-sheet';
+  sheet.className = 'sheet-backdrop';
+  sheet.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-title">🎁 Send ${esc(S.conv.other.display_name)} a gift
+        <span class="muted small">· ${fmt(balance)}</span></div>
+      <div class="gift-grid">
+        ${gifts.map((g) => `
+          <button class="gift-item" data-gift="${g.id}">
+            <span class="gift-emoji">${g.emoji}</span>
+            <span class="gift-name">${esc(g.name)}</span>
+            <span class="gift-price">${fmt(g.price_cents)}</span>
+          </button>`).join('') || '<div class="muted">No gifts available.</div>'}
+      </div>
+      <button class="btn ghost" id="gift-close" style="margin-top:10px">Close</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  const close = () => sheet.remove();
+  $('#gift-close').onclick = close;
+  sheet.onclick = (e) => { if (e.target === sheet) close(); };
+  sheet.querySelectorAll('[data-gift]').forEach((b) => {
+    b.onclick = () => sendChatGift(parseInt(b.dataset.gift));
+  });
+}
+
+async function sendChatGift(giftId) {
+  const sheet = $('#gift-sheet');
+  if (sheet) sheet.remove();
+  if (!S.conv) return;
+  const { status, data } = await api('/gifts/send', {
+    method: 'POST',
+    body: JSON.stringify({ model_id: S.conv.other.id, gift_id: giftId,
+      context: 'chat', conversation_id: S.conv.id }),
+  });
+  if (status === 200) {
+    if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
+    toast(`🎁 Gift sent — she'll love it!`);
+    // The gift message + fly animation arrive via the chat:new WS push.
   } else if (status === 402) {
     toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500);
     showBuyCredits(data.needed_cents);
@@ -2931,6 +3043,7 @@ function vLiveWatch() {
         <button class="btn ghost" id="live-stay-free" style="margin-top:8px">Keep watching free (blurred)</button>
       </div>
       <div id="gift-anim" class="hidden"></div>
+      <div id="gift-stack"></div>
       <div class="live-top">
         <span class="live-badge">🔴 LIVE</span>
         <span class="live-viewers">${esc(L.modelName || '')}</span>
