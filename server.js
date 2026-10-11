@@ -877,7 +877,10 @@ function refundFan(fanId, modelId, grossCents, type, note, ip = null) {
 
 /* ---------------- identity: logged-in user OR guest ---------------- */
 
-const sessions = new Map();      // token -> userId
+// Sessions stored in DB (on persistent disk) so logins survive deploys
+db.exec(`CREATE TABLE IF NOT EXISTS sessions (
+  token TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')))`);
 const bannedGuests = new Set();  // guest tokens banned by admin (in-memory, MVP)
 const socketsBySubject = new Map(); // 'u:123' | 'g:token' -> Set<ws>
 const adminTempTokens = new Map();  // tempToken -> { userId, expiresAt } (2FA pending)
@@ -946,15 +949,28 @@ function maskPhone(phone) {
 
 function createSession(userId) {
   const token = crypto.randomBytes(32).toString('hex');
-  sessions.set(token, userId);
+  db.prepare('INSERT INTO sessions (token, user_id) VALUES (?,?)').run(token, userId);
   return token;
+}
+
+function getSessionUserId(token) {
+  const r = db.prepare('SELECT user_id FROM sessions WHERE token = ?').get(token);
+  return r ? r.user_id : null;
+}
+
+function deleteSession(token) {
+  db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+}
+
+function deleteUserSessions(userId) {
+  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
 }
 
 // Returns {kind:'user',user} | {kind:'guest',token} | {kind:'banned'} | null
 function getIdentity(req) {
   const h = req.headers.authorization || '';
   if (h.startsWith('Bearer ')) {
-    const userId = sessions.get(h.slice(7));
+    const userId = getSessionUserId(h.slice(7));
     if (!userId) return null;
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
     if (!user) return null;
@@ -1288,7 +1304,7 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 app.post('/api/auth/logout', identMiddleware, requireUser, (req, res) => {
-  sessions.delete((req.headers.authorization || '').slice(7));
+  deleteSession((req.headers.authorization || '').slice(7));
   res.json({ ok: true });
 });
 
@@ -4590,7 +4606,7 @@ app.post('/api/admin/disputes', ...adminOnly, (req, res) => {
   let frozen = false;
   if (doubleDip) {
     db.prepare(`UPDATE users SET status = 'frozen' WHERE id = ?`).run(userId);
-    for (const [tok, uid] of sessions) if (uid === userId) sessions.delete(tok);
+    deleteUserSessions(userId);
     frozen = true;
   }
   res.json({ ok: true, dispute_id: disputeId, auto_frozen: frozen });
@@ -4611,7 +4627,7 @@ app.post('/api/admin/fans/:id/freeze', ...adminOnly, (req, res) => {
   const u = db.prepare(`SELECT id FROM users WHERE id = ? AND role = 'fan'`).get(req.params.id);
   if (!u) return res.status(404).json({ error: 'not_found' });
   db.prepare(`UPDATE users SET status = 'frozen' WHERE id = ?`).run(u.id);
-  for (const [tok, uid] of sessions) if (uid === u.id) sessions.delete(tok);
+  deleteUserSessions(u.id);
   res.json({ ok: true });
 });
 app.post('/api/admin/fans/:id/unfreeze', ...adminOnly, (req, res) => {
@@ -4666,7 +4682,7 @@ wss.on('connection', (ws, req) => {
   const guestToken = url.searchParams.get('guest_token');
   let key = null;
   if (token) {
-    const userId = sessions.get(token);
+    const userId = getSessionUserId(token);
     const user = userId ? db.prepare('SELECT * FROM users WHERE id = ?').get(userId) : null;
     if (!user || user.banned) { ws.close(4401, 'unauthorized'); return; }
     key = `u:${userId}`;
