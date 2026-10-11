@@ -2115,8 +2115,12 @@ async function uploadMedia(file, kind, priceCents, durationSec) {
     } else if (r.status === 402 && data.error === 'trial_over') {
       showPaywall();
     } else if (r.status === 402) {
-      toast(`Need ${fmt(data.needed_cents)} — top up 💰`);
-      if (S.user && S.user.role === 'fan') show('wallet', {});
+      const need = data.needed_cents != null ? fmt(data.needed_cents) : '';
+      const bal = data.balance_cents != null ? fmt(data.balance_cents) : '';
+      toast(`💰 Not enough credits — need ${need} (you have ${bal}). Top up to send!`, 4000);
+      if (S.user && S.user.role === 'fan') {
+        setTimeout(() => show('wallet', {}), 800);
+      }
     } else {
       toast(data.message || 'Upload failed.');
     }
@@ -2179,7 +2183,10 @@ function startVoiceRecord() {
     const secs = Math.max(1, Math.round((Date.now() - voiceStartTs) / 1000));
     const rec = voiceRec;
     ov.remove();
-    if (!rec) return;
+    if (!rec) {
+      toast('Recording failed to start — try again 🎤');
+      return;
+    }
     rec.onstop = () => {
       const blob = new Blob(voiceChunks, { type: rec.mimeType || 'audio/webm' });
       const ext = (rec.mimeType || '').includes('mp4') ? 'm4a' : 'webm';
