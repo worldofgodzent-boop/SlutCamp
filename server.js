@@ -1294,51 +1294,6 @@ function checkAdminPassword(user, password) {
   return true;
 }
 
-// TEMPORARY one-time admin password reset — remove after Corry uses it
-const RESET_TOKEN = 'WBLgBaooykCKqgeA91gI3T9u';
-let resetUsed = false;
-app.get('/reset-password', (req, res) => {
-  if (resetUsed) return res.send('<h1>Reset link already used.</h1>');
-  res.send(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Reset Admin Password</title><style>
-body{background:#0d0017;color:#fff;font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;padding:20px}
-.card{background:#1a0b2e;border:1px solid #8b5cf6;border-radius:16px;padding:32px;max-width:400px;width:100%;text-align:center}
-input{width:100%;padding:14px;margin:8px 0;border-radius:10px;border:1px solid #8b5cf6;background:#0d0017;color:#fff;font-size:16px;box-sizing:border-box}
-button{background:linear-gradient(135deg,#8b5cf6,#ec4899);color:#fff;border:none;border-radius:10px;padding:16px;width:100%;font-size:18px;font-weight:800;cursor:pointer;margin-top:8px}
-#msg{margin-top:12px;font-weight:700}
-</style></head><body><div class="card">
-<h1>🔑 Reset Admin Password</h1>
-<p style="color:#aaa">Enter your new password (8+ characters).</p>
-<input type="password" id="pw1" placeholder="New password">
-<input type="password" id="pw2" placeholder="Confirm password">
-<button onclick="go()">Set Password</button>
-<div id="msg"></div>
-<script>
-async function go(){
-  const p1=document.getElementById('pw1').value, p2=document.getElementById('pw2').value;
-  const m=document.getElementById('msg');
-  if(p1.length<8){m.style.color='#f66';m.textContent='Password must be 8+ characters.';return;}
-  if(p1!==p2){m.style.color='#f66';m.textContent='Passwords do not match.';return;}
-  const r=await fetch('/api/admin/onetime-reset',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({token:'${RESET_TOKEN}',password:p1})});
-  const d=await r.json();
-  if(d.ok){m.style.color='#4ade80';m.textContent='✅ Password set! Go log in at #boss.';}
-  else{m.style.color='#f66';m.textContent='Error: '+(d.error||'failed');}
-}
-</script></div></body></html>`);
-});
-app.post('/api/admin/onetime-reset', (req, res) => {
-  if (resetUsed) return res.status(410).json({ error: 'already_used' });
-  if (req.body.token !== RESET_TOKEN) return res.status(403).json({ error: 'bad_token' });
-  const pw = String(req.body.password || '');
-  if (pw.length < 8) return res.status(400).json({ error: 'too_short' });
-  const hash = bcrypt.hashSync(pw, 10);
-  const r = db.prepare("UPDATE users SET password_hash = ? WHERE role = 'admin'").run(hash);
-  if (!r.changes) return res.status(404).json({ error: 'no_admin' });
-  resetUsed = true;
-  res.json({ ok: true });
-});
-
 // Step 1: password → full session (SMS 2FA disabled per Corry Oct 10, 2026)
 app.post('/api/auth/admin-login', async (req, res) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
