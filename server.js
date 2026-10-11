@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS users (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   username      TEXT UNIQUE NOT NULL COLLATE NOCASE,
   password_hash TEXT NOT NULL,
-  role          TEXT NOT NULL CHECK(role IN ('fan','model','admin')),
+  role          TEXT NOT NULL CHECK(role IN ('fan','model','admin','recruiter')),
   display_name  TEXT NOT NULL,
   dob           TEXT,
   banned        INTEGER NOT NULL DEFAULT 0,
@@ -424,6 +424,48 @@ addColumnIfMissing('platform_stats', 'explicit_entry_cents', 'INTEGER NOT NULL D
 addColumnIfMissing('platform_stats', 'admin_phone', 'TEXT');
 addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0');
 
+// --- Recruiters/partners: who recruited each model ---
+db.exec(`
+CREATE TABLE IF NOT EXISTS recruiters (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL DEFAULT '',
+  city TEXT NOT NULL DEFAULT '',
+  referral_code TEXT UNIQUE NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+)`);
+addColumnIfMissing('models', 'recruiter_id', 'INTEGER REFERENCES recruiters(id) ON DELETE SET NULL');
+addColumnIfMissing('transactions', 'recruiter_id', 'INTEGER REFERENCES recruiters(id) ON DELETE SET NULL');
+addColumnIfMissing('transactions', 'recruiter_cents', 'INTEGER NOT NULL DEFAULT 0');
+
+// Allow the 'recruiter' role: rebuild users table if its CHECK doesn't include it
+(function allowRecruiterRole() {
+  let sql = null;
+  try { sql = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get(); } catch (e) { /* ignore */ }
+  if (!sql || !sql.sql || sql.sql.includes("'recruiter'")) return;
+  db.exec('PRAGMA foreign_keys=OFF');
+  try {
+    db.exec(`
+      CREATE TABLE users_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL COLLATE NOCASE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('fan','model','admin','recruiter')),
+        display_name TEXT NOT NULL,
+        dob TEXT,
+        banned INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO users_new (id, username, password_hash, role, display_name, dob, banned, created_at)
+        SELECT id, username, password_hash, role, display_name, dob, banned, created_at FROM users;
+      DROP TABLE users;
+      ALTER TABLE users_new RENAME TO users;
+    `);
+  } finally {
+    db.exec('PRAGMA foreign_keys=ON');
+  }
+})();
+
 db.exec(`
 CREATE TABLE IF NOT EXISTS sms_codes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -524,17 +566,29 @@ const getUserPublic = (u) => ({
 
 const fmt$ = (c) => '$' + (c / 100).toFixed(2); // server-side money formatter (cents → $x.xx)
 
-function splitPayment(grossCents) {
+function splitPayment(grossCents, modelUserId) {
   const commission = getCommission();
   const modelCents = Math.round(grossCents * (100 - commission) / 100);
-  return { modelCents, platformCents: grossCents - modelCents, commission };
+  let platformCents = grossCents - modelCents;
+  let recruiterCents = 0, recruiterId = null, recruiterUserId = null;
+  if (modelUserId) {
+    const r = db.prepare(`SELECT r.id, r.user_id FROM recruiters r
+                          JOIN models m ON m.recruiter_id = r.id
+                          WHERE m.user_id = ?`).get(modelUserId);
+    if (r) {
+      recruiterId = r.id; recruiterUserId = r.user_id;
+      recruiterCents = Math.round(platformCents / 2);
+      platformCents -= recruiterCents;
+    }
+  }
+  return { modelCents, platformCents, recruiterCents, recruiterId, recruiterUserId, commission };
 }
 
 // Move money: fan pays grossCents. Throws Error('insufficient_credits') if short.
 function chargeFan(fanId, modelId, grossCents, type, note) {
   const wallet = getWallet(fanId);
   if (!wallet || wallet.credits_cents < grossCents) throw new Error('insufficient_credits');
-  const { modelCents, platformCents } = splitPayment(grossCents);
+  const { modelCents, platformCents, recruiterCents, recruiterId, recruiterUserId } = splitPayment(grossCents, modelId);
   txn(() => {
     db.prepare('UPDATE wallets SET credits_cents = credits_cents - ? WHERE user_id = ?')
       .run(grossCents, fanId);
@@ -542,18 +596,22 @@ function chargeFan(fanId, modelId, grossCents, type, note) {
       .run(modelCents, modelId);
     db.prepare('UPDATE platform_stats SET earnings_cents = earnings_cents + ? WHERE id = 1')
       .run(platformCents);
+    if (recruiterUserId && recruiterCents > 0) {
+      db.prepare('UPDATE wallets SET earnings_cents = earnings_cents + ? WHERE user_id = ?')
+        .run(recruiterCents, recruiterUserId);
+    }
     db.prepare(`INSERT INTO transactions
-      (fan_id, model_id, type, gross_cents, model_cents, platform_cents, note)
-      VALUES (?,?,?,?,?,?,?)`)
-      .run(fanId, modelId, type, grossCents, modelCents, platformCents, note || null);
+      (fan_id, model_id, type, gross_cents, model_cents, platform_cents, recruiter_id, recruiter_cents, note)
+      VALUES (?,?,?,?,?,?,?,?,?)`)
+      .run(fanId, modelId, type, grossCents, modelCents, platformCents, recruiterId, recruiterCents, note || null);
   });
-  return { modelCents, platformCents };
+  return { modelCents, platformCents, recruiterCents };
 }
 
 /* Reverse a charge: fan gets grossCents back; model + platform earnings reduced.
    Used when the model declines a paid join-live request (full refund). */
 function refundFan(fanId, modelId, grossCents, type, note) {
-  const { modelCents, platformCents } = splitPayment(grossCents);
+  const { modelCents, platformCents, recruiterCents, recruiterId, recruiterUserId } = splitPayment(grossCents, modelId);
   txn(() => {
     db.prepare('UPDATE wallets SET credits_cents = credits_cents + ? WHERE user_id = ?')
       .run(grossCents, fanId);
@@ -561,12 +619,16 @@ function refundFan(fanId, modelId, grossCents, type, note) {
       .run(modelCents, modelId);
     db.prepare('UPDATE platform_stats SET earnings_cents = earnings_cents - ? WHERE id = 1')
       .run(platformCents);
+    if (recruiterUserId && recruiterCents > 0) {
+      db.prepare('UPDATE wallets SET earnings_cents = earnings_cents - ? WHERE user_id = ?')
+        .run(recruiterCents, recruiterUserId);
+    }
     db.prepare(`INSERT INTO transactions
-      (fan_id, model_id, type, gross_cents, model_cents, platform_cents, note)
-      VALUES (?,?,?,?,?,?,?)`)
-      .run(fanId, modelId, type, -grossCents, -modelCents, -platformCents, note || null);
+      (fan_id, model_id, type, gross_cents, model_cents, platform_cents, recruiter_id, recruiter_cents, note)
+      VALUES (?,?,?,?,?,?,?,?,?)`)
+      .run(fanId, modelId, type, -grossCents, -modelCents, -platformCents, recruiterId, -recruiterCents, note || null);
   });
-  return { modelCents, platformCents };
+  return { modelCents, platformCents, recruiterCents };
 }
 
 /* ---------------- identity: logged-in user OR guest ---------------- */
@@ -849,6 +911,15 @@ app.post('/api/auth/signup', (req, res) => {
       return res.status(400).json({ error: 'invite_used', message: 'This invite link has already been used.' });
     finalRole = 'model';
   }
+  // Referral-code flow: a partner's link attributes the new model to that recruiter
+  let recruiterId = null;
+  if (req.body.referral_code) {
+    const rc = db.prepare(`SELECT r.id FROM recruiters r JOIN users u ON u.id = r.user_id
+                           WHERE r.referral_code = ? AND u.banned = 0`)
+      .get(String(req.body.referral_code).trim());
+    if (!rc) return res.status(400).json({ error: 'bad_referral', message: 'This referral link is invalid.' });
+    recruiterId = rc.id;
+  }
   if (!['fan', 'model'].includes(finalRole)) return res.status(400).json({ error: 'bad_role' });
   if (!agree18 || !isAdult(dob)) return res.status(400).json({ error: 'must_be_18' });
   if (db.prepare('SELECT id FROM users WHERE username = ?').get(username.trim()))
@@ -860,6 +931,11 @@ app.post('/api/auth/signup', (req, res) => {
   if (invite) {
     db.prepare(`UPDATE invite_links SET used_by = ?, used_at = datetime('now') WHERE id = ?`)
       .run(id, invite.id);
+  }
+
+  // Attribute the model to her recruiter (null = Corry's own)
+  if (recruiterId && finalRole === 'model') {
+    db.prepare('UPDATE models SET recruiter_id = ? WHERE user_id = ?').run(recruiterId, id);
   }
 
   // Migrate guest history → new account (chats, free-trial counts, strikes)
@@ -1738,7 +1814,7 @@ app.get('/api/admin/contracts', identMiddleware, requireUser, requireRole('admin
 /* ------------------------------------------------------------------ */
 
 // Save/replace her bank account for payouts
-app.post('/api/model/payout-account', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+app.post('/api/model/payout-account', identMiddleware, requireUser, requireRole('model', 'recruiter'), (req, res) => {
   const holder = String(req.body.holder_name || '').trim().slice(0, 80);
   const routing = String(req.body.routing_number || '').replace(/\D/g, '');
   const account = String(req.body.account_number || '').replace(/\D/g, '');
@@ -1754,7 +1830,7 @@ app.post('/api/model/payout-account', identMiddleware, requireUser, requireRole(
 });
 
 // Her saved account (masked — full number never leaves the server for models)
-app.get('/api/model/payout-account', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+app.get('/api/model/payout-account', identMiddleware, requireUser, requireRole('model', 'recruiter'), (req, res) => {
   const a = db.prepare('SELECT * FROM payout_accounts WHERE model_id = ?').get(req.user.id);
   if (!a) return res.json({ account: null });
   res.json({ account: { holder_name: a.holder_name, routing_number: a.routing_number,
@@ -1762,14 +1838,14 @@ app.get('/api/model/payout-account', identMiddleware, requireUser, requireRole('
 });
 
 // Her withdrawal history + available balance
-app.get('/api/model/withdrawals', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+app.get('/api/model/withdrawals', identMiddleware, requireUser, requireRole('model', 'recruiter'), (req, res) => {
   const rows = db.prepare(`SELECT id, amount_cents, status, requested_at, decided_at, note
                            FROM withdrawals WHERE model_id = ? ORDER BY id DESC`).all(req.user.id);
   res.json({ withdrawals: rows, available_cents: getModelAvailable(req.user.id) });
 });
 
 // Request a withdrawal (pending until Asce marks it paid)
-app.post('/api/model/withdrawals', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+app.post('/api/model/withdrawals', identMiddleware, requireUser, requireRole('model', 'recruiter'), (req, res) => {
   const amount = parseInt(req.body.amount_cents);
   const acct = db.prepare('SELECT id FROM payout_accounts WHERE model_id = ?').get(req.user.id);
   if (!acct) return res.status(400).json({ error: 'no_bank_account' });
@@ -3153,9 +3229,11 @@ app.get('/api/admin/models', ...adminOnly, (req, res) => {
   res.json({ models: db.prepare(`
     SELECT u.id, u.username, u.display_name, u.banned, u.created_at,
            m.bio, m.per_message_cents, m.per_minute_cents, m.is_online, m.photo_url,
+           r.name AS recruiter_name,
            w.earnings_cents, w.paid_out_cents,
            (w.earnings_cents - w.paid_out_cents) AS pending_cents
     FROM users u JOIN models m ON m.user_id = u.id JOIN wallets w ON w.user_id = u.id
+    LEFT JOIN recruiters r ON r.id = m.recruiter_id
     WHERE u.role = 'model' ORDER BY u.display_name`).all() });
 });
 
@@ -3220,6 +3298,15 @@ app.get('/api/invite/:code', (req, res) => {
   res.json({ valid: true, label: inv.label });
 });
 
+// Public: validate a partner referral code
+app.get('/api/referral/:code', (req, res) => {
+  const r = db.prepare(`SELECT r.referral_code, r.name AS recruiter_name, u.banned
+                        FROM recruiters r JOIN users u ON u.id = r.user_id
+                        WHERE r.referral_code = ?`).get(String(req.params.code).trim());
+  if (!r || r.banned) return res.json({ valid: false });
+  res.json({ valid: true, recruiter_name: r.recruiter_name });
+});
+
 // Admin: generate a new invite link
 app.post('/api/admin/invites', ...adminOnly, (req, res) => {
   const label = (req.body.label || '').trim().slice(0, 60);
@@ -3258,6 +3345,79 @@ app.post('/api/admin/invites/:id/revoke', ...adminOnly, (req, res) => {
     modelDeactivated = true;
   }
   res.json({ ok: true, model_deactivated: modelDeactivated });
+});
+
+/* ---------------- Recruiters / partners ---------------- */
+
+// Admin: create a partner (recruiter) account + referral link
+app.post('/api/admin/recruiters', ...adminOnly, (req, res) => {
+  const { name, city, username, password } = req.body || {};
+  if (!name || !String(name).trim()) return res.status(400).json({ error: 'missing_fields' });
+  const uname = (username || '').trim() || ('partner_' + crypto.randomBytes(3).toString('hex'));
+  const pwd = (password && String(password).length >= 6) ? String(password) : crypto.randomBytes(6).toString('hex');
+  if (db.prepare('SELECT id FROM users WHERE username = ?').get(uname))
+    return res.status(409).json({ error: 'username_taken' });
+  const id = createUser(uname, pwd, 'recruiter', String(name).trim().slice(0, 40), '1990-01-01');
+  let code;
+  do { code = crypto.randomBytes(4).toString('hex'); }
+  while (db.prepare('SELECT id FROM recruiters WHERE referral_code = ?').get(code));
+  db.prepare('INSERT INTO recruiters (user_id, name, city, referral_code) VALUES (?,?,?,?)')
+    .run(id, String(name).trim().slice(0, 40), String(city || '').trim().slice(0, 40), code);
+  const rid = db.prepare('SELECT id FROM recruiters WHERE user_id = ?').get(id).id;
+  const base = req.body.base_url ? String(req.body.base_url).replace(/\/$/, '') : '';
+  res.json({ ok: true, id: rid, user_id: id, username: uname, password: pwd, referral_code: code,
+    url: base ? `${base}/#join/${code}` : `/#join/${code}` });
+});
+
+// Admin: list partners with model counts and earnings
+app.get('/api/admin/recruiters', ...adminOnly, (req, res) => {
+  res.json({ recruiters: db.prepare(`
+    SELECT r.id, r.name, r.city, r.referral_code, r.created_at,
+           u.id AS user_id, u.username, u.display_name, u.banned,
+           w.earnings_cents, w.paid_out_cents,
+           (w.earnings_cents - w.paid_out_cents) AS pending_cents,
+           (SELECT COUNT(*) FROM models m WHERE m.recruiter_id = r.id) AS model_count,
+           (SELECT COALESCE(SUM(t.recruiter_cents), 0) FROM transactions t
+             WHERE t.recruiter_id = r.id AND t.recruiter_cents > 0) AS total_earned_cents,
+           (SELECT COALESCE(SUM(t.platform_cents), 0) FROM transactions t
+             WHERE t.recruiter_id = r.id AND t.platform_cents > 0) AS corrys_cut_cents
+    FROM recruiters r JOIN users u ON u.id = r.user_id JOIN wallets w ON w.user_id = u.id
+    ORDER BY r.created_at DESC`).all() });
+});
+
+// Admin: remove a partner (their models stay; revenue reverts to Corry)
+app.delete('/api/admin/recruiters/:id', ...adminOnly, (req, res) => {
+  const r = db.prepare('SELECT * FROM recruiters WHERE id = ?').get(req.params.id);
+  if (!r) return res.status(404).json({ error: 'not_found' });
+  db.prepare('DELETE FROM recruiters WHERE id = ?').run(r.id); // models.recruiter_id → NULL via FK
+  db.prepare('UPDATE users SET banned = 1 WHERE id = ?').run(r.user_id);
+  res.json({ ok: true });
+});
+
+// Recruiter: dashboard (own link, models, earnings)
+app.get('/api/recruiter/dashboard', identMiddleware, requireUser, requireRole('recruiter'), (req, res) => {
+  const r = db.prepare('SELECT * FROM recruiters WHERE user_id = ?').get(req.user.id);
+  if (!r) return res.status(404).json({ error: 'not_found' });
+  const models = db.prepare(`
+    SELECT u.id, u.username, u.display_name, u.created_at, u.banned, m.photo_url,
+           w.earnings_cents AS model_earnings_cents,
+           (SELECT COALESCE(SUM(t.gross_cents), 0) FROM transactions t
+             WHERE t.model_id = u.id AND t.gross_cents > 0) AS gross_generated_cents,
+           (SELECT COALESCE(SUM(t.recruiter_cents), 0) FROM transactions t
+             WHERE t.model_id = u.id AND t.recruiter_cents > 0) AS my_cut_cents
+    FROM users u JOIN models m ON m.user_id = u.id JOIN wallets w ON w.user_id = u.id
+    WHERE m.recruiter_id = ? ORDER BY u.display_name`).all(r.id);
+  const wallet = getWallet(req.user.id);
+  const pending = db.prepare(`SELECT COALESCE(SUM(amount_cents), 0) AS s FROM withdrawals
+                              WHERE model_id = ? AND status = 'pending'`).get(req.user.id).s;
+  res.json({
+    recruiter: { name: r.name, city: r.city, referral_code: r.referral_code },
+    models,
+    model_count: models.length,
+    earnings_cents: wallet.earnings_cents,
+    paid_out_cents: wallet.paid_out_cents,
+    available_cents: wallet.earnings_cents - wallet.paid_out_cents - pending,
+  });
 });
 
 app.get('/api/admin/fans', ...adminOnly, (req, res) => {
@@ -3321,7 +3481,7 @@ app.post('/api/admin/payouts/:id', ...adminOnly, (req, res) => {
 app.get('/api/admin/withdrawals', ...adminOnly, (req, res) => {
   res.json({ withdrawals: db.prepare(`
     SELECT w.id, w.model_id, w.amount_cents, w.status, w.requested_at, w.decided_at, w.note,
-           u.display_name AS model_name, u.username AS model_username,
+           u.display_name AS model_name, u.username AS model_username, u.role AS user_role,
            pa.holder_name, pa.routing_number, pa.account_number
     FROM withdrawals w JOIN users u ON u.id = w.model_id
     LEFT JOIN payout_accounts pa ON pa.model_id = w.model_id

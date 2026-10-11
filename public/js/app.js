@@ -305,10 +305,11 @@ function handleWS(m) {
     toast(`${stageModeEmoji(reqMode)} ${m.request.fan_name} wants to join (${stageModeLabel(reqMode)} · ${fmt(fee)})!${m.request.is_explicit ? ' 🔞' : ''}`, 4000);
   } else if (m.type === 'live:join-request-cancelled' && S.live && S.live.role === 'model' && m.session_id === S.live.sessionId) {
     renderStageRequests();
-  } else if (m.type === 'withdrawal:decided' && S.user && S.user.role === 'model') {
+  } else if (m.type === 'withdrawal:decided' && S.user && (S.user.role === 'model' || S.user.role === 'recruiter')) {
     if (m.status === 'paid') toast(`💸 ${fmt(m.amount_cents)} is on its way to your bank!`, 4000);
     else toast(`Withdrawal ${fmt(m.amount_cents)} was not approved${m.note ? ': ' + m.note : ''} — funds are still available.`, 4000);
     if (S.view === 'modelEarnings') show('modelEarnings', {});
+    if (S.view === 'recruiter') show('recruiter', {});
   } else if (m.type === 'safety:stream_flag' && S.user && S.user.role === 'admin') {
     toast(`🚨 Stream flag: "${m.matched}" by ${m.sender_name} (${m.total_strikes} strikes)`, 4000);
   }
@@ -335,6 +336,10 @@ const TABS = {
     { id: 'chats', ico: '👀', label: 'Chats', view: 'admin' },
     { id: 'safe', ico: '🛡️', label: 'Safety', view: 'admin' },
     { id: 'more', ico: '⚙️', label: 'More', view: 'admin' },
+  ],
+  recruiter: [
+    { id: 'dash', ico: '🤝', label: 'Home', view: 'recruiter' },
+    { id: 'payout', ico: '💸', label: 'Payouts', view: 'recruiter' },
   ],
 };
 
@@ -386,6 +391,7 @@ function show(view, params) {
     liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch,
     bookings: vBookings, terms: vTerms,
     adminLogin: vAdminLogin, modelContract: vModelContract,
+    recruiter: vRecruiter,
   };
   (VIEWS[view] || vLanding)(params || {});
   if (view === 'liveBroadcast' || view === 'liveWatch') tabbar.classList.add('hidden');
@@ -757,6 +763,68 @@ async function vInviteSignup(code) {
   };
 }
 
+/* Partner referral signup: model joins through a recruiter's link */
+async function vRecruiterSignup(code) {
+  let valid = false, recruiterName = '';
+  try {
+    const { status, data } = await api(`/referral/${encodeURIComponent(code)}`);
+    valid = status === 200 && data.valid;
+    recruiterName = data.recruiter_name || '';
+  } catch { valid = false; }
+
+  if (!valid) {
+    app.innerHTML = `
+      <div class="header"><h1>Slut<span class="logo">Camp</span></h1></div>
+      <div class="screen"><div class="card" style="text-align:center">
+        <div style="font-size:40px">⛔</div>
+        <div style="font-weight:800;margin:8px 0">This referral link is invalid.</div>
+        <div class="muted small">Ask the person who sent it for a fresh link.</div>
+        <button class="btn ghost" style="margin-top:12px" onclick="show('landing',{})">← Back to browsing</button>
+      </div></div>`;
+    return;
+  }
+
+  app.innerHTML = `
+    <div class="header"><h1>Slut<span class="logo">Camp</span> 💃</h1>
+      <div class="sub">Invited by <b>${esc(recruiterName)}</b> 🤝</div></div>
+    <div class="screen">
+      <div class="card" style="background:linear-gradient(135deg,#3b1d6e,#1a0f2e);text-align:center">
+        <div style="font-size:18px;font-weight:800">💰 Get paid to chat with fans</div>
+        <div class="muted small" style="margin-top:4px">You keep 60% of everything · $1.49 per text · $3.99/min video<br>Weekly payouts from Asce</div>
+      </div>
+      <label class="field">Display name (your stage name)<input class="input" id="i-name" maxlength="40"></label>
+      <label class="field">Username<input class="input" id="i-user" autocomplete="username"></label>
+      <label class="field">Password (6+ characters)${pwField('i-pass', 'new-password')}</label>
+      <label class="field">Date of birth<input class="input" id="i-dob" type="date"></label>
+      <div class="age-box">🔞 <b>18+ only.</b> Asce will verify your ID in person (2257 compliance) before you go live.</div>
+      <label class="checkbox-row"><input type="checkbox" id="i-18">
+        <span>I confirm I am <b>18 years or older</b>.</span></label>
+      <button class="btn" id="i-go">Create model account</button>
+      <button class="btn ghost" id="i-back" style="margin-top:12px">← Back</button>
+    </div>`;
+
+  $('#i-back').onclick = () => show('landing', {});
+  $('#i-go').onclick = async () => {
+    const display_name = $('#i-name').value.trim();
+    const username = $('#i-user').value.trim();
+    const password = $('#i-pass').value;
+    const dob = $('#i-dob').value;
+    const agree18 = $('#i-18').checked;
+    if (!display_name || !username || !password || !dob) return toast('Fill in every field');
+    if (!agree18) return toast('You must confirm you are 18+');
+    const { status, data } = await api('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({ username, password, role: 'model', display_name, dob, agree18,
+        guest_token: S.guestToken, referral_code: code }),
+    });
+    if (status === 200) return afterLogin(data);
+    const msgs = { username_taken: 'Username is taken 😕', must_be_18: 'You must be 18 or older.',
+      password_too_short: 'Password needs 6+ characters.',
+      bad_referral: 'Referral link is invalid.' };
+    toast(msgs[data.error] || data.message || 'Signup failed.');
+  };
+}
+
 async function afterLogin(data) {
   S.token = data.token;
   localStorage.setItem('wc_token', S.token);
@@ -768,6 +836,7 @@ async function afterLogin(data) {
     await checkContractGate();
     show('modelChats', {});
   }
+  else if (S.user.role === 'recruiter') show('recruiter', {});
   else show('fanModels', {});
   toast(`Welcome, ${S.user.display_name}! 🎉`);
 }
@@ -1029,6 +1098,112 @@ async function vModelEarnings() {
     const { status, data: wd } = await api('/model/withdrawals', {
       method: 'POST', body: JSON.stringify({ amount_cents }) });
     if (status === 200) { toast('⏳ Withdrawal requested — Asce will send it soon'); show('modelEarnings', {}); }
+    else {
+      toast(status === 400 && wd.error === 'insufficient_funds'
+        ? `Not enough available (${fmt(wd.available_cents || 0)})`
+        : 'Could not request withdrawal');
+      wdGo.disabled = false;
+    }
+  };
+}
+
+/* ---------------- RECRUITER / PARTNER dashboard ---------------- */
+
+async function vRecruiter() {
+  const { data } = await api('/recruiter/dashboard');
+  if (!data || !data.recruiter) { toast('Could not load dashboard'); return show('landing', {}); }
+  const r = data.recruiter;
+  const models = data.models || [];
+  const link = `${window.location.origin}/#join/${r.referral_code}`;
+  const { data: acctData } = await api('/model/payout-account');
+  const { data: wdData } = await api('/model/withdrawals');
+  const acct = acctData.account;
+  const wds = wdData.withdrawals || [];
+  const wdBadge = (s) => s === 'pending' ? '⏳ Pending' : s === 'paid' ? '✅ Paid' : '❌ Rejected';
+  app.innerHTML = `
+    <div class="header"><h1>Partner 🤝</h1><div class="sub">${esc(r.name)}${r.city ? ` · ${esc(r.city)}` : ''}</div></div>
+    <div class="screen">
+      <div class="card" style="background:linear-gradient(135deg,#3b1d6e,#1a0f2e)">
+        <div style="font-weight:800;margin-bottom:6px">🔗 Your referral link</div>
+        <div class="muted small" style="word-break:break-all;margin-bottom:8px">${esc(link)}</div>
+        <button class="btn small" id="rc-copy">📋 Copy link</button>
+        <div class="muted small" style="margin-top:8px">Send this to models — anyone who signs up through it is yours. You earn 20% of everything they make.</div>
+      </div>
+      <div class="stat-grid" style="margin-top:12px">
+        <div class="stat"><div class="n">${data.model_count}</div><div class="l">Models recruited</div></div>
+        <div class="stat"><div class="n" style="color:var(--green)">${fmt(data.earnings_cents)}</div><div class="l">Total earned (20%)</div></div>
+        <div class="stat"><div class="n" style="color:var(--green)">${fmt(data.available_cents)}</div><div class="l">Available for payout</div></div>
+      </div>
+      <div class="card" style="margin-top:12px">
+        <div style="font-weight:800;margin-bottom:8px">💃 Your models</div>
+        ${models.map((m) => `
+          <div class="row" style="padding:8px 0;border-top:1px solid rgba(139,92,246,.1);align-items:center">
+            ${avatarHTML(m.display_name, 'sm', m.photo_url)}
+            <span class="grow"><b>${esc(m.display_name)}</b> <span class="small muted">@${esc(m.username)}</span><br>
+              <span class="small muted">Joined ${timeHM(m.created_at)}${m.banned ? ' · <span style="color:var(--red)">deactivated</span>' : ''}</span><br>
+              <span class="small" style="color:var(--green)">Your cut: ${fmt(m.my_cut_cents)}</span>
+              <span class="small muted"> · ${fmt(m.gross_generated_cents)} gross</span></span>
+          </div>`).join('') || '<div class="muted">No models yet — share your link! 🔗</div>'}
+      </div>
+      <div class="card" style="margin-top:12px">
+        <div style="font-weight:800;margin-bottom:8px">💸 Payouts</div>
+        <div class="row" style="margin-bottom:8px"><span class="grow muted small">Bank account</span>
+          ${acct ? `<b class="small">•••• ${esc(acct.account_last4)}</b>` : '<span class="small" style="color:var(--pink)">Not set</span>'}</div>
+        ${acct ? `
+          <div class="muted small" style="margin-bottom:8px">${esc(acct.holder_name)} · Routing ${esc(acct.routing_number)}</div>
+          <div class="row">
+            <input class="input" id="wd-amount" type="number" step="0.01" min="0" placeholder="Amount $" style="margin-top:0">
+            <button class="btn small success" id="wd-go">Withdraw</button>
+          </div>
+          <div class="muted small" style="margin-top:6px">Available to withdraw: <b style="color:var(--green)">${fmt(wdData.available_cents)}</b></div>
+        ` : ''}
+        <div id="bank-form" class="${acct ? 'hidden' : ''}" style="margin-top:8px">
+          <div style="font-weight:700;margin-bottom:6px">${acct ? 'Update bank account' : 'Add bank account'}</div>
+          <label class="field">Account holder name<input class="input" id="ba-holder" maxlength="80" value="${acct ? esc(acct.holder_name) : ''}"></label>
+          <label class="field">Routing number (9 digits)<input class="input" id="ba-routing" inputmode="numeric" maxlength="9" value="${acct ? esc(acct.routing_number) : ''}"></label>
+          <label class="field">Account number${pwField('ba-account', 'off')}</label>
+          <button class="btn" id="ba-save" style="margin-top:8px">Save bank account</button>
+          <div class="muted small" style="margin-top:6px">🔒 Only Asce sees your full account number, to send your money.</div>
+        </div>
+        ${acct ? `<button class="btn ghost small" id="ba-toggle" style="margin-top:8px">✏️ Update bank account</button>` : ''}
+      </div>
+      ${wds.length ? `
+      <div class="card" style="margin-top:12px">
+        <div style="font-weight:800;margin-bottom:8px">Withdrawal history</div>
+        ${wds.map((w) => `
+          <div class="row small" style="padding:6px 0;border-top:1px solid rgba(139,92,246,.1)">
+            <span class="grow"><b>${fmt(w.amount_cents)}</b> <span class="muted">· ${timeHM(w.requested_at)}</span>
+              ${w.note ? `<br><span class="muted">${esc(w.note)}</span>` : ''}</span>
+            <span>${wdBadge(w.status)}</span>
+          </div>`).join('')}
+      </div>` : ''}
+      <button class="btn ghost" id="r-logout" style="margin-top:12px">Log out</button>
+    </div>`;
+
+  $('#rc-copy').onclick = async () => {
+    try { await navigator.clipboard.writeText(link); toast('Link copied 📋'); }
+    catch { prompt('Copy your referral link:', link); }
+  };
+  $('#r-logout').onclick = () => logout();
+  const baSave = $('#ba-save');
+  if (baSave) baSave.onclick = async () => {
+    baSave.disabled = true;
+    const body = { holder_name: $('#ba-holder').value.trim(),
+      routing_number: $('#ba-routing').value.trim(), account_number: $('#ba-account').value.trim() };
+    const { status } = await api('/model/payout-account', { method: 'POST', body: JSON.stringify(body) });
+    if (status === 200) { toast('✅ Bank account saved'); show('recruiter', {}); }
+    else { toast('Check the fields — routing needs 9 digits'); baSave.disabled = false; }
+  };
+  const baToggle = $('#ba-toggle');
+  if (baToggle) baToggle.onclick = () => { $('#bank-form').classList.toggle('hidden'); };
+  const wdGo = $('#wd-go');
+  if (wdGo) wdGo.onclick = async () => {
+    const amount_cents = Math.round(parseFloat($('#wd-amount').value || '0') * 100);
+    if (!amount_cents || amount_cents <= 0) return toast('Enter an amount');
+    wdGo.disabled = true;
+    const { status, data: wd } = await api('/model/withdrawals', {
+      method: 'POST', body: JSON.stringify({ amount_cents }) });
+    if (status === 200) { toast('⏳ Withdrawal requested — Asce will send it soon'); show('recruiter', {}); }
     else {
       toast(status === 400 && wd.error === 'insufficient_funds'
         ? `Not enough available (${fmt(wd.available_cents || 0)})`
@@ -3140,7 +3315,7 @@ async function vAdmin() {
   const tabs = [
     ['dash', '📊 Home'], ['chats', '👀 Chats'], ['safety', '🛡️ Safety'], ['live', '🔴 Live'],
     ['models', '💃 Models'], ['invites', '✉️ Invites'], ['payouts', '💸 Payouts'], ['fans', '🧑 Fans'],
-    ['bookings', '📅 Bookings'], ['contracts', '📝 Contracts'], ['more', '⚙️ More'],
+    ['bookings', '📅 Bookings'], ['contracts', '📝 Contracts'], ['partners', '🤝 Partners'], ['more', '⚙️ More'],
   ];
   let body = '';
   if (tab === 'dash') body = await adminDashBody(stats);
@@ -3153,6 +3328,7 @@ async function vAdmin() {
   else if (tab === 'fans') body = await adminFansBody();
   else if (tab === 'bookings') body = await adminBookingsBody();
   else if (tab === 'contracts') body = await adminContractsBody();
+  else if (tab === 'partners') body = await adminPartnersBody();
   else body = await adminMoreBody(stats);
 
   app.innerHTML = `
@@ -3304,7 +3480,8 @@ async function adminModelsBody() {
           <span class="grow"><b>${esc(m.display_name)}</b> <span class="small muted">@${esc(m.username)}</span><br>
             <span class="small" style="color:${m.is_online ? 'var(--green)' : 'var(--muted)'}">● ${m.is_online ? 'Online' : 'Offline'}</span>
             <span class="small muted"> · ${fmt(m.per_message_cents)}/msg · ${fmt(m.per_minute_cents)}/min</span><br>
-            <span class="small" style="color:var(--green)">Owed: ${fmt(m.pending_cents)}</span></span>
+            <span class="small" style="color:var(--green)">Owed: ${fmt(m.pending_cents)}</span>
+            ${m.recruiter_name ? `<br><span class="small" style="color:var(--gold)">🤝 via ${esc(m.recruiter_name)}</span>` : ''}</span>
         </div>
         <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
           <button class="btn small ghost" data-m-edit="${m.id}">✏️ Rates</button>
@@ -3364,7 +3541,8 @@ async function adminPayoutsBody() {
     ${pending.length ? `<h3>⏳ Withdrawal requests (${pending.length})</h3>` : ''}
     ${pending.map((w) => `
       <div class="card" style="padding:12px;border-color:var(--pink)">
-        <div class="row"><span class="grow"><b>${esc(w.model_name)}</b> <span class="small muted">@${esc(w.model_username)}</span><br>
+        <div class="row"><span class="grow"><b>${esc(w.model_name)}</b> <span class="small muted">@${esc(w.model_username)}</span>
+          ${w.user_role === 'recruiter' ? ' <span class="small" style="color:var(--gold)">🤝 partner</span>' : ''}<br>
           <span class="small muted">${timeHM(w.requested_at)}</span></span>
           <b style="color:var(--green);font-size:18px">${fmt(w.amount_cents)}</b></div>
         <div class="small" style="margin-top:8px;background:rgba(0,0,0,.25);border-radius:8px;padding:8px">
@@ -3458,6 +3636,41 @@ async function adminBookingsBody() {
           <span>${badge(b.status)} <span class="small muted">${b.status.replace('_', ' ')}</span></span>
         </div>
       </div>`).join('') || '<div class="empty">No bookings yet.</div>'}`;
+}
+
+async function adminPartnersBody() {
+  const { data } = await api('/admin/recruiters');
+  const partners = data.recruiters || [];
+  const baseUrl = window.location.origin;
+  return `
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">➕ Add partner</div>
+      <div class="muted small" style="margin-bottom:8px">They get a login + a referral link. Models who join through it earn them 20% of the platform's cut (you keep the other 20%).</div>
+      <label class="field">Name<input class="input" id="pt-name" maxlength="40" placeholder="Marcus"></label>
+      <label class="field">City<input class="input" id="pt-city" maxlength="40" placeholder="New York"></label>
+      <label class="field">Username (optional — auto if blank)<input class="input" id="pt-user" autocomplete="off"></label>
+      <label class="field">Password (optional — auto if blank, 6+ chars)${pwField('pt-pass', 'new-password')}</label>
+      <button class="btn" id="pt-add">Create partner</button>
+      <div id="pt-result" style="margin-top:8px"></div>
+    </div>
+    ${partners.map((p) => {
+      const url = `${baseUrl}/#join/${p.referral_code}`;
+      return `
+      <div class="card" style="padding:12px">
+        <div class="row">
+          <span class="grow"><b>${esc(p.name)}</b> ${p.city ? `<span class="small muted">· ${esc(p.city)}</span>` : ''}
+            ${p.banned ? ' <span class="small" style="color:var(--red)">⛔ removed</span>' : ''}<br>
+            <span class="small muted">@${esc(p.username)}</span><br>
+            <span class="small muted">🔗 </span><span class="small" style="word-break:break-all">${esc(url)}</span><br>
+            <span class="small" style="color:var(--green)">${p.model_count} model${p.model_count === 1 ? '' : 's'} · earned ${fmt(p.total_earned_cents)}</span>
+            <span class="small muted"> · your cut ${fmt(p.corrys_cut_cents)} · owes ${fmt(p.pending_cents)}</span></span>
+        </div>
+        <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
+          <button class="btn small" data-pt-copy="${p.referral_code}">📋 Copy link</button>
+          ${!p.banned ? `<button class="btn small danger" data-pt-del="${p.id}" data-pt-name="${esc(p.name)}">Remove</button>` : ''}
+        </div>
+      </div>`;
+    }).join('') || '<div class="empty">No partners yet.</div>'}`;
 }
 
 async function adminMoreBody(s) {
@@ -3725,6 +3938,44 @@ function wireAdminBody(tab) {
     };
   });
 
+  // Partners
+  const ptAdd = $('#pt-add');
+  if (ptAdd) ptAdd.onclick = async () => {
+    ptAdd.disabled = true;
+    const body = { name: $('#pt-name').value.trim(), city: $('#pt-city').value.trim(),
+      username: $('#pt-user').value.trim(), password: $('#pt-pass').value };
+    const { status, data } = await api('/admin/recruiters', {
+      method: 'POST', body: JSON.stringify({ ...body, base_url: window.location.origin }) });
+    if (status === 200) {
+      $('#pt-result').innerHTML = `
+        <div class="card" style="border-color:var(--green);margin-top:8px">
+          <div style="font-weight:800;color:var(--green)">✅ Partner created</div>
+          <div class="small" style="margin-top:6px">Login: <b>${esc(data.username)}</b> / <b>${esc(data.password)}</b></div>
+          <div class="small" style="margin-top:4px;word-break:break-all">Link: ${esc(data.url)}</div>
+          <div class="muted small" style="margin-top:4px">Save that password — it won't be shown again.</div>
+        </div>`;
+      toast('✅ Partner created');
+    } else {
+      toast(data.error === 'username_taken' ? 'Username is taken 😕' : 'Fill in the name');
+      ptAdd.disabled = false;
+    }
+  };
+  document.querySelectorAll('[data-pt-copy]').forEach((b) => {
+    b.onclick = async () => {
+      const url = `${window.location.origin}/#join/${b.dataset.ptCopy}`;
+      try { await navigator.clipboard.writeText(url); toast('📋 Link copied!'); }
+      catch { prompt('Copy this link:', url); }
+    };
+  });
+  document.querySelectorAll('[data-pt-del]').forEach((b) => {
+    b.onclick = async () => {
+      if (!confirm(`Remove partner ${b.dataset.ptName}?\n\nTheir models stay on the app — their 20% cut reverts to you. The partner's login stops working.`)) return;
+      await api(`/admin/recruiters/${b.dataset.ptDel}`, { method: 'DELETE' });
+      toast('Partner removed');
+      show('admin', {});
+    };
+  });
+
   // Models
   document.querySelectorAll('[data-m-edit]').forEach((b) => {
     b.onclick = () => {
@@ -3918,6 +4169,14 @@ $('#call-hangup').onclick = hangupCall;
     try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
     return vInviteSignup(inviteCode);
   }
+  // Partner referral link: #join/CODE → model signup attributed to that recruiter
+  const joinMatch = window.location.hash.match(/^#join\/([a-f0-9]{8})$/);
+  if (joinMatch) {
+    await ensureGuest();
+    wsConnect();
+    try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
+    return vRecruiterSignup(joinMatch[1]);
+  }
   if (S.token) {
     const { status } = await api('/me');
     if (status === 200) {
@@ -3928,6 +4187,7 @@ $('#call-hangup').onclick = hangupCall;
         await checkContractGate();
         return show('modelChats', {});
       }
+      if (S.user.role === 'recruiter') return show('recruiter', {});
       return show('fanModels', {});
     }
     S.token = null;
