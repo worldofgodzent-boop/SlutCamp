@@ -113,6 +113,21 @@ const photoUpload = multer({
   },
 });
 
+// Model preview video: short loop for home screen (max 15MB, ~10 sec)
+const previewVideoUpload = multer({
+  storage: multer.diskStorage({
+    destination: UPLOAD_DIR,
+    filename: (req, file, cb) => {
+      cb(null, 'preview-' + crypto.randomBytes(16).toString('hex') + '.mp4');
+    },
+  }),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ok = /^video\//.test(file.mimetype);
+    cb(ok ? null : new Error('bad_file_type'), ok);
+  },
+});
+
 // ID verification images: SENSITIVE PII. Stored OUTSIDE uploads/ in a private
 // dir that is never served statically — admin views them only via the
 // authenticated /api/admin/id-verifications/:id/photo/:which endpoint.
@@ -170,6 +185,15 @@ CREATE TABLE IF NOT EXISTS models (
   explicit_join_cents INTEGER NOT NULL DEFAULT 2500,
   explicit_mic_join_cents INTEGER NOT NULL DEFAULT 1500
 );
+
+-- Model likes (fans tap heart on model cards)
+CREATE TABLE IF NOT EXISTS model_likes (
+  fan_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  model_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (fan_id, model_id)
+);
+CREATE INDEX IF NOT EXISTS idx_model_likes_model ON model_likes(model_id);
 
 CREATE TABLE IF NOT EXISTS wallets (
   user_id        INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
@@ -549,6 +573,7 @@ addColumnIfMissing('live_viewers', 'explicit_until', 'INTEGER NOT NULL DEFAULT 0
 addColumnIfMissing('live_viewers', 'explicit_paid', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'explicit_gift_grace_sec', 'INTEGER NOT NULL DEFAULT 180');
 addColumnIfMissing('messages', 'gift_json', 'TEXT'); // TikTok-style gift payload on chat gift messages
+addColumnIfMissing('models', 'preview_video_url', "TEXT NOT NULL DEFAULT ''"); // Loop preview on home screen
 addColumnIfMissing('invite_links', 'expires_at', "TEXT NOT NULL DEFAULT (datetime('now', '+6 hours'))");
 addColumnIfMissing('tax_profiles', 'electronic_1099_consent', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('tax_profiles', 'electronic_1099_consent_at', 'TEXT');
@@ -1183,12 +1208,24 @@ app.get('/api/models', (req, res) => {
   const rows = db.prepare(`
     SELECT u.id, u.display_name, m.bio, m.per_message_cents,
            m.per_minute_cents, m.per_voice_cents, m.is_online, m.photo_url,
-           ls.id AS live_session_id, ls.explicit_rate_cents AS live_explicit_rate_cents
+           m.preview_video_url,
+           ls.id AS live_session_id, ls.explicit_rate_cents AS live_explicit_rate_cents,
+           (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) AS like_count
     FROM users u JOIN models m ON m.user_id = u.id
     LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live'
     WHERE u.role = 'model' AND u.banned = 0
     ORDER BY ls.id DESC, m.is_online DESC, u.display_name ASC
   `).all();
+  // Check which models the current fan has liked (if logged in)
+  let likedSet = new Set();
+  const h = req.headers.authorization || '';
+  if (h.startsWith('Bearer ')) {
+    const userId = getSessionUserId(h.slice(7));
+    if (userId) {
+      const liked = db.prepare('SELECT model_id FROM model_likes WHERE fan_id = ?').all(userId);
+      likedSet = new Set(liked.map((l) => l.model_id));
+    }
+  }
   res.json({ models: rows.map((r) => {
     const sched = db.prepare(`SELECT day_of_week, start_time FROM live_schedule
       WHERE model_id = ? ORDER BY day_of_week, start_time`).all(r.id);
@@ -1196,8 +1233,24 @@ app.get('/api/models', (req, res) => {
     const summary = sched.length
       ? sched.map((s) => `${days[s.day_of_week]} ${s.start_time.replace(/^0/, '')}`).join(', ')
       : '';
-    return { ...r, is_live: !!r.live_session_id, schedule_summary: summary };
+    return { ...r, is_live: !!r.live_session_id, schedule_summary: summary, liked: likedSet.has(r.id) };
   }) });
+});
+
+// Fan likes/unlikes a model (heart on model cards)
+app.post('/api/models/:id/like', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const modelId = parseInt(req.params.id);
+  const model = db.prepare("SELECT id FROM users WHERE id = ? AND role = 'model'").get(modelId);
+  if (!model) return res.status(404).json({ error: 'not_found' });
+  const existing = db.prepare('SELECT 1 FROM model_likes WHERE fan_id = ? AND model_id = ?')
+    .get(req.user.id, modelId);
+  if (existing) {
+    db.prepare('DELETE FROM model_likes WHERE fan_id = ? AND model_id = ?').run(req.user.id, modelId);
+  } else {
+    db.prepare('INSERT INTO model_likes (fan_id, model_id) VALUES (?,?)').run(req.user.id, modelId);
+  }
+  const count = db.prepare('SELECT COUNT(*) AS n FROM model_likes WHERE model_id = ?').get(modelId).n;
+  res.json({ ok: true, liked: !existing, like_count: count });
 });
 
 /* ------------------------------------------------------------------ */
@@ -2314,6 +2367,36 @@ app.post('/api/model/photo', identMiddleware, requireUser, requireRole('model'),
     if (!req.file) return res.status(400).json({ error: 'no_photo' });
     res.json({ ok: true, photo_url: setModelPhoto(req.user.id, req.file) });
   });
+
+// Model uploads her home-screen preview video loop (few seconds, autoplays muted)
+app.post('/api/model/preview-video', identMiddleware, requireUser, requireRole('model'),
+  previewVideoUpload.single('video'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'no_video' });
+    // Delete old preview if any
+    const old = db.prepare('SELECT preview_video_url FROM models WHERE user_id = ?').get(req.user.id);
+    if (old && old.preview_video_url) {
+      const oldPath = path.join(UPLOAD_DIR, path.basename(old.preview_video_url));
+      if (oldPath.startsWith(UPLOAD_DIR + path.sep)) {
+        try { fs.unlinkSync(oldPath); } catch (e) { /* already gone */ }
+      }
+    }
+    const preview_video_url = '/uploads/' + path.basename(req.file.path);
+    db.prepare('UPDATE models SET preview_video_url = ? WHERE user_id = ?').run(preview_video_url, req.user.id);
+    res.json({ ok: true, preview_video_url });
+  });
+
+// Model removes her preview video (falls back to photo)
+app.delete('/api/model/preview-video', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const old = db.prepare('SELECT preview_video_url FROM models WHERE user_id = ?').get(req.user.id);
+  if (old && old.preview_video_url) {
+    const oldPath = path.join(UPLOAD_DIR, path.basename(old.preview_video_url));
+    if (oldPath.startsWith(UPLOAD_DIR + path.sep)) {
+      try { fs.unlinkSync(oldPath); } catch (e) { /* already gone */ }
+    }
+  }
+  db.prepare('UPDATE models SET preview_video_url = ? WHERE user_id = ?').run('', req.user.id);
+  res.json({ ok: true });
+});
 
 /* ------------------------------------------------------------------ */
 /* Model contract — independent-contractor agreement signing          */

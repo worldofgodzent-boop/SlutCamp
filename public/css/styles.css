@@ -657,6 +657,16 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 @keyframes micPulse { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(1.6); opacity: 0; } }
 .stage-info { font-weight: 800; font-size: 14px; color: #fff; background: rgba(0,0,0,.55);
   border-radius: 10px; padding: 6px 10px; margin: 6px 0; text-align: center; font-variant-numeric: tabular-nums; }
+/* Model preview video loops + likes on home screen */
+.model-media-wrap { position: relative; flex-shrink: 0; width: 64px; height: 64px; }
+.model-preview-video {
+  width: 64px; height: 64px; border-radius: 50%; object-fit: cover;
+  border: 2px solid rgba(139,92,246,.4);
+}
+.model-likes { display: inline-flex; align-items: center; gap: 3px; }
+.model-likes .like-heart { font-size: 16px; }
+.model-likes:active .like-heart { transform: scale(1.3); }
+
 #stage-drop-btn { width: 100%; }
 
 /* TikTok-style split screen: model on top, fan below (portrait) */

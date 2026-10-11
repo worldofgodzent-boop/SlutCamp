@@ -458,8 +458,12 @@ async function vLanding() {
       </div>
       ${models.map((m) => `
         <button class="list-item" data-model="${m.id}" data-live="${m.live_session_id || ''}" style="background:var(--card);border-radius:14px;margin-bottom:10px;border:1px solid rgba(139,92,246,.18)">
-          <span class="avatar-wrap">${avatarHTML(m.display_name, '', m.photo_url)}
-            ${m.is_online ? '<span class="online-dot"></span>' : ''}</span>
+          <span class="model-media-wrap">
+            ${m.preview_video_url
+              ? `<video class="model-preview-video" src="${esc(m.preview_video_url)}" autoplay muted loop playsinline></video>`
+              : avatarHTML(m.display_name, '', m.photo_url)}
+            ${m.is_online ? '<span class="online-dot"></span>' : ''}
+          </span>
           <span class="grow">
             <span class="title">${esc(m.display_name)}
               ${m.is_live ? ' <span class="live-badge">🔴 LIVE</span>' : ''}
@@ -467,6 +471,10 @@ async function vLanding() {
             </span><br>
             <span class="preview">${esc(m.bio).slice(0, 70)}</span><br>
             <span class="small" style="color:var(--pink);font-weight:700">${fmt(m.per_message_cents)}/msg · ${fmt(m.per_minute_cents)}/min video</span>
+            <span class="model-likes" data-like="${m.id}" style="margin-left:8px;cursor:pointer">
+              <span class="like-heart">${m.liked ? '❤️' : '🤍'}</span>
+              <span class="like-count small" style="font-weight:700">${m.like_count || 0}</span>
+            </span>
             ${m.schedule_summary ? `<br><span class="small muted">📅 Usually live: ${esc(m.schedule_summary)}</span>` : ''}
             ${m.is_live ? `<br><span class="small" style="color:#f87171;font-weight:800">▶ Watch free preview — tap to join</span>` : ''}
           </span>
@@ -485,6 +493,19 @@ async function vLanding() {
       const liveId = b.dataset.live;
       if (liveId) return watchLive(parseInt(liveId));
       openChatWithModel(parseInt(b.dataset.model));
+    };
+  });
+  // Heart likes — tap without opening chat
+  app.querySelectorAll('[data-like]').forEach((h) => {
+    h.onclick = async (e) => {
+      e.stopPropagation();
+      if (!S.user || S.user.role !== 'fan') return toast('Log in as a fan to like models 💜');
+      const modelId = parseInt(h.dataset.like);
+      const { status, data } = await api(`/models/${modelId}/like`, { method: 'POST' });
+      if (status === 200) {
+        h.querySelector('.like-heart').textContent = data.liked ? '❤️' : '🤍';
+        h.querySelector('.like-count').textContent = data.like_count;
+      }
     };
   });
   const gl = $('#go-login');
@@ -1581,6 +1602,12 @@ async function vModelSettings() {
           <span class="grow muted small">Fans see this next to your name in chats and on the model grid.</span>
         </div>
         <button class="btn ghost" id="s-photo" style="margin-top:8px">📷 Change my photo</button>
+        <div style="margin-top:12px">
+          <div class="muted small" style="margin-bottom:6px">🎬 <b>Preview video loop</b> — a few seconds that plays on the home screen instead of your photo. Keep it SFW and under 15MB.</div>
+          ${m.preview_video_url ? `<video src="${esc(m.preview_video_url)}" autoplay muted loop playsinline style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:2px solid var(--purple)"></video><br>` : ''}
+          <button class="btn ghost small" id="s-preview-video" style="margin-top:6px">🎬 ${m.preview_video_url ? 'Change' : 'Upload'} preview video</button>
+          ${m.preview_video_url ? `<button class="btn ghost small danger" id="s-preview-remove" style="margin-top:6px;margin-left:6px">Remove</button>` : ''}
+        </div>
       </div>
       <div class="card" id="tax-card"><div class="muted small">Loading tax info…</div></div>
       <button class="btn ghost" id="s-logout">Log out</button>
@@ -1669,6 +1696,40 @@ async function vModelSettings() {
     inp.click();
   };
   $('#s-logout').onclick = () => logout();
+  // Preview video upload (offscreen input for iOS)
+  const pvBtn = $('#s-preview-video');
+  if (pvBtn) pvBtn.onclick = () => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'video/*';
+    inp.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.01;z-index:9999;';
+    inp.onchange = async () => {
+      const f = inp.files[0]; inp.remove();
+      if (!f) return;
+      if (f.size > 15 * 1024 * 1024) return toast('Video too big — 15MB max. Keep it short!');
+      toast('Uploading… 🎬');
+      const fd = new FormData(); fd.append('video', f);
+      const headers = {};
+      if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
+      try {
+        const r = await fetch('/api/model/preview-video', { method: 'POST', headers, body: fd });
+        const data = await r.json();
+        if (r.status === 200 && data.ok) {
+          toast('🎬 Preview video live!');
+          await refreshMe();
+          show('modelSettings', {});
+        } else toast('Upload failed — use a short video under 15MB.');
+      } catch (e) { toast('Upload failed — check your connection.'); }
+    };
+    document.body.appendChild(inp);
+    inp.click();
+  };
+  const pvRem = $('#s-preview-remove');
+  if (pvRem) pvRem.onclick = async () => {
+    const headers = {};
+    if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
+    const r = await fetch('/api/model/preview-video', { method: 'DELETE', headers });
+    if (r.status === 200) { toast('Preview removed — back to photo.'); await refreshMe(); show('modelSettings', {}); }
+  };
   renderTaxCard('tax-card');
   // 💰 Tip menu CRUD
   async function loadTipMenu() {
