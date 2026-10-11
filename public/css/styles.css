@@ -173,15 +173,30 @@ label.field { display: block; margin-top: 14px; font-size: 14px; font-weight: 60
 
 /* Big dumb-simple toggle */
 .toggle {
-  width: 84px; height: 44px; border-radius: 22px; border: none; cursor: pointer;
-  background: #3b2a5e; position: relative; transition: background .2s; flex-shrink: 0;
+  width: 51px; height: 31px; border-radius: 16px; border: none; cursor: pointer;
+  background: rgba(120,120,128,.32); position: relative; transition: background .25s; flex-shrink: 0;
+  -webkit-appearance: none; appearance: none; padding: 0; margin: 0;
 }
 .toggle::after {
-  content: ""; position: absolute; top: 4px; left: 4px;
-  width: 36px; height: 36px; border-radius: 50%; background: #fff; transition: left .2s;
+  content: ""; position: absolute; top: 2px; left: 2px;
+  width: 27px; height: 27px; border-radius: 50%; background: #fff;
+  transition: transform .25s; box-shadow: 0 2px 6px rgba(0,0,0,.25);
 }
-.toggle.on { background: var(--green); }
-.toggle.on::after { left: 44px; }
+.toggle.on { background: #34c759; }
+.toggle.on::after { transform: translateX(20px); }
+
+/* iPhone-style Go Live button — compact pill, not a big block */
+.btn-live {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 10px; padding: 8px 18px;
+  border: none; border-radius: 999px; cursor: pointer;
+  background: #ff3b30; color: #fff;
+  font-size: 15px; font-weight: 600; font-family: inherit;
+  box-shadow: 0 2px 8px rgba(255,59,48,.35);
+  transition: transform .15s, box-shadow .15s;
+  -webkit-appearance: none; appearance: none;
+}
+.btn-live:active { transform: scale(.96); box-shadow: 0 1px 4px rgba(255,59,48,.3); }
 
 /* ---------- Chat screen (WhatsApp style) ---------- */
 .chat-header {

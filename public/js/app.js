@@ -972,7 +972,7 @@ async function vChatList(role) {
         <button class="toggle ${S.model.is_online ? 'on' : ''}" id="online-toggle" aria-label="Go online or offline"></button>
         <span style="font-weight:800;font-size:17px">${S.model.is_online ? '🟢 ONLINE' : '⚫ OFFLINE'}</span>
       </div>
-      <button class="btn" id="go-live-btn" style="margin-top:10px;background:linear-gradient(135deg,#ef4444,#b91c1c)">🔴 Go Live</button>
+      <button class="btn-live" id="go-live-btn">🔴 Go Live</button>
       <button class="btn ghost hidden" id="back-live-btn" style="margin-top:8px">↩️ Back to Live</button>` : ''}
     </div>
     <div class="screen" style="padding:8px">
