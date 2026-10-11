@@ -943,7 +943,8 @@ async function vChatList(role) {
         <button class="toggle ${S.model.is_online ? 'on' : ''}" id="online-toggle" aria-label="Go online or offline"></button>
         <span style="font-weight:800;font-size:17px">${S.model.is_online ? '🟢 ONLINE' : '⚫ OFFLINE'}</span>
       </div>
-      <button class="btn" id="go-live-btn" style="margin-top:10px;background:linear-gradient(135deg,#ef4444,#b91c1c)">🔴 Go Live</button>` : ''}
+      <button class="btn" id="go-live-btn" style="margin-top:10px;background:linear-gradient(135deg,#ef4444,#b91c1c)">🔴 Go Live</button>
+      <button class="btn ghost hidden" id="back-live-btn" style="margin-top:8px">↩️ Back to Live</button>` : ''}
     </div>
     <div class="screen" style="padding:8px">
       ${convs.map((c) => `
@@ -966,6 +967,16 @@ async function vChatList(role) {
   };
   const glb = $('#go-live-btn');
   if (glb) glb.onclick = () => startLiveBroadcast();
+  // Show "Back to Live" if she has an active session (e.g. got disconnected)
+  const blb = $('#back-live-btn');
+  if (blb) {
+    api('/live/my-session').then(({ status, data }) => {
+      if (status === 200 && data.session_id) {
+        blb.classList.remove('hidden');
+        blb.onclick = () => rejoinLiveBroadcast(data.session_id);
+      }
+    }).catch(() => {});
+  }
   app.querySelectorAll('[data-conv]').forEach((b) => {
     b.onclick = async () => {
       const c = convs.find((x) => x.id === parseInt(b.dataset.conv));
@@ -2373,13 +2384,38 @@ function liveSignal(to, sessionId, payload) {
 
 /* --- MODEL: broadcast --- */
 
+async function rejoinLiveBroadcast(sessionId) {
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true });
+  } catch (e) {
+    return toast('Camera/mic permission needed 📹');
+  }
+  // Fetch session details
+  const { status, data } = await api(`/live/${sessionId}`);
+  if (status !== 200) return toast('Could not rejoin stream.');
+  S.live = { sessionId, role: 'model', stream,
+             explicitRate: data.explicit_rate_cents || 499, isExplicit: !!data.is_explicit,
+             title: data.title || '', chat: [], gifts: [], leaderboard: [] };
+  show('liveBroadcast', {});
+  loadStreamChat();
+  loadLeaderboard();
+  toast('🔴 Back live! Welcome back 🎉');
+}
+
 async function startLiveBroadcast() {
   const title = prompt('Stream title (shown to fans):', 'Come hang out 😈💦');
   if (title === null) return; // cancelled
   const { status, data } = await api('/live/start', {
     method: 'POST', body: JSON.stringify({ title: (title || '').trim() }) });
   if (status !== 200) {
-    if (data.error === 'already_live') return toast('You are already live!');
+    if (data.error === 'already_live' && data.session_id) {
+      // She got disconnected but the session is still live — offer to rejoin
+      if (confirm('You have a live stream running. Rejoin it?')) {
+        return rejoinLiveBroadcast(data.session_id);
+      }
+      return;
+    }
     if (data.error === 'id_verification_required')
       return toast('🪪 ID verification required — upload your ID in Settings → ID Verification first.');
     return toast('Could not go live.');
@@ -2490,6 +2526,12 @@ function vLiveBroadcast() {
   renderStreamChat();
   renderLeaderboard();
   renderStageRequests();
+  // Poll stage requests every 5s as backup (in case WS events are missed)
+  if (S.live.stagePoll) clearInterval(S.live.stagePoll);
+  S.live.stagePoll = setInterval(() => {
+    if (S.live && S.live.role === 'model') renderStageRequests();
+    else clearInterval(S.live.stagePoll);
+  }, 5000);
 }
 
 /* --- MODEL: stage requests + active stage fan (3-min limit) --- */
@@ -3767,6 +3809,8 @@ function endLiveView(msg) {
     L.stageCountdownInt = null;
     L.stageReqId = null;
     L.stagePending = false;
+    clearInterval(L.stagePoll);
+    L.stagePoll = null;
     try { speechSynthesis.cancel(); } catch (e) {}
     if (L.stagePC) { try { L.stagePC.close(); } catch (e) {} }
     if (L.stageStream) { L.stageStream.getTracks().forEach((t) => { try { t.stop(); } catch (e) {} }); }

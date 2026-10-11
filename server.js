@@ -2928,6 +2928,13 @@ function pushLiveAll(sessionId, event) {
   if (sess) pushToUser(sess.model_id, event);
 }
 
+// Model: check if she has an active live session (for "Back to Live" button)
+app.get('/api/live/my-session', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const sess = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`)
+    .get(req.user.id);
+  res.json({ session_id: sess ? sess.id : null });
+});
+
 // Model starts a live cam session
 app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   if (!isIdVerified(req.user.id))
@@ -2985,6 +2992,18 @@ app.post('/api/live/:id/leave', identMiddleware, requireUser, requireRole('fan')
 });
 
 // Model (or admin) ends a session
+// Model: get her live session details (for rejoining after disconnect)
+app.get('/api/live/:id', identMiddleware, requireUser, (req, res) => {
+  const sess = db.prepare(`SELECT ls.*, m.explicit_rate_cents FROM live_sessions ls
+    LEFT JOIN models m ON m.user_id = ls.model_id WHERE ls.id = ?`).get(req.params.id);
+  if (!sess) return res.status(404).json({ error: 'not_found' });
+  if (req.user.role !== 'admin' && sess.model_id !== req.user.id)
+    return res.status(403).json({ error: 'forbidden' });
+  if (sess.status !== 'live') return res.status(410).json({ error: 'ended' });
+  res.json({ session_id: sess.id, title: sess.title,
+    explicit_rate_cents: sess.explicit_rate_cents, is_explicit: !!sess.is_explicit });
+});
+
 app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
   if (!sess) return res.status(404).json({ error: 'not_found' });
