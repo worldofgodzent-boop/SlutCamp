@@ -211,6 +211,13 @@ label.field { display: block; margin-top: 14px; font-size: 14px; font-weight: 60
 .msg.in .meta { color: var(--muted); }
 .msg .cost { font-size: 11px; opacity: .8; }
 
+/* Anti-copy protection (fans): no text selection, no copy/cut/paste */
+.no-copy, .no-copy * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
 .chat-input-bar {
   position: sticky; bottom: 0; z-index: 20;
   display: flex; gap: 8px; align-items: center;

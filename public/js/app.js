@@ -23,6 +23,15 @@ function toast(msg, ms) {
   t._h = setTimeout(() => t.classList.add('hidden'), ms || 2600);
 }
 
+/* Anti-copy for fans: blocks text selection/copy/cut in a container, and paste into an input */
+function lockCopyForFans(container, input) {
+  if (!container) return;
+  container.classList.add('no-copy');
+  ['copy', 'cut'].forEach((ev) => container.addEventListener(ev, (e) => e.preventDefault()));
+  container.addEventListener('contextmenu', (e) => e.preventDefault());
+  if (input) input.addEventListener('paste', (e) => { e.preventDefault(); toast('Pasting is disabled — type it out ✍️'); });
+}
+
 /* Password field with 👁️ show/hide toggle */
 function pwField(id, autocomplete) {
   return `<div class="pw-wrap"><input class="input" id="${id}" type="password" autocomplete="${autocomplete || 'current-password'}">` +
@@ -1413,6 +1422,8 @@ async function vChat(params) {
     else if (isModel) show('modelChats', {});
     else show('fanChats', {});
   };
+  // Anti-copy for fans: no selecting/copying messages, no pasting into chat
+  if (!isModel) lockCopyForFans(app, $('#c-input'));
   const vb = $('#c-video');
   if (vb) vb.onclick = startCall;
   const bb = $('#c-book');
@@ -2758,6 +2769,7 @@ function vLiveWatch() {
   };
   $('#stream-chat-send').onclick = sendIt;
   sendBox.onkeydown = (e) => { if (e.key === 'Enter') sendIt(); };
+  lockCopyForFans($('#stream-chat'), sendBox);
   $('#gift-open-btn').onclick = openGiftPanel;
   $('#priority-open-btn').onclick = openPriorityPanel;
   $('#stage-join-btn').onclick = requestStageJoin;
