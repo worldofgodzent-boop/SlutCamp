@@ -3761,15 +3761,27 @@ async function handleLiveSignal(m) {
             let a = $('#stage-audio');
             if (!a) {
               a = document.createElement('audio');
-              a.id = 'stage-audio'; a.autoplay = true;
+              a.id = 'stage-audio'; a.autoplay = true; a.playsInline = true;
               $('#stage-pip').appendChild(a);
             }
             a.srcObject = e.streams[0];
+            // iOS Safari blocks autoplay — explicitly play on user gesture context
+            a.play().catch(() => {
+              // If blocked, add a tap-to-hear button
+              if (!$('#stage-unmute-btn')) {
+                const btn = document.createElement('button');
+                btn.id = 'stage-unmute-btn';
+                btn.className = 'btn small';
+                btn.textContent = '🔊 Tap to hear them';
+                btn.onclick = () => { a.play().then(() => btn.remove()).catch(() => {}); };
+                $('#stage-pip').appendChild(btn);
+              }
+            });
             const mic = $('#stage-mic');
             if (mic) mic.classList.remove('hidden');
           } else {
             const v = $('#stage-video');
-            if (v) { v.srcObject = e.streams[0]; v.classList.remove('hidden'); }
+            if (v) { v.srcObject = e.streams[0]; v.classList.remove('hidden'); v.play().catch(() => {}); }
           }
           const wrap = $('#stage-pip');
           if (wrap) wrap.classList.remove('hidden');
