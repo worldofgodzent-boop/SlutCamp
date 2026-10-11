@@ -293,6 +293,7 @@ CREATE TABLE IF NOT EXISTS conversations (
   guest_token TEXT,
   model_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   is_paused   INTEGER NOT NULL DEFAULT 0,
+  paused_at   TEXT,                       -- when the safety monitor paused the chat (auto-lifts after 4h)
   updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(fan_id, model_id),
   UNIQUE(guest_token, model_id)
@@ -572,6 +573,7 @@ addColumnIfMissing('live_sessions', 'title', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('live_viewers', 'explicit_until', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_viewers', 'explicit_paid', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'explicit_gift_grace_sec', 'INTEGER NOT NULL DEFAULT 180');
+addColumnIfMissing('conversations', 'paused_at', 'TEXT');
 addColumnIfMissing('messages', 'gift_json', 'TEXT'); // TikTok-style gift payload on chat gift messages
 addColumnIfMissing('models', 'preview_video_url', "TEXT NOT NULL DEFAULT ''"); // Loop preview on home screen
 addColumnIfMissing('invite_links', 'expires_at', "TEXT NOT NULL DEFAULT (datetime('now', '+6 hours'))");
@@ -1619,8 +1621,28 @@ app.post('/api/conversations/start', identMiddleware, (req, res) => {
     }
   }
   res.json({ conversation: { id: conv.id, other: otherParty(conv, req.ident),
-    is_paused: !!conv.is_paused, free_remaining: freeRemaining(req.ident, model.id) } });
+    is_paused: !!maybeAutoUnpause(conv).is_paused, free_remaining: freeRemaining(req.ident, model.id) } });
 });
+
+/* --- Safety pause auto-lift: pauses expire 4 hours after they start --- */
+const SAFETY_PAUSE_HOURS = 4;
+function maybeAutoUnpause(conv) {
+  if (!conv.is_paused) return conv;
+  if (!conv.paused_at) {
+    // Legacy pause with no timestamp — treat as expired so old stuck chats release
+    db.prepare(`UPDATE conversations SET is_paused = 0, paused_at = NULL WHERE id = ?`).run(conv.id);
+    return { ...conv, is_paused: 0, paused_at: null };
+  }
+  const pausedMs = new Date(conv.paused_at + 'Z').getTime();
+  if (Date.now() - pausedMs >= SAFETY_PAUSE_HOURS * 3600 * 1000) {
+    db.prepare(`UPDATE conversations SET is_paused = 0, paused_at = NULL WHERE id = ?`).run(conv.id);
+    const keys = [`u:${conv.model_id}`, conv.fan_id ? `u:${conv.fan_id}` : `g:${conv.guest_token}`];
+    keys.forEach((k) => pushToSubject(k, { type: 'chat:resumed', conversation_id: conv.id,
+      note: 'Safety pause auto-lifted after 4 hours.' }));
+    return { ...conv, is_paused: 0, paused_at: null };
+  }
+  return conv;
+}
 
 /*
  * POST /api/messages {conversation_id, body}
@@ -1634,12 +1656,13 @@ app.post('/api/messages', identMiddleware, (req, res) => {
   if (req.ident.kind === 'user' && req.ident.user.role === 'admin')
     return res.status(403).json({ error: 'admins_cannot_chat' });
 
-  const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conversation_id);
+  let conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conversation_id);
   if (!conv) return res.status(404).json({ error: 'not_found' });
   const mine = req.ident.kind === 'user'
     ? (conv.fan_id === req.ident.user.id || conv.model_id === req.ident.user.id)
     : conv.guest_token === req.ident.token;
   if (!mine) return res.status(403).json({ error: 'forbidden' });
+  conv = maybeAutoUnpause(conv);
   if (conv.is_paused)
     return res.status(423).json({ error: 'chat_paused',
       message: '⚠️ This chat is paused by the safety monitor.' });
@@ -1664,7 +1687,7 @@ app.post('/api/messages', identMiddleware, (req, res) => {
       conv.id, senderId, req.ident.kind === 'guest' ? req.ident.token : null, text, 0
     ).lastInsertRowid;
 
-    db.prepare('UPDATE conversations SET is_paused = 1 WHERE id = ?').run(conv.id);
+    db.prepare(`UPDATE conversations SET is_paused = 1, paused_at = datetime('now') WHERE id = ?`).run(conv.id);
     db.prepare(`INSERT INTO safety_incidents
       (conversation_id, sender_id, guest_token, sender_role, sender_name, flagged_text, matched)
       VALUES (?,?,?,?,?,?,?)`).run(
@@ -1772,12 +1795,14 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
       fs.unlink(req.file.path, () => {});
       return res.status(400).json({ error: 'bad_kind' });
     }
-    const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conversation_id);
-    if (!conv) { fs.unlink(req.file.path, () => {}); return res.status(404).json({ error: 'not_found' }); }
+    const conv0 = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conversation_id);
+    if (!conv0) { fs.unlink(req.file.path, () => {}); return res.status(404).json({ error: 'not_found' }); }
+    const conv = maybeAutoUnpause(conv0);
     const mine = req.ident.kind === 'user'
       ? (conv.fan_id === req.ident.user.id || conv.model_id === req.ident.user.id)
       : conv.guest_token === req.ident.token;
     if (!mine) { fs.unlink(req.file.path, () => {}); return res.status(403).json({ error: 'forbidden' }); }
+    conv = maybeAutoUnpause(conv);
     if (conv.is_paused) { fs.unlink(req.file.path, () => {}); return res.status(423).json({ error: 'chat_paused' }); }
 
     const isModelSender = req.ident.kind === 'user' && req.ident.user.role === 'model';
@@ -2878,8 +2903,9 @@ app.post('/api/calls', identMiddleware, requireUser, requireRole('fan'), (req, r
     WHERE u.id = ? AND u.role = 'model' AND u.banned = 0`).get(req.body.model_id);
   if (!row) return res.status(404).json({ error: 'model_not_found' });
   if (!row.is_online) return res.status(409).json({ error: 'model_offline' });
-  const conv = db.prepare('SELECT * FROM conversations WHERE fan_id = ? AND model_id = ?')
+  let conv = db.prepare('SELECT * FROM conversations WHERE fan_id = ? AND model_id = ?')
     .get(req.user.id, row.id);
+  if (conv) conv = maybeAutoUnpause(conv);
   if (conv && conv.is_paused)
     return res.status(423).json({ error: 'chat_paused', message: 'Chat is paused by safety monitor.' });
   if (getWallet(req.user.id).credits_cents < row.per_minute_cents)
