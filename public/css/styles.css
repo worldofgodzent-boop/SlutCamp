@@ -764,3 +764,36 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 .tip-item:active { transform: scale(.98); }
 .tip-emoji { font-size: 28px; }
 .tip-price { font-weight: 800; color: var(--green); font-size: 16px; }
+
+/* ---- Admin desktop layout: wide on laptops, phone column on mobile ---- */
+@media (min-width: 900px) {
+  body.admin-wide #phone {
+    max-width: 1200px;
+    box-shadow: 0 0 80px rgba(139, 92, 246, .2);
+  }
+  body.admin-wide .screen {
+    padding: 24px 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  body.admin-wide .stat-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  body.admin-wide .stat { padding: 18px; }
+  body.admin-wide .stat .n { font-size: 26px; }
+  body.admin-wide .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  body.admin-wide .tabs button {
+    flex: 0 0 auto;
+  }
+  body.admin-wide #admin-body {
+    max-width: 1100px;
+  }
+  body.admin-wide .card {
+    max-width: 100%;
+  }
+}
