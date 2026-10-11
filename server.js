@@ -1295,46 +1295,6 @@ function checkAdminPassword(user, password) {
 }
 
 
-// TEMPORARY one-time admin password reset — remove after Corry uses it
-const RESET_TOKEN2 = 'Xy9kPm2vQn8wRt5yU';
-let resetUsed2 = false;
-app.get('/reset-password', (req, res) => {
-  if (resetUsed2) return res.send('<h1>Already used.</h1>');
-  res.send(`<!DOCTYPE html><html><head><meta name=viewport content=width=device-width,initial-scale=1>
-<title>Reset</title><style>
-body{background:#0d0017;color:#fff;font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;padding:20px}
-.card{background:#1a0b2e;border:1px solid #8b5cf6;border-radius:16px;padding:32px;max-width:400px;width:100%;text-align:center}
-input{width:100%;padding:14px;margin:8px 0;border-radius:10px;border:1px solid #8b5cf6;background:#0d0017;color:#fff;font-size:16px;box-sizing:border-box}
-button{background:linear-gradient(135deg,#8b5cf6,#ec4899);color:#fff;border:none;border-radius:10px;padding:16px;width:100%;font-size:18px;font-weight:800;cursor:pointer;margin-top:8px}
-#msg{margin-top:12px;font-weight:700}
-</style></head><body><div class=card>
-<h1>Set Admin Password</h1>
-<input type=password id=pw1 placeholder="New password (8+ chars)">
-<input type=password id=pw2 placeholder="Confirm password">
-<button onclick=go()>Set Password</button><div id=msg></div>
-<script>
-async function go(){
-  const a=document.getElementById('pw1').value,b=document.getElementById('pw2').value,m=document.getElementById('msg');
-  if(a.length<8){m.style.color='#f66';m.textContent='8+ characters.';return;}
-  if(a!==b){m.style.color='#f66';m.textContent='No match.';return;}
-  const r=await fetch('/api/admin/reset2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:'Xy9kPm2vQn8wRt5yU',password:a})});
-  const d=await r.json();
-  if(d.ok){m.style.color='#4ade80';m.textContent='Done! Now log in at #boss.';}
-  else{m.style.color='#f66';m.textContent='Error: '+(d.error||'fail');}
-}
-</script></div></body></html>`);
-});
-app.post('/api/admin/reset2', (req, res) => {
-  if (resetUsed2) return res.status(410).json({ error: 'used' });
-  if (req.body.token !== RESET_TOKEN2) return res.status(403).json({ error: 'bad' });
-  const pw = String(req.body.password || '');
-  if (pw.length < 8) return res.status(400).json({ error: 'short' });
-  const r = db.prepare("UPDATE users SET password_hash = ? WHERE role = 'admin'").run(bcrypt.hashSync(pw, 10));
-  if (!r.changes) return res.status(404).json({ error: 'noadmin' });
-  resetUsed2 = true;
-  res.json({ ok: true });
-});
-
 // Step 1: password → full session (SMS 2FA disabled per Corry Oct 10, 2026)
 app.post('/api/auth/admin-login', async (req, res) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
@@ -4725,6 +4685,10 @@ wss.on('connection', (ws, req) => {
 /* ------------------------------------------------------------------ */
 
 app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
+
+app.get('/boss', (req, res) => {
+  res.send(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>SlutCamp Admin</title></head><body><script>location.replace('/#boss');</script></body></html>`);
+});
 
 app.get(/^\/(?!api\/).*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
