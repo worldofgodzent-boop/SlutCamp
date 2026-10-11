@@ -369,6 +369,7 @@ function show(view, params) {
     admin: vAdmin, chat: vChat,
     liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch,
     bookings: vBookings, terms: vTerms,
+    adminLogin: vAdminLogin,
   };
   (VIEWS[view] || vLanding)(params || {});
   if (view === 'liveBroadcast' || view === 'liveWatch') tabbar.classList.add('hidden');
@@ -514,6 +515,148 @@ async function doLogin() {
   });
   if (status === 200) return afterLogin(data);
   toast(data.error === 'banned' ? '⛔ This account is banned.' : 'Login failed — check your details.');
+}
+
+/* ---------------- SECRET ADMIN LOGIN (#boss) ---------------- */
+/* Not linked anywhere in the UI. Password → SMS code → in.      */
+
+let adminLoginState = {};
+
+function vAdminLogin() {
+  tabbar.classList.add('hidden');
+  if (S.user && S.user.role === 'admin') return show('admin', {});
+  adminLoginState = { step: 'creds', tempToken: null, username: '' };
+  app.innerHTML = `
+    <div class="header"><h1>Slut<span class="logo">Camp</span> 🔐</h1>
+      <div class="sub">Restricted area</div></div>
+    <div class="screen">
+      <div class="card" style="text-align:center">
+        <div style="font-size:44px">🛡️</div>
+        <div style="font-weight:800;font-size:18px;margin:8px 0">Boss entrance</div>
+        <div class="muted small">Two-step sign in. First your password, then a code texted to your phone.</div>
+      </div>
+      <div id="al-body"></div>
+    </div>`;
+  renderAdminLoginStep();
+}
+
+function renderAdminLoginStep() {
+  const body = $('#al-body');
+  const st = adminLoginState;
+  if (st.step === 'creds') {
+    body.innerHTML = `
+      <label class="field">Username<input class="input" id="al-user" autocomplete="username"></label>
+      <label class="field">Password${pwField('al-pass', 'current-password')}</label>
+      <button class="btn" id="al-go">Text me a code</button>`;
+    $('#al-go').onclick = adminLoginStep1;
+  } else if (st.step === 'phone') {
+    body.innerHTML = `
+      <div class="card" style="text-align:center">
+        <div style="font-weight:800;margin-bottom:6px">📱 First-time setup</div>
+        <div class="muted small">Enter the phone number that gets your security codes.</div>
+      </div>
+      <label class="field">Phone number<input class="input" id="al-phone" type="tel" placeholder="+1 555 123 4567" autocomplete="tel"></label>
+      <button class="btn" id="al-go">Send verification code</button>`;
+    $('#al-go').onclick = adminLoginSetupPhone;
+  } else if (st.step === 'verify_phone') {
+    body.innerHTML = `
+      <div class="card" style="text-align:center">
+        <div style="font-weight:800;margin-bottom:6px">📱 Check your texts</div>
+        <div class="muted small">We sent a 6-digit code to ${esc(st.masked || 'your phone')}. It expires in 5 minutes.</div>
+      </div>
+      <label class="field">Verification code<input class="input" id="al-code" inputmode="numeric" maxlength="6" placeholder="123456" style="text-align:center;font-size:24px;letter-spacing:8px"></label>
+      <button class="btn" id="al-go">Verify & enter</button>`;
+    $('#al-go').onclick = adminLoginVerifyPhone;
+  } else if (st.step === 'code') {
+    body.innerHTML = `
+      <div class="card" style="text-align:center">
+        <div style="font-weight:800;margin-bottom:6px">📱 Check your texts</div>
+        <div class="muted small">We sent a 6-digit code to your phone. It expires in 5 minutes.</div>
+      </div>
+      <label class="field">Security code<input class="input" id="al-code" inputmode="numeric" maxlength="6" placeholder="123456" style="text-align:center;font-size:24px;letter-spacing:8px"></label>
+      <button class="btn" id="al-go">Enter admin</button>
+      <button class="btn ghost" id="al-back" style="margin-top:8px">← Back</button>`;
+    $('#al-go').onclick = adminLoginStep2;
+    $('#al-back').onclick = () => { st.step = 'creds'; renderAdminLoginStep(); };
+  }
+}
+
+async function adminLoginStep1() {
+  const username = $('#al-user').value.trim(), password = $('#al-pass').value;
+  if (!username || !password) return toast('Enter username + password');
+  const btn = $('#al-go');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  const { status, data } = await api('/auth/admin-login', {
+    method: 'POST', body: JSON.stringify({ username, password }),
+  });
+  btn.disabled = false; btn.textContent = 'Text me a code';
+  if (status === 200) {
+    if (data.needs_phone) {
+      adminLoginState = { step: 'phone', username, password };
+      return renderAdminLoginStep();
+    }
+    if (data.needs_2fa) {
+      adminLoginState = { step: 'code', tempToken: data.temp_token, username };
+      return renderAdminLoginStep();
+    }
+    if (data.token) return adminLoginSuccess(data);
+  }
+  if (status === 429) return toast('Too many tries — wait a minute ⏳');
+  if (data.error === 'sms_not_configured') return toast('SMS is not set up yet — add Twilio keys on the server ⚠️');
+  toast('Login failed — check your details.');
+}
+
+async function adminLoginSetupPhone() {
+  const phone = $('#al-phone').value.trim();
+  if (!phone) return toast('Enter your phone number');
+  const st = adminLoginState;
+  const btn = $('#al-go');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  const { status, data } = await api('/auth/admin-setup-phone', {
+    method: 'POST', body: JSON.stringify({ username: st.username, password: st.password, phone }),
+  });
+  btn.disabled = false; btn.textContent = 'Send verification code';
+  if (status === 200 && data.sent) {
+    st.step = 'verify_phone'; st.masked = data.masked;
+    return renderAdminLoginStep();
+  }
+  if (data.error === 'bad_phone') return toast('That phone number looks wrong 📱');
+  if (data.error === 'sms_not_configured') return toast('SMS is not set up yet — add Twilio keys on the server ⚠️');
+  toast('Could not send the code — try again.');
+}
+
+async function adminLoginVerifyPhone() {
+  const code = $('#al-code').value.trim();
+  if (code.length < 6) return toast('Enter the 6-digit code');
+  const st = adminLoginState;
+  const { status, data } = await api('/auth/admin-verify-phone', {
+    method: 'POST', body: JSON.stringify({ username: st.username, code }),
+  });
+  if (status === 200 && data.token) return adminLoginSuccess(data);
+  if (data.error === 'code_expired') return toast('Code expired — start over 🔄');
+  toast('Wrong code — check your texts and try again.');
+}
+
+async function adminLoginStep2() {
+  const code = $('#al-code').value.trim();
+  if (code.length < 6) return toast('Enter the 6-digit code');
+  const st = adminLoginState;
+  const btn = $('#al-go');
+  btn.disabled = true; btn.textContent = 'Checking…';
+  const { status, data } = await api('/auth/admin-2fa', {
+    method: 'POST', body: JSON.stringify({ temp_token: st.tempToken, code }),
+  });
+  btn.disabled = false; btn.textContent = 'Enter admin';
+  if (status === 200 && data.token) return adminLoginSuccess(data);
+  if (data.error === 'code_expired') { toast('Code expired — start over 🔄'); st.step = 'creds'; return renderAdminLoginStep(); }
+  if (data.error === 'session_expired') { toast('Session expired — start over 🔄'); st.step = 'creds'; return renderAdminLoginStep(); }
+  if (data.error === 'too_many_attempts') { toast('Too many wrong codes — start over ⛔'); st.step = 'creds'; return renderAdminLoginStep(); }
+  toast(data.attempts_left !== undefined ? `Wrong code — ${data.attempts_left} tries left.` : 'Wrong code — try again.');
+}
+
+function adminLoginSuccess(data) {
+  try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
+  afterLogin(data);
 }
 
 async function doSignup(role) {
@@ -3251,7 +3394,22 @@ async function adminBookingsBody() {
 }
 
 async function adminMoreBody(s) {
+  const { data: tfa } = await api('/admin/2fa').catch(() => ({ data: {} }));
+  const tfaOn = !!(tfa && tfa.on);
   return `
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🔐 Two-Step Auth</div>
+      <div class="muted small">Admin sign-in needs a code texted to your phone. Secret entrance: <b>#boss</b> (not linked anywhere).</div>
+      <div class="row" style="margin-top:8px;align-items:center;gap:8px">
+        <span class="small" style="font-weight:800;color:${tfaOn ? 'var(--green)' : 'var(--muted)'}">${tfaOn ? '✅ ON' : '⛔ OFF'}</span>
+        ${tfa && tfa.phone_masked ? `<span class="small muted">📱 ${esc(tfa.phone_masked)}</span>` : ''}
+      </div>
+      <div id="tfa-body" style="margin-top:8px"></div>
+      <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">
+        <button class="btn small" id="tfa-change">${tfaOn ? 'Change number' : 'Set up'}</button>
+        ${tfaOn ? '<button class="btn small ghost" id="tfa-off">Turn off</button>' : ''}
+      </div>
+    </div>
     <div class="card">
       <div style="font-weight:800;margin-bottom:6px">Platform commission</div>
       <div class="muted small">You keep this % of every payment. Models get the rest.</div>
@@ -3297,6 +3455,54 @@ function wireAdminBody(tab) {
   const go = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
   go('#go-safety', () => { S.adminTab = 'safety'; show('admin', {}); });
   go('#a-logout', () => logout());
+
+  // 🔐 Two-Step Auth card
+  go('#tfa-change', () => {
+    const box = $('#tfa-body');
+    if (!box) return;
+    box.innerHTML = `
+      <label class="field">Confirm password${pwField('tfa-pass', 'current-password')}</label>
+      <label class="field">New phone number<input class="input" id="tfa-phone" type="tel" placeholder="+1 555 123 4567"></label>
+      <button class="btn small" id="tfa-send">Send verification code</button>
+      <div id="tfa-verify" style="margin-top:8px"></div>`;
+    $('#tfa-send').onclick = async () => {
+      const password = $('#tfa-pass').value, phone = $('#tfa-phone').value.trim();
+      if (!password || !phone) return toast('Enter password + phone number');
+      const { status, data } = await api('/admin/2fa/change-phone', {
+        method: 'POST', body: JSON.stringify({ password, phone }),
+      });
+      if (status === 200 && data.sent) {
+        $('#tfa-verify').innerHTML = `
+          <div class="muted small" style="margin:6px 0">Code sent to ${esc(data.masked)} — expires in 5 min.</div>
+          <div class="row" style="gap:8px">
+            <input class="input" id="tfa-code" inputmode="numeric" maxlength="6" placeholder="123456" style="max-width:140px">
+            <button class="btn small" id="tfa-confirm">Verify</button>
+          </div>`;
+        $('#tfa-confirm').onclick = async () => {
+          const code = $('#tfa-code').value.trim();
+          const r2 = await api('/admin/2fa/verify-phone-change', {
+            method: 'POST', body: JSON.stringify({ code }),
+          });
+          if (r2.status === 200) { toast('✅ Number updated — 2FA stays on'); return show('admin', {}); }
+          toast(r2.data.error === 'code_expired' ? 'Code expired — try again.' : 'Wrong code — try again.');
+        };
+        return;
+      }
+      if (data.error === 'bad_phone') return toast('That phone number looks wrong 📱');
+      if (data.error === 'sms_not_configured') return toast('SMS is not set up yet — add Twilio keys on the server ⚠️');
+      toast('Wrong password.');
+    };
+  });
+  go('#tfa-off', async () => {
+    if (!confirm('Turn OFF two-step auth? Admin login will only need a password.')) return;
+    const password = prompt('Enter your admin password to confirm:');
+    if (!password) return;
+    const { status, data } = await api('/admin/2fa/disable', {
+      method: 'POST', body: JSON.stringify({ password }),
+    });
+    if (status === 200) { toast('⛔ Two-step auth is OFF'); return show('admin', {}); }
+    toast('Wrong password.');
+  });
 
   document.querySelectorAll('[data-viewchat]').forEach((b) => {
     b.onclick = async () => {
@@ -3630,6 +3836,12 @@ $('#call-hangup').onclick = hangupCall;
 /* ---------------- boot ---------------- */
 
 (async function boot() {
+  // Secret admin route: #boss → dedicated admin login (not linked anywhere in UI)
+  if (window.location.hash === '#boss') {
+    await ensureGuest();
+    wsConnect();
+    return show('adminLogin', {});
+  }
   // Model invite link: ?invite=CODE → dedicated signup screen
   const inviteCode = new URLSearchParams(window.location.search).get('invite');
   if (inviteCode && /^[a-f0-9]{18}$/.test(inviteCode)) {
@@ -3655,6 +3867,11 @@ $('#call-hangup').onclick = hangupCall;
   wsConnect();
   show('landing', {});
 })();
+
+// Secret admin route on hash change (after initial load)
+window.addEventListener('hashchange', () => {
+  if (window.location.hash === '#boss') show('adminLogin', {});
+});
 
 /* ---------------- TERMS OF SERVICE ---------------- */
 

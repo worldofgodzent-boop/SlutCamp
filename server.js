@@ -421,6 +421,20 @@ addColumnIfMissing('models', 'explicit_join_cents', 'INTEGER NOT NULL DEFAULT 25
 addColumnIfMissing('models', 'explicit_mic_join_cents', 'INTEGER NOT NULL DEFAULT 1500');
 addColumnIfMissing('calls', 'booking_id', 'INTEGER REFERENCES bookings(id)');
 addColumnIfMissing('platform_stats', 'explicit_entry_cents', 'INTEGER NOT NULL DEFAULT 499');
+addColumnIfMissing('platform_stats', 'admin_phone', 'TEXT');
+addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0');
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS sms_codes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  code TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_sms_codes_user ON sms_codes(user_id);
+`);
 
 // One-time: rename admin display name (never show real name to models/fans)
 try {
@@ -547,6 +561,69 @@ function refundFan(fanId, modelId, grossCents, type, note) {
 const sessions = new Map();      // token -> userId
 const bannedGuests = new Set();  // guest tokens banned by admin (in-memory, MVP)
 const socketsBySubject = new Map(); // 'u:123' | 'g:token' -> Set<ws>
+const adminTempTokens = new Map();  // tempToken -> { userId, expiresAt } (2FA pending)
+const adminLoginAttempts = new Map(); // ip -> { count, resetAt } (rate limit)
+
+/* ---- SMS 2FA for admin (Twilio) ---- */
+
+function getAdmin2FAState() {
+  const r = db.prepare('SELECT admin_phone, admin_2fa_on FROM platform_stats WHERE id = 1').get();
+  return { phone: r ? r.admin_phone : null, on: r ? !!r.admin_2fa_on : false };
+}
+
+async function sendAdminSMS(to, body) {
+  const sid = process.env.TWILIO_SID, token = process.env.TWILIO_TOKEN, from = process.env.TWILIO_FROM;
+  if (!sid || !token || !from) return { ok: false, error: 'sms_not_configured' };
+  try {
+    const auth = Buffer.from(sid + ':' + token).toString('base64');
+    const params = new URLSearchParams({ From: from, To: to, Body: body });
+    const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(sid)}/Messages.json`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Basic ' + auth, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+    if (!r.ok) return { ok: false, error: 'sms_failed' };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: 'sms_failed' };
+  }
+}
+
+function genSmsCode() {
+  return String(crypto.randomInt(100000, 1000000));
+}
+
+// Issue a fresh code for the user (invalidates older ones). Returns the code.
+function issueSmsCode(userId) {
+  db.prepare('DELETE FROM sms_codes WHERE user_id = ?').run(userId);
+  const code = genSmsCode();
+  db.prepare('INSERT INTO sms_codes (user_id, code, expires_at) VALUES (?, ?, ?)')
+    .run(userId, code, Date.now() + 5 * 60 * 1000);
+  return code;
+}
+
+function adminRateLimited(ip) {
+  const now = Date.now();
+  let rec = adminLoginAttempts.get(ip);
+  if (!rec || now > rec.resetAt) {
+    rec = { count: 0, resetAt: now + 60000 };
+    adminLoginAttempts.set(ip, rec);
+  }
+  rec.count++;
+  return rec.count > 5;
+}
+
+function createAdminTempToken(userId) {
+  const token = crypto.randomBytes(32).toString('hex');
+  adminTempTokens.set(token, { userId, expiresAt: Date.now() + 10 * 60 * 1000 });
+  return token;
+}
+
+function maskPhone(phone) {
+  if (!phone) return '';
+  const digits = String(phone).replace(/\D/g, '');
+  return '•••' + digits.slice(-4);
+}
 
 function createSession(userId) {
   const token = crypto.randomBytes(32).toString('hex');
@@ -795,6 +872,8 @@ app.post('/api/auth/login', (req, res) => {
   if (!user || !bcrypt.compareSync(password || '', user.password_hash))
     return res.status(401).json({ error: 'bad_login' });
   if (user.banned) return res.status(403).json({ error: 'banned' });
+  // Admin can ONLY log in via the secret admin route (#boss). Never here.
+  if (user.role === 'admin') return res.status(403).json({ error: 'not_here' });
 
   if (guest_token && /^[a-f0-9]{32}$/.test(guest_token)) {
     const gk = `g:${guest_token}`, uk = `u:${user.id}`;
@@ -812,6 +891,114 @@ app.post('/api/auth/logout', identMiddleware, requireUser, (req, res) => {
   sessions.delete((req.headers.authorization || '').slice(7));
   res.json({ ok: true });
 });
+
+/* ------------------------------------------------------------------ */
+/* Admin auth — secret route only (#boss). Public /api/auth/login       */
+/* rejects admins outright. SMS 2FA via Twilio.                         */
+/* ------------------------------------------------------------------ */
+
+function getAdminUser(username) {
+  const u = db.prepare("SELECT * FROM users WHERE username = ? AND role = 'admin'").get((username || '').trim());
+  return u || null;
+}
+
+function checkAdminPassword(user, password) {
+  if (!user || !bcrypt.compareSync(password || '', user.password_hash)) return false;
+  if (user.banned) return false;
+  return true;
+}
+
+// Step 1: password → (needs_phone | needs_2fa + temp token | full token if 2FA off)
+app.post('/api/auth/admin-login', async (req, res) => {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  if (adminRateLimited(ip)) return res.status(429).json({ error: 'too_many_attempts' });
+  const { username, password } = req.body || {};
+  const user = getAdminUser(username);
+  if (!checkAdminPassword(user, password)) return res.status(401).json({ error: 'bad_login' });
+
+  const { phone, on } = getAdmin2FAState();
+  if (!phone) return res.json({ needs_phone: true });
+
+  if (on) {
+    const code = issueSmsCode(user.id);
+    const sent = await sendAdminSMS(phone, `SlutCamp admin code: ${code}. Expires in 5 min.`);
+    if (!sent.ok) return res.status(500).json({ error: sent.error });
+    return res.json({ needs_2fa: true, temp_token: createAdminTempToken(user.id) });
+  }
+  // 2FA not on (shouldn't happen after setup, but don't lock out)
+  const token = createSession(user.id);
+  res.json({ token, user: getUserPublic(user) });
+});
+
+// Step 2: temp token + SMS code → full session
+app.post('/api/auth/admin-2fa', (req, res) => {
+  const { temp_token, code } = req.body || {};
+  const tmp = adminTempTokens.get(temp_token);
+  if (!tmp || Date.now() > tmp.expiresAt) {
+    adminTempTokens.delete(temp_token);
+    return res.status(401).json({ error: 'session_expired' });
+  }
+  const row = db.prepare('SELECT * FROM sms_codes WHERE user_id = ? ORDER BY id DESC LIMIT 1').get(tmp.userId);
+  if (!row) return res.status(401).json({ error: 'bad_code' });
+  if (row.attempts >= 3) {
+    db.prepare('DELETE FROM sms_codes WHERE user_id = ?').run(tmp.userId);
+    adminTempTokens.delete(temp_token);
+    return res.status(403).json({ error: 'too_many_attempts' });
+  }
+  if (Date.now() > row.expires_at) {
+    db.prepare('DELETE FROM sms_codes WHERE id = ?').run(row.id);
+    return res.status(401).json({ error: 'code_expired' });
+  }
+  if (String(code || '').trim() !== row.code) {
+    db.prepare('UPDATE sms_codes SET attempts = attempts + 1 WHERE id = ?').run(row.id);
+    const left = 2 - row.attempts;
+    return res.status(401).json({ error: 'bad_code', attempts_left: Math.max(0, left) });
+  }
+  // Success — single use
+  db.prepare('DELETE FROM sms_codes WHERE user_id = ?').run(tmp.userId);
+  adminTempTokens.delete(temp_token);
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(tmp.userId);
+  const token = createSession(user.id);
+  res.json({ token, user: getUserPublic(user) });
+});
+
+// First-time setup: verify password, save phone, text a verification code
+app.post('/api/auth/admin-setup-phone', async (req, res) => {
+  const { username, password, phone } = req.body || {};
+  const user = getAdminUser(username);
+  if (!checkAdminPassword(user, password)) return res.status(401).json({ error: 'bad_login' });
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (digits.length < 10 || digits.length > 15) return res.status(400).json({ error: 'bad_phone' });
+  const e164 = '+' + digits;
+  db.prepare('UPDATE platform_stats SET admin_phone = ? WHERE id = 1').run(e164);
+  const code = issueSmsCode(user.id);
+  const sent = await sendAdminSMS(e164, `SlutCamp admin code: ${code}. Expires in 5 min.`);
+  if (!sent.ok) return res.status(500).json({ error: sent.error });
+  res.json({ ok: true, sent: true, masked: maskPhone(e164) });
+});
+
+// Verify the setup code → enable 2FA, return full session
+app.post('/api/auth/admin-verify-phone', (req, res) => {
+  const { username, code } = req.body || {};
+  const user = getAdminUser(username);
+  if (!user) return res.status(401).json({ error: 'bad_login' });
+  const row = db.prepare('SELECT * FROM sms_codes WHERE user_id = ? ORDER BY id DESC LIMIT 1').get(user.id);
+  if (!row || row.attempts >= 3) return res.status(401).json({ error: 'bad_code' });
+  if (Date.now() > row.expires_at) {
+    db.prepare('DELETE FROM sms_codes WHERE id = ?').run(row.id);
+    return res.status(401).json({ error: 'code_expired' });
+  }
+  if (String(code || '').trim() !== row.code) {
+    db.prepare('UPDATE sms_codes SET attempts = attempts + 1 WHERE id = ?').run(row.id);
+    return res.status(401).json({ error: 'bad_code' });
+  }
+  db.prepare('DELETE FROM sms_codes WHERE user_id = ?').run(user.id);
+  db.prepare('UPDATE platform_stats SET admin_2fa_on = 1 WHERE id = 1').run();
+  const token = createSession(user.id);
+  res.json({ token, user: getUserPublic(user) });
+});
+
+// Admin settings: 2FA status + change/disable live below (after adminOnly is defined)
 
 app.get('/api/me', identMiddleware, requireUser, (req, res) => {
   const wallet = getWallet(req.user.id);
@@ -1588,6 +1775,59 @@ app.get('/api/calls/:id', identMiddleware, requireUser, (req, res) => {
 });
 
 const adminOnly = [identMiddleware, requireUser, requireRole('admin')];
+
+/* ------------------------------------------------------------------ */
+/* Admin SMS 2FA settings (Twilio)                                     */
+/* ------------------------------------------------------------------ */
+
+// 2FA status
+app.get('/api/admin/2fa', ...adminOnly, (req, res) => {
+  const { phone, on } = getAdmin2FAState();
+  res.json({ on, phone_masked: maskPhone(phone) });
+});
+
+// Change number (password confirm → text verification code)
+app.post('/api/admin/2fa/change-phone', ...adminOnly, async (req, res) => {
+  const { password, phone } = req.body || {};
+  if (!bcrypt.compareSync(password || '', req.user.password_hash))
+    return res.status(401).json({ error: 'bad_login' });
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (digits.length < 10 || digits.length > 15) return res.status(400).json({ error: 'bad_phone' });
+  const e164 = '+' + digits;
+  db.prepare('UPDATE platform_stats SET admin_phone = ? WHERE id = 1').run(e164);
+  const code = issueSmsCode(req.user.id);
+  const sent = await sendAdminSMS(e164, `SlutCamp admin code: ${code}. Expires in 5 min.`);
+  if (!sent.ok) return res.status(500).json({ error: sent.error });
+  res.json({ ok: true, sent: true, masked: maskPhone(e164) });
+});
+
+// Verify the new number → keep 2FA on
+app.post('/api/admin/2fa/verify-phone-change', ...adminOnly, (req, res) => {
+  const { code } = req.body || {};
+  const row = db.prepare('SELECT * FROM sms_codes WHERE user_id = ? ORDER BY id DESC LIMIT 1').get(req.user.id);
+  if (!row || row.attempts >= 3) return res.status(401).json({ error: 'bad_code' });
+  if (Date.now() > row.expires_at) {
+    db.prepare('DELETE FROM sms_codes WHERE id = ?').run(row.id);
+    return res.status(401).json({ error: 'code_expired' });
+  }
+  if (String(code || '').trim() !== row.code) {
+    db.prepare('UPDATE sms_codes SET attempts = attempts + 1 WHERE id = ?').run(row.id);
+    return res.status(401).json({ error: 'bad_code' });
+  }
+  db.prepare('DELETE FROM sms_codes WHERE user_id = ?').run(req.user.id);
+  db.prepare('UPDATE platform_stats SET admin_2fa_on = 1 WHERE id = 1').run();
+  res.json({ ok: true });
+});
+
+// Turn 2FA off (password confirm + warning shown in UI)
+app.post('/api/admin/2fa/disable', ...adminOnly, (req, res) => {
+  const { password } = req.body || {};
+  if (!bcrypt.compareSync(password || '', req.user.password_hash))
+    return res.status(401).json({ error: 'bad_login' });
+  db.prepare('UPDATE platform_stats SET admin_2fa_on = 0 WHERE id = 1').run();
+  db.prepare('DELETE FROM sms_codes WHERE user_id = ?').run(req.user.id);
+  res.json({ ok: true });
+});
 
 /* ------------------------------------------------------------------ */
 /* LIVE CAM — "pay to play" broadcast with AI nudity blur               */
