@@ -140,10 +140,18 @@ async function api(path, opts) {
   const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
   if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
   else if (S.guestToken) headers['X-Guest-Token'] = S.guestToken;
-  const r = await fetch('/api' + path, Object.assign({}, opts, { headers }));
-  let data = {};
-  try { data = await r.json(); } catch (e) { /* non-JSON */ }
-  return { status: r.status, data };
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), 15000); // 15s timeout
+  try {
+    const r = await fetch('/api' + path, Object.assign({}, opts, { headers, signal: ctrl.signal }));
+    clearTimeout(timeout);
+    let data = {};
+    try { data = await r.json(); } catch (e) { /* non-JSON */ }
+    return { status: r.status, data };
+  } catch (e) {
+    clearTimeout(timeout);
+    return { status: 0, data: { error: 'network_error' } };
+  }
 }
 
 /* POST a single file via multipart (no JSON content-type — browser sets the boundary) */
@@ -2055,6 +2063,10 @@ async function sendMessage() {
   }
   if (status === 403 && data.error === 'id_verification_required')
     return toast('🪪 This model must complete ID verification before chatting.');
+  if (status === 0 || data.error === 'network_error') {
+    input.value = text; // restore the message
+    return toast('Connection issue — check your signal and try again 📶');
+  }
   toast('Could not send.');
 }
 
