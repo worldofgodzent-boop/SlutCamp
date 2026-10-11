@@ -315,6 +315,27 @@ function handleWS(m) {
     const reqMode = (m.request && m.request.mode) || 'video';
     const fee = stageJoinFee(!!m.request.is_explicit, reqMode);
     toast(`${stageModeEmoji(reqMode)} ${m.request.fan_name} wants to join (${stageModeLabel(reqMode)} · ${fmt(fee)})!${m.request.is_explicit ? ' 🔞' : ''}`, 4000);
+    // Fallback: if the API call fails, render from WS data directly
+    setTimeout(() => {
+      const box = $('#stage-requests');
+      if (box && !box.innerHTML.trim() && m.request && m.request.id) {
+        const r = m.request;
+        const mode = r.mode || 'video';
+        box.innerHTML = `
+        <div class="stage-req-card">
+          <span class="grow">${stageModeEmoji(mode)} <b>${esc(r.fan_name)}</b> wants to join (${stageModeLabel(mode)})${r.is_explicit ? ' 🔞' : ''}
+            <span class="muted small">(${fmt(fee)})</span></span>
+          <button class="btn small" data-approve="${r.id}">✅</button>
+          <button class="btn small danger" data-decline="${r.id}">❌</button>
+        </div>`;
+        box.querySelectorAll('[data-approve]').forEach((b) => {
+          b.onclick = () => stageApprove(parseInt(b.dataset.approve));
+        });
+        box.querySelectorAll('[data-decline]').forEach((b) => {
+          b.onclick = () => stageDecline(parseInt(b.dataset.decline));
+        });
+      }
+    }, 1000);
   } else if (m.type === 'live:join-request-cancelled' && S.live && S.live.role === 'model' && m.session_id === S.live.sessionId) {
     renderStageRequests();
   } else if (m.type === 'withdrawal:decided' && S.user && (S.user.role === 'model' || S.user.role === 'recruiter')) {
