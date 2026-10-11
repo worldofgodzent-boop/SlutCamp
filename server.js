@@ -441,6 +441,19 @@ try {
   db.prepare(`UPDATE users SET display_name = 'Asce (Admin)' WHERE username = 'admin' AND display_name = 'Corry (Admin)'`).run();
 } catch (e) { /* already renamed */ }
 
+// Model contract signatures (independent-contractor agreement)
+db.exec(`
+CREATE TABLE IF NOT EXISTS contract_signatures (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
+  contract_version TEXT NOT NULL,
+  signed_at TEXT NOT NULL DEFAULT (datetime('now')),
+  display_name TEXT NOT NULL,
+  ip TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_contract_signatures_user ON contract_signatures(user_id);
+`);
+
 // Seed the safety keyword list (admin can edit these later in Settings)
 const DEFAULT_KEYWORDS = [
   'snapchat', 'snap', 'instagram', 'ig', 'whatsapp', 'telegram', 'kik',
@@ -1546,6 +1559,63 @@ const CREDIT_PACKAGES = [
   { id: 'p100', credits_cents: 10000, price_cents: 10000, label: '$100' },
 ];
 
+// Model independent-contractor agreement (served to models for signing)
+const CONTRACT_VERSION = '1.0';
+const MODEL_CONTRACT = {
+  version: CONTRACT_VERSION,
+  updated: 'October 10, 2026',
+  sections: [
+    {
+      title: '1. Parties',
+      body: 'This Model Agreement ("Agreement") is between you, the performer ("Performer"), and World of Godz Entertainment LLC ("Company"), which operates the SlutCamp platform under the name Asce. By signing, you agree to everything below.',
+    },
+    {
+      title: '2. Independent Contractor',
+      body: 'You are an INDEPENDENT CONTRACTOR, not an employee of the Company. Nothing in this Agreement creates an employment, partnership, or agency relationship. You are responsible for your own taxes, insurance, and business expenses. The Company will not withhold taxes from your payouts, and you agree to report all income as required by law.',
+    },
+    {
+      title: '3. Age & Identity Verification',
+      body: 'You confirm you are at least 18 years old. You have completed (or will complete) government ID verification with Asce before going live, as required for 18 U.S.C. §2257 recordkeeping compliance. If you cannot verify your age and identity, you may not perform on the platform.',
+    },
+    {
+      title: '4. Revenue Split & Your Rates',
+      body: 'You keep 60% of everything fans spend on you (chats, calls, gifts, live access, priority messages, stage joins, bookings). The Company keeps 40%. You set your own rates inside the app within the allowed ranges: per-message, per-minute video, per voice note, and your explicit stage-join rates ($5–$100). The Company may change the platform-wide defaults or allowed ranges at any time.',
+    },
+    {
+      title: '5. Payouts',
+      body: 'You add your bank details in the app and request withdrawals of your available balance at any time. Payouts are processed manually by Asce on the Company\'s own schedule — there is no guaranteed payout date. Pending withdrawal requests may take several business days.',
+    },
+    {
+      title: '6. Content Rights',
+      body: 'You keep ownership of the content you create on the platform. By posting or streaming on SlutCamp, you grant the Company a worldwide, royalty-free license to use, display, reproduce, and promote that content on the platform and in Company marketing (including social media and ads). You confirm you have the right to grant this license and that your content does not infringe anyone else\'s rights.',
+    },
+    {
+      title: '7. Conduct Rules',
+      body: 'On the platform you must NOT: share contact information or payment handles with fans; attempt to take fans or transactions off-platform; use hate speech or slurs; post content featuring anyone under 18 or anyone who has not consented. Breaking these rules can get your messages blocked, your account suspended, or your account deactivated — and you may forfeit pending earnings at the Company\'s discretion.',
+    },
+    {
+      title: '8. Account Access',
+      body: 'Model accounts are invite-only. The Company may suspend or deactivate your account at any time, for any reason, with or without notice. If deactivated, any earned balance that has not been paid out remains available for you to withdraw.',
+    },
+    {
+      title: '9. Confidentiality',
+      body: 'You agree not to disclose the Company\'s business methods, commission structures, or internal operations, or any other model\'s personal information or any fan\'s personal data, to anyone outside the Company.',
+    },
+    {
+      title: '10. Non-Circumvention',
+      body: 'For 12 months after your account ends (for any reason), you agree not to directly solicit fans you met through SlutCamp to use a competing paid-chat or cam service instead of the platform. Normal public promotion of your own brand (social media, etc.) is fine — this only covers targeted poaching of SlutCamp fans.',
+    },
+    {
+      title: '11. Termination',
+      body: 'Either side can end this Agreement at any time. You can stop using the platform whenever you want. If the Company deactivates your account, this Agreement ends immediately, except the confidentiality, non-circumvention, and content-rights sections, which survive termination.',
+    },
+    {
+      title: '12. Plain-Language Disclaimer',
+      body: 'This is a plain-language summary written for clarity — it is NOT legal advice, and it has not been reviewed by an attorney. The Company strongly recommends you have your own attorney review this Agreement before signing. If any part of this Agreement is found unenforceable, the rest still applies.',
+    },
+  ],
+};
+
 app.get('/api/credits/packages', (req, res) => {
   res.json({ packages: CREDIT_PACKAGES, stubbed: true });
 });
@@ -1616,6 +1686,52 @@ app.post('/api/model/photo', identMiddleware, requireUser, requireRole('model'),
     if (!req.file) return res.status(400).json({ error: 'no_photo' });
     res.json({ ok: true, photo_url: setModelPhoto(req.user.id, req.file) });
   });
+
+/* ------------------------------------------------------------------ */
+/* Model contract — independent-contractor agreement signing          */
+/* ------------------------------------------------------------------ */
+
+// Get the current contract + whether this model has signed it
+app.get('/api/model/contract', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const sig = db.prepare('SELECT contract_version, signed_at FROM contract_signatures WHERE user_id = ?').get(req.user.id);
+  res.json({
+    version: MODEL_CONTRACT.version,
+    updated: MODEL_CONTRACT.updated,
+    sections: MODEL_CONTRACT.sections,
+    signed: !!sig,
+    signed_version: sig ? sig.contract_version : null,
+    signed_at: sig ? sig.signed_at : null,
+  });
+});
+
+// Sign the contract (typed name = electronic signature)
+app.post('/api/model/contract/sign', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const name = String(req.body.display_name || '').trim().slice(0, 80);
+  if (!name || name.length < 2) return res.status(400).json({ error: 'bad_name' });
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
+  try {
+    db.prepare(`INSERT INTO contract_signatures (user_id, contract_version, display_name, ip)
+                VALUES (?, ?, ?, ?)`)
+      .run(req.user.id, MODEL_CONTRACT.version, name, ip.slice(0, 60));
+  } catch (e) {
+    // Already signed — treat as idempotent success
+    if (!String(e.message || '').includes('UNIQUE')) throw e;
+  }
+  res.json({ ok: true, version: MODEL_CONTRACT.version });
+});
+
+// Admin: list all models with contract signature status
+app.get('/api/admin/contracts', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+  const rows = db.prepare(`
+    SELECT u.id, u.username, u.display_name, u.banned,
+           cs.contract_version, cs.signed_at, cs.display_name AS signed_name
+    FROM users u
+    LEFT JOIN contract_signatures cs ON cs.user_id = u.id
+    WHERE u.role = 'model'
+    ORDER BY u.display_name
+  `).all();
+  res.json({ contracts: rows, current_version: MODEL_CONTRACT.version });
+});
 
 /* ------------------------------------------------------------------ */
 /* Model payouts — bank account + withdrawal requests (manual by Asce) */

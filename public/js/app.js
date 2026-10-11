@@ -367,7 +367,14 @@ async function refreshTabBadges() {
   } catch (e) { /* ignore */ }
 }
 
+const MODEL_VIEWS = ['modelChats', 'modelEarnings', 'modelSettings', 'bookings', 'liveBroadcast', 'chat'];
+
 function show(view, params) {
+  // Gate: unsigned models must sign the contract first
+  if (S.user && S.user.role === 'model' && S.contractSigned === false
+      && view !== 'modelContract' && MODEL_VIEWS.includes(view)) {
+    view = 'modelContract';
+  }
   S.view = view;
   renderTabbar();
   window.scrollTo(0, 0);
@@ -378,7 +385,7 @@ function show(view, params) {
     admin: vAdmin, chat: vChat,
     liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch,
     bookings: vBookings, terms: vTerms,
-    adminLogin: vAdminLogin,
+    adminLogin: vAdminLogin, modelContract: vModelContract,
   };
   (VIEWS[view] || vLanding)(params || {});
   if (view === 'liveBroadcast' || view === 'liveWatch') tabbar.classList.add('hidden');
@@ -757,9 +764,22 @@ async function afterLogin(data) {
   wsConnect();
   await refreshMe();
   if (S.user.role === 'admin') show('admin', {});
-  else if (S.user.role === 'model') show('modelChats', {});
+  else if (S.user.role === 'model') {
+    await checkContractGate();
+    show('modelChats', {});
+  }
   else show('fanModels', {});
   toast(`Welcome, ${S.user.display_name}! 🎉`);
+}
+
+/* Contract gate: unsigned models get redirected to sign before doing anything */
+async function checkContractGate() {
+  if (!S.user || S.user.role !== 'model') return;
+  try {
+    const { status, data } = await api('/model/contract');
+    S.contractSigned = status === 200 && !!data.signed;
+    S.contractVersion = status === 200 ? data.version : null;
+  } catch (e) { S.contractSigned = true; /* fail open on network error */ }
 }
 
 async function refreshMe() {
@@ -3120,7 +3140,7 @@ async function vAdmin() {
   const tabs = [
     ['dash', '📊 Home'], ['chats', '👀 Chats'], ['safety', '🛡️ Safety'], ['live', '🔴 Live'],
     ['models', '💃 Models'], ['invites', '✉️ Invites'], ['payouts', '💸 Payouts'], ['fans', '🧑 Fans'],
-    ['bookings', '📅 Bookings'], ['more', '⚙️ More'],
+    ['bookings', '📅 Bookings'], ['contracts', '📝 Contracts'], ['more', '⚙️ More'],
   ];
   let body = '';
   if (tab === 'dash') body = await adminDashBody(stats);
@@ -3132,6 +3152,7 @@ async function vAdmin() {
   else if (tab === 'payouts') body = await adminPayoutsBody();
   else if (tab === 'fans') body = await adminFansBody();
   else if (tab === 'bookings') body = await adminBookingsBody();
+  else if (tab === 'contracts') body = await adminContractsBody();
   else body = await adminMoreBody(stats);
 
   app.innerHTML = `
@@ -3393,6 +3414,33 @@ async function adminFansBody() {
           <button class="btn small ${f.banned ? 'success' : 'danger'}" data-ban="${f.id}">${f.banned ? 'Unban' : 'Ban'}</button>
         </div>
       </div>`).join('') || '<div class="empty">No fans yet.</div>'}`;
+}
+
+async function adminContractsBody() {
+  const { data } = await api('/admin/contracts');
+  const rows = (data && data.contracts) || [];
+  const cur = (data && data.current_version) || '?';
+  const signed = rows.filter((r) => r.signed_at);
+  const unsigned = rows.filter((r) => !r.signed_at);
+  return `
+    <div style="font-weight:800;margin-bottom:10px">📝 Model agreements <span class="small muted">(current: v${esc(cur)})</span></div>
+    ${unsigned.length ? `
+      <h3 style="color:var(--red)">⚠️ Not signed (${unsigned.length})</h3>
+      ${unsigned.map((r) => `
+        <div class="card" style="padding:10px;margin-bottom:8px;border-color:var(--red)">
+          <b>${esc(r.display_name)}</b> <span class="small muted">@${esc(r.username)}</span>
+          ${r.banned ? ' <span class="small" style="color:var(--red)">(deactivated)</span>' : ''}
+          <div class="small muted">Has not signed the agreement — gated from the app until she does.</div>
+        </div>`).join('')}
+    ` : ''}
+    <h3 style="color:var(--green)">✅ Signed (${signed.length})</h3>
+    ${signed.length ? signed.map((r) => `
+      <div class="card" style="padding:10px;margin-bottom:8px">
+        <b>${esc(r.display_name)}</b> <span class="small muted">@${esc(r.username)}</span>
+        ${r.banned ? ' <span class="small" style="color:var(--red)">(deactivated)</span>' : ''}<br>
+        <span class="small muted">Signed as "${esc(r.signed_name)}" · v${esc(r.contract_version)} · ${esc(r.signed_at)}</span>
+      </div>`).join('') : '<div class="small muted">No signatures yet.</div>'}
+  `;
 }
 
 async function adminBookingsBody() {
@@ -3876,7 +3924,10 @@ $('#call-hangup').onclick = hangupCall;
       await refreshMe();
       wsConnect();
       if (S.user.role === 'admin') return show('admin', {});
-      if (S.user.role === 'model') { return show('modelChats', {}); }
+      if (S.user.role === 'model') {
+        await checkContractGate();
+        return show('modelChats', {});
+      }
       return show('fanModels', {});
     }
     S.token = null;
@@ -3946,6 +3997,82 @@ function vTerms() {
       <button class="btn ghost" id="t-back">← Back</button>
     </div>`;
   $('#t-back').onclick = () => history.length > 1 ? history.back() : show('landing', {});
+}
+
+/* ---------------- MODEL CONTRACT (sign before first use) ---------------- */
+
+async function vModelContract() {
+  tabbar.classList.add('hidden');
+  app.innerHTML = `
+    <div class="header"><h1>Slut<span class="logo">Camp</span> 📝</h1>
+      <div class="sub">Model Agreement</div></div>
+    <div class="screen">
+      <div id="mc-body"><div class="card" style="text-align:center">Loading contract…</div></div>
+    </div>`;
+  const { status, data } = await api('/model/contract');
+  if (status !== 200) { toast('Could not load the contract — try again'); return show('landing', {}); }
+  if (data.signed) { S.contractSigned = true; return show('modelChats', {}); }
+
+  app.querySelector('#mc-body').innerHTML = `
+    <div class="card" style="border:2px solid var(--pink);text-align:center">
+      <div style="font-size:15px;font-weight:800">MODEL AGREEMENT — v${esc(data.version)} (${esc(data.updated)})</div>
+      <div class="small muted" style="margin-top:6px">This is a plain-language draft, not legal advice.<br>Please have an attorney review it.</div>
+    </div>
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:8px">✍️ Read before you sign</div>
+      <div class="small muted">Scroll through the full agreement below. The checkbox unlocks once you've reached the bottom — you don't have to read every word, but signing means you agree to all of it.</div>
+    </div>
+    <div id="mc-scroll" style="max-height:45vh;overflow-y:auto;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:4px">
+      ${data.sections.map((s) => `
+        <div class="card" style="margin:8px">
+          <div style="font-weight:800;margin-bottom:6px">${esc(s.title)}</div>
+          <div class="small muted">${esc(s.body)}</div>
+        </div>`).join('')}
+      <div style="text-align:center;padding:12px" class="small muted" id="mc-end">— end of agreement —</div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <label class="checkbox-row" style="opacity:.4" id="mc-agree-row">
+        <input type="checkbox" id="mc-agree" disabled>
+        <span>I have read and agree to the Model Agreement v${esc(data.version)}.</span>
+      </label>
+      <label class="field" style="margin-top:12px">Type your full legal name to sign
+        <input class="input" id="mc-name" placeholder="Full legal name" autocomplete="name" maxlength="80">
+      </label>
+      <button class="btn" id="mc-sign" disabled style="opacity:.4;margin-top:12px">Sign & Continue</button>
+      <div class="small muted" style="text-align:center;margin-top:8px">Your typed name is your electronic signature, recorded with the date and time.</div>
+    </div>`;
+
+  const scroller = $('#mc-scroll'), agree = $('#mc-agree'), agreeRow = $('#mc-agree-row'),
+        nameInput = $('#mc-name'), signBtn = $('#mc-sign');
+  const refresh = () => {
+    const ok = agree.checked && nameInput.value.trim().length >= 2;
+    signBtn.disabled = !ok;
+    signBtn.style.opacity = ok ? 1 : .4;
+  };
+  scroller.addEventListener('scroll', () => {
+    if (agree.disabled && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 24) {
+      agree.disabled = false;
+      agreeRow.style.opacity = 1;
+      toast('You reached the bottom — you can now agree ✅');
+    }
+  });
+  agree.onchange = refresh;
+  nameInput.oninput = refresh;
+  signBtn.onclick = async () => {
+    signBtn.disabled = true;
+    const { status: st, data: d } = await api('/model/contract/sign', {
+      method: 'POST', body: JSON.stringify({ display_name: nameInput.value.trim() }),
+    });
+    if (st === 200 && d.ok) {
+      S.contractSigned = true;
+      toast('✅ Agreement signed — welcome to SlutCamp!');
+      show('modelChats', {});
+    } else {
+      toast('Signing failed — try again');
+      signBtn.disabled = false;
+      refresh();
+    }
+  };
 }
 
 /* Blur app content when backgrounded (screen-record deterrent) */
