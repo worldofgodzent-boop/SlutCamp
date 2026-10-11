@@ -1545,8 +1545,8 @@ async function vModelSettings() {
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:6px">🔞 Explicit stage rates</div>
-        <div class="muted small" style="margin-bottom:10px">What fans pay to join you <b>on camera/mic while you're explicit</b>. Regular (non-explicit) joins stay $10 video / $5 mic.</div>
-        <label class="field">🎥 Explicit video join: <b id="s-ejv-label">${fmt(m.explicit_join_cents || 2500)}</b>
+        <div class="muted small" style="margin-bottom:10px">What fans pay to join you <b>on camera/mic while you're explicit</b>. Regular (non-explicit) joins stay $10 video+mic / $5 mic-only.</div>
+        <label class="field">🎥 Explicit video + mic join: <b id="s-ejv-label">${fmt(m.explicit_join_cents || 2500)}</b>
           <input type="range" id="s-ejv" min="500" max="10000" step="100" value="${m.explicit_join_cents || 2500}" style="width:100%"></label>
         <label class="field">🎙️ Explicit mic join: <b id="s-ejm-label">${fmt(m.explicit_mic_join_cents || 1500)}</b>
           <input type="range" id="s-ejm" min="500" max="10000" step="100" value="${m.explicit_mic_join_cents || 1500}" style="width:100%"></label>
@@ -3297,7 +3297,7 @@ function stageJoinFee(explicit, mode) {
   return mode === 'mic' ? MIC_JOIN_FEE_CENTS : JOIN_FEE_CENTS;
 }
 const stageModeEmoji = (mode) => mode === 'mic' ? '🎙️' : '🎥';
-const stageModeLabel = (mode) => mode === 'mic' ? 'Mic only' : 'Video';
+const stageModeLabel = (mode) => mode === 'mic' ? 'Mic only' : 'Video + Mic';
 
 async function loadStageState() {
   const L = S.live;
