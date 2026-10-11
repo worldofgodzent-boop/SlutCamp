@@ -3509,7 +3509,24 @@ async function watchLive(sessionId) {
   };
   pc.ontrack = (e) => {
     const v = $('#live-remote');
-    if (v) v.srcObject = e.streams[0];
+    if (v) {
+      v.srcObject = e.streams[0];
+      v.play().catch(() => {
+        // If autoplay fails, show tap-to-play
+        const btn = $('#live-unmute');
+        if (btn) {
+          btn.classList.remove('hidden');
+          btn.textContent = '▶️ Tap to watch';
+          btn.onclick = () => { v.play().then(() => btn.classList.add('hidden')).catch(() => {}); };
+        }
+      });
+      // Show unmute button since we start muted for autoplay
+      const ub = $('#live-unmute');
+      if (ub) {
+        ub.classList.remove('hidden');
+        ub.onclick = () => { v.muted = false; v.play().catch(() => {}); ub.classList.add('hidden'); };
+      }
+    }
     startLiveMonitor();
   };
 
@@ -3552,7 +3569,8 @@ function vLiveWatch() {
   if (!L) return show('fanModels', {});
   app.innerHTML = `
     <div class="live-wrap">
-      <video id="live-remote" autoplay playsinline></video>
+      <video id="live-remote" autoplay playsinline muted></video>
+      <button id="live-unmute" class="hidden" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;padding:12px 24px;border-radius:999px;border:none;background:rgba(0,0,0,.7);color:#fff;font-size:16px;font-weight:700;cursor:pointer">🔊 Tap for sound</button>
       <div id="fan-watermark" class="fan-watermark"></div>
       <div id="live-blur-overlay" class="hidden">
         <div style="font-size:52px">🔞</div>
