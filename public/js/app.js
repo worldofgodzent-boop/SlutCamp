@@ -2077,7 +2077,7 @@ function closeActionSheet() {
 
 function pickPpvFile(kind) {
   const input = $('#ppv-file');
-  input.accept = kind === 'ppv_video' ? 'video/mp4,video/quicktime' : 'image/jpeg,image/png,image/webp,image/heic,image/heif';
+  input.accept = kind === 'ppv_video' ? 'video/*' : 'image/*';
   input.onchange = () => {
     const f = input.files[0];
     input.value = '';

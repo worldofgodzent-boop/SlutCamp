@@ -92,7 +92,7 @@ const upload = multer({
   }),
   limits: { fileSize: 30 * 1024 * 1024 }, // 30MB cap (short videos)
   fileFilter: (req, file, cb) => {
-    const ok = /^(image\/(jpeg|png|webp|heic|heif)|video\/(mp4|quicktime)|audio\/(mp4|mpeg|ogg|webm|wav|x-m4a))/.test(file.mimetype);
+    const ok = /^(image\/[a-z0-9.+-]+|video\/[a-z0-9.+-]+|audio\/(mp4|mpeg|ogg|webm|wav|x-m4a))$/.test(file.mimetype);
     cb(ok ? null : new Error('bad_file_type'), ok);
   },
 });
@@ -1692,7 +1692,7 @@ const MEDIA_LABELS = {
 // Models attach PPV with a price; fans can send voice notes (billed as normal message).
 app.post('/api/media/send', identMiddleware, (req, res) => {
   upload.single('file')(req, res, (err) => {
-    if (err) return res.status(400).json({ error: 'bad_file', message: 'Use JPG/PNG/HEIC/MP4/MOV or an audio file under 30MB.' });
+    if (err) return res.status(400).json({ error: 'bad_file', message: 'Upload a photo, video, or audio file under 30MB.' });
     if (!req.file) return res.status(400).json({ error: 'no_file' });
     if (req.ident.kind === 'user' && req.ident.user.role === 'admin')
       return res.status(403).json({ error: 'admins_cannot_chat' });
