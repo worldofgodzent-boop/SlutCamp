@@ -1284,7 +1284,7 @@ app.post('/api/auth/logout', identMiddleware, requireUser, (req, res) => {
 /* ------------------------------------------------------------------ */
 
 function getAdminUser(username) {
-  const u = db.prepare("SELECT * FROM users WHERE username = ? AND role = 'admin'").get((username || '').trim());
+  const u = db.prepare("SELECT * FROM users WHERE LOWER(username) = LOWER(?) AND role = 'admin'").get((username || '').trim());
   return u || null;
 }
 
