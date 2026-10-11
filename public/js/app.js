@@ -2726,6 +2726,7 @@ function vLiveWatch() {
   app.innerHTML = `
     <div class="live-wrap">
       <video id="live-remote" autoplay playsinline></video>
+      <div id="fan-watermark" class="fan-watermark"></div>
       <div id="live-blur-overlay" class="hidden">
         <div style="font-size:52px">🔞</div>
         <div id="live-blur-title" style="font-weight:800;font-size:19px;margin:8px 0">She's getting explicit…</div>
@@ -2774,6 +2775,12 @@ function vLiveWatch() {
   $('#priority-open-btn').onclick = openPriorityPanel;
   $('#stage-join-btn').onclick = requestStageJoin;
   loadStageState();
+  // Watermark this fan's username across the stream (screenshot deterrent)
+  const wm = $('#fan-watermark');
+  if (wm && S.user) {
+    const tag = '@' + S.user.username;
+    wm.innerHTML = `<span>${esc(tag)} · ${esc(tag)} · ${esc(tag)}</span>`;
+  }
   const ttsBtn = $('#tts-mute-btn');
   const syncTtsBtn = () => { if (ttsBtn) ttsBtn.textContent = ttsMuted() ? '🔇' : '🔊'; };
   syncTtsBtn();
@@ -3940,3 +3947,10 @@ function vTerms() {
     </div>`;
   $('#t-back').onclick = () => history.length > 1 ? history.back() : show('landing', {});
 }
+
+/* Blur app content when backgrounded (screen-record deterrent) */
+document.addEventListener('visibilitychange', () => {
+  document.body.classList.toggle('bg-blur', document.hidden);
+});
+window.addEventListener('blur', () => document.body.classList.add('bg-blur'));
+window.addEventListener('focus', () => document.body.classList.remove('bg-blur'));

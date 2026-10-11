@@ -218,6 +218,21 @@ label.field { display: block; margin-top: 14px; font-size: 14px; font-weight: 60
   -webkit-touch-callout: none !important;
 }
 
+/* Fan watermark: username burned across live video (screenshot deterrent) */
+.fan-watermark {
+  position: absolute; inset: 0; pointer-events: none; z-index: 5;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.fan-watermark span {
+  color: rgba(255,255,255,.14); font-weight: 800; font-size: 28px;
+  transform: rotate(-24deg); white-space: nowrap; letter-spacing: 2px;
+  text-shadow: 0 0 8px rgba(0,0,0,.3);
+}
+
+/* Blur app when backgrounded (screen-record deterrent) */
+body.bg-blur #app { filter: blur(24px); }
+
 .chat-input-bar {
   position: sticky; bottom: 0; z-index: 20;
   display: flex; gap: 8px; align-items: center;
