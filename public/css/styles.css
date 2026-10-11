@@ -612,8 +612,11 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 .stage-notice.stage-live { background: linear-gradient(135deg, #ec4899, #8b5cf6); font-size: 16px;
   animation: stagePulse 1.6s ease-in-out infinite; }
 @keyframes stagePulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.02); } }
-.stage-req-card { display: flex; align-items: center; gap: 8px; background: rgba(139,92,246,.15);
-  border: 1px solid rgba(139,92,246,.4); border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; }
+.stage-req-card { display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, rgba(139,92,246,.25), rgba(236,72,153,.15));
+  border: 2px solid rgba(139,92,246,.6); border-radius: 12px; padding: 12px; margin-bottom: 8px;
+  box-shadow: 0 0 20px rgba(139,92,246,.3); animation: pulse-border 1.5s ease-in-out infinite; }
+@keyframes pulse-border { 0%,100% { border-color: rgba(139,92,246,.6); } 50% { border-color: rgba(236,72,153,.9); } }
+.stage-req-card .btn { min-width: 48px; min-height: 48px; font-size: 20px; }
 #stage-pip { position: relative; margin-bottom: 8px; }
 #stage-video { width: 100%; max-height: 220px; border-radius: 14px; background: #000; object-fit: cover; }
 #stage-mic { display: flex; align-items: center; justify-content: center; gap: 10px;

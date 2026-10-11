@@ -3597,6 +3597,13 @@ app.post('/api/live/:id/join-request', identMiddleware, requireUser, requireRole
   pushToUser(sess.model_id, { type: 'live:join-request', session_id: sess.id,
     request: { id: rid, fan_id: req.user.id, fan_name: req.user.display_name,
                is_explicit: isExplicitJoin, mode } });
+  // Also create a persistent notification so it shows in the bell
+  try {
+    notifyUser(sess.model_id, 'stage_request',
+      `🎥 ${req.user.display_name} wants to join your live!`,
+      `Tap to review and approve (paid ${fmt(fee)})`,
+      `/live/${sess.id}`);
+  } catch (e) { /* notification failed, WS still sent */ }
   res.json({ ok: true, request_id: rid, is_explicit: isExplicitJoin, mode, fee_cents: fee,
     balance_cents: getWallet(req.user.id).credits_cents });
 });
