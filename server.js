@@ -404,7 +404,8 @@ CREATE TABLE IF NOT EXISTS invite_links (
   used_by    INTEGER REFERENCES users(id),
   is_revoked INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  used_at    TEXT
+  used_at    TEXT,
+  expires_at TEXT NOT NULL DEFAULT (datetime('now', '+6 hours'))
 );
 
 -- Group live stream chat (FREE messages during group streams — the funnel)
@@ -542,6 +543,9 @@ addColumnIfMissing('live_viewers', 'explicit_until', 'INTEGER NOT NULL DEFAULT 0
 addColumnIfMissing('live_viewers', 'explicit_paid', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'explicit_gift_grace_sec', 'INTEGER NOT NULL DEFAULT 180');
 addColumnIfMissing('messages', 'gift_json', 'TEXT'); // TikTok-style gift payload on chat gift messages
+addColumnIfMissing('invite_links', 'expires_at', "TEXT NOT NULL DEFAULT (datetime('now', '+6 hours'))");
+// Backfill: existing invites without expiry get 6h from creation
+db.exec(`UPDATE invite_links SET expires_at = datetime(created_at, '+6 hours') WHERE expires_at IS NULL OR expires_at = ''`);
 addColumnIfMissing('priority_messages', 'voice', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_join_requests', 'is_explicit', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_join_requests', 'mode', "TEXT NOT NULL DEFAULT 'video'");
@@ -1204,6 +1208,8 @@ app.post('/api/auth/signup', (req, res) => {
       return res.status(400).json({ error: 'bad_invite', message: 'This invite link is invalid or has been revoked.' });
     if (invite.used_by)
       return res.status(400).json({ error: 'invite_used', message: 'This invite link has already been used.' });
+    if (invite.expires_at && new Date(invite.expires_at + 'Z') < new Date())
+      return res.status(400).json({ error: 'invite_expired', message: 'This invite link has expired. Ask for a new one.' });
     finalRole = 'model';
   }
   // Referral-code flow: a partner's link attributes the new model to that recruiter
@@ -4232,6 +4238,8 @@ app.get('/api/admin/invites', ...adminOnly, (req, res) => {
   res.json({ invites: rows.map((r) => ({
     id: r.id, code: r.code, label: r.label,
     is_revoked: !!r.is_revoked, created_at: r.created_at, used_at: r.used_at,
+    expires_at: r.expires_at,
+    expired: !r.used_by && r.expires_at && new Date(r.expires_at + 'Z') < new Date(),
     used_by: r.used_by ? { id: r.used_by, display_name: r.used_by_name,
       username: r.used_by_username, banned: !!r.used_by_banned } : null,
   })) });
