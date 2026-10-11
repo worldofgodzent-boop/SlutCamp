@@ -1061,6 +1061,28 @@ async function vModelEarnings() {
       </div>` : ''}
       <div class="card" style="margin-top:12px">
         <div style="font-weight:800;margin-bottom:8px">📊 Revenue breakdown</div>
+        ${(() => {
+          const byType = {};
+          (data.by_type || []).forEach((r) => { byType[r.type] = r; });
+          const gifts = byType.gift ? byType.gift.earned_cents : 0;
+          const lives = (byType.live_explicit ? byType.live_explicit.earned_cents : 0) +
+                        (byType.call ? byType.call.earned_cents : 0);
+          const dms = (byType.message ? byType.message.earned_cents : 0) +
+                      (byType.voice ? byType.voice.earned_cents : 0) +
+                      (byType.ppv ? byType.ppv.earned_cents : 0) +
+                      (byType.tip ? byType.tip.earned_cents : 0);
+          return `
+          <div class="row" style="padding:10px;background:rgba(139,92,246,.1);border-radius:10px;margin-bottom:8px">
+            <span class="grow"><b>🎁 Gifts</b></span><b style="color:var(--green)">${fmt(gifts)}</b>
+          </div>
+          <div class="row" style="padding:10px;background:rgba(236,72,153,.1);border-radius:10px;margin-bottom:8px">
+            <span class="grow"><b>🔴 Lives</b> <span class="muted small">· explicit + video calls</span></span><b style="color:var(--green)">${fmt(lives)}</b>
+          </div>
+          <div class="row" style="padding:10px;background:rgba(59,130,246,.1);border-radius:10px;margin-bottom:12px">
+            <span class="grow"><b>💬 Private DMs</b> <span class="muted small">· messages + voice + PPV + tips</span></span><b style="color:var(--green)">${fmt(dms)}</b>
+          </div>`;
+        })()}
+        <div style="font-weight:700;margin:8px 0 4px" class="small muted">All activity</div>
         ${(data.by_type || []).map((r) => {
           const labels = { message: '💬 Chat messages', call: '📹 Video calls', tip: '💸 Tips',
             ppv: '🔒 PPV unlocks', voice: '🎤 Voice notes', live_explicit: '🔥 Explicit live', gift: '🎁 Gifts' };
