@@ -250,6 +250,33 @@ label.field { display: block; margin-top: 14px; font-size: 14px; font-weight: 60
 }
 .btn-live:active { transform: scale(.96); box-shadow: 0 1px 4px rgba(255,59,48,.3); }
 
+/* Big "Lives" pill on home — jumps to the Live Now grid (promo-style) */
+.btn-lives {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  width: 100%; padding: 13px 20px; margin-bottom: 12px;
+  border: none; border-radius: 999px; cursor: pointer;
+  background: linear-gradient(135deg, #ff2d55, var(--pink)); color: #fff;
+  font-size: 17px; font-weight: 800; font-family: inherit; letter-spacing: .2px;
+  box-shadow: 0 4px 18px rgba(255,45,85,.35);
+  transition: transform .15s ease, box-shadow .15s ease;
+  -webkit-appearance: none; appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-lives:active { transform: scale(.97); box-shadow: 0 2px 8px rgba(255,45,85,.3); }
+.btn-lives .lives-count {
+  background: rgba(255,255,255,.24); border-radius: 999px;
+  padding: 2px 11px; font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.btn-lives.has-live { animation: livesBtnPulse 2s ease-out infinite; }
+@keyframes livesBtnPulse {
+  0% { box-shadow: 0 4px 18px rgba(255,45,85,.35), 0 0 0 0 rgba(255,45,85,.45); }
+  70% { box-shadow: 0 4px 18px rgba(255,45,85,.35), 0 0 0 10px rgba(255,45,85,0); }
+  100% { box-shadow: 0 4px 18px rgba(255,45,85,.35), 0 0 0 0 rgba(255,45,85,0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-lives { animation: none; transition: none; }
+}
+
 /* Blue book 1-on-1 button in chat header — prominent and tappable */
 .btn-book {
   display: inline-flex; align-items: center; gap: 4px;
