@@ -90,9 +90,12 @@ const NSFW = {
   model: null,
   loading: false,
   failed: false,
+  failCount: 0,
   async ensure() {
     if (this.model) return this.model;
-    if (this.failed || this.loading) return null;
+    if (this.loading) return null;
+    // Don't permanently give up — retry with backoff (max 5 attempts)
+    if (this.failed && this.failCount >= 5) return null;
     this.loading = true;
     try {
       // esm.sh bundles tfjs + deps; jsdelivr's dist is CJS-only and won't load via <script>
@@ -100,11 +103,20 @@ const NSFW = {
       const loadFn = mod.load || (mod.default && mod.default.load);
       this.model = await loadFn();
       this.loading = false;
+      this.failed = false;
+      this.failCount = 0;
+      // Notify any waiting UI that AI is now active
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('nsfw-ready'));
       return this.model;
     } catch (e) {
       console.warn('NSFWJS failed to load, using manual mode:', e);
       this.failed = true;
+      this.failCount++;
       this.loading = false;
+      // Auto-retry in 30s (up to 5 attempts)
+      if (this.failCount < 5) {
+        setTimeout(() => { this.failed = false; this.ensure(); }, 30000);
+      }
       return null;
     }
   },
@@ -3841,6 +3853,14 @@ async function watchLive(sessionId) {
       if (!s2 || !S.live || S.live.sessionId !== sessionId) return;
       if (ok) { s2.textContent = '🛡️ AI monitor active'; S.live.aiReady = true; }
       else { s2.textContent = '🛡️ Manual mode — she controls explicit'; }
+    });
+    // If AI loads late (after retry), activate it
+    window.addEventListener('nsfw-ready', function onReady() {
+      if (!S.live || S.live.role !== 'fan' || S.live.sessionId !== sessionId) return;
+      const s2 = $('#live-ai-status');
+      if (s2) { s2.textContent = '🛡️ AI monitor active'; S.live.aiReady = true; }
+      startLiveMonitor();
+      window.removeEventListener('nsfw-ready', onReady);
     });
   }
 }
