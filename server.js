@@ -1151,6 +1151,10 @@ function safetyScan(text) {
   if (/\b\d{1,6}\s+[A-Za-z][A-Za-z.'-]*(\s+[A-Za-z][A-Za-z.'-]*){0,3}\s+(st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|ct|court|way|pl|place|ter|terrace|pkwy|parkway|cir|circle|trl|trail|hwy|highway)\b/i.test(text)) return 'street_address';
   // ZIP codes: 12345 or 12345-6789
   if (/\b\d{5}(-\d{4})?\b/.test(text)) return 'zip_code';
+  // Payment info: Cash App, Venmo, PayPal, Zelle, card numbers — triggers immediate live kill
+  if (/\$[a-zA-Z][a-zA-Z0-9_]{1,}/.test(text)) return 'payment_cashtag'; // $cashtag
+  if (/\b(cash\s?app|venmo|paypal|zelle|apple\s?pay|cashapp)\b/i.test(text)) return 'payment_app';
+  if (/\b\d{4}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}\b/.test(text)) return 'payment_card';
   return null;
 }
 
@@ -3515,6 +3519,26 @@ app.get('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
   res.json({ messages: msgs.reverse() });
 });
 
+// Force-end a live session (safety kill — payment info shared on live)
+function killLiveSession(sess, reason) {
+  db.prepare(`UPDATE live_sessions SET status = 'ended', ended_at = datetime('now') WHERE id = ?`)
+    .run(sess.id);
+  const viewers = db.prepare('SELECT fan_id FROM live_viewers WHERE session_id = ?').all(sess.id);
+  for (const v of viewers) stopLivePayTimer(sess.id, v.fan_id);
+  for (const r of pendingStageReqs(sess.id)) {
+    const fee = stageJoinFee(!!r.is_explicit, r.mode || 'video', modelJoinRates(sess.model_id));
+    db.prepare(`UPDATE live_join_requests SET status = 'declined' WHERE id = ?`).run(r.id);
+    refundFan(r.fan_id, sess.model_id, fee, 'live_join_refund',
+      `🎥 Stream ended — join request refunded`, 'safety-kill');
+    pushToUser(r.fan_id, { type: 'live:join-declined', session_id: sess.id,
+      request_id: r.id, refunded_cents: fee,
+      balance_cents: getWallet(r.fan_id).credits_cents });
+  }
+  dropStageFan(sess.id, 'stream_ended');
+  pushLiveViewers(sess.id, { type: 'live:ended', session_id: sess.id, reason });
+  pushToUser(sess.model_id, { type: 'live:ended', session_id: sess.id, reason });
+}
+
 // POST a group stream chat message — FREE, safety-scanned
 app.post('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
   const sess = liveSessionOr404(req, res);
@@ -3525,6 +3549,20 @@ app.post('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
 
   const matched = safetyScan(body);
   if (matched) {
+    // Payment info on live = kill the stream immediately (protects models + platform)
+    if (matched.startsWith('payment_')) {
+      const key = `u:${req.user.id}`;
+      const total = addStrike(key);
+      db.prepare(`INSERT INTO stream_flags (session_id, sender_id, sender_name, flagged_text, matched)
+                  VALUES (?,?,?,?,?)`)
+        .run(sess.id, req.user.id, req.user.display_name, body.slice(0, 300), matched);
+      pushToAdmins({ type: 'safety:stream_killed', session_id: sess.id,
+        sender_name: req.user.display_name, matched, total_strikes: total });
+      killLiveSession(sess, 'payment_info_shared');
+      pushToUser(req.user.id, { type: 'live:killed',
+        warning: `🛑 Stream ended — payment info is never allowed on live. (${total}/3 strikes)` });
+      return res.status(423).json({ error: 'stream_killed', matched, strikes: total });
+    }
     // Block the message, count a strike, log the flag — chat stays live for everyone else
     const key = `u:${req.user.id}`;
     const total = addStrike(key);
