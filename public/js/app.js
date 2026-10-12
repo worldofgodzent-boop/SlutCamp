@@ -1721,6 +1721,14 @@ async function vModelSettings() {
           <span class="grow muted small">Fans see this next to your name in chats and on the model grid.</span>
         </div>
         <button class="btn ghost" id="s-photo" style="margin-top:8px">📷 Change my photo</button>
+        <div style="margin-top:12px;padding:12px;background:rgba(139,92,246,.08);border-radius:12px;border:1px solid rgba(139,92,246,.25)">
+          <div style="font-weight:800;margin-bottom:4px">🔗 My promo link</div>
+          <div class="muted small" style="margin-bottom:8px">Share this anywhere — fans who tap it land straight on your chat. It works the moment your account is created.</div>
+          <div class="row" style="gap:8px">
+            <input class="input" id="s-promo-link" readonly value="${esc(location.origin + '/#m/' + (S.user.username || ''))}" style="flex:1" onclick="this.select()">
+            <button class="btn" id="s-promo-copy" style="white-space:nowrap">📋 Copy</button>
+          </div>
+        </div>
         <div style="margin-top:12px">
           <div class="muted small" style="margin-bottom:6px">🎬 <b>Preview video loop</b> — a few seconds that plays on the home screen instead of your photo. Keep it SFW and under 15MB.</div>
           ${m.preview_video_url ? `<video src="${esc(m.preview_video_url)}" autoplay muted loop playsinline style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:2px solid var(--purple)"></video><br>` : ''}
@@ -1797,6 +1805,18 @@ async function vModelSettings() {
         start_time: $('#sched-time').value, title: $('#sched-title').value }) });
     if (status === 200) { $('#sched-title').value = ''; loadSched(); toast('✅ Slot added!'); }
     else toast(data.error === 'duplicate' ? 'That slot already exists.' : 'Could not add slot.');
+  };
+  const promoCopy = $('#s-promo-copy');
+  if (promoCopy) promoCopy.onclick = async () => {
+    const inp = $('#s-promo-link');
+    try {
+      await navigator.clipboard.writeText(inp.value);
+      toast('🔗 Promo link copied!');
+    } catch (e) {
+      inp.select();
+      try { document.execCommand('copy'); toast('🔗 Promo link copied!'); }
+      catch (e2) { toast('Tap the link to copy it'); }
+    }
   };
   $('#s-photo').onclick = () => {
     const inp = document.createElement('input');
