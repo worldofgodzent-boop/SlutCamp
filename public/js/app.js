@@ -1303,7 +1303,7 @@ async function doQuickSignup(payMethod) {
   const { status, data } = await api('/auth/quick-signup', {
     method: 'POST',
     body: JSON.stringify({
-      username, password, full_name: fullName, pay_method: payMethod,
+      username, password, full_name: fullName, pay_method: payMethod, agree18: is18,
       card_last4: payMethod === 'card' ? $('#q-cardnum').value.replace(/\s/g, '').slice(-4) : null,
       cashtag: payMethod === 'cashapp' ? $('#q-cashtag').value.trim() : null,
       guest_token: S.guestToken,
@@ -5174,6 +5174,7 @@ async function adminIdChecksBody() {
           <div class="row" style="gap:8px">
             <button class="btn small" data-idv-approve="${r.id}" style="flex:1">✅ Approve</button>
             <button class="btn small danger" data-idv-reject="${r.id}" style="flex:1">❌ Reject</button>
+            <button class="btn small ghost" data-idv-2257="${r.id}" style="flex:1">📄 2257</button>
           </div>
         </div>`).join('')}
     ` : '<div class="small muted" style="margin-bottom:12px">No pending verifications. 🎉</div>'}
@@ -5186,6 +5187,7 @@ async function adminIdChecksBody() {
           <span class="small muted"> · reviewed ${esc(r.reviewed_at || '')}</span>
           ${r.reviewer_note ? `<br><span class="small muted">Note: ${esc(r.reviewer_note)}</span>` : ''}
           ${r.status === 'rejected' ? ` <button class="btn small ghost" data-idv-approve="${r.id}">Approve anyway</button>` : ''}
+          <button class="btn small ghost" data-idv-2257="${r.id}">📄 2257 record</button>
         </div>`).join('')}
     ` : ''}
   `;
@@ -5880,6 +5882,24 @@ function wireAdminBody(tab) {
         method: 'POST', body: JSON.stringify({ note }) });
       toast(status === 200 ? 'ID rejected — she can resubmit.' : 'Could not reject.');
       if (status === 200) show('admin', {});
+    });
+    // 📄 2257 records packet — download via fetch → blob (needs auth header)
+    app.querySelectorAll('[data-idv-2257]').forEach((b) => b.onclick = async () => {
+      const id = b.dataset.idv2257;
+      try {
+        const headers = {};
+        if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
+        const r = await fetch(`/api/admin/id-verifications/${id}/2257`, { headers });
+        if (!r.ok) throw new Error('bad');
+        const blob = await r.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `2257-record-${id}.json`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+        toast('📥 2257 record downloaded');
+      } catch (e) { toast('Could not download the 2257 record'); }
     });
   }
 
