@@ -1145,6 +1145,12 @@ function safetyScan(text) {
   if (/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text)) return 'phone_number';
   if (/\(\d{3}\)\s?\d{3}[-.\s]?\d{4}/.test(text)) return 'phone_number';
   if (/\b\d{10}\b/.test(text)) return 'phone_number';
+  // Email addresses
+  if (/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(text)) return 'email_address';
+  // Street addresses: 123 Main St, 456 Oak Avenue, 789 Elm Rd, etc.
+  if (/\b\d{1,6}\s+[A-Za-z][A-Za-z.'-]*(\s+[A-Za-z][A-Za-z.'-]*){0,3}\s+(st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|ct|court|way|pl|place|ter|terrace|pkwy|parkway|cir|circle|trl|trail|hwy|highway)\b/i.test(text)) return 'street_address';
+  // ZIP codes: 12345 or 12345-6789
+  if (/\b\d{5}(-\d{4})?\b/.test(text)) return 'zip_code';
   return null;
 }
 
