@@ -969,6 +969,81 @@ async function vRecruiterSignup(code) {
   };
 }
 
+/* Affiliate signup via Corry's invite link — agreement popup required */
+async function vAffiliateSignup(code) {
+  let valid = false, label = '';
+  try {
+    const { status, data } = await api(`/affiliate-invite/${encodeURIComponent(code)}`);
+    valid = status === 200 && data.valid;
+    label = data.label || '';
+  } catch { valid = false; }
+
+  if (!valid) {
+    app.innerHTML = `
+      <div class="header"><h1>Slut<span class="logo">Camp</span></h1></div>
+      <div class="screen"><div class="card" style="text-align:center">
+        <div style="font-size:40px">⛔</div>
+        <div style="font-weight:800;margin:8px 0">This invite link is invalid or expired.</div>
+        <div class="muted small">Ask Corry for a fresh invite link.</div>
+        <button class="btn ghost" style="margin-top:12px" onclick="show('landing',{})">← Back to browsing</button>
+      </div></div>`;
+    return;
+  }
+
+  // Recruiter agreement text (matches server RECRUITER_CONTRACT vR1.0)
+  const AGREEMENT = [
+    ['1. Parties', 'This Recruiter Agreement is between you ("Recruiter") and World of Godz Entertainment LLC, doing business as SlutCamp. By signing, you agree to everything below.'],
+    ['2. Independent Contractor — Not a Partner', 'You are an INDEPENDENT CONTRACTOR, not an employee. Nothing here creates an employment relationship, a legal business partnership, or agency — "partner" is just what we call the role in the app. You handle your own taxes.'],
+    ['3. What You Do', 'You recruit models to join SlutCamp using your personal referral link. Be honest about the platform — no false promises about earnings.'],
+    ['4. Your Cut', 'You earn 20% of everything each model you recruit earns. The model keeps her full 60% — your cut comes from the Company\'s portion.'],
+    ['5. Termination — At Will', 'SlutCamp may revoke your recruiter status AT ANY TIME, for any reason or no reason, with NO NOTICE. When revoked, you stop earning on all future revenue immediately.'],
+    ['6. Conduct Rules', 'You must NOT: share contact info or payment handles; try to take models or fans off-platform; use hate speech. Breaking these rules can get you deactivated immediately.'],
+    ['7. Non-Solicitation — Permanent', 'If your recruiter status ends for any reason, you may NEVER recruit or solicit any model you met through SlutCamp to a competing platform. No time limit.'],
+    ['8. Confidentiality', 'Do not disclose SlutCamp\'s business methods, commission structures, or internal operations to anyone outside the Company.'],
+    ['9. Disclaimer', 'This is a plain-language summary — NOT legal advice and NOT attorney-reviewed. You are encouraged to have your own attorney review before signing.'],
+  ];
+
+  app.innerHTML = `
+    <div class="header"><h1>Slut<span class="logo">Camp</span> 🤝</h1>
+      <div class="sub">Affiliate invite${label ? ` · ${esc(label)}` : ''}</div></div>
+    <div class="screen">
+      <div class="card" style="background:linear-gradient(135deg,#3b1d6e,#1a0f2e);text-align:center">
+        <div style="font-size:18px;font-weight:800">🤝 Become a SlutCamp Affiliate</div>
+        <div class="muted small" style="margin-top:4px">Recruit models · Earn 20% of everything they make<br>Your own referral link · Recruiter dashboard</div>
+      </div>
+      <label class="field">Your name<input class="input" id="a-name" maxlength="40"></label>
+      <label class="field">Username<input class="input" id="a-user" autocomplete="username"></label>
+      <label class="field">Password (6+ characters)${pwField('a-pass', 'new-password')}</label>
+      <div class="card" style="margin-top:12px;max-height:280px;overflow-y:auto;text-align:left">
+        <div style="font-weight:800;margin-bottom:8px">📋 Affiliate Agreement (vR1.0)</div>
+        ${AGREEMENT.map(([t, b]) => `<div style="margin-bottom:10px"><div style="font-weight:700">${esc(t)}</div><div class="small muted">${esc(b)}</div></div>`).join('')}
+      </div>
+      <label class="checkbox-row" style="margin-top:12px"><input type="checkbox" id="a-agree">
+        <span>I have read the Affiliate Agreement above and I <b>agree</b> to all terms.</span></label>
+      <button class="btn" id="a-go">Accept & Create Affiliate Account</button>
+      <button class="btn ghost" id="a-back" style="margin-top:12px">← Back</button>
+    </div>`;
+
+  $('#a-back').onclick = () => show('landing', {});
+  $('#a-go').onclick = async () => {
+    const display_name = $('#a-name').value.trim();
+    const username = $('#a-user').value.trim();
+    const password = $('#a-pass').value;
+    const agreed = $('#a-agree').checked;
+    if (!display_name || !username || !password) return toast('Fill in every field');
+    if (password.length < 6) return toast('Password needs 6+ characters.');
+    if (!agreed) return toast('You must accept the Affiliate Agreement to continue.');
+    const { status, data } = await api(`/affiliate-invite/${encodeURIComponent(code)}/signup`, {
+      method: 'POST',
+      body: JSON.stringify({ username, password, display_name, agreed: true }),
+    });
+    if (status === 200) return afterLogin(data);
+    const msgs = { username_taken: 'Username is taken 😕', bad_invite: 'Invite link is invalid.',
+      expired: 'Invite link expired.', must_agree: 'You must accept the agreement.', missing_fields: 'Fill in every field.' };
+    toast(msgs[data.error] || 'Signup failed.');
+  };
+}
+
 async function afterLogin(data) {
   S.token = data.token;
   localStorage.setItem('wc_token', S.token);
@@ -4880,6 +4955,24 @@ async function adminInvitesBody() {
   const { data } = await api('/admin/invites');
   const invites = data.invites || [];
   const baseUrl = window.location.origin;
+  const modelInvites = invites.filter((i) => i.role !== 'recruiter');
+  const affInvites = invites.filter((i) => i.role === 'recruiter');
+  const inviteCard = (inv, isAff) => {
+    const url = isAff ? `${baseUrl}/#affiliate/${inv.code}` : `${baseUrl}/?invite=${inv.code}`;
+    const status = inv.is_revoked ? '<span style="color:var(--red)">⛔ Revoked</span>'
+      : inv.used_by ? `<span style="color:var(--green)">✅ Used by ${esc(inv.used_by.display_name)}${inv.used_by.banned ? ' (deactivated)' : ''}</span>`
+      : '<span style="color:var(--yellow)">⏳ Waiting for signup</span>';
+    return `
+      <div class="card" style="padding:12px">
+        <div class="row"><span class="grow"><b>${esc(inv.label) || 'Untitled invite'}</b><br>
+          <span class="small muted">${url}</span><br>${status}
+          ${inv.used_at ? `<br><span class="small muted">Used ${timeHM(inv.used_at)}</span>` : ''}</span></div>
+        <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
+          ${!inv.is_revoked ? `<button class="btn small" data-inv-copy="${inv.code}" data-aff="${isAff ? 1 : 0}">📋 Copy link</button>` : ''}
+          ${!inv.is_revoked ? `<button class="btn small danger" data-inv-revoke="${inv.id}" data-used="${inv.used_by ? 1 : 0}">Revoke</button>` : ''}
+        </div>
+      </div>`;
+  };
   return `
     <div class="card">
       <div style="font-weight:800;margin-bottom:6px">✉️ Generate model invite link</div>
@@ -4887,22 +4980,16 @@ async function adminInvitesBody() {
       <label class="field">Label (e.g. her name)<input class="input" id="inv-label" placeholder="Bunny"></label>
       <button class="btn" id="inv-gen">Generate invite link</button>
     </div>
-    ${invites.map((inv) => {
-      const url = `${baseUrl}/?invite=${inv.code}`;
-      const status = inv.is_revoked ? '<span style="color:var(--red)">⛔ Revoked</span>'
-        : inv.used_by ? `<span style="color:var(--green)">✅ Used by ${esc(inv.used_by.display_name)}${inv.used_by.banned ? ' (deactivated)' : ''}</span>`
-        : '<span style="color:var(--yellow)">⏳ Waiting for signup</span>';
-      return `
-      <div class="card" style="padding:12px">
-        <div class="row"><span class="grow"><b>${esc(inv.label) || 'Untitled invite'}</b><br>
-          <span class="small muted">${url}</span><br>${status}
-          ${inv.used_at ? `<br><span class="small muted">Used ${timeHM(inv.used_at)}</span>` : ''}</span></div>
-        <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
-          ${!inv.is_revoked ? `<button class="btn small" data-inv-copy="${inv.code}">📋 Copy link</button>` : ''}
-          ${!inv.is_revoked ? `<button class="btn small danger" data-inv-revoke="${inv.id}" data-used="${inv.used_by ? 1 : 0}">Revoke</button>` : ''}
-        </div>
-      </div>`;
-    }).join('') || '<div class="empty">No invite links yet.</div>'}`;
+    <div class="card" style="border-color:var(--gold)">
+      <div style="font-weight:800;margin-bottom:6px">🤝 Generate affiliate invite link</div>
+      <div class="muted small">Send this to someone you want as an affiliate — they sign up, see the Affiliate Agreement, must accept to continue. They get their own referral link and earn 20%.</div>
+      <label class="field">Label (e.g. their name)<input class="input" id="aff-label" placeholder="Name"></label>
+      <button class="btn" id="aff-gen">Generate affiliate invite</button>
+    </div>
+    <h3>🤝 Affiliate invites (${affInvites.length})</h3>
+    ${affInvites.map((inv) => inviteCard(inv, true)).join('') || '<div class="empty">No affiliate invites yet.</div>'}
+    <h3>✉️ Model invites (${modelInvites.length})</h3>
+    ${modelInvites.map((inv) => inviteCard(inv, false)).join('') || '<div class="empty">No invite links yet.</div>'}`;
 }
 
 async function adminPayoutsBody() {
@@ -5487,9 +5574,22 @@ function wireAdminBody(tab) {
     } else toast('Could not create invite.');
     show('admin', {});
   });
+  go('#aff-gen', async () => {
+    const label = $('#aff-label').value.trim();
+    const { status, data } = await api('/admin/invites', {
+      method: 'POST', body: JSON.stringify({ label, role: 'recruiter', base_url: window.location.origin }) });
+    if (status === 200) {
+      const url = `${window.location.origin}/#affiliate/${data.code}`;
+      try { await navigator.clipboard.writeText(url); toast('✅ Affiliate invite copied! Send it to them.'); }
+      catch { toast('✅ Affiliate invite created — copy it from the list below.'); }
+    } else toast('Could not create invite.');
+    show('admin', {});
+  });
   document.querySelectorAll('[data-inv-copy]').forEach((b) => {
     b.onclick = async () => {
-      const url = `${window.location.origin}/?invite=${b.dataset.invCopy}`;
+      const isAff = b.dataset.aff === '1';
+      const url = isAff ? `${window.location.origin}/#affiliate/${b.dataset.invCopy}`
+                        : `${window.location.origin}/?invite=${b.dataset.invCopy}`;
       try { await navigator.clipboard.writeText(url); toast('📋 Link copied!'); }
       catch { prompt('Copy this link:', url); }
     };
@@ -5904,6 +6004,12 @@ function checkAgeGate() {
     wsConnect();
     try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
     return vRecruiterSignup(joinMatch[1]);
+  }
+  // Affiliate invite link: #affiliate/CODE → recruiter signup with agreement
+  const affMatch = window.location.hash.match(/^#affiliate\/([a-f0-9]{18})$/);
+  if (affMatch) {
+    try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
+    return vAffiliateSignup(affMatch[1]);
   }
   // Model promo link: #m/USERNAME → open that model's chat/live directly
   const promoMatch = window.location.hash.match(/^#m\/([a-zA-Z0-9_]+)$/);
