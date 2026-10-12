@@ -496,7 +496,10 @@ const TABS = {
     { id: 'safe', ico: '🛡️', label: 'Safety', view: 'admin' },
     { id: 'more', ico: '⚙️', label: 'More', view: 'admin' },
   ],
-  recruiter: [], // Affiliates get a single-page dashboard — no tabs
+  recruiter: [
+    { id: 'dash', ico: '🤝', label: 'Home', view: 'recruiter' },
+    { id: 'payout', ico: '💸', label: 'Payouts', view: 'recruiter' },
+  ],
 };
 
 function renderTabbar() {
@@ -544,7 +547,7 @@ function show(view, params) {
   window.scrollTo(0, 0);
   const VIEWS = {
     landing: vLanding, auth: vAuth,
-    fanModels: vFanModels, fanLive: vFanLive, fanChats: vFanChats, wallet: vWallet, quickSignup: vQuickSignup,
+    fanModels: vFanModels, fanLive: vFanLive, fanChats: vFanChats, wallet: vWallet,
     modelChats: vModelChats, modelEarnings: vModelEarnings, modelSettings: vModelSettings,
     admin: vAdmin, chat: vChat,
     liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch, liveModWatch: vLiveModWatch,
@@ -966,81 +969,6 @@ async function vRecruiterSignup(code) {
   };
 }
 
-/* Affiliate signup via Corry's invite link — agreement popup required */
-async function vAffiliateSignup(code) {
-  let valid = false, label = '';
-  try {
-    const { status, data } = await api(`/affiliate-invite/${encodeURIComponent(code)}`);
-    valid = status === 200 && data.valid;
-    label = data.label || '';
-  } catch { valid = false; }
-
-  if (!valid) {
-    app.innerHTML = `
-      <div class="header"><h1>Slut<span class="logo">Camp</span></h1></div>
-      <div class="screen"><div class="card" style="text-align:center">
-        <div style="font-size:40px">⛔</div>
-        <div style="font-weight:800;margin:8px 0">This invite link is invalid or expired.</div>
-        <div class="muted small">Ask Corry for a fresh invite link.</div>
-        <button class="btn ghost" style="margin-top:12px" onclick="show('landing',{})">← Back to browsing</button>
-      </div></div>`;
-    return;
-  }
-
-  // Recruiter agreement text (matches server RECRUITER_CONTRACT vR1.0)
-  const AGREEMENT = [
-    ['1. Parties', 'This Recruiter Agreement is between you ("Recruiter") and World of Godz Entertainment LLC, doing business as SlutCamp. By signing, you agree to everything below.'],
-    ['2. Independent Contractor — Not a Partner', 'You are an INDEPENDENT CONTRACTOR, not an employee. Nothing here creates an employment relationship, a legal business partnership, or agency — "partner" is just what we call the role in the app. You handle your own taxes.'],
-    ['3. What You Do', 'You recruit models to join SlutCamp using your personal referral link. Be honest about the platform — no false promises about earnings.'],
-    ['4. Your Cut', 'You earn 20% of everything each model you recruit earns. The model keeps her full 60% — your cut comes from the Company\'s portion.'],
-    ['5. Termination — At Will', 'SlutCamp may revoke your recruiter status AT ANY TIME, for any reason or no reason, with NO NOTICE. When revoked, you stop earning on all future revenue immediately.'],
-    ['6. Conduct Rules', 'You must NOT: share contact info or payment handles; try to take models or fans off-platform; use hate speech. Breaking these rules can get you deactivated immediately.'],
-    ['7. Non-Solicitation — Permanent', 'If your recruiter status ends for any reason, you may NEVER recruit or solicit any model you met through SlutCamp to a competing platform. No time limit.'],
-    ['8. Confidentiality', 'Do not disclose SlutCamp\'s business methods, commission structures, or internal operations to anyone outside the Company.'],
-    ['9. Disclaimer', 'This is a plain-language summary — NOT legal advice and NOT attorney-reviewed. You are encouraged to have your own attorney review before signing.'],
-  ];
-
-  app.innerHTML = `
-    <div class="header"><h1>Slut<span class="logo">Camp</span> 🤝</h1>
-      <div class="sub">Affiliate invite${label ? ` · ${esc(label)}` : ''}</div></div>
-    <div class="screen">
-      <div class="card" style="background:linear-gradient(135deg,#3b1d6e,#1a0f2e);text-align:center">
-        <div style="font-size:18px;font-weight:800">🤝 Become a SlutCamp Affiliate</div>
-        <div class="muted small" style="margin-top:4px">Recruit models · Earn 20% of everything they make<br>Your own referral link · Recruiter dashboard</div>
-      </div>
-      <label class="field">Your name<input class="input" id="a-name" maxlength="40"></label>
-      <label class="field">Username<input class="input" id="a-user" autocomplete="username"></label>
-      <label class="field">Password (6+ characters)${pwField('a-pass', 'new-password')}</label>
-      <div class="card" style="margin-top:12px;max-height:280px;overflow-y:auto;text-align:left">
-        <div style="font-weight:800;margin-bottom:8px">📋 Affiliate Agreement (vR1.0)</div>
-        ${AGREEMENT.map(([t, b]) => `<div style="margin-bottom:10px"><div style="font-weight:700">${esc(t)}</div><div class="small muted">${esc(b)}</div></div>`).join('')}
-      </div>
-      <label class="checkbox-row" style="margin-top:12px"><input type="checkbox" id="a-agree">
-        <span>I have read the Affiliate Agreement above and I <b>agree</b> to all terms.</span></label>
-      <button class="btn" id="a-go">Accept & Create Affiliate Account</button>
-      <button class="btn ghost" id="a-back" style="margin-top:12px">← Back</button>
-    </div>`;
-
-  $('#a-back').onclick = () => show('landing', {});
-  $('#a-go').onclick = async () => {
-    const display_name = $('#a-name').value.trim();
-    const username = $('#a-user').value.trim();
-    const password = $('#a-pass').value;
-    const agreed = $('#a-agree').checked;
-    if (!display_name || !username || !password) return toast('Fill in every field');
-    if (password.length < 6) return toast('Password needs 6+ characters.');
-    if (!agreed) return toast('You must accept the Affiliate Agreement to continue.');
-    const { status, data } = await api(`/affiliate-invite/${encodeURIComponent(code)}/signup`, {
-      method: 'POST',
-      body: JSON.stringify({ username, password, display_name, agreed: true }),
-    });
-    if (status === 200) return afterLogin(data);
-    const msgs = { username_taken: 'Username is taken 😕', bad_invite: 'Invite link is invalid.',
-      expired: 'Invite link expired.', must_agree: 'You must accept the agreement.', missing_fields: 'Fill in every field.' };
-    toast(msgs[data.error] || 'Signup failed.');
-  };
-}
-
 async function afterLogin(data) {
   S.token = data.token;
   localStorage.setItem('wc_token', S.token);
@@ -1227,112 +1155,7 @@ async function vChatList(role) {
   });
 }
 
-/* ---------------- FAN: quick signup (username + payment, nothing else) ---------------- */
-
-function vQuickSignup() {
-  app.innerHTML = `
-    <div class="header"><h1>Slut<span class="logo">Camp</span></h1>
-      <div class="sub">Create your account — 30 seconds</div></div>
-    <div class="screen">
-      <div class="card">
-        <div style="font-weight:800;margin-bottom:10px">👤 Your account</div>
-        <label class="field">Username<input class="input" id="q-user" autocomplete="username" placeholder="pick a username"></label>
-        <label class="field">Password (6+ characters)${pwField('q-pass', 'new-password')}</label>
-        <label class="checkbox-row"><input type="checkbox" id="q-18">
-          <span>I confirm I am <b>18 years or older</b>.</span></label>
-      </div>
-      <div class="card">
-        <div style="font-weight:800;margin-bottom:10px">💳 Payment info</div>
-        <div class="muted small" style="margin-bottom:10px">Add your payment method now so you can buy credits instantly. You won't be charged until you buy.</div>
-        <label class="field">Full name (on card)<input class="input" id="q-fullname" autocomplete="cc-name" placeholder="John Smith"></label>
-        <label class="field">Payment method</label>
-        <div class="row" style="gap:8px;margin-bottom:12px" id="q-paymethods">
-          <button class="btn ghost payopt selected" data-pay="card" style="flex:1">💳 Card</button>
-          <button class="btn ghost payopt" data-pay="cashapp" style="flex:1">💵 Cash App</button>
-        </div>
-        <div id="q-card-fields">
-          <label class="field">Card number<input class="input" id="q-cardnum" inputmode="numeric" autocomplete="cc-number" placeholder="4242 4242 4242 4242"></label>
-          <div class="row" style="gap:8px">
-            <label class="field" style="flex:1">Expiry<input class="input" id="q-exp" placeholder="MM/YY" autocomplete="cc-exp"></label>
-            <label class="field" style="flex:1">CVC<input class="input" id="q-cvc" inputmode="numeric" placeholder="123" autocomplete="cc-csc"></label>
-          </div>
-        </div>
-        <div id="q-cashapp-fields" class="hidden">
-          <label class="field">Cash App $cashtag<input class="input" id="q-cashtag" placeholder="$yourtag"></label>
-        </div>
-      </div>
-      <button class="btn" id="q-go" style="width:100%;margin-top:4px">Create account & continue →</button>
-      <button class="btn ghost" id="q-back" style="width:100%;margin-top:8px">← Back</button>
-    </div>`;
-  let payMethod = 'card';
-  document.querySelectorAll('#q-paymethods .payopt').forEach((b) => {
-    b.onclick = () => {
-      document.querySelectorAll('#q-paymethods .payopt').forEach((x) => x.classList.remove('selected'));
-      b.classList.add('selected');
-      payMethod = b.dataset.pay;
-      $('#q-card-fields').classList.toggle('hidden', payMethod !== 'card');
-      $('#q-cashapp-fields').classList.toggle('hidden', payMethod !== 'cashapp');
-    };
-  });
-  $('#q-back').onclick = () => show('wallet', {});
-  $('#q-go').onclick = () => doQuickSignup(payMethod);
-}
-
-async function doQuickSignup(payMethod) {
-  const username = $('#q-user').value.trim();
-  const password = $('#q-pass').value;
-  const is18 = $('#q-18').checked;
-  const fullName = $('#q-fullname').value.trim();
-  if (!username) return toast('Pick a username');
-  if (!password || password.length < 6) return toast('Password needs 6+ characters');
-  if (!is18) return toast('You must confirm you are 18 or older');
-  if (!fullName) return toast('Enter the full name on your payment method');
-  if (payMethod === 'card') {
-    if (!$('#q-cardnum').value.replace(/\s/g, '')) return toast('Enter your card number');
-    if (!$('#q-exp').value.trim()) return toast('Enter card expiry');
-    if (!$('#q-cvc').value.trim()) return toast('Enter card CVC');
-  } else {
-    if (!$('#q-cashtag').value.trim()) return toast('Enter your Cash App tag');
-  }
-  // Create the fan account (payment details are stored for checkout, not charged yet)
-  const { status, data } = await api('/auth/quick-signup', {
-    method: 'POST',
-    body: JSON.stringify({
-      username, password, full_name: fullName, pay_method: payMethod,
-      card_last4: payMethod === 'card' ? $('#q-cardnum').value.replace(/\s/g, '').slice(-4) : null,
-      cashtag: payMethod === 'cashapp' ? $('#q-cashtag').value.trim() : null,
-      guest_token: S.guestToken,
-    }),
-  });
-  if (status === 200 && data.token) {
-    S.token = data.token;
-    localStorage.setItem('wc_token', data.token);
-    await refreshMe();
-    wsConnect();
-    toast('✅ Account created!');
-    return show('wallet', {});
-  }
-  toast(data.error === 'username_taken' ? 'That username is taken — try another' : 'Signup failed — try again');
-}
-
 async function vWallet() {
-  // Guests can browse but must create an account to add money
-  if (!S.token || !S.user || S.user.role !== 'fan') {
-    app.innerHTML = `
-      <div class="header"><h1>Wallet 💰</h1></div>
-      <div class="screen">
-        <div class="card" style="text-align:center;padding:32px 20px">
-          <div style="font-size:48px;margin-bottom:12px">💰</div>
-          <div style="font-weight:800;font-size:18px;margin-bottom:8px">Create your free account to add funds</div>
-          <div class="muted" style="margin-bottom:20px">You're browsing as a guest. Sign up free to buy credits and unlock chats, live streams, gifts, and more.</div>
-          <button class="btn" id="w-signup" style="width:100%;margin-bottom:10px">✨ Create free account</button>
-          <button class="btn ghost" id="w-login" style="width:100%">Already have an account? Log in</button>
-        </div>
-      </div>`;
-    $('#w-signup').onclick = () => show('quickSignup', {});
-    $('#w-login').onclick = () => show('auth', { mode: 'login', role: 'fan' });
-    return;
-  }
   await refreshMe();
   const { data } = await api('/credits/packages');
   const pkgs = data.packages || [];
@@ -1494,49 +1317,7 @@ async function vModelEarnings() {
 
 /* ---------------- RECRUITER / PARTNER dashboard ---------------- */
 
-/* Affiliate agreement gate — full-screen, must sign to enter */
-async function vAffiliateAgreement(contract) {
-  const sections = contract.sections || [];
-  // Hide tab bar — they get nothing until they sign
-  tabbar.classList.add('hidden'); tabbar.innerHTML = '';
-  app.innerHTML = `
-    <div class="header" style="background:linear-gradient(135deg,#3b2f0b,#1a1405)">
-      <h1 style="color:var(--gold)">Slut<span style="color:#fff">Camp</span> <span style="font-size:14px">AFFILIATE</span></h1>
-    </div>
-    <div class="screen">
-      <div class="card" style="border-color:var(--gold);text-align:center">
-        <div style="font-size:40px">🤝</div>
-        <div style="font-weight:800;font-size:18px;margin:8px 0">Affiliate Agreement</div>
-        <div class="muted small">You must accept this agreement to access your affiliate dashboard.</div>
-      </div>
-      <div class="card" style="max-height:50vh;overflow-y:auto;text-align:left">
-        ${sections.map((s) => `<div style="margin-bottom:12px"><div style="font-weight:700;color:var(--gold)">${esc(s.title)}</div><div class="small" style="margin-top:4px">${esc(s.body)}</div></div>`).join('')}
-      </div>
-      <label class="field">Type your full name to sign<input class="input" id="aff-sign-name" maxlength="80" placeholder="Your full legal name"></label>
-      <label class="checkbox-row"><input type="checkbox" id="aff-sign-agree">
-        <span>I have read this agreement and I <b>agree</b> to all terms.</span></label>
-      <button class="btn" id="aff-sign-go" style="background:linear-gradient(135deg,#b8860b,#8b6914)">✍️ Sign & Enter Dashboard</button>
-      <button class="btn ghost" id="aff-sign-out" style="margin-top:12px">Decline & Log out</button>
-    </div>`;
-  $('#aff-sign-out').onclick = () => logout(false);
-  $('#aff-sign-go').onclick = async () => {
-    const name = $('#aff-sign-name').value.trim();
-    if (!name || name.length < 2) return toast('Type your full name to sign.');
-    if (!$('#aff-sign-agree').checked) return toast('You must agree to the terms.');
-    const { status } = await api('/recruiter/contract/sign', {
-      method: 'POST', body: JSON.stringify({ display_name: name }) });
-    if (status === 200) { toast('✅ Agreement signed — welcome!'); return vRecruiter(); }
-    toast('Could not sign. Try again.');
-  };
-}
-
 async function vRecruiter() {
-  // Agreement gate: unsigned affiliates see ONLY the agreement
-  try {
-    const { status, data } = await api('/recruiter/contract');
-    if (status === 200 && !data.signed) return vAffiliateAgreement(data);
-  } catch (e) { /* fail open */ }
-
   const { data } = await api('/recruiter/dashboard');
   if (!data || !data.recruiter) { toast('Could not load dashboard'); return show('landing', {}); }
   const r = data.recruiter;
@@ -1548,25 +1329,18 @@ async function vRecruiter() {
   const wds = wdData.withdrawals || [];
   const wdBadge = (s) => s === 'pending' ? '⏳ Pending' : s === 'paid' ? '✅ Paid' : '❌ Rejected';
   app.innerHTML = `
-    <div class="header" style="background:linear-gradient(135deg,#3b2f0b,#1a1405)">
-      <h1 style="color:var(--gold)">Slut<span style="color:#fff">Camp</span> <span style="font-size:14px">AFFILIATE</span></h1>
-      <div class="sub" style="color:#d4a843">${esc(r.name)}${r.city ? ` · ${esc(r.city)}` : ''}</div>
-    </div>
+    <div class="header"><h1>Partner 🤝</h1><div class="sub">${esc(r.name)}${r.city ? ` · ${esc(r.city)}` : ''}</div></div>
     <div class="screen">
-      <div class="card" style="background:linear-gradient(135deg,#2a2208,#1a1405);border-color:var(--gold);text-align:center">
-        <div style="font-size:13px;color:#d4a843;font-weight:700;letter-spacing:1px">YOUR EARNINGS</div>
-        <div style="font-size:42px;font-weight:800;color:var(--green);margin:4px 0">${fmt(data.available_cents)}</div>
-        <div class="small muted">Available for payout · ${fmt(data.earnings_cents)} total earned (20%)</div>
-      </div>
-      <div class="card" style="border-color:var(--gold)">
-        <div style="font-weight:800;margin-bottom:6px;color:var(--gold)">🔗 Your recruiting link</div>
+      <div class="card" style="background:linear-gradient(135deg,#3b1d6e,#1a0f2e)">
+        <div style="font-weight:800;margin-bottom:6px">🔗 Your referral link</div>
         <div class="muted small" style="word-break:break-all;margin-bottom:8px">${esc(link)}</div>
-        <button class="btn small" id="rc-copy" style="background:linear-gradient(135deg,#b8860b,#8b6914)">📋 Copy link</button>
+        <button class="btn small" id="rc-copy">📋 Copy link</button>
         <div class="muted small" style="margin-top:8px">Send this to models — anyone who signs up through it is yours. You earn 20% of everything they make.</div>
       </div>
       <div class="stat-grid" style="margin-top:12px">
         <div class="stat"><div class="n">${data.model_count}</div><div class="l">Models recruited</div></div>
-        <div class="stat"><div class="n" style="color:var(--green)">${fmt(data.earnings_cents)}</div><div class="l">Total earned</div></div>
+        <div class="stat"><div class="n" style="color:var(--green)">${fmt(data.earnings_cents)}</div><div class="l">Total earned (20%)</div></div>
+        <div class="stat"><div class="n" style="color:var(--green)">${fmt(data.available_cents)}</div><div class="l">Available for payout</div></div>
       </div>
       <div class="card" style="margin-top:12px">
         <div style="font-weight:800;margin-bottom:8px">💃 Your models</div>
@@ -1947,14 +1721,6 @@ async function vModelSettings() {
           <span class="grow muted small">Fans see this next to your name in chats and on the model grid.</span>
         </div>
         <button class="btn ghost" id="s-photo" style="margin-top:8px">📷 Change my photo</button>
-        <div style="margin-top:12px;padding:12px;background:rgba(139,92,246,.08);border-radius:12px;border:1px solid rgba(139,92,246,.25)">
-          <div style="font-weight:800;margin-bottom:4px">🔗 My promo link</div>
-          <div class="muted small" style="margin-bottom:8px">Share this anywhere — fans who tap it land straight on your chat. It works the moment your account is created.</div>
-          <div class="row" style="gap:8px">
-            <input class="input" id="s-promo-link" readonly value="${esc(location.origin + '/#m/' + (S.user.username || ''))}" style="flex:1" onclick="this.select()">
-            <button class="btn" id="s-promo-copy" style="white-space:nowrap">📋 Copy</button>
-          </div>
-        </div>
         <div style="margin-top:12px">
           <div class="muted small" style="margin-bottom:6px">🎬 <b>Preview video loop</b> — a few seconds that plays on the home screen instead of your photo. Keep it SFW and under 15MB.</div>
           ${m.preview_video_url ? `<video src="${esc(m.preview_video_url)}" autoplay muted loop playsinline style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:2px solid var(--purple)"></video><br>` : ''}
@@ -2031,18 +1797,6 @@ async function vModelSettings() {
         start_time: $('#sched-time').value, title: $('#sched-title').value }) });
     if (status === 200) { $('#sched-title').value = ''; loadSched(); toast('✅ Slot added!'); }
     else toast(data.error === 'duplicate' ? 'That slot already exists.' : 'Could not add slot.');
-  };
-  const promoCopy = $('#s-promo-copy');
-  if (promoCopy) promoCopy.onclick = async () => {
-    const inp = $('#s-promo-link');
-    try {
-      await navigator.clipboard.writeText(inp.value);
-      toast('🔗 Promo link copied!');
-    } catch (e) {
-      inp.select();
-      try { document.execCommand('copy'); toast('🔗 Promo link copied!'); }
-      catch (e2) { toast('Tap the link to copy it'); }
-    }
   };
   $('#s-photo').onclick = () => {
     const inp = document.createElement('input');
@@ -2954,8 +2708,6 @@ async function rejoinLiveBroadcast(sessionId) {
   loadStreamChat();
   loadLeaderboard();
   toast('🔴 Back live! Welcome back 🎉');
-  startSpeechSafetyBot(sessionId);
-  startAudioChunkBot(sessionId);
 }
 
 async function startLiveBroadcast() {
@@ -2989,116 +2741,6 @@ async function startLiveBroadcast() {
   loadStreamChat();
   loadLeaderboard();
   toast('🔴 You are LIVE! Chat is free for fans — gifts = money 💰');
-  startSpeechSafetyBot(data.session_id);
-  startAudioChunkBot(data.session_id);
-}
-
-/* --- Speech safety bot: transcribes the model's mic, flags personal info/socials --- */
-let speechRecog = null;
-function startSpeechSafetyBot(sessionId) {
-  stopSpeechSafetyBot();
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) return; // not supported on this browser (e.g. iPhone Safari)
-  try {
-    speechRecog = new SR();
-  } catch (e) { return; }
-  speechRecog.continuous = true;
-  speechRecog.interimResults = false;
-  speechRecog.lang = 'en-US';
-  let lastSent = '';
-  speechRecog.onresult = (e) => {
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (!e.results[i].isFinal) continue;
-      const text = e.results[i][0].transcript.trim();
-      if (!text || text === lastSent) continue;
-      lastSent = text;
-      // Send transcript to server for safety scan
-      api(`/live/${sessionId}/speech`, {
-        method: 'POST', body: JSON.stringify({ text })
-      }).then(({ data }) => {
-        if (data && data.action === 'killed') {
-          stopSpeechSafetyBot();
-          toast('🛑 Stream ended by safety bot.');
-        } else if (data && data.action === 'warned') {
-          toast(data.warning || '⚠️ Watch what you say on live.');
-        }
-      }).catch(() => {});
-    }
-  };
-  speechRecog.onerror = () => {
-    // Restart on recoverable errors so the bot keeps listening
-    try { speechRecog.stop(); } catch (e) {}
-  };
-  speechRecog.onend = () => {
-    // Auto-restart while still live (unless we stopped it on purpose)
-    if (speechRecog && S.live && S.live.sessionId === sessionId) {
-      try { speechRecog.start(); } catch (e) {}
-    }
-  };
-  try { speechRecog.start(); } catch (e) {}
-}
-function stopSpeechSafetyBot() {
-  if (speechRecog) {
-    const r = speechRecog;
-    speechRecog = null;
-    try { r.onend = null; r.stop(); } catch (e) {}
-  }
-  stopAudioChunkBot();
-}
-
-/* --- Audio chunk bot: records 10s mic clips, server transcribes via Whisper --- */
-/* Works on iPhone Safari (MediaRecorder) where Web Speech API is unavailable.   */
-let audioChunkRecorder = null;
-let audioChunkTimer = null;
-function startAudioChunkBot(sessionId) {
-  stopAudioChunkBot();
-  const L = S.live;
-  if (!L || !L.stream) return;
-  if (typeof MediaRecorder === 'undefined') return;
-  try {
-    // Audio-only stream for the recorder
-    const audioTracks = L.stream.getAudioTracks();
-    if (!audioTracks.length) return;
-    const audioStream = new MediaStream(audioTracks);
-    const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
-    const sendChunk = (blob) => {
-      if (!blob || blob.size < 1000) return; // skip tiny/empty clips
-      const fd = new FormData();
-      fd.append('audio', blob, 'chunk.webm');
-      fetch(`/api/live/${sessionId}/audio-chunk`, { method: 'POST', body: fd })
-        .then((r) => r.json()).then((data) => {
-          if (data && data.action === 'killed') {
-            stopAudioChunkBot();
-            toast('🛑 Stream ended by safety bot.');
-          } else if (data && data.action === 'warned') {
-            toast(data.warning || '⚠️ Watch what you say on live.');
-          }
-        }).catch(() => {});
-    };
-    const recordOne = () => {
-      if (!S.live || S.live.sessionId !== sessionId) { stopAudioChunkBot(); return; }
-      try {
-        audioChunkRecorder = new MediaRecorder(audioStream, mime ? { mimeType: mime } : undefined);
-        const chunks = [];
-        audioChunkRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
-        audioChunkRecorder.onstop = () => sendChunk(new Blob(chunks, { type: mime || 'audio/webm' }));
-        audioChunkRecorder.start();
-        audioChunkTimer = setTimeout(() => {
-          try { audioChunkRecorder.stop(); } catch (e) {}
-          // chain the next 10s clip
-          setTimeout(recordOne, 500);
-        }, 10000);
-      } catch (e) { /* MediaRecorder failed — speech bot still covers desktop */ }
-    };
-    recordOne();
-  } catch (e) {}
-}
-function stopAudioChunkBot() {
-  if (audioChunkTimer) { clearTimeout(audioChunkTimer); audioChunkTimer = null; }
-  if (audioChunkRecorder) {
-    try { audioChunkRecorder.onstop = null; audioChunkRecorder.stop(); } catch (e) {}
-    audioChunkRecorder = null;
-  }
 }
 
 function liveModelAddViewer(fanId) {
@@ -4773,7 +4415,6 @@ function endLiveView(msg) {
     clearInterval(L.stagePoll);
     L.stagePoll = null;
     try { speechSynthesis.cancel(); } catch (e) {}
-    stopSpeechSafetyBot();
     if (L.stagePC) { try { L.stagePC.close(); } catch (e) {} }
     if (L.stageStream) { L.stageStream.getTracks().forEach((t) => { try { t.stop(); } catch (e) {} }); }
     if (L.role === 'fan') {
@@ -5001,24 +4642,6 @@ async function adminInvitesBody() {
   const { data } = await api('/admin/invites');
   const invites = data.invites || [];
   const baseUrl = window.location.origin;
-  const modelInvites = invites.filter((i) => i.role !== 'recruiter');
-  const affInvites = invites.filter((i) => i.role === 'recruiter');
-  const inviteCard = (inv, isAff) => {
-    const url = isAff ? `${baseUrl}/#affiliate/${inv.code}` : `${baseUrl}/?invite=${inv.code}`;
-    const status = inv.is_revoked ? '<span style="color:var(--red)">⛔ Revoked</span>'
-      : inv.used_by ? `<span style="color:var(--green)">✅ Used by ${esc(inv.used_by.display_name)}${inv.used_by.banned ? ' (deactivated)' : ''}</span>`
-      : '<span style="color:var(--yellow)">⏳ Waiting for signup</span>';
-    return `
-      <div class="card" style="padding:12px">
-        <div class="row"><span class="grow"><b>${esc(inv.label) || 'Untitled invite'}</b><br>
-          <span class="small muted">${url}</span><br>${status}
-          ${inv.used_at ? `<br><span class="small muted">Used ${timeHM(inv.used_at)}</span>` : ''}</span></div>
-        <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
-          ${!inv.is_revoked ? `<button class="btn small" data-inv-copy="${inv.code}" data-aff="${isAff ? 1 : 0}">📋 Copy link</button>` : ''}
-          ${!inv.is_revoked ? `<button class="btn small danger" data-inv-revoke="${inv.id}" data-used="${inv.used_by ? 1 : 0}">Revoke</button>` : ''}
-        </div>
-      </div>`;
-  };
   return `
     <div class="card">
       <div style="font-weight:800;margin-bottom:6px">✉️ Generate model invite link</div>
@@ -5026,16 +4649,22 @@ async function adminInvitesBody() {
       <label class="field">Label (e.g. her name)<input class="input" id="inv-label" placeholder="Bunny"></label>
       <button class="btn" id="inv-gen">Generate invite link</button>
     </div>
-    <div class="card" style="border-color:var(--gold)">
-      <div style="font-weight:800;margin-bottom:6px">🤝 Generate affiliate invite link</div>
-      <div class="muted small">Send this to someone you want as an affiliate — they sign up, see the Affiliate Agreement, must accept to continue. They get their own referral link and earn 20%.</div>
-      <label class="field">Label (e.g. their name)<input class="input" id="aff-label" placeholder="Name"></label>
-      <button class="btn" id="aff-gen">Generate affiliate invite</button>
-    </div>
-    <h3>🤝 Affiliate invites (${affInvites.length})</h3>
-    ${affInvites.map((inv) => inviteCard(inv, true)).join('') || '<div class="empty">No affiliate invites yet.</div>'}
-    <h3>✉️ Model invites (${modelInvites.length})</h3>
-    ${modelInvites.map((inv) => inviteCard(inv, false)).join('') || '<div class="empty">No invite links yet.</div>'}`;
+    ${invites.map((inv) => {
+      const url = `${baseUrl}/?invite=${inv.code}`;
+      const status = inv.is_revoked ? '<span style="color:var(--red)">⛔ Revoked</span>'
+        : inv.used_by ? `<span style="color:var(--green)">✅ Used by ${esc(inv.used_by.display_name)}${inv.used_by.banned ? ' (deactivated)' : ''}</span>`
+        : '<span style="color:var(--yellow)">⏳ Waiting for signup</span>';
+      return `
+      <div class="card" style="padding:12px">
+        <div class="row"><span class="grow"><b>${esc(inv.label) || 'Untitled invite'}</b><br>
+          <span class="small muted">${url}</span><br>${status}
+          ${inv.used_at ? `<br><span class="small muted">Used ${timeHM(inv.used_at)}</span>` : ''}</span></div>
+        <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
+          ${!inv.is_revoked ? `<button class="btn small" data-inv-copy="${inv.code}">📋 Copy link</button>` : ''}
+          ${!inv.is_revoked ? `<button class="btn small danger" data-inv-revoke="${inv.id}" data-used="${inv.used_by ? 1 : 0}">Revoke</button>` : ''}
+        </div>
+      </div>`;
+    }).join('') || '<div class="empty">No invite links yet.</div>'}`;
 }
 
 async function adminPayoutsBody() {
@@ -5620,22 +5249,9 @@ function wireAdminBody(tab) {
     } else toast('Could not create invite.');
     show('admin', {});
   });
-  go('#aff-gen', async () => {
-    const label = $('#aff-label').value.trim();
-    const { status, data } = await api('/admin/invites', {
-      method: 'POST', body: JSON.stringify({ label, role: 'recruiter', base_url: window.location.origin }) });
-    if (status === 200) {
-      const url = `${window.location.origin}/#affiliate/${data.code}`;
-      try { await navigator.clipboard.writeText(url); toast('✅ Affiliate invite copied! Send it to them.'); }
-      catch { toast('✅ Affiliate invite created — copy it from the list below.'); }
-    } else toast('Could not create invite.');
-    show('admin', {});
-  });
   document.querySelectorAll('[data-inv-copy]').forEach((b) => {
     b.onclick = async () => {
-      const isAff = b.dataset.aff === '1';
-      const url = isAff ? `${window.location.origin}/#affiliate/${b.dataset.invCopy}`
-                        : `${window.location.origin}/?invite=${b.dataset.invCopy}`;
+      const url = `${window.location.origin}/?invite=${b.dataset.invCopy}`;
       try { await navigator.clipboard.writeText(url); toast('📋 Link copied!'); }
       catch { prompt('Copy this link:', url); }
     };
@@ -6050,41 +5666,6 @@ function checkAgeGate() {
     wsConnect();
     try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
     return vRecruiterSignup(joinMatch[1]);
-  }
-  // Affiliate invite link: #affiliate/CODE → recruiter signup with agreement
-  const affMatch = window.location.hash.match(/^#affiliate\/([a-f0-9]{18})$/);
-  if (affMatch) {
-    try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
-    return vAffiliateSignup(affMatch[1]);
-  }
-  // Model promo link: #m/USERNAME → open that model's chat/live directly
-  const promoMatch = window.location.hash.match(/^#m\/([a-zA-Z0-9_]+)$/);
-  if (promoMatch) {
-    await ensureGuest();
-    wsConnect();
-    const promoUsername = promoMatch[1].toLowerCase();
-    try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
-    // Resolve username to model and open their chat (or live stream)
-    try {
-      const { data } = await api('/models');
-      const models = data.models || [];
-      const target = models.find((m) => (m.username || '').toLowerCase() === promoUsername);
-      if (target) {
-        if (S.token) {
-          const { status } = await api('/me');
-          if (status === 200) {
-            await refreshMe();
-            if (S.user.role === 'fan') {
-              if (target.live_session_id) return watchLive(target.live_session_id);
-              return openChatWithModel(target.id);
-            }
-          }
-        }
-        // Guest or non-fan: show model list (they can sign up then chat)
-        return show('fanModels', {});
-      }
-    } catch (e) {}
-    return show('fanModels', {});
   }
   if (S.token) {
     const { status } = await api('/me');
