@@ -1348,39 +1348,6 @@ app.post('/api/auth/signup', (req, res) => {
   res.json({ token, user: getUserPublic(user) });
 });
 
-// POST /api/auth/quick-signup — streamlined fan signup from Wallet: username + password + 18 + payment info
-addColumnIfMissing('users', 'pay_full_name', 'TEXT');
-addColumnIfMissing('users', 'pay_method', 'TEXT');
-addColumnIfMissing('users', 'pay_card_last4', 'TEXT');
-addColumnIfMissing('users', 'pay_cashtag', 'TEXT');
-app.post('/api/auth/quick-signup', (req, res) => {
-  const { username, password, full_name, pay_method, card_last4, cashtag, guest_token } = req.body || {};
-  if (!username || !password || !full_name)
-    return res.status(400).json({ error: 'missing_fields' });
-  if (String(password).length < 6) return res.status(400).json({ error: 'password_too_short' });
-  if (!['card', 'cashapp'].includes(pay_method))
-    return res.status(400).json({ error: 'bad_pay_method' });
-  if (db.prepare('SELECT id FROM users WHERE username = ?').get(username.trim()))
-    return res.status(409).json({ error: 'username_taken' });
-
-  // 18+ confirmed on the client; full ID verification required before first purchase
-  const id = createUser(username.trim(), password, 'fan', username.trim().slice(0, 40), '1990-01-01');
-  db.prepare('UPDATE users SET pay_full_name = ?, pay_method = ?, pay_card_last4 = ?, pay_cashtag = ? WHERE id = ?')
-    .run(full_name.trim().slice(0, 80), pay_method, card_last4 || null, cashtag || null, id);
-
-  // Migrate guest history to the new account
-  if (guest_token && /^[a-f0-9]{32}$/.test(guest_token)) {
-    const gk = 'g:' + guest_token, uk = 'u:' + id;
-    db.prepare('UPDATE conversations SET fan_id = ?, guest_token = NULL WHERE guest_token = ?').run(id, guest_token);
-    db.prepare('UPDATE free_trials SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
-    db.prepare('UPDATE strikes SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
-  }
-
-  const token = createSession(id);
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
-  res.json({ token, user: getUserPublic(user) });
-});
-
 app.post('/api/auth/login', (req, res) => {
   const { username, password, guest_token } = req.body || {};
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get((username || '').trim());
