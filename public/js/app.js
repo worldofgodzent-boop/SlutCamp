@@ -538,7 +538,7 @@ function show(view, params) {
     fanModels: vFanModels, fanLive: vFanLive, fanChats: vFanChats, wallet: vWallet,
     modelChats: vModelChats, modelEarnings: vModelEarnings, modelSettings: vModelSettings,
     admin: vAdmin, chat: vChat,
-    liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch,
+    liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch, liveModWatch: vLiveModWatch,
     bookings: vBookings, terms: vTerms,
     adminLogin: vAdminLogin, modelContract: vModelContract,
     recruiter: vRecruiter, notifications: vNotifications, dmca: vDmca,
@@ -3757,6 +3757,79 @@ async function watchLive(sessionId) {
   }
 }
 
+/* --- MODERATOR: invisible watch (admin only, not counted as viewer) --- */
+
+async function watchLiveAsMod(sessionId) {
+  const { status, data } = await api(`/admin/live/${sessionId}/watch`, { method: 'POST' });
+  if (status !== 200) return toast('Stream is offline.');
+
+  const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  pc.onicecandidate = (e) => {
+    if (e.candidate) liveSignal(data.model_id, sessionId, { kind: 'ice', candidate: e.candidate });
+  };
+  pc.ontrack = (e) => {
+    const v = $('#mod-remote');
+    if (v) {
+      v.srcObject = e.streams[0];
+      v.play().catch(() => {
+        const btn = $('#mod-unmute');
+        if (btn) {
+          btn.classList.remove('hidden');
+          btn.onclick = () => { v.muted = false; v.play().catch(() => {}); btn.classList.add('hidden'); };
+        }
+      });
+      const ub = $('#mod-unmute');
+      if (ub) {
+        ub.classList.remove('hidden');
+        ub.onclick = () => { v.muted = false; v.play().catch(() => {}); ub.classList.add('hidden'); };
+      }
+    }
+  };
+
+  S.live = { sessionId, role: 'mod', pc, modelId: data.model_id,
+             modelName: data.model_name, title: data.title || '',
+             isExplicit: !!data.is_explicit, chat: [] };
+  show('liveModWatch', {});
+  loadStreamChat();
+}
+
+function vLiveModWatch() {
+  const L = S.live;
+  if (!L || L.role !== 'mod') return show('admin', {});
+  app.innerHTML = `
+    <div class="live-wrap">
+      <video id="mod-remote" autoplay playsinline muted></video>
+      <button id="mod-unmute" class="hidden" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;padding:12px 24px;border-radius:999px;border:none;background:rgba(0,0,0,.7);color:#fff;font-size:16px;font-weight:700;cursor:pointer">🔊 Tap for sound</button>
+      <div class="live-top">
+        <span class="live-badge" style="background:linear-gradient(135deg,#8b5cf6,#3b82f6)">🛡️ MOD WATCH</span>
+        <span class="live-viewers">${esc(L.modelName || '')}</span>
+        ${L.isExplicit ? '<span class="live-badge">🔞 Explicit</span>' : ''}
+      </div>
+      ${L.title ? `<div class="live-title">${esc(L.title)}</div>` : ''}
+      <div class="mod-watch-note">Invisible to viewers · not counted · no paywall</div>
+      <div id="stream-chat" class="stream-chat mod"></div>
+      <div class="live-controls">
+        <button class="btn ghost" id="mod-leave-btn">← Back to admin</button>
+        <button class="btn danger" id="mod-end-btn">End stream</button>
+      </div>
+    </div>`;
+  $('#mod-leave-btn').onclick = async () => {
+    try { await api(`/admin/live/${L.sessionId}/unwatch`, { method: 'POST' }); } catch (e) {}
+    if (L.pc) { try { L.pc.close(); } catch (e) {} }
+    S.live = null;
+    S.adminTab = 'live';
+    show('admin', {});
+  };
+  $('#mod-end-btn').onclick = async () => {
+    if (!confirm('End this live stream?')) return;
+    await api(`/live/${L.sessionId}/end`, { method: 'POST' });
+    if (L.pc) { try { L.pc.close(); } catch (e) {} }
+    S.live = null;
+    S.adminTab = 'live';
+    show('admin', {});
+  };
+}
+
 function vLiveWatch() {
   const L = S.live;
   if (!L) return show('fanModels', {});
@@ -4322,7 +4395,7 @@ async function adminLiveBody() {
           <span class="small muted">${s.viewers} watching · ${s.paying_viewers} paying · ${fmt(s.explicit_rate_cents)}/min explicit</span><br>
           <span class="small" style="color:var(--pink);font-weight:700">🎁 ${fmt(s.gift_cents || 0)} in gifts (${s.gift_count || 0})</span><br>
           <span class="small muted">started ${timeHM(s.started_at)}</span></span>
-          ${s.status === 'live' ? `<button class="btn small danger" data-live-end="${s.id}">End</button>` : ''}
+          ${s.status === 'live' ? `<button class="btn small" data-live-watch="${s.id}" style="background:linear-gradient(135deg,#8b5cf6,#3b82f6)">👁️ Watch</button> <button class="btn small danger" data-live-end="${s.id}">End</button>` : ''}
         </div>
       </div>`).join('') || '<div class="muted">No live sessions yet.</div>'}
     <h3 style="margin:14px 0 10px">🎁 Gift catalog</h3>
@@ -4897,6 +4970,9 @@ function wireAdminBody(tab) {
       toast('Stream ended.');
       show('admin', {});
     };
+  });
+  document.querySelectorAll('[data-live-watch]').forEach((b) => {
+    b.onclick = () => watchLiveAsMod(b.dataset.liveWatch);
   });
 
   // Gift catalog management
