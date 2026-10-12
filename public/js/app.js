@@ -3484,7 +3484,23 @@ function speakPriority(fanName, message) {
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(fanName + ' says: ' + message);
     u.rate = 1;
-    speechSynthesis.speak(u);
+    // Pick an English voice explicitly — browsers often fail silently without one
+    const setVoice = () => {
+      const voices = speechSynthesis.getVoices();
+      const en = voices.find((v) => v.lang && v.lang.toLowerCase().startsWith('en'));
+      if (en) u.voice = en;
+      // iOS/Safari quirk: speak must be called after voices load
+      speechSynthesis.speak(u);
+    };
+    const voices = speechSynthesis.getVoices();
+    if (voices.length) setVoice();
+    else {
+      // Wait for voices to load, then speak (with 2s fallback)
+      let done = false;
+      const onVoices = () => { if (!done) { done = true; setVoice(); } };
+      speechSynthesis.onvoiceschanged = onVoices;
+      setTimeout(onVoices, 2000);
+    }
   } catch (e) { /* TTS unavailable — banner still shows */ }
 }
 
