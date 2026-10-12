@@ -3598,35 +3598,77 @@ app.post('/api/live/:id/speech', identMiddleware, requireUser, (req, res) => {
   if (sess.model_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
   const text = String(req.body.text || '').trim().slice(0, 500);
   if (!text) return res.status(400).json({ error: 'empty' });
+  const result = handleSpeechTranscript(sess, req.user, text, 'browser');
+  if (!result) return res.json({ ok: true, clean: true });
+  res.json({ ok: true, action: result.action, matched: result.matched, strikes: result.strikes });
+});
 
+// Audio chunk upload for the safety bot — temp storage, transcribed, deleted
+const audioChunkUpload = multer({
+  storage: multer.diskStorage({
+    destination: '/tmp',
+    filename: (req, file, cb) =>
+      cb(null, 'safetychunk-' + crypto.randomBytes(8).toString('hex') + '.webm'),
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 10s clips are tiny
+  fileFilter: (req, file, cb) => {
+    const ok = /^audio\//.test(file.mimetype);
+    cb(ok ? null : new Error('bad_file_type'), ok);
+  },
+});
+
+// POST 10s audio chunk from model's mic — Whisper transcribes, safety-scanned
+app.post('/api/live/:id/audio-chunk', identMiddleware, requireUser,
+  audioChunkUpload.single('audio'), (req, res) => {
+  const sess = liveSessionOr404(req, res);
+  if (!sess) { if (req.file) fs.unlink(req.file.path, () => {}); return; }
+  if (sess.model_id !== req.user.id || !req.file) {
+    if (req.file) fs.unlink(req.file.path, () => {});
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  const chunkPath = req.file.path;
+  // Transcribe async so we don't block the response
+  const { execFile } = require('child_process');
+  execFile('python3', ['/home/hatch/workspace/skills/openai-whisper/bin/transcribe.py', chunkPath],
+    { timeout: 90000 }, (err, stdout) => {
+      fs.unlink(chunkPath, () => {}); // always delete the audio
+      if (err) return;
+      const text = String(stdout || '').trim().slice(0, 500);
+      if (!text) return;
+      handleSpeechTranscript(sess, req.user, text, 'whisper');
+    });
+  res.json({ ok: true, queued: true });
+});
+
+// Shared handler: scan a speech transcript, kill on payment, warn on info/socials
+// Returns { action, matched, strikes } or null if clean / session ended.
+function handleSpeechTranscript(sess, user, text, source) {
   const matched = safetyScan(text);
-  if (!matched) return res.json({ ok: true, clean: true });
-
-  const key = `u:${req.user.id}`;
+  if (!matched) return null;
+  // Re-check the session is still live (may have ended while transcribing)
+  const live = db.prepare("SELECT * FROM live_sessions WHERE id = ? AND status = 'live'").get(sess.id);
+  if (!live) return null;
+  const key = `u:${user.id}`;
   const total = addStrike(key);
   db.prepare(`INSERT INTO stream_flags (session_id, sender_id, sender_name, flagged_text, matched)
               VALUES (?,?,?,?,?)`)
-    .run(sess.id, req.user.id, req.user.display_name, '[SPEECH] ' + text.slice(0, 280), matched);
-
-  // Payment info spoken on live = kill the stream
+    .run(sess.id, user.id, user.display_name, `[SPEECH:${source}] ` + text.slice(0, 270), matched);
   if (matched.startsWith('payment_')) {
     pushToAdmins({ type: 'safety:stream_killed', session_id: sess.id,
-      sender_name: req.user.display_name, matched, total_strikes: total,
+      sender_name: user.display_name, matched, total_strikes: total,
       exact_words: '[SPOKEN] ' + text.slice(0, 300) });
-    killLiveSession(sess, 'payment_info_spoken');
-    pushToUser(req.user.id, { type: 'live:killed',
+    killLiveSession(live, 'payment_info_spoken');
+    pushToUser(user.id, { type: 'live:killed',
       warning: `🛑 Stream ended — payment info is never allowed on live, spoken or typed. (${total}/3 strikes)` });
-    return res.json({ ok: true, action: 'killed', matched, strikes: total });
+    return { action: 'killed', matched, strikes: total };
   }
-
-  // Personal info / social media spoken = strike + warn + admin alert with exact words
   pushToAdmins({ type: 'safety:speech_flag', session_id: sess.id,
-    sender_name: req.user.display_name, matched, total_strikes: total,
+    sender_name: user.display_name, matched, total_strikes: total,
     exact_words: text.slice(0, 300) });
-  pushToUser(req.user.id, { type: 'live:speech_warning', session_id: sess.id,
+  pushToUser(user.id, { type: 'live:speech_warning', session_id: sess.id,
     warning: `⚠️ Careful — "${matched}" detected in your speech. Keep personal info and socials off the stream. (${total}/3 strikes)` });
-  res.json({ ok: true, action: 'warned', matched, strikes: total });
-});
+  return { action: 'warned', matched, strikes: total };
+}
 
 // GET the virtual gift catalog (public, enabled only)
 app.get('/api/gifts', (req, res) => {
