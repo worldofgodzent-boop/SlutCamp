@@ -591,6 +591,7 @@ function modelTileHTML(m, opts) {
       ${m.is_live
         ? `<span class="tile-live-pill">● LIVE</span><span class="tile-viewers">👁 ${m.live_viewers || 0} watching</span>`
         : m.is_featured ? '<span class="tile-featured-pill">⭐ Featured</span>' : ''}
+      ${opts.crown ? `<span class="tile-top-pill${m.is_live ? ' below-live' : ''}">👑 Top Model</span>` : ''}
       ${opts.heartHTML || ''}
       <span class="tile-info">
         <span class="tile-name">${esc(m.display_name)}</span>
@@ -602,7 +603,9 @@ function modelTileHTML(m, opts) {
     </button>`;
 }
 
-/* Featured model gets the big hero tile on top; everyone else fills the grid */
+/* Featured model gets the big hero tile on top; everyone else fills the grid
+   in the ranked order /api/models returns (likes + sales). #1 regular wears
+   the 👑 Top Model crown — the featured headliner doesn't compete. */
 function homeTilesHTML(models, heartFor) {
   const featured = models.find((m) => m.is_featured);
   const rest = featured ? models.filter((m) => m.id !== featured.id) : models;
@@ -610,7 +613,7 @@ function homeTilesHTML(models, heartFor) {
   return `
     ${featured ? modelTileHTML(featured, { hero: true, heartHTML: heart(featured) }) : ''}
     <div class="tile-grid">
-      ${rest.map((m) => modelTileHTML(m, { heartHTML: heart(m) })).join('')}
+      ${rest.map((m, i) => modelTileHTML(m, { crown: i === 0, heartHTML: heart(m) })).join('')}
     </div>`;
 }
 
