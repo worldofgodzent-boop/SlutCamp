@@ -112,7 +112,7 @@ html, body {
 .big-number { font-size: 30px; font-weight: 800; }
 
 .avatar {
-  width: 52px; height: 52px; border-radius: 50%;
+  width: 52px; height: 52px; border-radius: 14px;
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 22px; font-weight: 800; color: #fff; flex-shrink: 0;
   background: linear-gradient(135deg, var(--purple), var(--pink));
@@ -660,7 +660,7 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 /* Model preview video loops + likes on home screen */
 .model-media-wrap { position: relative; flex-shrink: 0; width: 64px; height: 64px; }
 .model-preview-video {
-  width: 64px; height: 64px; border-radius: 50%; object-fit: cover;
+  width: 64px; height: 64px; border-radius: 14px; object-fit: cover;
   border: 2px solid rgba(139,92,246,.4);
 }
 .model-likes { display: inline-flex; align-items: center; gap: 3px; }
