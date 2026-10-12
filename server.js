@@ -1299,6 +1299,16 @@ function isAdult(dob) {
   return age >= 18;
 }
 
+/* 18+ attestation record. Flows that don't collect a real date of birth
+ * (quick signup, affiliate signup) must NEVER store a fake DOB — they store
+ * what actually happened: the user attested 18+, when, and from what IP. */
+addColumnIfMissing('users', 'age_attested_at', 'TEXT');
+addColumnIfMissing('users', 'age_attested_ip', 'TEXT');
+function recordAgeAttestation(userId, req) {
+  db.prepare('UPDATE users SET age_attested_at = datetime(\'now\'), age_attested_ip = ? WHERE id = ?')
+    .run(String(clientIp(req) || '').slice(0, 60), userId);
+}
+
 // POST /api/auth/signup — optional guest_token migrates guest chats/trials
 // Optional invite_code: model invite link — forces role='model', tags the invite as used.
 app.post('/api/auth/signup', (req, res) => {
@@ -1335,6 +1345,7 @@ app.post('/api/auth/signup', (req, res) => {
     return res.status(409).json({ error: 'username_taken' });
 
   const id = createUser(username.trim(), password, finalRole, display_name.trim().slice(0, 40), dob);
+  recordAgeAttestation(id, req);
 
   // Mark the invite as used by this model
   if (invite) {
@@ -1370,17 +1381,20 @@ addColumnIfMissing('users', 'pay_method', 'TEXT');
 addColumnIfMissing('users', 'pay_card_last4', 'TEXT');
 addColumnIfMissing('users', 'pay_cashtag', 'TEXT');
 app.post('/api/auth/quick-signup', (req, res) => {
-  const { username, password, full_name, pay_method, card_last4, cashtag, guest_token } = req.body || {};
+  const { username, password, full_name, pay_method, card_last4, cashtag, guest_token, agree18 } = req.body || {};
   if (!username || !password || !full_name)
     return res.status(400).json({ error: 'missing_fields' });
   if (String(password).length < 6) return res.status(400).json({ error: 'password_too_short' });
+  if (!agree18) return res.status(400).json({ error: 'must_be_18' });
   if (!['card', 'cashapp'].includes(pay_method))
     return res.status(400).json({ error: 'bad_pay_method' });
   if (db.prepare('SELECT id FROM users WHERE username = ?').get(username.trim()))
     return res.status(409).json({ error: 'username_taken' });
 
-  // 18+ confirmed on the client; full ID verification required before first purchase
-  const id = createUser(username.trim(), password, 'fan', username.trim().slice(0, 40), '1990-01-01');
+  // 18+ is attested (checkbox + timestamp + IP on file) — never a fake DOB.
+  // Full ID verification policy for purchases is enforced at purchase time.
+  const id = createUser(username.trim(), password, 'fan', username.trim().slice(0, 40), null);
+  recordAgeAttestation(id, req);
   db.prepare('UPDATE users SET pay_full_name = ?, pay_method = ?, pay_card_last4 = ?, pay_cashtag = ? WHERE id = ?')
     .run(full_name.trim().slice(0, 80), pay_method, card_last4 || null, cashtag || null, id);
 
@@ -2658,8 +2672,9 @@ app.post('/api/affiliate-invite/:code/signup', (req, res) => {
   const hash = bcrypt.hashSync(pwd, 10);
   const info = db.prepare(
     'INSERT INTO users (username, password_hash, role, display_name, dob) VALUES (?,?,?,?,?)'
-  ).run(uname, hash, 'recruiter', dname, '1990-01-01');
+  ).run(uname, hash, 'recruiter', dname, null); // attested 18+ at agreement — no fake DOB
   const userId = Number(info.lastInsertRowid);
+  recordAgeAttestation(userId, req);
   db.prepare('INSERT INTO wallets (user_id) VALUES (?)').run(userId);
   // Create recruiter record with referral code
   let rcode;
@@ -2758,18 +2773,23 @@ app.get('/api/admin/id-verifications', identMiddleware, requireUser, requireRole
   res.json({ verifications: rows });
 });
 
-// Single-use photo tokens so <img> tags can load ID photos without a Bearer header
+// Short-lived photo tokens so <img> tags can load ID photos without a Bearer
+// header. One token covers all 3 photos of a single verification (front /
+// back / selfie) for the issuing admin and dies at expiry (2 min) — the
+// review screen needs all three images, so tokens are NOT single-use.
 const idPhotoTokens = new Map(); // token -> { verificationId, adminId, expires }
 app.post('/api/admin/id-verifications/:id/photo-token', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
   const v = db.prepare('SELECT id FROM id_verifications WHERE id = ?').get(req.params.id);
   if (!v) return res.status(404).json({ error: 'not_found' });
+  const now = Date.now();
+  for (const [t, ft] of idPhotoTokens) if (ft.expires <= now) idPhotoTokens.delete(t);
   const token = crypto.randomBytes(24).toString('hex');
   idPhotoTokens.set(token, { verificationId: v.id, adminId: req.user.id,
-    expires: Date.now() + 120 * 1000 });
+    expires: now + 120 * 1000 });
   res.json({ token });
 });
 
-// Admin: view one ID photo (Bearer auth OR single-use ?t= token). Sensitive PII — never cached.
+// Admin: view one ID photo (Bearer auth OR short-lived ?t= token). Sensitive PII — never cached.
 app.get('/api/admin/id-verifications/:id/photo/:which', (req, res) => {
   const which = req.params.which;
   if (!['front', 'back', 'selfie'].includes(which))
@@ -2779,7 +2799,6 @@ app.get('/api/admin/id-verifications/:id/photo/:which', (req, res) => {
     const ft = idPhotoTokens.get(req.query.t);
     if (ft && ft.verificationId === Number(req.params.id) && ft.expires > Date.now()) {
       adminId = ft.adminId;
-      idPhotoTokens.delete(req.query.t); // single use
     } else return res.status(403).json({ error: 'bad_token' });
   } else {
     const ident = getIdentity(req);
@@ -2820,6 +2839,51 @@ app.post('/api/admin/id-verifications/:id/reject', identMiddleware, requireUser,
               reviewer_note = ? WHERE id = ?`).run(note, v.id);
   pushToSubject(`u:${v.model_id}`, { type: 'id_verified', status: 'rejected', note });
   res.json({ ok: true });
+});
+
+// Admin: download one performer's 2257 records packet (JSON). The ID images
+// themselves stay in private storage, viewable only in the ID Checks tab;
+// this packet is the index record tying the performer, her verification,
+// and her signed agreement together for the records custodian.
+app.get('/api/admin/id-verifications/:id/2257', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+  const v = db.prepare('SELECT * FROM id_verifications WHERE id = ?').get(req.params.id);
+  if (!v) return res.status(404).json({ error: 'not_found' });
+  const u = db.prepare(`SELECT id, username, display_name, role, dob, created_at,
+                               age_attested_at FROM users WHERE id = ?`).get(v.model_id);
+  if (!u) return res.status(404).json({ error: 'not_found' });
+  const sig = db.prepare(`SELECT contract_version, display_name AS signed_name,
+                                  signed_at, ip FROM contract_signatures
+                          WHERE user_id = ?`).get(v.model_id);
+  const base = (p) => p ? String(p).split('/').pop() : null;
+  const packet = {
+    record_type: 'Performer age/identity verification record — 18 U.S.C. §2257',
+    generated_at: new Date().toISOString(),
+    records_custodian: 'World of Godz Entertainment LLC dba SlutCamp',
+    performer: {
+      user_id: u.id, username: u.username, stage_name: u.display_name,
+      role: u.role, date_of_birth_on_file: u.dob,
+      dob_note: u.dob ? undefined
+        : 'No DOB typed at signup — legal name and DOB are on the ID document images in this record.',
+      account_created_at: u.created_at, age_attested_at: u.age_attested_at,
+    },
+    id_verification: {
+      status: v.status, submitted_at: v.submitted_at,
+      reviewed_at: v.reviewed_at, reviewer_note: v.reviewer_note || '',
+      documents_on_file: {
+        id_front: base(v.id_front_path), id_back: base(v.id_back_path),
+        selfie_with_id: base(v.selfie_path),
+      },
+      documents_location: 'Private storage (id_verification) — admin ID Checks tab only, never public.',
+    },
+    agreement: sig ? {
+      contract_version: sig.contract_version, signed_name: sig.signed_name,
+      signed_at: sig.signed_at, signed_from_ip: sig.ip,
+    } : null,
+  };
+  const fname = `2257-record-${u.username}-u${u.id}.json`;
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
+  res.send(JSON.stringify(packet, null, 2));
 });
 
 /* ------------------------------------------------------------------ */
@@ -4792,8 +4856,9 @@ app.post('/api/admin/models', ...adminOnly, (req, res) => {
     return res.status(400).json({ error: 'missing_fields' });
   if (db.prepare('SELECT id FROM users WHERE username = ?').get(username.trim()))
     return res.status(409).json({ error: 'username_taken' });
-  // Admin-added models skip the public age gate — Corry verifies ID in person (2257).
-  const id = createUser(username.trim(), password, 'model', display_name.trim().slice(0, 40), '1990-01-01');
+  // Admin-added models skip the public age gate — Corry verifies ID in person
+  // (2257). Real DOB lives on her ID verification record, never a placeholder.
+  const id = createUser(username.trim(), password, 'model', display_name.trim().slice(0, 40), null);
   db.prepare(`UPDATE models SET bio = ?, per_message_cents = ?, per_minute_cents = ? WHERE user_id = ?`)
     .run((bio || '').slice(0, 280),
          Number.isInteger(per_message_cents) ? per_message_cents : 149,
@@ -4910,7 +4975,7 @@ app.post('/api/admin/recruiters', ...adminOnly, (req, res) => {
   const pwd = (password && String(password).length >= 6) ? String(password) : crypto.randomBytes(6).toString('hex');
   if (db.prepare('SELECT id FROM users WHERE username = ?').get(uname))
     return res.status(409).json({ error: 'username_taken' });
-  const id = createUser(uname, pwd, 'recruiter', String(name).trim().slice(0, 40), '1990-01-01');
+  const id = createUser(uname, pwd, 'recruiter', String(name).trim().slice(0, 40), null);
   let code;
   do { code = crypto.randomBytes(4).toString('hex'); }
   while (db.prepare('SELECT id FROM recruiters WHERE referral_code = ?').get(code));
