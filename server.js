@@ -4491,6 +4491,17 @@ app.delete('/api/admin/recruiters/:id', ...adminOnly, (req, res) => {
   res.json({ ok: true });
 });
 
+// Admin: rename a recruiter (display name only — username/login unchanged)
+app.patch('/api/admin/recruiters/:id', ...adminOnly, (req, res) => {
+  const r = db.prepare('SELECT * FROM recruiters WHERE id = ?').get(req.params.id);
+  if (!r) return res.status(404).json({ error: 'not_found' });
+  const name = String(req.body?.name || '').trim().slice(0, 40);
+  if (!name) return res.status(400).json({ error: 'missing_name' });
+  db.prepare('UPDATE recruiters SET name = ? WHERE id = ?').run(name, r.id);
+  db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(name, r.user_id);
+  res.json({ ok: true, id: r.id, name });
+});
+
 // Recruiter: dashboard (own link, models, earnings)
 app.get('/api/recruiter/dashboard', identMiddleware, requireUser, requireRole('recruiter'), (req, res) => {
   const r = db.prepare('SELECT * FROM recruiters WHERE user_id = ?').get(req.user.id);
