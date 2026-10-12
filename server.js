@@ -1234,7 +1234,12 @@ app.post('/api/guest/token', (req, res) => {
   res.json({ guest_token: token });
 });
 
-// GET /api/models — PUBLIC so guests can browse before signing up
+// GET /api/models — PUBLIC so guests can browse before signing up.
+// Ranking: featured (SlutCamp Live) pinned first; regular models ordered by
+// rank_score = total_sales ($) + likes_count (1 like = $1 sold = 1 point).
+// total_sales = lifetime gross fan spend from transactions attributed to the
+// model, excluding 'payout' rows (money OUT to the model, not sales);
+// refund rows are negative and net against sales automatically.
 app.get('/api/models', (req, res) => {
   const rows = db.prepare(`
     SELECT u.id, u.username, u.display_name, m.bio, m.per_message_cents,
@@ -1242,11 +1247,15 @@ app.get('/api/models', (req, res) => {
            m.preview_video_url, m.is_featured,
            ls.id AS live_session_id, ls.explicit_rate_cents AS live_explicit_rate_cents,
            (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS live_viewers,
-           (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) AS like_count
+           (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) AS like_count,
+           (SELECT COALESCE(SUM(gross_cents), 0) FROM transactions
+             WHERE model_id = u.id AND type <> 'payout') AS total_sales_cents
     FROM users u JOIN models m ON m.user_id = u.id
     LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live'
     WHERE u.role = 'model' AND u.banned = 0
-    ORDER BY m.is_featured DESC, ls.id DESC, m.is_online DESC, u.display_name ASC
+    ORDER BY m.is_featured DESC,
+             (total_sales_cents / 100.0 + like_count) DESC,
+             like_count DESC, m.is_online DESC, u.created_at DESC, u.display_name ASC
   `).all();
   // Check which models the current fan has liked (if logged in)
   let likedSet = new Set();
@@ -1266,7 +1275,10 @@ app.get('/api/models', (req, res) => {
       ? sched.map((s) => `${days[s.day_of_week]} ${s.start_time.replace(/^0/, '')}`).join(', ')
       : '';
     return { ...r, is_live: !!r.live_session_id, is_featured: !!r.is_featured,
-      live_viewers: r.live_viewers || 0, schedule_summary: summary, liked: likedSet.has(r.id) };
+      live_viewers: r.live_viewers || 0, schedule_summary: summary, liked: likedSet.has(r.id),
+      likes_count: r.like_count || 0,
+      total_sales: Math.round(r.total_sales_cents || 0) / 100,
+      rank_score: Math.round(((r.total_sales_cents || 0) / 100 + (r.like_count || 0)) * 100) / 100 };
   }) });
 });
 
