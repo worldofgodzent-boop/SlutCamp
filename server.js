@@ -3557,7 +3557,8 @@ app.post('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
                   VALUES (?,?,?,?,?)`)
         .run(sess.id, req.user.id, req.user.display_name, body.slice(0, 300), matched);
       pushToAdmins({ type: 'safety:stream_killed', session_id: sess.id,
-        sender_name: req.user.display_name, matched, total_strikes: total });
+        sender_name: req.user.display_name, matched, total_strikes: total,
+        exact_words: body.slice(0, 300) });
       killLiveSession(sess, 'payment_info_shared');
       pushToUser(req.user.id, { type: 'live:killed',
         warning: `🛑 Stream ended — payment info is never allowed on live. (${total}/3 strikes)` });
