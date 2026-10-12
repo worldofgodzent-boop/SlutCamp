@@ -3255,6 +3255,27 @@ app.get('/api/live/:id', identMiddleware, requireUser, (req, res) => {
     explicit_rate_cents: sess.explicit_rate_cents, is_explicit: !!sess.is_explicit });
 });
 
+// Admin: watch a live session as invisible moderator (not counted as viewer, no paywall)
+app.post('/api/admin/live/:id/watch', ...adminOnly, (req, res) => {
+  const sess = db.prepare(`SELECT * FROM live_sessions WHERE id = ? AND status = 'live'`)
+    .get(req.params.id);
+  if (!sess) return res.status(404).json({ error: 'not_live' });
+  // Tell the model a moderator is watching (she opens a peer connection; not counted in live_viewers)
+  pushToUser(sess.model_id, { type: 'live:viewer-joined', session_id: sess.id,
+    fan_id: req.user.id, fan_name: '🛡️ Moderator', is_mod: true });
+  const model = db.prepare('SELECT display_name FROM users WHERE id = ?').get(sess.model_id);
+  res.json({ ok: true, session_id: sess.id, model_id: sess.model_id,
+    model_name: model.display_name, title: sess.title || '',
+    is_explicit: !!sess.is_explicit, is_mod: true });
+});
+
+// Admin: leave a moderated watch (tell model to drop the peer connection)
+app.post('/api/admin/live/:id/unwatch', ...adminOnly, (req, res) => {
+  const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
+  if (sess) pushToUser(sess.model_id, { type: 'live:viewer-left', session_id: sess.id, fan_id: req.user.id });
+  res.json({ ok: true });
+});
+
 app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
   if (!sess) return res.status(404).json({ error: 'not_found' });
