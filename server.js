@@ -2304,14 +2304,14 @@ function logPurchaseAttempt(userId, pkg, amountCents, cardFingerprint, ip, statu
 }
 
 // Model independent-contractor agreement (served to models for signing)
-const CONTRACT_VERSION = '1.0';
+const CONTRACT_VERSION = '1.1';
 const MODEL_CONTRACT = {
   version: CONTRACT_VERSION,
-  updated: 'October 10, 2026',
+  updated: 'October 11, 2026',
   sections: [
     {
       title: '1. Parties',
-      body: 'This Model Agreement ("Agreement") is between you, the performer ("Performer"), and World of Godz Entertainment LLC ("Company"), which operates the SlutCamp platform under the name Asce. By signing, you agree to everything below.',
+      body: 'This Model Agreement ("Agreement") is between you, the performer ("Performer"), and World of Godz Entertainment LLC ("Company"), doing business as SlutCamp ("SlutCamp"). By signing, you agree to everything below.',
     },
     {
       title: '2. Independent Contractor',
@@ -2319,7 +2319,7 @@ const MODEL_CONTRACT = {
     },
     {
       title: '3. Age & Identity Verification',
-      body: 'You confirm you are at least 18 years old. You have completed (or will complete) government ID verification with Asce before going live, as required for 18 U.S.C. §2257 recordkeeping compliance. If you cannot verify your age and identity, you may not perform on the platform.',
+      body: 'You confirm you are at least 18 years old. You have completed (or will complete) government ID verification with SlutCamp before going live, as required for 18 U.S.C. §2257 recordkeeping compliance. If you cannot verify your age and identity, you may not perform on the platform.',
     },
     {
       title: '4. Revenue Split & Your Rates',
@@ -2327,7 +2327,7 @@ const MODEL_CONTRACT = {
     },
     {
       title: '5. Payouts',
-      body: 'You add your bank details in the app and request withdrawals of your available balance at any time. Payouts are processed manually by Asce on the Company\'s own schedule — there is no guaranteed payout date. Pending withdrawal requests may take several business days.',
+      body: 'You add your bank details in the app and request withdrawals of your available balance at any time. Payouts are processed manually by SlutCamp on the Company\'s own schedule — there is no guaranteed payout date. Pending withdrawal requests may take several business days.',
     },
     {
       title: '6. Content Rights',
