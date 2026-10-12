@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /#boss
+Disallow: /api/
+
+Sitemap: https://slutcamp.onrender.com/sitemap.xml
