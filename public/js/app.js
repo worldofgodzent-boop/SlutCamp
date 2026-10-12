@@ -707,7 +707,7 @@ function renderAuthBody(mode, role) {
       <label class="field">Password (6+ characters)${pwField('a-pass', 'new-password')}</label>
       <label class="field">Date of birth<input class="input" id="a-dob" type="date"></label>
       <div class="age-box">🔞 <b>18+ only.</b> You must be 18 or older to use SlutCamp.
-        ${role === 'model' ? 'Models must also complete ID verification with SlutCamp (2257).' : 'Full ID verification is required before purchasing credits.'}</div>
+        ${role === 'model' ? 'Models must also complete ID verification with SlutCamp (2257).' : 'Fans confirm 18+ here — that\'s all we ask. Simple.'}</div>
       <label class="checkbox-row"><input type="checkbox" id="a-18">
         <span>I confirm I am <b>18 years or older</b>.</span></label>
       <button class="btn" id="a-go">Create account</button>`;
