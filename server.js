@@ -24,7 +24,6 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const { DatabaseSync } = require('node:sqlite');
 const { WebSocketServer } = require('ws');
-const { transcribeAudio } = require('./lib/transcribe');
 
 const app = express();
 const server = http.createServer(app);
@@ -432,7 +431,6 @@ CREATE TABLE IF NOT EXISTS invite_links (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   code       TEXT UNIQUE NOT NULL,
   label      TEXT NOT NULL DEFAULT '',
-  role       TEXT NOT NULL DEFAULT 'model' CHECK(role IN ('model','recruiter')),
   created_by INTEGER NOT NULL REFERENCES users(id),
   used_by    INTEGER REFERENCES users(id),
   is_revoked INTEGER NOT NULL DEFAULT 0,
@@ -579,7 +577,6 @@ addColumnIfMissing('conversations', 'paused_at', 'TEXT');
 addColumnIfMissing('messages', 'gift_json', 'TEXT'); // TikTok-style gift payload on chat gift messages
 addColumnIfMissing('models', 'preview_video_url', "TEXT NOT NULL DEFAULT ''"); // Loop preview on home screen
 addColumnIfMissing('invite_links', 'expires_at', "TEXT NOT NULL DEFAULT (datetime('now', '+6 hours'))");
-addColumnIfMissing('invite_links', 'role', "TEXT NOT NULL DEFAULT 'model'");
 addColumnIfMissing('tax_profiles', 'electronic_1099_consent', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('tax_profiles', 'electronic_1099_consent_at', 'TEXT');
 // Backfill: existing invites without expiry get 6h from creation
@@ -597,18 +594,6 @@ addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0
 addColumnIfMissing('users', 'status', "TEXT NOT NULL DEFAULT 'active'");
 addColumnIfMissing('transactions', 'ip', 'TEXT');
 
-// Display name changes: fans get 1 per 30 days (self-service); models submit requests for admin approval
-addColumnIfMissing('users', 'name_changed_at', 'TEXT');
-db.exec(`
-CREATE TABLE IF NOT EXISTS name_change_requests (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  requested_name TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'approved' | 'rejected'
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  resolved_at TEXT
-);`);
-
 // --- Recruiters/partners: who recruited each model ---
 db.exec(`
 CREATE TABLE IF NOT EXISTS recruiters (
@@ -620,7 +605,6 @@ CREATE TABLE IF NOT EXISTS recruiters (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 )`);
 addColumnIfMissing('models', 'recruiter_id', 'INTEGER REFERENCES recruiters(id) ON DELETE SET NULL');
-addColumnIfMissing('models', 'is_featured', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('transactions', 'recruiter_id', 'INTEGER REFERENCES recruiters(id) ON DELETE SET NULL');
 addColumnIfMissing('transactions', 'recruiter_cents', 'INTEGER NOT NULL DEFAULT 0');
 
@@ -1026,6 +1010,7 @@ function getIdentity(req) {
     if (bannedGuests.has(g)) return { kind: 'banned' };
     return { kind: 'guest', token: g };
   }
+  return null;
 }
 
 const subjectKey = (ident) =>
@@ -1147,20 +1132,6 @@ function safetyScan(text) {
   if (/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text)) return 'phone_number';
   if (/\(\d{3}\)\s?\d{3}[-.\s]?\d{4}/.test(text)) return 'phone_number';
   if (/\b\d{10}\b/.test(text)) return 'phone_number';
-  // Email addresses
-  if (/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(text)) return 'email_address';
-  // Street addresses: 123 Main St, 456 Oak Avenue, 789 Elm Rd, etc.
-  if (/\b\d{1,6}\s+[A-Za-z][A-Za-z.'-]*(\s+[A-Za-z][A-Za-z.'-]*){0,3}\s+(st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|ct|court|way|pl|place|ter|terrace|pkwy|parkway|cir|circle|trl|trail|hwy|highway)\b/i.test(text)) return 'street_address';
-  // ZIP codes: 12345 or 12345-6789
-  if (/\b\d{5}(-\d{4})?\b/.test(text)) return 'zip_code';
-  // Payment info: Cash App, Venmo, PayPal, Zelle, card numbers — triggers immediate live kill
-  if (/\$[a-zA-Z][a-zA-Z0-9_]{1,}/.test(text)) return 'payment_cashtag'; // $cashtag
-  if (/\b(cash\s?app|venmo|paypal|zelle|apple\s?pay|cashapp)\b/i.test(text)) return 'payment_app';
-  if (/\b\d{4}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}\b/.test(text)) return 'payment_card';
-  // Social media outside the app: handles, platforms, follow/DM requests
-  if (/\b(instagram|insta|snapchat|snap|tiktok|tik\s?tok|twitter|facebook|fb|whatsapp|telegram|onlyfans)\b/i.test(text)) return 'social_media';
-  if (/\b(follow me|dm me|add me|find me|link in bio|my (insta|snap|tik ?tok|twitter))\b/i.test(text)) return 'social_media';
-  if (/(^|\s)@[a-zA-Z0-9._]{2,}/.test(text)) return 'social_handle';
   return null;
 }
 
@@ -1234,28 +1205,18 @@ app.post('/api/guest/token', (req, res) => {
   res.json({ guest_token: token });
 });
 
-// GET /api/models — PUBLIC so guests can browse before signing up.
-// Ranking: featured (SlutCamp Live) pinned first; regular models ordered by
-// rank_score = total_sales ($) + likes_count (1 like = $1 sold = 1 point).
-// total_sales = lifetime gross fan spend from transactions attributed to the
-// model, excluding 'payout' rows (money OUT to the model, not sales);
-// refund rows are negative and net against sales automatically.
+// GET /api/models — PUBLIC so guests can browse before signing up
 app.get('/api/models', (req, res) => {
   const rows = db.prepare(`
-    SELECT u.id, u.username, u.display_name, m.bio, m.per_message_cents,
+    SELECT u.id, u.display_name, m.bio, m.per_message_cents,
            m.per_minute_cents, m.per_voice_cents, m.is_online, m.photo_url,
-           m.preview_video_url, m.is_featured,
+           m.preview_video_url,
            ls.id AS live_session_id, ls.explicit_rate_cents AS live_explicit_rate_cents,
-           (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS live_viewers,
-           (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) AS like_count,
-           (SELECT COALESCE(SUM(gross_cents), 0) FROM transactions
-             WHERE model_id = u.id AND type <> 'payout') AS total_sales_cents
+           (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) AS like_count
     FROM users u JOIN models m ON m.user_id = u.id
     LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live'
     WHERE u.role = 'model' AND u.banned = 0
-    ORDER BY m.is_featured DESC,
-             (total_sales_cents / 100.0 + like_count) DESC,
-             like_count DESC, m.is_online DESC, u.created_at DESC, u.display_name ASC
+    ORDER BY ls.id DESC, m.is_online DESC, u.display_name ASC
   `).all();
   // Check which models the current fan has liked (if logged in)
   let likedSet = new Set();
@@ -1274,11 +1235,7 @@ app.get('/api/models', (req, res) => {
     const summary = sched.length
       ? sched.map((s) => `${days[s.day_of_week]} ${s.start_time.replace(/^0/, '')}`).join(', ')
       : '';
-    return { ...r, is_live: !!r.live_session_id, is_featured: !!r.is_featured,
-      live_viewers: r.live_viewers || 0, schedule_summary: summary, liked: likedSet.has(r.id),
-      likes_count: r.like_count || 0,
-      total_sales: Math.round(r.total_sales_cents || 0) / 100,
-      rank_score: Math.round(((r.total_sales_cents || 0) / 100 + (r.like_count || 0)) * 100) / 100 };
+    return { ...r, is_live: !!r.live_session_id, schedule_summary: summary, liked: likedSet.has(r.id) };
   }) });
 });
 
@@ -1311,16 +1268,6 @@ function isAdult(dob) {
   const m = now.getMonth() - birth.getMonth();
   if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
   return age >= 18;
-}
-
-/* 18+ attestation record. Flows that don't collect a real date of birth
- * (quick signup, affiliate signup) must NEVER store a fake DOB — they store
- * what actually happened: the user attested 18+, when, and from what IP. */
-addColumnIfMissing('users', 'age_attested_at', 'TEXT');
-addColumnIfMissing('users', 'age_attested_ip', 'TEXT');
-function recordAgeAttestation(userId, req) {
-  db.prepare('UPDATE users SET age_attested_at = datetime(\'now\'), age_attested_ip = ? WHERE id = ?')
-    .run(String(clientIp(req) || '').slice(0, 60), userId);
 }
 
 // POST /api/auth/signup — optional guest_token migrates guest chats/trials
@@ -1359,7 +1306,6 @@ app.post('/api/auth/signup', (req, res) => {
     return res.status(409).json({ error: 'username_taken' });
 
   const id = createUser(username.trim(), password, finalRole, display_name.trim().slice(0, 40), dob);
-  recordAgeAttestation(id, req);
 
   // Mark the invite as used by this model
   if (invite) {
@@ -1382,43 +1328,6 @@ app.post('/api/auth/signup', (req, res) => {
     db.prepare(`UPDATE messages SET guest_token = NULL WHERE guest_token = ?
                 AND conversation_id IN (SELECT id FROM conversations WHERE fan_id = ?)`)
       .run(guest_token, id);
-  }
-
-  const token = createSession(id);
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
-  res.json({ token, user: getUserPublic(user) });
-});
-
-// POST /api/auth/quick-signup — streamlined fan signup from Wallet: username + password + 18 + payment info
-addColumnIfMissing('users', 'pay_full_name', 'TEXT');
-addColumnIfMissing('users', 'pay_method', 'TEXT');
-addColumnIfMissing('users', 'pay_card_last4', 'TEXT');
-addColumnIfMissing('users', 'pay_cashtag', 'TEXT');
-app.post('/api/auth/quick-signup', (req, res) => {
-  const { username, password, full_name, pay_method, card_last4, cashtag, guest_token, agree18 } = req.body || {};
-  if (!username || !password || !full_name)
-    return res.status(400).json({ error: 'missing_fields' });
-  if (String(password).length < 6) return res.status(400).json({ error: 'password_too_short' });
-  if (!agree18) return res.status(400).json({ error: 'must_be_18' });
-  if (!['card', 'cashapp'].includes(pay_method))
-    return res.status(400).json({ error: 'bad_pay_method' });
-  if (db.prepare('SELECT id FROM users WHERE username = ?').get(username.trim()))
-    return res.status(409).json({ error: 'username_taken' });
-
-  // 18+ is attested (checkbox + timestamp + IP on file) — never a fake DOB.
-  // Fan policy (Corry, Oct 12 2026): attestation + payment card is enough —
-  // no ID upload for fans. ID verification is for models only (2257).
-  const id = createUser(username.trim(), password, 'fan', username.trim().slice(0, 40), null);
-  recordAgeAttestation(id, req);
-  db.prepare('UPDATE users SET pay_full_name = ?, pay_method = ?, pay_card_last4 = ?, pay_cashtag = ? WHERE id = ?')
-    .run(full_name.trim().slice(0, 80), pay_method, card_last4 || null, cashtag || null, id);
-
-  // Migrate guest history to the new account
-  if (guest_token && /^[a-f0-9]{32}$/.test(guest_token)) {
-    const gk = 'g:' + guest_token, uk = 'u:' + id;
-    db.prepare('UPDATE conversations SET fan_id = ?, guest_token = NULL WHERE guest_token = ?').run(id, guest_token);
-    db.prepare('UPDATE free_trials SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
-    db.prepare('UPDATE strikes SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
   }
 
   const token = createSession(id);
@@ -1560,47 +1469,6 @@ app.get('/api/me', identMiddleware, requireUser, (req, res) => {
     out.model = db.prepare('SELECT * FROM models WHERE user_id = ?').get(req.user.id);
   if (req.user.role === 'admin' || req.user.role === 'model') out.commission_pct = getCommission();
   res.json(out);
-});
-
-/* --- Display name changes ---
- * Fans: self-service, 1 change per 30 days.
- * Models: submit a request; admin approves/rejects.
- * Recruiters/admins: use admin endpoints.
- */
-const NAME_CHANGE_DAYS = 30;
-app.patch('/api/me/display-name', identMiddleware, requireUser, (req, res) => {
-  if (req.user.role !== 'fan')
-    return res.status(403).json({ error: 'fans_only', message: 'Models: submit a name change request instead.' });
-  const name = String(req.body?.display_name || '').trim().slice(0, 40);
-  if (!name || name.length < 2)
-    return res.status(400).json({ error: 'invalid_name', message: 'Name must be at least 2 characters.' });
-  const u = db.prepare('SELECT name_changed_at FROM users WHERE id = ?').get(req.user.id);
-  if (u?.name_changed_at) {
-    const days = (Date.now() - new Date(u.name_changed_at + 'Z').getTime()) / 86400000;
-    if (days < NAME_CHANGE_DAYS)
-      return res.status(429).json({ error: 'too_soon',
-        message: `You can change your name again in ${Math.ceil(NAME_CHANGE_DAYS - days)} days.`,
-        next_change_in_days: Math.ceil(NAME_CHANGE_DAYS - days) });
-  }
-  db.prepare(`UPDATE users SET display_name = ?, name_changed_at = datetime('now') WHERE id = ?`)
-    .run(name, req.user.id);
-  res.json({ ok: true, display_name: name });
-});
-
-// Model submits a name change request for admin approval
-app.post('/api/model/name-change-request', identMiddleware, requireUser, requireRole('model'), (req, res) => {
-  const name = String(req.body?.requested_name || '').trim().slice(0, 40);
-  if (!name || name.length < 2)
-    return res.status(400).json({ error: 'invalid_name', message: 'Name must be at least 2 characters.' });
-  const pending = db.prepare(`SELECT id FROM name_change_requests WHERE user_id = ? AND status = 'pending'`)
-    .get(req.user.id);
-  if (pending)
-    return res.status(409).json({ error: 'already_pending', message: 'You already have a name change pending review.' });
-  const id = db.prepare(`INSERT INTO name_change_requests (user_id, requested_name) VALUES (?, ?)`)
-    .run(req.user.id, name).lastInsertRowid;
-  pushToAdmins({ type: 'name_change:requested', request_id: id,
-    user_id: req.user.id, current_name: req.user.display_name, requested_name: name });
-  res.json({ ok: true, id });
 });
 
 /* ------------------------------------------------------------------ */
@@ -2383,14 +2251,14 @@ function logPurchaseAttempt(userId, pkg, amountCents, cardFingerprint, ip, statu
 }
 
 // Model independent-contractor agreement (served to models for signing)
-const CONTRACT_VERSION = '1.1';
+const CONTRACT_VERSION = '1.0';
 const MODEL_CONTRACT = {
   version: CONTRACT_VERSION,
-  updated: 'October 11, 2026',
+  updated: 'October 10, 2026',
   sections: [
     {
       title: '1. Parties',
-      body: 'This Model Agreement ("Agreement") is between you, the performer ("Performer"), and World of Godz Entertainment LLC ("Company"), doing business as SlutCamp ("SlutCamp"). By signing, you agree to everything below.',
+      body: 'This Model Agreement ("Agreement") is between you, the performer ("Performer"), and World of Godz Entertainment LLC ("Company"), which operates the SlutCamp platform under the name Asce. By signing, you agree to everything below.',
     },
     {
       title: '2. Independent Contractor',
@@ -2398,7 +2266,7 @@ const MODEL_CONTRACT = {
     },
     {
       title: '3. Age & Identity Verification',
-      body: 'You confirm you are at least 18 years old. You have completed (or will complete) government ID verification with SlutCamp before going live, as required for 18 U.S.C. §2257 recordkeeping compliance. If you cannot verify your age and identity, you may not perform on the platform.',
+      body: 'You confirm you are at least 18 years old. You have completed (or will complete) government ID verification with Asce before going live, as required for 18 U.S.C. §2257 recordkeeping compliance. If you cannot verify your age and identity, you may not perform on the platform.',
     },
     {
       title: '4. Revenue Split & Your Rates',
@@ -2406,7 +2274,7 @@ const MODEL_CONTRACT = {
     },
     {
       title: '5. Payouts',
-      body: 'You add your bank details in the app and request withdrawals of your available balance at any time. Payouts are processed manually by SlutCamp on the Company\'s own schedule — there is no guaranteed payout date. Pending withdrawal requests may take several business days.',
+      body: 'You add your bank details in the app and request withdrawals of your available balance at any time. Payouts are processed manually by Asce on the Company\'s own schedule — there is no guaranteed payout date. Pending withdrawal requests may take several business days.',
     },
     {
       title: '6. Content Rights',
@@ -2434,51 +2302,6 @@ const MODEL_CONTRACT = {
     },
     {
       title: '12. Plain-Language Disclaimer',
-      body: 'This is a plain-language summary written for clarity — it is NOT legal advice, and it has not been reviewed by an attorney. The Company strongly recommends you have your own attorney review this Agreement before signing. If any part of this Agreement is found unenforceable, the rest still applies.',
-    },
-  ],
-};
-
-/* Recruiter agreement — for models/partners who recruit other models */
-const RECRUITER_CONTRACT_VERSION = 'R1.0';
-const RECRUITER_CONTRACT = {
-  version: RECRUITER_CONTRACT_VERSION,
-  updated: 'October 12, 2026',
-  sections: [
-    {
-      title: '1. Parties',
-      body: 'This Recruiter Agreement ("Agreement") is between you ("Recruiter") and World of Godz Entertainment LLC ("Company"), doing business as SlutCamp ("SlutCamp"). By signing, you agree to everything below.',
-    },
-    {
-      title: '2. Independent Contractor — Not a Partner',
-      body: 'You are an INDEPENDENT CONTRACTOR, not an employee of the Company. Nothing in this Agreement creates an employment relationship, a legal business partnership, or an agency relationship — "partner" is just what we call the role in the app. You are responsible for your own taxes, insurance, and expenses. The Company will not withhold taxes from your payouts.',
-    },
-    {
-      title: '3. What You Do',
-      body: 'You recruit models to join SlutCamp using your personal referral link. You are responsible for your own recruiting methods. You must be honest about the platform — no false promises about earnings.',
-    },
-    {
-      title: '4. Your Cut',
-      body: 'You earn 20% of everything each model you recruit earns on the platform (their 60% share — your cut comes from the Company\'s portion, not from the model). The model keeps her full 60%. Payments are processed on the Company\'s payout schedule.',
-    },
-    {
-      title: '5. Termination — At Will',
-      body: 'The Company may revoke your recruiter status AT ANY TIME, for any reason or no reason, with NO NOTICE required. When revoked, this Agreement ends immediately and you stop earning on all future revenue from your recruited models. Any balance already earned remains available for withdrawal.',
-    },
-    {
-      title: '6. Conduct Rules',
-      body: 'You must NOT: share contact info or payment handles with anyone on the platform; attempt to take models or fans off-platform; use hate speech or slurs. Breaking these rules can get your account suspended or deactivated immediately.',
-    },
-    {
-      title: '7. Non-Circumvention',
-      body: 'For 12 months after your recruiter status ends (for any reason), you agree not to recruit models you met through SlutCamp to a competing platform.',
-    },
-    {
-      title: '8. Confidentiality',
-      body: 'You agree not to disclose the Company\'s business methods, commission structures, or internal operations to anyone outside the Company.',
-    },
-    {
-      title: '9. Plain-Language Disclaimer',
       body: 'This is a plain-language summary written for clarity — it is NOT legal advice, and it has not been reviewed by an attorney. The Company strongly recommends you have your own attorney review this Agreement before signing. If any part of this Agreement is found unenforceable, the rest still applies.',
     },
   ],
@@ -2633,82 +2456,6 @@ app.post('/api/model/contract/sign', identMiddleware, requireUser, requireRole('
   res.json({ ok: true, version: MODEL_CONTRACT.version });
 });
 
-// Recruiter: get agreement status + text
-app.get('/api/recruiter/contract', identMiddleware, requireUser, requireRole('recruiter'), (req, res) => {
-  const sig = db.prepare('SELECT contract_version, signed_at FROM contract_signatures WHERE user_id = ?').get(req.user.id);
-  res.json({
-    version: RECRUITER_CONTRACT.version,
-    updated: RECRUITER_CONTRACT.updated,
-    sections: RECRUITER_CONTRACT.sections,
-    signed: !!sig && String(sig.contract_version || '').startsWith('R'),
-    signed_version: sig ? sig.contract_version : null,
-    signed_at: sig ? sig.signed_at : null,
-  });
-});
-
-// Recruiter: sign the agreement (typed name = electronic signature)
-app.post('/api/recruiter/contract/sign', identMiddleware, requireUser, requireRole('recruiter'), (req, res) => {
-  const name = String(req.body.display_name || '').trim().slice(0, 80);
-  if (!name || name.length < 2) return res.status(400).json({ error: 'bad_name' });
-  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
-  try {
-    db.prepare(`INSERT INTO contract_signatures (user_id, contract_version, display_name, ip)
-                VALUES (?, ?, ?, ?)`)
-      .run(req.user.id, RECRUITER_CONTRACT.version, name, ip.slice(0, 60));
-  } catch (e) {
-    if (!String(e.message || '').includes('UNIQUE')) throw e;
-  }
-  res.json({ ok: true, version: RECRUITER_CONTRACT.version });
-});
-
-// Public: validate an affiliate invite code
-app.get('/api/affiliate-invite/:code', (req, res) => {
-  const code = String(req.params.code || '').trim();
-  const inv = db.prepare(`SELECT * FROM invite_links WHERE code = ? AND role = 'recruiter'`).get(code);
-  if (!inv || inv.is_revoked || inv.used_by) return res.json({ valid: false });
-  if (inv.expires_at && new Date(inv.expires_at) < new Date()) return res.json({ valid: false });
-  res.json({ valid: true, label: inv.label });
-});
-
-// Public: affiliate signup via invite code
-app.post('/api/affiliate-invite/:code/signup', (req, res) => {
-  const code = String(req.params.code || '').trim();
-  const inv = db.prepare(`SELECT * FROM invite_links WHERE code = ? AND role = 'recruiter'`).get(code);
-  if (!inv || inv.is_revoked || inv.used_by) return res.status(400).json({ error: 'bad_invite' });
-  if (inv.expires_at && new Date(inv.expires_at) < new Date()) return res.status(400).json({ error: 'expired' });
-  const { username, password, display_name, agreed } = req.body || {};
-  const uname = String(username || '').trim();
-  const dname = String(display_name || '').trim().slice(0, 40);
-  const pwd = String(password || '');
-  if (!uname || !dname || pwd.length < 6) return res.status(400).json({ error: 'missing_fields' });
-  if (!agreed) return res.status(400).json({ error: 'must_agree' });
-  if (db.prepare('SELECT id FROM users WHERE username = ?').get(uname))
-    return res.status(409).json({ error: 'username_taken' });
-  const hash = bcrypt.hashSync(pwd, 10);
-  const info = db.prepare(
-    'INSERT INTO users (username, password_hash, role, display_name, dob) VALUES (?,?,?,?,?)'
-  ).run(uname, hash, 'recruiter', dname, null); // attested 18+ at agreement — no fake DOB
-  const userId = Number(info.lastInsertRowid);
-  recordAgeAttestation(userId, req);
-  db.prepare('INSERT INTO wallets (user_id) VALUES (?)').run(userId);
-  // Create recruiter record with referral code
-  let rcode;
-  do { rcode = crypto.randomBytes(4).toString('hex'); }
-  while (db.prepare('SELECT id FROM recruiters WHERE referral_code = ?').get(rcode));
-  db.prepare('INSERT INTO recruiters (user_id, name, referral_code) VALUES (?,?,?)')
-    .run(userId, dname, rcode);
-  // Mark invite used
-  db.prepare(`UPDATE invite_links SET used_by = ?, used_at = datetime('now') WHERE id = ?`)
-    .run(userId, inv.id);
-  // Auto-sign the recruiter agreement (they agreed on the signup screen)
-  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
-  db.prepare(`INSERT INTO contract_signatures (user_id, contract_version, display_name, ip)
-              VALUES (?, ?, ?, ?)`)
-    .run(userId, RECRUITER_CONTRACT.version, dname, ip.slice(0, 60));
-  const token = createSession(userId);
-  res.json({ ok: true, token, user: { id: userId, username: uname, display_name: dname, role: 'recruiter' } });
-});
-
 // Admin: list all models with contract signature status
 app.get('/api/admin/contracts', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
   const rows = db.prepare(`
@@ -2788,23 +2535,18 @@ app.get('/api/admin/id-verifications', identMiddleware, requireUser, requireRole
   res.json({ verifications: rows });
 });
 
-// Short-lived photo tokens so <img> tags can load ID photos without a Bearer
-// header. One token covers all 3 photos of a single verification (front /
-// back / selfie) for the issuing admin and dies at expiry (2 min) — the
-// review screen needs all three images, so tokens are NOT single-use.
+// Single-use photo tokens so <img> tags can load ID photos without a Bearer header
 const idPhotoTokens = new Map(); // token -> { verificationId, adminId, expires }
 app.post('/api/admin/id-verifications/:id/photo-token', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
   const v = db.prepare('SELECT id FROM id_verifications WHERE id = ?').get(req.params.id);
   if (!v) return res.status(404).json({ error: 'not_found' });
-  const now = Date.now();
-  for (const [t, ft] of idPhotoTokens) if (ft.expires <= now) idPhotoTokens.delete(t);
   const token = crypto.randomBytes(24).toString('hex');
   idPhotoTokens.set(token, { verificationId: v.id, adminId: req.user.id,
-    expires: now + 120 * 1000 });
+    expires: Date.now() + 120 * 1000 });
   res.json({ token });
 });
 
-// Admin: view one ID photo (Bearer auth OR short-lived ?t= token). Sensitive PII — never cached.
+// Admin: view one ID photo (Bearer auth OR single-use ?t= token). Sensitive PII — never cached.
 app.get('/api/admin/id-verifications/:id/photo/:which', (req, res) => {
   const which = req.params.which;
   if (!['front', 'back', 'selfie'].includes(which))
@@ -2814,6 +2556,7 @@ app.get('/api/admin/id-verifications/:id/photo/:which', (req, res) => {
     const ft = idPhotoTokens.get(req.query.t);
     if (ft && ft.verificationId === Number(req.params.id) && ft.expires > Date.now()) {
       adminId = ft.adminId;
+      idPhotoTokens.delete(req.query.t); // single use
     } else return res.status(403).json({ error: 'bad_token' });
   } else {
     const ident = getIdentity(req);
@@ -2854,51 +2597,6 @@ app.post('/api/admin/id-verifications/:id/reject', identMiddleware, requireUser,
               reviewer_note = ? WHERE id = ?`).run(note, v.id);
   pushToSubject(`u:${v.model_id}`, { type: 'id_verified', status: 'rejected', note });
   res.json({ ok: true });
-});
-
-// Admin: download one performer's 2257 records packet (JSON). The ID images
-// themselves stay in private storage, viewable only in the ID Checks tab;
-// this packet is the index record tying the performer, her verification,
-// and her signed agreement together for the records custodian.
-app.get('/api/admin/id-verifications/:id/2257', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
-  const v = db.prepare('SELECT * FROM id_verifications WHERE id = ?').get(req.params.id);
-  if (!v) return res.status(404).json({ error: 'not_found' });
-  const u = db.prepare(`SELECT id, username, display_name, role, dob, created_at,
-                               age_attested_at FROM users WHERE id = ?`).get(v.model_id);
-  if (!u) return res.status(404).json({ error: 'not_found' });
-  const sig = db.prepare(`SELECT contract_version, display_name AS signed_name,
-                                  signed_at, ip FROM contract_signatures
-                          WHERE user_id = ?`).get(v.model_id);
-  const base = (p) => p ? String(p).split('/').pop() : null;
-  const packet = {
-    record_type: 'Performer age/identity verification record — 18 U.S.C. §2257',
-    generated_at: new Date().toISOString(),
-    records_custodian: 'World of Godz Entertainment LLC dba SlutCamp',
-    performer: {
-      user_id: u.id, username: u.username, stage_name: u.display_name,
-      role: u.role, date_of_birth_on_file: u.dob,
-      dob_note: u.dob ? undefined
-        : 'No DOB typed at signup — legal name and DOB are on the ID document images in this record.',
-      account_created_at: u.created_at, age_attested_at: u.age_attested_at,
-    },
-    id_verification: {
-      status: v.status, submitted_at: v.submitted_at,
-      reviewed_at: v.reviewed_at, reviewer_note: v.reviewer_note || '',
-      documents_on_file: {
-        id_front: base(v.id_front_path), id_back: base(v.id_back_path),
-        selfie_with_id: base(v.selfie_path),
-      },
-      documents_location: 'Private storage (id_verification) — admin ID Checks tab only, never public.',
-    },
-    agreement: sig ? {
-      contract_version: sig.contract_version, signed_name: sig.signed_name,
-      signed_at: sig.signed_at, signed_from_ip: sig.ip,
-    } : null,
-  };
-  const fname = `2257-record-${u.username}-u${u.id}.json`;
-  res.setHeader('Content-Type', 'application/json');
-  res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
-  res.send(JSON.stringify(packet, null, 2));
 });
 
 /* ------------------------------------------------------------------ */
@@ -3252,79 +2950,6 @@ app.get('/api/calls/:id', identMiddleware, requireUser, (req, res) => {
 
 const adminOnly = [identMiddleware, requireUser, requireRole('admin')];
 
-// --- Visitor analytics (Corry Oct 11, 2026): track visits + sources for growth ---
-db.exec(`
-CREATE TABLE IF NOT EXISTS visits (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  ip_hash TEXT,
-  country TEXT,
-  city TEXT,
-  referrer TEXT,
-  path TEXT,
-  user_agent TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_visits_created ON visits(created_at);`);
-
-// In-memory geo cache (ip -> {country, city}) to avoid repeat lookups
-const geoCache = new Map();
-async function geoFor(ip) {
-  if (!ip || ip === 'unknown' || ip.startsWith('127.') || ip === '::1') return {};
-  if (geoCache.has(ip)) return geoCache.get(ip);
-  const out = {};
-  try {
-    const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), 2500);
-    const r = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,city`, { signal: ctl.signal });
-    clearTimeout(t);
-    const j = await r.json().catch(() => ({}));
-    if (j.status === 'success') { out.country = j.country || null; out.city = j.city || null; }
-  } catch { /* geo is best-effort */ }
-  geoCache.set(ip, out);
-  if (geoCache.size > 5000) geoCache.clear();
-  return out;
-}
-function hashIP(ip) {
-  return crypto.createHash('sha256').update(String(ip) + '|visit-salt').digest('hex').slice(0, 32);
-}
-
-// Public: log a page visit (called once per session from the frontend)
-app.post('/api/track/visit', async (req, res) => {
-  try {
-    const ip = req.ip || req.socket.remoteAddress || 'unknown';
-    const { path, referrer } = req.body || {};
-    const geo = await geoFor(ip);
-    db.prepare(`INSERT INTO visits (ip_hash, country, city, referrer, path, user_agent)
-      VALUES (?,?,?,?,?,?)`).run(
-      hashIP(ip), geo.country || null, geo.city || null,
-      String(referrer || '').slice(0, 500) || null,
-      String(path || '/').slice(0, 200),
-      String(req.headers['user-agent'] || '').slice(0, 300));
-  } catch { /* never break the page for analytics */ }
-  res.json({ ok: true });
-});
-
-// Admin: analytics summary
-app.get('/api/admin/analytics', ...adminOnly, (req, res) => {
-  const days = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 365);
-  const since = `datetime('now', '-${days} days')`;
-  const total = db.prepare(`SELECT COUNT(*) AS n FROM visits WHERE created_at >= ${since}`).get().n;
-  const unique = db.prepare(`SELECT COUNT(DISTINCT ip_hash) AS n FROM visits WHERE created_at >= ${since}`).get().n;
-  const byDay = db.prepare(`
-    SELECT date(created_at) AS d, COUNT(*) AS visits, COUNT(DISTINCT ip_hash) AS unique_visitors
-    FROM visits WHERE created_at >= ${since} GROUP BY d ORDER BY d`).all();
-  const referrers = db.prepare(`
-    SELECT COALESCE(NULLIF(referrer,''), '(direct)') AS ref, COUNT(*) AS n
-    FROM visits WHERE created_at >= ${since} GROUP BY ref ORDER BY n DESC LIMIT 20`).all();
-  const countries = db.prepare(`
-    SELECT COALESCE(country, '(unknown)') AS c, COUNT(*) AS n
-    FROM visits WHERE created_at >= ${since} GROUP BY c ORDER BY n DESC LIMIT 20`).all();
-  const pages = db.prepare(`
-    SELECT path, COUNT(*) AS n FROM visits WHERE created_at >= ${since}
-    GROUP BY path ORDER BY n DESC LIMIT 20`).all();
-  res.json({ days, total, unique, byDay, referrers, countries, pages });
-});
-
 // 2FA status
 app.get('/api/admin/2fa', ...adminOnly, (req, res) => {
   const { phone, on } = getAdmin2FAState();
@@ -3502,27 +3127,6 @@ app.get('/api/live/:id', identMiddleware, requireUser, (req, res) => {
   if (sess.status !== 'live') return res.status(410).json({ error: 'ended' });
   res.json({ session_id: sess.id, title: sess.title,
     explicit_rate_cents: sess.explicit_rate_cents, is_explicit: !!sess.is_explicit });
-});
-
-// Admin: watch a live session as invisible moderator (not counted as viewer, no paywall)
-app.post('/api/admin/live/:id/watch', ...adminOnly, (req, res) => {
-  const sess = db.prepare(`SELECT * FROM live_sessions WHERE id = ? AND status = 'live'`)
-    .get(req.params.id);
-  if (!sess) return res.status(404).json({ error: 'not_live' });
-  // Tell the model a moderator is watching (she opens a peer connection; not counted in live_viewers)
-  pushToUser(sess.model_id, { type: 'live:viewer-joined', session_id: sess.id,
-    fan_id: req.user.id, fan_name: '🛡️ Moderator', is_mod: true });
-  const model = db.prepare('SELECT display_name FROM users WHERE id = ?').get(sess.model_id);
-  res.json({ ok: true, session_id: sess.id, model_id: sess.model_id,
-    model_name: model.display_name, title: sess.title || '',
-    is_explicit: !!sess.is_explicit, is_mod: true });
-});
-
-// Admin: leave a moderated watch (tell model to drop the peer connection)
-app.post('/api/admin/live/:id/unwatch', ...adminOnly, (req, res) => {
-  const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
-  if (sess) pushToUser(sess.model_id, { type: 'live:viewer-left', session_id: sess.id, fan_id: req.user.id });
-  res.json({ ok: true });
 });
 
 app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
@@ -3724,26 +3328,6 @@ app.get('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
   res.json({ messages: msgs.reverse() });
 });
 
-// Force-end a live session (safety kill — payment info shared on live)
-function killLiveSession(sess, reason) {
-  db.prepare(`UPDATE live_sessions SET status = 'ended', ended_at = datetime('now') WHERE id = ?`)
-    .run(sess.id);
-  const viewers = db.prepare('SELECT fan_id FROM live_viewers WHERE session_id = ?').all(sess.id);
-  for (const v of viewers) stopLivePayTimer(sess.id, v.fan_id);
-  for (const r of pendingStageReqs(sess.id)) {
-    const fee = stageJoinFee(!!r.is_explicit, r.mode || 'video', modelJoinRates(sess.model_id));
-    db.prepare(`UPDATE live_join_requests SET status = 'declined' WHERE id = ?`).run(r.id);
-    refundFan(r.fan_id, sess.model_id, fee, 'live_join_refund',
-      `🎥 Stream ended — join request refunded`, 'safety-kill');
-    pushToUser(r.fan_id, { type: 'live:join-declined', session_id: sess.id,
-      request_id: r.id, refunded_cents: fee,
-      balance_cents: getWallet(r.fan_id).credits_cents });
-  }
-  dropStageFan(sess.id, 'stream_ended');
-  pushLiveViewers(sess.id, { type: 'live:ended', session_id: sess.id, reason });
-  pushToUser(sess.model_id, { type: 'live:ended', session_id: sess.id, reason });
-}
-
 // POST a group stream chat message — FREE, safety-scanned
 app.post('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
   const sess = liveSessionOr404(req, res);
@@ -3754,21 +3338,6 @@ app.post('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
 
   const matched = safetyScan(body);
   if (matched) {
-    // Payment info on live = kill the stream immediately (protects models + platform)
-    if (matched.startsWith('payment_')) {
-      const key = `u:${req.user.id}`;
-      const total = addStrike(key);
-      db.prepare(`INSERT INTO stream_flags (session_id, sender_id, sender_name, flagged_text, matched)
-                  VALUES (?,?,?,?,?)`)
-        .run(sess.id, req.user.id, req.user.display_name, body.slice(0, 300), matched);
-      pushToAdmins({ type: 'safety:stream_killed', session_id: sess.id,
-        sender_name: req.user.display_name, matched, total_strikes: total,
-        exact_words: body.slice(0, 300) });
-      killLiveSession(sess, 'payment_info_shared');
-      pushToUser(req.user.id, { type: 'live:killed',
-        warning: `🛑 Stream ended — payment info is never allowed on live. (${total}/3 strikes)` });
-      return res.status(423).json({ error: 'stream_killed', matched, strikes: total });
-    }
     // Block the message, count a strike, log the flag — chat stays live for everyone else
     const key = `u:${req.user.id}`;
     const total = addStrike(key);
@@ -3791,98 +3360,6 @@ app.post('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
   pushLiveAll(sess.id, { type: 'live:chat', message: msg });
   res.json({ ok: true, message: msg });
 });
-
-// POST speech transcript from the model's safety bot — scanned same as chat
-app.post('/api/live/:id/speech', identMiddleware, requireUser, (req, res) => {
-  const sess = liveSessionOr404(req, res);
-  if (!sess) return;
-  // Only the broadcasting model can report her own speech
-  if (sess.model_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
-  const text = String(req.body.text || '').trim().slice(0, 500);
-  if (!text) return res.status(400).json({ error: 'empty' });
-  const result = handleSpeechTranscript(sess, req.user, text, 'browser');
-  if (!result) return res.json({ ok: true, clean: true });
-  res.json({ ok: true, action: result.action, matched: result.matched, strikes: result.strikes });
-});
-
-// Audio chunk upload for the safety bot — temp storage, transcribed, deleted
-const CHUNK_EXT_BY_MIME = {
-  'audio/webm': '.webm', 'audio/mp4': '.mp4', 'audio/x-m4a': '.m4a',
-  'audio/m4a': '.m4a', 'audio/ogg': '.ogg', 'audio/wav': '.wav',
-  'audio/x-wav': '.wav', 'audio/mpeg': '.mp3',
-};
-const audioChunkUpload = multer({
-  storage: multer.diskStorage({
-    destination: '/tmp',
-    filename: (req, file, cb) => {
-      // Keep the real container extension — Whisper reads format from it,
-      // and iPhone Safari records mp4, not webm.
-      const fromName = (String(file.originalname || '').match(/\.(webm|mp4|m4a|ogg|wav|mp3)$/i) || [])[0];
-      const ext = fromName ? '.' + fromName.slice(1).toLowerCase()
-        : (CHUNK_EXT_BY_MIME[file.mimetype] || '.webm');
-      cb(null, 'safetychunk-' + crypto.randomBytes(8).toString('hex') + ext);
-    },
-  }),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 10s clips are tiny
-  fileFilter: (req, file, cb) => {
-    const ok = /^audio\//.test(file.mimetype);
-    cb(ok ? null : new Error('bad_file_type'), ok);
-  },
-});
-
-// POST 10s audio chunk from model's mic — Whisper transcribes, safety-scanned
-app.post('/api/live/:id/audio-chunk', identMiddleware, requireUser,
-  audioChunkUpload.single('audio'), (req, res) => {
-  const sess = liveSessionOr404(req, res);
-  if (!sess) { if (req.file) fs.unlink(req.file.path, () => {}); return; }
-  if (sess.model_id !== req.user.id || !req.file) {
-    if (req.file) fs.unlink(req.file.path, () => {});
-    return res.status(403).json({ error: 'forbidden' });
-  }
-  const chunkPath = req.file.path;
-  const chunkUser = req.user;
-  // Transcribe async so we don't block the response; outcomes reach the
-  // model and admins over WebSocket (live:killed / live:speech_warning /
-  // safety:* pushes inside handleSpeechTranscript).
-  transcribeAudio(chunkPath)
-    .then((raw) => {
-      const text = String(raw || '').trim().slice(0, 500);
-      if (text) handleSpeechTranscript(sess, chunkUser, text, 'whisper');
-    })
-    .catch((e) => console.error('[safety-bot] transcription failed:', e.message))
-    .finally(() => fs.unlink(chunkPath, () => {})); // always delete the audio
-  res.json({ ok: true, queued: true });
-});
-
-// Shared handler: scan a speech transcript, kill on payment, warn on info/socials
-// Returns { action, matched, strikes } or null if clean / session ended.
-function handleSpeechTranscript(sess, user, text, source) {
-  const matched = safetyScan(text);
-  if (!matched) return null;
-  // Re-check the session is still live (may have ended while transcribing)
-  const live = db.prepare("SELECT * FROM live_sessions WHERE id = ? AND status = 'live'").get(sess.id);
-  if (!live) return null;
-  const key = `u:${user.id}`;
-  const total = addStrike(key);
-  db.prepare(`INSERT INTO stream_flags (session_id, sender_id, sender_name, flagged_text, matched)
-              VALUES (?,?,?,?,?)`)
-    .run(sess.id, user.id, user.display_name, `[SPEECH:${source}] ` + text.slice(0, 270), matched);
-  if (matched.startsWith('payment_')) {
-    pushToAdmins({ type: 'safety:stream_killed', session_id: sess.id,
-      sender_name: user.display_name, matched, total_strikes: total,
-      exact_words: '[SPOKEN] ' + text.slice(0, 300) });
-    killLiveSession(live, 'payment_info_spoken');
-    pushToUser(user.id, { type: 'live:killed',
-      warning: `🛑 Stream ended — payment info is never allowed on live, spoken or typed. (${total}/3 strikes)` });
-    return { action: 'killed', matched, strikes: total };
-  }
-  pushToAdmins({ type: 'safety:speech_flag', session_id: sess.id,
-    sender_name: user.display_name, matched, total_strikes: total,
-    exact_words: text.slice(0, 300) });
-  pushToUser(user.id, { type: 'live:speech_warning', session_id: sess.id,
-    warning: `⚠️ Careful — "${matched}" detected in your speech. Keep personal info and socials off the stream. (${total}/3 strikes)` });
-  return { action: 'warned', matched, strikes: total };
-}
 
 // GET the virtual gift catalog (public, enabled only)
 app.get('/api/gifts', (req, res) => {
@@ -4855,25 +4332,14 @@ app.get('/api/admin/models', ...adminOnly, (req, res) => {
     WHERE u.role = 'model' ORDER BY u.display_name`).all() });
 });
 
-
-// Admin: toggle featured (pinned to top) for a model
-app.post('/api/admin/models/:id/feature', ...adminOnly, (req, res) => {
-  const m = db.prepare("SELECT user_id FROM models WHERE user_id = ?").get(req.params.id);
-  if (!m) return res.status(404).json({ error: 'not_found' });
-  const val = req.body && req.body.featured === false ? 0 : 1;
-  db.prepare('UPDATE models SET is_featured = ? WHERE user_id = ?').run(val, req.params.id);
-  res.json({ ok: true, featured: !!val });
-});
-
 app.post('/api/admin/models', ...adminOnly, (req, res) => {
   const { username, password, display_name, bio, per_message_cents, per_minute_cents } = req.body || {};
   if (!username || !password || !display_name)
     return res.status(400).json({ error: 'missing_fields' });
   if (db.prepare('SELECT id FROM users WHERE username = ?').get(username.trim()))
     return res.status(409).json({ error: 'username_taken' });
-  // Admin-added models skip the public age gate — Corry verifies ID in person
-  // (2257). Real DOB lives on her ID verification record, never a placeholder.
-  const id = createUser(username.trim(), password, 'model', display_name.trim().slice(0, 40), null);
+  // Admin-added models skip the public age gate — Corry verifies ID in person (2257).
+  const id = createUser(username.trim(), password, 'model', display_name.trim().slice(0, 40), '1990-01-01');
   db.prepare(`UPDATE models SET bio = ?, per_message_cents = ?, per_minute_cents = ? WHERE user_id = ?`)
     .run((bio || '').slice(0, 280),
          Number.isInteger(per_message_cents) ? per_message_cents : 149,
@@ -4939,15 +4405,13 @@ app.get('/api/referral/:code', (req, res) => {
 // Admin: generate a new invite link
 app.post('/api/admin/invites', ...adminOnly, (req, res) => {
   const label = (req.body.label || '').trim().slice(0, 60);
-  const role = req.body.role === 'recruiter' ? 'recruiter' : 'model';
   const code = crypto.randomBytes(9).toString('hex'); // 18-char code
   const info = db.prepare(
-    'INSERT INTO invite_links (code, label, role, created_by) VALUES (?,?,?,?)'
-  ).run(code, label, role, req.user.id);
+    'INSERT INTO invite_links (code, label, created_by) VALUES (?,?,?)'
+  ).run(code, label, req.user.id);
   const base = req.body.base_url ? String(req.body.base_url).replace(/\/$/, '') : '';
-  const urlPath = role === 'recruiter' ? `/affiliate/${code}` : `/?invite=${code}`;
-  res.json({ ok: true, id: Number(info.lastInsertRowid), code, label, role,
-    url: base ? `${base}${urlPath}` : urlPath });
+  res.json({ ok: true, id: Number(info.lastInsertRowid), code, label,
+    url: base ? `${base}/?invite=${code}` : `/?invite=${code}` });
 });
 
 // Admin: list all invite links with usage status
@@ -4958,7 +4422,7 @@ app.get('/api/admin/invites', ...adminOnly, (req, res) => {
     FROM invite_links i LEFT JOIN users u ON u.id = i.used_by
     ORDER BY i.id DESC`).all();
   res.json({ invites: rows.map((r) => ({
-    id: r.id, code: r.code, label: r.label, role: r.role || 'model',
+    id: r.id, code: r.code, label: r.label,
     is_revoked: !!r.is_revoked, created_at: r.created_at, used_at: r.used_at,
     expires_at: r.expires_at,
     expired: !r.used_by && r.expires_at && new Date(r.expires_at + 'Z') < new Date(),
@@ -4990,7 +4454,7 @@ app.post('/api/admin/recruiters', ...adminOnly, (req, res) => {
   const pwd = (password && String(password).length >= 6) ? String(password) : crypto.randomBytes(6).toString('hex');
   if (db.prepare('SELECT id FROM users WHERE username = ?').get(uname))
     return res.status(409).json({ error: 'username_taken' });
-  const id = createUser(uname, pwd, 'recruiter', String(name).trim().slice(0, 40), null);
+  const id = createUser(uname, pwd, 'recruiter', String(name).trim().slice(0, 40), '1990-01-01');
   let code;
   do { code = crypto.randomBytes(4).toString('hex'); }
   while (db.prepare('SELECT id FROM recruiters WHERE referral_code = ?').get(code));
@@ -5025,48 +4489,6 @@ app.delete('/api/admin/recruiters/:id', ...adminOnly, (req, res) => {
   db.prepare('DELETE FROM recruiters WHERE id = ?').run(r.id); // models.recruiter_id → NULL via FK
   db.prepare('UPDATE users SET banned = 1 WHERE id = ?').run(r.user_id);
   res.json({ ok: true });
-});
-
-// Admin: rename a recruiter (display name only — username/login unchanged)
-// Accepts numeric id OR referral code as :id
-app.patch('/api/admin/recruiters/:id', ...adminOnly, (req, res) => {
-  let r = db.prepare('SELECT * FROM recruiters WHERE id = ?').get(req.params.id);
-  if (!r) r = db.prepare('SELECT * FROM recruiters WHERE referral_code = ?').get(req.params.id);
-  if (!r) return res.status(404).json({ error: 'not_found' });
-  const name = String(req.body?.name || '').trim().slice(0, 40);
-  if (!name) return res.status(400).json({ error: 'missing_name' });
-  db.prepare('UPDATE recruiters SET name = ? WHERE id = ?').run(name, r.id);
-  db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(name, r.user_id);
-  res.json({ ok: true, id: r.id, name });
-});
-
-// Admin: list name change requests
-app.get('/api/admin/name-change-requests', ...adminOnly, (req, res) => {
-  const status = req.query.status || 'pending';
-  const rows = db.prepare(`
-    SELECT r.*, u.display_name AS current_name, u.username, u.role
-    FROM name_change_requests r JOIN users u ON u.id = r.user_id
-    WHERE r.status = ? ORDER BY r.id DESC LIMIT 100`).all(status);
-  res.json({ requests: rows });
-});
-
-// Admin: approve or reject a name change request
-app.post('/api/admin/name-change-requests/:id', ...adminOnly, (req, res) => {
-  const { action } = req.body || {};
-  const r = db.prepare('SELECT * FROM name_change_requests WHERE id = ?').get(req.params.id);
-  if (!r || r.status !== 'pending') return res.status(404).json({ error: 'not_found' });
-  if (action === 'approve') {
-    db.prepare(`UPDATE name_change_requests SET status = 'approved', resolved_at = datetime('now') WHERE id = ?`).run(r.id);
-    db.prepare(`UPDATE users SET display_name = ?, name_changed_at = datetime('now') WHERE id = ?`)
-      .run(r.requested_name, r.user_id);
-    pushToSubject(`u:${r.user_id}`, { type: 'name_change:approved', new_name: r.requested_name });
-  } else if (action === 'reject') {
-    db.prepare(`UPDATE name_change_requests SET status = 'rejected', resolved_at = datetime('now') WHERE id = ?`).run(r.id);
-    pushToSubject(`u:${r.user_id}`, { type: 'name_change:rejected', requested_name: r.requested_name });
-  } else {
-    return res.status(400).json({ error: 'bad_action' });
-  }
-  res.json({ ok: true, action });
 });
 
 // Recruiter: dashboard (own link, models, earnings)
