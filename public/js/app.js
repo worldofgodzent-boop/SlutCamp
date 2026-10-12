@@ -6064,6 +6064,11 @@ function checkAgeGate() {
     wsConnect();
     const promoUsername = promoMatch[1].toLowerCase();
     try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
+    // Welcome splash: logo pops up + sexy voice greeting, then land in app
+    if (!sessionStorage.getItem('sc_welcomed')) {
+      sessionStorage.setItem('sc_welcomed', '1');
+      return vWelcomeSplash(promoUsername);
+    }
     // Resolve username to model and open their chat (or live stream)
     try {
       const { data } = await api('/models');
@@ -6111,6 +6116,48 @@ function checkAgeGate() {
 window.addEventListener('hashchange', () => {
   if (window.location.hash === '#boss') show('adminLogin', {});
 });
+
+/* Welcome splash for promo link visitors: logo pops + voice greeting */
+function vWelcomeSplash(promoUsername) {
+  tabbar.classList.add('hidden'); tabbar.innerHTML = '';
+  app.innerHTML = `
+    <div style="position:fixed;inset:0;background:radial-gradient(ellipse at center,#2a1040 0%,#0a0510 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;animation:fadeIn .5s ease">
+      <div style="animation:logoPop 1s cubic-bezier(.34,1.56,.64,1) both">
+        <div style="font-size:64px;font-weight:900;letter-spacing:2px">
+          <span style="color:#fff">SLUT</span><span style="background:linear-gradient(135deg,#ff2d78,#b829dd);-webkit-background-clip:text;background-clip:text;color:transparent">CAMP</span>
+        </div>
+        <div style="text-align:center;font-size:28px;margin-top:8px">🏕️💦</div>
+      </div>
+      <div style="margin-top:24px;text-align:center;animation:fadeIn 1s ease .5s both">
+        <div style="font-size:20px;font-weight:700;color:#fff">Welcome to SlutCamp,</div>
+        <div style="font-size:16px;color:#ff8ab5;margin-top:4px">sluts paradise 😈</div>
+        <div style="font-size:14px;color:#a78bfa;margin-top:8px">We hope you enjoy your Nutt 💦</div>
+      </div>
+      <button id="splash-enter" class="btn" style="margin-top:32px;animation:fadeIn 1s ease 1s both;background:linear-gradient(135deg,#ff2d78,#b829dd);font-size:18px;padding:14px 48px;border-radius:30px">
+        Enter 🔥
+      </button>
+      <style>
+        @keyframes logoPop { 0% { transform:scale(.3);opacity:0 } 60% { transform:scale(1.1) } 100% { transform:scale(1);opacity:1 } }
+        @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+      </style>
+    </div>`;
+  // Play the sexy voice greeting
+  try {
+    const audio = new Audio('/audio/welcome.mp3');
+    audio.volume = 0.9;
+    audio.play().catch(() => {});
+  } catch (e) {}
+  $('#splash-enter').onclick = () => {
+    // Continue to the model's page
+    window.location.hash = `#m/${promoUsername}`;
+    sessionStorage.setItem('sc_welcomed', '2'); // don't loop
+    location.reload();
+  };
+  // Auto-enter after 6 seconds
+  setTimeout(() => {
+    if (document.getElementById('splash-enter')) $('#splash-enter').click();
+  }, 6000);
+}
 
 /* ---------------- TERMS OF SERVICE ---------------- */
 
