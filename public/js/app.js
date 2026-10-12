@@ -547,7 +547,7 @@ function show(view, params) {
   window.scrollTo(0, 0);
   const VIEWS = {
     landing: vLanding, auth: vAuth,
-    fanModels: vFanModels, fanLive: vFanLive, fanChats: vFanChats, wallet: vWallet, quickSignup: vQuickSignup,
+    fanModels: vFanModels, fanLive: vFanLive, fanChats: vFanChats, wallet: vWallet,
     modelChats: vModelChats, modelEarnings: vModelEarnings, modelSettings: vModelSettings,
     admin: vAdmin, chat: vChat,
     liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch, liveModWatch: vLiveModWatch,
@@ -1155,112 +1155,7 @@ async function vChatList(role) {
   });
 }
 
-/* ---------------- FAN: quick signup (username + payment, nothing else) ---------------- */
-
-function vQuickSignup() {
-  app.innerHTML = `
-    <div class="header"><h1>Slut<span class="logo">Camp</span></h1>
-      <div class="sub">Create your account — 30 seconds</div></div>
-    <div class="screen">
-      <div class="card">
-        <div style="font-weight:800;margin-bottom:10px">👤 Your account</div>
-        <label class="field">Username<input class="input" id="q-user" autocomplete="username" placeholder="pick a username"></label>
-        <label class="field">Password (6+ characters)${pwField('q-pass', 'new-password')}</label>
-        <label class="checkbox-row"><input type="checkbox" id="q-18">
-          <span>I confirm I am <b>18 years or older</b>.</span></label>
-      </div>
-      <div class="card">
-        <div style="font-weight:800;margin-bottom:10px">💳 Payment info</div>
-        <div class="muted small" style="margin-bottom:10px">Add your payment method now so you can buy credits instantly. You won't be charged until you buy.</div>
-        <label class="field">Full name (on card)<input class="input" id="q-fullname" autocomplete="cc-name" placeholder="John Smith"></label>
-        <label class="field">Payment method</label>
-        <div class="row" style="gap:8px;margin-bottom:12px" id="q-paymethods">
-          <button class="btn ghost payopt selected" data-pay="card" style="flex:1">💳 Card</button>
-          <button class="btn ghost payopt" data-pay="cashapp" style="flex:1">💵 Cash App</button>
-        </div>
-        <div id="q-card-fields">
-          <label class="field">Card number<input class="input" id="q-cardnum" inputmode="numeric" autocomplete="cc-number" placeholder="4242 4242 4242 4242"></label>
-          <div class="row" style="gap:8px">
-            <label class="field" style="flex:1">Expiry<input class="input" id="q-exp" placeholder="MM/YY" autocomplete="cc-exp"></label>
-            <label class="field" style="flex:1">CVC<input class="input" id="q-cvc" inputmode="numeric" placeholder="123" autocomplete="cc-csc"></label>
-          </div>
-        </div>
-        <div id="q-cashapp-fields" class="hidden">
-          <label class="field">Cash App $cashtag<input class="input" id="q-cashtag" placeholder="$yourtag"></label>
-        </div>
-      </div>
-      <button class="btn" id="q-go" style="width:100%;margin-top:4px">Create account & continue →</button>
-      <button class="btn ghost" id="q-back" style="width:100%;margin-top:8px">← Back</button>
-    </div>`;
-  let payMethod = 'card';
-  document.querySelectorAll('#q-paymethods .payopt').forEach((b) => {
-    b.onclick = () => {
-      document.querySelectorAll('#q-paymethods .payopt').forEach((x) => x.classList.remove('selected'));
-      b.classList.add('selected');
-      payMethod = b.dataset.pay;
-      $('#q-card-fields').classList.toggle('hidden', payMethod !== 'card');
-      $('#q-cashapp-fields').classList.toggle('hidden', payMethod !== 'cashapp');
-    };
-  });
-  $('#q-back').onclick = () => show('wallet', {});
-  $('#q-go').onclick = () => doQuickSignup(payMethod);
-}
-
-async function doQuickSignup(payMethod) {
-  const username = $('#q-user').value.trim();
-  const password = $('#q-pass').value;
-  const is18 = $('#q-18').checked;
-  const fullName = $('#q-fullname').value.trim();
-  if (!username) return toast('Pick a username');
-  if (!password || password.length < 6) return toast('Password needs 6+ characters');
-  if (!is18) return toast('You must confirm you are 18 or older');
-  if (!fullName) return toast('Enter the full name on your payment method');
-  if (payMethod === 'card') {
-    if (!$('#q-cardnum').value.replace(/\s/g, '')) return toast('Enter your card number');
-    if (!$('#q-exp').value.trim()) return toast('Enter card expiry');
-    if (!$('#q-cvc').value.trim()) return toast('Enter card CVC');
-  } else {
-    if (!$('#q-cashtag').value.trim()) return toast('Enter your Cash App tag');
-  }
-  // Create the fan account (payment details are stored for checkout, not charged yet)
-  const { status, data } = await api('/auth/quick-signup', {
-    method: 'POST',
-    body: JSON.stringify({
-      username, password, full_name: fullName, pay_method: payMethod,
-      card_last4: payMethod === 'card' ? $('#q-cardnum').value.replace(/\s/g, '').slice(-4) : null,
-      cashtag: payMethod === 'cashapp' ? $('#q-cashtag').value.trim() : null,
-      guest_token: S.guestToken,
-    }),
-  });
-  if (status === 200 && data.token) {
-    S.token = data.token;
-    localStorage.setItem('wc_token', data.token);
-    await refreshMe();
-    wsConnect();
-    toast('✅ Account created!');
-    return show('wallet', {});
-  }
-  toast(data.error === 'username_taken' ? 'That username is taken — try another' : 'Signup failed — try again');
-}
-
 async function vWallet() {
-  // Guests can browse but must create an account to add money
-  if (!S.token || !S.user || S.user.role !== 'fan') {
-    app.innerHTML = `
-      <div class="header"><h1>Wallet 💰</h1></div>
-      <div class="screen">
-        <div class="card" style="text-align:center;padding:32px 20px">
-          <div style="font-size:48px;margin-bottom:12px">💰</div>
-          <div style="font-weight:800;font-size:18px;margin-bottom:8px">Create your free account to add funds</div>
-          <div class="muted" style="margin-bottom:20px">You're browsing as a guest. Sign up free to buy credits and unlock chats, live streams, gifts, and more.</div>
-          <button class="btn" id="w-signup" style="width:100%;margin-bottom:10px">✨ Create free account</button>
-          <button class="btn ghost" id="w-login" style="width:100%">Already have an account? Log in</button>
-        </div>
-      </div>`;
-    $('#w-signup').onclick = () => show('quickSignup', {});
-    $('#w-login').onclick = () => show('auth', { mode: 'login', role: 'fan' });
-    return;
-  }
   await refreshMe();
   const { data } = await api('/credits/packages');
   const pkgs = data.packages || [];
@@ -1826,14 +1721,6 @@ async function vModelSettings() {
           <span class="grow muted small">Fans see this next to your name in chats and on the model grid.</span>
         </div>
         <button class="btn ghost" id="s-photo" style="margin-top:8px">📷 Change my photo</button>
-        <div style="margin-top:12px;padding:12px;background:rgba(139,92,246,.08);border-radius:12px;border:1px solid rgba(139,92,246,.25)">
-          <div style="font-weight:800;margin-bottom:4px">🔗 My promo link</div>
-          <div class="muted small" style="margin-bottom:8px">Share this anywhere — fans who tap it land straight on your chat. It works the moment your account is created.</div>
-          <div class="row" style="gap:8px">
-            <input class="input" id="s-promo-link" readonly value="${esc(location.origin + '/#m/' + (S.user.username || ''))}" style="flex:1" onclick="this.select()">
-            <button class="btn" id="s-promo-copy" style="white-space:nowrap">📋 Copy</button>
-          </div>
-        </div>
         <div style="margin-top:12px">
           <div class="muted small" style="margin-bottom:6px">🎬 <b>Preview video loop</b> — a few seconds that plays on the home screen instead of your photo. Keep it SFW and under 15MB.</div>
           ${m.preview_video_url ? `<video src="${esc(m.preview_video_url)}" autoplay muted loop playsinline style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:2px solid var(--purple)"></video><br>` : ''}
@@ -1910,18 +1797,6 @@ async function vModelSettings() {
         start_time: $('#sched-time').value, title: $('#sched-title').value }) });
     if (status === 200) { $('#sched-title').value = ''; loadSched(); toast('✅ Slot added!'); }
     else toast(data.error === 'duplicate' ? 'That slot already exists.' : 'Could not add slot.');
-  };
-  const promoCopy = $('#s-promo-copy');
-  if (promoCopy) promoCopy.onclick = async () => {
-    const inp = $('#s-promo-link');
-    try {
-      await navigator.clipboard.writeText(inp.value);
-      toast('🔗 Promo link copied!');
-    } catch (e) {
-      inp.select();
-      try { document.execCommand('copy'); toast('🔗 Promo link copied!'); }
-      catch (e2) { toast('Tap the link to copy it'); }
-    }
   };
   $('#s-photo').onclick = () => {
     const inp = document.createElement('input');
@@ -5791,35 +5666,6 @@ function checkAgeGate() {
     wsConnect();
     try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
     return vRecruiterSignup(joinMatch[1]);
-  }
-  // Model promo link: #m/USERNAME → open that model's chat/live directly
-  const promoMatch = window.location.hash.match(/^#m\/([a-zA-Z0-9_]+)$/);
-  if (promoMatch) {
-    await ensureGuest();
-    wsConnect();
-    const promoUsername = promoMatch[1].toLowerCase();
-    try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
-    // Resolve username to model and open their chat (or live stream)
-    try {
-      const { data } = await api('/models');
-      const models = data.models || [];
-      const target = models.find((m) => (m.username || '').toLowerCase() === promoUsername);
-      if (target) {
-        if (S.token) {
-          const { status } = await api('/me');
-          if (status === 200) {
-            await refreshMe();
-            if (S.user.role === 'fan') {
-              if (target.live_session_id) return watchLive(target.live_session_id);
-              return openChatWithModel(target.id);
-            }
-          }
-        }
-        // Guest or non-fan: show model list (they can sign up then chat)
-        return show('fanModels', {});
-      }
-    } catch (e) {}
-    return show('fanModels', {});
   }
   if (S.token) {
     const { status } = await api('/me');
