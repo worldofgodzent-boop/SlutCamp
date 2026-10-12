@@ -863,3 +863,11 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 .crop-hint { color: var(--muted); font-size: 13px; margin: 10px 0 14px; }
 .crop-actions { display: flex; gap: 10px; }
 .crop-actions .btn { flex: 1; }
+
+/* ---- Moderator watch view ---- */
+.mod-watch-note {
+  text-align: center; color: var(--muted); font-size: 12px;
+  padding: 6px; background: rgba(139,92,246,.12);
+  border-bottom: 1px solid rgba(139,92,246,.2);
+}
+.stream-chat.mod { opacity: .95; }
