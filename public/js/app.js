@@ -2834,6 +2834,7 @@ async function rejoinLiveBroadcast(sessionId) {
   loadLeaderboard();
   toast('🔴 Back live! Welcome back 🎉');
   startSpeechSafetyBot(sessionId);
+  startAudioChunkBot(sessionId);
 }
 
 async function startLiveBroadcast() {
@@ -2868,6 +2869,7 @@ async function startLiveBroadcast() {
   loadLeaderboard();
   toast('🔴 You are LIVE! Chat is free for fans — gifts = money 💰');
   startSpeechSafetyBot(data.session_id);
+  startAudioChunkBot(data.session_id);
 }
 
 /* --- Speech safety bot: transcribes the model's mic, flags personal info/socials --- */
@@ -2919,6 +2921,62 @@ function stopSpeechSafetyBot() {
     const r = speechRecog;
     speechRecog = null;
     try { r.onend = null; r.stop(); } catch (e) {}
+  }
+  stopAudioChunkBot();
+}
+
+/* --- Audio chunk bot: records 10s mic clips, server transcribes via Whisper --- */
+/* Works on iPhone Safari (MediaRecorder) where Web Speech API is unavailable.   */
+let audioChunkRecorder = null;
+let audioChunkTimer = null;
+function startAudioChunkBot(sessionId) {
+  stopAudioChunkBot();
+  const L = S.live;
+  if (!L || !L.stream) return;
+  if (typeof MediaRecorder === 'undefined') return;
+  try {
+    // Audio-only stream for the recorder
+    const audioTracks = L.stream.getAudioTracks();
+    if (!audioTracks.length) return;
+    const audioStream = new MediaStream(audioTracks);
+    const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+    const sendChunk = (blob) => {
+      if (!blob || blob.size < 1000) return; // skip tiny/empty clips
+      const fd = new FormData();
+      fd.append('audio', blob, 'chunk.webm');
+      fetch(`/api/live/${sessionId}/audio-chunk`, { method: 'POST', body: fd })
+        .then((r) => r.json()).then((data) => {
+          if (data && data.action === 'killed') {
+            stopAudioChunkBot();
+            toast('🛑 Stream ended by safety bot.');
+          } else if (data && data.action === 'warned') {
+            toast(data.warning || '⚠️ Watch what you say on live.');
+          }
+        }).catch(() => {});
+    };
+    const recordOne = () => {
+      if (!S.live || S.live.sessionId !== sessionId) { stopAudioChunkBot(); return; }
+      try {
+        audioChunkRecorder = new MediaRecorder(audioStream, mime ? { mimeType: mime } : undefined);
+        const chunks = [];
+        audioChunkRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+        audioChunkRecorder.onstop = () => sendChunk(new Blob(chunks, { type: mime || 'audio/webm' }));
+        audioChunkRecorder.start();
+        audioChunkTimer = setTimeout(() => {
+          try { audioChunkRecorder.stop(); } catch (e) {}
+          // chain the next 10s clip
+          setTimeout(recordOne, 500);
+        }, 10000);
+      } catch (e) { /* MediaRecorder failed — speech bot still covers desktop */ }
+    };
+    recordOne();
+  } catch (e) {}
+}
+function stopAudioChunkBot() {
+  if (audioChunkTimer) { clearTimeout(audioChunkTimer); audioChunkTimer = null; }
+  if (audioChunkRecorder) {
+    try { audioChunkRecorder.onstop = null; audioChunkRecorder.stop(); } catch (e) {}
+    audioChunkRecorder = null;
   }
 }
 
