@@ -2315,15 +2315,58 @@ function pickPpvFile(kind) {
     input.remove();
     if (!f) return;
     if (f.size > 30 * 1024 * 1024) return toast('File too big — 30MB max.');
-    const def = kind === 'ppv_video' ? '9.99' : '4.99';
-    const priceStr = prompt(`Set your unlock price for this ${kind === 'ppv_video' ? 'video' : 'photo'} ($1–$100, or 0 for free):`, def);
-    if (priceStr === null) return; // cancelled
-    const price = Math.round(parseFloat(priceStr || '0') * 100);
-    if (!Number.isFinite(price) || (price !== 0 && (price < 100 || price > 10000))) return toast('Enter 0 for free, or $1–$100');
-    uploadMedia(f, kind, price, 0);
+    openPpvPriceSheet(f, kind);
   };
   document.body.appendChild(input);
   input.click();
+}
+
+// In-app price picker (replaces fragile prompt() which iOS often blocks)
+function openPpvPriceSheet(file, kind) {
+  const isVideo = kind === 'ppv_video';
+  const label = isVideo ? 'video' : 'photo';
+  const overlay = document.createElement('div');
+  overlay.id = 'ppv-price-overlay';
+  overlay.innerHTML = `
+    <div class="crop-box">
+      <div class="crop-title">Set unlock price</div>
+      <div class="small muted" style="margin-bottom:12px">What should fans pay to unlock this ${label}?</div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:14px">
+        ${[0, 2.99, 4.99, 9.99, 19.99].map((p) =>
+          `<button class="btn small ghost ppv-price" data-p="${p}">${p === 0 ? 'Free' : '$' + p}</button>`).join('')}
+      </div>
+      <label class="field" style="text-align:left">Custom price ($1–$100, or 0 for free)
+        <input class="input" id="ppv-custom-price" type="number" min="0" max="100" step="0.01" placeholder="4.99">
+      </label>
+      <div class="crop-actions">
+        <button class="btn ghost" id="ppv-price-cancel">Cancel</button>
+        <button class="btn" id="ppv-price-send">Send 🔒</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  let chosen = null;
+  overlay.querySelectorAll('.ppv-price').forEach((b) => {
+    b.onclick = () => {
+      overlay.querySelectorAll('.ppv-price').forEach((x) => x.classList.remove('active'));
+      b.classList.add('active');
+      chosen = parseFloat(b.dataset.p);
+      overlay.querySelector('#ppv-custom-price').value = '';
+    };
+  });
+  overlay.querySelector('#ppv-price-cancel').onclick = () => overlay.remove();
+  overlay.querySelector('#ppv-price-send').onclick = () => {
+    let price = chosen;
+    const custom = overlay.querySelector('#ppv-custom-price').value.trim();
+    if (custom !== '') price = parseFloat(custom);
+    if (price === null || price === undefined || !Number.isFinite(price)) price = 4.99;
+    const cents = Math.round(price * 100);
+    if (cents !== 0 && (cents < 100 || cents > 10000)) {
+      toast('Enter 0 for free, or $1–$100');
+      return;
+    }
+    overlay.remove();
+    uploadMedia(file, kind, cents, 0);
+  };
 }
 
 async function uploadMedia(file, kind, priceCents, durationSec) {
