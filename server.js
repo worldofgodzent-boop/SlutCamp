@@ -431,6 +431,7 @@ CREATE TABLE IF NOT EXISTS invite_links (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   code       TEXT UNIQUE NOT NULL,
   label      TEXT NOT NULL DEFAULT '',
+  role       TEXT NOT NULL DEFAULT 'model' CHECK(role IN ('model','recruiter')),
   created_by INTEGER NOT NULL REFERENCES users(id),
   used_by    INTEGER REFERENCES users(id),
   is_revoked INTEGER NOT NULL DEFAULT 0,
@@ -577,6 +578,7 @@ addColumnIfMissing('conversations', 'paused_at', 'TEXT');
 addColumnIfMissing('messages', 'gift_json', 'TEXT'); // TikTok-style gift payload on chat gift messages
 addColumnIfMissing('models', 'preview_video_url', "TEXT NOT NULL DEFAULT ''"); // Loop preview on home screen
 addColumnIfMissing('invite_links', 'expires_at', "TEXT NOT NULL DEFAULT (datetime('now', '+6 hours'))");
+addColumnIfMissing('invite_links', 'role', "TEXT NOT NULL DEFAULT 'model'");
 addColumnIfMissing('tax_profiles', 'electronic_1099_consent', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('tax_profiles', 'electronic_1099_consent_at', 'TEXT');
 // Backfill: existing invites without expiry get 6h from creation
@@ -2407,6 +2409,51 @@ const MODEL_CONTRACT = {
   ],
 };
 
+/* Recruiter agreement — for models/partners who recruit other models */
+const RECRUITER_CONTRACT_VERSION = 'R1.0';
+const RECRUITER_CONTRACT = {
+  version: RECRUITER_CONTRACT_VERSION,
+  updated: 'October 12, 2026',
+  sections: [
+    {
+      title: '1. Parties',
+      body: 'This Recruiter Agreement ("Agreement") is between you ("Recruiter") and World of Godz Entertainment LLC ("Company"), doing business as SlutCamp ("SlutCamp"). By signing, you agree to everything below.',
+    },
+    {
+      title: '2. Independent Contractor — Not a Partner',
+      body: 'You are an INDEPENDENT CONTRACTOR, not an employee of the Company. Nothing in this Agreement creates an employment relationship, a legal business partnership, or an agency relationship — "partner" is just what we call the role in the app. You are responsible for your own taxes, insurance, and expenses. The Company will not withhold taxes from your payouts.',
+    },
+    {
+      title: '3. What You Do',
+      body: 'You recruit models to join SlutCamp using your personal referral link. You are responsible for your own recruiting methods. You must be honest about the platform — no false promises about earnings.',
+    },
+    {
+      title: '4. Your Cut',
+      body: 'You earn 20% of everything each model you recruit earns on the platform (their 60% share — your cut comes from the Company\'s portion, not from the model). The model keeps her full 60%. Payments are processed on the Company\'s payout schedule.',
+    },
+    {
+      title: '5. Termination — At Will',
+      body: 'The Company may revoke your recruiter status AT ANY TIME, for any reason or no reason, with NO NOTICE required. When revoked, this Agreement ends immediately and you stop earning on all future revenue from your recruited models. Any balance already earned remains available for withdrawal.',
+    },
+    {
+      title: '6. Conduct Rules',
+      body: 'You must NOT: share contact info or payment handles with anyone on the platform; attempt to take models or fans off-platform; use hate speech or slurs. Breaking these rules can get your account suspended or deactivated immediately.',
+    },
+    {
+      title: '7. Non-Circumvention',
+      body: 'For 12 months after your recruiter status ends (for any reason), you agree not to recruit models you met through SlutCamp to a competing platform.',
+    },
+    {
+      title: '8. Confidentiality',
+      body: 'You agree not to disclose the Company\'s business methods, commission structures, or internal operations to anyone outside the Company.',
+    },
+    {
+      title: '9. Plain-Language Disclaimer',
+      body: 'This is a plain-language summary written for clarity — it is NOT legal advice, and it has not been reviewed by an attorney. The Company strongly recommends you have your own attorney review this Agreement before signing. If any part of this Agreement is found unenforceable, the rest still applies.',
+    },
+  ],
+};
+
 app.get('/api/credits/packages', (req, res) => {
   res.json({ packages: CREDIT_PACKAGES, stubbed: true });
 });
@@ -2554,6 +2601,81 @@ app.post('/api/model/contract/sign', identMiddleware, requireUser, requireRole('
     if (!String(e.message || '').includes('UNIQUE')) throw e;
   }
   res.json({ ok: true, version: MODEL_CONTRACT.version });
+});
+
+// Recruiter: get agreement status + text
+app.get('/api/recruiter/contract', identMiddleware, requireUser, requireRole('recruiter'), (req, res) => {
+  const sig = db.prepare('SELECT contract_version, signed_at FROM contract_signatures WHERE user_id = ?').get(req.user.id);
+  res.json({
+    version: RECRUITER_CONTRACT.version,
+    updated: RECRUITER_CONTRACT.updated,
+    sections: RECRUITER_CONTRACT.sections,
+    signed: !!sig && String(sig.contract_version || '').startsWith('R'),
+    signed_version: sig ? sig.contract_version : null,
+    signed_at: sig ? sig.signed_at : null,
+  });
+});
+
+// Recruiter: sign the agreement (typed name = electronic signature)
+app.post('/api/recruiter/contract/sign', identMiddleware, requireUser, requireRole('recruiter'), (req, res) => {
+  const name = String(req.body.display_name || '').trim().slice(0, 80);
+  if (!name || name.length < 2) return res.status(400).json({ error: 'bad_name' });
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
+  try {
+    db.prepare(`INSERT INTO contract_signatures (user_id, contract_version, display_name, ip)
+                VALUES (?, ?, ?, ?)`)
+      .run(req.user.id, RECRUITER_CONTRACT.version, name, ip.slice(0, 60));
+  } catch (e) {
+    if (!String(e.message || '').includes('UNIQUE')) throw e;
+  }
+  res.json({ ok: true, version: RECRUITER_CONTRACT.version });
+});
+
+// Public: validate an affiliate invite code
+app.get('/api/affiliate-invite/:code', (req, res) => {
+  const code = String(req.params.code || '').trim();
+  const inv = db.prepare(`SELECT * FROM invite_links WHERE code = ? AND role = 'recruiter'`).get(code);
+  if (!inv || inv.is_revoked || inv.used_by) return res.json({ valid: false });
+  if (inv.expires_at && new Date(inv.expires_at) < new Date()) return res.json({ valid: false });
+  res.json({ valid: true, label: inv.label });
+});
+
+// Public: affiliate signup via invite code
+app.post('/api/affiliate-invite/:code/signup', (req, res) => {
+  const code = String(req.params.code || '').trim();
+  const inv = db.prepare(`SELECT * FROM invite_links WHERE code = ? AND role = 'recruiter'`).get(code);
+  if (!inv || inv.is_revoked || inv.used_by) return res.status(400).json({ error: 'bad_invite' });
+  if (inv.expires_at && new Date(inv.expires_at) < new Date()) return res.status(400).json({ error: 'expired' });
+  const { username, password, display_name, agreed } = req.body || {};
+  const uname = String(username || '').trim();
+  const dname = String(display_name || '').trim().slice(0, 40);
+  const pwd = String(password || '');
+  if (!uname || !dname || pwd.length < 6) return res.status(400).json({ error: 'missing_fields' });
+  if (!agreed) return res.status(400).json({ error: 'must_agree' });
+  if (db.prepare('SELECT id FROM users WHERE username = ?').get(uname))
+    return res.status(409).json({ error: 'username_taken' });
+  const hash = bcrypt.hashSync(pwd, 10);
+  const info = db.prepare(
+    'INSERT INTO users (username, password_hash, role, display_name, dob) VALUES (?,?,?,?,?)'
+  ).run(uname, hash, 'recruiter', dname, '1990-01-01');
+  const userId = Number(info.lastInsertRowid);
+  db.prepare('INSERT INTO wallets (user_id) VALUES (?)').run(userId);
+  // Create recruiter record with referral code
+  let rcode;
+  do { rcode = crypto.randomBytes(4).toString('hex'); }
+  while (db.prepare('SELECT id FROM recruiters WHERE referral_code = ?').get(rcode));
+  db.prepare('INSERT INTO recruiters (user_id, name, referral_code) VALUES (?,?,?)')
+    .run(userId, dname, rcode);
+  // Mark invite used
+  db.prepare(`UPDATE invite_links SET used_by = ?, used_at = datetime('now') WHERE id = ?`)
+    .run(userId, inv.id);
+  // Auto-sign the recruiter agreement (they agreed on the signup screen)
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
+  db.prepare(`INSERT INTO contract_signatures (user_id, contract_version, display_name, ip)
+              VALUES (?, ?, ?, ?)`)
+    .run(userId, RECRUITER_CONTRACT.version, dname, ip.slice(0, 60));
+  const token = createSession(userId);
+  res.json({ ok: true, token, user: { id: userId, username: uname, display_name: dname, role: 'recruiter' } });
 });
 
 // Admin: list all models with contract signature status
@@ -4724,13 +4846,15 @@ app.get('/api/referral/:code', (req, res) => {
 // Admin: generate a new invite link
 app.post('/api/admin/invites', ...adminOnly, (req, res) => {
   const label = (req.body.label || '').trim().slice(0, 60);
+  const role = req.body.role === 'recruiter' ? 'recruiter' : 'model';
   const code = crypto.randomBytes(9).toString('hex'); // 18-char code
   const info = db.prepare(
-    'INSERT INTO invite_links (code, label, created_by) VALUES (?,?,?)'
-  ).run(code, label, req.user.id);
+    'INSERT INTO invite_links (code, label, role, created_by) VALUES (?,?,?,?)'
+  ).run(code, label, role, req.user.id);
   const base = req.body.base_url ? String(req.body.base_url).replace(/\/$/, '') : '';
-  res.json({ ok: true, id: Number(info.lastInsertRowid), code, label,
-    url: base ? `${base}/?invite=${code}` : `/?invite=${code}` });
+  const urlPath = role === 'recruiter' ? `/affiliate/${code}` : `/?invite=${code}`;
+  res.json({ ok: true, id: Number(info.lastInsertRowid), code, label, role,
+    url: base ? `${base}${urlPath}` : urlPath });
 });
 
 // Admin: list all invite links with usage status
@@ -4741,7 +4865,7 @@ app.get('/api/admin/invites', ...adminOnly, (req, res) => {
     FROM invite_links i LEFT JOIN users u ON u.id = i.used_by
     ORDER BY i.id DESC`).all();
   res.json({ invites: rows.map((r) => ({
-    id: r.id, code: r.code, label: r.label,
+    id: r.id, code: r.code, label: r.label, role: r.role || 'model',
     is_revoked: !!r.is_revoked, created_at: r.created_at, used_at: r.used_at,
     expires_at: r.expires_at,
     expired: !r.used_by && r.expires_at && new Date(r.expires_at + 'Z') < new Date(),
