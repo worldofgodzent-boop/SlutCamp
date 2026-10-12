@@ -549,7 +549,7 @@ function show(view, params) {
   window.scrollTo(0, 0);
   const VIEWS = {
     landing: vLanding, auth: vAuth,
-    fanModels: vFanModels, fanLive: vFanLive, fanChats: vFanChats, wallet: vWallet, quickSignup: vQuickSignup,
+    fanModels: vFanModels, fanLive: vFanLive, lives: vLives, fanChats: vFanChats, wallet: vWallet, quickSignup: vQuickSignup,
     modelChats: vModelChats, modelEarnings: vModelEarnings, modelSettings: vModelSettings,
     admin: vAdmin, chat: vChat,
     liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch, liveModWatch: vLiveModWatch,
@@ -614,6 +614,13 @@ function homeTilesHTML(models, heartFor) {
     </div>`;
 }
 
+/* "🔴 Lives" home button — opens the Live Now grid. The count is REAL data
+   from /api/models (is_live flags) — only shown when someone is truly live. */
+function livesBtnHTML(models) {
+  const n = (models || []).filter((m) => m.is_live).length;
+  return `<button class="btn-lives${n ? ' has-live' : ''}" id="go-lives">🔴 Lives${n ? `<span class="lives-count">${n} live now</span>` : ''}</button>`;
+}
+
 /* ---------------- LANDING (public model grid) ---------------- */
 
 async function vLanding() {
@@ -625,6 +632,7 @@ async function vLanding() {
       <div class="sub">Chat & video call the models · 18+ only</div>
     </div>
     <div class="screen">
+      ${livesBtnHTML(models)}
       <div class="card" style="text-align:center;background:linear-gradient(135deg,#3b1d6e,#1a0f2e)">
         <div style="font-size:20px;font-weight:800">🎁 First 3 messages FREE</div>
         <div class="muted small" style="margin-top:4px">with every model you try. No account needed to start.</div>
@@ -664,6 +672,8 @@ async function vLanding() {
   });
   const gl = $('#go-login');
   if (gl) gl.onclick = () => show('auth', {});
+  const lv = $('#go-lives');
+  if (lv) lv.onclick = () => show('lives', {});
   const sh = $('#share-app');
   if (sh) sh.onclick = shareApp;
   const gt = $('#go-terms');
@@ -1138,10 +1148,13 @@ async function vFanModels() {
     <div class="header"><h1>Slut<span class="logo">Camp</span></h1>
       <div><span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span></div></div>
     <div class="screen">
+      ${livesBtnHTML(models)}
       ${models.length ? homeTilesHTML(models, (m) => `
             <span class="follow-btn tile-heart ${following.includes(m.id) ? 'following' : ''}" data-follow="${m.id}" title="Follow for live notifications">${following.includes(m.id) ? '❤️' : '🤍'}</span>`)
         : '<div class="empty"><div class="big">😴</div>No models yet.</div>'}
     </div>`;
+  const lv = $('#go-lives');
+  if (lv) lv.onclick = () => show('lives', {});
   app.querySelectorAll('[data-model]').forEach((b) => {
     b.onclick = () => {
       const liveId = b.dataset.live;
@@ -1197,6 +1210,46 @@ async function vFanLive() {
   app.querySelectorAll('[data-stream]').forEach((b) => {
     b.onclick = () => watchLive(parseInt(b.dataset.stream));
   });
+}
+
+/* ---------------- LIVE NOW — promo-style grid of everyone live ----------------
+   Live list + viewer counts come only from /api/models fields (is_live,
+   live_session_id, live_viewers) — nothing here is faked. Tapping a live
+   tile goes straight into her stream via watchLive(). */
+
+async function vLives() {
+  if (S.user && S.user.role === 'fan') await refreshMe();
+  const { data } = await api('/models');
+  const models = data.models || [];
+  const live = models.filter((m) => m.is_live);
+  const online = models.filter((m) => !m.is_live && m.is_online);
+  const backView = S.user && S.user.role === 'fan' ? 'fanModels' : 'landing';
+  app.innerHTML = `
+    <div class="header"><h1>🔴 Live Now</h1>
+      ${S.user && S.user.role === 'fan'
+        ? `<div><span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span></div>`
+        : '<div class="sub">Everyone streaming right now — tap to jump in 💋</div>'}</div>
+    <div class="screen">
+      ${live.length ? `<div class="tile-grid">
+        ${live.map((m) => modelTileHTML(m)).join('')}
+      </div>` : `
+        <div class="empty"><div class="big">💤</div>Nobody's live right now 💤<br>
+          <span class="small">Models pop in all day — check back soon 💋</span></div>`}
+      ${online.length ? `
+      <div style="font-weight:800;margin:18px 0 10px">💬 Online now — say hi</div>
+      <div class="tile-grid">
+        ${online.map((m) => modelTileHTML(m)).join('')}
+      </div>` : ''}
+      <button class="btn ghost" id="lives-back" style="width:100%;margin-top:14px">← Back to models</button>
+    </div>`;
+  app.querySelectorAll('[data-model]').forEach((b) => {
+    b.onclick = () => {
+      const liveId = b.dataset.live;
+      if (liveId) return watchLive(parseInt(liveId));
+      openChatWithModel(parseInt(b.dataset.model));
+    };
+  });
+  $('#lives-back').onclick = () => show(backView, {});
 }
 
 async function vChatList(role) {
