@@ -3790,6 +3790,15 @@ async function onStageApproved(stage, silent) {
       selfView.srcObject = stream;
       selfView.classList.remove('hidden');
       selfView.play().catch(() => {});
+      // Try native iOS Picture-in-Picture (floats like FaceTime)
+      try {
+        if (document.pictureInPictureEnabled && !selfView.disablePictureInPicture) {
+          await selfView.requestPictureInPicture().catch(() => {});
+        } else if (selfView.webkitSupportsPresentationMode && selfView.webkitSetPresentationMode) {
+          // iOS Safari fallback
+          selfView.webkitSetPresentationMode('picture-in-picture');
+        }
+      } catch (e) {}
     }
     const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
     stream.getTracks().forEach((t) => pc.addTrack(t, stream));
@@ -3813,7 +3822,13 @@ function stopStageStream() {
     if (L.stagePC) { try { L.stagePC.close(); } catch (e) {} L.stagePC = null; }
     if (L.stageStream) { L.stageStream.getTracks().forEach((t) => { try { t.stop(); } catch (e) {} }); L.stageStream = null; }
     const selfView = $('#fan-selfview');
-    if (selfView) { selfView.srcObject = null; selfView.classList.add('hidden'); }
+    if (selfView) {
+      try {
+        if (document.pictureInPictureElement === selfView) document.exitPictureInPicture().catch(() => {});
+        else if (selfView.webkitPresentationMode === 'picture-in-picture') selfView.webkitSetPresentationMode('inline');
+      } catch (e) {}
+      selfView.srcObject = null; selfView.classList.add('hidden');
+    }
     L.stagePending = false;
   }
   hideStageBanner();
