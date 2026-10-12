@@ -4480,6 +4480,16 @@ app.get('/api/admin/models', ...adminOnly, (req, res) => {
     WHERE u.role = 'model' ORDER BY u.display_name`).all() });
 });
 
+
+// Admin: toggle featured (pinned to top) for a model
+app.post('/api/admin/models/:id/feature', ...adminOnly, (req, res) => {
+  const m = db.prepare("SELECT user_id FROM models WHERE user_id = ?").get(req.params.id);
+  if (!m) return res.status(404).json({ error: 'not_found' });
+  const val = req.body && req.body.featured === false ? 0 : 1;
+  db.prepare('UPDATE models SET is_featured = ? WHERE user_id = ?').run(val, req.params.id);
+  res.json({ ok: true, featured: !!val });
+});
+
 app.post('/api/admin/models', ...adminOnly, (req, res) => {
   const { username, password, display_name, bio, per_message_cents, per_minute_cents } = req.body || {};
   if (!username || !password || !display_name)
