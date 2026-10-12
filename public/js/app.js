@@ -496,10 +496,7 @@ const TABS = {
     { id: 'safe', ico: '🛡️', label: 'Safety', view: 'admin' },
     { id: 'more', ico: '⚙️', label: 'More', view: 'admin' },
   ],
-  recruiter: [
-    { id: 'dash', ico: '🤝', label: 'Home', view: 'recruiter' },
-    { id: 'payout', ico: '💸', label: 'Payouts', view: 'recruiter' },
-  ],
+  recruiter: [], // Affiliates get a single-page dashboard — no tabs
 };
 
 function renderTabbar() {
@@ -1497,7 +1494,49 @@ async function vModelEarnings() {
 
 /* ---------------- RECRUITER / PARTNER dashboard ---------------- */
 
+/* Affiliate agreement gate — full-screen, must sign to enter */
+async function vAffiliateAgreement(contract) {
+  const sections = contract.sections || [];
+  // Hide tab bar — they get nothing until they sign
+  tabbar.classList.add('hidden'); tabbar.innerHTML = '';
+  app.innerHTML = `
+    <div class="header" style="background:linear-gradient(135deg,#3b2f0b,#1a1405)">
+      <h1 style="color:var(--gold)">Slut<span style="color:#fff">Camp</span> <span style="font-size:14px">AFFILIATE</span></h1>
+    </div>
+    <div class="screen">
+      <div class="card" style="border-color:var(--gold);text-align:center">
+        <div style="font-size:40px">🤝</div>
+        <div style="font-weight:800;font-size:18px;margin:8px 0">Affiliate Agreement</div>
+        <div class="muted small">You must accept this agreement to access your affiliate dashboard.</div>
+      </div>
+      <div class="card" style="max-height:50vh;overflow-y:auto;text-align:left">
+        ${sections.map((s) => `<div style="margin-bottom:12px"><div style="font-weight:700;color:var(--gold)">${esc(s.title)}</div><div class="small" style="margin-top:4px">${esc(s.body)}</div></div>`).join('')}
+      </div>
+      <label class="field">Type your full name to sign<input class="input" id="aff-sign-name" maxlength="80" placeholder="Your full legal name"></label>
+      <label class="checkbox-row"><input type="checkbox" id="aff-sign-agree">
+        <span>I have read this agreement and I <b>agree</b> to all terms.</span></label>
+      <button class="btn" id="aff-sign-go" style="background:linear-gradient(135deg,#b8860b,#8b6914)">✍️ Sign & Enter Dashboard</button>
+      <button class="btn ghost" id="aff-sign-out" style="margin-top:12px">Decline & Log out</button>
+    </div>`;
+  $('#aff-sign-out').onclick = () => logout(false);
+  $('#aff-sign-go').onclick = async () => {
+    const name = $('#aff-sign-name').value.trim();
+    if (!name || name.length < 2) return toast('Type your full name to sign.');
+    if (!$('#aff-sign-agree').checked) return toast('You must agree to the terms.');
+    const { status } = await api('/recruiter/contract/sign', {
+      method: 'POST', body: JSON.stringify({ display_name: name }) });
+    if (status === 200) { toast('✅ Agreement signed — welcome!'); return vRecruiter(); }
+    toast('Could not sign. Try again.');
+  };
+}
+
 async function vRecruiter() {
+  // Agreement gate: unsigned affiliates see ONLY the agreement
+  try {
+    const { status, data } = await api('/recruiter/contract');
+    if (status === 200 && !data.signed) return vAffiliateAgreement(data);
+  } catch (e) { /* fail open */ }
+
   const { data } = await api('/recruiter/dashboard');
   if (!data || !data.recruiter) { toast('Could not load dashboard'); return show('landing', {}); }
   const r = data.recruiter;
@@ -1509,18 +1548,25 @@ async function vRecruiter() {
   const wds = wdData.withdrawals || [];
   const wdBadge = (s) => s === 'pending' ? '⏳ Pending' : s === 'paid' ? '✅ Paid' : '❌ Rejected';
   app.innerHTML = `
-    <div class="header"><h1>Partner 🤝</h1><div class="sub">${esc(r.name)}${r.city ? ` · ${esc(r.city)}` : ''}</div></div>
+    <div class="header" style="background:linear-gradient(135deg,#3b2f0b,#1a1405)">
+      <h1 style="color:var(--gold)">Slut<span style="color:#fff">Camp</span> <span style="font-size:14px">AFFILIATE</span></h1>
+      <div class="sub" style="color:#d4a843">${esc(r.name)}${r.city ? ` · ${esc(r.city)}` : ''}</div>
+    </div>
     <div class="screen">
-      <div class="card" style="background:linear-gradient(135deg,#3b1d6e,#1a0f2e)">
-        <div style="font-weight:800;margin-bottom:6px">🔗 Your referral link</div>
+      <div class="card" style="background:linear-gradient(135deg,#2a2208,#1a1405);border-color:var(--gold);text-align:center">
+        <div style="font-size:13px;color:#d4a843;font-weight:700;letter-spacing:1px">YOUR EARNINGS</div>
+        <div style="font-size:42px;font-weight:800;color:var(--green);margin:4px 0">${fmt(data.available_cents)}</div>
+        <div class="small muted">Available for payout · ${fmt(data.earnings_cents)} total earned (20%)</div>
+      </div>
+      <div class="card" style="border-color:var(--gold)">
+        <div style="font-weight:800;margin-bottom:6px;color:var(--gold)">🔗 Your recruiting link</div>
         <div class="muted small" style="word-break:break-all;margin-bottom:8px">${esc(link)}</div>
-        <button class="btn small" id="rc-copy">📋 Copy link</button>
+        <button class="btn small" id="rc-copy" style="background:linear-gradient(135deg,#b8860b,#8b6914)">📋 Copy link</button>
         <div class="muted small" style="margin-top:8px">Send this to models — anyone who signs up through it is yours. You earn 20% of everything they make.</div>
       </div>
       <div class="stat-grid" style="margin-top:12px">
         <div class="stat"><div class="n">${data.model_count}</div><div class="l">Models recruited</div></div>
-        <div class="stat"><div class="n" style="color:var(--green)">${fmt(data.earnings_cents)}</div><div class="l">Total earned (20%)</div></div>
-        <div class="stat"><div class="n" style="color:var(--green)">${fmt(data.available_cents)}</div><div class="l">Available for payout</div></div>
+        <div class="stat"><div class="n" style="color:var(--green)">${fmt(data.earnings_cents)}</div><div class="l">Total earned</div></div>
       </div>
       <div class="card" style="margin-top:12px">
         <div style="font-weight:800;margin-bottom:8px">💃 Your models</div>
