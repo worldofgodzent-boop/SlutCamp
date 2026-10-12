@@ -4084,7 +4084,7 @@ async function vAdmin() {
     ['dash', '📊 Home'], ['chats', '👀 Chats'], ['safety', '🛡️ Safety'], ['live', '🔴 Live'],
     ['models', '💃 Models'], ['invites', '✉️ Invites'], ['payouts', '💸 Payouts'], ['fans', '🧑 Fans'],
     ['bookings', '📅 Bookings'], ['contracts', '📝 Contracts'], ['idchecks', '🪪 ID Checks'], ['partners', '🤝 Partners'],
-    ['refunds', '💳 Refunds'], ['disputes', '⚠️ Disputes'], ['tax', '🧾 Tax'], ['dmca', '⚖️ DMCA'], ['more', '⚙️ More'],
+    ['refunds', '💳 Refunds'], ['disputes', '⚠️ Disputes'], ['tax', '🧾 Tax'], ['dmca', '⚖️ DMCA'], ['analytics', '📈 Analytics'], ['more', '⚙️ More'],
   ];
   let body = '';
   if (tab === 'dash') body = await adminDashBody(stats);
@@ -4103,6 +4103,7 @@ async function vAdmin() {
   else if (tab === 'disputes') body = await adminDisputesBody();
   else if (tab === 'tax') body = await adminTaxBody();
   else if (tab === 'dmca') body = await adminDmcaBody();
+  else if (tab === 'analytics') body = await adminAnalyticsBody();
   else body = await adminMoreBody(stats);
 
   app.innerHTML = `
@@ -5263,6 +5264,16 @@ function checkAgeGate() {
 (async function boot() {
   // Age gate first — nothing else renders until confirmed 18+
   await checkAgeGate();
+  // Visitor analytics: log one visit per session (powers Corry's growth dashboard)
+  try {
+    if (!sessionStorage.getItem('sc_visit')) {
+      sessionStorage.setItem('sc_visit', '1');
+      fetch('/api/track/visit', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: window.location.pathname + window.location.hash, referrer: document.referrer })
+      }).catch(() => {});
+    }
+  } catch (e) {}
   // Secret admin route: #boss → dedicated admin login (not linked anywhere in UI)
   if (window.location.hash === '#boss') {
     await ensureGuest();
@@ -5521,6 +5532,36 @@ function vDmca() {
 }
 
 /* ---------------- DMCA: admin queue ---------------- */
+
+async function adminAnalyticsBody() {
+  const { data: a } = await api('/admin/analytics?days=30');
+  const maxDay = Math.max(1, ...a.byDay.map((d) => d.visits));
+  const bar = (d) => {
+    const h = Math.max(4, Math.round((d.visits / maxDay) * 80));
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px" title="${d.d}: ${d.visits} visits">
+      <div style="width:100%;max-width:22px;height:${h}px;background:linear-gradient(180deg,var(--purple),var(--pink));border-radius:4px 4px 0 0"></div>
+      <div class="small muted" style="font-size:9px">${d.d.slice(5)}</div></div>`;
+  };
+  const rows = (list, label) => (list || []).map((r) =>
+    `<div class="row" style="padding:8px 0;border-bottom:1px solid rgba(139,92,246,.12)">
+      <span class="grow small" style="word-break:break-all">${esc(r.ref || r.c || r.path || '')}</span>
+      <b>${r.n}</b></div>`).join('') || `<div class="muted small">No ${label} yet.</div>`;
+  return `
+    <div class="stat-grid" style="margin-bottom:14px">
+      <div class="stat"><div class="n">${a.total}</div><div class="l">Visits (30d)</div></div>
+      <div class="stat"><div class="n">${a.unique}</div><div class="l">Unique visitors</div></div>
+    </div>
+    <h3 style="margin:4px 0 10px">📊 Daily visits</h3>
+    <div class="card" style="padding:14px"><div style="display:flex;align-items:flex-end;gap:4px;min-height:110px">
+      ${a.byDay.length ? a.byDay.map(bar).join('') : '<div class="muted">No visits yet — data starts collecting now.</div>'}
+    </div></div>
+    <h3 style="margin:14px 0 6px">🔗 Where they come from</h3>
+    <div class="card" style="padding:6px 14px">${rows(a.referrers, 'referrers')}</div>
+    <h3 style="margin:14px 0 6px">🌍 Countries</h3>
+    <div class="card" style="padding:6px 14px">${rows(a.countries, 'countries')}</div>
+    <h3 style="margin:14px 0 6px">📄 Top pages</h3>
+    <div class="card" style="padding:6px 14px">${rows(a.pages, 'pages')}</div>`;
+}
 
 async function adminDmcaBody() {
   const { data } = await api('/admin/dmca');
