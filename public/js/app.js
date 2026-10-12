@@ -373,6 +373,11 @@ function handleWS(m) {
     onLiveExplicitSignal(m.is_explicit, m.explicit_rate_cents, 'manual');
   } else if (m.type === 'live:ended' && S.live && m.session_id === S.live.sessionId) {
     endLiveView('Stream ended.');
+  } else if (m.type === 'live:killed') {
+    // Safety bot ended the stream — say why (live:ended handles teardown)
+    toast(m.warning || '🛑 Stream ended by the safety bot.', 6000);
+  } else if (m.type === 'live:speech_warning') {
+    toast(m.warning || '⚠️ Watch what you say on live.', 5000);
   } else if (m.type === 'live:tick' && S.live && S.live.role === 'fan' && m.session_id === S.live.sessionId) {
     S.live.paying = true;
     S.live.entryPaid = true; // per-minute billing implies entry-paid server-side
@@ -3052,6 +3057,10 @@ let audioChunkRecorder = null;
 let audioChunkTimer = null;
 function startAudioChunkBot(sessionId) {
   stopAudioChunkBot();
+  // If the browser has its own speech recognition, that bot already covers
+  // this mic — running both would scan the same words twice and double the
+  // strikes. Chunks are the fallback for browsers without it (iPhone Safari).
+  if (window.SpeechRecognition || window.webkitSpeechRecognition) return;
   const L = S.live;
   if (!L || !L.stream) return;
   if (typeof MediaRecorder === 'undefined') return;
@@ -3060,20 +3069,19 @@ function startAudioChunkBot(sessionId) {
     const audioTracks = L.stream.getAudioTracks();
     if (!audioTracks.length) return;
     const audioStream = new MediaStream(audioTracks);
-    const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+    // iPhone Safari records mp4 — ask for it first, like voice notes do.
+    // The filename extension must match the real format: Whisper reads it.
+    const mime = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4'
+      : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+    const ext = mime === 'audio/mp4' ? 'mp4' : 'webm';
     const sendChunk = (blob) => {
       if (!blob || blob.size < 1000) return; // skip tiny/empty clips
       const fd = new FormData();
-      fd.append('audio', blob, 'chunk.webm');
+      fd.append('audio', blob, 'chunk.' + ext);
+      // Result arrives over WebSocket (live:killed / live:speech_warning);
+      // this response only confirms the chunk was queued.
       fetch(`/api/live/${sessionId}/audio-chunk`, { method: 'POST', body: fd })
-        .then((r) => r.json()).then((data) => {
-          if (data && data.action === 'killed') {
-            stopAudioChunkBot();
-            toast('🛑 Stream ended by safety bot.');
-          } else if (data && data.action === 'warned') {
-            toast(data.warning || '⚠️ Watch what you say on live.');
-          }
-        }).catch(() => {});
+        .catch(() => {});
     };
     const recordOne = () => {
       if (!S.live || S.live.sessionId !== sessionId) { stopAudioChunkBot(); return; }
@@ -3081,7 +3089,7 @@ function startAudioChunkBot(sessionId) {
         audioChunkRecorder = new MediaRecorder(audioStream, mime ? { mimeType: mime } : undefined);
         const chunks = [];
         audioChunkRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
-        audioChunkRecorder.onstop = () => sendChunk(new Blob(chunks, { type: mime || 'audio/webm' }));
+        audioChunkRecorder.onstop = () => sendChunk(new Blob(chunks, { type: mime || 'audio/mp4' }));
         audioChunkRecorder.start();
         audioChunkTimer = setTimeout(() => {
           try { audioChunkRecorder.stop(); } catch (e) {}
