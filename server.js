@@ -617,6 +617,7 @@ CREATE TABLE IF NOT EXISTS recruiters (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 )`);
 addColumnIfMissing('models', 'recruiter_id', 'INTEGER REFERENCES recruiters(id) ON DELETE SET NULL');
+addColumnIfMissing('models', 'is_featured', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('transactions', 'recruiter_id', 'INTEGER REFERENCES recruiters(id) ON DELETE SET NULL');
 addColumnIfMissing('transactions', 'recruiter_cents', 'INTEGER NOT NULL DEFAULT 0');
 
@@ -1228,7 +1229,7 @@ app.get('/api/models', (req, res) => {
     FROM users u JOIN models m ON m.user_id = u.id
     LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live'
     WHERE u.role = 'model' AND u.banned = 0
-    ORDER BY ls.id DESC, m.is_online DESC, u.display_name ASC
+    ORDER BY m.is_featured DESC, ls.id DESC, m.is_online DESC, u.display_name ASC
   `).all();
   // Check which models the current fan has liked (if logged in)
   let likedSet = new Set();
