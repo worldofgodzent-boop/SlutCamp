@@ -789,6 +789,14 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
   font-size: 11px; font-weight: 800; letter-spacing: .4px;
   padding: 5px 10px; border-radius: 999px;
 }
+.tile-top-pill {
+  position: absolute; top: 10px; left: 10px; z-index: 3;
+  background: linear-gradient(135deg, #ffd166, #f59e0b); color: #231303;
+  box-shadow: 0 2px 10px rgba(245,158,11,.45);
+  font-size: 11px; font-weight: 800; letter-spacing: .4px;
+  padding: 5px 10px; border-radius: 999px;
+}
+.tile-top-pill.below-live { top: 42px; }
 .tile-info { position: absolute; left: 12px; right: 64px; bottom: 10px; z-index: 2; pointer-events: none; }
 .tile-name {
   display: block; font-size: 17px; font-weight: 800; line-height: 1.2;
