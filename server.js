@@ -1392,7 +1392,8 @@ app.post('/api/auth/quick-signup', (req, res) => {
     return res.status(409).json({ error: 'username_taken' });
 
   // 18+ is attested (checkbox + timestamp + IP on file) — never a fake DOB.
-  // Full ID verification policy for purchases is enforced at purchase time.
+  // Fan policy (Corry, Oct 12 2026): attestation + payment card is enough —
+  // no ID upload for fans. ID verification is for models only (2257).
   const id = createUser(username.trim(), password, 'fan', username.trim().slice(0, 40), null);
   recordAgeAttestation(id, req);
   db.prepare('UPDATE users SET pay_full_name = ?, pay_method = ?, pay_card_last4 = ?, pay_cashtag = ? WHERE id = ?')
