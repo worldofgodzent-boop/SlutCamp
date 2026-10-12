@@ -801,6 +801,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 /* ---- Article-style model cards: photo fills the left edge ---- */
 .model-article {
   display: flex;
+  flex-wrap: wrap;
   padding: 0;
   overflow: hidden;
   min-height: 132px;
