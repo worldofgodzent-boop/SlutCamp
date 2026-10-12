@@ -2833,6 +2833,7 @@ async function rejoinLiveBroadcast(sessionId) {
   loadStreamChat();
   loadLeaderboard();
   toast('🔴 Back live! Welcome back 🎉');
+  startSpeechSafetyBot(sessionId);
 }
 
 async function startLiveBroadcast() {
@@ -2866,6 +2867,59 @@ async function startLiveBroadcast() {
   loadStreamChat();
   loadLeaderboard();
   toast('🔴 You are LIVE! Chat is free for fans — gifts = money 💰');
+  startSpeechSafetyBot(data.session_id);
+}
+
+/* --- Speech safety bot: transcribes the model's mic, flags personal info/socials --- */
+let speechRecog = null;
+function startSpeechSafetyBot(sessionId) {
+  stopSpeechSafetyBot();
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return; // not supported on this browser (e.g. iPhone Safari)
+  try {
+    speechRecog = new SR();
+  } catch (e) { return; }
+  speechRecog.continuous = true;
+  speechRecog.interimResults = false;
+  speechRecog.lang = 'en-US';
+  let lastSent = '';
+  speechRecog.onresult = (e) => {
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (!e.results[i].isFinal) continue;
+      const text = e.results[i][0].transcript.trim();
+      if (!text || text === lastSent) continue;
+      lastSent = text;
+      // Send transcript to server for safety scan
+      api(`/live/${sessionId}/speech`, {
+        method: 'POST', body: JSON.stringify({ text })
+      }).then(({ data }) => {
+        if (data && data.action === 'killed') {
+          stopSpeechSafetyBot();
+          toast('🛑 Stream ended by safety bot.');
+        } else if (data && data.action === 'warned') {
+          toast(data.warning || '⚠️ Watch what you say on live.');
+        }
+      }).catch(() => {});
+    }
+  };
+  speechRecog.onerror = () => {
+    // Restart on recoverable errors so the bot keeps listening
+    try { speechRecog.stop(); } catch (e) {}
+  };
+  speechRecog.onend = () => {
+    // Auto-restart while still live (unless we stopped it on purpose)
+    if (speechRecog && S.live && S.live.sessionId === sessionId) {
+      try { speechRecog.start(); } catch (e) {}
+    }
+  };
+  try { speechRecog.start(); } catch (e) {}
+}
+function stopSpeechSafetyBot() {
+  if (speechRecog) {
+    const r = speechRecog;
+    speechRecog = null;
+    try { r.onend = null; r.stop(); } catch (e) {}
+  }
 }
 
 function liveModelAddViewer(fanId) {
@@ -4540,6 +4594,7 @@ function endLiveView(msg) {
     clearInterval(L.stagePoll);
     L.stagePoll = null;
     try { speechSynthesis.cancel(); } catch (e) {}
+    stopSpeechSafetyBot();
     if (L.stagePC) { try { L.stagePC.close(); } catch (e) {} }
     if (L.stageStream) { L.stageStream.getTracks().forEach((t) => { try { t.stop(); } catch (e) {} }); }
     if (L.role === 'fan') {
