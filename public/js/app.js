@@ -6231,8 +6231,11 @@ window.addEventListener('hashchange', () => {
 function vWelcomeSplash(onDone) {
   tabbar.classList.add('hidden'); tabbar.innerHTML = '';
   app.innerHTML = `
-    <div style="position:fixed;inset:0;background:radial-gradient(ellipse at center,#2a1040 0%,#0a0510 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;animation:fadeIn .5s ease">
+    <div style="position:fixed;inset:0;overflow:hidden;background:radial-gradient(ellipse at center,#2a1040 0%,#0a0510 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;animation:fadeIn .5s ease">
+      <img src="/img/lips-logo.png" alt="" aria-hidden="true" style="position:absolute;top:46%;left:50%;transform:translate(-50%,-50%);width:min(135vw,680px);max-width:none;opacity:.10;filter:blur(3px);pointer-events:none">
+      <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center">
       <div style="animation:logoPop 1s cubic-bezier(.34,1.56,.64,1) both">
+        <img src="/img/lips-logo.png" alt="SlutCamp" style="display:block;margin:0 auto 14px;width:108px;height:108px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,92,158,.65);box-shadow:0 0 28px rgba(255,45,120,.55),0 0 64px rgba(184,41,221,.35)">
         <div style="font-size:64px;font-weight:900;letter-spacing:2px">
           <span style="color:#fff">SLUT</span><span style="background:linear-gradient(135deg,#ff2d78,#b829dd);-webkit-background-clip:text;background-clip:text;color:transparent">CAMP</span>
         </div>
@@ -6246,6 +6249,7 @@ function vWelcomeSplash(onDone) {
       <button id="splash-enter" class="btn" style="margin-top:32px;animation:fadeIn 1s ease 1s both;background:linear-gradient(135deg,#ff2d78,#b829dd);font-size:18px;padding:14px 48px;border-radius:30px">
         Enter 🔥
       </button>
+      </div>
       <style>
         @keyframes logoPop { 0% { transform:scale(.3);opacity:0 } 60% { transform:scale(1.1) } 100% { transform:scale(1);opacity:1 } }
         @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
