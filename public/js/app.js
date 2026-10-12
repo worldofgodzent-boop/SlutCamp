@@ -1156,6 +1156,23 @@ async function vChatList(role) {
 }
 
 async function vWallet() {
+  // Guests can browse but must create an account to add money
+  if (!S.token || !S.user || S.user.role !== 'fan') {
+    app.innerHTML = `
+      <div class="header"><h1>Wallet 💰</h1></div>
+      <div class="screen">
+        <div class="card" style="text-align:center;padding:32px 20px">
+          <div style="font-size:48px;margin-bottom:12px">💰</div>
+          <div style="font-weight:800;font-size:18px;margin-bottom:8px">Create your free account to add funds</div>
+          <div class="muted" style="margin-bottom:20px">You're browsing as a guest. Sign up free to buy credits and unlock chats, live streams, gifts, and more.</div>
+          <button class="btn" id="w-signup" style="width:100%;margin-bottom:10px">✨ Create free account</button>
+          <button class="btn ghost" id="w-login" style="width:100%">Already have an account? Log in</button>
+        </div>
+      </div>`;
+    $('#w-signup').onclick = () => show('auth', { mode: 'signup', role: 'fan' });
+    $('#w-login').onclick = () => show('auth', { mode: 'login', role: 'fan' });
+    return;
+  }
   await refreshMe();
   const { data } = await api('/credits/packages');
   const pkgs = data.packages || [];
