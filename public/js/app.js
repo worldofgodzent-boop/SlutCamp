@@ -3749,20 +3749,33 @@ async function watchLive(sessionId) {
     const v = $('#live-remote');
     if (v) {
       v.srcObject = e.streams[0];
+      // iOS: ensure audio track is enabled (not just unmuted)
+      e.streams[0].getAudioTracks().forEach((t) => { t.enabled = true; });
       v.play().catch(() => {
         // If autoplay fails, show tap-to-play
         const btn = $('#live-unmute');
         if (btn) {
           btn.classList.remove('hidden');
           btn.textContent = '▶️ Tap to watch';
-          btn.onclick = () => { v.play().then(() => btn.classList.add('hidden')).catch(() => {}); };
+          btn.onclick = () => {
+            v.muted = false;
+            v.removeAttribute('muted');
+            e.streams[0].getAudioTracks().forEach((t) => { t.enabled = true; });
+            v.play().then(() => btn.classList.add('hidden')).catch(() => {});
+          };
         }
       });
       // Show unmute button since we start muted for autoplay
       const ub = $('#live-unmute');
       if (ub) {
         ub.classList.remove('hidden');
-        ub.onclick = () => { v.muted = false; v.play().catch(() => {}); ub.classList.add('hidden'); };
+        ub.onclick = () => {
+          v.muted = false;
+          v.removeAttribute('muted');
+          e.streams[0].getAudioTracks().forEach((t) => { t.enabled = true; });
+          v.play().catch(() => {});
+          ub.classList.add('hidden');
+        };
       }
     }
     startLiveMonitor();
@@ -3816,17 +3829,30 @@ async function watchLiveAsMod(sessionId) {
     const v = $('#mod-remote');
     if (v) {
       v.srcObject = e.streams[0];
+      e.streams[0].getAudioTracks().forEach((t) => { t.enabled = true; });
       v.play().catch(() => {
         const btn = $('#mod-unmute');
         if (btn) {
           btn.classList.remove('hidden');
-          btn.onclick = () => { v.muted = false; v.play().catch(() => {}); btn.classList.add('hidden'); };
+          btn.onclick = () => {
+            v.muted = false;
+            v.removeAttribute('muted');
+            e.streams[0].getAudioTracks().forEach((t) => { t.enabled = true; });
+            v.play().catch(() => {});
+            btn.classList.add('hidden');
+          };
         }
       });
       const ub = $('#mod-unmute');
       if (ub) {
         ub.classList.remove('hidden');
-        ub.onclick = () => { v.muted = false; v.play().catch(() => {}); ub.classList.add('hidden'); };
+        ub.onclick = () => {
+          v.muted = false;
+          v.removeAttribute('muted');
+          e.streams[0].getAudioTracks().forEach((t) => { t.enabled = true; });
+          v.play().catch(() => {});
+          ub.classList.add('hidden');
+        };
       }
     }
   };
