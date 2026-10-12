@@ -6132,6 +6132,14 @@ function checkAgeGate() {
       }).catch(() => {});
     }
   } catch (e) {}
+  // Welcome splash on EVERY arrival — every link, every entry point, every
+  // fresh page load (Corry: nobody bypasses the welcome page). No session
+  // gate. After Enter (or the ~6s auto-enter) we route to wherever the
+  // link actually pointed: promo profile, join flow, admin, or home.
+  vWelcomeSplash(() => { routeInitial(); });
+})();
+
+async function routeInitial() {
   // Secret admin route: #boss → dedicated admin login (not linked anywhere in UI)
   if (window.location.hash === '#boss') {
     await ensureGuest();
@@ -6168,11 +6176,6 @@ function checkAgeGate() {
     wsConnect();
     const promoUsername = promoMatch[1].toLowerCase();
     try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
-    // Welcome splash: logo pops up + sexy voice greeting, then land in app
-    if (!sessionStorage.getItem('sc_welcomed')) {
-      sessionStorage.setItem('sc_welcomed', '1');
-      return vWelcomeSplash(promoUsername);
-    }
     // Resolve username to model and open their chat (or live stream)
     try {
       const { data } = await api('/models');
@@ -6214,15 +6217,18 @@ function checkAgeGate() {
   await ensureGuest();
   wsConnect();
   show('landing', {});
-})();
+}
 
 // Secret admin route on hash change (after initial load)
 window.addEventListener('hashchange', () => {
   if (window.location.hash === '#boss') show('adminLogin', {});
 });
 
-/* Welcome splash for promo link visitors: logo pops + voice greeting */
-function vWelcomeSplash(promoUsername) {
+/* Welcome splash — shown on EVERY fresh page load, for every entry point.
+   After Enter (or ~6s auto-enter) it hands off to routeInitial(), which
+   lands the visitor wherever their link pointed. Audio is best-effort:
+   a blocked/failed voice greeting never delays or blocks entering. */
+function vWelcomeSplash(onDone) {
   tabbar.classList.add('hidden'); tabbar.innerHTML = '';
   app.innerHTML = `
     <div style="position:fixed;inset:0;background:radial-gradient(ellipse at center,#2a1040 0%,#0a0510 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;animation:fadeIn .5s ease">
@@ -6245,22 +6251,29 @@ function vWelcomeSplash(promoUsername) {
         @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
       </style>
     </div>`;
-  // Play the sexy voice greeting
-  try {
-    const audio = new Audio('/audio/welcome.mp3');
-    audio.volume = 0.9;
-    audio.play().catch(() => {});
-  } catch (e) {}
-  $('#splash-enter').onclick = () => {
-    // Continue to the model's page
-    window.location.hash = `#m/${promoUsername}`;
-    sessionStorage.setItem('sc_welcomed', '2'); // don't loop
-    location.reload();
+  // Play the sexy voice greeting (best-effort — browsers may block autoplay
+  // until the visitor taps; the tap retries it, failure never blocks entry)
+  let audio = null;
+  const playGreeting = () => {
+    try {
+      if (!audio) { audio = new Audio('/audio/welcome.mp3'); audio.volume = 0.9; }
+      const p = audio.play();
+      if (p && p.catch) p.catch(() => {});
+    } catch (e) {}
   };
-  // Auto-enter after 6 seconds
-  setTimeout(() => {
-    if (document.getElementById('splash-enter')) $('#splash-enter').click();
-  }, 6000);
+  playGreeting();
+  // Hand off to the real destination exactly once, whichever comes first:
+  // the Enter tap or the ~6s auto-enter timer below.
+  let handedOff = false;
+  const enter = () => {
+    if (handedOff) return;
+    handedOff = true;
+    playGreeting();
+    if (typeof onDone === 'function') onDone();
+  };
+  $('#splash-enter').onclick = enter;
+  // Auto-enter after 6 seconds — unconditional, audio state can't stop it
+  setTimeout(() => { if (document.getElementById('splash-enter')) enter(); }, 6000);
 }
 
 /* ---------------- TERMS OF SERVICE ---------------- */
