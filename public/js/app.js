@@ -687,13 +687,13 @@ function renderAuthBody(mode, role) {
         <div class="d">Chat & video call the models</div></div>
       <div class="role-card ${role === 'model' ? 'selected' : ''}" id="r-model">
         <div class="emoji">💃</div><div class="t">I'm a Model</div>
-        <div class="d">Get paid to chat (Asce verifies you)</div></div>
+        <div class="d">Get paid to chat (SlutCamp verifies you)</div></div>
       <label class="field">Display name<input class="input" id="a-name" maxlength="40"></label>
       <label class="field">Username<input class="input" id="a-user" autocomplete="username"></label>
       <label class="field">Password (6+ characters)${pwField('a-pass', 'new-password')}</label>
       <label class="field">Date of birth<input class="input" id="a-dob" type="date"></label>
       <div class="age-box">🔞 <b>18+ only.</b> You must be 18 or older to use SlutCamp.
-        ${role === 'model' ? 'Models must also complete ID verification with Asce (2257).' : 'Full ID verification is required before purchasing credits.'}</div>
+        ${role === 'model' ? 'Models must also complete ID verification with SlutCamp (2257).' : 'Full ID verification is required before purchasing credits.'}</div>
       <label class="checkbox-row"><input type="checkbox" id="a-18">
         <span>I confirm I am <b>18 years or older</b>.</span></label>
       <button class="btn" id="a-go">Create account</button>`;
@@ -848,7 +848,7 @@ async function vInviteSignup(code) {
       <div class="screen"><div class="card" style="text-align:center">
         <div style="font-size:40px">⛔</div>
         <div style="font-weight:800;margin:8px 0">This invite link is invalid,<br>already used, or revoked.</div>
-        <div class="muted small">Ask Asce for a fresh invite link.</div>
+        <div class="muted small">Ask SlutCamp for a fresh invite link.</div>
         <button class="btn ghost" style="margin-top:12px" onclick="show('landing',{})">← Back to browsing</button>
       </div></div>`;
     return;
@@ -860,13 +860,13 @@ async function vInviteSignup(code) {
     <div class="screen">
       <div class="card" style="background:linear-gradient(135deg,#3b1d6e,#1a0f2e);text-align:center">
         <div style="font-size:18px;font-weight:800">💰 Get paid to chat with fans</div>
-        <div class="muted small" style="margin-top:4px">$1.49 per text · $3.99/min video · tips & PPV unlocks<br>Weekly payouts from Asce</div>
+        <div class="muted small" style="margin-top:4px">$1.49 per text · $3.99/min video · tips & PPV unlocks<br>Weekly payouts from SlutCamp</div>
       </div>
       <label class="field">Display name (your stage name)<input class="input" id="i-name" maxlength="40"></label>
       <label class="field">Username<input class="input" id="i-user" autocomplete="username"></label>
       <label class="field">Password (6+ characters)${pwField('i-pass', 'new-password')}</label>
       <label class="field">Date of birth<input class="input" id="i-dob" type="date"></label>
-      <div class="age-box">🔞 <b>18+ only.</b> Asce will verify your ID in person (2257 compliance) before you go live.</div>
+      <div class="age-box">🔞 <b>18+ only.</b> SlutCamp will verify your ID in person (2257 compliance) before you go live.</div>
       <label class="checkbox-row"><input type="checkbox" id="i-18">
         <span>I confirm I am <b>18 years or older</b>.</span></label>
       <button class="btn" id="i-go">Create model account</button>
@@ -922,13 +922,13 @@ async function vRecruiterSignup(code) {
     <div class="screen">
       <div class="card" style="background:linear-gradient(135deg,#3b1d6e,#1a0f2e);text-align:center">
         <div style="font-size:18px;font-weight:800">💰 Get paid to chat with fans</div>
-        <div class="muted small" style="margin-top:4px">You keep 60% of everything · $1.49 per text · $3.99/min video<br>Weekly payouts from Asce</div>
+        <div class="muted small" style="margin-top:4px">You keep 60% of everything · $1.49 per text · $3.99/min video<br>Weekly payouts from SlutCamp</div>
       </div>
       <label class="field">Display name (your stage name)<input class="input" id="i-name" maxlength="40"></label>
       <label class="field">Username<input class="input" id="i-user" autocomplete="username"></label>
       <label class="field">Password (6+ characters)${pwField('i-pass', 'new-password')}</label>
       <label class="field">Date of birth<input class="input" id="i-dob" type="date"></label>
-      <div class="age-box">🔞 <b>18+ only.</b> Asce will verify your ID in person (2257 compliance) before you go live.</div>
+      <div class="age-box">🔞 <b>18+ only.</b> SlutCamp will verify your ID in person (2257 compliance) before you go live.</div>
       <label class="checkbox-row"><input type="checkbox" id="i-18">
         <span>I confirm I am <b>18 years or older</b>.</span></label>
       <button class="btn" id="i-go">Create model account</button>
@@ -1247,7 +1247,7 @@ async function vModelEarnings() {
           <label class="field">Routing number (9 digits)<input class="input" id="ba-routing" inputmode="numeric" maxlength="9" value="${acct ? esc(acct.routing_number) : ''}"></label>
           <label class="field">Account number${pwField('ba-account', 'off')}</label>
           <button class="btn" id="ba-save" style="margin-top:8px">Save bank account</button>
-          <div class="muted small" style="margin-top:6px">🔒 Only Asce sees your full account number, to send your money.</div>
+          <div class="muted small" style="margin-top:6px">🔒 Only SlutCamp sees your full account number, to send your money.</div>
         </div>
         ${acct ? `<button class="btn ghost small" id="ba-toggle" style="margin-top:8px">✏️ Update bank account</button>` : ''}
       </div>
@@ -1269,7 +1269,7 @@ async function vModelEarnings() {
             <b style="color:var(--green)">${fmt(r.earned_cents)}</b>
           </div>`).join('') || '<div class="muted">No earnings yet — go online and chat! 💬</div>'}
       </div>
-      <div class="muted small" style="text-align:center">Payouts are sent by Asce. Available balance updates after each message.</div>
+      <div class="muted small" style="text-align:center">Payouts are sent by SlutCamp. Available balance updates after each message.</div>
     </div>`;
 
   const baSave = $('#ba-save');
@@ -1290,7 +1290,7 @@ async function vModelEarnings() {
     wdGo.disabled = true;
     const { status, data: wd } = await api('/model/withdrawals', {
       method: 'POST', body: JSON.stringify({ amount_cents }) });
-    if (status === 200) { toast('⏳ Withdrawal requested — Asce will send it soon'); show('modelEarnings', {}); }
+    if (status === 200) { toast('⏳ Withdrawal requested — SlutCamp will send it soon'); show('modelEarnings', {}); }
     else {
       toast(status === 400 && wd.error === 'insufficient_funds'
         ? `Not enough available (${fmt(wd.available_cents || 0)})`
@@ -1359,7 +1359,7 @@ async function vRecruiter() {
           <label class="field">Routing number (9 digits)<input class="input" id="ba-routing" inputmode="numeric" maxlength="9" value="${acct ? esc(acct.routing_number) : ''}"></label>
           <label class="field">Account number${pwField('ba-account', 'off')}</label>
           <button class="btn" id="ba-save" style="margin-top:8px">Save bank account</button>
-          <div class="muted small" style="margin-top:6px">🔒 Only Asce sees your full account number, to send your money.</div>
+          <div class="muted small" style="margin-top:6px">🔒 Only SlutCamp sees your full account number, to send your money.</div>
         </div>
         ${acct ? `<button class="btn ghost small" id="ba-toggle" style="margin-top:8px">✏️ Update bank account</button>` : ''}
       </div>
@@ -1400,7 +1400,7 @@ async function vRecruiter() {
     wdGo.disabled = true;
     const { status, data: wd } = await api('/model/withdrawals', {
       method: 'POST', body: JSON.stringify({ amount_cents }) });
-    if (status === 200) { toast('⏳ Withdrawal requested — Asce will send it soon'); show('recruiter', {}); }
+    if (status === 200) { toast('⏳ Withdrawal requested — SlutCamp will send it soon'); show('recruiter', {}); }
     else {
       toast(status === 400 && wd.error === 'insufficient_funds'
         ? `Not enough available (${fmt(wd.available_cents || 0)})`
@@ -1645,11 +1645,11 @@ async function vModelSettings() {
   const idvBanner = idvStatus === 'approved'
     ? `<div class="card" style="border-color:var(--green)"><div style="font-weight:800;color:var(--green)">✅ ID Verified</div><div class="small muted">Your identity is verified. You're cleared to chat and go live.</div></div>`
     : idvStatus === 'pending'
-    ? `<div class="card" style="border-color:var(--yellow)"><div style="font-weight:800;color:var(--yellow)">⏳ ID Under Review</div><div class="small muted">Submitted ${esc(idv.submitted_at || '')}. Asce will review it soon — you can't chat or go live until it's approved.</div></div>`
+    ? `<div class="card" style="border-color:var(--yellow)"><div style="font-weight:800;color:var(--yellow)">⏳ ID Under Review</div><div class="small muted">Submitted ${esc(idv.submitted_at || '')}. SlutCamp will review it soon — you can't chat or go live until it's approved.</div></div>`
     : `<div class="card" style="border-color:var(--red)">
         <div style="font-weight:800;margin-bottom:6px">🪪 ID Verification ${idvStatus === 'rejected' ? '<span style="color:var(--red)">— Action Needed</span>' : '<span style="color:var(--red)">— Required</span>'}</div>
         ${idvStatus === 'rejected' ? `<div class="small" style="color:var(--red);margin-bottom:8px">Rejected${idv.reviewer_note ? `: ${esc(idv.reviewer_note)}` : ''} — please resubmit.</div>` : ''}
-        <div class="muted small" style="margin-bottom:10px">Federal law (18 U.S.C. §2257) requires us to verify your identity and age before you can chat with fans or go live. Upload a clear photo of:<br>1️⃣ Government ID — <b>front</b><br>2️⃣ Government ID — <b>back</b><br>3️⃣ A <b>selfie of you holding the ID</b> next to your face<br>Your documents are kept private and only reviewed by Asce.</div>
+        <div class="muted small" style="margin-bottom:10px">Federal law (18 U.S.C. §2257) requires us to verify your identity and age before you can chat with fans or go live. Upload a clear photo of:<br>1️⃣ Government ID — <b>front</b><br>2️⃣ Government ID — <b>back</b><br>3️⃣ A <b>selfie of you holding the ID</b> next to your face<br>Your documents are kept private and only reviewed by SlutCamp.</div>
         <label class="field">ID front<input class="input" type="file" id="idv-front" accept="image/*"></label>
         <label class="field">ID back<input class="input" type="file" id="idv-back" accept="image/*"></label>
         <label class="field">Selfie holding ID<input class="input" type="file" id="idv-selfie" accept="image/*"></label>
@@ -1661,7 +1661,7 @@ async function vModelSettings() {
       ${idvBanner}
       <div class="card">
         <div style="font-weight:800;margin-bottom:6px">💵 My Rates</div>
-        <div class="muted small" style="margin-bottom:10px">What fans pay for 1-on-1 with you. You set these — Asce can also adjust them.</div>
+        <div class="muted small" style="margin-bottom:10px">What fans pay for 1-on-1 with you. You set these — SlutCamp can also adjust them.</div>
         <label class="field">💬 Per text: <b id="s-msg-label">${fmt(m.per_message_cents || 149)}</b>
           <input type="range" id="s-msg" min="50" max="1000" step="25" value="${m.per_message_cents || 149}" style="width:100%"></label>
         <label class="field">📹 Per minute video: <b id="s-min-label">${fmt(m.per_minute_cents || 399)}</b>
@@ -1914,7 +1914,7 @@ async function vModelSettings() {
     } catch (e) { /* network */ }
     idvBtn.disabled = false;
     if (status === 200 && data.ok) {
-      toast('✅ Submitted! Asce will review your ID soon.');
+      toast('✅ Submitted! SlutCamp will review your ID soon.');
       show('modelSettings', {});
     } else toast(data.message || 'Upload failed — try again.');
   };
@@ -1998,7 +1998,7 @@ function renderTaxForm(box, p) {
       <input type="checkbox" id="tax-econsent" style="margin-top:4px" ${p && p.electronic_1099_consent ? 'checked' : ''}>
       <span class="small">📧 I agree to receive my 1099 tax form <b>digitally</b> (in the app) instead of by mail. I can download it anytime.</span>
     </label>
-    <div class="muted small" style="margin-top:6px">🔒 Encrypted on our server. Only Asce can use this for your 1099 — it's never shown to fans.</div>`;
+    <div class="muted small" style="margin-top:6px">🔒 Encrypted on our server. Only SlutCamp can use this for your 1099 — it's never shown to fans.</div>`;
   $('#tax-save').onclick = async () => {
     const body = {
       legal_name: $('#tax-legal').value, business_name: $('#tax-biz').value,
@@ -5528,7 +5528,7 @@ function vTerms() {
     <div class="screen">
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">1. 18+ Only</div>
-        <div class="small muted">SlutCamp is strictly for adults 18 and older. By using this app you confirm you are at least 18. Models must complete ID verification with Asce before going live (18 U.S.C. §2257 compliance).</div>
+        <div class="small muted">SlutCamp is strictly for adults 18 and older. By using this app you confirm you are at least 18. Models must complete ID verification with SlutCamp before going live (18 U.S.C. §2257 compliance).</div>
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">2. How Fans Pay</div>
@@ -5540,7 +5540,7 @@ function vTerms() {
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">4. Revenue Split & Payouts</div>
-        <div class="small muted">Models keep <b>60%</b> of everything fans spend on them; the platform keeps 40%. Payouts are sent by Asce (currently processed manually). Models add their bank details in the app and request withdrawals anytime; pending requests are paid out on Asce's schedule.</div>
+        <div class="small muted">Models keep <b>60%</b> of everything fans spend on them; the platform keeps 40%. Payouts are sent by SlutCamp (currently processed manually). Models add their bank details in the app and request withdrawals anytime; pending requests are paid out on SlutCamp's schedule.</div>
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">5. Live Streams & Explicit Content</div>
@@ -5552,7 +5552,7 @@ function vTerms() {
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">7. Model Access</div>
-        <div class="small muted">Model accounts are invite-only. Asce may deactivate or remove any model account at any time, for any reason. Deactivated models keep earned balances available for withdrawal.</div>
+        <div class="small muted">Model accounts are invite-only. SlutCamp may deactivate or remove any model account at any time, for any reason. Deactivated models keep earned balances available for withdrawal.</div>
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">8. Safety & Conduct</div>
