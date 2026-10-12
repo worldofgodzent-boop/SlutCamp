@@ -4249,22 +4249,24 @@ async function adminModelsBody() {
   const models = data.models || [];
   return `
     ${models.map((m) => `
-      <div class="card" style="padding:12px">
-        <div class="row">
-          ${avatarHTML(m.display_name, 'sm', m.photo_url)}
-          <span class="grow"><b>${esc(m.display_name)}</b> <span class="small muted">@${esc(m.username)}</span><br>
+      <div class="card model-article">
+        ${m.photo_url
+          ? `<div class="model-article-photo"><img src="${esc(m.photo_url)}" alt=""></div>`
+          : `<div class="model-article-photo model-article-initial">${esc(m.display_name[0] || '?')}</div>`}
+        <div class="model-article-body">
+          <div><b>${esc(m.display_name)}</b> <span class="small muted">@${esc(m.username)}</span><br>
             <span class="small" style="color:${m.is_online ? 'var(--green)' : 'var(--muted)'}">● ${m.is_online ? 'Online' : 'Offline'}</span>
             <span class="small muted"> · ${fmt(m.per_message_cents)}/msg · ${fmt(m.per_minute_cents)}/min</span><br>
             <span class="small" style="color:var(--green)">Owed: ${fmt(m.pending_cents)}</span>
-            ${m.recruiter_name ? `<br><span class="small" style="color:var(--gold)">🤝 via ${esc(m.recruiter_name)}</span>` : ''}</span>
+            ${m.recruiter_name ? `<br><span class="small" style="color:var(--gold)">🤝 via ${esc(m.recruiter_name)}</span>` : ''}</div>
+          <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
+            <button class="btn small ghost" data-m-edit="${m.id}">✏️ Rates</button>
+            <button class="btn small ghost" data-m-photo="${m.id}">📷 Photo</button>
+            <button class="btn small ghost" data-m-toggle="${m.id}">${m.banned ? "✅ Reactivate" : "⏸️ Deactivate"}</button>
+            <button class="btn small danger" data-m-del="${m.id}">Remove</button>
+          </div>
         </div>
-        <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
-          <button class="btn small ghost" data-m-edit="${m.id}">✏️ Rates</button>
-          <button class="btn small ghost" data-m-photo="${m.id}">📷 Photo</button>
-          <button class="btn small ghost" data-m-toggle="${m.id}">${m.banned ? "✅ Reactivate" : "⏸️ Deactivate"}</button>
-          <button class="btn small danger" data-m-del="${m.id}">Remove</button>
-        </div>
-        <div id="edit-${m.id}"></div>
+        <div id="edit-${m.id}" style="flex-basis:100%"></div>
       </div>`).join('')}
     <div class="card"><div style="font-weight:800;margin-bottom:6px">➕ Add model</div>
       <label class="field">Display name<input class="input" id="nm-name"></label>
