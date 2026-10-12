@@ -3003,6 +3003,79 @@ app.get('/api/calls/:id', identMiddleware, requireUser, (req, res) => {
 
 const adminOnly = [identMiddleware, requireUser, requireRole('admin')];
 
+// --- Visitor analytics (Corry Oct 11, 2026): track visits + sources for growth ---
+db.exec(`
+CREATE TABLE IF NOT EXISTS visits (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ip_hash TEXT,
+  country TEXT,
+  city TEXT,
+  referrer TEXT,
+  path TEXT,
+  user_agent TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_visits_created ON visits(created_at);`);
+
+// In-memory geo cache (ip -> {country, city}) to avoid repeat lookups
+const geoCache = new Map();
+async function geoFor(ip) {
+  if (!ip || ip === 'unknown' || ip.startsWith('127.') || ip === '::1') return {};
+  if (geoCache.has(ip)) return geoCache.get(ip);
+  const out = {};
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 2500);
+    const r = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,city`, { signal: ctl.signal });
+    clearTimeout(t);
+    const j = await r.json().catch(() => ({}));
+    if (j.status === 'success') { out.country = j.country || null; out.city = j.city || null; }
+  } catch { /* geo is best-effort */ }
+  geoCache.set(ip, out);
+  if (geoCache.size > 5000) geoCache.clear();
+  return out;
+}
+function hashIP(ip) {
+  return crypto.createHash('sha256').update(String(ip) + '|visit-salt').digest('hex').slice(0, 32);
+}
+
+// Public: log a page visit (called once per session from the frontend)
+app.post('/api/track/visit', async (req, res) => {
+  try {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const { path, referrer } = req.body || {};
+    const geo = await geoFor(ip);
+    db.prepare(`INSERT INTO visits (ip_hash, country, city, referrer, path, user_agent)
+      VALUES (?,?,?,?,?,?)`).run(
+      hashIP(ip), geo.country || null, geo.city || null,
+      String(referrer || '').slice(0, 500) || null,
+      String(path || '/').slice(0, 200),
+      String(req.headers['user-agent'] || '').slice(0, 300));
+  } catch { /* never break the page for analytics */ }
+  res.json({ ok: true });
+});
+
+// Admin: analytics summary
+app.get('/api/admin/analytics', ...adminOnly, (req, res) => {
+  const days = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 365);
+  const since = `datetime('now', '-${days} days')`;
+  const total = db.prepare(`SELECT COUNT(*) AS n FROM visits WHERE created_at >= ${since}`).get().n;
+  const unique = db.prepare(`SELECT COUNT(DISTINCT ip_hash) AS n FROM visits WHERE created_at >= ${since}`).get().n;
+  const byDay = db.prepare(`
+    SELECT date(created_at) AS d, COUNT(*) AS visits, COUNT(DISTINCT ip_hash) AS unique_visitors
+    FROM visits WHERE created_at >= ${since} GROUP BY d ORDER BY d`).all();
+  const referrers = db.prepare(`
+    SELECT COALESCE(NULLIF(referrer,''), '(direct)') AS ref, COUNT(*) AS n
+    FROM visits WHERE created_at >= ${since} GROUP BY ref ORDER BY n DESC LIMIT 20`).all();
+  const countries = db.prepare(`
+    SELECT COALESCE(country, '(unknown)') AS c, COUNT(*) AS n
+    FROM visits WHERE created_at >= ${since} GROUP BY c ORDER BY n DESC LIMIT 20`).all();
+  const pages = db.prepare(`
+    SELECT path, COUNT(*) AS n FROM visits WHERE created_at >= ${since}
+    GROUP BY path ORDER BY n DESC LIMIT 20`).all();
+  res.json({ days, total, unique, byDay, referrers, countries, pages });
+});
+
 // 2FA status
 app.get('/api/admin/2fa', ...adminOnly, (req, res) => {
   const { phone, on } = getAdmin2FAState();
