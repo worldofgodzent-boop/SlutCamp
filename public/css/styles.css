@@ -112,7 +112,7 @@ html, body {
 .big-number { font-size: 30px; font-weight: 800; }
 
 .avatar {
-  width: 52px; height: 52px; border-radius: 14px;
+  width: 52px; height: 52px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 22px; font-weight: 800; color: #fff; flex-shrink: 0;
   background: linear-gradient(135deg, var(--purple), var(--pink));
@@ -245,6 +245,16 @@ label.field { display: block; margin-top: 14px; font-size: 14px; font-weight: 60
 }
 
 /* Fan watermark: username burned across live video (screenshot deterrent) */
+.fan-watermark {
+  position: absolute; inset: 0; pointer-events: none; z-index: 5;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.fan-watermark span {
+  color: rgba(255,255,255,.14); font-weight: 800; font-size: 28px;
+  transform: rotate(-24deg); white-space: nowrap; letter-spacing: 2px;
+  text-shadow: 0 0 8px rgba(0,0,0,.3);
+}
 
 /* Blur app when backgrounded (screen-record deterrent) */
 body.bg-blur #app { filter: blur(24px); }
@@ -650,7 +660,7 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 /* Model preview video loops + likes on home screen */
 .model-media-wrap { position: relative; flex-shrink: 0; width: 64px; height: 64px; }
 .model-preview-video {
-  width: 64px; height: 64px; border-radius: 14px; object-fit: cover;
+  width: 64px; height: 64px; border-radius: 50%; object-fit: cover;
   border: 2px solid rgba(139,92,246,.4);
 }
 .model-likes { display: inline-flex; align-items: center; gap: 3px; }
@@ -786,149 +796,4 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   body.admin-wide .card {
     max-width: 100%;
   }
-}
-
-/* ---- Article-style model cards: photo fills the left edge ---- */
-.model-article {
-  display: flex;
-  flex-wrap: wrap;
-  padding: 0;
-  overflow: hidden;
-  min-height: 132px;
-}
-.model-article-photo {
-  width: 120px;
-  min-width: 120px;
-  align-self: stretch;
-  background: linear-gradient(135deg, var(--purple), var(--pink));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 44px;
-  font-weight: 800;
-  color: #fff;
-}
-.model-article-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.model-article-body {
-  flex: 1;
-  padding: 12px 14px;
-  min-width: 0;
-}
-
-/* ---- Photo cropper modal ---- */
-#crop-overlay {
-  position: fixed; inset: 0; z-index: 1000;
-  background: rgba(5, 2, 12, .92);
-  display: flex; align-items: center; justify-content: center;
-  padding: 20px;
-}
-.crop-box { width: 100%; max-width: 420px; text-align: center; }
-.crop-title { font-size: 20px; font-weight: 800; margin-bottom: 14px; }
-.crop-viewport {
-  position: relative; width: 100%; aspect-ratio: 1;
-  overflow: hidden; border-radius: 16px;
-  background: #1a0f2e; border: 2px solid rgba(139,92,246,.5);
-  touch-action: none; cursor: grab;
-}
-.crop-viewport:active { cursor: grabbing; }
-.crop-viewport img {
-  position: absolute; top: 50%; left: 50%;
-  transform-origin: center;
-  margin: 0; max-width: none;
-  user-select: none; -webkit-user-drag: none;
-  /* center via translate(-50%,-50%) combined in JS transform */
-}
-.crop-grid {
-  position: absolute; inset: 0; pointer-events: none;
-  background:
-    linear-gradient(rgba(255,255,255,.15) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,.15) 1px, transparent 1px);
-  background-size: 33.33% 33.33%;
-}
-.crop-hint { color: var(--muted); font-size: 13px; margin: 10px 0 14px; }
-.crop-actions { display: flex; gap: 10px; }
-.crop-actions .btn { flex: 1; }
-
-/* ---- Moderator watch view ---- */
-.mod-watch-note {
-  text-align: center; color: var(--muted); font-size: 12px;
-  padding: 6px; background: rgba(139,92,246,.12);
-  border-bottom: 1px solid rgba(139,92,246,.2);
-}
-.stream-chat.mod { opacity: .95; }
-
-/* ---- PPV price picker ---- */
-#ppv-price-overlay {
-  position: fixed; inset: 0; z-index: 1000;
-  background: rgba(5, 2, 12, .92);
-  display: flex; align-items: center; justify-content: center;
-  padding: 20px;
-}
-#ppv-price-overlay .ppv-price.active {
-  border-color: var(--pink);
-  background: rgba(236, 72, 153, .2);
-}
-
-/* ---- Full-screen model broadcast ---- */
-.live-wrap.broadcast .live-split.full {
-  position: absolute; inset: 0;
-  display: flex; flex-direction: column; gap: 0; margin: 0;
-}
-.live-wrap.broadcast .live-split.full .split-pane {
-  position: relative; flex: 1; min-height: 0;
-  border-radius: 0; overflow: hidden; background: #000;
-}
-.live-wrap.broadcast .live-split.full .split-pane video {
-  width: 100%; height: 100%; max-height: none;
-  object-fit: cover; display: block;
-}
-.live-wrap.broadcast .live-split.full:not(.has-fan) #split-fan { display: none; }
-/* Split-screen when fan joins: side-by-side on landscape, stacked on portrait */
-.live-wrap.broadcast .live-split.full.has-fan { flex-direction: row; }
-.live-wrap.broadcast .live-split.full.has-fan .split-pane { flex: 1; min-width: 0; }
-.live-wrap.broadcast .live-split.full.has-fan .split-pane video { max-height: none; }
-@media (orientation: portrait) {
-  .live-wrap.broadcast .live-split.full.has-fan { flex-direction: column; }
-}
-.live-wrap.broadcast .live-top,
-.live-wrap.broadcast .live-title {
-  position: absolute; z-index: 5;
-}
-.live-wrap.broadcast .live-top { top: 0; left: 0; right: 0; }
-.live-wrap.broadcast .live-title { top: 44px; left: 12px; right: 12px; }
-.live-wrap.broadcast .broadcast-bottom {
-  position: absolute; z-index: 5; bottom: 0; left: 0; right: 0;
-  background: linear-gradient(transparent, rgba(0,0,0,.75) 30%);
-  padding: 40px 12px 12px;
-}
-.live-wrap.broadcast .broadcast-bottom .stream-chat {
-  max-height: 18vh; background: transparent; border: none;
-}
-.live-wrap.broadcast .broadcast-bottom .live-controls { margin-top: 8px; }
-
-/* ---- Mic level meter ---- */
-#mic-meter {
-  display: flex; align-items: center; gap: 6px;
-  background: rgba(0,0,0,.6); border-radius: 999px;
-  padding: 4px 10px 4px 4px; margin-left: auto;
-  width: 80px; height: 24px; position: relative; overflow: hidden;
-}
-#mic-meter span { position: relative; z-index: 1; font-size: 14px; }
-#mic-meter-fill {
-  position: absolute; left: 0; top: 0; bottom: 0; width: 0%;
-  background: #ef4444; border-radius: 999px;
-  transition: width .1s;
-}
-
-/* ---- Fan self-view PiP on stage ---- */
-#fan-selfview {
-  position: absolute; bottom: 120px; right: 12px; z-index: 8;
-  width: 110px; height: 150px; object-fit: cover;
-  border-radius: 12px; border: 2px solid var(--pink);
-  background: #000; box-shadow: 0 4px 16px rgba(0,0,0,.5);
 }
