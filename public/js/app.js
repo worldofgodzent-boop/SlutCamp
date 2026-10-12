@@ -5667,6 +5667,35 @@ function checkAgeGate() {
     try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
     return vRecruiterSignup(joinMatch[1]);
   }
+  // Model promo link: #m/USERNAME → open that model's chat/live directly
+  const promoMatch = window.location.hash.match(/^#m\/([a-zA-Z0-9_]+)$/);
+  if (promoMatch) {
+    await ensureGuest();
+    wsConnect();
+    const promoUsername = promoMatch[1].toLowerCase();
+    try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
+    // Resolve username to model and open their chat (or live stream)
+    try {
+      const { data } = await api('/models');
+      const models = data.models || [];
+      const target = models.find((m) => (m.username || '').toLowerCase() === promoUsername);
+      if (target) {
+        if (S.token) {
+          const { status } = await api('/me');
+          if (status === 200) {
+            await refreshMe();
+            if (S.user.role === 'fan') {
+              if (target.live_session_id) return watchLive(target.live_session_id);
+              return openChatWithModel(target.id);
+            }
+          }
+        }
+        // Guest or non-fan: show model list (they can sign up then chat)
+        return show('fanModels', {});
+      }
+    } catch (e) {}
+    return show('fanModels', {});
+  }
   if (S.token) {
     const { status } = await api('/me');
     if (status === 200) {
