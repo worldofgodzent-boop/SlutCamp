@@ -24,6 +24,7 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const { DatabaseSync } = require('node:sqlite');
 const { WebSocketServer } = require('ws');
+const { transcribeAudio } = require('./lib/transcribe');
 
 const app = express();
 const server = http.createServer(app);
@@ -3726,11 +3727,22 @@ app.post('/api/live/:id/speech', identMiddleware, requireUser, (req, res) => {
 });
 
 // Audio chunk upload for the safety bot — temp storage, transcribed, deleted
+const CHUNK_EXT_BY_MIME = {
+  'audio/webm': '.webm', 'audio/mp4': '.mp4', 'audio/x-m4a': '.m4a',
+  'audio/m4a': '.m4a', 'audio/ogg': '.ogg', 'audio/wav': '.wav',
+  'audio/x-wav': '.wav', 'audio/mpeg': '.mp3',
+};
 const audioChunkUpload = multer({
   storage: multer.diskStorage({
     destination: '/tmp',
-    filename: (req, file, cb) =>
-      cb(null, 'safetychunk-' + crypto.randomBytes(8).toString('hex') + '.webm'),
+    filename: (req, file, cb) => {
+      // Keep the real container extension — Whisper reads format from it,
+      // and iPhone Safari records mp4, not webm.
+      const fromName = (String(file.originalname || '').match(/\.(webm|mp4|m4a|ogg|wav|mp3)$/i) || [])[0];
+      const ext = fromName ? '.' + fromName.slice(1).toLowerCase()
+        : (CHUNK_EXT_BY_MIME[file.mimetype] || '.webm');
+      cb(null, 'safetychunk-' + crypto.randomBytes(8).toString('hex') + ext);
+    },
   }),
   limits: { fileSize: 5 * 1024 * 1024 }, // 10s clips are tiny
   fileFilter: (req, file, cb) => {
@@ -3749,16 +3761,17 @@ app.post('/api/live/:id/audio-chunk', identMiddleware, requireUser,
     return res.status(403).json({ error: 'forbidden' });
   }
   const chunkPath = req.file.path;
-  // Transcribe async so we don't block the response
-  const { execFile } = require('child_process');
-  execFile('python3', ['/home/hatch/workspace/skills/openai-whisper/bin/transcribe.py', chunkPath],
-    { timeout: 90000 }, (err, stdout) => {
-      fs.unlink(chunkPath, () => {}); // always delete the audio
-      if (err) return;
-      const text = String(stdout || '').trim().slice(0, 500);
-      if (!text) return;
-      handleSpeechTranscript(sess, req.user, text, 'whisper');
-    });
+  const chunkUser = req.user;
+  // Transcribe async so we don't block the response; outcomes reach the
+  // model and admins over WebSocket (live:killed / live:speech_warning /
+  // safety:* pushes inside handleSpeechTranscript).
+  transcribeAudio(chunkPath)
+    .then((raw) => {
+      const text = String(raw || '').trim().slice(0, 500);
+      if (text) handleSpeechTranscript(sess, chunkUser, text, 'whisper');
+    })
+    .catch((e) => console.error('[safety-bot] transcription failed:', e.message))
+    .finally(() => fs.unlink(chunkPath, () => {})); // always delete the audio
   res.json({ ok: true, queued: true });
 });
 
