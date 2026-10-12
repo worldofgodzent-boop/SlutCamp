@@ -154,6 +154,111 @@ async function api(path, opts) {
   }
 }
 
+/* ---------- Photo cropper: square crop before upload (admin + models) ---------- */
+function openPhotoCropper(file, onCrop) {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    const overlay = document.createElement('div');
+    overlay.id = 'crop-overlay';
+    overlay.innerHTML = `
+      <div class="crop-box">
+        <div class="crop-title">Crop your photo</div>
+        <div class="crop-viewport" id="crop-viewport">
+          <img id="crop-img" src="${url}" alt="">
+          <div class="crop-grid"></div>
+        </div>
+        <div class="crop-hint">Drag to move · pinch or scroll to zoom</div>
+        <div class="crop-actions">
+          <button class="btn ghost" id="crop-cancel">Cancel</button>
+          <button class="btn" id="crop-save">Crop &amp; Save</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const viewport = overlay.querySelector('#crop-viewport');
+    const cimg = overlay.querySelector('#crop-img');
+    let scale = 1, ox = 0, oy = 0;
+    const minScale = 1;
+
+    // Fit image to cover the square viewport initially
+    const vw = viewport.clientWidth;
+    const fitScale = Math.max(vw / img.naturalWidth, vw / img.naturalHeight);
+    scale = fitScale;
+    apply();
+
+    function apply() {
+      cimg.style.transform = `translate(-50%, -50%) translate(${ox}px, ${oy}px) scale(${scale})`;
+    }
+    function clamp() {
+      const w = img.naturalWidth * scale, h = img.naturalHeight * scale;
+      const maxX = Math.max(0, (w - vw) / 2), maxY = Math.max(0, (h - vw) / 2);
+      ox = Math.min(maxX, Math.max(-maxX, ox));
+      oy = Math.min(maxY, Math.max(-maxY, oy));
+    }
+
+    // Drag to pan
+    let dragging = false, sx = 0, sy = 0;
+    cimg.addEventListener('pointerdown', (e) => {
+      dragging = true; sx = e.clientX - ox; sy = e.clientY - oy;
+      cimg.setPointerCapture(e.pointerId);
+    });
+    cimg.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      ox = e.clientX - sx; oy = e.clientY - sy;
+      clamp(); apply();
+    });
+    cimg.addEventListener('pointerup', () => { dragging = false; });
+    cimg.addEventListener('pointercancel', () => { dragging = false; });
+
+    // Pinch to zoom
+    let pinchDist = 0;
+    viewport.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
+                              e.touches[0].clientY - e.touches[1].clientY);
+        if (pinchDist) {
+          scale = Math.max(fitScale, Math.min(fitScale * 5, scale * (d / pinchDist)));
+          clamp(); apply();
+        }
+        pinchDist = d;
+      }
+    }, { passive: false });
+    viewport.addEventListener('touchend', () => { pinchDist = 0; });
+
+    // Scroll to zoom (desktop)
+    viewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      scale = Math.max(fitScale, Math.min(fitScale * 5, scale * (e.deltaY < 0 ? 1.1 : 0.9)));
+      clamp(); apply();
+    }, { passive: false });
+
+    overlay.querySelector('#crop-cancel').onclick = () => {
+      URL.revokeObjectURL(url);
+      overlay.remove();
+    };
+    overlay.querySelector('#crop-save').onclick = () => {
+      const size = 512;
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      // Map viewport coords back to image coords
+      const dispW = img.naturalWidth * scale, dispH = img.naturalHeight * scale;
+      const sx0 = (dispW / 2 - vw / 2 - ox) / scale;
+      const sy0 = (dispH / 2 - vw / 2 - oy) / scale;
+      const sSize = vw / scale;
+      ctx.drawImage(img, sx0, sy0, sSize, sSize, 0, 0, size, size);
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(url);
+        overlay.remove();
+        if (blob) onCrop(new File([blob], 'photo.jpg', { type: 'image/jpeg' }));
+      }, 'image/jpeg', 0.88);
+    };
+  };
+  img.src = url;
+}
+
 /* POST a single file via multipart (no JSON content-type — browser sets the boundary) */
 async function apiUpload(path, file, field) {
   const fd = new FormData();
@@ -1687,13 +1792,15 @@ async function vModelSettings() {
     inp.onchange = async () => {
       const file = inp.files[0];
       if (!file) return;
-      toast('Uploading photo…');
-      const { status, data } = await apiUpload('/model/photo', file);
-      if (status === 200 && data.ok) {
-        toast('📷 Photo updated!');
-        await refreshMe();
-        show('modelSettings', {});
-      } else toast('Upload failed — use a JPG/PNG under 5MB.');
+      openPhotoCropper(file, async (cropped) => {
+        toast('Uploading photo…');
+        const { status, data } = await apiUpload('/model/photo', cropped);
+        if (status === 200 && data.ok) {
+          toast('📷 Photo updated!');
+          await refreshMe();
+          show('modelSettings', {});
+        } else toast('Upload failed — use a JPG/PNG under 5MB.');
+      });
     };
     inp.click();
   };
@@ -4991,10 +5098,12 @@ function wireAdminBody(tab) {
       inp.onchange = async () => {
         const file = inp.files[0];
         if (!file) return;
-        toast('Uploading photo…');
-        const { status, data } = await apiUpload(`/admin/models/${b.dataset.mPhoto}/photo`, file);
-        if (status === 200 && data.ok) { toast('📷 Photo updated!'); show('admin', {}); }
-        else toast('Upload failed — use a JPG/PNG under 5MB.');
+        openPhotoCropper(file, async (cropped) => {
+          toast('Uploading photo…');
+          const { status, data } = await apiUpload(`/admin/models/${b.dataset.mPhoto}/photo`, cropped);
+          if (status === 200 && data.ok) { toast('📷 Photo updated!'); show('admin', {}); }
+          else toast('Upload failed — use a JPG/PNG under 5MB.');
+        });
       };
       inp.click();
     };
