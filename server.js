@@ -1023,7 +1023,6 @@ function getIdentity(req) {
     if (bannedGuests.has(g)) return { kind: 'banned' };
     return { kind: 'guest', token: g };
   }
-  return null;
 }
 
 const subjectKey = (ident) =>
@@ -1155,6 +1154,10 @@ function safetyScan(text) {
   if (/\$[a-zA-Z][a-zA-Z0-9_]{1,}/.test(text)) return 'payment_cashtag'; // $cashtag
   if (/\b(cash\s?app|venmo|paypal|zelle|apple\s?pay|cashapp)\b/i.test(text)) return 'payment_app';
   if (/\b\d{4}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}\b/.test(text)) return 'payment_card';
+  // Social media outside the app: handles, platforms, follow/DM requests
+  if (/\b(instagram|insta|snapchat|snap|tiktok|tik\s?tok|twitter|facebook|fb|whatsapp|telegram|onlyfans)\b/i.test(text)) return 'social_media';
+  if (/\b(follow me|dm me|add me|find me|link in bio|my (insta|snap|tik ?tok|twitter))\b/i.test(text)) return 'social_media';
+  if (/(^|\s)@[a-zA-Z0-9._]{2,}/.test(text)) return 'social_handle';
   return null;
 }
 
@@ -3585,6 +3588,44 @@ app.post('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
     sender_role: req.user.role, body, created_at: new Date().toISOString() };
   pushLiveAll(sess.id, { type: 'live:chat', message: msg });
   res.json({ ok: true, message: msg });
+});
+
+// POST speech transcript from the model's safety bot — scanned same as chat
+app.post('/api/live/:id/speech', identMiddleware, requireUser, (req, res) => {
+  const sess = liveSessionOr404(req, res);
+  if (!sess) return;
+  // Only the broadcasting model can report her own speech
+  if (sess.model_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+  const text = String(req.body.text || '').trim().slice(0, 500);
+  if (!text) return res.status(400).json({ error: 'empty' });
+
+  const matched = safetyScan(text);
+  if (!matched) return res.json({ ok: true, clean: true });
+
+  const key = `u:${req.user.id}`;
+  const total = addStrike(key);
+  db.prepare(`INSERT INTO stream_flags (session_id, sender_id, sender_name, flagged_text, matched)
+              VALUES (?,?,?,?,?)`)
+    .run(sess.id, req.user.id, req.user.display_name, '[SPEECH] ' + text.slice(0, 280), matched);
+
+  // Payment info spoken on live = kill the stream
+  if (matched.startsWith('payment_')) {
+    pushToAdmins({ type: 'safety:stream_killed', session_id: sess.id,
+      sender_name: req.user.display_name, matched, total_strikes: total,
+      exact_words: '[SPOKEN] ' + text.slice(0, 300) });
+    killLiveSession(sess, 'payment_info_spoken');
+    pushToUser(req.user.id, { type: 'live:killed',
+      warning: `🛑 Stream ended — payment info is never allowed on live, spoken or typed. (${total}/3 strikes)` });
+    return res.json({ ok: true, action: 'killed', matched, strikes: total });
+  }
+
+  // Personal info / social media spoken = strike + warn + admin alert with exact words
+  pushToAdmins({ type: 'safety:speech_flag', session_id: sess.id,
+    sender_name: req.user.display_name, matched, total_strikes: total,
+    exact_words: text.slice(0, 300) });
+  pushToUser(req.user.id, { type: 'live:speech_warning', session_id: sess.id,
+    warning: `⚠️ Careful — "${matched}" detected in your speech. Keep personal info and socials off the stream. (${total}/3 strikes)` });
+  res.json({ ok: true, action: 'warned', matched, strikes: total });
 });
 
 // GET the virtual gift catalog (public, enabled only)
