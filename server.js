@@ -594,6 +594,18 @@ addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0
 addColumnIfMissing('users', 'status', "TEXT NOT NULL DEFAULT 'active'");
 addColumnIfMissing('transactions', 'ip', 'TEXT');
 
+// Display name changes: fans get 1 per 30 days (self-service); models submit requests for admin approval
+addColumnIfMissing('users', 'name_changed_at', 'TEXT');
+db.exec(`
+CREATE TABLE IF NOT EXISTS name_change_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  requested_name TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'approved' | 'rejected'
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  resolved_at TEXT
+);`);
+
 // --- Recruiters/partners: who recruited each model ---
 db.exec(`
 CREATE TABLE IF NOT EXISTS recruiters (
@@ -1469,6 +1481,76 @@ app.get('/api/me', identMiddleware, requireUser, (req, res) => {
     out.model = db.prepare('SELECT * FROM models WHERE user_id = ?').get(req.user.id);
   if (req.user.role === 'admin' || req.user.role === 'model') out.commission_pct = getCommission();
   res.json(out);
+});
+
+/* --- Display name changes ---
+ * Fans: self-service, 1 change per 30 days.
+ * Models: submit a request; admin approves/rejects.
+ * Recruiters/admins: use admin endpoints.
+ */
+const NAME_CHANGE_DAYS = 30;
+app.patch('/api/me/display-name', identMiddleware, requireUser, (req, res) => {
+  if (req.user.role !== 'fan')
+    return res.status(403).json({ error: 'fans_only', message: 'Models: submit a name change request instead.' });
+  const name = String(req.body?.display_name || '').trim().slice(0, 40);
+  if (!name || name.length < 2)
+    return res.status(400).json({ error: 'invalid_name', message: 'Name must be at least 2 characters.' });
+  const u = db.prepare('SELECT name_changed_at FROM users WHERE id = ?').get(req.user.id);
+  if (u?.name_changed_at) {
+    const days = (Date.now() - new Date(u.name_changed_at + 'Z').getTime()) / 86400000;
+    if (days < NAME_CHANGE_DAYS)
+      return res.status(429).json({ error: 'too_soon',
+        message: `You can change your name again in ${Math.ceil(NAME_CHANGE_DAYS - days)} days.`,
+        next_change_in_days: Math.ceil(NAME_CHANGE_DAYS - days) });
+  }
+  db.prepare(`UPDATE users SET display_name = ?, name_changed_at = datetime('now') WHERE id = ?`)
+    .run(name, req.user.id);
+  res.json({ ok: true, display_name: name });
+});
+
+// Model submits a name change request for admin approval
+app.post('/api/model/name-change-request', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const name = String(req.body?.requested_name || '').trim().slice(0, 40);
+  if (!name || name.length < 2)
+    return res.status(400).json({ error: 'invalid_name', message: 'Name must be at least 2 characters.' });
+  const pending = db.prepare(`SELECT id FROM name_change_requests WHERE user_id = ? AND status = 'pending'`)
+    .get(req.user.id);
+  if (pending)
+    return res.status(409).json({ error: 'already_pending', message: 'You already have a name change pending review.' });
+  const id = db.prepare(`INSERT INTO name_change_requests (user_id, requested_name) VALUES (?, ?)`)
+    .run(req.user.id, name).lastInsertRowid;
+  pushToAdmins({ type: 'name_change:requested', request_id: id,
+    user_id: req.user.id, current_name: req.user.display_name, requested_name: name });
+  res.json({ ok: true, id });
+});
+
+// Admin: list name change requests
+app.get('/api/admin/name-change-requests', ...adminOnly, (req, res) => {
+  const status = req.query.status || 'pending';
+  const rows = db.prepare(`
+    SELECT r.*, u.display_name AS current_name, u.username, u.role
+    FROM name_change_requests r JOIN users u ON u.id = r.user_id
+    WHERE r.status = ? ORDER BY r.id DESC LIMIT 100`).all(status);
+  res.json({ requests: rows });
+});
+
+// Admin: approve or reject a name change request
+app.post('/api/admin/name-change-requests/:id', ...adminOnly, (req, res) => {
+  const { action } = req.body || {};
+  const r = db.prepare('SELECT * FROM name_change_requests WHERE id = ?').get(req.params.id);
+  if (!r || r.status !== 'pending') return res.status(404).json({ error: 'not_found' });
+  if (action === 'approve') {
+    db.prepare(`UPDATE name_change_requests SET status = 'approved', resolved_at = datetime('now') WHERE id = ?`).run(r.id);
+    db.prepare(`UPDATE users SET display_name = ?, name_changed_at = datetime('now') WHERE id = ?`)
+      .run(r.requested_name, r.user_id);
+    pushToSubject(`u:${r.user_id}`, { type: 'name_change:approved', new_name: r.requested_name });
+  } else if (action === 'reject') {
+    db.prepare(`UPDATE name_change_requests SET status = 'rejected', resolved_at = datetime('now') WHERE id = ?`).run(r.id);
+    pushToSubject(`u:${r.user_id}`, { type: 'name_change:rejected', requested_name: r.requested_name });
+  } else {
+    return res.status(400).json({ error: 'bad_action' });
+  }
+  res.json({ ok: true, action });
 });
 
 /* ------------------------------------------------------------------ */
