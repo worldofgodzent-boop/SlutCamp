@@ -431,7 +431,6 @@ CREATE TABLE IF NOT EXISTS invite_links (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   code       TEXT UNIQUE NOT NULL,
   label      TEXT NOT NULL DEFAULT '',
-  role       TEXT NOT NULL DEFAULT 'model' CHECK(role IN ('model','recruiter')),
   created_by INTEGER NOT NULL REFERENCES users(id),
   used_by    INTEGER REFERENCES users(id),
   is_revoked INTEGER NOT NULL DEFAULT 0,
@@ -578,7 +577,6 @@ addColumnIfMissing('conversations', 'paused_at', 'TEXT');
 addColumnIfMissing('messages', 'gift_json', 'TEXT'); // TikTok-style gift payload on chat gift messages
 addColumnIfMissing('models', 'preview_video_url', "TEXT NOT NULL DEFAULT ''"); // Loop preview on home screen
 addColumnIfMissing('invite_links', 'expires_at', "TEXT NOT NULL DEFAULT (datetime('now', '+6 hours'))");
-addColumnIfMissing('invite_links', 'role', "TEXT NOT NULL DEFAULT 'model'");
 addColumnIfMissing('tax_profiles', 'electronic_1099_consent', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('tax_profiles', 'electronic_1099_consent_at', 'TEXT');
 // Backfill: existing invites without expiry get 6h from creation
@@ -1025,6 +1023,7 @@ function getIdentity(req) {
     if (bannedGuests.has(g)) return { kind: 'banned' };
     return { kind: 'guest', token: g };
   }
+  return null;
 }
 
 const subjectKey = (ident) =>
@@ -1146,20 +1145,6 @@ function safetyScan(text) {
   if (/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text)) return 'phone_number';
   if (/\(\d{3}\)\s?\d{3}[-.\s]?\d{4}/.test(text)) return 'phone_number';
   if (/\b\d{10}\b/.test(text)) return 'phone_number';
-  // Email addresses
-  if (/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(text)) return 'email_address';
-  // Street addresses: 123 Main St, 456 Oak Avenue, 789 Elm Rd, etc.
-  if (/\b\d{1,6}\s+[A-Za-z][A-Za-z.'-]*(\s+[A-Za-z][A-Za-z.'-]*){0,3}\s+(st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|ct|court|way|pl|place|ter|terrace|pkwy|parkway|cir|circle|trl|trail|hwy|highway)\b/i.test(text)) return 'street_address';
-  // ZIP codes: 12345 or 12345-6789
-  if (/\b\d{5}(-\d{4})?\b/.test(text)) return 'zip_code';
-  // Payment info: Cash App, Venmo, PayPal, Zelle, card numbers — triggers immediate live kill
-  if (/\$[a-zA-Z][a-zA-Z0-9_]{1,}/.test(text)) return 'payment_cashtag'; // $cashtag
-  if (/\b(cash\s?app|venmo|paypal|zelle|apple\s?pay|cashapp)\b/i.test(text)) return 'payment_app';
-  if (/\b\d{4}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}\b/.test(text)) return 'payment_card';
-  // Social media outside the app: handles, platforms, follow/DM requests
-  if (/\b(instagram|insta|snapchat|snap|tiktok|tik\s?tok|twitter|facebook|fb|whatsapp|telegram|onlyfans)\b/i.test(text)) return 'social_media';
-  if (/\b(follow me|dm me|add me|find me|link in bio|my (insta|snap|tik ?tok|twitter))\b/i.test(text)) return 'social_media';
-  if (/(^|\s)@[a-zA-Z0-9._]{2,}/.test(text)) return 'social_handle';
   return null;
 }
 
@@ -1356,39 +1341,6 @@ app.post('/api/auth/signup', (req, res) => {
     db.prepare(`UPDATE messages SET guest_token = NULL WHERE guest_token = ?
                 AND conversation_id IN (SELECT id FROM conversations WHERE fan_id = ?)`)
       .run(guest_token, id);
-  }
-
-  const token = createSession(id);
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
-  res.json({ token, user: getUserPublic(user) });
-});
-
-// POST /api/auth/quick-signup — streamlined fan signup from Wallet: username + password + 18 + payment info
-addColumnIfMissing('users', 'pay_full_name', 'TEXT');
-addColumnIfMissing('users', 'pay_method', 'TEXT');
-addColumnIfMissing('users', 'pay_card_last4', 'TEXT');
-addColumnIfMissing('users', 'pay_cashtag', 'TEXT');
-app.post('/api/auth/quick-signup', (req, res) => {
-  const { username, password, full_name, pay_method, card_last4, cashtag, guest_token } = req.body || {};
-  if (!username || !password || !full_name)
-    return res.status(400).json({ error: 'missing_fields' });
-  if (String(password).length < 6) return res.status(400).json({ error: 'password_too_short' });
-  if (!['card', 'cashapp'].includes(pay_method))
-    return res.status(400).json({ error: 'bad_pay_method' });
-  if (db.prepare('SELECT id FROM users WHERE username = ?').get(username.trim()))
-    return res.status(409).json({ error: 'username_taken' });
-
-  // 18+ confirmed on the client; full ID verification required before first purchase
-  const id = createUser(username.trim(), password, 'fan', username.trim().slice(0, 40), '1990-01-01');
-  db.prepare('UPDATE users SET pay_full_name = ?, pay_method = ?, pay_card_last4 = ?, pay_cashtag = ? WHERE id = ?')
-    .run(full_name.trim().slice(0, 80), pay_method, card_last4 || null, cashtag || null, id);
-
-  // Migrate guest history to the new account
-  if (guest_token && /^[a-f0-9]{32}$/.test(guest_token)) {
-    const gk = 'g:' + guest_token, uk = 'u:' + id;
-    db.prepare('UPDATE conversations SET fan_id = ?, guest_token = NULL WHERE guest_token = ?').run(id, guest_token);
-    db.prepare('UPDATE free_trials SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
-    db.prepare('UPDATE strikes SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
   }
 
   const token = createSession(id);
@@ -2409,51 +2361,6 @@ const MODEL_CONTRACT = {
   ],
 };
 
-/* Recruiter agreement — for models/partners who recruit other models */
-const RECRUITER_CONTRACT_VERSION = 'R1.0';
-const RECRUITER_CONTRACT = {
-  version: RECRUITER_CONTRACT_VERSION,
-  updated: 'October 12, 2026',
-  sections: [
-    {
-      title: '1. Parties',
-      body: 'This Recruiter Agreement ("Agreement") is between you ("Recruiter") and World of Godz Entertainment LLC ("Company"), doing business as SlutCamp ("SlutCamp"). By signing, you agree to everything below.',
-    },
-    {
-      title: '2. Independent Contractor — Not a Partner',
-      body: 'You are an INDEPENDENT CONTRACTOR, not an employee of the Company. Nothing in this Agreement creates an employment relationship, a legal business partnership, or an agency relationship — "partner" is just what we call the role in the app. You are responsible for your own taxes, insurance, and expenses. The Company will not withhold taxes from your payouts.',
-    },
-    {
-      title: '3. What You Do',
-      body: 'You recruit models to join SlutCamp using your personal referral link. You are responsible for your own recruiting methods. You must be honest about the platform — no false promises about earnings.',
-    },
-    {
-      title: '4. Your Cut',
-      body: 'You earn 20% of everything each model you recruit earns on the platform (their 60% share — your cut comes from the Company\'s portion, not from the model). The model keeps her full 60%. Payments are processed on the Company\'s payout schedule.',
-    },
-    {
-      title: '5. Termination — At Will',
-      body: 'The Company may revoke your recruiter status AT ANY TIME, for any reason or no reason, with NO NOTICE required. When revoked, this Agreement ends immediately and you stop earning on all future revenue from your recruited models. Any balance already earned remains available for withdrawal.',
-    },
-    {
-      title: '6. Conduct Rules',
-      body: 'You must NOT: share contact info or payment handles with anyone on the platform; attempt to take models or fans off-platform; use hate speech or slurs. Breaking these rules can get your account suspended or deactivated immediately.',
-    },
-    {
-      title: '7. Non-Circumvention',
-      body: 'For 12 months after your recruiter status ends (for any reason), you agree not to recruit models you met through SlutCamp to a competing platform.',
-    },
-    {
-      title: '8. Confidentiality',
-      body: 'You agree not to disclose the Company\'s business methods, commission structures, or internal operations to anyone outside the Company.',
-    },
-    {
-      title: '9. Plain-Language Disclaimer',
-      body: 'This is a plain-language summary written for clarity — it is NOT legal advice, and it has not been reviewed by an attorney. The Company strongly recommends you have your own attorney review this Agreement before signing. If any part of this Agreement is found unenforceable, the rest still applies.',
-    },
-  ],
-};
-
 app.get('/api/credits/packages', (req, res) => {
   res.json({ packages: CREDIT_PACKAGES, stubbed: true });
 });
@@ -2601,81 +2508,6 @@ app.post('/api/model/contract/sign', identMiddleware, requireUser, requireRole('
     if (!String(e.message || '').includes('UNIQUE')) throw e;
   }
   res.json({ ok: true, version: MODEL_CONTRACT.version });
-});
-
-// Recruiter: get agreement status + text
-app.get('/api/recruiter/contract', identMiddleware, requireUser, requireRole('recruiter'), (req, res) => {
-  const sig = db.prepare('SELECT contract_version, signed_at FROM contract_signatures WHERE user_id = ?').get(req.user.id);
-  res.json({
-    version: RECRUITER_CONTRACT.version,
-    updated: RECRUITER_CONTRACT.updated,
-    sections: RECRUITER_CONTRACT.sections,
-    signed: !!sig && String(sig.contract_version || '').startsWith('R'),
-    signed_version: sig ? sig.contract_version : null,
-    signed_at: sig ? sig.signed_at : null,
-  });
-});
-
-// Recruiter: sign the agreement (typed name = electronic signature)
-app.post('/api/recruiter/contract/sign', identMiddleware, requireUser, requireRole('recruiter'), (req, res) => {
-  const name = String(req.body.display_name || '').trim().slice(0, 80);
-  if (!name || name.length < 2) return res.status(400).json({ error: 'bad_name' });
-  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
-  try {
-    db.prepare(`INSERT INTO contract_signatures (user_id, contract_version, display_name, ip)
-                VALUES (?, ?, ?, ?)`)
-      .run(req.user.id, RECRUITER_CONTRACT.version, name, ip.slice(0, 60));
-  } catch (e) {
-    if (!String(e.message || '').includes('UNIQUE')) throw e;
-  }
-  res.json({ ok: true, version: RECRUITER_CONTRACT.version });
-});
-
-// Public: validate an affiliate invite code
-app.get('/api/affiliate-invite/:code', (req, res) => {
-  const code = String(req.params.code || '').trim();
-  const inv = db.prepare(`SELECT * FROM invite_links WHERE code = ? AND role = 'recruiter'`).get(code);
-  if (!inv || inv.is_revoked || inv.used_by) return res.json({ valid: false });
-  if (inv.expires_at && new Date(inv.expires_at) < new Date()) return res.json({ valid: false });
-  res.json({ valid: true, label: inv.label });
-});
-
-// Public: affiliate signup via invite code
-app.post('/api/affiliate-invite/:code/signup', (req, res) => {
-  const code = String(req.params.code || '').trim();
-  const inv = db.prepare(`SELECT * FROM invite_links WHERE code = ? AND role = 'recruiter'`).get(code);
-  if (!inv || inv.is_revoked || inv.used_by) return res.status(400).json({ error: 'bad_invite' });
-  if (inv.expires_at && new Date(inv.expires_at) < new Date()) return res.status(400).json({ error: 'expired' });
-  const { username, password, display_name, agreed } = req.body || {};
-  const uname = String(username || '').trim();
-  const dname = String(display_name || '').trim().slice(0, 40);
-  const pwd = String(password || '');
-  if (!uname || !dname || pwd.length < 6) return res.status(400).json({ error: 'missing_fields' });
-  if (!agreed) return res.status(400).json({ error: 'must_agree' });
-  if (db.prepare('SELECT id FROM users WHERE username = ?').get(uname))
-    return res.status(409).json({ error: 'username_taken' });
-  const hash = bcrypt.hashSync(pwd, 10);
-  const info = db.prepare(
-    'INSERT INTO users (username, password_hash, role, display_name, dob) VALUES (?,?,?,?,?)'
-  ).run(uname, hash, 'recruiter', dname, '1990-01-01');
-  const userId = Number(info.lastInsertRowid);
-  db.prepare('INSERT INTO wallets (user_id) VALUES (?)').run(userId);
-  // Create recruiter record with referral code
-  let rcode;
-  do { rcode = crypto.randomBytes(4).toString('hex'); }
-  while (db.prepare('SELECT id FROM recruiters WHERE referral_code = ?').get(rcode));
-  db.prepare('INSERT INTO recruiters (user_id, name, referral_code) VALUES (?,?,?)')
-    .run(userId, dname, rcode);
-  // Mark invite used
-  db.prepare(`UPDATE invite_links SET used_by = ?, used_at = datetime('now') WHERE id = ?`)
-    .run(userId, inv.id);
-  // Auto-sign the recruiter agreement (they agreed on the signup screen)
-  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
-  db.prepare(`INSERT INTO contract_signatures (user_id, contract_version, display_name, ip)
-              VALUES (?, ?, ?, ?)`)
-    .run(userId, RECRUITER_CONTRACT.version, dname, ip.slice(0, 60));
-  const token = createSession(userId);
-  res.json({ ok: true, token, user: { id: userId, username: uname, display_name: dname, role: 'recruiter' } });
 });
 
 // Admin: list all models with contract signature status
@@ -3644,26 +3476,6 @@ app.get('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
   res.json({ messages: msgs.reverse() });
 });
 
-// Force-end a live session (safety kill — payment info shared on live)
-function killLiveSession(sess, reason) {
-  db.prepare(`UPDATE live_sessions SET status = 'ended', ended_at = datetime('now') WHERE id = ?`)
-    .run(sess.id);
-  const viewers = db.prepare('SELECT fan_id FROM live_viewers WHERE session_id = ?').all(sess.id);
-  for (const v of viewers) stopLivePayTimer(sess.id, v.fan_id);
-  for (const r of pendingStageReqs(sess.id)) {
-    const fee = stageJoinFee(!!r.is_explicit, r.mode || 'video', modelJoinRates(sess.model_id));
-    db.prepare(`UPDATE live_join_requests SET status = 'declined' WHERE id = ?`).run(r.id);
-    refundFan(r.fan_id, sess.model_id, fee, 'live_join_refund',
-      `🎥 Stream ended — join request refunded`, 'safety-kill');
-    pushToUser(r.fan_id, { type: 'live:join-declined', session_id: sess.id,
-      request_id: r.id, refunded_cents: fee,
-      balance_cents: getWallet(r.fan_id).credits_cents });
-  }
-  dropStageFan(sess.id, 'stream_ended');
-  pushLiveViewers(sess.id, { type: 'live:ended', session_id: sess.id, reason });
-  pushToUser(sess.model_id, { type: 'live:ended', session_id: sess.id, reason });
-}
-
 // POST a group stream chat message — FREE, safety-scanned
 app.post('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
   const sess = liveSessionOr404(req, res);
@@ -3674,21 +3486,6 @@ app.post('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
 
   const matched = safetyScan(body);
   if (matched) {
-    // Payment info on live = kill the stream immediately (protects models + platform)
-    if (matched.startsWith('payment_')) {
-      const key = `u:${req.user.id}`;
-      const total = addStrike(key);
-      db.prepare(`INSERT INTO stream_flags (session_id, sender_id, sender_name, flagged_text, matched)
-                  VALUES (?,?,?,?,?)`)
-        .run(sess.id, req.user.id, req.user.display_name, body.slice(0, 300), matched);
-      pushToAdmins({ type: 'safety:stream_killed', session_id: sess.id,
-        sender_name: req.user.display_name, matched, total_strikes: total,
-        exact_words: body.slice(0, 300) });
-      killLiveSession(sess, 'payment_info_shared');
-      pushToUser(req.user.id, { type: 'live:killed',
-        warning: `🛑 Stream ended — payment info is never allowed on live. (${total}/3 strikes)` });
-      return res.status(423).json({ error: 'stream_killed', matched, strikes: total });
-    }
     // Block the message, count a strike, log the flag — chat stays live for everyone else
     const key = `u:${req.user.id}`;
     const total = addStrike(key);
@@ -3711,86 +3508,6 @@ app.post('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
   pushLiveAll(sess.id, { type: 'live:chat', message: msg });
   res.json({ ok: true, message: msg });
 });
-
-// POST speech transcript from the model's safety bot — scanned same as chat
-app.post('/api/live/:id/speech', identMiddleware, requireUser, (req, res) => {
-  const sess = liveSessionOr404(req, res);
-  if (!sess) return;
-  // Only the broadcasting model can report her own speech
-  if (sess.model_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
-  const text = String(req.body.text || '').trim().slice(0, 500);
-  if (!text) return res.status(400).json({ error: 'empty' });
-  const result = handleSpeechTranscript(sess, req.user, text, 'browser');
-  if (!result) return res.json({ ok: true, clean: true });
-  res.json({ ok: true, action: result.action, matched: result.matched, strikes: result.strikes });
-});
-
-// Audio chunk upload for the safety bot — temp storage, transcribed, deleted
-const audioChunkUpload = multer({
-  storage: multer.diskStorage({
-    destination: '/tmp',
-    filename: (req, file, cb) =>
-      cb(null, 'safetychunk-' + crypto.randomBytes(8).toString('hex') + '.webm'),
-  }),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 10s clips are tiny
-  fileFilter: (req, file, cb) => {
-    const ok = /^audio\//.test(file.mimetype);
-    cb(ok ? null : new Error('bad_file_type'), ok);
-  },
-});
-
-// POST 10s audio chunk from model's mic — Whisper transcribes, safety-scanned
-app.post('/api/live/:id/audio-chunk', identMiddleware, requireUser,
-  audioChunkUpload.single('audio'), (req, res) => {
-  const sess = liveSessionOr404(req, res);
-  if (!sess) { if (req.file) fs.unlink(req.file.path, () => {}); return; }
-  if (sess.model_id !== req.user.id || !req.file) {
-    if (req.file) fs.unlink(req.file.path, () => {});
-    return res.status(403).json({ error: 'forbidden' });
-  }
-  const chunkPath = req.file.path;
-  // Transcribe async so we don't block the response
-  const { execFile } = require('child_process');
-  execFile('python3', ['/home/hatch/workspace/skills/openai-whisper/bin/transcribe.py', chunkPath],
-    { timeout: 90000 }, (err, stdout) => {
-      fs.unlink(chunkPath, () => {}); // always delete the audio
-      if (err) return;
-      const text = String(stdout || '').trim().slice(0, 500);
-      if (!text) return;
-      handleSpeechTranscript(sess, req.user, text, 'whisper');
-    });
-  res.json({ ok: true, queued: true });
-});
-
-// Shared handler: scan a speech transcript, kill on payment, warn on info/socials
-// Returns { action, matched, strikes } or null if clean / session ended.
-function handleSpeechTranscript(sess, user, text, source) {
-  const matched = safetyScan(text);
-  if (!matched) return null;
-  // Re-check the session is still live (may have ended while transcribing)
-  const live = db.prepare("SELECT * FROM live_sessions WHERE id = ? AND status = 'live'").get(sess.id);
-  if (!live) return null;
-  const key = `u:${user.id}`;
-  const total = addStrike(key);
-  db.prepare(`INSERT INTO stream_flags (session_id, sender_id, sender_name, flagged_text, matched)
-              VALUES (?,?,?,?,?)`)
-    .run(sess.id, user.id, user.display_name, `[SPEECH:${source}] ` + text.slice(0, 270), matched);
-  if (matched.startsWith('payment_')) {
-    pushToAdmins({ type: 'safety:stream_killed', session_id: sess.id,
-      sender_name: user.display_name, matched, total_strikes: total,
-      exact_words: '[SPOKEN] ' + text.slice(0, 300) });
-    killLiveSession(live, 'payment_info_spoken');
-    pushToUser(user.id, { type: 'live:killed',
-      warning: `🛑 Stream ended — payment info is never allowed on live, spoken or typed. (${total}/3 strikes)` });
-    return { action: 'killed', matched, strikes: total };
-  }
-  pushToAdmins({ type: 'safety:speech_flag', session_id: sess.id,
-    sender_name: user.display_name, matched, total_strikes: total,
-    exact_words: text.slice(0, 300) });
-  pushToUser(user.id, { type: 'live:speech_warning', session_id: sess.id,
-    warning: `⚠️ Careful — "${matched}" detected in your speech. Keep personal info and socials off the stream. (${total}/3 strikes)` });
-  return { action: 'warned', matched, strikes: total };
-}
 
 // GET the virtual gift catalog (public, enabled only)
 app.get('/api/gifts', (req, res) => {
@@ -4846,15 +4563,13 @@ app.get('/api/referral/:code', (req, res) => {
 // Admin: generate a new invite link
 app.post('/api/admin/invites', ...adminOnly, (req, res) => {
   const label = (req.body.label || '').trim().slice(0, 60);
-  const role = req.body.role === 'recruiter' ? 'recruiter' : 'model';
   const code = crypto.randomBytes(9).toString('hex'); // 18-char code
   const info = db.prepare(
-    'INSERT INTO invite_links (code, label, role, created_by) VALUES (?,?,?,?)'
-  ).run(code, label, role, req.user.id);
+    'INSERT INTO invite_links (code, label, created_by) VALUES (?,?,?)'
+  ).run(code, label, req.user.id);
   const base = req.body.base_url ? String(req.body.base_url).replace(/\/$/, '') : '';
-  const urlPath = role === 'recruiter' ? `/affiliate/${code}` : `/?invite=${code}`;
-  res.json({ ok: true, id: Number(info.lastInsertRowid), code, label, role,
-    url: base ? `${base}${urlPath}` : urlPath });
+  res.json({ ok: true, id: Number(info.lastInsertRowid), code, label,
+    url: base ? `${base}/?invite=${code}` : `/?invite=${code}` });
 });
 
 // Admin: list all invite links with usage status
@@ -4865,7 +4580,7 @@ app.get('/api/admin/invites', ...adminOnly, (req, res) => {
     FROM invite_links i LEFT JOIN users u ON u.id = i.used_by
     ORDER BY i.id DESC`).all();
   res.json({ invites: rows.map((r) => ({
-    id: r.id, code: r.code, label: r.label, role: r.role || 'model',
+    id: r.id, code: r.code, label: r.label,
     is_revoked: !!r.is_revoked, created_at: r.created_at, used_at: r.used_at,
     expires_at: r.expires_at,
     expired: !r.used_by && r.expires_at && new Date(r.expires_at + 'Z') < new Date(),
