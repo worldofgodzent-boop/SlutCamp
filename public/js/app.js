@@ -2780,8 +2780,8 @@ function vLiveBroadcast() {
   const L = S.live;
   if (!L) return show('modelChats', {});
   app.innerHTML = `
-    <div class="live-wrap">
-      <div id="live-split" class="live-split">
+    <div class="live-wrap broadcast">
+      <div id="live-split" class="live-split full">
         <div class="split-pane" id="split-model">
           <video id="live-local" autoplay playsinline muted></video>
           <div class="split-name" id="split-model-name">${esc(S.model?.display_name || 'You')}</div>
@@ -2805,15 +2805,17 @@ function vLiveBroadcast() {
       </div>
       <div id="stage-requests"></div>
       <div id="live-leaderboard" class="live-leaderboard hidden"></div>
-      <div id="stream-chat" class="stream-chat"></div>
-      <div class="stream-chat-input">
-        <input id="stream-chat-box" class="input" placeholder="Say something to your fans…" maxlength="500" autocomplete="off">
-        <button class="btn small" id="stream-chat-send" style="margin:0">➤</button>
-      </div>
-      <div class="live-controls">
-        <button class="btn" id="live-explicit-btn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">Go Explicit 🔞</button>
-        <div class="muted small" style="text-align:center;margin-top:6px">Explicit rate: ${fmt(L.explicitRate)}/min · Your preview is never blurred</div>
-        <button class="btn danger" id="live-end-btn" style="margin-top:10px">End Stream</button>
+      <div class="broadcast-bottom">
+        <div id="stream-chat" class="stream-chat"></div>
+        <div class="stream-chat-input">
+          <input id="stream-chat-box" class="input" placeholder="Say something to your fans…" maxlength="500" autocomplete="off">
+          <button class="btn small" id="stream-chat-send" style="margin:0">➤</button>
+        </div>
+        <div class="live-controls">
+          <button class="btn" id="live-explicit-btn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">Go Explicit 🔞</button>
+          <div class="muted small" style="text-align:center;margin-top:6px">Explicit rate: ${fmt(L.explicitRate)}/min · Your preview is never blurred</div>
+          <button class="btn danger" id="live-end-btn" style="margin-top:10px">End Stream</button>
+        </div>
       </div>
     </div>`;
   $('#live-local').srcObject = L.stream;
