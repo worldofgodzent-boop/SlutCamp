@@ -1239,8 +1239,9 @@ app.get('/api/models', (req, res) => {
   const rows = db.prepare(`
     SELECT u.id, u.username, u.display_name, m.bio, m.per_message_cents,
            m.per_minute_cents, m.per_voice_cents, m.is_online, m.photo_url,
-           m.preview_video_url,
+           m.preview_video_url, m.is_featured,
            ls.id AS live_session_id, ls.explicit_rate_cents AS live_explicit_rate_cents,
+           (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS live_viewers,
            (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) AS like_count
     FROM users u JOIN models m ON m.user_id = u.id
     LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live'
@@ -1264,7 +1265,8 @@ app.get('/api/models', (req, res) => {
     const summary = sched.length
       ? sched.map((s) => `${days[s.day_of_week]} ${s.start_time.replace(/^0/, '')}`).join(', ')
       : '';
-    return { ...r, is_live: !!r.live_session_id, schedule_summary: summary, liked: likedSet.has(r.id) };
+    return { ...r, is_live: !!r.live_session_id, is_featured: !!r.is_featured,
+      live_viewers: r.live_viewers || 0, schedule_summary: summary, liked: likedSet.has(r.id) };
   }) });
 });
 
