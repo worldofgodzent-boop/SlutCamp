@@ -1524,35 +1524,6 @@ app.post('/api/model/name-change-request', identMiddleware, requireUser, require
   res.json({ ok: true, id });
 });
 
-// Admin: list name change requests
-app.get('/api/admin/name-change-requests', ...adminOnly, (req, res) => {
-  const status = req.query.status || 'pending';
-  const rows = db.prepare(`
-    SELECT r.*, u.display_name AS current_name, u.username, u.role
-    FROM name_change_requests r JOIN users u ON u.id = r.user_id
-    WHERE r.status = ? ORDER BY r.id DESC LIMIT 100`).all(status);
-  res.json({ requests: rows });
-});
-
-// Admin: approve or reject a name change request
-app.post('/api/admin/name-change-requests/:id', ...adminOnly, (req, res) => {
-  const { action } = req.body || {};
-  const r = db.prepare('SELECT * FROM name_change_requests WHERE id = ?').get(req.params.id);
-  if (!r || r.status !== 'pending') return res.status(404).json({ error: 'not_found' });
-  if (action === 'approve') {
-    db.prepare(`UPDATE name_change_requests SET status = 'approved', resolved_at = datetime('now') WHERE id = ?`).run(r.id);
-    db.prepare(`UPDATE users SET display_name = ?, name_changed_at = datetime('now') WHERE id = ?`)
-      .run(r.requested_name, r.user_id);
-    pushToSubject(`u:${r.user_id}`, { type: 'name_change:approved', new_name: r.requested_name });
-  } else if (action === 'reject') {
-    db.prepare(`UPDATE name_change_requests SET status = 'rejected', resolved_at = datetime('now') WHERE id = ?`).run(r.id);
-    pushToSubject(`u:${r.user_id}`, { type: 'name_change:rejected', requested_name: r.requested_name });
-  } else {
-    return res.status(400).json({ error: 'bad_action' });
-  }
-  res.json({ ok: true, action });
-});
-
 /* ------------------------------------------------------------------ */
 /* Conversations + messages (guests allowed, models free to reply)     */
 /* ------------------------------------------------------------------ */
@@ -4584,6 +4555,35 @@ app.patch('/api/admin/recruiters/:id', ...adminOnly, (req, res) => {
   db.prepare('UPDATE recruiters SET name = ? WHERE id = ?').run(name, r.id);
   db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(name, r.user_id);
   res.json({ ok: true, id: r.id, name });
+});
+
+// Admin: list name change requests
+app.get('/api/admin/name-change-requests', ...adminOnly, (req, res) => {
+  const status = req.query.status || 'pending';
+  const rows = db.prepare(`
+    SELECT r.*, u.display_name AS current_name, u.username, u.role
+    FROM name_change_requests r JOIN users u ON u.id = r.user_id
+    WHERE r.status = ? ORDER BY r.id DESC LIMIT 100`).all(status);
+  res.json({ requests: rows });
+});
+
+// Admin: approve or reject a name change request
+app.post('/api/admin/name-change-requests/:id', ...adminOnly, (req, res) => {
+  const { action } = req.body || {};
+  const r = db.prepare('SELECT * FROM name_change_requests WHERE id = ?').get(req.params.id);
+  if (!r || r.status !== 'pending') return res.status(404).json({ error: 'not_found' });
+  if (action === 'approve') {
+    db.prepare(`UPDATE name_change_requests SET status = 'approved', resolved_at = datetime('now') WHERE id = ?`).run(r.id);
+    db.prepare(`UPDATE users SET display_name = ?, name_changed_at = datetime('now') WHERE id = ?`)
+      .run(r.requested_name, r.user_id);
+    pushToSubject(`u:${r.user_id}`, { type: 'name_change:approved', new_name: r.requested_name });
+  } else if (action === 'reject') {
+    db.prepare(`UPDATE name_change_requests SET status = 'rejected', resolved_at = datetime('now') WHERE id = ?`).run(r.id);
+    pushToSubject(`u:${r.user_id}`, { type: 'name_change:rejected', requested_name: r.requested_name });
+  } else {
+    return res.status(400).json({ error: 'bad_action' });
+  }
+  res.json({ ok: true, action });
 });
 
 // Recruiter: dashboard (own link, models, earnings)
