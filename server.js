@@ -1221,7 +1221,7 @@ app.post('/api/guest/token', (req, res) => {
 // GET /api/models — PUBLIC so guests can browse before signing up
 app.get('/api/models', (req, res) => {
   const rows = db.prepare(`
-    SELECT u.id, u.display_name, m.bio, m.per_message_cents,
+    SELECT u.id, u.username, u.display_name, m.bio, m.per_message_cents,
            m.per_minute_cents, m.per_voice_cents, m.is_online, m.photo_url,
            m.preview_video_url,
            ls.id AS live_session_id, ls.explicit_rate_cents AS live_explicit_rate_cents,
