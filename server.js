@@ -4574,8 +4574,10 @@ app.delete('/api/admin/recruiters/:id', ...adminOnly, (req, res) => {
 });
 
 // Admin: rename a recruiter (display name only — username/login unchanged)
+// Accepts numeric id OR referral code as :id
 app.patch('/api/admin/recruiters/:id', ...adminOnly, (req, res) => {
-  const r = db.prepare('SELECT * FROM recruiters WHERE id = ?').get(req.params.id);
+  let r = db.prepare('SELECT * FROM recruiters WHERE id = ?').get(req.params.id);
+  if (!r) r = db.prepare('SELECT * FROM recruiters WHERE referral_code = ?').get(req.params.id);
   if (!r) return res.status(404).json({ error: 'not_found' });
   const name = String(req.body?.name || '').trim().slice(0, 40);
   if (!name) return res.status(400).json({ error: 'missing_name' });
