@@ -2824,6 +2824,10 @@ function vLiveBroadcast() {
           <button class="btn small" id="stream-chat-send" style="margin:0">➤</button>
         </div>
         <div class="live-controls">
+          <div class="row" style="gap:8px;margin-bottom:8px">
+            <button class="btn small ghost" id="live-mic-btn" style="flex:1">🎤 Mic on</button>
+            <button class="btn small ghost" id="live-cam-btn" style="flex:1">📹 Cam on</button>
+          </div>
           <button class="btn" id="live-explicit-btn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">Go Explicit 🔞</button>
           <div class="muted small" style="text-align:center;margin-top:6px">Explicit rate: ${fmt(L.explicitRate)}/min · Your preview is never blurred</div>
           <button class="btn danger" id="live-end-btn" style="margin-top:10px">End Stream</button>
@@ -2840,6 +2844,24 @@ function vLiveBroadcast() {
   };
   $('#stream-chat-send').onclick = sendIt;
   sendBox.onkeydown = (e) => { if (e.key === 'Enter') sendIt(); };
+  // Mute mic / camera toggles
+  const micBtn = $('#live-mic-btn'), camBtn = $('#live-cam-btn');
+  if (micBtn) micBtn.onclick = () => {
+    const L2 = S.live; if (!L2 || !L2.stream) return;
+    const track = L2.stream.getAudioTracks()[0];
+    if (!track) return toast('No mic found');
+    track.enabled = !track.enabled;
+    micBtn.textContent = track.enabled ? '🎤 Mic on' : '🔇 Muted';
+    micBtn.classList.toggle('danger', !track.enabled);
+  };
+  if (camBtn) camBtn.onclick = () => {
+    const L2 = S.live; if (!L2 || !L2.stream) return;
+    const track = L2.stream.getVideoTracks()[0];
+    if (!track) return toast('No camera found');
+    track.enabled = !track.enabled;
+    camBtn.textContent = track.enabled ? '📹 Cam on' : '📷 Cam off';
+    camBtn.classList.toggle('danger', !track.enabled);
+  };
   renderStreamChat();
   renderLeaderboard();
   renderStageRequests();
@@ -3746,6 +3768,13 @@ async function onStageApproved(stage, silent) {
       : { video: { facingMode: 'user' }, audio: true };
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     L.stageStream = stream;
+    // Show self-view PiP so the fan can see himself on stage
+    const selfView = $('#fan-selfview');
+    if (selfView && mode === 'video') {
+      selfView.srcObject = stream;
+      selfView.classList.remove('hidden');
+      selfView.play().catch(() => {});
+    }
     const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
     stream.getTracks().forEach((t) => pc.addTrack(t, stream));
     pc.onicecandidate = (e) => {
@@ -3767,6 +3796,8 @@ function stopStageStream() {
   if (L) {
     if (L.stagePC) { try { L.stagePC.close(); } catch (e) {} L.stagePC = null; }
     if (L.stageStream) { L.stageStream.getTracks().forEach((t) => { try { t.stop(); } catch (e) {} }); L.stageStream = null; }
+    const selfView = $('#fan-selfview');
+    if (selfView) { selfView.srcObject = null; selfView.classList.add('hidden'); }
     L.stagePending = false;
   }
   hideStageBanner();
@@ -3958,6 +3989,7 @@ function vLiveWatch() {
     <div class="live-wrap">
       <video id="live-remote" autoplay playsinline muted></video>
       <button id="live-unmute" class="hidden" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;padding:12px 24px;border-radius:999px;border:none;background:rgba(0,0,0,.7);color:#fff;font-size:16px;font-weight:700;cursor:pointer">🔊 Tap for sound</button>
+      <video id="fan-selfview" autoplay playsinline muted class="hidden"></video>
       <div id="live-blur-overlay" class="hidden">
         <div style="font-size:52px">🔞</div>
         <div id="live-blur-title" style="font-weight:800;font-size:19px;margin:8px 0">She's getting explicit…</div>
