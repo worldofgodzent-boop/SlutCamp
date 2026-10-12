@@ -3938,7 +3938,6 @@ function vLiveWatch() {
     <div class="live-wrap">
       <video id="live-remote" autoplay playsinline muted></video>
       <button id="live-unmute" class="hidden" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;padding:12px 24px;border-radius:999px;border:none;background:rgba(0,0,0,.7);color:#fff;font-size:16px;font-weight:700;cursor:pointer">🔊 Tap for sound</button>
-      <div id="fan-watermark" class="fan-watermark"></div>
       <div id="live-blur-overlay" class="hidden">
         <div style="font-size:52px">🔞</div>
         <div id="live-blur-title" style="font-weight:800;font-size:19px;margin:8px 0">She's getting explicit…</div>
@@ -3991,12 +3990,6 @@ function vLiveWatch() {
   $('#priority-open-btn').onclick = openPriorityPanel;
   $('#stage-join-btn').onclick = requestStageJoin;
   loadStageState();
-  // Watermark this fan's username across the stream (screenshot deterrent)
-  const wm = $('#fan-watermark');
-  if (wm && S.user) {
-    const tag = '@' + S.user.username;
-    wm.innerHTML = `<span>${esc(tag)} · ${esc(tag)} · ${esc(tag)}</span>`;
-  }
   const ttsBtn = $('#tts-mute-btn');
   const syncTtsBtn = () => { if (ttsBtn) ttsBtn.textContent = ttsMuted() ? '🔇' : '🔊'; };
   syncTtsBtn();
