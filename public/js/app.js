@@ -547,7 +547,7 @@ function show(view, params) {
   window.scrollTo(0, 0);
   const VIEWS = {
     landing: vLanding, auth: vAuth,
-    fanModels: vFanModels, fanLive: vFanLive, fanChats: vFanChats, wallet: vWallet,
+    fanModels: vFanModels, fanLive: vFanLive, fanChats: vFanChats, wallet: vWallet, quickSignup: vQuickSignup,
     modelChats: vModelChats, modelEarnings: vModelEarnings, modelSettings: vModelSettings,
     admin: vAdmin, chat: vChat,
     liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch, liveModWatch: vLiveModWatch,
@@ -1155,6 +1155,94 @@ async function vChatList(role) {
   });
 }
 
+/* ---------------- FAN: quick signup (username + payment, nothing else) ---------------- */
+
+function vQuickSignup() {
+  app.innerHTML = `
+    <div class="header"><h1>Slut<span class="logo">Camp</span></h1>
+      <div class="sub">Create your account — 30 seconds</div></div>
+    <div class="screen">
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:10px">👤 Your account</div>
+        <label class="field">Username<input class="input" id="q-user" autocomplete="username" placeholder="pick a username"></label>
+        <label class="field">Password (6+ characters)${pwField('q-pass', 'new-password')}</label>
+        <label class="checkbox-row"><input type="checkbox" id="q-18">
+          <span>I confirm I am <b>18 years or older</b>.</span></label>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:10px">💳 Payment info</div>
+        <div class="muted small" style="margin-bottom:10px">Add your payment method now so you can buy credits instantly. You won't be charged until you buy.</div>
+        <label class="field">Full name (on card)<input class="input" id="q-fullname" autocomplete="cc-name" placeholder="John Smith"></label>
+        <label class="field">Payment method</label>
+        <div class="row" style="gap:8px;margin-bottom:12px" id="q-paymethods">
+          <button class="btn ghost payopt selected" data-pay="card" style="flex:1">💳 Card</button>
+          <button class="btn ghost payopt" data-pay="cashapp" style="flex:1">💵 Cash App</button>
+        </div>
+        <div id="q-card-fields">
+          <label class="field">Card number<input class="input" id="q-cardnum" inputmode="numeric" autocomplete="cc-number" placeholder="4242 4242 4242 4242"></label>
+          <div class="row" style="gap:8px">
+            <label class="field" style="flex:1">Expiry<input class="input" id="q-exp" placeholder="MM/YY" autocomplete="cc-exp"></label>
+            <label class="field" style="flex:1">CVC<input class="input" id="q-cvc" inputmode="numeric" placeholder="123" autocomplete="cc-csc"></label>
+          </div>
+        </div>
+        <div id="q-cashapp-fields" class="hidden">
+          <label class="field">Cash App $cashtag<input class="input" id="q-cashtag" placeholder="$yourtag"></label>
+        </div>
+      </div>
+      <button class="btn" id="q-go" style="width:100%;margin-top:4px">Create account & continue →</button>
+      <button class="btn ghost" id="q-back" style="width:100%;margin-top:8px">← Back</button>
+    </div>`;
+  let payMethod = 'card';
+  document.querySelectorAll('#q-paymethods .payopt').forEach((b) => {
+    b.onclick = () => {
+      document.querySelectorAll('#q-paymethods .payopt').forEach((x) => x.classList.remove('selected'));
+      b.classList.add('selected');
+      payMethod = b.dataset.pay;
+      $('#q-card-fields').classList.toggle('hidden', payMethod !== 'card');
+      $('#q-cashapp-fields').classList.toggle('hidden', payMethod !== 'cashapp');
+    };
+  });
+  $('#q-back').onclick = () => show('wallet', {});
+  $('#q-go').onclick = () => doQuickSignup(payMethod);
+}
+
+async function doQuickSignup(payMethod) {
+  const username = $('#q-user').value.trim();
+  const password = $('#q-pass').value;
+  const is18 = $('#q-18').checked;
+  const fullName = $('#q-fullname').value.trim();
+  if (!username) return toast('Pick a username');
+  if (!password || password.length < 6) return toast('Password needs 6+ characters');
+  if (!is18) return toast('You must confirm you are 18 or older');
+  if (!fullName) return toast('Enter the full name on your payment method');
+  if (payMethod === 'card') {
+    if (!$('#q-cardnum').value.replace(/\s/g, '')) return toast('Enter your card number');
+    if (!$('#q-exp').value.trim()) return toast('Enter card expiry');
+    if (!$('#q-cvc').value.trim()) return toast('Enter card CVC');
+  } else {
+    if (!$('#q-cashtag').value.trim()) return toast('Enter your Cash App tag');
+  }
+  // Create the fan account (payment details are stored for checkout, not charged yet)
+  const { status, data } = await api('/auth/quick-signup', {
+    method: 'POST',
+    body: JSON.stringify({
+      username, password, full_name: fullName, pay_method: payMethod,
+      card_last4: payMethod === 'card' ? $('#q-cardnum').value.replace(/\s/g, '').slice(-4) : null,
+      cashtag: payMethod === 'cashapp' ? $('#q-cashtag').value.trim() : null,
+      guest_token: S.guestToken,
+    }),
+  });
+  if (status === 200 && data.token) {
+    S.token = data.token;
+    localStorage.setItem('wc_token', data.token);
+    await refreshMe();
+    wsConnect();
+    toast('✅ Account created!');
+    return show('wallet', {});
+  }
+  toast(data.error === 'username_taken' ? 'That username is taken — try another' : 'Signup failed — try again');
+}
+
 async function vWallet() {
   // Guests can browse but must create an account to add money
   if (!S.token || !S.user || S.user.role !== 'fan') {
@@ -1169,7 +1257,7 @@ async function vWallet() {
           <button class="btn ghost" id="w-login" style="width:100%">Already have an account? Log in</button>
         </div>
       </div>`;
-    $('#w-signup').onclick = () => show('auth', { mode: 'signup', role: 'fan' });
+    $('#w-signup').onclick = () => show('quickSignup', {});
     $('#w-login').onclick = () => show('auth', { mode: 'login', role: 'fan' });
     return;
   }
