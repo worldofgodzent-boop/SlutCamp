@@ -562,6 +562,58 @@ function show(view, params) {
   else if (S.user) refreshTabBadges();
 }
 
+/* ---------------- Home tiles — promo-style "who's live" video tiles ----------------
+   Media fills the tile: her loop video when she has one, else her photo, else a
+   gradient initial. LIVE pill + viewer count are REAL data from /api/models
+   (live_session_id + live_viewers counted from live_viewers rows) — never faked. */
+function tileGradient(name) {
+  const hues = [[265, 320], [300, 340], [220, 280], [280, 310]];
+  const h = hues[(name || '?').length % hues.length];
+  return `linear-gradient(135deg,hsl(${h[0]},70%,55%),hsl(${h[1]},65%,50%))`;
+}
+
+function modelTileHTML(m, opts) {
+  opts = opts || {};
+  const media = m.preview_video_url
+    ? `<video class="tile-media" src="${esc(m.preview_video_url)}" autoplay muted loop playsinline></video>`
+    : m.photo_url
+      ? `<img class="tile-media" src="${esc(m.photo_url)}" alt="" loading="lazy">`
+      : `<span class="tile-media tile-letter" style="background:${tileGradient(m.display_name)}">${esc((m.display_name || '?').trim().charAt(0).toUpperCase())}</span>`;
+  const status = m.is_live
+    ? '<span style="color:#fda4af;font-weight:800">▶ Watch free — tap to join</span>'
+    : m.is_online
+      ? '<span style="color:#6ee7b7;font-weight:700">● Online now</span>'
+      : '<span style="color:rgba(255,245,247,.6)">● Offline</span>';
+  return `
+    <button class="model-tile${opts.hero ? ' hero' : ''}" data-model="${m.id}" data-live="${m.live_session_id || ''}">
+      ${media}
+      <span class="tile-shade"></span>
+      ${m.is_live
+        ? `<span class="tile-live-pill">● LIVE</span><span class="tile-viewers">👁 ${m.live_viewers || 0} watching</span>`
+        : m.is_featured ? '<span class="tile-featured-pill">⭐ Featured</span>' : ''}
+      ${opts.heartHTML || ''}
+      <span class="tile-info">
+        <span class="tile-name">${esc(m.display_name)}</span>
+        <span class="tile-sub">@${esc(m.username)} · ${status}</span>
+        ${opts.hero && m.bio ? `<span class="tile-sub">${esc(m.bio).slice(0, 80)}</span>` : ''}
+        <span class="tile-sub" style="color:var(--peach);font-weight:700">${fmt(m.per_message_cents)}/msg · ${fmt(m.per_minute_cents)}/min video</span>
+        ${opts.hero && m.schedule_summary ? `<span class="tile-sub">📅 Usually live: ${esc(m.schedule_summary)}</span>` : ''}
+      </span>
+    </button>`;
+}
+
+/* Featured model gets the big hero tile on top; everyone else fills the grid */
+function homeTilesHTML(models, heartFor) {
+  const featured = models.find((m) => m.is_featured);
+  const rest = featured ? models.filter((m) => m.id !== featured.id) : models;
+  const heart = (m) => (heartFor ? heartFor(m) : '');
+  return `
+    ${featured ? modelTileHTML(featured, { hero: true, heartHTML: heart(featured) }) : ''}
+    <div class="tile-grid">
+      ${rest.map((m) => modelTileHTML(m, { heartHTML: heart(m) })).join('')}
+    </div>`;
+}
+
 /* ---------------- LANDING (public model grid) ---------------- */
 
 async function vLanding() {
@@ -577,30 +629,11 @@ async function vLanding() {
         <div style="font-size:20px;font-weight:800">🎁 First 3 messages FREE</div>
         <div class="muted small" style="margin-top:4px">with every model you try. No account needed to start.</div>
       </div>
-      ${models.map((m) => `
-        <button class="list-item" data-model="${m.id}" data-live="${m.live_session_id || ''}" style="background:var(--card);border-radius:14px;margin-bottom:10px;border:1px solid rgba(139,92,246,.18)">
-          <span class="model-media-wrap">
-            ${m.preview_video_url
-              ? `<video class="model-preview-video" src="${esc(m.preview_video_url)}" autoplay muted loop playsinline></video>`
-              : avatarHTML(m.display_name, '', m.photo_url)}
-            ${m.is_online ? '<span class="online-dot"></span>' : ''}
-          </span>
-          <span class="grow">
-            <span class="title">${esc(m.display_name)}
-              ${m.is_live ? ' <span class="live-badge">🔴 LIVE</span>' : ''}
-              <span class="small" style="color:${m.is_online ? 'var(--green)' : 'var(--muted)'}">● ${m.is_online ? 'Online' : 'Offline'}</span>
-            </span><br>
-            <span class="preview">${esc(m.bio).slice(0, 70)}</span><br>
-            <span class="small" style="color:var(--pink);font-weight:700">${fmt(m.per_message_cents)}/msg · ${fmt(m.per_minute_cents)}/min video</span>
-            <span class="model-likes" data-like="${m.id}" style="margin-left:8px;cursor:pointer">
+      ${models.length ? homeTilesHTML(models, (m) => `
+            <span class="model-likes tile-heart" data-like="${m.id}" title="Like her">
               <span class="like-heart">${m.liked ? '❤️' : '🤍'}</span>
-              <span class="like-count small" style="font-weight:700">${m.like_count || 0}</span>
-            </span>
-            ${m.schedule_summary ? `<br><span class="small muted">📅 Usually live: ${esc(m.schedule_summary)}</span>` : ''}
-            ${m.is_live ? `<br><span class="small" style="color:#f87171;font-weight:800">▶ Watch free preview — tap to join</span>` : ''}
-          </span>
-          <span style="font-size:22px">›</span>
-        </button>`).join('') || '<div class="empty"><div class="big">😴</div>No models yet.</div>'}
+              <span class="like-count">${m.like_count || 0}</span>
+            </span>`) : '<div class="empty"><div class="big">😴</div>No models yet.</div>'}
       <div style="text-align:center;margin-top:14px">
         ${S.user ? '' : `<button class="btn ghost" id="go-login">Log in / Sign up</button>`}
       </div>
@@ -1105,22 +1138,9 @@ async function vFanModels() {
     <div class="header"><h1>Slut<span class="logo">Camp</span></h1>
       <div><span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span></div></div>
     <div class="screen">
-      ${models.map((m) => `
-        <button class="list-item" data-model="${m.id}" data-live="${m.live_session_id || ''}" style="background:var(--card);border-radius:14px;margin-bottom:10px;border:1px solid rgba(139,92,246,.18)">
-          <span class="avatar-wrap">${avatarHTML(m.display_name, '', m.photo_url)}
-            ${m.is_online ? '<span class="online-dot"></span>' : ''}</span>
-          <span class="grow">
-            <span class="title">${esc(m.display_name)}
-              ${m.is_live ? ' <span class="live-badge">🔴 LIVE</span>' : ''}
-              <span class="small" style="color:${m.is_online ? 'var(--green)' : 'var(--muted)'}">● ${m.is_online ? 'Online now' : 'Offline'}</span></span><br>
-            <span class="preview">${esc(m.bio).slice(0, 70)}</span><br>
-            <span class="small" style="color:var(--pink);font-weight:700">${fmt(m.per_message_cents)}/msg · ${fmt(m.per_minute_cents)}/min video</span>
-            ${m.schedule_summary ? `<br><span class="small muted">📅 Usually live: ${esc(m.schedule_summary)}</span>` : ''}
-            ${m.is_live ? `<br><span class="small" style="color:#f87171;font-weight:800">▶ Watch free preview — tap to join</span>` : ''}
-          </span>
-          <span class="follow-btn ${following.includes(m.id) ? 'following' : ''}" data-follow="${m.id}" title="Follow for live notifications">${following.includes(m.id) ? '❤️' : '🤍'}</span>
-          <span style="font-size:22px">›</span>
-        </button>`).join('')}
+      ${models.length ? homeTilesHTML(models, (m) => `
+            <span class="follow-btn tile-heart ${following.includes(m.id) ? 'following' : ''}" data-follow="${m.id}" title="Follow for live notifications">${following.includes(m.id) ? '❤️' : '🤍'}</span>`)
+        : '<div class="empty"><div class="big">😴</div>No models yet.</div>'}
     </div>`;
   app.querySelectorAll('[data-model]').forEach((b) => {
     b.onclick = () => {
