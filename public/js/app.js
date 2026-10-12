@@ -2831,12 +2831,42 @@ function vLiveBroadcast() {
   renderStreamChat();
   renderLeaderboard();
   renderStageRequests();
+  // Mic level meter — shows her if her mic is live
+  startMicMeter(L.stream);
   // Poll stage requests every 5s as backup (in case WS events are missed)
   if (S.live.stagePoll) clearInterval(S.live.stagePoll);
   S.live.stagePoll = setInterval(() => {
     if (S.live && S.live.role === 'model') renderStageRequests();
     else clearInterval(S.live.stagePoll);
   }, 5000);
+}
+
+// Live mic level indicator for the broadcaster
+function startMicMeter(stream) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    src.connect(analyser);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    const meter = document.createElement('div');
+    meter.id = 'mic-meter';
+    meter.innerHTML = '<div id="mic-meter-fill"></div><span>🎤</span>';
+    document.querySelector('.live-wrap.broadcast .live-top')?.appendChild(meter);
+    const tick = () => {
+      if (!S.live || S.live.role !== 'model') { try { ctx.close(); } catch (e) {} meter.remove(); return; }
+      analyser.getByteFrequencyData(data);
+      const avg = data.reduce((a, b) => a + b, 0) / data.length;
+      const fill = meter.querySelector('#mic-meter-fill');
+      if (fill) {
+        fill.style.width = Math.min(100, avg * 2) + '%';
+        fill.style.background = avg > 5 ? '#22c55e' : '#ef4444';
+      }
+      requestAnimationFrame(tick);
+    };
+    tick();
+  } catch (e) {}
 }
 
 /* Stage request modal — big tappable approve/decline, can't be missed */
