@@ -599,6 +599,10 @@ addColumnIfMissing('transactions', 'ip', 'TEXT');
 
 // Display name changes: fans get 1 per 30 days (self-service); models submit requests for admin approval
 addColumnIfMissing('users', 'name_changed_at', 'TEXT');
+
+// UI language preference ('en' | 'es' | 'pt') — set from the in-app language
+// picker, returned by /api/me so it follows the user across devices
+addColumnIfMissing('users', 'language', "TEXT NOT NULL DEFAULT 'en'");
 db.exec(`
 CREATE TABLE IF NOT EXISTS name_change_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -848,6 +852,7 @@ const getUserPublic = (u) => ({
   id: u.id, username: u.username, role: u.role,
   display_name: u.display_name, banned: !!u.banned,
   status: u.status || 'active',
+  language: u.language || 'en',
 });
 
 const fmt$ = (c) => '$' + (c / 100).toFixed(2); // server-side money formatter (cents → $x.xx)
@@ -1585,6 +1590,16 @@ app.patch('/api/me/display-name', identMiddleware, requireUser, (req, res) => {
   db.prepare(`UPDATE users SET display_name = ?, name_changed_at = datetime('now') WHERE id = ?`)
     .run(name, req.user.id);
   res.json({ ok: true, display_name: name });
+});
+
+// UI language preference — the in-app picker (EN / ES / PT-BR) saves here so
+// the choice follows the user across devices; guests keep it in localStorage.
+app.patch('/api/me/language', identMiddleware, requireUser, (req, res) => {
+  const lang = String(req.body?.language || '').toLowerCase();
+  if (!['en', 'es', 'pt'].includes(lang))
+    return res.status(400).json({ error: 'bad_language', message: 'Supported languages: en, es, pt.' });
+  db.prepare('UPDATE users SET language = ? WHERE id = ?').run(lang, req.user.id);
+  res.json({ ok: true, language: lang });
 });
 
 // Model submits a name change request for admin approval

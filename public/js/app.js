@@ -66,6 +66,475 @@ function timeHM(iso) {
   return `${h}:${m} ${ap}`;
 }
 
+/* ---------------- i18n — English / Español / Português (BR) ----------------
+   Core UI strings in v1: nav tabs, home, Lives, chat basics, auth, wallet,
+   model settings + earnings labels, splash. Long-tail admin/legal copy
+   stays English for now. LANG loads from localStorage BEFORE first render;
+   when logged in, the account copy (users.language, via /api/me) is the
+   fallback and device choices are pushed up to it — see syncLangFromUser. */
+const LANGS = [
+  { code: 'en', label: 'English', flag: '🇺🇸' },
+  { code: 'es', label: 'Español', flag: '🇪🇸' },
+  { code: 'pt', label: 'Português', flag: '🇧🇷' },
+];
+const I18N = {
+  en: {
+    tab_models: 'Models', tab_live: 'Live', tab_chats: 'Chats', tab_bookings: 'Bookings',
+    tab_wallet: 'Wallet', tab_earnings: 'Earnings', tab_settings: 'Settings',
+    tab_home: 'Home', tab_safety: 'Safety', tab_more: 'More',
+    language: 'Language', language_note: 'Choose the language for your app.',
+    language_set: '🌐 Language updated!',
+    home_sub: 'Chat & video call the models · 18+ only',
+    free3_title: '🎁 First 3 messages FREE',
+    free3_sub: 'with every model you try. No account needed to start.',
+    login_signup: 'Log in / Sign up', share_app: '📤 Share SlutCamp',
+    no_models: 'No models yet.',
+    terms_line: '18+ only. By chatting you agree to the', terms: 'Terms',
+    like_need_fan: 'Log in as a fan to like models 💜',
+    link_copied: 'Link copied — send it to your boys 📤',
+    watch_free: '▶ Watch free — tap to join', online_now: '● Online now', offline: '● Offline',
+    watching: '{n} watching', featured: '⭐ Featured', top_model: '👑 Top Model',
+    per_msg_rate: '{price}/msg', per_min_rate: '{price}/min video',
+    usually_live: '📅 Usually live: {s}',
+    lives_btn: '🔴 Lives', lives_count: '{n} live now', lives_word: '🔴 Lives',
+    follow_title: 'Follow for live notifications',
+    live_now_h: '🔴 Live Now', fanlive_h: '🔴 Live now',
+    live_now_sub: 'Everyone streaming right now — tap to jump in 💋',
+    nobody_live: "Nobody's live right now 💤",
+    models_pop_in: 'Models pop in all day — check back soon 💋',
+    online_say_hi: '💬 Online now — say hi', back_models: '← Back to models',
+    watching_gifts: '👁 {v} watching · 🎁 {g} in gifts',
+    join_free_line: '▶ Join free — chat is free, gifts get you noticed',
+    noone_live: "No one's live right now.",
+    check_back: 'Check back soon — your favorite models go live without warning 😈',
+    coming_up: '📅 Coming up',
+    your_chats: 'Your chats 💬', chats_title: 'Chats 💬',
+    online_caps: '🟢 ONLINE', offline_caps: '⚫ OFFLINE',
+    go_live: '🔴 Go Live', back_live: '↩️ Back to Live',
+    paused_tag: '⏸ paused', no_messages_yet: 'No messages yet',
+    no_chats: 'No chats yet.', tap_model_start: 'Tap a model to start chatting!',
+    you_online: '🟢 You are ONLINE', you_offline: '⚫ You are offline',
+    st_online: '🟢 online', st_offline: '⚫ offline', st_paused: '⏸ Paused',
+    free_left: '🎁 {n} free left', book_1on1: '📅 Book 1-on-1',
+    book_title: 'Book a private 1-on-1 live',
+    chat_paused_banner: '⚠️ This chat is paused by the safety monitor.',
+    sharing_not_allowed: 'Sharing contact info is not allowed.',
+    msgs_cost: 'Messages cost {price} each',
+    free_msgs_left: '🎁 {n} FREE messages left — then sign up to continue',
+    msg_placeholder: 'Message…', chat_paused_ph: 'Chat paused', typing: 'typing…',
+    welcome_back: 'Welcome back 😈', create_account_h: 'Create your account',
+    log_in: 'Log in', sign_up: 'Sign up', log_out: 'Log out',
+    username: 'Username', password: 'Password', password_hint: 'Password (6+ characters)',
+    display_name: 'Display name', dob: 'Date of birth',
+    im_fan: "I'm a Fan", fan_desc: 'Chat & video call the models',
+    im_model: "I'm a Model", model_desc: 'Get paid to chat (SlutCamp verifies you)',
+    age18_only: '18+ only.', age18_line: 'You must be 18 or older to use SlutCamp.',
+    fan_age_line: "Fans confirm 18+ here — that's all we ask. Simple.",
+    confirm18: 'I confirm I am <b>18 years or older</b>.',
+    create_account_btn: 'Create account', keep_browsing: '← Keep browsing free',
+    enter_user_pass: 'Enter username + password',
+    login_failed: 'Login failed — check your details.',
+    account_banned: '⛔ This account is banned.',
+    welcome_user: 'Welcome, {name}! 🎉', logged_out: 'Logged out.',
+    qs_sub: 'Create your account — 30 seconds', your_account: '👤 Your account',
+    pick_username_ph: 'pick a username',
+    payment_info: '💳 Payment info',
+    payment_note: "Add your payment method now so you can buy credits instantly. You won't be charged until you buy.",
+    full_name_card: 'Full name (on card)', payment_method: 'Payment method',
+    card_word: '💳 Card', card_number: 'Card number', expiry: 'Expiry',
+    create_continue: 'Create account & continue →', back: '← Back',
+    wallet_h: 'Wallet 💰', balance: 'Balance: {amt}',
+    credit_note: "1 credit = $1. Messages cost the model's rate.",
+    credits_word: 'credits',
+    guest_wallet_title: 'Create your free account to add funds',
+    guest_wallet_sub: "You're browsing as a guest. Sign up free to buy credits and unlock chats, live streams, gifts, and more.",
+    create_free_account: '✨ Create free account',
+    have_account_login: 'Already have an account? Log in',
+    splash_welcome: 'Welcome to SlutCamp,', splash_paradise: 'sluts paradise 😈',
+    splash_nutt: 'We hope you enjoy your Nutt 💦', enter: 'Enter 🔥',
+    settings_h: 'Settings ⚙️',
+    id_verified: '✅ ID Verified',
+    id_verified_sub: "Your identity is verified. You're cleared to chat and go live.",
+    id_pending: '⏳ ID Under Review',
+    my_rates: '💵 My Rates',
+    rates_note: 'What fans pay for 1-on-1 with you. You set these — SlutCamp can also adjust them.',
+    per_text: '💬 Per text:', per_min_video_l: '📹 Per minute video:', per_voice: '🎙️ Per voice note:',
+    explicit_rate_l: 'Live explicit rate — per minute ($)',
+    save_rates: 'Save rates',
+    stage_rates_h: '🔞 Explicit stage rates',
+    ejv_l: '🎥 Explicit video + mic join:', ejm_l: '🎙️ Explicit mic join:',
+    save_stage_rates: 'Save stage rates',
+    schedule_h: '📅 My Live Schedule', add_slot: 'Add slot',
+    slot_title_ph: 'Title (optional) — e.g. Late night hangout',
+    days_short: 'Sun,Mon,Tue,Wed,Thu,Fri,Sat',
+    day_names: 'Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday',
+    bio: 'Bio', save_bio: 'Save bio',
+    my_photo: 'My Photo',
+    photo_note: 'Fans see this next to your name in chats and on the model grid.',
+    change_photo: '📷 Change my photo',
+    tip_menu: '💰 Tip Menu', add_tip_item: '➕ Add tip item',
+    rates_saved: '✅ Rates saved!', bio_saved: '✅ Bio saved!', stage_saved: '✅ Stage rates saved!',
+    couldnt_save: 'Could not save.',
+    earnings_h: 'Earnings 💵', you_keep: 'You keep {pct}% of everything',
+    avail_payout: 'Available for payout', total_earned: 'Total earned',
+    gifts_received: '🎁 Gifts received', gifts_from_fans_1: '{n} gift from fans',
+    gifts_from_fans_n: '{n} gifts from fans', gifts_cut_note: 'Your 60% cut of every gift 💰',
+    revenue_breakdown: '📊 Revenue breakdown', gifts_word: '🎁 Gifts',
+    rb_lives_sub: '· explicit + video calls',
+    rb_dms: '💬 Private DMs', rb_dms_sub: '· messages + voice + PPV + tips',
+    all_activity: 'All activity',
+    ty_message: '💬 Chat messages', ty_call: '📹 Video calls', ty_tip: '💸 Tips',
+    ty_ppv: '🔒 PPV unlocks', ty_voice: '🎤 Voice notes', ty_live_explicit: '🔥 Explicit live',
+    ty_gift: '🎁 Gifts',
+    payment_1: '{n} payment', payment_n: '{n} payments',
+    payments_1: '{n} payment', payments_n: '{n} payments',
+    payouts_h: '💸 Payouts', bank_account: 'Bank account', not_set: 'Not set',
+    withdraw: 'Withdraw', avail_withdraw: 'Available to withdraw:',
+    add_bank: 'Add bank account', update_bank: 'Update bank account',
+    update_bank_btn: '✏️ Update bank account',
+    holder_name: 'Account holder name', routing: 'Routing number (9 digits)',
+    account_number: 'Account number', save_bank: 'Save bank account',
+    bank_note: '🔒 Only SlutCamp sees your full account number, to send your money.',
+    amount_ph: 'Amount $',
+    wd_history: 'Withdrawal history',
+    wd_pending: '⏳ Pending', wd_paid: '✅ Paid', wd_rejected: '❌ Rejected',
+    per_fan: 'Per fan',
+    no_earnings: 'No earnings yet — go online and chat! 💬',
+    payouts_note: 'Payouts are sent by SlutCamp. Available balance updates after each message.',
+    bookings_h: 'Bookings 📅', bookings_sub: 'Private 1-on-1 lives — paid upfront',
+    approve: '✅ Approve', decline: '❌ Decline',
+    req_waiting_1: '{n} request waiting', req_waiting_n: '{n} requests waiting',
+    mic_on: '🎤 Mic on', muted: '🔇 Muted', cam_on: '📹 Cam on', cam_off: '📷 Cam off',
+    go_explicit: 'Go Explicit 🔞', end_stream: 'End Stream',
+    say_fans_ph: 'Say something to your fans…',
+    explicit_rate_note: 'Explicit rate: {price}/min · Your preview is never blurred',
+    notifications_h: '🔔 Notifications', notifications_word: 'Notifications',
+    mark_all_read: 'Mark all read',
+  },
+  es: {
+    tab_models: 'Modelos', tab_live: 'En vivo', tab_chats: 'Chats', tab_bookings: 'Reservas',
+    tab_wallet: 'Billetera', tab_earnings: 'Ganancias', tab_settings: 'Ajustes',
+    tab_home: 'Inicio', tab_safety: 'Seguridad', tab_more: 'Más',
+    language: 'Idioma', language_note: 'Elige el idioma de tu app.',
+    language_set: '🌐 ¡Idioma actualizado!',
+    home_sub: 'Chatea y haz videollamadas con las modelos · Solo 18+',
+    free3_title: '🎁 Primeros 3 mensajes GRATIS',
+    free3_sub: 'con cada modelo que pruebes. No necesitas cuenta para empezar.',
+    login_signup: 'Iniciar sesión / Registrarse', share_app: '📤 Compartir SlutCamp',
+    no_models: 'Aún no hay modelos.',
+    terms_line: 'Solo 18+. Al chatear aceptas los', terms: 'Términos',
+    like_need_fan: 'Inicia sesión como fan para dar me gusta 💜',
+    link_copied: 'Enlace copiado — envíaselo a tus amigos 📤',
+    watch_free: '▶ Mira gratis — toca para entrar', online_now: '● En línea ahora', offline: '● Desconectada',
+    watching: '{n} mirando', featured: '⭐ Destacada', top_model: '👑 Modelo Top',
+    per_msg_rate: '{price}/msj', per_min_rate: '{price}/min de video',
+    usually_live: '📅 Suele estar en vivo: {s}',
+    lives_btn: '🔴 En vivo', lives_count: '{n} en vivo ahora', lives_word: '🔴 En vivo',
+    follow_title: 'Seguir para avisos de en vivo',
+    live_now_h: '🔴 En Vivo Ahora', fanlive_h: '🔴 En vivo ahora',
+    live_now_sub: 'Todas transmitiendo ahora — toca para entrar 💋',
+    nobody_live: 'Nadie está en vivo ahora 💤',
+    models_pop_in: 'Las modelos entran todo el día — vuelve pronto 💋',
+    online_say_hi: '💬 En línea ahora — saluda', back_models: '← Volver a las modelos',
+    watching_gifts: '👁 {v} mirando · 🎁 {g} en regalos',
+    join_free_line: '▶ Entra gratis — el chat es gratis, los regalos te hacen notar',
+    noone_live: 'Nadie está en vivo ahora.',
+    check_back: 'Vuelve pronto — tus modelos favoritas entran en vivo sin avisar 😈',
+    coming_up: '📅 Próximamente',
+    your_chats: 'Tus chats 💬', chats_title: 'Chats 💬',
+    online_caps: '🟢 EN LÍNEA', offline_caps: '⚫ DESCONECTADA',
+    go_live: '🔴 Transmitir en vivo', back_live: '↩️ Volver al en vivo',
+    paused_tag: '⏸ pausado', no_messages_yet: 'Sin mensajes aún',
+    no_chats: 'Aún no tienes chats.', tap_model_start: '¡Toca una modelo para empezar a chatear!',
+    you_online: '🟢 Estás EN LÍNEA', you_offline: '⚫ Estás desconectada',
+    st_online: '🟢 en línea', st_offline: '⚫ desconectada', st_paused: '⏸ Pausado',
+    free_left: '🎁 {n} gratis restantes', book_1on1: '📅 Reservar 1 a 1',
+    book_title: 'Reserva un en vivo privado 1 a 1',
+    chat_paused_banner: '⚠️ Este chat fue pausado por el monitor de seguridad.',
+    sharing_not_allowed: 'No está permitido compartir datos de contacto.',
+    msgs_cost: 'Cada mensaje cuesta {price}',
+    free_msgs_left: '🎁 Te quedan {n} mensajes GRATIS — luego regístrate para seguir',
+    msg_placeholder: 'Mensaje…', chat_paused_ph: 'Chat pausado', typing: 'escribiendo…',
+    welcome_back: 'Bienvenido de nuevo 😈', create_account_h: 'Crea tu cuenta',
+    log_in: 'Iniciar sesión', sign_up: 'Registrarse', log_out: 'Cerrar sesión',
+    username: 'Usuario', password: 'Contraseña', password_hint: 'Contraseña (6+ caracteres)',
+    display_name: 'Nombre visible', dob: 'Fecha de nacimiento',
+    im_fan: 'Soy Fan', fan_desc: 'Chatea y haz videollamadas con las modelos',
+    im_model: 'Soy Modelo', model_desc: 'Gana dinero chateando (SlutCamp te verifica)',
+    age18_only: 'Solo 18+.', age18_line: 'Debes tener 18 años o más para usar SlutCamp.',
+    fan_age_line: 'Los fans confirman aquí que tienen 18+ — es todo lo que pedimos. Simple.',
+    confirm18: 'Confirmo que tengo <b>18 años o más</b>.',
+    create_account_btn: 'Crear cuenta', keep_browsing: '← Seguir explorando gratis',
+    enter_user_pass: 'Ingresa usuario y contraseña',
+    login_failed: 'Error al iniciar sesión — revisa tus datos.',
+    account_banned: '⛔ Esta cuenta está suspendida.',
+    welcome_user: '¡Bienvenido, {name}! 🎉', logged_out: 'Sesión cerrada.',
+    qs_sub: 'Crea tu cuenta — 30 segundos', your_account: '👤 Tu cuenta',
+    pick_username_ph: 'elige un usuario',
+    payment_info: '💳 Pago',
+    payment_note: 'Agrega tu método de pago ahora para comprar créditos al instante. No se te cobrará hasta que compres.',
+    full_name_card: 'Nombre completo (en la tarjeta)', payment_method: 'Método de pago',
+    card_word: '💳 Tarjeta', card_number: 'Número de tarjeta', expiry: 'Vencimiento',
+    create_continue: 'Crear cuenta y continuar →', back: '← Atrás',
+    wallet_h: 'Billetera 💰', balance: 'Saldo: {amt}',
+    credit_note: '1 crédito = $1. Los mensajes cuestan la tarifa de la modelo.',
+    credits_word: 'créditos',
+    guest_wallet_title: 'Crea tu cuenta gratis para agregar fondos',
+    guest_wallet_sub: 'Estás explorando como invitado. Regístrate gratis para comprar créditos y desbloquear chats, transmisiones en vivo, regalos y más.',
+    create_free_account: '✨ Crear cuenta gratis',
+    have_account_login: '¿Ya tienes cuenta? Inicia sesión',
+    splash_welcome: 'Bienvenido a SlutCamp,', splash_paradise: 'el paraíso travieso 😈',
+    splash_nutt: 'Esperamos que disfrutes tu Nutt 💦', enter: 'Entrar 🔥',
+    settings_h: 'Ajustes ⚙️',
+    id_verified: '✅ Identidad verificada',
+    id_verified_sub: 'Tu identidad está verificada. Ya puedes chatear y transmitir en vivo.',
+    id_pending: '⏳ Identidad en revisión',
+    my_rates: '💵 Mis tarifas',
+    rates_note: 'Lo que pagan los fans por el 1 a 1 contigo. Tú las fijas — SlutCamp también puede ajustarlas.',
+    per_text: '💬 Por mensaje:', per_min_video_l: '📹 Por minuto de video:', per_voice: '🎙️ Por nota de voz:',
+    explicit_rate_l: 'Tarifa explícita en vivo — por minuto ($)',
+    save_rates: 'Guardar tarifas',
+    stage_rates_h: '🔞 Tarifas de escenario explícito',
+    ejv_l: '🎥 Unión explícita con video + micrófono:', ejm_l: '🎙️ Unión explícita solo micrófono:',
+    save_stage_rates: 'Guardar tarifas de escenario',
+    schedule_h: '📅 Mi horario en vivo', add_slot: 'Agregar horario',
+    slot_title_ph: 'Título (opcional) — ej. Charla nocturna',
+    days_short: 'dom,lun,mar,mié,jue,vie,sáb',
+    day_names: 'lunes,martes,miércoles,jueves,viernes,sábado,domingo',
+    bio: 'Bio', save_bio: 'Guardar bio',
+    my_photo: 'Mi foto',
+    photo_note: 'Los fans ven esto junto a tu nombre en los chats y en la lista de modelos.',
+    change_photo: '📷 Cambiar mi foto',
+    tip_menu: '💰 Menú de propinas', add_tip_item: '➕ Agregar propina',
+    rates_saved: '✅ ¡Tarifas guardadas!', bio_saved: '✅ ¡Bio guardada!', stage_saved: '✅ ¡Tarifas de escenario guardadas!',
+    couldnt_save: 'No se pudo guardar.',
+    earnings_h: 'Ganancias 💵', you_keep: 'Te quedas con el {pct}% de todo',
+    avail_payout: 'Disponible para retirar', total_earned: 'Total ganado',
+    gifts_received: '🎁 Regalos recibidos', gifts_from_fans_1: '{n} regalo de fans',
+    gifts_from_fans_n: '{n} regalos de fans', gifts_cut_note: 'Tu 60% de cada regalo 💰',
+    revenue_breakdown: '📊 Desglose de ingresos', gifts_word: '🎁 Regalos',
+    rb_lives_sub: '· explícito + videollamadas',
+    rb_dms: '💬 Mensajes privados', rb_dms_sub: '· mensajes + voz + PPV + propinas',
+    all_activity: 'Toda la actividad',
+    ty_message: '💬 Mensajes de chat', ty_call: '📹 Videollamadas', ty_tip: '💸 Propinas',
+    ty_ppv: '🔒 Desbloqueos PPV', ty_voice: '🎤 Notas de voz', ty_live_explicit: '🔥 En vivo explícito',
+    ty_gift: '🎁 Regalos',
+    payment_1: '{n} pago', payment_n: '{n} pagos',
+    payments_1: '{n} pago', payments_n: '{n} pagos',
+    payouts_h: '💸 Retiros', bank_account: 'Cuenta bancaria', not_set: 'Sin configurar',
+    withdraw: 'Retirar', avail_withdraw: 'Disponible para retirar:',
+    add_bank: 'Agregar cuenta bancaria', update_bank: 'Actualizar cuenta bancaria',
+    update_bank_btn: '✏️ Actualizar cuenta bancaria',
+    holder_name: 'Nombre del titular', routing: 'Número de ruta (9 dígitos)',
+    account_number: 'Número de cuenta', save_bank: 'Guardar cuenta bancaria',
+    bank_note: '🔒 Solo SlutCamp ve tu número de cuenta completo, para enviarte tu dinero.',
+    amount_ph: 'Cantidad $',
+    wd_history: 'Historial de retiros',
+    wd_pending: '⏳ Pendiente', wd_paid: '✅ Pagado', wd_rejected: '❌ Rechazado',
+    per_fan: 'Por fan',
+    no_earnings: 'Aún no tienes ganancias — ¡ponte en línea y chatea! 💬',
+    payouts_note: 'Los retiros los envía SlutCamp. Tu saldo disponible se actualiza tras cada mensaje.',
+    bookings_h: 'Reservas 📅', bookings_sub: 'En vivos privados 1 a 1 — pagados por adelantado',
+    approve: '✅ Aprobar', decline: '❌ Rechazar',
+    req_waiting_1: '{n} solicitud en espera', req_waiting_n: '{n} solicitudes en espera',
+    mic_on: '🎤 Micrófono activado', muted: '🔇 Silenciado', cam_on: '📹 Cámara activada', cam_off: '📷 Cámara apagada',
+    go_explicit: 'Pasar a explícito 🔞', end_stream: 'Terminar transmisión',
+    say_fans_ph: 'Di algo a tus fans…',
+    explicit_rate_note: 'Tarifa explícita: {price}/min · Tu vista previa nunca se difumina',
+    notifications_h: '🔔 Notificaciones', notifications_word: 'Notificaciones',
+    mark_all_read: 'Marcar todo leído',
+  },
+  pt: {
+    tab_models: 'Modelos', tab_live: 'Ao vivo', tab_chats: 'Conversas', tab_bookings: 'Reservas',
+    tab_wallet: 'Carteira', tab_earnings: 'Ganhos', tab_settings: 'Configurações',
+    tab_home: 'Início', tab_safety: 'Segurança', tab_more: 'Mais',
+    language: 'Idioma', language_note: 'Escolha o idioma do seu app.',
+    language_set: '🌐 Idioma atualizado!',
+    home_sub: 'Converse e faça videochamadas com as modelos · Somente 18+',
+    free3_title: '🎁 Primeiras 3 mensagens GRÁTIS',
+    free3_sub: 'com cada modelo que você testar. Não precisa de conta para começar.',
+    login_signup: 'Entrar / Cadastrar', share_app: '📤 Compartilhar o SlutCamp',
+    no_models: 'Ainda não há modelos.',
+    terms_line: 'Somente 18+. Ao conversar, você concorda com os', terms: 'Termos',
+    like_need_fan: 'Entre como fã para curtir as modelos 💜',
+    link_copied: 'Link copiado — manda pros seus amigos 📤',
+    watch_free: '▶ Assista grátis — toque para entrar', online_now: '● Online agora', offline: '● Offline',
+    watching: '{n} assistindo', featured: '⭐ Destaque', top_model: '👑 Modelo Top',
+    per_msg_rate: '{price}/msg', per_min_rate: '{price}/min de vídeo',
+    usually_live: '📅 Costuma entrar ao vivo: {s}',
+    lives_btn: '🔴 Ao vivo', lives_count: '{n} ao vivo agora', lives_word: '🔴 Ao vivo',
+    follow_title: 'Seguir para avisos de live',
+    live_now_h: '🔴 Ao Vivo Agora', fanlive_h: '🔴 Ao vivo agora',
+    live_now_sub: 'Todas transmitindo agora — toque para entrar 💋',
+    nobody_live: 'Ninguém está ao vivo agora 💤',
+    models_pop_in: 'As modelos entram o dia todo — volte logo 💋',
+    online_say_hi: '💬 Online agora — diga oi', back_models: '← Voltar às modelos',
+    watching_gifts: '👁 {v} assistindo · 🎁 {g} em presentes',
+    join_free_line: '▶ Entre grátis — o chat é grátis, presentes te destacam',
+    noone_live: 'Ninguém está ao vivo agora.',
+    check_back: 'Volte logo — suas modelos favoritas entram ao vivo sem avisar 😈',
+    coming_up: '📅 Em breve',
+    your_chats: 'Suas conversas 💬', chats_title: 'Conversas 💬',
+    online_caps: '🟢 ONLINE', offline_caps: '⚫ OFFLINE',
+    go_live: '🔴 Entrar ao vivo', back_live: '↩️ Voltar à live',
+    paused_tag: '⏸ pausada', no_messages_yet: 'Sem mensagens ainda',
+    no_chats: 'Você ainda não tem conversas.', tap_model_start: 'Toque em uma modelo para começar a conversar!',
+    you_online: '🟢 Você está ONLINE', you_offline: '⚫ Você está offline',
+    st_online: '🟢 online', st_offline: '⚫ offline', st_paused: '⏸ Pausada',
+    free_left: '🎁 {n} grátis restantes', book_1on1: '📅 Reservar 1 a 1',
+    book_title: 'Reserve uma live privada 1 a 1',
+    chat_paused_banner: '⚠️ Esta conversa foi pausada pelo monitor de segurança.',
+    sharing_not_allowed: 'Não é permitido compartilhar informações de contato.',
+    msgs_cost: 'Cada mensagem custa {price}',
+    free_msgs_left: '🎁 Restam {n} mensagens GRÁTIS — depois cadastre-se para continuar',
+    msg_placeholder: 'Mensagem…', chat_paused_ph: 'Conversa pausada', typing: 'digitando…',
+    welcome_back: 'Bem-vindo de volta 😈', create_account_h: 'Crie sua conta',
+    log_in: 'Entrar', sign_up: 'Cadastrar', log_out: 'Sair',
+    username: 'Nome de usuário', password: 'Senha', password_hint: 'Senha (6+ caracteres)',
+    display_name: 'Nome de exibição', dob: 'Data de nascimento',
+    im_fan: 'Sou Fã', fan_desc: 'Converse e faça videochamadas com as modelos',
+    im_model: 'Sou Modelo', model_desc: 'Ganhe dinheiro conversando (a SlutCamp verifica você)',
+    age18_only: 'Somente 18+.', age18_line: 'Você deve ter 18 anos ou mais para usar o SlutCamp.',
+    fan_age_line: 'Fãs confirmam aqui que têm 18+ — é tudo o que pedimos. Simples.',
+    confirm18: 'Confirmo que tenho <b>18 anos ou mais</b>.',
+    create_account_btn: 'Criar conta', keep_browsing: '← Continuar explorando grátis',
+    enter_user_pass: 'Digite usuário e senha',
+    login_failed: 'Falha no login — verifique seus dados.',
+    account_banned: '⛔ Esta conta está banida.',
+    welcome_user: 'Bem-vindo, {name}! 🎉', logged_out: 'Você saiu.',
+    qs_sub: 'Crie sua conta — 30 segundos', your_account: '👤 Sua conta',
+    pick_username_ph: 'escolha um usuário',
+    payment_info: '💳 Pagamento',
+    payment_note: 'Adicione seu método de pagamento agora para comprar créditos na hora. Você só será cobrado quando comprar.',
+    full_name_card: 'Nome completo (no cartão)', payment_method: 'Método de pagamento',
+    card_word: '💳 Cartão', card_number: 'Número do cartão', expiry: 'Validade',
+    create_continue: 'Criar conta e continuar →', back: '← Voltar',
+    wallet_h: 'Carteira 💰', balance: 'Saldo: {amt}',
+    credit_note: '1 crédito = $1. As mensagens custam a tarifa da modelo.',
+    credits_word: 'créditos',
+    guest_wallet_title: 'Crie sua conta grátis para adicionar fundos',
+    guest_wallet_sub: 'Você está navegando como visitante. Cadastre-se grátis para comprar créditos e liberar conversas, lives, presentes e muito mais.',
+    create_free_account: '✨ Criar conta grátis',
+    have_account_login: 'Já tem conta? Entrar',
+    splash_welcome: 'Bem-vindo ao SlutCamp,', splash_paradise: 'o paraíso das safadas 😈',
+    splash_nutt: 'Esperamos que você aproveite seu Nutt 💦', enter: 'Entrar 🔥',
+    settings_h: 'Configurações ⚙️',
+    id_verified: '✅ Identidade verificada',
+    id_verified_sub: 'Sua identidade está verificada. Você já pode conversar e entrar ao vivo.',
+    id_pending: '⏳ Identidade em análise',
+    my_rates: '💵 Minhas tarifas',
+    rates_note: 'O que os fãs pagam pelo 1 a 1 com você. Você define — a SlutCamp também pode ajustar.',
+    per_text: '💬 Por mensagem:', per_min_video_l: '📹 Por minuto de vídeo:', per_voice: '🎙️ Por mensagem de voz:',
+    explicit_rate_l: 'Tarifa explícita ao vivo — por minuto ($)',
+    save_rates: 'Salvar tarifas',
+    stage_rates_h: '🔞 Tarifas de palco explícito',
+    ejv_l: '🎥 Entrada explícita com vídeo + microfone:', ejm_l: '🎙️ Entrada explícita só com microfone:',
+    save_stage_rates: 'Salvar tarifas de palco',
+    schedule_h: '📅 Minha agenda de lives', add_slot: 'Adicionar horário',
+    slot_title_ph: 'Título (opcional) — ex. Bate-papo da noite',
+    days_short: 'dom,seg,ter,qua,qui,sex,sáb',
+    day_names: 'segunda,terça,quarta,quinta,sexta,sábado,domingo',
+    bio: 'Bio', save_bio: 'Salvar bio',
+    my_photo: 'Minha foto',
+    photo_note: 'Os fãs veem isso ao lado do seu nome nas conversas e na lista de modelos.',
+    change_photo: '📷 Trocar minha foto',
+    tip_menu: '💰 Menu de gorjetas', add_tip_item: '➕ Adicionar item',
+    rates_saved: '✅ Tarifas salvas!', bio_saved: '✅ Bio salva!', stage_saved: '✅ Tarifas de palco salvas!',
+    couldnt_save: 'Não foi possível salvar.',
+    earnings_h: 'Ganhos 💵', you_keep: 'Você fica com {pct}% de tudo',
+    avail_payout: 'Disponível para saque', total_earned: 'Total ganho',
+    gifts_received: '🎁 Presentes recebidos', gifts_from_fans_1: '{n} presente de fãs',
+    gifts_from_fans_n: '{n} presentes de fãs', gifts_cut_note: 'Seus 60% de cada presente 💰',
+    revenue_breakdown: '📊 Detalhes da receita', gifts_word: '🎁 Presentes',
+    rb_lives_sub: '· explícito + videochamadas',
+    rb_dms: '💬 Mensagens privadas', rb_dms_sub: '· mensagens + voz + PPV + gorjetas',
+    all_activity: 'Toda a atividade',
+    ty_message: '💬 Mensagens de chat', ty_call: '📹 Videochamadas', ty_tip: '💸 Gorjetas',
+    ty_ppv: '🔒 Desbloqueios PPV', ty_voice: '🎤 Mensagens de voz', ty_live_explicit: '🔥 Live explícita',
+    ty_gift: '🎁 Presentes',
+    payment_1: '{n} pagamento', payment_n: '{n} pagamentos',
+    payments_1: '{n} pagamento', payments_n: '{n} pagamentos',
+    payouts_h: '💸 Saques', bank_account: 'Conta bancária', not_set: 'Não configurada',
+    withdraw: 'Sacar', avail_withdraw: 'Disponível para sacar:',
+    add_bank: 'Adicionar conta bancária', update_bank: 'Atualizar conta bancária',
+    update_bank_btn: '✏️ Atualizar conta bancária',
+    holder_name: 'Nome do titular', routing: 'Número de roteamento (9 dígitos)',
+    account_number: 'Número da conta', save_bank: 'Salvar conta bancária',
+    bank_note: '🔒 Só a SlutCamp vê o número completo da sua conta, para enviar seu dinheiro.',
+    amount_ph: 'Valor $',
+    wd_history: 'Histórico de saques',
+    wd_pending: '⏳ Pendente', wd_paid: '✅ Pago', wd_rejected: '❌ Rejeitado',
+    per_fan: 'Por fã',
+    no_earnings: 'Ainda sem ganhos — fique online e converse! 💬',
+    payouts_note: 'Os saques são enviados pela SlutCamp. O saldo disponível atualiza a cada mensagem.',
+    bookings_h: 'Reservas 📅', bookings_sub: 'Lives privadas 1 a 1 — pagas adiantado',
+    approve: '✅ Aprovar', decline: '❌ Recusar',
+    req_waiting_1: '{n} solicitação aguardando', req_waiting_n: '{n} solicitações aguardando',
+    mic_on: '🎤 Microfone ligado', muted: '🔇 Silenciado', cam_on: '📹 Câmera ligada', cam_off: '📷 Câmera desligada',
+    go_explicit: 'Ficar explícita 🔞', end_stream: 'Encerrar live',
+    say_fans_ph: 'Diga algo aos seus fãs…',
+    explicit_rate_note: 'Tarifa explícita: {price}/min · Sua prévia nunca fica borrada',
+    notifications_h: '🔔 Notificações', notifications_word: 'Notificações',
+    mark_all_read: 'Marcar tudo como lido',
+  },
+};
+
+let LANG = (() => {
+  try {
+    const l = localStorage.getItem('wc_lang');
+    return LANGS.some((x) => x.code === l) ? l : 'en';
+  } catch (e) { return 'en'; }
+})();
+
+function t(key, vars) {
+  let s = (I18N[LANG] && I18N[LANG][key]) || I18N.en[key] || key;
+  if (vars) for (const k in vars) s = s.split('{' + k + '}').join(String(vars[k]));
+  return s;
+}
+
+/* Language pills — one delegated click handler drives every picker */
+function langPillsHTML() {
+  return `<div class="lang-pills">${LANGS.map((l) =>
+    `<button type="button" class="lang-pill${LANG === l.code ? ' on' : ''}" data-setlang="${l.code}">${l.flag} ${l.label}</button>`).join('')}</div>`;
+}
+function langCardHTML() {
+  return `<div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🌐 ${t('language')}</div>
+      <div class="muted small" style="margin-bottom:10px">${t('language_note')}</div>
+      ${langPillsHTML()}
+    </div>`;
+}
+function applyLang(code) {
+  if (!LANGS.some((x) => x.code === code)) return false;
+  LANG = code;
+  try { localStorage.setItem('wc_lang', code); } catch (e) { /* private mode */ }
+  document.documentElement.lang = code === 'pt' ? 'pt-BR' : code;
+  return true;
+}
+/* Account language is the cross-device copy: adopt it when this device has
+   no explicit choice; if the device choice differs, push the device's up. */
+function syncLangFromUser(u) {
+  if (!u || !LANGS.some((x) => x.code === u.language) || u.language === LANG) return;
+  let local = null;
+  try { local = localStorage.getItem('wc_lang'); } catch (e) { /* ignore */ }
+  if (!local) applyLang(u.language);
+  else if (S.token) api('/me/language', { method: 'PATCH', body: JSON.stringify({ language: local }) }).catch(() => {});
+}
+async function setLang(code) {
+  if (code === LANG || !applyLang(code)) return;
+  if (S.token) api('/me/language', { method: 'PATCH', body: JSON.stringify({ language: code }) }).catch(() => {});
+  toast(t('language_set'));
+  // Re-render the current view in place. Never tear down a live stream —
+  // its labels pick the new language up on the next navigation.
+  if (['liveBroadcast', 'liveWatch', 'liveModWatch'].includes(S.view)) { renderTabbar(); return; }
+  show(S.view, S.viewParams || {});
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-setlang]');
+  if (b) setLang(b.dataset.setlang);
+});
+document.documentElement.lang = LANG === 'pt' ? 'pt-BR' : LANG;
+
 /* ---------------- state ---------------- */
 
 const S = {
@@ -76,6 +545,7 @@ const S = {
   model: null,      // model profile if role=model
   ws: null,
   view: 'landing',
+  viewParams: {},   // last params passed to show() — lets setLang re-render in place
   conv: null,       // active conversation {id, other, is_paused, free_remaining}
   messages: [],
   call: null,       // active call state
@@ -483,23 +953,23 @@ function handleWS(m) {
 
 const TABS = {
   fan: [
-    { id: 'models', ico: '🔥', label: 'Models', view: 'fanModels' },
-    { id: 'live', ico: '🔴', label: 'Live', view: 'fanLive' },
-    { id: 'chats', ico: '💬', label: 'Chats', view: 'fanChats' },
-    { id: 'book', ico: '📅', label: 'Bookings', view: 'bookings' },
-    { id: 'wallet', ico: '💰', label: 'Wallet', view: 'wallet' },
+    { id: 'models', ico: '🔥', lk: 'tab_models', view: 'fanModels' },
+    { id: 'live', ico: '🔴', lk: 'tab_live', view: 'fanLive' },
+    { id: 'chats', ico: '💬', lk: 'tab_chats', view: 'fanChats' },
+    { id: 'book', ico: '📅', lk: 'tab_bookings', view: 'bookings' },
+    { id: 'wallet', ico: '💰', lk: 'tab_wallet', view: 'wallet' },
   ],
   model: [
-    { id: 'chats', ico: '💬', label: 'Chats', view: 'modelChats' },
-    { id: 'book', ico: '📅', label: 'Bookings', view: 'bookings' },
-    { id: 'earn', ico: '💵', label: 'Earnings', view: 'modelEarnings' },
-    { id: 'settings', ico: '⚙️', label: 'Settings', view: 'modelSettings' },
+    { id: 'chats', ico: '💬', lk: 'tab_chats', view: 'modelChats' },
+    { id: 'book', ico: '📅', lk: 'tab_bookings', view: 'bookings' },
+    { id: 'earn', ico: '💵', lk: 'tab_earnings', view: 'modelEarnings' },
+    { id: 'settings', ico: '⚙️', lk: 'tab_settings', view: 'modelSettings' },
   ],
   admin: [
-    { id: 'dash', ico: '📊', label: 'Home', view: 'admin' },
-    { id: 'chats', ico: '👀', label: 'Chats', view: 'admin' },
-    { id: 'safe', ico: '🛡️', label: 'Safety', view: 'admin' },
-    { id: 'more', ico: '⚙️', label: 'More', view: 'admin' },
+    { id: 'dash', ico: '📊', lk: 'tab_home', view: 'admin' },
+    { id: 'chats', ico: '👀', lk: 'tab_chats', view: 'admin' },
+    { id: 'safe', ico: '🛡️', lk: 'tab_safety', view: 'admin' },
+    { id: 'more', ico: '⚙️', lk: 'tab_more', view: 'admin' },
   ],
   recruiter: [], // Affiliates get a single-page dashboard — no tabs
 };
@@ -508,15 +978,15 @@ function renderTabbar() {
   if (!S.user) { tabbar.classList.add('hidden'); tabbar.innerHTML = ''; return; }
   const tabs = TABS[S.user.role] || [];
   tabbar.classList.remove('hidden');
-  tabbar.innerHTML = tabs.map((t) =>
-    `<button data-tab="${t.id}" class="${S.view === t.view && (S.user.role !== 'admin' || S.adminTab === t.id || (t.id === 'dash' && S.adminTab === 'dash')) ? 'active' : ''}">
-       <span class="ico">${t.ico}</span>${t.label}<span class="badge hidden" id="badge-${t.id}"></span>
+  tabbar.innerHTML = tabs.map((tab) =>
+    `<button data-tab="${tab.id}" class="${S.view === tab.view && (S.user.role !== 'admin' || S.adminTab === tab.id || (tab.id === 'dash' && S.adminTab === 'dash')) ? 'active' : ''}">
+       <span class="ico">${tab.ico}</span>${t(tab.lk)}<span class="badge hidden" id="badge-${tab.id}"></span>
      </button>`).join('');
   tabbar.querySelectorAll('button').forEach((b) => {
     b.onclick = () => {
-      const t = tabs.find((x) => x.id === b.dataset.tab);
-      if (S.user.role === 'admin') S.adminTab = t.id === 'more' ? 'more' : t.id;
-      show(t.view, {});
+      const tab = tabs.find((x) => x.id === b.dataset.tab);
+      if (S.user.role === 'admin') S.adminTab = tab.id === 'more' ? 'more' : tab.id;
+      show(tab.view, {});
     };
   });
 }
@@ -542,6 +1012,7 @@ function show(view, params) {
     view = 'modelContract';
   }
   S.view = view;
+  S.viewParams = params || {};
   // Admin gets a wide desktop layout on big screens (phone layout stays on mobile)
   document.body.classList.toggle('admin-wide', view === 'admin');
   renderTabbar();
@@ -580,25 +1051,25 @@ function modelTileHTML(m, opts) {
       ? `<img class="tile-media" src="${esc(m.photo_url)}" alt="" loading="lazy">`
       : `<span class="tile-media tile-letter" style="background:${tileGradient(m.display_name)}">${esc((m.display_name || '?').trim().charAt(0).toUpperCase())}</span>`;
   const status = m.is_live
-    ? '<span style="color:#fda4af;font-weight:800">▶ Watch free — tap to join</span>'
+    ? `<span style="color:#fda4af;font-weight:800">${t('watch_free')}</span>`
     : m.is_online
-      ? '<span style="color:#6ee7b7;font-weight:700">● Online now</span>'
-      : '<span style="color:rgba(255,245,247,.6)">● Offline</span>';
+      ? `<span style="color:#6ee7b7;font-weight:700">${t('online_now')}</span>`
+      : `<span style="color:rgba(255,245,247,.6)">${t('offline')}</span>`;
   return `
     <button class="model-tile${opts.hero ? ' hero' : ''}" data-model="${m.id}" data-live="${m.live_session_id || ''}">
       ${media}
       <span class="tile-shade"></span>
       ${m.is_live
-        ? `<span class="tile-live-pill">● LIVE</span><span class="tile-viewers">👁 ${m.live_viewers || 0} watching</span>`
-        : m.is_featured ? '<span class="tile-featured-pill">⭐ Featured</span>' : ''}
-      ${opts.crown ? `<span class="tile-top-pill${m.is_live ? ' below-live' : ''}">👑 Top Model</span>` : ''}
+        ? `<span class="tile-live-pill">● LIVE</span><span class="tile-viewers">👁 ${t('watching', { n: m.live_viewers || 0 })}</span>`
+        : m.is_featured ? `<span class="tile-featured-pill">${t('featured')}</span>` : ''}
+      ${opts.crown ? `<span class="tile-top-pill${m.is_live ? ' below-live' : ''}">${t('top_model')}</span>` : ''}
       ${opts.heartHTML || ''}
       <span class="tile-info">
         <span class="tile-name">${esc(m.display_name)}</span>
         <span class="tile-sub">@${esc(m.username)} · ${status}</span>
         ${opts.hero && m.bio ? `<span class="tile-sub">${esc(m.bio).slice(0, 80)}</span>` : ''}
-        <span class="tile-sub" style="color:var(--peach);font-weight:700">${fmt(m.per_message_cents)}/msg · ${fmt(m.per_minute_cents)}/min video</span>
-        ${opts.hero && m.schedule_summary ? `<span class="tile-sub">📅 Usually live: ${esc(m.schedule_summary)}</span>` : ''}
+        <span class="tile-sub" style="color:var(--peach);font-weight:700">${t('per_msg_rate', { price: fmt(m.per_message_cents) })} · ${t('per_min_rate', { price: fmt(m.per_minute_cents) })}</span>
+        ${opts.hero && m.schedule_summary ? `<span class="tile-sub">${t('usually_live', { s: esc(m.schedule_summary) })}</span>` : ''}
       </span>
     </button>`;
 }
@@ -621,7 +1092,7 @@ function homeTilesHTML(models, heartFor) {
    from /api/models (is_live flags) — only shown when someone is truly live. */
 function livesBtnHTML(models) {
   const n = (models || []).filter((m) => m.is_live).length;
-  return `<button class="btn-lives${n ? ' has-live' : ''}" id="go-lives">🔴 Lives${n ? `<span class="lives-count">${n} live now</span>` : ''}</button>`;
+  return `<button class="btn-lives${n ? ' has-live' : ''}" id="go-lives">${t('lives_btn')}${n ? `<span class="lives-count">${t('lives_count', { n })}</span>` : ''}</button>`;
 }
 
 /* ---------------- LANDING (public model grid) ---------------- */
@@ -632,26 +1103,27 @@ async function vLanding() {
   app.innerHTML = `
     <div class="header">
       <h1>Slut<span class="logo">Camp</span> 💬</h1>
-      <div class="sub">Chat & video call the models · 18+ only</div>
+      <div class="sub">${t('home_sub')}</div>
     </div>
     <div class="screen">
       ${livesBtnHTML(models)}
       <div class="card" style="text-align:center;background:linear-gradient(135deg,#3b1d6e,#1a0f2e)">
-        <div style="font-size:20px;font-weight:800">🎁 First 3 messages FREE</div>
-        <div class="muted small" style="margin-top:4px">with every model you try. No account needed to start.</div>
+        <div style="font-size:20px;font-weight:800">${t('free3_title')}</div>
+        <div class="muted small" style="margin-top:4px">${t('free3_sub')}</div>
       </div>
       ${models.length ? homeTilesHTML(models, (m) => `
-            <span class="model-likes tile-heart" data-like="${m.id}" title="Like her">
+            <span class="model-likes tile-heart" data-like="${m.id}">
               <span class="like-heart">${m.liked ? '❤️' : '🤍'}</span>
               <span class="like-count">${m.like_count || 0}</span>
-            </span>`) : '<div class="empty"><div class="big">😴</div>No models yet.</div>'}
+            </span>`) : `<div class="empty"><div class="big">😴</div>${t('no_models')}</div>`}
       <div style="text-align:center;margin-top:14px">
-        ${S.user ? '' : `<button class="btn ghost" id="go-login">Log in / Sign up</button>`}
+        ${S.user ? '' : `<button class="btn ghost" id="go-login">${t('login_signup')}</button>`}
       </div>
       <div style="text-align:center;margin-top:10px">
-        <button class="btn ghost" id="share-app" style="border-color:var(--pink);color:var(--pink)">📤 Share SlutCamp</button>
+        <button class="btn ghost" id="share-app" style="border-color:var(--pink);color:var(--pink)">${t('share_app')}</button>
       </div>
-      <p class="muted small" style="text-align:center;margin-top:16px">18+ only. By chatting you agree to the <a href="javascript:void(0)" id="go-terms" style="color:var(--pink)">Terms</a> · <a href="javascript:void(0)" id="go-dmca" style="color:var(--pink)">DMCA</a>.</p>
+      <div class="lang-row">${langPillsHTML()}</div>
+      <p class="muted small" style="text-align:center;margin-top:16px">${t('terms_line')} <a href="javascript:void(0)" id="go-terms" style="color:var(--pink)">${t('terms')}</a> · <a href="javascript:void(0)" id="go-dmca" style="color:var(--pink)">DMCA</a>.</p>
     </div>`;
   app.querySelectorAll('[data-model]').forEach((b) => {
     b.onclick = () => {
@@ -664,7 +1136,7 @@ async function vLanding() {
   app.querySelectorAll('[data-like]').forEach((h) => {
     h.onclick = async (e) => {
       e.stopPropagation();
-      if (!S.user || S.user.role !== 'fan') return toast('Log in as a fan to like models 💜');
+      if (!S.user || S.user.role !== 'fan') return toast(t('like_need_fan'));
       const modelId = parseInt(h.dataset.like);
       const { status, data } = await api(`/models/${modelId}/like`, { method: 'POST' });
       if (status === 200) {
@@ -692,7 +1164,7 @@ async function shareApp() {
   if (navigator.share) {
     try { await navigator.share(data); } catch (e) { /* user cancelled */ }
   } else if (navigator.clipboard) {
-    try { await navigator.clipboard.writeText(url); toast('Link copied — send it to your boys 📤'); }
+    try { await navigator.clipboard.writeText(url); toast(t('link_copied')); }
     catch (e) { toast(url); }
   } else {
     prompt('Copy your SlutCamp link:', url);
@@ -717,14 +1189,15 @@ function vAuth(params) {
   const role = (params && params.role) || 'fan';
   app.innerHTML = `
     <div class="header"><h1>Slut<span class="logo">Camp</span></h1>
-      <div class="sub">${mode === 'login' ? 'Welcome back 😈' : 'Create your account'}</div></div>
+      <div class="sub">${mode === 'login' ? t('welcome_back') : t('create_account_h')}</div></div>
     <div class="screen">
       <div class="tabs">
-        <button id="t-login" class="${mode === 'login' ? 'active' : ''}">Log in</button>
-        <button id="t-signup" class="${mode === 'signup' ? 'active' : ''}">Sign up</button>
+        <button id="t-login" class="${mode === 'login' ? 'active' : ''}">${t('log_in')}</button>
+        <button id="t-signup" class="${mode === 'signup' ? 'active' : ''}">${t('sign_up')}</button>
       </div>
       <div id="auth-body"></div>
-      <button class="btn ghost" id="back-browse" style="margin-top:16px">← Keep browsing free</button>
+      <div class="lang-row" style="margin-top:14px">${langPillsHTML()}</div>
+      <button class="btn ghost" id="back-browse" style="margin-top:16px">${t('keep_browsing')}</button>
     </div>`;
   $('#t-login').onclick = () => show('auth', { mode: 'login' });
   $('#t-signup').onclick = () => show('auth', { mode: 'signup', role });
@@ -736,27 +1209,27 @@ function renderAuthBody(mode, role) {
   const body = $('#auth-body');
   if (mode === 'login') {
     body.innerHTML = `
-      <label class="field">Username<input class="input" id="a-user" autocomplete="username"></label>
-      <label class="field">Password${pwField('a-pass', 'current-password')}</label>
-      <button class="btn" id="a-go">Log in</button>`;
+      <label class="field">${t('username')}<input class="input" id="a-user" autocomplete="username"></label>
+      <label class="field">${t('password')}${pwField('a-pass', 'current-password')}</label>
+      <button class="btn" id="a-go">${t('log_in')}</button>`;
     $('#a-go').onclick = doLogin;
   } else {
     body.innerHTML = `
       <div class="role-card ${role === 'fan' ? 'selected' : ''}" id="r-fan">
-        <div class="emoji">😍</div><div class="t">I'm a Fan</div>
-        <div class="d">Chat & video call the models</div></div>
+        <div class="emoji">😍</div><div class="t">${t('im_fan')}</div>
+        <div class="d">${t('fan_desc')}</div></div>
       <div class="role-card ${role === 'model' ? 'selected' : ''}" id="r-model">
-        <div class="emoji">💃</div><div class="t">I'm a Model</div>
-        <div class="d">Get paid to chat (SlutCamp verifies you)</div></div>
-      <label class="field">Display name<input class="input" id="a-name" maxlength="40"></label>
-      <label class="field">Username<input class="input" id="a-user" autocomplete="username"></label>
-      <label class="field">Password (6+ characters)${pwField('a-pass', 'new-password')}</label>
-      <label class="field">Date of birth<input class="input" id="a-dob" type="date"></label>
-      <div class="age-box">🔞 <b>18+ only.</b> You must be 18 or older to use SlutCamp.
-        ${role === 'model' ? 'Models must also complete ID verification with SlutCamp (2257).' : 'Fans confirm 18+ here — that\'s all we ask. Simple.'}</div>
+        <div class="emoji">💃</div><div class="t">${t('im_model')}</div>
+        <div class="d">${t('model_desc')}</div></div>
+      <label class="field">${t('display_name')}<input class="input" id="a-name" maxlength="40"></label>
+      <label class="field">${t('username')}<input class="input" id="a-user" autocomplete="username"></label>
+      <label class="field">${t('password_hint')}${pwField('a-pass', 'new-password')}</label>
+      <label class="field">${t('dob')}<input class="input" id="a-dob" type="date"></label>
+      <div class="age-box">🔞 <b>${t('age18_only')}</b> ${t('age18_line')}
+        ${role === 'model' ? 'Models must also complete ID verification with SlutCamp (2257).' : t('fan_age_line')}</div>
       <label class="checkbox-row"><input type="checkbox" id="a-18">
-        <span>I confirm I am <b>18 years or older</b>.</span></label>
-      <button class="btn" id="a-go">Create account</button>`;
+        <span>${t('confirm18')}</span></label>
+      <button class="btn" id="a-go">${t('create_account_btn')}</button>`;
     let r = role;
     $('#r-fan').onclick = () => { r = 'fan'; $('#r-fan').classList.add('selected'); $('#r-model').classList.remove('selected'); };
     $('#r-model').onclick = () => { r = 'model'; $('#r-model').classList.add('selected'); $('#r-fan').classList.remove('selected'); };
@@ -766,12 +1239,12 @@ function renderAuthBody(mode, role) {
 
 async function doLogin() {
   const username = $('#a-user').value.trim(), password = $('#a-pass').value;
-  if (!username || !password) return toast('Enter username + password');
+  if (!username || !password) return toast(t('enter_user_pass'));
   const { status, data } = await api('/auth/login', {
     method: 'POST', body: JSON.stringify({ username, password, guest_token: S.guestToken }),
   });
   if (status === 200) return afterLogin(data);
-  toast(data.error === 'banned' ? '⛔ This account is banned.' : 'Login failed — check your details.');
+  toast(data.error === 'banned' ? t('account_banned') : t('login_failed'));
 }
 
 /* ---------------- SECRET ADMIN LOGIN (#boss) ---------------- */
@@ -808,7 +1281,7 @@ function renderAdminLoginStep() {
 
 async function adminLoginStep1() {
   const username = $('#al-user').value.trim(), password = $('#al-pass').value;
-  if (!username || !password) return toast('Enter username + password');
+  if (!username || !password) return toast(t('enter_user_pass'));
   const btn = $('#al-go');
   btn.disabled = true; btn.textContent = 'Logging in…';
   const { status, data } = await api('/auth/admin-login', {
@@ -1107,7 +1580,7 @@ async function afterLogin(data) {
   }
   else if (S.user.role === 'recruiter') show('recruiter', {});
   else show('fanModels', {});
-  toast(`Welcome, ${S.user.display_name}! 🎉`);
+  toast(t('welcome_user', { name: S.user.display_name }));
 }
 
 /* Contract gate: unsigned models get redirected to sign before doing anything */
@@ -1124,6 +1597,7 @@ async function refreshMe() {
   const { status, data } = await api('/me');
   if (status === 200) {
     S.user = data.user; S.wallet = data.wallet; S.model = data.model || null;
+    syncLangFromUser(data.user);
     if (data.commission_pct !== undefined) S.commissionPct = data.commission_pct;
   } else if (status === 401 || status === 403) {
     logout(false);
@@ -1136,7 +1610,7 @@ function logout(msg) {
   localStorage.removeItem('wc_token');
   if (S.ws) { try { S.ws.close(); } catch (e) {} S.ws = null; }
   show('landing', {});
-  if (msg !== false) toast('Logged out.');
+  if (msg !== false) toast(t('logged_out'));
 }
 
 /* ---------------- FAN: models / chats / wallet ---------------- */
@@ -1153,8 +1627,8 @@ async function vFanModels() {
     <div class="screen">
       ${livesBtnHTML(models)}
       ${models.length ? homeTilesHTML(models, (m) => `
-            <span class="follow-btn tile-heart ${following.includes(m.id) ? 'following' : ''}" data-follow="${m.id}" title="Follow for live notifications">${following.includes(m.id) ? '❤️' : '🤍'}</span>`)
-        : '<div class="empty"><div class="big">😴</div>No models yet.</div>'}
+            <span class="follow-btn tile-heart ${following.includes(m.id) ? 'following' : ''}" data-follow="${m.id}" title="${t('follow_title')}">${following.includes(m.id) ? '❤️' : '🤍'}</span>`)
+        : `<div class="empty"><div class="big">😴</div>${t('no_models')}</div>`}
     </div>`;
   const lv = $('#go-lives');
   if (lv) lv.onclick = () => show('lives', {});
@@ -1182,7 +1656,7 @@ async function vFanLive() {
   const { data: schedData } = await api('/live/schedule');
   const upcoming = (schedData.upcoming || []).slice(0, 10);
   app.innerHTML = `
-    <div class="header"><h1>🔴 Live now</h1>
+    <div class="header"><h1>${t('fanlive_h')}</h1>
       <div><span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span></div></div>
     <div class="screen">
       ${streams.map((s) => `
@@ -1191,14 +1665,14 @@ async function vFanLive() {
           <span class="grow">
             <span class="title">${esc(s.model_name)} <span class="live-badge">🔴 LIVE</span></span><br>
             ${s.title ? `<span class="preview" style="font-weight:700;color:#fff">${esc(s.title)}</span><br>` : ''}
-            <span class="small muted">👁 ${s.viewers} watching · 🎁 ${fmt(s.gift_cents || 0)} in gifts</span><br>
-            <span class="small" style="color:#f87171;font-weight:800">▶ Join free — chat is free, gifts get you noticed</span>
+            <span class="small muted">${t('watching_gifts', { v: s.viewers, g: fmt(s.gift_cents || 0) })}</span><br>
+            <span class="small" style="color:#f87171;font-weight:800">${t('join_free_line')}</span>
           </span><span style="font-size:22px">›</span>
         </button>`).join('') || `
-        <div class="empty"><div class="big">📺</div>No one's live right now.<br>
-          <span class="small">Check back soon — your favorite models go live without warning 😈</span></div>`}
+        <div class="empty"><div class="big">📺</div>${t('noone_live')}<br>
+          <span class="small">${t('check_back')}</span></div>`}
       ${upcoming.length ? `
-      <div style="font-weight:800;margin:18px 0 10px">📅 Coming up</div>
+      <div style="font-weight:800;margin:18px 0 10px">${t('coming_up')}</div>
       ${upcoming.map((u) => `
         <div class="list-item" style="background:var(--card);border-radius:14px;margin-bottom:10px;border:1px solid rgba(139,92,246,.18);cursor:default">
           <span class="avatar-wrap">${avatarHTML(u.model_name, '', u.photo_url)}</span>
@@ -1228,22 +1702,22 @@ async function vLives() {
   const online = models.filter((m) => !m.is_live && m.is_online);
   const backView = S.user && S.user.role === 'fan' ? 'fanModels' : 'landing';
   app.innerHTML = `
-    <div class="header"><h1>🔴 Live Now</h1>
+    <div class="header"><h1>${t('live_now_h')}</h1>
       ${S.user && S.user.role === 'fan'
         ? `<div><span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span></div>`
-        : '<div class="sub">Everyone streaming right now — tap to jump in 💋</div>'}</div>
+        : `<div class="sub">${t('live_now_sub')}</div>`}</div>
     <div class="screen">
       ${live.length ? `<div class="tile-grid">
         ${live.map((m) => modelTileHTML(m)).join('')}
       </div>` : `
-        <div class="empty"><div class="big">💤</div>Nobody's live right now 💤<br>
-          <span class="small">Models pop in all day — check back soon 💋</span></div>`}
+        <div class="empty"><div class="big">💤</div>${t('nobody_live')}<br>
+          <span class="small">${t('models_pop_in')}</span></div>`}
       ${online.length ? `
-      <div style="font-weight:800;margin:18px 0 10px">💬 Online now — say hi</div>
+      <div style="font-weight:800;margin:18px 0 10px">${t('online_say_hi')}</div>
       <div class="tile-grid">
         ${online.map((m) => modelTileHTML(m)).join('')}
       </div>` : ''}
-      <button class="btn ghost" id="lives-back" style="width:100%;margin-top:14px">← Back to models</button>
+      <button class="btn ghost" id="lives-back" style="width:100%;margin-top:14px">${t('back_models')}</button>
     </div>`;
   app.querySelectorAll('[data-model]').forEach((b) => {
     b.onclick = () => {
@@ -1258,16 +1732,16 @@ async function vLives() {
 async function vChatList(role) {
   const { data } = await api('/conversations');
   const convs = data.conversations || [];
-  const title = role === 'model' ? 'Your chats 💬' : 'Chats 💬';
+  const title = role === 'model' ? t('your_chats') : t('chats_title');
   app.innerHTML = `
     <div class="header"><h1>${title}</h1>
       ${role === 'model' && S.model ? `
       <div class="row" style="margin-top:8px">
         <button class="toggle ${S.model.is_online ? 'on' : ''}" id="online-toggle" aria-label="Go online or offline"></button>
-        <span style="font-weight:800;font-size:17px">${S.model.is_online ? '🟢 ONLINE' : '⚫ OFFLINE'}</span>
+        <span style="font-weight:800;font-size:17px">${S.model.is_online ? t('online_caps') : t('offline_caps')}</span>
       </div>
-      <button class="btn-live" id="go-live-btn">🔴 Go Live</button>
-      <button class="btn ghost hidden" id="back-live-btn" style="margin-top:8px">↩️ Back to Live</button>` : ''}
+      <button class="btn-live" id="go-live-btn">${t('go_live')}</button>
+      <button class="btn ghost hidden" id="back-live-btn" style="margin-top:8px">${t('back_live')}</button>` : ''}
     </div>
     <div class="screen" style="padding:8px">
       ${convs.map((c) => `
@@ -1275,18 +1749,18 @@ async function vChatList(role) {
           ${avatarHTML(c.other.display_name, 'sm', c.other.photo_url)}
           <span class="grow">
             <span class="title">${esc(c.other.display_name)}
-              ${c.is_paused ? ' <span class="small" style="color:var(--red)">⏸ paused</span>' : ''}</span><br>
-            <span class="preview">${c.last_message ? esc(c.last_message.body).slice(0, 60) : '<i>No messages yet</i>'}</span>
+              ${c.is_paused ? ` <span class="small" style="color:var(--red)">${t('paused_tag')}</span>` : ''}</span><br>
+            <span class="preview">${c.last_message ? esc(c.last_message.body).slice(0, 60) : `<i>${t('no_messages_yet')}</i>`}</span>
           </span>
           ${c.unread_count ? `<span class="unread-badge">${c.unread_count}</span>` : ''}
-        </button>`).join('') || '<div class="empty"><div class="big">💬</div>No chats yet.<br><span class="small">Tap a model to start chatting!</span></div>'}
+        </button>`).join('') || `<div class="empty"><div class="big">💬</div>${t('no_chats')}<br><span class="small">${t('tap_model_start')}</span></div>`}
     </div>`;
   const tgl = $('#online-toggle');
   if (tgl) tgl.onclick = async () => {
     const next = S.model.is_online ? 0 : 1;
     const { status } = await api('/model/profile', {
       method: 'PUT', body: JSON.stringify({ is_online: next }) });
-    if (status === 200) { S.model.is_online = next; show('modelChats', {}); toast(next ? '🟢 You are ONLINE' : '⚫ You are offline'); }
+    if (status === 200) { S.model.is_online = next; show('modelChats', {}); toast(next ? t('you_online') : t('you_offline')); }
   };
   const glb = $('#go-live-btn');
   if (glb) glb.onclick = () => startLiveBroadcast();
@@ -1313,28 +1787,28 @@ async function vChatList(role) {
 function vQuickSignup() {
   app.innerHTML = `
     <div class="header"><h1>Slut<span class="logo">Camp</span></h1>
-      <div class="sub">Create your account — 30 seconds</div></div>
+      <div class="sub">${t('qs_sub')}</div></div>
     <div class="screen">
       <div class="card">
-        <div style="font-weight:800;margin-bottom:10px">👤 Your account</div>
-        <label class="field">Username<input class="input" id="q-user" autocomplete="username" placeholder="pick a username"></label>
-        <label class="field">Password (6+ characters)${pwField('q-pass', 'new-password')}</label>
+        <div style="font-weight:800;margin-bottom:10px">${t('your_account')}</div>
+        <label class="field">${t('username')}<input class="input" id="q-user" autocomplete="username" placeholder="${t('pick_username_ph')}"></label>
+        <label class="field">${t('password_hint')}${pwField('q-pass', 'new-password')}</label>
         <label class="checkbox-row"><input type="checkbox" id="q-18">
-          <span>I confirm I am <b>18 years or older</b>.</span></label>
+          <span>${t('confirm18')}</span></label>
       </div>
       <div class="card">
-        <div style="font-weight:800;margin-bottom:10px">💳 Payment info</div>
-        <div class="muted small" style="margin-bottom:10px">Add your payment method now so you can buy credits instantly. You won't be charged until you buy.</div>
-        <label class="field">Full name (on card)<input class="input" id="q-fullname" autocomplete="cc-name" placeholder="John Smith"></label>
-        <label class="field">Payment method</label>
+        <div style="font-weight:800;margin-bottom:10px">${t('payment_info')}</div>
+        <div class="muted small" style="margin-bottom:10px">${t('payment_note')}</div>
+        <label class="field">${t('full_name_card')}<input class="input" id="q-fullname" autocomplete="cc-name" placeholder="John Smith"></label>
+        <label class="field">${t('payment_method')}</label>
         <div class="row" style="gap:8px;margin-bottom:12px" id="q-paymethods">
-          <button class="btn ghost payopt selected" data-pay="card" style="flex:1">💳 Card</button>
+          <button class="btn ghost payopt selected" data-pay="card" style="flex:1">${t('card_word')}</button>
           <button class="btn ghost payopt" data-pay="cashapp" style="flex:1">💵 Cash App</button>
         </div>
         <div id="q-card-fields">
-          <label class="field">Card number<input class="input" id="q-cardnum" inputmode="numeric" autocomplete="cc-number" placeholder="4242 4242 4242 4242"></label>
+          <label class="field">${t('card_number')}<input class="input" id="q-cardnum" inputmode="numeric" autocomplete="cc-number" placeholder="4242 4242 4242 4242"></label>
           <div class="row" style="gap:8px">
-            <label class="field" style="flex:1">Expiry<input class="input" id="q-exp" placeholder="MM/YY" autocomplete="cc-exp"></label>
+            <label class="field" style="flex:1">${t('expiry')}<input class="input" id="q-exp" placeholder="MM/YY" autocomplete="cc-exp"></label>
             <label class="field" style="flex:1">CVC<input class="input" id="q-cvc" inputmode="numeric" placeholder="123" autocomplete="cc-csc"></label>
           </div>
         </div>
@@ -1342,8 +1816,8 @@ function vQuickSignup() {
           <label class="field">Cash App $cashtag<input class="input" id="q-cashtag" placeholder="$yourtag"></label>
         </div>
       </div>
-      <button class="btn" id="q-go" style="width:100%;margin-top:4px">Create account & continue →</button>
-      <button class="btn ghost" id="q-back" style="width:100%;margin-top:8px">← Back</button>
+      <button class="btn" id="q-go" style="width:100%;margin-top:4px">${t('create_continue')}</button>
+      <button class="btn ghost" id="q-back" style="width:100%;margin-top:8px">${t('back')}</button>
     </div>`;
   let payMethod = 'card';
   document.querySelectorAll('#q-paymethods .payopt').forEach((b) => {
@@ -1400,15 +1874,16 @@ async function vWallet() {
   // Guests can browse but must create an account to add money
   if (!S.token || !S.user || S.user.role !== 'fan') {
     app.innerHTML = `
-      <div class="header"><h1>Wallet 💰</h1></div>
+      <div class="header"><h1>${t('wallet_h')}</h1></div>
       <div class="screen">
         <div class="card" style="text-align:center;padding:32px 20px">
           <div style="font-size:48px;margin-bottom:12px">💰</div>
-          <div style="font-weight:800;font-size:18px;margin-bottom:8px">Create your free account to add funds</div>
-          <div class="muted" style="margin-bottom:20px">You're browsing as a guest. Sign up free to buy credits and unlock chats, live streams, gifts, and more.</div>
-          <button class="btn" id="w-signup" style="width:100%;margin-bottom:10px">✨ Create free account</button>
-          <button class="btn ghost" id="w-login" style="width:100%">Already have an account? Log in</button>
+          <div style="font-weight:800;font-size:18px;margin-bottom:8px">${t('guest_wallet_title')}</div>
+          <div class="muted" style="margin-bottom:20px">${t('guest_wallet_sub')}</div>
+          <button class="btn" id="w-signup" style="width:100%;margin-bottom:10px">${t('create_free_account')}</button>
+          <button class="btn ghost" id="w-login" style="width:100%">${t('have_account_login')}</button>
         </div>
+        ${langCardHTML()}
       </div>`;
     $('#w-signup').onclick = () => show('quickSignup', {});
     $('#w-login').onclick = () => show('auth', { mode: 'login', role: 'fan' });
@@ -1418,20 +1893,21 @@ async function vWallet() {
   const { data } = await api('/credits/packages');
   const pkgs = data.packages || [];
   app.innerHTML = `
-    <div class="header"><h1>Wallet 💰</h1>
-      <div><span class="balance-pill">Balance: ${fmt(S.wallet.credits_cents)}</span></div></div>
+    <div class="header"><h1>${t('wallet_h')}</h1>
+      <div><span class="balance-pill">${t('balance', { amt: fmt(S.wallet.credits_cents) })}</span></div></div>
     <div class="screen">
       <div class="card" style="text-align:center">
-        <div class="muted small">1 credit = $1. Messages cost the model's rate.</div>
+        <div class="muted small">${t('credit_note')}</div>
       </div>
       ${pkgs.map((p) => `
         <button class="pkg" data-pkg="${p.id}">
           <span style="font-size:28px">🪙</span>
-          <span class="amt">${p.credits_cents / 100} credits</span>
+          <span class="amt">${p.credits_cents / 100} ${t('credits_word')}</span>
           <span class="price">${p.label}</span>
           ${p.descriptor ? `<span class="muted small" style="width:100%">${esc(p.descriptor)}</span>` : ''}
         </button>`).join('')}
-      <button class="btn ghost" id="w-logout">Log out</button>
+      ${langCardHTML()}
+      <button class="btn ghost" id="w-logout">${t('log_out')}</button>
     </div>`;
   app.querySelectorAll('[data-pkg]').forEach((b) => {
     b.onclick = async () => {
@@ -1451,23 +1927,23 @@ async function vModelEarnings() {
   const { data: wdData } = await api('/model/withdrawals');
   const acct = acctData.account;
   const wds = wdData.withdrawals || [];
-  const wdBadge = (s) => s === 'pending' ? '⏳ Pending' : s === 'paid' ? '✅ Paid' : '❌ Rejected';
+  const wdBadge = (s) => s === 'pending' ? t('wd_pending') : s === 'paid' ? t('wd_paid') : t('wd_rejected');
   app.innerHTML = `
-    <div class="header"><h1>Earnings 💵</h1><div class="sub">You keep ${100 - (S.commissionPct || 40)}% of everything</div></div>
+    <div class="header"><h1>${t('earnings_h')}</h1><div class="sub">${t('you_keep', { pct: 100 - (S.commissionPct || 40) })}</div></div>
     <div class="screen">
       <div class="stat-grid">
-        <div class="stat"><div class="n" style="color:var(--green)">${fmt(data.pending_cents)}</div><div class="l">Available for payout</div></div>
-        <div class="stat"><div class="n">${fmt(data.earnings_cents)}</div><div class="l">Total earned</div></div>
+        <div class="stat"><div class="n" style="color:var(--green)">${fmt(data.pending_cents)}</div><div class="l">${t('avail_payout')}</div></div>
+        <div class="stat"><div class="n">${fmt(data.earnings_cents)}</div><div class="l">${t('total_earned')}</div></div>
       </div>
       ${data.gift_count ? `
       <div class="card" style="margin-top:12px">
-        <div style="font-weight:800;margin-bottom:8px">🎁 Gifts received</div>
-        <div class="row"><span class="grow muted small">${data.gift_count} gift${data.gift_count === 1 ? '' : 's'} from fans</span>
+        <div style="font-weight:800;margin-bottom:8px">${t('gifts_received')}</div>
+        <div class="row"><span class="grow muted small">${t(data.gift_count === 1 ? 'gifts_from_fans_1' : 'gifts_from_fans_n', { n: data.gift_count })}</span>
           <b style="color:var(--green)">${fmt(data.gifts_cents)}</b></div>
-        <div class="muted small" style="margin-top:4px">Your 60% cut of every gift 💰</div>
+        <div class="muted small" style="margin-top:4px">${t('gifts_cut_note')}</div>
       </div>` : ''}
       <div class="card" style="margin-top:12px">
-        <div style="font-weight:800;margin-bottom:8px">📊 Revenue breakdown</div>
+        <div style="font-weight:800;margin-bottom:8px">${t('revenue_breakdown')}</div>
         ${(() => {
           const byType = {};
           (data.by_type || []).forEach((r) => { byType[r.type] = r; });
@@ -1480,50 +1956,50 @@ async function vModelEarnings() {
                       (byType.tip ? byType.tip.earned_cents : 0);
           return `
           <div class="row" style="padding:10px;background:rgba(139,92,246,.1);border-radius:10px;margin-bottom:8px">
-            <span class="grow"><b>🎁 Gifts</b></span><b style="color:var(--green)">${fmt(gifts)}</b>
+            <span class="grow"><b>${t('gifts_word')}</b></span><b style="color:var(--green)">${fmt(gifts)}</b>
           </div>
           <div class="row" style="padding:10px;background:rgba(236,72,153,.1);border-radius:10px;margin-bottom:8px">
-            <span class="grow"><b>🔴 Lives</b> <span class="muted small">· explicit + video calls</span></span><b style="color:var(--green)">${fmt(lives)}</b>
+            <span class="grow"><b>${t('lives_word')}</b> <span class="muted small">${t('rb_lives_sub')}</span></span><b style="color:var(--green)">${fmt(lives)}</b>
           </div>
           <div class="row" style="padding:10px;background:rgba(59,130,246,.1);border-radius:10px;margin-bottom:12px">
-            <span class="grow"><b>💬 Private DMs</b> <span class="muted small">· messages + voice + PPV + tips</span></span><b style="color:var(--green)">${fmt(dms)}</b>
+            <span class="grow"><b>${t('rb_dms')}</b> <span class="muted small">${t('rb_dms_sub')}</span></span><b style="color:var(--green)">${fmt(dms)}</b>
           </div>`;
         })()}
-        <div style="font-weight:700;margin:8px 0 4px" class="small muted">All activity</div>
+        <div style="font-weight:700;margin:8px 0 4px" class="small muted">${t('all_activity')}</div>
         ${(data.by_type || []).map((r) => {
-          const labels = { message: '💬 Chat messages', call: '📹 Video calls', tip: '💸 Tips',
-            ppv: '🔒 PPV unlocks', voice: '🎤 Voice notes', live_explicit: '🔥 Explicit live', gift: '🎁 Gifts' };
+          const labels = { message: t('ty_message'), call: t('ty_call'), tip: t('ty_tip'),
+            ppv: t('ty_ppv'), voice: t('ty_voice'), live_explicit: t('ty_live_explicit'), gift: t('ty_gift') };
           return `
           <div class="row" style="padding:8px 0;border-top:1px solid rgba(139,92,246,.1)">
-            <span class="grow"><b>${labels[r.type] || esc(r.type)}</b> <span class="muted small">· ${r.n} payment${r.n === 1 ? '' : 's'}</span></span>
+            <span class="grow"><b>${labels[r.type] || esc(r.type)}</b> <span class="muted small">· ${t(r.n === 1 ? 'payment_1' : 'payment_n', { n: r.n })}</span></span>
             <b style="color:var(--green)">${fmt(r.earned_cents)}</b>
-          </div>`; }).join('') || '<div class="muted">No earnings yet — go online and chat! 💬</div>'}
+          </div>`; }).join('') || `<div class="muted">${t('no_earnings')}</div>`}
       </div>
       <div class="card" style="margin-top:12px">
-        <div style="font-weight:800;margin-bottom:8px">💸 Payouts</div>
-        <div class="row" style="margin-bottom:8px"><span class="grow muted small">Bank account</span>
-          ${acct ? `<b class="small">•••• ${esc(acct.account_last4)}</b>` : '<span class="small" style="color:var(--pink)">Not set</span>'}</div>
+        <div style="font-weight:800;margin-bottom:8px">${t('payouts_h')}</div>
+        <div class="row" style="margin-bottom:8px"><span class="grow muted small">${t('bank_account')}</span>
+          ${acct ? `<b class="small">•••• ${esc(acct.account_last4)}</b>` : `<span class="small" style="color:var(--pink)">${t('not_set')}</span>`}</div>
         ${acct ? `
           <div class="muted small" style="margin-bottom:8px">${esc(acct.holder_name)} · Routing ${esc(acct.routing_number)}</div>
           <div class="row">
-            <input class="input" id="wd-amount" type="number" step="0.01" min="0" placeholder="Amount $" style="margin-top:0">
-            <button class="btn small success" id="wd-go">Withdraw</button>
+            <input class="input" id="wd-amount" type="number" step="0.01" min="0" placeholder="${t('amount_ph')}" style="margin-top:0">
+            <button class="btn small success" id="wd-go">${t('withdraw')}</button>
           </div>
-          <div class="muted small" style="margin-top:6px">Available to withdraw: <b style="color:var(--green)">${fmt(wdData.available_cents)}</b></div>
+          <div class="muted small" style="margin-top:6px">${t('avail_withdraw')} <b style="color:var(--green)">${fmt(wdData.available_cents)}</b></div>
         ` : ''}
         <div id="bank-form" class="${acct ? 'hidden' : ''}" style="margin-top:8px">
-          <div style="font-weight:700;margin-bottom:6px">${acct ? 'Update bank account' : 'Add bank account'}</div>
-          <label class="field">Account holder name<input class="input" id="ba-holder" maxlength="80" value="${acct ? esc(acct.holder_name) : ''}"></label>
-          <label class="field">Routing number (9 digits)<input class="input" id="ba-routing" inputmode="numeric" maxlength="9" value="${acct ? esc(acct.routing_number) : ''}"></label>
-          <label class="field">Account number${pwField('ba-account', 'off')}</label>
-          <button class="btn" id="ba-save" style="margin-top:8px">Save bank account</button>
-          <div class="muted small" style="margin-top:6px">🔒 Only SlutCamp sees your full account number, to send your money.</div>
+          <div style="font-weight:700;margin-bottom:6px">${acct ? t('update_bank') : t('add_bank')}</div>
+          <label class="field">${t('holder_name')}<input class="input" id="ba-holder" maxlength="80" value="${acct ? esc(acct.holder_name) : ''}"></label>
+          <label class="field">${t('routing')}<input class="input" id="ba-routing" inputmode="numeric" maxlength="9" value="${acct ? esc(acct.routing_number) : ''}"></label>
+          <label class="field">${t('account_number')}${pwField('ba-account', 'off')}</label>
+          <button class="btn" id="ba-save" style="margin-top:8px">${t('save_bank')}</button>
+          <div class="muted small" style="margin-top:6px">${t('bank_note')}</div>
         </div>
-        ${acct ? `<button class="btn ghost small" id="ba-toggle" style="margin-top:8px">✏️ Update bank account</button>` : ''}
+        ${acct ? `<button class="btn ghost small" id="ba-toggle" style="margin-top:8px">${t('update_bank_btn')}</button>` : ''}
       </div>
       ${wds.length ? `
       <div class="card" style="margin-top:12px">
-        <div style="font-weight:800;margin-bottom:8px">Withdrawal history</div>
+        <div style="font-weight:800;margin-bottom:8px">${t('wd_history')}</div>
         ${wds.map((w) => `
           <div class="row small" style="padding:6px 0;border-top:1px solid rgba(139,92,246,.1)">
             <span class="grow"><b>${fmt(w.amount_cents)}</b> <span class="muted">· ${timeHM(w.requested_at)}</span>
@@ -1532,14 +2008,14 @@ async function vModelEarnings() {
           </div>`).join('')}
       </div>` : ''}
       <div class="card" style="margin-top:12px">
-        <div style="font-weight:800;margin-bottom:8px">Per fan</div>
+        <div style="font-weight:800;margin-bottom:8px">${t('per_fan')}</div>
         ${(data.by_fan || []).map((r) => `
           <div class="row" style="padding:8px 0;border-top:1px solid rgba(139,92,246,.1)">
-            <span class="grow"><b>${esc(r.fan_name)}</b> <span class="muted small">· ${r.payments} payments</span></span>
+            <span class="grow"><b>${esc(r.fan_name)}</b> <span class="muted small">· ${t(r.payments === 1 ? 'payments_1' : 'payments_n', { n: r.payments })}</span></span>
             <b style="color:var(--green)">${fmt(r.earned_cents)}</b>
-          </div>`).join('') || '<div class="muted">No earnings yet — go online and chat! 💬</div>'}
+          </div>`).join('') || `<div class="muted">${t('no_earnings')}</div>`}
       </div>
-      <div class="muted small" style="text-align:center">Payouts are sent by SlutCamp. Available balance updates after each message.</div>
+      <div class="muted small" style="text-align:center">${t('payouts_note')}</div>
     </div>`;
 
   const baSave = $('#ba-save');
@@ -1627,7 +2103,7 @@ async function vRecruiter() {
   const { data: wdData } = await api('/model/withdrawals');
   const acct = acctData.account;
   const wds = wdData.withdrawals || [];
-  const wdBadge = (s) => s === 'pending' ? '⏳ Pending' : s === 'paid' ? '✅ Paid' : '❌ Rejected';
+  const wdBadge = (s) => s === 'pending' ? t('wd_pending') : s === 'paid' ? t('wd_paid') : t('wd_rejected');
   app.innerHTML = `
     <div class="header" style="background:linear-gradient(135deg,#3b2f0b,#1a1405)">
       <h1 style="color:var(--gold)">Slut<span style="color:#fff">Camp</span> <span style="font-size:14px">AFFILIATE</span></h1>
@@ -1661,30 +2137,30 @@ async function vRecruiter() {
           </div>`).join('') || '<div class="muted">No models yet — share your link! 🔗</div>'}
       </div>
       <div class="card" style="margin-top:12px">
-        <div style="font-weight:800;margin-bottom:8px">💸 Payouts</div>
-        <div class="row" style="margin-bottom:8px"><span class="grow muted small">Bank account</span>
-          ${acct ? `<b class="small">•••• ${esc(acct.account_last4)}</b>` : '<span class="small" style="color:var(--pink)">Not set</span>'}</div>
+        <div style="font-weight:800;margin-bottom:8px">${t('payouts_h')}</div>
+        <div class="row" style="margin-bottom:8px"><span class="grow muted small">${t('bank_account')}</span>
+          ${acct ? `<b class="small">•••• ${esc(acct.account_last4)}</b>` : `<span class="small" style="color:var(--pink)">${t('not_set')}</span>`}</div>
         ${acct ? `
           <div class="muted small" style="margin-bottom:8px">${esc(acct.holder_name)} · Routing ${esc(acct.routing_number)}</div>
           <div class="row">
-            <input class="input" id="wd-amount" type="number" step="0.01" min="0" placeholder="Amount $" style="margin-top:0">
-            <button class="btn small success" id="wd-go">Withdraw</button>
+            <input class="input" id="wd-amount" type="number" step="0.01" min="0" placeholder="${t('amount_ph')}" style="margin-top:0">
+            <button class="btn small success" id="wd-go">${t('withdraw')}</button>
           </div>
-          <div class="muted small" style="margin-top:6px">Available to withdraw: <b style="color:var(--green)">${fmt(wdData.available_cents)}</b></div>
+          <div class="muted small" style="margin-top:6px">${t('avail_withdraw')} <b style="color:var(--green)">${fmt(wdData.available_cents)}</b></div>
         ` : ''}
         <div id="bank-form" class="${acct ? 'hidden' : ''}" style="margin-top:8px">
-          <div style="font-weight:700;margin-bottom:6px">${acct ? 'Update bank account' : 'Add bank account'}</div>
-          <label class="field">Account holder name<input class="input" id="ba-holder" maxlength="80" value="${acct ? esc(acct.holder_name) : ''}"></label>
-          <label class="field">Routing number (9 digits)<input class="input" id="ba-routing" inputmode="numeric" maxlength="9" value="${acct ? esc(acct.routing_number) : ''}"></label>
-          <label class="field">Account number${pwField('ba-account', 'off')}</label>
-          <button class="btn" id="ba-save" style="margin-top:8px">Save bank account</button>
-          <div class="muted small" style="margin-top:6px">🔒 Only SlutCamp sees your full account number, to send your money.</div>
+          <div style="font-weight:700;margin-bottom:6px">${acct ? t('update_bank') : t('add_bank')}</div>
+          <label class="field">${t('holder_name')}<input class="input" id="ba-holder" maxlength="80" value="${acct ? esc(acct.holder_name) : ''}"></label>
+          <label class="field">${t('routing')}<input class="input" id="ba-routing" inputmode="numeric" maxlength="9" value="${acct ? esc(acct.routing_number) : ''}"></label>
+          <label class="field">${t('account_number')}${pwField('ba-account', 'off')}</label>
+          <button class="btn" id="ba-save" style="margin-top:8px">${t('save_bank')}</button>
+          <div class="muted small" style="margin-top:6px">${t('bank_note')}</div>
         </div>
-        ${acct ? `<button class="btn ghost small" id="ba-toggle" style="margin-top:8px">✏️ Update bank account</button>` : ''}
+        ${acct ? `<button class="btn ghost small" id="ba-toggle" style="margin-top:8px">${t('update_bank_btn')}</button>` : ''}
       </div>
       ${wds.length ? `
       <div class="card" style="margin-top:12px">
-        <div style="font-weight:800;margin-bottom:8px">Withdrawal history</div>
+        <div style="font-weight:800;margin-bottom:8px">${t('wd_history')}</div>
         ${wds.map((w) => `
           <div class="row small" style="padding:6px 0;border-top:1px solid rgba(139,92,246,.1)">
             <span class="grow"><b>${fmt(w.amount_cents)}</b> <span class="muted">· ${timeHM(w.requested_at)}</span>
@@ -1693,7 +2169,7 @@ async function vRecruiter() {
           </div>`).join('')}
       </div>` : ''}
       <div class="card" id="tax-card" style="margin-top:12px"><div class="muted small">Loading tax info…</div></div>
-      <button class="btn ghost" id="r-logout" style="margin-top:12px">Log out</button>
+      <button class="btn ghost" id="r-logout" style="margin-top:12px">${t('log_out')}</button>
     </div>`;
 
   $('#rc-copy').onclick = async () => {
@@ -1761,20 +2237,20 @@ async function vBookings() {
   const pending = bookings.filter((b) => b.status === 'pending');
   const upcoming = bookings.filter((b) => b.status === 'approved' || b.status === 'in_progress');
   app.innerHTML = `
-    <div class="header"><h1>Bookings 📅</h1>
-      <div class="sub">Private 1-on-1 lives — paid upfront</div></div>
+    <div class="header"><h1>${t('bookings_h')}</h1>
+      <div class="sub">${t('bookings_sub')}</div></div>
     <div class="screen">
       ${isModel && pending.length ? `
       <div class="card" style="border-color:var(--gold)">
-        <div style="font-weight:800;margin-bottom:8px">⏳ ${pending.length} request${pending.length > 1 ? 's' : ''} waiting</div>
+        <div style="font-weight:800;margin-bottom:8px">⏳ ${t(pending.length === 1 ? 'req_waiting_1' : 'req_waiting_n', { n: pending.length })}</div>
         ${pending.map((b) => `
           <div class="row" style="margin-bottom:10px;align-items:center">
             <span class="grow"><b>${esc(b.other_name)}</b><br>
               <span class="small muted">${bookingWhen(b.scheduled_at)} · ${b.duration_min}min · <b style="color:var(--green)">${fmt(b.total_cents)}</b></span></span>
           </div>
           <div class="row" style="gap:8px;margin-bottom:12px">
-            <button class="btn small" data-bk-approve="${b.id}">✅ Approve</button>
-            <button class="btn small ghost" data-bk-decline="${b.id}">❌ Decline</button>
+            <button class="btn small" data-bk-approve="${b.id}">${t('approve')}</button>
+            <button class="btn small ghost" data-bk-decline="${b.id}">${t('decline')}</button>
           </div>`).join('')}
       </div>` : ''}
       ${upcoming.length ? upcoming.map((b) => {
@@ -1962,9 +2438,9 @@ async function vModelSettings() {
   const idv = (idvData && idvData.verification) || null;
   const idvStatus = idv ? idv.status : 'none';
   const idvBanner = idvStatus === 'approved'
-    ? `<div class="card" style="border-color:var(--green)"><div style="font-weight:800;color:var(--green)">✅ ID Verified</div><div class="small muted">Your identity is verified. You're cleared to chat and go live.</div></div>`
+    ? `<div class="card" style="border-color:var(--green)"><div style="font-weight:800;color:var(--green)">${t('id_verified')}</div><div class="small muted">${t('id_verified_sub')}</div></div>`
     : idvStatus === 'pending'
-    ? `<div class="card" style="border-color:var(--yellow)"><div style="font-weight:800;color:var(--yellow)">⏳ ID Under Review</div><div class="small muted">Submitted ${esc(idv.submitted_at || '')}. SlutCamp will review it soon — you can't chat or go live until it's approved.</div></div>`
+    ? `<div class="card" style="border-color:var(--yellow)"><div style="font-weight:800;color:var(--yellow)">${t('id_pending')}</div><div class="small muted">Submitted ${esc(idv.submitted_at || '')}. SlutCamp will review it soon — you can't chat or go live until it's approved.</div></div>`
     : `<div class="card" style="border-color:var(--red)">
         <div style="font-weight:800;margin-bottom:6px">🪪 ID Verification ${idvStatus === 'rejected' ? '<span style="color:var(--red)">— Action Needed</span>' : '<span style="color:var(--red)">— Required</span>'}</div>
         ${idvStatus === 'rejected' ? `<div class="small" style="color:var(--red);margin-bottom:8px">Rejected${idv.reviewer_note ? `: ${esc(idv.reviewer_note)}` : ''} — please resubmit.</div>` : ''}
@@ -1975,59 +2451,57 @@ async function vModelSettings() {
         <button class="btn" id="idv-submit">Submit for verification</button>
       </div>`;
   app.innerHTML = `
-    <div class="header"><h1>Settings ⚙️</h1></div>
+    <div class="header"><h1>${t('settings_h')}</h1></div>
     <div class="screen">
       ${idvBanner}
+      ${langCardHTML()}
       <div class="card">
-        <div style="font-weight:800;margin-bottom:6px">💵 My Rates</div>
-        <div class="muted small" style="margin-bottom:10px">What fans pay for 1-on-1 with you. You set these — SlutCamp can also adjust them.</div>
-        <label class="field">💬 Per text: <b id="s-msg-label">${fmt(m.per_message_cents || 149)}</b>
+        <div style="font-weight:800;margin-bottom:6px">${t('my_rates')}</div>
+        <div class="muted small" style="margin-bottom:10px">${t('rates_note')}</div>
+        <label class="field">${t('per_text')} <b id="s-msg-label">${fmt(m.per_message_cents || 149)}</b>
           <input type="range" id="s-msg" min="50" max="1000" step="25" value="${m.per_message_cents || 149}" style="width:100%"></label>
-        <label class="field">📹 Per minute video: <b id="s-min-label">${fmt(m.per_minute_cents || 399)}</b>
+        <label class="field">${t('per_min_video_l')} <b id="s-min-label">${fmt(m.per_minute_cents || 399)}</b>
           <input type="range" id="s-min" min="100" max="2000" step="25" value="${m.per_minute_cents || 399}" style="width:100%"></label>
-        <label class="field">🎙️ Per voice note: <b id="s-voice-label">${fmt(m.per_voice_cents || 299)}</b>
+        <label class="field">${t('per_voice')} <b id="s-voice-label">${fmt(m.per_voice_cents || 299)}</b>
           <input type="range" id="s-voice" min="50" max="1000" step="25" value="${m.per_voice_cents || 299}" style="width:100%"></label>
-        <label class="field">Live explicit rate — per minute ($)<input class="input" id="s-exp" type="number" step="0.01" min="0" value="${((m.explicit_rate_cents || 499) / 100).toFixed(2)}"></label>
+        <label class="field">${t('explicit_rate_l')}<input class="input" id="s-exp" type="number" step="0.01" min="0" value="${((m.explicit_rate_cents || 499) / 100).toFixed(2)}"></label>
         <div class="muted small" style="margin-top:6px">Fans watch your live stream free until the AI detects explicit content (or you tap "Go Explicit") — then they pay this rate per minute to keep watching unblurred.</div>
-        <button class="btn" id="s-save">Save rates</button>
+        <button class="btn" id="s-save">${t('save_rates')}</button>
       </div>
       <div class="card">
-        <div style="font-weight:800;margin-bottom:6px">🔞 Explicit stage rates</div>
+        <div style="font-weight:800;margin-bottom:6px">${t('stage_rates_h')}</div>
         <div class="muted small" style="margin-bottom:10px">What fans pay to join you <b>on camera/mic while you're explicit</b>. Regular (non-explicit) joins stay $10 video+mic / $5 mic-only.</div>
-        <label class="field">🎥 Explicit video + mic join: <b id="s-ejv-label">${fmt(m.explicit_join_cents || 2500)}</b>
+        <label class="field">${t('ejv_l')} <b id="s-ejv-label">${fmt(m.explicit_join_cents || 2500)}</b>
           <input type="range" id="s-ejv" min="500" max="10000" step="100" value="${m.explicit_join_cents || 2500}" style="width:100%"></label>
-        <label class="field">🎙️ Explicit mic join: <b id="s-ejm-label">${fmt(m.explicit_mic_join_cents || 1500)}</b>
+        <label class="field">${t('ejm_l')} <b id="s-ejm-label">${fmt(m.explicit_mic_join_cents || 1500)}</b>
           <input type="range" id="s-ejm" min="500" max="10000" step="100" value="${m.explicit_mic_join_cents || 1500}" style="width:100%"></label>
-        <button class="btn" id="s-ej-save" style="margin-top:8px">Save stage rates</button>
+        <button class="btn" id="s-ej-save" style="margin-top:8px">${t('save_stage_rates')}</button>
       </div>
       <div class="card">
-        <div style="font-weight:800;margin-bottom:6px">📅 My Live Schedule</div>
+        <div style="font-weight:800;margin-bottom:6px">${t('schedule_h')}</div>
         <div class="muted small" style="margin-bottom:10px">Set regular weekly times, go live spontaneously anytime, or both. Fans see your schedule on the Live tab.</div>
         <div id="sched-list"><span class="muted small">Loading…</span></div>
         <div class="row" style="gap:8px;margin-top:10px">
           <select class="input" id="sched-day" style="flex:1">
-            <option value="1">Monday</option><option value="2">Tuesday</option>
-            <option value="3">Wednesday</option><option value="4">Thursday</option>
-            <option value="5">Friday</option><option value="6">Saturday</option>
-            <option value="0">Sunday</option>
+            ${t('day_names').split(',').map((d, i) => `<option value="${(i + 1) % 7}">${d}</option>`).join('')}
           </select>
           <input class="input" id="sched-time" type="time" value="20:00" style="flex:1">
         </div>
-        <input class="input" id="sched-title" placeholder="Title (optional) — e.g. Late night hangout" maxlength="60" style="margin-top:8px">
-        <button class="btn" id="sched-add" style="margin-top:8px">Add slot</button>
+        <input class="input" id="sched-title" placeholder="${t('slot_title_ph')}" maxlength="60" style="margin-top:8px">
+        <button class="btn" id="sched-add" style="margin-top:8px">${t('add_slot')}</button>
       </div>
       <div class="card">
-        <div style="font-weight:800;margin-bottom:6px">Bio</div>
+        <div style="font-weight:800;margin-bottom:6px">${t('bio')}</div>
         <textarea class="input" id="s-bio" rows="3" maxlength="280">${esc(m.bio)}</textarea>
-        <button class="btn" id="s-bio-save">Save bio</button>
+        <button class="btn" id="s-bio-save">${t('save_bio')}</button>
       </div>
       <div class="card">
-        <div style="font-weight:800;margin-bottom:6px">My Photo</div>
+        <div style="font-weight:800;margin-bottom:6px">${t('my_photo')}</div>
         <div class="row" style="align-items:center">
           ${avatarHTML(m.display_name || (S.user && S.user.display_name) || '?', 'sm', m.photo_url)}
-          <span class="grow muted small">Fans see this next to your name in chats and on the model grid.</span>
+          <span class="grow muted small">${t('photo_note')}</span>
         </div>
-        <button class="btn ghost" id="s-photo" style="margin-top:8px">📷 Change my photo</button>
+        <button class="btn ghost" id="s-photo" style="margin-top:8px">${t('change_photo')}</button>
         <div style="margin-top:12px;padding:12px;background:rgba(139,92,246,.08);border-radius:12px;border:1px solid rgba(139,92,246,.25)">
           <div style="font-weight:800;margin-bottom:4px">🔗 My promo link</div>
           <div class="muted small" style="margin-bottom:8px">Share this anywhere — fans who tap it land straight on your chat. It works the moment your account is created.</div>
@@ -2044,9 +2518,9 @@ async function vModelSettings() {
         </div>
       </div>
       <div class="card" id="tax-card"><div class="muted small">Loading tax info…</div></div>
-      <button class="btn ghost" id="s-logout">Log out</button>
+      <button class="btn ghost" id="s-logout">${t('log_out')}</button>
       <div class="card" id="tipmenu-card" style="margin-top:12px">
-        <div style="font-weight:800;margin-bottom:6px">💰 Tip Menu</div>
+        <div style="font-weight:800;margin-bottom:6px">${t('tip_menu')}</div>
         <div class="muted small" style="margin-bottom:10px">Fans pick from your menu and pay instantly — like TikTok gifts but your own custom list. You keep 60% of every tip.</div>
         <div id="tipmenu-list"><span class="muted small">Loading…</span></div>
         <div class="row" style="gap:8px;margin-top:10px">
@@ -2054,7 +2528,7 @@ async function vModelSettings() {
           <input class="input" id="tm-label" placeholder="e.g. Blow a kiss" maxlength="60" style="flex:2">
           <input class="input" id="tm-price" type="number" step="0.01" min="1" max="1000" placeholder="$" style="flex:1">
         </div>
-        <button class="btn" id="tm-add" style="margin-top:8px">➕ Add tip item</button>
+        <button class="btn" id="tm-add" style="margin-top:8px">${t('add_tip_item')}</button>
       </div>
     </div>`;
   $('#s-save').onclick = async () => {
@@ -2064,7 +2538,7 @@ async function vModelSettings() {
     const explicit_rate_cents = Math.round(parseFloat($('#s-exp').value || '0') * 100);
     const { status } = await api('/model/profile', {
       method: 'PUT', body: JSON.stringify({ per_message_cents, per_minute_cents, per_voice_cents, explicit_rate_cents }) });
-    toast(status === 200 ? '✅ Rates saved!' : 'Could not save.');
+    toast(status === 200 ? t('rates_saved') : t('couldnt_save'));
     if (status === 200) refreshMe();
   };
   // My Rates sliders — live label updates
@@ -2075,7 +2549,7 @@ async function vModelSettings() {
   $('#s-bio-save').onclick = async () => {
     const { status } = await api('/model/profile', {
       method: 'PUT', body: JSON.stringify({ bio: $('#s-bio').value }) });
-    toast(status === 200 ? '✅ Bio saved!' : 'Could not save.');
+    toast(status === 200 ? t('bio_saved') : t('couldnt_save'));
   };
   // Explicit stage rate sliders — live label updates
   const ejv = $('#s-ejv'), ejm = $('#s-ejm');
@@ -2087,11 +2561,11 @@ async function vModelSettings() {
     const explicit_mic_join_cents = parseInt(ejm.value);
     const { status } = await api('/model/profile', {
       method: 'PUT', body: JSON.stringify({ explicit_join_cents, explicit_mic_join_cents }) });
-    toast(status === 200 ? '✅ Stage rates saved!' : 'Could not save.');
+    toast(status === 200 ? t('stage_saved') : t('couldnt_save'));
     if (status === 200) refreshMe();
   };
   // Live schedule slots
-  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const DAYS = t('days_short').split(',');
   async function loadSched() {
     const { data } = await api('/model/schedule');
     const slots = data.slots || [];
@@ -2381,27 +2855,27 @@ async function vChat(params) {
       ${avatarHTML(other.display_name, 'sm', other.photo_url)}
       <div class="grow">
         <div class="name">${esc(other.display_name)}</div>
-        <div class="status">${conv.is_paused ? '⏸ Paused' : (other.is_online ? '🟢 online' : '⚫ offline')}</div>
+        <div class="status">${conv.is_paused ? t('st_paused') : (other.is_online ? t('st_online') : t('st_offline'))}</div>
       </div>
-      ${!isModel && !S.user ? `<span class="small" style="color:var(--pink);font-weight:700">🎁 ${conv.free_remaining} free left</span>` : ''}
+      ${!isModel && !S.user ? `<span class="small" style="color:var(--pink);font-weight:700">${t('free_left', { n: conv.free_remaining })}</span>` : ''}
       ${canVideo ? `<button class="icon-btn" id="c-video" title="Video call">📹</button>` : ''}
-      ${S.user && S.user.role === 'fan' ? `<button class="btn-book" id="c-book" title="Book a private 1-on-1 live">📅 Book 1-on-1</button>` : ''}
+      ${S.user && S.user.role === 'fan' ? `<button class="btn-book" id="c-book" title="${t('book_title')}">${t('book_1on1')}</button>` : ''}
     </div>
     ${conv.is_paused ? `
       <div class="rate-hint" style="background:rgba(248,113,113,.12);color:#fca5a5;font-weight:700">
-        ⚠️ This chat is paused by the safety monitor.<br><span class="small">Sharing contact info is not allowed.</span>
+        ${t('chat_paused_banner')}<br><span class="small">${t('sharing_not_allowed')}</span>
       </div>` : ''}
     ${!isModel && !conv.is_paused ? `
       <div class="rate-hint">${S.user
-        ? `Messages cost ${fmt(other.per_message_cents)} each`
-        : `🎁 ${conv.free_remaining} FREE messages left — then sign up to continue`}</div>` : ''}
+        ? t('msgs_cost', { price: fmt(other.per_message_cents) })
+        : t('free_msgs_left', { n: conv.free_remaining })}</div>` : ''}
     <div id="messages"></div>
-    <div id="typing-ind" class="rate-hint hidden"><i>typing…</i></div>
+    <div id="typing-ind" class="rate-hint hidden"><i>${t('typing')}</i></div>
     <div class="chat-input-bar">
       ${!conv.is_paused ? `<button class="icon-btn" id="c-plus" title="More">＋</button>` : ''}
       ${!conv.is_paused && S.user && S.user.role === 'fan' ? `<button class="icon-btn" id="c-gift" title="Send a gift">🎁</button>` : ''}
       ${!conv.is_paused && S.user && S.user.role === 'fan' ? `<button class="icon-btn" id="c-tipmenu" title="Tip menu">💰</button>` : ''}
-      <input id="c-input" placeholder="${conv.is_paused ? 'Chat paused' : 'Message…'}" ${conv.is_paused ? 'disabled' : ''} autocomplete="off">
+      <input id="c-input" placeholder="${conv.is_paused ? t('chat_paused_ph') : t('msg_placeholder')}" ${conv.is_paused ? 'disabled' : ''} autocomplete="off">
       <button class="send-btn" id="c-send" ${conv.is_paused ? 'disabled' : ''}>➤</button>
     </div>
     <div id="action-sheet" class="hidden"></div>
@@ -3208,7 +3682,7 @@ function liveModelRemoveViewer(fanId) {
 
 function updateLiveViewerCount() {
   const el = $('#live-viewer-count');
-  if (el) el.textContent = `${livePCs.size} watching`;
+  if (el) el.textContent = t('watching', { n: livePCs.size });
 }
 
 async function liveToggleExplicit() {
@@ -3221,7 +3695,7 @@ async function liveToggleExplicit() {
     L.isExplicit = next;
     const b = $('#live-explicit-btn');
     if (b) {
-      b.textContent = next ? '🔞 Explicit ON — tap for SFW' : 'Go Explicit 🔞';
+      b.textContent = next ? '🔞 Explicit ON — tap for SFW' : t('go_explicit');
       b.style.background = next
         ? 'linear-gradient(135deg,#10b981,#047857)'
         : 'linear-gradient(135deg,#8b5cf6,#6d28d9)';
@@ -3248,7 +3722,7 @@ function vLiveBroadcast() {
       </div>
       <div class="live-top">
         <span class="live-badge">🔴 LIVE</span>
-        <span id="live-viewer-count" class="live-viewers">0 watching</span>
+        <span id="live-viewer-count" class="live-viewers">${t('watching', { n: 0 })}</span>
       </div>
       ${L.title ? `<div class="live-title">${esc(L.title)}</div>` : ''}
       <div id="priority-banner" class="hidden"></div>
@@ -3262,17 +3736,17 @@ function vLiveBroadcast() {
       <div class="broadcast-bottom">
         <div id="stream-chat" class="stream-chat"></div>
         <div class="stream-chat-input">
-          <input id="stream-chat-box" class="input" placeholder="Say something to your fans…" maxlength="500" autocomplete="off">
+          <input id="stream-chat-box" class="input" placeholder="${t('say_fans_ph')}" maxlength="500" autocomplete="off">
           <button class="btn small" id="stream-chat-send" style="margin:0">➤</button>
         </div>
         <div class="live-controls">
           <div class="row" style="gap:8px;margin-bottom:8px">
-            <button class="btn small ghost" id="live-mic-btn" style="flex:1">🎤 Mic on</button>
-            <button class="btn small ghost" id="live-cam-btn" style="flex:1">📹 Cam on</button>
+            <button class="btn small ghost" id="live-mic-btn" style="flex:1">${t('mic_on')}</button>
+            <button class="btn small ghost" id="live-cam-btn" style="flex:1">${t('cam_on')}</button>
           </div>
-          <button class="btn" id="live-explicit-btn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">Go Explicit 🔞</button>
-          <div class="muted small" style="text-align:center;margin-top:6px">Explicit rate: ${fmt(L.explicitRate)}/min · Your preview is never blurred</div>
-          <button class="btn danger" id="live-end-btn" style="margin-top:10px">End Stream</button>
+          <button class="btn" id="live-explicit-btn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">${t('go_explicit')}</button>
+          <div class="muted small" style="text-align:center;margin-top:6px">${t('explicit_rate_note', { price: fmt(L.explicitRate) })}</div>
+          <button class="btn danger" id="live-end-btn" style="margin-top:10px">${t('end_stream')}</button>
         </div>
       </div>
     </div>`;
@@ -3293,7 +3767,7 @@ function vLiveBroadcast() {
     const track = L2.stream.getAudioTracks()[0];
     if (!track) return toast('No mic found');
     track.enabled = !track.enabled;
-    micBtn.textContent = track.enabled ? '🎤 Mic on' : '🔇 Muted';
+    micBtn.textContent = track.enabled ? t('mic_on') : t('muted');
     micBtn.classList.toggle('danger', !track.enabled);
   };
   if (camBtn) camBtn.onclick = () => {
@@ -3301,7 +3775,7 @@ function vLiveBroadcast() {
     const track = L2.stream.getVideoTracks()[0];
     if (!track) return toast('No camera found');
     track.enabled = !track.enabled;
-    camBtn.textContent = track.enabled ? '📹 Cam on' : '📷 Cam off';
+    camBtn.textContent = track.enabled ? t('cam_on') : t('cam_off');
     camBtn.classList.toggle('danger', !track.enabled);
   };
   renderStreamChat();
@@ -3593,7 +4067,7 @@ function renderBell() {
     bell = document.createElement('button');
     bell.id = 'notif-bell';
     bell.className = 'notif-bell';
-    bell.title = 'Notifications';
+    bell.title = t('notifications_word');
     bell.innerHTML = '🔔<span class="notif-badge hidden" id="notif-badge"></span>';
     bell.onclick = () => show('notifications', {});
     document.body.appendChild(bell);
@@ -3616,8 +4090,8 @@ async function vNotifications() {
   const { data } = await api('/notifications');
   const notifs = data.notifications || [];
   app.innerHTML = `
-    <div class="header"><h1>🔔 Notifications</h1>
-      <div><button class="btn ghost small" id="notif-read-all">Mark all read</button></div></div>
+    <div class="header"><h1>${t('notifications_h')}</h1>
+      <div><button class="btn ghost small" id="notif-read-all">${t('mark_all_read')}</button></div></div>
     <div class="screen">
       ${notifs.map((n) => `
         <button class="list-item ${n.read ? '' : 'unread'}" data-notif="${n.id}" data-link="${esc(n.link || '')}">
@@ -5128,7 +5602,7 @@ async function adminPayoutsBody() {
   const wds = (wdData && wdData.withdrawals) || [];
   const pending = wds.filter((w) => w.status === 'pending');
   const done = wds.filter((w) => w.status !== 'pending');
-  const wdBadge = (s) => s === 'pending' ? '⏳ Pending' : s === 'paid' ? '✅ Paid' : '❌ Rejected';
+  const wdBadge = (s) => s === 'pending' ? t('wd_pending') : s === 'paid' ? t('wd_paid') : t('wd_rejected');
   return `
     ${pending.length ? `<h3>⏳ Withdrawal requests (${pending.length})</h3>` : ''}
     ${pending.map((w) => `
@@ -6242,12 +6716,12 @@ function vWelcomeSplash(onDone) {
         <div style="text-align:center;font-size:28px;margin-top:8px">🏕️💦</div>
       </div>
       <div style="margin-top:24px;text-align:center;animation:fadeIn 1s ease .5s both">
-        <div style="font-size:20px;font-weight:700;color:#fff">Welcome to SlutCamp,</div>
-        <div style="font-size:16px;color:#ff8ab5;margin-top:4px">sluts paradise 😈</div>
-        <div style="font-size:14px;color:#a78bfa;margin-top:8px">We hope you enjoy your Nutt 💦</div>
+        <div style="font-size:20px;font-weight:700;color:#fff">${t('splash_welcome')}</div>
+        <div style="font-size:16px;color:#ff8ab5;margin-top:4px">${t('splash_paradise')}</div>
+        <div style="font-size:14px;color:#a78bfa;margin-top:8px">${t('splash_nutt')}</div>
       </div>
       <button id="splash-enter" class="btn" style="margin-top:32px;animation:fadeIn 1s ease 1s both;background:linear-gradient(135deg,#ff2d78,#b829dd);font-size:18px;padding:14px 48px;border-radius:30px">
-        Enter 🔥
+        ${t('enter')}
       </button>
       </div>
       <style>
