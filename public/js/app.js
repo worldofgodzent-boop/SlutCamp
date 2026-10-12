@@ -1789,8 +1789,11 @@ async function vModelSettings() {
   $('#s-photo').onclick = () => {
     const inp = document.createElement('input');
     inp.type = 'file'; inp.accept = 'image/*';
+    inp.style.display = 'none';
+    document.body.appendChild(inp);
     inp.onchange = async () => {
       const file = inp.files[0];
+      inp.remove();
       if (!file) return;
       openPhotoCropper(file, async (cropped) => {
         toast('Uploading photo…');
@@ -5095,8 +5098,11 @@ function wireAdminBody(tab) {
     b.onclick = () => {
       const inp = document.createElement('input');
       inp.type = 'file'; inp.accept = 'image/*';
+      inp.style.display = 'none';
+      document.body.appendChild(inp);
       inp.onchange = async () => {
         const file = inp.files[0];
+        inp.remove();
         if (!file) return;
         openPhotoCropper(file, async (cropped) => {
           toast('Uploading photo…');
