@@ -327,6 +327,25 @@ CREATE TABLE IF NOT EXISTS calls (
   created_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- FaceTime (instant 1-on-1 from chat): fan prepays a duration block and
+-- requests; model accepts (starts now or queues behind her current call).
+CREATE TABLE IF NOT EXISTS facetime_requests (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  fan_id            INTEGER NOT NULL REFERENCES users(id),
+  model_id          INTEGER NOT NULL REFERENCES users(id),
+  duration_min      INTEGER NOT NULL,
+  amount_cents      INTEGER NOT NULL,
+  status            TEXT NOT NULL DEFAULT 'pending'
+    CHECK(status IN ('pending','queued','invited','in_call','done','declined','cancelled','expired')),
+  call_id           INTEGER REFERENCES calls(id),
+  invite_expires_ms INTEGER,
+  created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+  decided_at        TEXT,
+  ended_at          TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_ft_model_status ON facetime_requests (model_id, status, id);
+CREATE INDEX IF NOT EXISTS idx_ft_fan ON facetime_requests (fan_id, status);
+
 CREATE TABLE IF NOT EXISTS transactions (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
   fan_id         INTEGER REFERENCES users(id),
@@ -570,6 +589,10 @@ function addColumnIfMissing(table, col, def) {
   if (!cols.includes(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
 }
 addColumnIfMissing('messages', 'media_id', 'INTEGER REFERENCES media_items(id)');
+addColumnIfMissing('calls', 'prepaid_min', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('calls', 'is_explicit', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('calls', 'explicit_pending', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('calls', 'facetime_req_id', 'INTEGER');
 addColumnIfMissing('models', 'per_voice_cents', 'INTEGER NOT NULL DEFAULT 299');
 addColumnIfMissing('models', 'explicit_rate_cents', 'INTEGER NOT NULL DEFAULT 499');
 addColumnIfMissing('models', 'photo_url', "TEXT NOT NULL DEFAULT ''");
@@ -2742,6 +2765,8 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
   if (!updates.length) return res.status(400).json({ error: 'nothing_to_update' });
   params.push(req.user.id);
   db.prepare(`UPDATE models SET ${updates.join(', ')} WHERE user_id = ?`).run(...params);
+  // Going offline empties her FaceTime line (refunded + notified).
+  if (is_online === 0) ftCancelAll(req.user.id, 'she went offline');
   res.json({ model: db.prepare('SELECT * FROM models WHERE user_id = ?').get(req.user.id) });
 });
 
@@ -3395,6 +3420,12 @@ function endCall(callId, reason) {
   }
   pushToSubject(`u:${call.fan_id}`, { type: 'call:ended', call_id: callId, reason: reason || 'ended' });
   pushToSubject(`u:${call.model_id}`, { type: 'call:ended', call_id: callId, reason: reason || 'ended' });
+  // FaceTime: close out the request and bring the next fan in line.
+  if (call.facetime_req_id) {
+    const fr = ftGet(call.facetime_req_id);
+    if (fr && fr.status === 'in_call') ftFinish(fr, 'done', null);
+  }
+  ftPromote(call.model_id);
 }
 
 function billCallMinute(callId) {
@@ -3404,9 +3435,23 @@ function billCallMinute(callId) {
     if (t) { clearInterval(t); activeCallTimers.delete(callId); }
     return;
   }
+  if (call.prepaid_min > 0) {
+    // FaceTime block: already paid upfront — just count down to the cap.
+    db.prepare('UPDATE calls SET minutes_billed = minutes_billed + 1 WHERE id = ?').run(callId);
+    const upd = db.prepare('SELECT * FROM calls WHERE id = ?').get(callId);
+    const remaining = Math.max(0, upd.prepaid_min - upd.minutes_billed);
+    pushToSubject(`u:${call.fan_id}`, { type: 'call:tick', call_id: callId,
+      minutes_billed: upd.minutes_billed, remaining_min: remaining, prepaid: true,
+      balance_cents: getWallet(call.fan_id).credits_cents });
+    pushToSubject(`u:${call.model_id}`, { type: 'call:tick', call_id: callId,
+      minutes_billed: upd.minutes_billed, remaining_min: remaining, prepaid: true });
+    if (remaining <= 0) endCall(callId, 'time_up');
+    return;
+  }
   try {
-    chargeFan(call.fan_id, call.model_id, call.rate_cents, 'call',
-      `Video call minute ${call.minutes_billed + 1}`);
+    const rate = call.is_explicit ? call.rate_cents * 2 : call.rate_cents;
+    chargeFan(call.fan_id, call.model_id, rate, 'call',
+      `Video call minute ${call.minutes_billed + 1}${call.is_explicit ? ' (explicit)' : ''}`);
     db.prepare('UPDATE calls SET minutes_billed = minutes_billed + 1 WHERE id = ?').run(callId);
     const upd = db.prepare('SELECT * FROM calls WHERE id = ?').get(callId);
     pushToSubject(`u:${call.fan_id}`, { type: 'call:tick', call_id: callId,
@@ -3426,6 +3471,9 @@ app.post('/api/calls', identMiddleware, requireUser, requireRole('fan'), (req, r
     WHERE u.id = ? AND u.role = 'model' AND u.banned = 0`).get(req.body.model_id);
   if (!row) return res.status(404).json({ error: 'model_not_found' });
   if (!row.is_online) return res.status(409).json({ error: 'model_offline' });
+  const liveNow = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`).get(row.id);
+  if (liveNow) return res.status(409).json({ error: 'model_live',
+    message: "She's live right now — video calls are locked during lives. Join her stage or book a 1-on-1." });
   let conv = db.prepare('SELECT * FROM conversations WHERE fan_id = ? AND model_id = ?')
     .get(req.user.id, row.id);
   if (conv) conv = maybeAutoUnpause(conv);
@@ -3465,6 +3513,283 @@ app.get('/api/calls/:id', identMiddleware, requireUser, (req, res) => {
   if (call.model_id !== req.user.id && call.fan_id !== req.user.id && req.user.role !== 'admin')
     return res.status(403).json({ error: 'forbidden' });
   res.json({ call });
+});
+
+/* ------------------------------------------------------------------ */
+/* FaceTime: prepaid instant 1-on-1 requests + queue (Oct 13, 2026)    */
+/* Fan prepays a block (10/15/30/45/60 min) from chat. The model       */
+/* accepts -> his call starts now, or he queues behind her current     */
+/* call with live position + ETA updates. Locked while she's LIVE      */
+/* (book a 1-on-1 instead) or offline — requests need her "Online".    */
+/* Mid-call, she can flip to explicit: remaining minutes cost double,  */
+/* the fan pays the uplift to continue explicit.                       */
+/* ------------------------------------------------------------------ */
+const FACETIME_DURATIONS = [10, 15, 30, 45, 60];
+const FT_INVITE_WINDOW_MS = 90 * 1000;
+
+function ftGet(id) {
+  return db.prepare('SELECT * FROM facetime_requests WHERE id = ?').get(id);
+}
+function ftActiveCall(modelId) {
+  return db.prepare(`SELECT * FROM calls WHERE model_id = ? AND status = 'active'
+                     ORDER BY id DESC LIMIT 1`).get(modelId);
+}
+function ftCallRemainingMin(call) {
+  if (!call) return 0;
+  if (call.prepaid_min > 0) return Math.max(0, call.prepaid_min - call.minutes_billed);
+  return 10; // metered legacy call: rough ETA estimate only
+}
+function ftQueueState(modelId) {
+  const queued = db.prepare(`SELECT * FROM facetime_requests
+    WHERE model_id = ? AND status = 'queued' ORDER BY id`).all(modelId);
+  const invited = db.prepare(`SELECT * FROM facetime_requests
+    WHERE model_id = ? AND status = 'invited' ORDER BY id LIMIT 1`).get(modelId);
+  return { queued, invited, active: ftActiveCall(modelId) };
+}
+function ftPositionEta(modelId, reqRow) {
+  if (reqRow.status === 'invited') return { position: 0, eta_min: 0 };
+  if (reqRow.status !== 'queued') return { position: null, eta_min: null };
+  const { queued, invited, active } = ftQueueState(modelId);
+  let eta = ftCallRemainingMin(active);
+  let ahead = 0;
+  if (invited) { eta += invited.duration_min; ahead += 1; }
+  for (const q of queued) {
+    if (q.id === reqRow.id) break;
+    eta += q.duration_min; ahead += 1;
+  }
+  return { position: ahead + 1, eta_min: eta };
+}
+function ftPublic(reqRow) {
+  const fan = db.prepare('SELECT display_name FROM users WHERE id = ?').get(reqRow.fan_id);
+  const model = db.prepare('SELECT display_name FROM users WHERE id = ?').get(reqRow.model_id);
+  const pe = ftPositionEta(reqRow.model_id, reqRow);
+  return { id: reqRow.id, fan_id: reqRow.fan_id, fan_name: fan ? fan.display_name : 'Fan',
+    model_id: reqRow.model_id, model_name: model ? model.display_name : '',
+    duration_min: reqRow.duration_min, amount_cents: reqRow.amount_cents,
+    status: reqRow.status, call_id: reqRow.call_id,
+    position: pe.position, eta_min: pe.eta_min, created_at: reqRow.created_at };
+}
+function ftPushFan(reqRow, extra = {}) {
+  pushToSubject(`u:${reqRow.fan_id}`, { type: 'facetime:update',
+    request: ftPublic(reqRow), ...extra });
+}
+function ftPushQueue(modelId) {
+  for (const q of ftQueueState(modelId).queued) ftPushFan(q);
+}
+function ftFinish(reqRow, status, refundNote) {
+  db.prepare(`UPDATE facetime_requests SET status = ?,
+              ended_at = datetime('now') WHERE id = ?`).run(status, reqRow.id);
+  if (refundNote)
+    refundFan(reqRow.fan_id, reqRow.model_id, reqRow.amount_cents, 'call_refund', refundNote);
+  const fresh = ftGet(reqRow.id);
+  ftPushFan(fresh);
+  pushToSubject(`u:${reqRow.model_id}`, { type: 'facetime:update', request: ftPublic(fresh) });
+  return fresh;
+}
+function ftPromote(modelId) {
+  const { queued, invited, active } = ftQueueState(modelId);
+  if (active || invited || !queued.length) return;
+  const next = queued[0];
+  db.prepare(`UPDATE facetime_requests SET status = 'invited',
+              decided_at = datetime('now'), invite_expires_ms = ? WHERE id = ?`)
+    .run(Date.now() + FT_INVITE_WINDOW_MS, next.id);
+  const fresh = ftGet(next.id);
+  ftPushFan(fresh);
+  notifyUser(fresh.fan_id, 'facetime', '📹 Your turn!',
+    `${fresh.model_name} is ready for your FaceTime — join in the next 90 seconds or the spot passes on.`,
+    '/#chat');
+  ftPushQueue(modelId);
+}
+function ftCancelAll(modelId, reason) {
+  const rows = db.prepare(`SELECT * FROM facetime_requests WHERE model_id = ?
+    AND status IN ('pending','queued','invited') ORDER BY id`).all(modelId);
+  for (const r of rows) {
+    db.prepare(`UPDATE facetime_requests SET status = 'cancelled',
+                ended_at = datetime('now') WHERE id = ?`).run(r.id);
+    refundFan(r.fan_id, r.model_id, r.amount_cents, 'call_refund', `FaceTime cancelled — ${reason}`);
+    ftPushFan(ftGet(r.id), { reason });
+  }
+  if (rows.length) ftPushQueue(modelId);
+}
+function ftSweep() {
+  const stale = db.prepare(`SELECT * FROM facetime_requests WHERE status = 'pending'
+    AND created_at <= datetime('now', '-3 minutes')`).all();
+  for (const r of stale) ftFinish(r, 'expired', 'FaceTime request expired — no answer');
+  const missed = db.prepare(`SELECT * FROM facetime_requests WHERE status = 'invited'
+    AND invite_expires_ms IS NOT NULL AND invite_expires_ms < ?`).all(Date.now());
+  const touched = new Set();
+  for (const r of missed) {
+    ftFinish(r, 'cancelled', 'FaceTime turn missed — refunded');
+    touched.add(r.model_id);
+  }
+  for (const m of touched) ftPromote(m);
+}
+setInterval(ftSweep, 30 * 1000);
+
+app.post('/api/facetime/request', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const duration = Number(req.body.duration_min);
+  if (!FACETIME_DURATIONS.includes(duration))
+    return res.status(400).json({ error: 'bad_duration', allowed: FACETIME_DURATIONS });
+  const row = db.prepare(`
+    SELECT u.id, u.display_name, m.is_online, m.per_minute_cents FROM users u
+    JOIN models m ON m.user_id = u.id
+    WHERE u.id = ? AND u.role = 'model' AND u.banned = 0`).get(req.body.model_id);
+  if (!row) return res.status(404).json({ error: 'model_not_found' });
+  const live = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`).get(row.id);
+  if (live) return res.status(409).json({ error: 'model_live',
+    message: "She's live right now — FaceTime is locked during lives. Join her stage or book a 1-on-1." });
+  if (!row.is_online) return res.status(409).json({ error: 'model_offline' });
+  let conv = db.prepare('SELECT * FROM conversations WHERE fan_id = ? AND model_id = ?')
+    .get(req.user.id, row.id);
+  if (conv) conv = maybeAutoUnpause(conv);
+  if (conv && conv.is_paused)
+    return res.status(423).json({ error: 'chat_paused', message: 'Chat is paused by safety monitor.' });
+  const dup = db.prepare(`SELECT id FROM facetime_requests WHERE fan_id = ? AND model_id = ?
+    AND status IN ('pending','queued','invited','in_call')`).get(req.user.id, row.id);
+  if (dup) return res.status(409).json({ error: 'already_requested', request_id: dup.id });
+  const amount = duration * row.per_minute_cents;
+  if (getWallet(req.user.id).credits_cents < amount)
+    return res.status(402).json({ error: 'insufficient_credits', needed_cents: amount,
+      balance_cents: getWallet(req.user.id).credits_cents });
+  try {
+    chargeFan(req.user.id, row.id, amount, 'call',
+      `FaceTime ${duration} min with ${row.display_name}`, clientIp(req));
+  } catch (e) {
+    return res.status(402).json({ error: 'insufficient_credits', needed_cents: amount });
+  }
+  const info = db.prepare(`INSERT INTO facetime_requests (fan_id, model_id, duration_min, amount_cents)
+    VALUES (?,?,?,?)`).run(req.user.id, row.id, duration, amount);
+  const fresh = ftGet(Number(info.lastInsertRowid));
+  pushToSubject(`u:${row.id}`, { type: 'facetime:request', request: ftPublic(fresh) });
+  notifyUser(row.id, 'facetime', '📹 FaceTime request',
+    `${req.user.display_name} wants a ${duration}-min FaceTime with you — $${(amount / 100).toFixed(2)}.`,
+    '/#chat');
+  res.json({ request: ftPublic(fresh) });
+});
+
+app.get('/api/facetime/mine', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const r = db.prepare(`SELECT * FROM facetime_requests WHERE fan_id = ?
+    AND status IN ('pending','queued','invited','in_call') ORDER BY id DESC LIMIT 1`).get(req.user.id);
+  res.json({ request: r ? ftPublic(r) : null });
+});
+
+app.get('/api/facetime/incoming', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const rows = db.prepare(`SELECT * FROM facetime_requests WHERE model_id = ?
+    AND status IN ('pending','queued','invited','in_call') ORDER BY id`).all(req.user.id);
+  res.json({ requests: rows.map(ftPublic) });
+});
+
+app.post('/api/facetime/:id/accept', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const r = ftGet(req.params.id);
+  if (!r || r.model_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
+  if (r.status !== 'pending') return res.status(409).json({ error: 'not_pending' });
+  const { queued, invited, active } = ftQueueState(req.user.id);
+  if (active || invited) {
+    db.prepare(`UPDATE facetime_requests SET status = 'queued',
+                decided_at = datetime('now') WHERE id = ?`).run(r.id);
+    const fresh = ftGet(r.id);
+    ftPushFan(fresh);
+    ftPushQueue(req.user.id);
+    return res.json({ request: ftPublic(fresh), queued: true });
+  }
+  db.prepare(`UPDATE facetime_requests SET status = 'invited',
+              decided_at = datetime('now'), invite_expires_ms = ? WHERE id = ?`)
+    .run(Date.now() + FT_INVITE_WINDOW_MS, r.id);
+  const fresh = ftGet(r.id);
+  ftPushFan(fresh);
+  notifyUser(fresh.fan_id, 'facetime', '📹 She accepted!',
+    `${fresh.model_name} accepted your FaceTime — join in the next 90 seconds.`, '/#chat');
+  res.json({ request: ftPublic(fresh), queued: false });
+});
+
+app.post('/api/facetime/:id/decline', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const r = ftGet(req.params.id);
+  if (!r || r.model_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
+  if (!['pending', 'queued'].includes(r.status))
+    return res.status(409).json({ error: 'not_decidable' });
+  ftFinish(r, 'declined', 'FaceTime declined — refunded');
+  ftPushQueue(req.user.id);
+  res.json({ ok: true });
+});
+
+app.post('/api/facetime/:id/cancel', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const r = ftGet(req.params.id);
+  if (!r || r.fan_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
+  if (!['pending', 'queued', 'invited'].includes(r.status))
+    return res.status(409).json({ error: 'not_cancellable' });
+  const wasInvited = r.status === 'invited';
+  ftFinish(r, 'cancelled', 'FaceTime cancelled by fan — refunded');
+  if (wasInvited) ftPromote(r.model_id); else ftPushQueue(r.model_id);
+  res.json({ ok: true });
+});
+
+app.post('/api/facetime/:id/join', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const r = ftGet(req.params.id);
+  if (!r || r.fan_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
+  if (r.status !== 'invited') return res.status(409).json({ error: 'not_invited' });
+  const m = db.prepare('SELECT per_minute_cents FROM models WHERE user_id = ?').get(r.model_id);
+  const info = db.prepare(`INSERT INTO calls (fan_id, model_id, rate_cents, prepaid_min, facetime_req_id)
+    VALUES (?,?,?,?,?)`).run(r.fan_id, r.model_id, m.per_minute_cents, r.duration_min, r.id);
+  const callId = Number(info.lastInsertRowid);
+  db.prepare(`UPDATE facetime_requests SET status = 'in_call', call_id = ? WHERE id = ?`)
+    .run(callId, r.id);
+  const fresh = ftGet(r.id);
+  ftPushFan(fresh);
+  pushToSubject(`u:${r.model_id}`, { type: 'facetime:update', request: ftPublic(fresh) });
+  res.json({ call_id: callId, rate_cents: m.per_minute_cents, prepaid_min: r.duration_min });
+});
+
+/* Mid-call explicit switch: she offers, he pays the uplift (remaining     */
+/* prepaid minutes at her rate again = double total), or per-minute       */
+/* doubling on legacy metered calls.                                      */
+app.post('/api/calls/:id/explicit-request', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const call = db.prepare('SELECT * FROM calls WHERE id = ?').get(req.params.id);
+  if (!call || call.model_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
+  if (call.status !== 'active') return res.status(409).json({ error: 'call_not_active' });
+  if (call.booking_id) return res.status(409).json({ error: 'not_for_bookings' });
+  if (call.is_explicit) return res.status(409).json({ error: 'already_explicit' });
+  if (call.explicit_pending) return res.status(409).json({ error: 'already_pending' });
+  const remaining = call.prepaid_min > 0 ? call.prepaid_min - call.minutes_billed : null;
+  if (remaining !== null && remaining <= 0) return res.status(409).json({ error: 'no_time_left' });
+  const extra = remaining !== null ? remaining * call.rate_cents : 0;
+  db.prepare('UPDATE calls SET explicit_pending = 1 WHERE id = ?').run(call.id);
+  pushToSubject(`u:${call.fan_id}`, { type: 'call:explicit_offer', call_id: call.id,
+    extra_cents: extra, remaining_min: remaining, per_min_cents: call.rate_cents });
+  res.json({ ok: true, extra_cents: extra, remaining_min: remaining });
+});
+
+app.post('/api/calls/:id/explicit-accept', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const call = db.prepare('SELECT * FROM calls WHERE id = ?').get(req.params.id);
+  if (!call || call.fan_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
+  if (call.status !== 'active' || !call.explicit_pending)
+    return res.status(409).json({ error: 'no_offer' });
+  if (call.prepaid_min > 0) {
+    const remaining = Math.max(0, call.prepaid_min - call.minutes_billed);
+    const extra = remaining * call.rate_cents;
+    if (extra > 0) {
+      if (getWallet(req.user.id).credits_cents < extra)
+        return res.status(402).json({ error: 'insufficient_credits', needed_cents: extra,
+          balance_cents: getWallet(req.user.id).credits_cents });
+      try {
+        chargeFan(req.user.id, call.model_id, extra, 'call_explicit',
+          `Explicit FaceTime — ${remaining} min`, clientIp(req));
+      } catch (e) {
+        return res.status(402).json({ error: 'insufficient_credits', needed_cents: extra });
+      }
+    }
+  }
+  db.prepare('UPDATE calls SET is_explicit = 1, explicit_pending = 0 WHERE id = ?').run(call.id);
+  pushToSubject(`u:${call.fan_id}`, { type: 'call:explicit_on', call_id: call.id });
+  pushToSubject(`u:${call.model_id}`, { type: 'call:explicit_on', call_id: call.id });
+  res.json({ ok: true });
+});
+
+app.post('/api/calls/:id/explicit-decline', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const call = db.prepare('SELECT * FROM calls WHERE id = ?').get(req.params.id);
+  if (!call || call.fan_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
+  db.prepare('UPDATE calls SET explicit_pending = 0 WHERE id = ? AND explicit_pending = 1').run(call.id);
+  pushToSubject(`u:${call.model_id}`, { type: 'call:explicit_declined', call_id: call.id });
+  res.json({ ok: true });
 });
 
 /* ------------------------------------------------------------------ */
@@ -3664,6 +3989,12 @@ app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), 
   const existing = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`)
     .get(req.user.id);
   if (existing) return res.status(409).json({ error: 'already_live', session_id: existing.id });
+  // FaceTime locks while she's live: an active call must end first, and
+  // everyone waiting in her FaceTime line is refunded + told why.
+  if (ftActiveCall(req.user.id))
+    return res.status(409).json({ error: 'in_facetime_call',
+      message: 'End your FaceTime call before going live.' });
+  ftCancelAll(req.user.id, 'she went live');
   const m = db.prepare('SELECT explicit_rate_cents FROM models WHERE user_id = ?').get(req.user.id);
   const explicit_rate_cents = Number.isInteger(req.body.explicit_rate_cents) &&
     req.body.explicit_rate_cents >= 0 ? req.body.explicit_rate_cents : (m ? m.explicit_rate_cents : 499);
