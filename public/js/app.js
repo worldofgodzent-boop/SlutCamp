@@ -84,19 +84,11 @@ const I18N = {
     tab_home: 'Home', tab_safety: 'Safety', tab_more: 'More',
     language: 'Language', language_note: 'Choose the language for your app.',
     language_set: '🌐 Language updated!',
-    language_search_ph: 'Type your language…', cancel: 'Cancel',
-    wm_title: 'Congratulations, {name}! 🎉', wm_welcome: 'Welcome to SlutCamp 💋',
-    wm_body: "You're officially a SlutCamp model — and you're in early. Early models get seen first, and the fans are already waiting.",
-    wm_money: '💰 You keep 60% of everything: paid messages, live streams + video calls paid per minute at YOUR prices, tips and paid content.',
-    wm_steps_h: 'To start earning:',
-    wm_step1: '✍️ Sign your model agreement', wm_step2: '🪪 Verify your ID (2257 — keeps you legal and paid)', wm_step3: '📸 Add your photo, set your prices, and go live',
-    wm_btn: "Let's set me up 🔥",
     home_sub: 'Chat & video call the models · 18+ only',
     free3_title: '🎁 First 3 messages FREE',
     free3_sub: 'with every model you try. No account needed to start.',
     login_signup: 'Log in / Sign up', share_app: '📤 Share SlutCamp',
     no_models: 'No models yet.',
-    pager_prev: '← Prev', pager_next: 'Next →', pager_page: 'Page {x} of {y}',
     terms_line: '18+ only. By chatting you agree to the', terms: 'Terms',
     like_need_fan: 'Log in as a fan to like models 💜',
     link_copied: 'Link copied — send it to your boys 📤',
@@ -225,19 +217,11 @@ const I18N = {
     tab_home: 'Inicio', tab_safety: 'Seguridad', tab_more: 'Más',
     language: 'Idioma', language_note: 'Elige el idioma de tu app.',
     language_set: '🌐 ¡Idioma actualizado!',
-    language_search_ph: 'Escribe tu idioma…', cancel: 'Cancelar',
-    wm_title: '¡Felicidades, {name}! 🎉', wm_welcome: 'Bienvenida a SlutCamp 💋',
-    wm_body: 'Ya eres oficialmente una modelo de SlutCamp — y llegaste temprano. Las primeras modelos se ven primero, y los fans ya están esperando.',
-    wm_money: '💰 Te quedas con el 60% de todo: mensajes pagos, lives y videollamadas pagadas por minuto a TUS precios, propinas y contenido pago.',
-    wm_steps_h: 'Para empezar a ganar:',
-    wm_step1: '✍️ Firma tu acuerdo de modelo', wm_step2: '🪪 Verifica tu ID (2257 — te mantiene legal y cobrando)', wm_step3: '📸 Sube tu foto, pon tus precios y sal en vivo',
-    wm_btn: 'Vamos a configurar todo 🔥',
     home_sub: 'Chatea y haz videollamadas con las modelos · Solo 18+',
     free3_title: '🎁 Primeros 3 mensajes GRATIS',
     free3_sub: 'con cada modelo que pruebes. No necesitas cuenta para empezar.',
     login_signup: 'Iniciar sesión / Registrarse', share_app: '📤 Compartir SlutCamp',
     no_models: 'Aún no hay modelos.',
-    pager_prev: '← Anterior', pager_next: 'Siguiente →', pager_page: 'Página {x} de {y}',
     terms_line: 'Solo 18+. Al chatear aceptas los', terms: 'Términos',
     like_need_fan: 'Inicia sesión como fan para dar me gusta 💜',
     link_copied: 'Enlace copiado — envíaselo a tus amigos 📤',
@@ -366,19 +350,11 @@ const I18N = {
     tab_home: 'Início', tab_safety: 'Segurança', tab_more: 'Mais',
     language: 'Idioma', language_note: 'Escolha o idioma do seu app.',
     language_set: '🌐 Idioma atualizado!',
-    language_search_ph: 'Digite seu idioma…', cancel: 'Cancelar',
-    wm_title: 'Parabéns, {name}! 🎉', wm_welcome: 'Bem-vinda à SlutCamp 💋',
-    wm_body: 'Você agora é oficialmente uma modelo da SlutCamp — e chegou cedo. As primeiras modelos são vistas primeiro, e os fãs já estão esperando.',
-    wm_money: '💰 Você fica com 60% de tudo: mensagens pagas, lives e videochamadas pagas por minuto nos SEUS preços, gorjetas e conteúdo pago.',
-    wm_steps_h: 'Para começar a ganhar:',
-    wm_step1: '✍️ Assine seu contrato de modelo', wm_step2: '🪪 Verifique seu documento (2257 — mantém você legal e recebendo)', wm_step3: '📸 Adicione sua foto, defina seus preços e entre ao vivo',
-    wm_btn: 'Vamos montar meu perfil 🔥',
     home_sub: 'Converse e faça videochamadas com as modelos · Somente 18+',
     free3_title: '🎁 Primeiras 3 mensagens GRÁTIS',
     free3_sub: 'com cada modelo que você testar. Não precisa de conta para começar.',
     login_signup: 'Entrar / Cadastrar', share_app: '📤 Compartilhar o SlutCamp',
     no_models: 'Ainda não há modelos.',
-    pager_prev: '← Anterior', pager_next: 'Próxima →', pager_page: 'Página {x} de {y}',
     terms_line: 'Somente 18+. Ao conversar, você concorda com os', terms: 'Termos',
     like_need_fan: 'Entre como fã para curtir as modelos 💜',
     link_copied: 'Link copiado — manda pros seus amigos 📤',
@@ -516,42 +492,10 @@ function t(key, vars) {
   return s;
 }
 
-/* Language picker — ONE compact link. Tapping it opens a sheet with a
-   scrollable list of languages; she can scroll and tap, or TYPE to filter. */
+/* Language pills — one delegated click handler drives every picker */
 function langPillsHTML() {
-  const cur = LANGS.find((l) => l.code === LANG) || LANGS[0];
-  return `<button type="button" class="lang-link" data-langtoggle>${cur.flag} ${cur.label} <span class="lang-caret">▾</span></button>`;
-}
-function openLangSheet() {
-  let sheet = document.getElementById('langSheet');
-  if (!sheet) {
-    sheet = document.createElement('div');
-    sheet.id = 'langSheet';
-    sheet.className = 'lang-sheet';
-    document.body.appendChild(sheet);
-    sheet.addEventListener('click', (e) => { if (e.target === sheet) closeLangSheet(); });
-  }
-  sheet.innerHTML = `
-    <div class="lang-sheet-card">
-      <div class="lang-sheet-title">🌐 ${t('language')}</div>
-      <input class="input lang-search" type="text" placeholder="${t('language_search_ph')}" autocomplete="off">
-      <div class="lang-list">${LANGS.map((l) =>
-        `<button type="button" class="lang-opt${LANG === l.code ? ' on' : ''}" data-setlang="${l.code}"><span>${l.flag} ${l.label}</span>${LANG === l.code ? '<span class="lang-check">✓</span>' : ''}</button>`).join('')}</div>
-      <button type="button" class="btn ghost" data-langclose style="width:100%">${t('cancel')}</button>
-    </div>`;
-  sheet.hidden = false;
-  const input = sheet.querySelector('.lang-search');
-  input.addEventListener('input', () => {
-    const q = input.value.trim().toLowerCase();
-    sheet.querySelectorAll('.lang-opt').forEach((b) => {
-      b.style.display = b.textContent.toLowerCase().includes(q) ? '' : 'none';
-    });
-  });
-  setTimeout(() => { try { input.focus(); } catch (e) { /* noop */ } }, 60);
-}
-function closeLangSheet() {
-  const sheet = document.getElementById('langSheet');
-  if (sheet) sheet.hidden = true;
+  return `<div class="lang-pills">${LANGS.map((l) =>
+    `<button type="button" class="lang-pill${LANG === l.code ? ' on' : ''}" data-setlang="${l.code}">${l.flag} ${l.label}</button>`).join('')}</div>`;
 }
 function langCardHTML() {
   return `<div class="card">
@@ -586,12 +530,9 @@ async function setLang(code) {
   show(S.view, S.viewParams || {});
 }
 document.addEventListener('click', (e) => {
-  if (e.target.closest('[data-langtoggle]')) { openLangSheet(); return; }
-  if (e.target.closest('[data-langclose]')) { closeLangSheet(); return; }
   const b = e.target.closest('[data-setlang]');
-  if (b) { closeLangSheet(); setLang(b.dataset.setlang); }
+  if (b) setLang(b.dataset.setlang);
 });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLangSheet(); });
 document.documentElement.lang = LANG === 'pt' ? 'pt-BR' : LANG;
 
 /* ---------------- state ---------------- */
@@ -1136,42 +1077,16 @@ function modelTileHTML(m, opts) {
 /* Featured model gets the big hero tile on top; everyone else fills the grid
    in the ranked order /api/models returns (likes + sales). #1 regular wears
    the 👑 Top Model crown — the featured headliner doesn't compete. */
-/* Home grid pagination (Corry, Oct 12 2026): the ranked girls chart runs
-   10 to a page — Top 10 on page 1, next 10 on page 2, and so on. The
-   featured headliner (hero) stays pinned above the chart on every page. */
-let homePage = 1;
-const HOME_PAGE_SIZE = 10;
-
 function homeTilesHTML(models, heartFor) {
   const featured = models.find((m) => m.is_featured);
   const rest = featured ? models.filter((m) => m.id !== featured.id) : models;
   const heart = (m) => (heartFor ? heartFor(m) : '');
-  const pages = Math.max(1, Math.ceil(rest.length / HOME_PAGE_SIZE));
-  if (homePage > pages) homePage = pages;
-  if (homePage < 1) homePage = 1;
-  const start = (homePage - 1) * HOME_PAGE_SIZE;
-  const slice = rest.slice(start, start + HOME_PAGE_SIZE);
   return `
     ${featured ? modelTileHTML(featured, { hero: true, heartHTML: heart(featured) }) : ''}
     <div class="tile-grid">
-      ${slice.map((m, i) => modelTileHTML(m, { crown: start + i === 0, heartHTML: heart(m) })).join('')}
-    </div>
-    ${pages > 1 ? `
-    <div class="row" style="justify-content:center;align-items:center;gap:10px;margin-top:16px">
-      <button class="btn small ghost pg-btn" data-pg="${homePage - 1}" ${homePage <= 1 ? 'disabled style="opacity:.4"' : ''}>${t('pager_prev')}</button>
-      <span class="small muted">${t('pager_page', { x: homePage, y: pages })}</span>
-      <button class="btn small ghost pg-btn" data-pg="${homePage + 1}" ${homePage >= pages ? 'disabled style="opacity:.4"' : ''}>${t('pager_next')}</button>
-    </div>` : ''}`;
+      ${rest.map((m, i) => modelTileHTML(m, { crown: i === 0, heartHTML: heart(m) })).join('')}
+    </div>`;
 }
-
-// Pager clicks (one delegated listener for both the guest + fan home grids)
-document.addEventListener('click', (e) => {
-  const b = e.target.closest('.pg-btn');
-  if (!b || b.disabled) return;
-  homePage = parseInt(b.dataset.pg) || 1;
-  show(S.view, {});
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-});
 
 /* "🔴 Lives" home button — opens the Live Now grid. The count is REAL data
    from /api/models (is_live flags) — only shown when someone is truly live. */
@@ -1678,47 +1593,11 @@ async function checkContractGate() {
   } catch (e) { S.contractSigned = true; /* fail open on network error */ }
 }
 
-/* One-time congratulations for NEW models — fires after signup/login when
-   the account has never been welcomed (users.welcomed_at). Existing models
-   were backfilled server-side, so this only greets fresh signups. */
-let welcomeShownThisSession = false;
-function maybeShowModelWelcome() {
-  if (welcomeShownThisSession) return;
-  const u = S.user;
-  if (!u || u.role !== 'model' || u.welcomed) return;
-  if (['liveBroadcast', 'liveWatch', 'liveModWatch'].includes(S.view)) return;
-  welcomeShownThisSession = true;
-  u.welcomed = true; // optimistic — server stamps it below
-  api('/me/welcomed', { method: 'POST', body: JSON.stringify({}) }).catch(() => {});
-  let el = document.getElementById('modelWelcome');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'modelWelcome';
-    el.className = 'model-welcome';
-    document.body.appendChild(el);
-  }
-  el.innerHTML = `
-    <div class="mw-card">
-      <img class="mw-lips" src="/img/lips-logo.png" alt="">
-      <div class="mw-confetti">🎉 💋 🔥</div>
-      <div class="mw-title">${t('wm_title', { name: esc(u.display_name) })}</div>
-      <div class="mw-welcome">${t('wm_welcome')}</div>
-      <p class="mw-body">${t('wm_body')}</p>
-      <p class="mw-money">${t('wm_money')}</p>
-      <div class="mw-steps-h">${t('wm_steps_h')}</div>
-      <div class="mw-steps"><div>${t('wm_step1')}</div><div>${t('wm_step2')}</div><div>${t('wm_step3')}</div></div>
-      <button class="btn mw-btn" id="mw-go">${t('wm_btn')}</button>
-    </div>`;
-  el.hidden = false;
-  el.querySelector('#mw-go').onclick = () => { el.hidden = true; };
-}
-
 async function refreshMe() {
   const { status, data } = await api('/me');
   if (status === 200) {
     S.user = data.user; S.wallet = data.wallet; S.model = data.model || null;
     syncLangFromUser(data.user);
-    maybeShowModelWelcome();
     if (data.commission_pct !== undefined) S.commissionPct = data.commission_pct;
   } else if (status === 401 || status === 403) {
     logout(false);
@@ -5656,13 +5535,10 @@ async function adminModelsBody() {
             <span class="small" style="color:${m.is_online ? 'var(--green)' : 'var(--muted)'}">● ${m.is_online ? 'Online' : 'Offline'}</span>
             <span class="small muted"> · ${fmt(m.per_message_cents)}/msg · ${fmt(m.per_minute_cents)}/min</span><br>
             <span class="small" style="color:var(--green)">Owed: ${fmt(m.pending_cents)}</span>
-            ${m.recruiter_name ? `<br><span class="small" style="color:var(--gold)">🤝 via ${esc(m.recruiter_name)}</span>` : ''}
-            ${m.is_hidden ? `<br><span class="small" style="color:var(--peach)">👻 Hidden from the main screen</span>` : ''}</div>
+            ${m.recruiter_name ? `<br><span class="small" style="color:var(--gold)">🤝 via ${esc(m.recruiter_name)}</span>` : ''}</div>
           <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
             <button class="btn small ghost" data-m-edit="${m.id}">✏️ Rates</button>
             <button class="btn small ghost" data-m-photo="${m.id}">📷 Photo</button>
-            <button class="btn small ghost" data-m-msg="${m.id}">💬 Message</button>
-            <button class="btn small ghost" data-m-hide="${m.id}">${m.is_hidden ? '👀 Show' : '👻 Hide'}</button>
             <button class="btn small ghost" data-m-toggle="${m.id}">${m.banned ? "✅ Reactivate" : "⏸️ Deactivate"}</button>
             <button class="btn small danger" data-m-del="${m.id}">Remove</button>
           </div>
@@ -5689,8 +5565,7 @@ async function adminInvitesBody() {
     const url = isAff ? `${baseUrl}/#affiliate/${inv.code}` : `${baseUrl}/?invite=${inv.code}`;
     const status = inv.is_revoked ? '<span style="color:var(--red)">⛔ Revoked</span>'
       : inv.used_by ? `<span style="color:var(--green)">✅ Used by ${esc(inv.used_by.display_name)}${inv.used_by.banned ? ' (deactivated)' : ''}</span>`
-      : inv.expired ? '<span style="color:var(--red)">⌛ Expired — hit Refresh to give her 6 more hours</span>'
-      : `<span style="color:var(--yellow)">⏳ Waiting for signup</span>${inv.expires_at ? `<br><span class="small muted">Expires ${timeHM(inv.expires_at)}</span>` : ''}`;
+      : '<span style="color:var(--yellow)">⏳ Waiting for signup</span>';
     return `
       <div class="card" style="padding:12px">
         <div class="row"><span class="grow"><b>${esc(inv.label) || 'Untitled invite'}</b><br>
@@ -5698,7 +5573,6 @@ async function adminInvitesBody() {
           ${inv.used_at ? `<br><span class="small muted">Used ${timeHM(inv.used_at)}</span>` : ''}</span></div>
         <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
           ${!inv.is_revoked ? `<button class="btn small" data-inv-copy="${inv.code}" data-aff="${isAff ? 1 : 0}">📋 Copy link</button>` : ''}
-          ${!inv.is_revoked && !inv.used_by ? `<button class="btn small ghost" data-inv-refresh="${inv.id}">🔄 Refresh (6h)</button>` : ''}
           ${!inv.is_revoked ? `<button class="btn small danger" data-inv-revoke="${inv.id}" data-used="${inv.used_by ? 1 : 0}">Revoke</button>` : ''}
         </div>
       </div>`;
@@ -5706,7 +5580,7 @@ async function adminInvitesBody() {
   return `
     <div class="card">
       <div style="font-weight:800;margin-bottom:6px">✉️ Generate model invite link</div>
-      <div class="muted small">Send this link to a model — she signs up through it and gets a model account. Links expire in 6 hours; if she's slow, hit 🔄 Refresh on her link below — same link, 6 fresh hours, nothing to resend. You can revoke it anytime.</div>
+      <div class="muted small">Send this link to a model — she signs up through it and gets a model account. You can revoke it anytime.</div>
       <label class="field">Label (e.g. her name)<input class="input" id="inv-label" placeholder="Bunny"></label>
       <button class="btn" id="inv-gen">Generate invite link</button>
     </div>
@@ -6342,15 +6216,6 @@ function wireAdminBody(tab) {
     };
   });
 
-  document.querySelectorAll('[data-inv-refresh]').forEach((b) => {
-    b.onclick = async () => {
-      const { status } = await api(`/admin/invites/${b.dataset.invRefresh}/refresh`, {
-        method: 'POST', body: JSON.stringify({}) });
-      toast(status === 200 ? '🔄 Link refreshed — same link, good for 6 more hours.' : 'Could not refresh that link.');
-      show('admin', {});
-    };
-  });
-
   // Partners
   const ptAdd = $('#pt-add');
   if (ptAdd) ptAdd.onclick = async () => {
@@ -6444,51 +6309,6 @@ function wireAdminBody(tab) {
         });
       };
       inp.click();
-    };
-  });
-  document.querySelectorAll('[data-m-msg]').forEach((b) => {
-    b.onclick = async () => {
-      const id = b.dataset.mMsg;
-      const box = $('#edit-' + id);
-      const renderThread = async () => {
-        const { data } = await api(`/admin/models/${id}/thread`);
-        const msgs = (data && data.messages) || [];
-        box.innerHTML = `
-          <div style="margin-top:10px">
-            <div class="small muted" style="margin-bottom:6px">💬 Her inbox thread — she sees “Asce (Admin)”. Her replies land here too.</div>
-            <div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
-              ${msgs.length ? msgs.map((x) => `<div style="background:rgba(0,0,0,.25);border-radius:10px;padding:7px 9px">
-                <b class="small">${esc(x.sender_name)}</b> <span class="small muted">${timeHM(x.created_at)}</span>
-                <div style="white-space:pre-wrap;font-size:14px">${esc(x.body)}</div></div>`).join('') : '<div class="small muted">No messages yet — say the first word.</div>'}
-            </div>
-            <textarea class="input" id="mm-${id}" rows="2" placeholder="Text her as moderator…"></textarea>
-            <div class="row" style="margin-top:6px;gap:6px">
-              <button class="btn small" id="mm-send-${id}">Send to her inbox</button>
-              <button class="btn small ghost" id="mm-refresh-${id}">↻ Refresh</button>
-            </div>
-          </div>`;
-        $('#mm-send-' + id).onclick = async () => {
-          const body = $('#mm-' + id).value.trim();
-          if (!body) return;
-          const { status } = await api(`/admin/models/${id}/message`, {
-            method: 'POST', body: JSON.stringify({ body }) });
-          if (status === 200) { toast('💬 Sent to her inbox'); renderThread(); }
-          else toast('Could not send.');
-        };
-        $('#mm-refresh-' + id).onclick = renderThread;
-      };
-      renderThread();
-    };
-  });
-  document.querySelectorAll('[data-m-hide]').forEach((b) => {
-    b.onclick = async () => {
-      const id = b.dataset.mHide;
-      const { data } = await api('/admin/models');
-      const m = (data.models || []).find((x) => x.id === parseInt(id));
-      await api(`/admin/models/${id}`, { method: 'PUT',
-        body: JSON.stringify({ is_hidden: m.is_hidden ? 0 : 1 }) });
-      toast(m.is_hidden ? '👀 She\'s back on the main screen' : '👻 Hidden — she vanished from the main screen');
-      show('admin', {});
     };
   });
   go('#nm-add', async () => {
