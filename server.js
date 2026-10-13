@@ -4973,6 +4973,42 @@ app.get('/api/admin/models', ...adminOnly, (req, res) => {
 });
 
 
+// Admin (moderator) → model inbox: read the mod thread with one model.
+// The thread is the conversation where the admin is the fan-side party —
+// the same one the automatic welcome message lands in.
+app.get('/api/admin/models/:id/thread', ...adminOnly, (req, res) => {
+  const m = db.prepare("SELECT id, display_name FROM users WHERE id = ? AND role = 'model'").get(req.params.id);
+  if (!m) return res.status(404).json({ error: 'not_found' });
+  const conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(req.user.id, m.id);
+  if (!conv) return res.json({ conversation_id: null, messages: [] });
+  db.prepare('UPDATE messages SET is_read = 1 WHERE conversation_id = ? AND sender_id = ?').run(conv.id, m.id);
+  const messages = db.prepare(`
+    SELECT msg.id, msg.body, msg.created_at, msg.sender_id,
+           CASE WHEN msg.sender_id = ? THEN 'You (Admin)' ELSE ? END AS sender_name
+    FROM messages msg WHERE msg.conversation_id = ? ORDER BY msg.id ASC LIMIT 200`)
+    .all(req.user.id, m.display_name, conv.id);
+  res.json({ conversation_id: conv.id, messages });
+});
+
+// Admin (moderator) → model inbox: text a model as Asce (Admin).
+// Lands in her app inbox with a bell notification. Always free.
+app.post('/api/admin/models/:id/message', ...adminOnly, (req, res) => {
+  const m = db.prepare("SELECT id, display_name FROM users WHERE id = ? AND role = 'model'").get(req.params.id);
+  if (!m) return res.status(404).json({ error: 'not_found' });
+  const body = String(req.body?.body || '').trim().slice(0, 2000);
+  if (!body) return res.status(400).json({ error: 'empty', message: 'Write a message first.' });
+  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(req.user.id, m.id);
+  if (!conv) {
+    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(req.user.id, m.id);
+    conv = { id: Number(info.lastInsertRowid) };
+  }
+  const info = db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+    .run(conv.id, req.user.id, body);
+  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+  try { notifyUser(m.id, 'message', '💬 Asce (Admin)', body.slice(0, 90), ''); } catch (e) { /* bell is a bonus */ }
+  res.json({ ok: true, conversation_id: conv.id, message_id: Number(info.lastInsertRowid) });
+});
+
 // Admin: toggle featured (pinned to top) for a model
 app.post('/api/admin/models/:id/feature', ...adminOnly, (req, res) => {
   const m = db.prepare("SELECT user_id FROM models WHERE user_id = ?").get(req.params.id);
