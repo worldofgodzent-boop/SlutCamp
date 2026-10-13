@@ -629,6 +629,7 @@ const S = {
   messages: [],
   call: null,       // active call state
   adminTab: 'dash',
+  previewFan: false, // admin-only: browsing the app as a fan, no sign-out needed
   live: null,       // active live session state {sessionId, role, ...}
 };
 
@@ -1074,19 +1075,69 @@ const TABS = {
 
 function renderTabbar() {
   if (!S.user) { tabbar.classList.add('hidden'); tabbar.innerHTML = ''; return; }
-  const tabs = TABS[S.user.role] || [];
+  const inPreview = isFanPreview();
+  const tabs = inPreview ? TABS.fan : (TABS[S.user.role] || []);
   tabbar.classList.remove('hidden');
   tabbar.innerHTML = tabs.map((tab) =>
-    `<button data-tab="${tab.id}" class="${S.view === tab.view && (S.user.role !== 'admin' || S.adminTab === tab.id || (tab.id === 'dash' && S.adminTab === 'dash')) ? 'active' : ''}">
+    `<button data-tab="${tab.id}" class="${S.view === tab.view && (S.user.role !== 'admin' || inPreview || S.adminTab === tab.id || (tab.id === 'dash' && S.adminTab === 'dash')) ? 'active' : ''}">
        <span class="ico">${tab.ico}</span>${t(tab.lk)}<span class="badge hidden" id="badge-${tab.id}"></span>
      </button>`).join('');
   tabbar.querySelectorAll('button').forEach((b) => {
     b.onclick = () => {
       const tab = tabs.find((x) => x.id === b.dataset.tab);
-      if (S.user.role === 'admin') S.adminTab = tab.id === 'more' ? 'more' : tab.id;
+      if (S.user.role === 'admin' && !inPreview) S.adminTab = tab.id === 'more' ? 'more' : tab.id;
       show(tab.view, {});
     };
   });
+}
+
+/* ---------------- Admin: preview the app as a fan ----------------
+   Corry checks how the fan pages look after every update WITHOUT signing
+   out of the moderator account (no more fandemo round-trip). Browse-only:
+   fan actions (follow / join / chat / buy) are server-gated to real fans,
+   so tiles open the same look-only peek card models get, and the account
+   pages (chats / bookings / wallet) show a placeholder instead of 403s. */
+function isFanPreview() {
+  return !!(S.user && S.user.role === 'admin' && S.previewFan);
+}
+function enterFanPreview() {
+  if (!S.user || S.user.role !== 'admin') return;
+  S.previewFan = true;
+  show('fanModels', {});
+}
+function exitFanPreview() {
+  S.previewFan = false;
+  show('admin', {});
+}
+/* Pinned strip at the very top of the phone column — rendered on every
+   show() while previewing, so there's always a one-tap way back. */
+function renderPreviewBanner() {
+  const phone = document.getElementById('phone');
+  let bar = document.getElementById('preview-banner');
+  if (isFanPreview()) {
+    if (!bar && phone) {
+      bar = document.createElement('div');
+      bar.id = 'preview-banner';
+      bar.className = 'preview-banner';
+      bar.textContent = '👁 You\'re previewing the fan view — tap to return to Moderator';
+      bar.onclick = exitFanPreview;
+      phone.insertBefore(bar, phone.firstChild);
+    }
+  } else if (bar) {
+    bar.remove();
+  }
+}
+function vPreviewPlaceholder() {
+  const label = { fanChats: '💬 Chats', bookings: '📅 Bookings', wallet: '💰 Wallet' }[S.view] || 'This page';
+  app.innerHTML = `
+    <div class="header"><h1>${label}</h1></div>
+    <div class="screen">
+      <div class="empty"><div class="big">👁</div>Preview mode — switch back to Moderator to use your admin tools.<br>
+        <span class="small">This page runs on a fan's own account, so there's nothing to show while you preview. The home grid and Live pages up top are fully browsable.</span></div>
+      <button class="btn" id="preview-exit" style="width:100%;margin-top:14px">🛡️ Back to Moderator</button>
+    </div>`;
+  const b = $('#preview-exit');
+  if (b) b.onclick = exitFanPreview;
 }
 
 async function refreshTabBadges() {
@@ -1114,6 +1165,7 @@ function show(view, params) {
   // Admin gets a wide desktop layout on big screens (phone layout stays on mobile)
   document.body.classList.toggle('admin-wide', view === 'admin');
   renderTabbar();
+  renderPreviewBanner();
   renderBell();
   window.scrollTo(0, 0);
   const VIEWS = {
@@ -1126,7 +1178,12 @@ function show(view, params) {
     adminLogin: vAdminLogin, modelContract: vModelContract,
     recruiter: vRecruiter, notifications: vNotifications, dmca: vDmca,
   };
-  (VIEWS[view] || vLanding)(params || {});
+  // Fan-preview placeholders: chats/bookings/wallet run on a fan's own data
+  // and would 403 for an admin token — show the friendly note instead.
+  const viewFn = (isFanPreview() && ['fanChats', 'bookings', 'wallet'].includes(view))
+    ? vPreviewPlaceholder
+    : (VIEWS[view] || vLanding);
+  viewFn(params || {});
   if (view === 'liveBroadcast' || view === 'liveWatch') tabbar.classList.add('hidden');
   else if (S.user) refreshTabBadges();
 }
@@ -1766,7 +1823,7 @@ async function refreshMe() {
 
 function logout(msg) {
   if (S.token) api('/auth/logout', { method: 'POST' }).catch(() => {});
-  S.token = null; S.user = null; S.wallet = null; S.model = null;
+  S.token = null; S.user = null; S.wallet = null; S.model = null; S.previewFan = false;
   localStorage.removeItem('wc_token');
   if (S.ws) { try { S.ws.close(); } catch (e) {} S.ws = null; }
   show('landing', {});
@@ -1810,14 +1867,17 @@ async function vFanModels() {
   const { data } = await api('/models');
   const models = data.models || [];
   await refreshMe();
-  const isModelViewer = !!(S.user && S.user.role === 'model');
+  const inPreview = isFanPreview();
+  const isModelViewer = !!(S.user && (S.user.role === 'model' || inPreview));
   let following = [];
   if (!isModelViewer) {
     try { const f = await api('/follows'); following = f.data.following || []; } catch (e) {}
   }
   app.innerHTML = `
     <div class="header"><h1>Slut<span class="logo">Camp</span></h1>
-      <div>${isModelViewer
+      <div>${inPreview
+        ? '<span class="balance-pill">👁 Previewing as fan</span>'
+        : isModelViewer
         ? '<span class="balance-pill">👀 Browsing the home screen</span>'
         : `<span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span>`}</div></div>
     <div class="screen">
@@ -1852,16 +1912,24 @@ async function vModelChats() { return vChatList('model'); }
 
 async function vFanLive() {
   await refreshMe();
+  const inPreview = isFanPreview();
   const { data } = await api('/live');
   const streams = data.live || [];
+  // Preview: stream rows open the model's peek card instead of joining.
+  let previewModels = [];
+  if (inPreview) {
+    try { const md = await api('/models'); previewModels = md.data.models || []; } catch (e) {}
+  }
   const { data: schedData } = await api('/live/schedule');
   const upcoming = (schedData.upcoming || []).slice(0, 10);
   app.innerHTML = `
     <div class="header"><h1>${t('fanlive_h')}</h1>
-      <div><span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span></div></div>
+      <div>${inPreview
+        ? '<span class="balance-pill">👁 Previewing as fan</span>'
+        : `<span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span>`}</div></div>
     <div class="screen">
       ${streams.map((s) => `
-        <button class="list-item" data-stream="${s.session_id}" style="background:var(--card);border-radius:14px;margin-bottom:10px;border:1px solid rgba(239,68,68,.35)">
+        <button class="list-item" data-stream="${s.session_id}" data-model="${s.model_id}" style="background:var(--card);border-radius:14px;margin-bottom:10px;border:1px solid rgba(239,68,68,.35)">
           <span class="avatar-wrap">${avatarHTML(s.model_name, '', s.model_photo_url)}<span class="online-dot"></span></span>
           <span class="grow">
             <span class="title">${esc(s.model_name)} <span class="live-badge">🔴 LIVE</span></span><br>
@@ -1886,7 +1954,15 @@ async function vFanLive() {
         </div>`).join('')}` : ''}
     </div>`;
   app.querySelectorAll('[data-stream]').forEach((b) => {
-    b.onclick = () => watchLive(parseInt(b.dataset.stream));
+    b.onclick = () => {
+      if (inPreview) {
+        const m = previewModels.find((x) => x.id === parseInt(b.dataset.model));
+        if (m) openModelPeek(m, previewModels);
+        else toast('👁 Preview mode — joining a live is fan-only');
+        return;
+      }
+      watchLive(parseInt(b.dataset.stream));
+    };
   });
 }
 
@@ -1901,7 +1977,7 @@ async function vLives() {
   const models = data.models || [];
   const live = models.filter((m) => m.is_live);
   const online = models.filter((m) => !m.is_live && m.is_online);
-  const backView = S.user && (S.user.role === 'fan' || S.user.role === 'model') ? 'fanModels' : 'landing';
+  const backView = S.user && (S.user.role === 'fan' || S.user.role === 'model' || isFanPreview()) ? 'fanModels' : 'landing';
   app.innerHTML = `
     <div class="header"><h1>${t('live_now_h')}</h1>
       ${S.user && S.user.role === 'fan'
@@ -1922,7 +1998,7 @@ async function vLives() {
     </div>`;
   app.querySelectorAll('[data-model]').forEach((b) => {
     b.onclick = () => {
-      if (S.user && S.user.role === 'model') {
+      if ((S.user && S.user.role === 'model') || isFanPreview()) {
         const m = models.find((x) => x.id === parseInt(b.dataset.model));
         if (m) openModelPeek(m, models);
         return;
@@ -5906,6 +5982,7 @@ async function vAdmin() {
   app.innerHTML = `
     <div class="header"><h1>Moderator 🛡️</h1><div class="sub">Hey Corry — everything at a glance</div></div>
     <div class="screen">
+      <button class="btn" id="a-preview-fan" style="width:100%;padding:16px;font-size:17px;font-weight:800;margin-bottom:12px;background:linear-gradient(135deg,var(--pink),#ff8fab);box-shadow:0 6px 22px rgba(255,92,158,.35)">👁 Preview the app (fan view)</button>
       <div class="tabs">${tabs.map(([id, l]) =>
         `<button data-atab="${id}" class="${tab === id ? 'active' : ''}">${l}${id === 'safety' && stats.open_incidents ? ` <span class="unread-badge">${stats.open_incidents}</span>` : ''}${id === 'dmca' && stats.open_dmca ? ` <span class="unread-badge">${stats.open_dmca}</span>` : ''}</button>`).join('')}
       </div>
@@ -5914,6 +5991,8 @@ async function vAdmin() {
   app.querySelectorAll('[data-atab]').forEach((b) => {
     b.onclick = () => { S.adminTab = b.dataset.atab; show('admin', {}); };
   });
+  const pvBtn = $('#a-preview-fan');
+  if (pvBtn) pvBtn.onclick = enterFanPreview;
   wireAdminBody(tab);
 }
 
