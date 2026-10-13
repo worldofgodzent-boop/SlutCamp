@@ -595,6 +595,9 @@ addColumnIfMissing('platform_stats', 'admin_phone', 'TEXT');
 addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'test_money_cleared_at', 'TEXT');
 addColumnIfMissing('transactions', 'is_test', 'INTEGER NOT NULL DEFAULT 0');
+// Admin visibility switch: hidden models vanish from the public listings
+// (home grid, Lives) without touching their account (Corry, Oct 12 2026).
+addColumnIfMissing('models', 'is_hidden', 'INTEGER NOT NULL DEFAULT 0');
 // Fraud protection: account status ('active' | 'frozen') + ledger IP on every money row
 addColumnIfMissing('users', 'status', "TEXT NOT NULL DEFAULT 'active'");
 addColumnIfMissing('transactions', 'ip', 'TEXT');
@@ -1375,7 +1378,7 @@ app.get('/api/models', (req, res) => {
              WHERE model_id = u.id AND type <> 'payout' AND is_test = 0) AS total_sales_cents
     FROM users u JOIN models m ON m.user_id = u.id
     LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live'
-    WHERE u.role = 'model' AND u.banned = 0
+    WHERE u.role = 'model' AND u.banned = 0 AND m.is_hidden = 0
     ORDER BY m.is_featured DESC,
              (total_sales_cents / 100.0 + like_count) DESC,
              like_count DESC, m.is_online DESC, u.created_at DESC, u.display_name ASC
@@ -3727,7 +3730,7 @@ app.get('/api/live', (req, res) => {
            (SELECT COALESCE(SUM(gross_cents),0) FROM gift_events WHERE session_id = ls.id) AS gift_cents
     FROM live_sessions ls JOIN users u ON u.id = ls.model_id
     LEFT JOIN models mo ON mo.user_id = u.id
-    WHERE ls.status = 'live' AND u.banned = 0`).all();
+    WHERE ls.status = 'live' AND u.banned = 0 AND COALESCE(mo.is_hidden, 0) = 0`).all();
   res.json({ live: rows });
 });
 
@@ -5014,7 +5017,7 @@ app.post('/api/admin/safety/ban-guest', ...adminOnly, (req, res) => {
 app.get('/api/admin/models', ...adminOnly, (req, res) => {
   res.json({ models: db.prepare(`
     SELECT u.id, u.username, u.display_name, u.banned, u.created_at,
-           m.bio, m.per_message_cents, m.per_minute_cents, m.is_online, m.photo_url,
+           m.bio, m.per_message_cents, m.per_minute_cents, m.is_online, m.photo_url, m.is_hidden,
            r.name AS recruiter_name,
            w.earnings_cents, w.paid_out_cents,
            (w.earnings_cents - w.paid_out_cents) AS pending_cents
@@ -5086,7 +5089,7 @@ app.post('/api/admin/models', ...adminOnly, (req, res) => {
 });
 
 app.put('/api/admin/models/:id', ...adminOnly, (req, res) => {
-  const { display_name, bio, per_message_cents, per_minute_cents, is_online, banned } = req.body || {};
+  const { display_name, bio, per_message_cents, per_minute_cents, is_online, banned, is_hidden } = req.body || {};
   const u = db.prepare(`SELECT * FROM users WHERE id = ? AND role = 'model'`).get(req.params.id);
   if (!u) return res.status(404).json({ error: 'not_found' });
   if (typeof display_name === 'string' && display_name.trim())
@@ -5098,6 +5101,7 @@ app.put('/api/admin/models/:id', ...adminOnly, (req, res) => {
   if (Number.isInteger(per_message_cents) && per_message_cents >= 0) { upd.push('per_message_cents = ?'); params.push(per_message_cents); }
   if (Number.isInteger(per_minute_cents) && per_minute_cents >= 0) { upd.push('per_minute_cents = ?'); params.push(per_minute_cents); }
   if (is_online === 0 || is_online === 1) { upd.push('is_online = ?'); params.push(is_online); }
+  if (is_hidden === 0 || is_hidden === 1) { upd.push('is_hidden = ?'); params.push(is_hidden); }
   if (upd.length) { params.push(u.id); db.prepare(`UPDATE models SET ${upd.join(', ')} WHERE user_id = ?`).run(...params); }
   res.json({ ok: true });
 });
