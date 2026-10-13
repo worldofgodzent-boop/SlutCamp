@@ -3325,6 +3325,31 @@ app.post('/api/tax-profile', identMiddleware, requireUser, requireRole('model', 
   res.json({ ok: true, tax_id_last4: last4, tax_id_type: idType });
 });
 
+// Model Fan Club: her top buyers ranked, with a Live / 1-on-1 / Chat split.
+// Gross spend per fan (refunds net out — refund rows carry negative gross).
+app.get('/api/model/fan-club', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const period = ['week', 'month'].includes(req.query.period) ? req.query.period : 'all';
+  const since = period === 'week' ? `datetime('now','-7 days')`
+              : period === 'month' ? `datetime('now','-30 days')` : null;
+  const where = `t.model_id = ? AND t.is_test = 0 AND t.fan_id IS NOT NULL` +
+    (since ? ` AND t.created_at >= ${since}` : '');
+  const buyers = db.prepare(`
+    SELECT t.fan_id, u.display_name AS fan_name,
+      SUM(t.gross_cents) AS total_cents,
+      SUM(CASE WHEN t.type LIKE 'live%' OR t.type LIKE 'priority%' THEN t.gross_cents ELSE 0 END) AS live_cents,
+      SUM(CASE WHEN t.type LIKE 'booking%' OR t.type LIKE 'call%' THEN t.gross_cents ELSE 0 END) AS priv_cents,
+      SUM(CASE WHEN t.type LIKE 'live%' OR t.type LIKE 'priority%' OR t.type LIKE 'booking%' OR t.type LIKE 'call%' THEN 0 ELSE t.gross_cents END) AS chat_cents,
+      SUM(CASE WHEN t.gross_cents > 0 THEN 1 ELSE 0 END) AS payments,
+      MAX(t.created_at) AS last_at
+    FROM transactions t JOIN users u ON u.id = t.fan_id
+    WHERE ${where}
+    GROUP BY t.fan_id HAVING total_cents > 0
+    ORDER BY total_cents DESC LIMIT 10`).all(req.user.id);
+  const total = db.prepare(
+    `SELECT COUNT(DISTINCT t.fan_id) AS n FROM transactions t WHERE ${where}`).get(req.user.id);
+  res.json({ period, buyers, total_buyers: total.n });
+});
+
 app.get('/api/model/earnings', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const wallet = getWallet(req.user.id);
   const byFan = db.prepare(`
