@@ -1473,16 +1473,7 @@ app.post('/api/auth/signup', (req, res) => {
   }
 
   // Migrate guest history → new account (chats, free-trial counts, strikes)
-  if (guest_token && /^[a-f0-9]{32}$/.test(guest_token)) {
-    const gk = `g:${guest_token}`, uk = `u:${id}`;
-    db.prepare(`UPDATE conversations SET fan_id = ?, guest_token = NULL
-                WHERE guest_token = ?`).run(id, guest_token);
-    db.prepare(`UPDATE free_trials SET subject_key = ? WHERE subject_key = ?`).run(uk, gk);
-    db.prepare(`UPDATE strikes SET subject_key = ? WHERE subject_key = ?`).run(uk, gk);
-    db.prepare(`UPDATE messages SET guest_token = NULL WHERE guest_token = ?
-                AND conversation_id IN (SELECT id FROM conversations WHERE fan_id = ?)`)
-      .run(guest_token, id);
-  }
+  mergeGuestIntoUser(id, guest_token);
 
   const token = createSession(id);
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
@@ -1514,17 +1505,60 @@ app.post('/api/auth/quick-signup', (req, res) => {
     .run(full_name.trim().slice(0, 80), pay_method, card_last4 || null, cashtag || null, id);
 
   // Migrate guest history to the new account
-  if (guest_token && /^[a-f0-9]{32}$/.test(guest_token)) {
-    const gk = 'g:' + guest_token, uk = 'u:' + id;
-    db.prepare('UPDATE conversations SET fan_id = ?, guest_token = NULL WHERE guest_token = ?').run(id, guest_token);
-    db.prepare('UPDATE free_trials SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
-    db.prepare('UPDATE strikes SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
-  }
+  mergeGuestIntoUser(id, guest_token);
 
   const token = createSession(id);
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   res.json({ token, user: getUserPublic(user) });
 });
+
+// Fold a guest's history into a real account (signup + login).
+// Conflict-safe: if the fan already has a thread with a model the guest
+// chatted with, the guest messages move INTO that thread and the guest
+// thread is removed — a plain UPDATE crashes on UNIQUE(fan_id, model_id)
+// and fails the whole login (bit Corry's fandemo login, Oct 12 2026).
+// Merges must never fail auth: every step is guarded; worst case the
+// history simply stays guest-owned.
+function mergeGuestIntoUser(userId, guest_token) {
+  if (!guest_token || !/^[a-f0-9]{32}$/.test(guest_token)) return;
+  const gk = `g:${guest_token}`, uk = `u:${userId}`;
+  try {
+    const guestConvs = db.prepare(
+      'SELECT id, model_id FROM conversations WHERE guest_token = ? AND fan_id IS NULL').all(guest_token);
+    for (const gc of guestConvs) {
+      const existing = db.prepare(
+        'SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(userId, gc.model_id);
+      if (existing) {
+        db.prepare('UPDATE messages SET conversation_id = ? WHERE conversation_id = ?').run(existing.id, gc.id);
+        db.prepare('DELETE FROM conversations WHERE id = ?').run(gc.id);
+      } else {
+        db.prepare('UPDATE conversations SET fan_id = ?, guest_token = NULL WHERE id = ?').run(userId, gc.id);
+      }
+    }
+  } catch (e) { console.log('[auth] guest conversation merge failed:', e.message); }
+  try {
+    db.prepare(`DELETE FROM free_trials WHERE subject_key = ?
+                 AND model_id IN (SELECT model_id FROM free_trials WHERE subject_key = ?)`).run(gk, uk);
+    db.prepare('UPDATE free_trials SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
+  } catch (e) { console.log('[auth] free_trials merge failed:', e.message); }
+  try {
+    const gs = db.prepare('SELECT strikes, flagged FROM strikes WHERE subject_key = ?').get(gk);
+    if (gs) {
+      const us = db.prepare('SELECT strikes, flagged FROM strikes WHERE subject_key = ?').get(uk);
+      if (us) {
+        db.prepare('UPDATE strikes SET strikes = ?, flagged = ? WHERE subject_key = ?')
+          .run(us.strikes + gs.strikes, Math.max(us.flagged, gs.flagged), uk);
+        db.prepare('DELETE FROM strikes WHERE subject_key = ?').run(gk);
+      } else {
+        db.prepare('UPDATE strikes SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
+      }
+    }
+  } catch (e) { console.log('[auth] strikes merge failed:', e.message); }
+  try {
+    db.prepare(`UPDATE messages SET guest_token = NULL WHERE guest_token = ?
+                AND conversation_id IN (SELECT id FROM conversations WHERE fan_id = ?)`).run(guest_token, userId);
+  } catch (e) { /* cosmetic cleanup only */ }
+}
 
 app.post('/api/auth/login', (req, res) => {
   const { username, password, guest_token } = req.body || {};
@@ -1537,13 +1571,7 @@ app.post('/api/auth/login', (req, res) => {
   // Admin can ONLY log in via the secret admin route (#boss). Never here.
   if (user.role === 'admin') return res.status(403).json({ error: 'not_here' });
 
-  if (guest_token && /^[a-f0-9]{32}$/.test(guest_token)) {
-    const gk = `g:${guest_token}`, uk = `u:${user.id}`;
-    db.prepare(`UPDATE conversations SET fan_id = ?, guest_token = NULL
-                WHERE guest_token = ? AND fan_id IS NULL`).run(user.id, guest_token);
-    db.prepare(`UPDATE free_trials SET subject_key = ? WHERE subject_key = ?`).run(uk, gk);
-    db.prepare(`UPDATE strikes SET subject_key = ? WHERE subject_key = ?`).run(uk, gk);
-  }
+  if (guest_token) mergeGuestIntoUser(user.id, guest_token);
 
   const token = createSession(user.id);
   res.json({ token, user: getUserPublic(user) });
