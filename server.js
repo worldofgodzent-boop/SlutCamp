@@ -184,9 +184,7 @@ CREATE TABLE IF NOT EXISTS models (
   per_minute_cents  INTEGER NOT NULL DEFAULT 399,
   is_online        INTEGER NOT NULL DEFAULT 0,
   explicit_join_cents INTEGER NOT NULL DEFAULT 2500,
-  explicit_mic_join_cents INTEGER NOT NULL DEFAULT 1500,
-  join_cents INTEGER NOT NULL DEFAULT 1000,
-  mic_join_cents INTEGER NOT NULL DEFAULT 500
+  explicit_mic_join_cents INTEGER NOT NULL DEFAULT 1500
 );
 
 -- Model likes (fans tap heart on model cards)
@@ -591,17 +589,10 @@ addColumnIfMissing('live_join_requests', 'is_explicit', 'INTEGER NOT NULL DEFAUL
 addColumnIfMissing('live_join_requests', 'mode', "TEXT NOT NULL DEFAULT 'video'");
 addColumnIfMissing('models', 'explicit_join_cents', 'INTEGER NOT NULL DEFAULT 2500');
 addColumnIfMissing('models', 'explicit_mic_join_cents', 'INTEGER NOT NULL DEFAULT 1500');
-addColumnIfMissing('models', 'join_cents', 'INTEGER NOT NULL DEFAULT 1000');
-addColumnIfMissing('models', 'mic_join_cents', 'INTEGER NOT NULL DEFAULT 500');
 addColumnIfMissing('calls', 'booking_id', 'INTEGER REFERENCES bookings(id)');
 addColumnIfMissing('platform_stats', 'explicit_entry_cents', 'INTEGER NOT NULL DEFAULT 499');
 addColumnIfMissing('platform_stats', 'admin_phone', 'TEXT');
 addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0');
-addColumnIfMissing('platform_stats', 'test_money_cleared_at', 'TEXT');
-addColumnIfMissing('transactions', 'is_test', 'INTEGER NOT NULL DEFAULT 0');
-// Admin visibility switch: hidden models vanish from the public listings
-// (home grid, Lives) without touching their account (Corry, Oct 12 2026).
-addColumnIfMissing('models', 'is_hidden', 'INTEGER NOT NULL DEFAULT 0');
 // Fraud protection: account status ('active' | 'frozen') + ledger IP on every money row
 addColumnIfMissing('users', 'status', "TEXT NOT NULL DEFAULT 'active'");
 addColumnIfMissing('transactions', 'ip', 'TEXT');
@@ -612,21 +603,6 @@ addColumnIfMissing('users', 'name_changed_at', 'TEXT');
 // UI language preference ('en' | 'es' | 'pt') — set from the in-app language
 // picker, returned by /api/me so it follows the user across devices
 addColumnIfMissing('users', 'language', "TEXT NOT NULL DEFAULT 'en'");
-
-// Model welcome celebration: welcomed_at NULL = not yet welcomed. Everyone
-// who already has an account when this ships counts as welcomed — only NEW
-// model signups get the congratulations overlay.
-(function () {
-  const cols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
-  if (!cols.includes('welcomed_at')) {
-    db.exec('ALTER TABLE users ADD COLUMN welcomed_at TEXT');
-    db.exec("UPDATE users SET welcomed_at = datetime('now')");
-  }
-})();
-
-// Welcome MESSAGE in her app inbox (from Asce (Admin)): stamped when sent.
-// NULL = not sent yet; the boot sweep delivers to anyone missing it.
-addColumnIfMissing('users', 'welcome_msg_sent_at', 'TEXT');
 db.exec(`
 CREATE TABLE IF NOT EXISTS name_change_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -877,7 +853,6 @@ const getUserPublic = (u) => ({
   display_name: u.display_name, banned: !!u.banned,
   status: u.status || 'active',
   language: u.language || 'en',
-  welcomed: !!u.welcomed_at,
 });
 
 const fmt$ = (c) => '$' + (c / 100).toFixed(2); // server-side money formatter (cents → $x.xx)
@@ -1147,16 +1122,6 @@ function notifyUser(userId, type, title, body, link) {
   return n;
 }
 
-// Phone buzz for a new chat message — Web Push only, no bell row (the
-// conversation unread badge covers in-app). Skipped when the recipient is
-// in the app right now: their socket already delivered it live.
-function buzzChatRecipient(userId, title, body) {
-  if (!userId) return;
-  const set = socketsBySubject.get(`u:${userId}`);
-  if (set && set.size) return;
-  sendWebPush(userId, { title, body, link: '/' }).catch(() => {});
-}
-
 // Notify every online admin about something (safety incidents, etc.)
 function pushToAdmins(event) {
   const admins = db.prepare(`SELECT id FROM users WHERE role = 'admin'`).all();
@@ -1225,86 +1190,8 @@ function createUser(username, password, role, displayName, dob) {
     'INSERT INTO users (username, password_hash, role, display_name, dob) VALUES (?,?,?,?,?)'
   ).run(username, hash, role, displayName, dob);
   db.prepare('INSERT INTO wallets (user_id) VALUES (?)').run(info.lastInsertRowid);
-  if (role === 'model') {
-    db.prepare('INSERT INTO models (user_id) VALUES (?)').run(info.lastInsertRowid);
-    // Automatic: the congratulations/welcome message lands in her inbox.
-    try { sendModelWelcome(Number(info.lastInsertRowid)); } catch (e) { /* boot sweep retries */ }
-  }
+  if (role === 'model') db.prepare('INSERT INTO models (user_id) VALUES (?)').run(info.lastInsertRowid);
   return Number(info.lastInsertRowid);
-}
-
-/* ------------------------------------------------------------------ */
-/* Model welcome message — congratulations in her app inbox           */
-/* ------------------------------------------------------------------ */
-const MODEL_WELCOME = {
-  en: (name) => `🎉 Congratulations, ${name}!
-
-Welcome to SlutCamp 💋 You're officially one of our models — and you're in early. Early models get seen first, and the fans are already waiting.
-
-💰 You keep 60% of everything: paid messages, live streams + video calls paid per minute at YOUR prices, tips and paid content.
-
-To start earning:
-✍️ Sign your model agreement
-🪪 Verify your ID (2257 — keeps you legal and paid)
-📸 Add your photo, set your prices, and go live
-
-Questions? Just reply right here. Welcome to the family 🔥 — Asce`,
-  es: (name) => `🎉 ¡Felicidades, ${name}!
-
-Bienvenida a SlutCamp 💋 Ya eres oficialmente una de nuestras modelos — y llegaste temprano. Las primeras modelos se ven primero, y los fans ya están esperando.
-
-💰 Te quedas con el 60% de todo: mensajes pagos, lives y videollamadas pagadas por minuto a TUS precios, propinas y contenido pago.
-
-Para empezar a ganar:
-✍️ Firma tu acuerdo de modelo
-🪪 Verifica tu ID (2257 — te mantiene legal y cobrando)
-📸 Sube tu foto, pon tus precios y sal en vivo
-
-¿Preguntas? Responde aquí mismo. Bienvenida a la familia 🔥 — Asce`,
-  pt: (name) => `🎉 Parabéns, ${name}!
-
-Bem-vinda à SlutCamp 💋 Você agora é oficialmente uma das nossas modelos — e chegou cedo. As primeiras modelos são vistas primeiro, e os fãs já estão esperando.
-
-💰 Você fica com 60% de tudo: mensagens pagas, lives e videochamadas pagas por minuto nos SEUS preços, gorjetas e conteúdo pago.
-
-Para começar a ganhar:
-✍️ Assine seu contrato de modelo
-🪪 Verifique seu documento (2257 — mantém você legal e recebendo)
-📸 Adicione sua foto, defina seus preços e entre ao vivo
-
-Dúvidas? Responda aqui mesmo. Bem-vinda à família 🔥 — Asce`,
-};
-
-/* Send the welcome message into a model's inbox exactly once. Sender is
-   the admin account (shows as "Asce (Admin)"). Free (cost 0), never blocks
-   signup — if anything fails, the boot sweep retries next start. */
-function sendModelWelcome(modelUserId) {
-  const m = db.prepare("SELECT id, display_name, language, welcome_msg_sent_at FROM users WHERE id = ? AND role = 'model'")
-    .get(modelUserId);
-  if (!m || m.welcome_msg_sent_at) return false;
-  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
-  if (!admin || admin.id === m.id) return false;
-  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-  if (!conv) {
-    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-    conv = { id: Number(info.lastInsertRowid) };
-  }
-  const make = MODEL_WELCOME[m.language] || MODEL_WELCOME.en;
-  db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-    .run(conv.id, admin.id, make(m.display_name));
-  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
-  db.prepare("UPDATE users SET welcome_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
-  try {
-    notifyUser(m.id, 'welcome', '🎉 Welcome to SlutCamp!',
-      'Congratulations — Asce sent you a message in your inbox 💋', '');
-  } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
-  return true;
-}
-
-/* Boot sweep: every model who never got the welcome message gets it now. */
-function sendPendingModelWelcomes() {
-  const rows = db.prepare("SELECT id FROM users WHERE role = 'model' AND welcome_msg_sent_at IS NULL").all();
-  for (const r of rows) { try { sendModelWelcome(r.id); } catch (e) { /* retry next boot */ } }
 }
 
 function seed() {
@@ -1341,28 +1228,6 @@ function seed() {
   console.log('Seeded: admin/admin123 · bunny|stacey|bella/model123 · fandemo/fan123 ($100)');
 }
 seed();
-sendPendingModelWelcomes();
-
-// One-time pre-launch cleanup (Corry, Oct 12 2026): every cent on the
-// platform so far is TEST money — demo credits only, no real payment has
-// ever been processed. Clear model/recruiter balances so nobody mistakes
-// demo earnings for money actually owed. NOTHING is deleted: transactions
-// stay on the ledger flagged is_test=1, and money displays exclude test
-// rows from here on. Runs exactly once (marker on platform_stats).
-(function clearTestMoneyOnce() {
-  try {
-    const row = db.prepare('SELECT test_money_cleared_at FROM platform_stats WHERE id = 1').get();
-    if (!row || row.test_money_cleared_at) return;
-    db.prepare('UPDATE transactions SET is_test = 1 WHERE is_test = 0').run();
-    db.prepare(`UPDATE wallets SET earnings_cents = 0, paid_out_cents = 0
-                WHERE user_id IN (SELECT id FROM users WHERE role IN ('model','recruiter'))`).run();
-    db.prepare('UPDATE platform_stats SET earnings_cents = 0 WHERE id = 1').run();
-    db.prepare(`UPDATE withdrawals SET status = 'rejected', decided_at = datetime('now'),
-                note = 'Pre-launch test balance cleared' WHERE status = 'pending'`).run();
-    db.prepare("UPDATE platform_stats SET test_money_cleared_at = datetime('now') WHERE id = 1").run();
-    console.log('[cleanup] Pre-launch test money cleared (transactions flagged is_test, balances zeroed).');
-  } catch (e) { console.log('[cleanup] test money clear failed:', e.message); }
-})();
 
 /* ------------------------------------------------------------------ */
 /* Public: guest tokens + model browsing (no login needed)              */
@@ -1389,10 +1254,10 @@ app.get('/api/models', (req, res) => {
            (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS live_viewers,
            (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) AS like_count,
            (SELECT COALESCE(SUM(gross_cents), 0) FROM transactions
-             WHERE model_id = u.id AND type <> 'payout' AND is_test = 0) AS total_sales_cents
+             WHERE model_id = u.id AND type <> 'payout') AS total_sales_cents
     FROM users u JOIN models m ON m.user_id = u.id
     LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live'
-    WHERE u.role = 'model' AND u.banned = 0 AND m.is_hidden = 0
+    WHERE u.role = 'model' AND u.banned = 0
     ORDER BY m.is_featured DESC,
              (total_sales_cents / 100.0 + like_count) DESC,
              like_count DESC, m.is_online DESC, u.created_at DESC, u.display_name ASC
@@ -1481,7 +1346,7 @@ app.post('/api/auth/signup', (req, res) => {
     if (invite.used_by)
       return res.status(400).json({ error: 'invite_used', message: 'This invite link has already been used.' });
     if (invite.expires_at && new Date(invite.expires_at + 'Z') < new Date())
-      return res.status(400).json({ error: 'invite_expired', message: 'This invite link has expired. Ask for it to be refreshed.' });
+      return res.status(400).json({ error: 'invite_expired', message: 'This invite link has expired. Ask for a new one.' });
     finalRole = 'model';
   }
   // Referral-code flow: a partner's link attributes the new model to that recruiter
@@ -1513,7 +1378,16 @@ app.post('/api/auth/signup', (req, res) => {
   }
 
   // Migrate guest history → new account (chats, free-trial counts, strikes)
-  mergeGuestIntoUser(id, guest_token);
+  if (guest_token && /^[a-f0-9]{32}$/.test(guest_token)) {
+    const gk = `g:${guest_token}`, uk = `u:${id}`;
+    db.prepare(`UPDATE conversations SET fan_id = ?, guest_token = NULL
+                WHERE guest_token = ?`).run(id, guest_token);
+    db.prepare(`UPDATE free_trials SET subject_key = ? WHERE subject_key = ?`).run(uk, gk);
+    db.prepare(`UPDATE strikes SET subject_key = ? WHERE subject_key = ?`).run(uk, gk);
+    db.prepare(`UPDATE messages SET guest_token = NULL WHERE guest_token = ?
+                AND conversation_id IN (SELECT id FROM conversations WHERE fan_id = ?)`)
+      .run(guest_token, id);
+  }
 
   const token = createSession(id);
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
@@ -1545,60 +1419,17 @@ app.post('/api/auth/quick-signup', (req, res) => {
     .run(full_name.trim().slice(0, 80), pay_method, card_last4 || null, cashtag || null, id);
 
   // Migrate guest history to the new account
-  mergeGuestIntoUser(id, guest_token);
+  if (guest_token && /^[a-f0-9]{32}$/.test(guest_token)) {
+    const gk = 'g:' + guest_token, uk = 'u:' + id;
+    db.prepare('UPDATE conversations SET fan_id = ?, guest_token = NULL WHERE guest_token = ?').run(id, guest_token);
+    db.prepare('UPDATE free_trials SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
+    db.prepare('UPDATE strikes SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
+  }
 
   const token = createSession(id);
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   res.json({ token, user: getUserPublic(user) });
 });
-
-// Fold a guest's history into a real account (signup + login).
-// Conflict-safe: if the fan already has a thread with a model the guest
-// chatted with, the guest messages move INTO that thread and the guest
-// thread is removed — a plain UPDATE crashes on UNIQUE(fan_id, model_id)
-// and fails the whole login (bit Corry's fandemo login, Oct 12 2026).
-// Merges must never fail auth: every step is guarded; worst case the
-// history simply stays guest-owned.
-function mergeGuestIntoUser(userId, guest_token) {
-  if (!guest_token || !/^[a-f0-9]{32}$/.test(guest_token)) return;
-  const gk = `g:${guest_token}`, uk = `u:${userId}`;
-  try {
-    const guestConvs = db.prepare(
-      'SELECT id, model_id FROM conversations WHERE guest_token = ? AND fan_id IS NULL').all(guest_token);
-    for (const gc of guestConvs) {
-      const existing = db.prepare(
-        'SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(userId, gc.model_id);
-      if (existing) {
-        db.prepare('UPDATE messages SET conversation_id = ? WHERE conversation_id = ?').run(existing.id, gc.id);
-        db.prepare('DELETE FROM conversations WHERE id = ?').run(gc.id);
-      } else {
-        db.prepare('UPDATE conversations SET fan_id = ?, guest_token = NULL WHERE id = ?').run(userId, gc.id);
-      }
-    }
-  } catch (e) { console.log('[auth] guest conversation merge failed:', e.message); }
-  try {
-    db.prepare(`DELETE FROM free_trials WHERE subject_key = ?
-                 AND model_id IN (SELECT model_id FROM free_trials WHERE subject_key = ?)`).run(gk, uk);
-    db.prepare('UPDATE free_trials SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
-  } catch (e) { console.log('[auth] free_trials merge failed:', e.message); }
-  try {
-    const gs = db.prepare('SELECT strikes, flagged FROM strikes WHERE subject_key = ?').get(gk);
-    if (gs) {
-      const us = db.prepare('SELECT strikes, flagged FROM strikes WHERE subject_key = ?').get(uk);
-      if (us) {
-        db.prepare('UPDATE strikes SET strikes = ?, flagged = ? WHERE subject_key = ?')
-          .run(us.strikes + gs.strikes, Math.max(us.flagged, gs.flagged), uk);
-        db.prepare('DELETE FROM strikes WHERE subject_key = ?').run(gk);
-      } else {
-        db.prepare('UPDATE strikes SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
-      }
-    }
-  } catch (e) { console.log('[auth] strikes merge failed:', e.message); }
-  try {
-    db.prepare(`UPDATE messages SET guest_token = NULL WHERE guest_token = ?
-                AND conversation_id IN (SELECT id FROM conversations WHERE fan_id = ?)`).run(guest_token, userId);
-  } catch (e) { /* cosmetic cleanup only */ }
-}
 
 app.post('/api/auth/login', (req, res) => {
   const { username, password, guest_token } = req.body || {};
@@ -1611,7 +1442,13 @@ app.post('/api/auth/login', (req, res) => {
   // Admin can ONLY log in via the secret admin route (#boss). Never here.
   if (user.role === 'admin') return res.status(403).json({ error: 'not_here' });
 
-  if (guest_token) mergeGuestIntoUser(user.id, guest_token);
+  if (guest_token && /^[a-f0-9]{32}$/.test(guest_token)) {
+    const gk = `g:${guest_token}`, uk = `u:${user.id}`;
+    db.prepare(`UPDATE conversations SET fan_id = ?, guest_token = NULL
+                WHERE guest_token = ? AND fan_id IS NULL`).run(user.id, guest_token);
+    db.prepare(`UPDATE free_trials SET subject_key = ? WHERE subject_key = ?`).run(uk, gk);
+    db.prepare(`UPDATE strikes SET subject_key = ? WHERE subject_key = ?`).run(uk, gk);
+  }
 
   const token = createSession(user.id);
   res.json({ token, user: getUserPublic(user) });
@@ -1763,13 +1600,6 @@ app.patch('/api/me/language', identMiddleware, requireUser, (req, res) => {
     return res.status(400).json({ error: 'bad_language', message: 'Supported languages: en, es, pt.' });
   db.prepare('UPDATE users SET language = ? WHERE id = ?').run(lang, req.user.id);
   res.json({ ok: true, language: lang });
-});
-
-// Model welcome celebration — mark it seen so it shows exactly once.
-app.post('/api/me/welcomed', identMiddleware, requireUser, (req, res) => {
-  db.prepare("UPDATE users SET welcomed_at = datetime('now') WHERE id = ? AND welcomed_at IS NULL")
-    .run(req.user.id);
-  res.json({ ok: true });
 });
 
 // Model submits a name change request for admin approval
@@ -2082,8 +1912,6 @@ app.post('/api/messages', identMiddleware, (req, res) => {
         : `u:${conv.model_id}`)
     : `u:${conv.model_id}`;
   pushToSubject(otherKey, { type: 'chat:new', conversation_id: conv.id, message: full });
-  buzzChatRecipient(isModelSender ? conv.fan_id : conv.model_id,
-    `💬 ${full.sender_name}`, text.slice(0, 120));
 
   res.json({ message: full, cost_cents: costCents, free_remaining: freeLeft,
     balance_cents: req.ident.kind === 'user' ? getWallet(req.ident.user.id).credits_cents : null });
@@ -2211,8 +2039,6 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
       : `u:${conv.model_id}`;
     const receiverMsg = { ...full, media: receiverMedia };
     pushToSubject(otherKey, { type: 'chat:new', conversation_id: conv.id, message: receiverMsg });
-    buzzChatRecipient(isModelSender ? conv.fan_id : conv.model_id,
-      `💬 ${full.sender_name}`, MEDIA_LABELS[kind] || 'New message');
 
     res.json({ message: full, cost_cents: costCents, free_remaining: freeLeft,
       balance_cents: req.ident.kind === 'user' ? getWallet(req.ident.user.id).credits_cents : null });
@@ -2703,13 +2529,12 @@ app.post('/api/credits/buy', identMiddleware, requireUser, requireRole('fan'), (
 
 app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const { bio, per_message_cents, per_minute_cents, per_voice_cents, explicit_rate_cents,
-          explicit_join_cents, explicit_mic_join_cents, join_cents, mic_join_cents,
-          is_online } = req.body || {};
+          explicit_join_cents, explicit_mic_join_cents, is_online } = req.body || {};
   const updates = [], params = [];
   // Model-settable 1-on-1 rates (tighter ranges than the admin override)
   const rateRange = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
   const badRate = (v, lo, hi) => v !== undefined && !rateRange(v, lo, hi);
-  if (badRate(per_message_cents, 50, 1000) || badRate(per_minute_cents, 500, 100000) ||
+  if (badRate(per_message_cents, 50, 1000) || badRate(per_minute_cents, 100, 2000) ||
       badRate(per_voice_cents, 50, 1000))
     return res.status(400).json({ error: 'bad_rate',
       message: 'Rates out of range.' });
@@ -2717,7 +2542,7 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
   if (rateRange(per_message_cents, 50, 1000)) {
     updates.push('per_message_cents = ?'); params.push(per_message_cents);
   }
-  if (rateRange(per_minute_cents, 500, 100000)) {
+  if (rateRange(per_minute_cents, 100, 2000)) {
     updates.push('per_minute_cents = ?'); params.push(per_minute_cents);
   }
   if (rateRange(per_voice_cents, 50, 1000)) {
@@ -2726,17 +2551,11 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
   if (Number.isInteger(explicit_rate_cents) && explicit_rate_cents >= 0 && explicit_rate_cents <= 20000) {
     updates.push('explicit_rate_cents = ?'); params.push(explicit_rate_cents);
   }
-  if (Number.isInteger(explicit_join_cents) && explicit_join_cents >= 500 && explicit_join_cents <= 100000) {
+  if (Number.isInteger(explicit_join_cents) && explicit_join_cents >= 500 && explicit_join_cents <= 10000) {
     updates.push('explicit_join_cents = ?'); params.push(explicit_join_cents);
   }
-  if (Number.isInteger(explicit_mic_join_cents) && explicit_mic_join_cents >= 500 && explicit_mic_join_cents <= 100000) {
+  if (Number.isInteger(explicit_mic_join_cents) && explicit_mic_join_cents >= 500 && explicit_mic_join_cents <= 10000) {
     updates.push('explicit_mic_join_cents = ?'); params.push(explicit_mic_join_cents);
-  }
-  if (Number.isInteger(join_cents) && join_cents >= 500 && join_cents <= 100000) {
-    updates.push('join_cents = ?'); params.push(join_cents);
-  }
-  if (Number.isInteger(mic_join_cents) && mic_join_cents >= 500 && mic_join_cents <= 100000) {
-    updates.push('mic_join_cents = ?'); params.push(mic_join_cents);
   }
   if (is_online === 0 || is_online === 1) { updates.push('is_online = ?'); params.push(is_online); }
   if (!updates.length) return res.status(400).json({ error: 'nothing_to_update' });
@@ -3331,16 +3150,16 @@ app.get('/api/model/earnings', identMiddleware, requireUser, requireRole('model'
     SELECT COALESCE(u.display_name, 'Guest Fan') AS fan_name,
            SUM(t.model_cents) AS earned_cents, COUNT(*) AS payments
     FROM transactions t LEFT JOIN users u ON u.id = t.fan_id
-    WHERE t.model_id = ? AND t.is_test = 0 AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift')
+    WHERE t.model_id = ? AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift')
     GROUP BY t.fan_id ORDER BY earned_cents DESC`).all(req.user.id);
   const byType = db.prepare(`
     SELECT t.type, SUM(t.model_cents) AS earned_cents, COUNT(*) AS n
     FROM transactions t
-    WHERE t.model_id = ? AND t.is_test = 0 AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift')
+    WHERE t.model_id = ? AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift')
     GROUP BY t.type`).all(req.user.id);
   const gifts = db.prepare(`
     SELECT COALESCE(SUM(t.model_cents), 0) AS gifts_cents, COUNT(*) AS gift_count
-    FROM transactions t WHERE t.model_id = ? AND t.is_test = 0 AND t.type = 'gift' AND t.model_cents > 0`).get(req.user.id);
+    FROM transactions t WHERE t.model_id = ? AND t.type = 'gift' AND t.model_cents > 0`).get(req.user.id);
   res.json({ earnings_cents: wallet.earnings_cents, paid_out_cents: wallet.paid_out_cents,
     pending_cents: wallet.earnings_cents - wallet.paid_out_cents, by_fan: byFan, by_type: byType,
     gifts_cents: gifts.gifts_cents, gift_count: gifts.gift_count });
@@ -3755,7 +3574,7 @@ app.get('/api/live', (req, res) => {
            (SELECT COALESCE(SUM(gross_cents),0) FROM gift_events WHERE session_id = ls.id) AS gift_cents
     FROM live_sessions ls JOIN users u ON u.id = ls.model_id
     LEFT JOIN models mo ON mo.user_id = u.id
-    WHERE ls.status = 'live' AND u.banned = 0 AND COALESCE(mo.is_hidden, 0) = 0`).all();
+    WHERE ls.status = 'live' AND u.banned = 0`).all();
   res.json({ live: rows });
 });
 
@@ -3781,8 +3600,6 @@ app.post('/api/live/:id/join', identMiddleware, requireUser, requireRole('fan'),
     explicit_grace_sec: getGiftGraceSec(), explicit_entry_cents: getEntryCents(),
     explicit_join_cents: jr.explicit_join_cents,
     explicit_mic_join_cents: jr.explicit_mic_join_cents,
-    join_cents: jr.join_cents,
-    mic_join_cents: jr.mic_join_cents,
     priority: currentPriority(sess.id) });
 });
 
@@ -4250,25 +4067,20 @@ const STAGE_MINUTES = 3;
 // Regular (non-explicit) prices are fixed platform-wide; explicit tiers come
 // from the MODEL's own rates (she sets them in Settings).
 function modelJoinRates(modelId) {
-  const m = db.prepare(`SELECT explicit_join_cents, explicit_mic_join_cents,
-                               join_cents, mic_join_cents FROM models WHERE user_id = ?`)
+  const m = db.prepare(`SELECT explicit_join_cents, explicit_mic_join_cents FROM models WHERE user_id = ?`)
     .get(modelId);
-  const pick = (v, dflt) => (m && Number.isInteger(v)) ? v : dflt;
   return {
-    explicit_join_cents: pick(m && m.explicit_join_cents, 2500),
-    explicit_mic_join_cents: pick(m && m.explicit_mic_join_cents, 1500),
-    join_cents: pick(m && m.join_cents, JOIN_FEE_CENTS),
-    mic_join_cents: pick(m && m.mic_join_cents, MIC_JOIN_FEE_CENTS),
+    explicit_join_cents: m && Number.isInteger(m.explicit_join_cents) ? m.explicit_join_cents : 2500,
+    explicit_mic_join_cents: m && Number.isInteger(m.explicit_mic_join_cents) ? m.explicit_mic_join_cents : 1500,
   };
 }
 function stageJoinFee(isExplicit, mode, rates) {
-  // All stage joins are model-priced ($5–$1,000, set in her Settings);
-  // platform constants remain only as fallbacks when rates are unavailable.
-  const r = rates || { explicit_join_cents: EXPLICIT_JOIN_FEE_CENTS,
-                       explicit_mic_join_cents: EXPLICIT_MIC_JOIN_FEE_CENTS,
-                       join_cents: JOIN_FEE_CENTS, mic_join_cents: MIC_JOIN_FEE_CENTS };
-  if (isExplicit) return mode === 'mic' ? r.explicit_mic_join_cents : r.explicit_join_cents;
-  return mode === 'mic' ? r.mic_join_cents : r.join_cents;
+  if (isExplicit) {
+    const r = rates || { explicit_join_cents: EXPLICIT_JOIN_FEE_CENTS,
+                         explicit_mic_join_cents: EXPLICIT_MIC_JOIN_FEE_CENTS };
+    return mode === 'mic' ? r.explicit_mic_join_cents : r.explicit_join_cents;
+  }
+  return mode === 'mic' ? MIC_JOIN_FEE_CENTS : JOIN_FEE_CENTS;
 }
 
 function priorityJSON(pm) {
@@ -4929,7 +4741,7 @@ app.get('/api/admin/stats', ...adminOnly, (req, res) => {
       (SELECT COUNT(*) FROM strikes WHERE flagged = 1) AS flagged_accounts,
       (SELECT COUNT(*) FROM dmca_notices WHERE status IN ('received','under_review')) AS open_dmca,
       (SELECT COALESCE(SUM(gross_cents),0) FROM transactions
-        WHERE is_test = 0 AND type IN ('message','call','tip','ppv','voice','live_explicit','gift')) AS gross_volume_cents`).get();
+        WHERE type IN ('message','call','tip','ppv','voice','live_explicit','gift')) AS gross_volume_cents`).get();
   res.json({ ...stats, ...counts });
 });
 
@@ -5049,7 +4861,7 @@ app.post('/api/admin/safety/ban-guest', ...adminOnly, (req, res) => {
 app.get('/api/admin/models', ...adminOnly, (req, res) => {
   res.json({ models: db.prepare(`
     SELECT u.id, u.username, u.display_name, u.banned, u.created_at,
-           m.bio, m.per_message_cents, m.per_minute_cents, m.is_online, m.photo_url, m.is_hidden,
+           m.bio, m.per_message_cents, m.per_minute_cents, m.is_online, m.photo_url,
            r.name AS recruiter_name,
            w.earnings_cents, w.paid_out_cents,
            (w.earnings_cents - w.paid_out_cents) AS pending_cents
@@ -5058,42 +4870,6 @@ app.get('/api/admin/models', ...adminOnly, (req, res) => {
     WHERE u.role = 'model' ORDER BY u.display_name`).all() });
 });
 
-
-// Admin (moderator) → model inbox: read the mod thread with one model.
-// The thread is the conversation where the admin is the fan-side party —
-// the same one the automatic welcome message lands in.
-app.get('/api/admin/models/:id/thread', ...adminOnly, (req, res) => {
-  const m = db.prepare("SELECT id, display_name FROM users WHERE id = ? AND role = 'model'").get(req.params.id);
-  if (!m) return res.status(404).json({ error: 'not_found' });
-  const conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(req.user.id, m.id);
-  if (!conv) return res.json({ conversation_id: null, messages: [] });
-  db.prepare('UPDATE messages SET is_read = 1 WHERE conversation_id = ? AND sender_id = ?').run(conv.id, m.id);
-  const messages = db.prepare(`
-    SELECT msg.id, msg.body, msg.created_at, msg.sender_id,
-           CASE WHEN msg.sender_id = ? THEN 'You (Admin)' ELSE ? END AS sender_name
-    FROM messages msg WHERE msg.conversation_id = ? ORDER BY msg.id ASC LIMIT 200`)
-    .all(req.user.id, m.display_name, conv.id);
-  res.json({ conversation_id: conv.id, messages });
-});
-
-// Admin (moderator) → model inbox: text a model as Asce (Admin).
-// Lands in her app inbox with a bell notification. Always free.
-app.post('/api/admin/models/:id/message', ...adminOnly, (req, res) => {
-  const m = db.prepare("SELECT id, display_name FROM users WHERE id = ? AND role = 'model'").get(req.params.id);
-  if (!m) return res.status(404).json({ error: 'not_found' });
-  const body = String(req.body?.body || '').trim().slice(0, 2000);
-  if (!body) return res.status(400).json({ error: 'empty', message: 'Write a message first.' });
-  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(req.user.id, m.id);
-  if (!conv) {
-    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(req.user.id, m.id);
-    conv = { id: Number(info.lastInsertRowid) };
-  }
-  const info = db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-    .run(conv.id, req.user.id, body);
-  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
-  try { notifyUser(m.id, 'message', '💬 Asce (Admin)', body.slice(0, 90), ''); } catch (e) { /* bell is a bonus */ }
-  res.json({ ok: true, conversation_id: conv.id, message_id: Number(info.lastInsertRowid) });
-});
 
 // Admin: toggle featured (pinned to top) for a model
 app.post('/api/admin/models/:id/feature', ...adminOnly, (req, res) => {
@@ -5121,7 +4897,7 @@ app.post('/api/admin/models', ...adminOnly, (req, res) => {
 });
 
 app.put('/api/admin/models/:id', ...adminOnly, (req, res) => {
-  const { display_name, bio, per_message_cents, per_minute_cents, is_online, banned, is_hidden } = req.body || {};
+  const { display_name, bio, per_message_cents, per_minute_cents, is_online, banned } = req.body || {};
   const u = db.prepare(`SELECT * FROM users WHERE id = ? AND role = 'model'`).get(req.params.id);
   if (!u) return res.status(404).json({ error: 'not_found' });
   if (typeof display_name === 'string' && display_name.trim())
@@ -5133,7 +4909,6 @@ app.put('/api/admin/models/:id', ...adminOnly, (req, res) => {
   if (Number.isInteger(per_message_cents) && per_message_cents >= 0) { upd.push('per_message_cents = ?'); params.push(per_message_cents); }
   if (Number.isInteger(per_minute_cents) && per_minute_cents >= 0) { upd.push('per_minute_cents = ?'); params.push(per_minute_cents); }
   if (is_online === 0 || is_online === 1) { upd.push('is_online = ?'); params.push(is_online); }
-  if (is_hidden === 0 || is_hidden === 1) { upd.push('is_hidden = ?'); params.push(is_hidden); }
   if (upd.length) { params.push(u.id); db.prepare(`UPDATE models SET ${upd.join(', ')} WHERE user_id = ?`).run(...params); }
   res.json({ ok: true });
 });
@@ -5218,21 +4993,6 @@ app.post('/api/admin/invites/:id/revoke', ...adminOnly, (req, res) => {
     modelDeactivated = true;
   }
   res.json({ ok: true, model_deactivated: modelDeactivated });
-});
-
-// Admin: refresh an invite link — SAME code, fresh 6-hour window.
-// For when a model took too long to sign up and her link expired (or is about to).
-// The link she already has keeps working; no new link needs to be sent.
-app.post('/api/admin/invites/:id/refresh', ...adminOnly, (req, res) => {
-  const inv = db.prepare('SELECT * FROM invite_links WHERE id = ?').get(req.params.id);
-  if (!inv) return res.status(404).json({ error: 'not_found' });
-  if (inv.is_revoked)
-    return res.status(400).json({ error: 'revoked', message: 'This invite was revoked. Generate a new one instead.' });
-  if (inv.used_by)
-    return res.status(400).json({ error: 'already_used', message: 'This invite was already used to sign up.' });
-  db.prepare(`UPDATE invite_links SET expires_at = datetime('now', '+6 hours') WHERE id = ?`).run(inv.id);
-  const row = db.prepare('SELECT expires_at FROM invite_links WHERE id = ?').get(inv.id);
-  res.json({ ok: true, id: inv.id, code: inv.code, expires_at: row.expires_at });
 });
 
 /* ---------------- Recruiters / partners ---------------- */
@@ -5332,9 +5092,9 @@ app.get('/api/recruiter/dashboard', identMiddleware, requireUser, requireRole('r
     SELECT u.id, u.username, u.display_name, u.created_at, u.banned, m.photo_url,
            w.earnings_cents AS model_earnings_cents,
            (SELECT COALESCE(SUM(t.gross_cents), 0) FROM transactions t
-             WHERE t.model_id = u.id AND t.is_test = 0 AND t.gross_cents > 0) AS gross_generated_cents,
+             WHERE t.model_id = u.id AND t.gross_cents > 0) AS gross_generated_cents,
            (SELECT COALESCE(SUM(t.recruiter_cents), 0) FROM transactions t
-             WHERE t.model_id = u.id AND t.is_test = 0 AND t.recruiter_cents > 0) AS my_cut_cents
+             WHERE t.model_id = u.id AND t.recruiter_cents > 0) AS my_cut_cents
     FROM users u JOIN models m ON m.user_id = u.id JOIN wallets w ON w.user_id = u.id
     WHERE m.recruiter_id = ? ORDER BY u.display_name`).all(r.id);
   const wallet = getWallet(req.user.id);
@@ -5354,7 +5114,7 @@ app.get('/api/admin/fans', ...adminOnly, (req, res) => {
   res.json({ fans: db.prepare(`
     SELECT u.id, u.username, u.display_name, u.banned, u.created_at, w.credits_cents,
            (SELECT COALESCE(SUM(gross_cents),0) FROM transactions t
-             WHERE t.fan_id = u.id AND t.is_test = 0 AND t.type IN ('message','call','gift')) AS spent_cents
+             WHERE t.fan_id = u.id AND t.type IN ('message','call','gift')) AS spent_cents
     FROM users u JOIN wallets w ON w.user_id = u.id
     WHERE u.role = 'fan' ORDER BY spent_cents DESC LIMIT 200`).all() });
 });
