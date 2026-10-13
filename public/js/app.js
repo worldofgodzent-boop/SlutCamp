@@ -3932,6 +3932,7 @@ function vLiveBroadcast() {
   $('#live-local').srcObject = L.stream;
   $('#live-explicit-btn').onclick = liveToggleExplicit;
   $('#live-end-btn').onclick = () => { if (confirm('End your live stream?')) endLiveView('Stream ended.'); };
+  startLeaderboardPolling();
   const sendBox = $('#stream-chat-box');
   const sendIt = () => {
     const v = sendBox.value.trim();
@@ -4218,12 +4219,34 @@ function renderLeaderboard() {
   const L = S.live;
   if (!el || !L) return;
   const top = L.leaderboard || [];
-  if (!top.length) { el.classList.add('hidden'); return; }
   el.classList.remove('hidden');
-  const medals = ['🥇', '🥈', '🥉'];
-  el.innerHTML = `<div class="lb-title">🏆 Top gifters</div>` + top.map((t, i) => `
-    <div class="lb-row"><span>${medals[i]} ${esc(t.fan_name)}</span>
-      <span class="lb-amt">${fmt(t.total_cents)}</span></div>`).join('');
+  const king = top[0];
+  const changed = !!(king && L._kingId && L._kingId !== king.fan_id);
+  if (king) L._kingId = king.fan_id;
+  const medals = ['🥈', '🥉'];
+  const chasers = top.slice(1).map((c, i) =>
+    `<span>${medals[i]} ${esc(c.fan_name)} · ${fmt(c.total_cents)}</span>`).join('<span class="lb-dot">•</span>');
+  el.innerHTML = king
+    ? `<div class="lb-king">👑 <b>${esc(king.fan_name)}</b> <span class="lb-amt">${fmt(king.total_cents)}</span></div>
+       ${chasers ? `<div class="lb-chasers">${chasers}</div>` : ''}`
+    : `<div class="lb-king lb-empty">👑 No king yet — top spender takes the crown</div>`;
+  if (changed) {
+    el.classList.remove('king-pop');
+    void el.offsetWidth;
+    el.classList.add('king-pop');
+  }
+}
+
+// Keep the crown race fresh: instant WS refreshes cover gifts; this poll
+// catches joins, tips and explicit-minute spend. Self-clears on view exit.
+function startLeaderboardPolling() {
+  const L = S.live;
+  if (!L || L._lbPoll) return;
+  const sid = L.sessionId;
+  L._lbPoll = setInterval(() => {
+    if (!S.live || S.live.sessionId !== sid) { clearInterval(L._lbPoll); return; }
+    loadLeaderboard();
+  }, 15000);
 }
 
 function showGiftAnim(emoji, fanName) {
@@ -5177,6 +5200,7 @@ function vLiveWatch() {
   $('#priority-open-btn').onclick = openPriorityPanel;
   $('#stage-join-btn').onclick = requestStageJoin;
   loadStageState();
+  startLeaderboardPolling();
   const ttsBtn = $('#tts-mute-btn');
   const syncTtsBtn = () => { if (ttsBtn) ttsBtn.textContent = ttsMuted() ? '🔇' : '🔊'; };
   syncTtsBtn();
