@@ -1242,11 +1242,20 @@ function addStrike(key) {
 /* Seed data                                                           */
 /* ------------------------------------------------------------------ */
 
-function createUser(username, password, role, displayName, dob) {
+// Signup language: the client sends its UI language (browser-detected on
+// first visit); only en/es/pt are honored, anything else falls back to 'en'.
+// Stored on the user row at creation so her welcome DM lands in her language.
+function signupLanguage(req) {
+  const l = String((req.body && req.body.language) || '').toLowerCase();
+  return ['en', 'es', 'pt'].includes(l) ? l : 'en';
+}
+
+function createUser(username, password, role, displayName, dob, language) {
+  const lang = ['en', 'es', 'pt'].includes(language) ? language : 'en';
   const hash = bcrypt.hashSync(password, 10);
   const info = db.prepare(
-    'INSERT INTO users (username, password_hash, role, display_name, dob) VALUES (?,?,?,?,?)'
-  ).run(username, hash, role, displayName, dob);
+    'INSERT INTO users (username, password_hash, role, display_name, dob, language) VALUES (?,?,?,?,?,?)'
+  ).run(username, hash, role, displayName, dob, lang);
   db.prepare('INSERT INTO wallets (user_id) VALUES (?)').run(info.lastInsertRowid);
   if (role === 'model') {
     db.prepare('INSERT INTO models (user_id) VALUES (?)').run(info.lastInsertRowid);
@@ -1521,7 +1530,7 @@ app.post('/api/auth/signup', (req, res) => {
   if (db.prepare('SELECT id FROM users WHERE username = ?').get(username.trim()))
     return res.status(409).json({ error: 'username_taken' });
 
-  const id = createUser(username.trim(), password, finalRole, display_name.trim().slice(0, 40), dob);
+  const id = createUser(username.trim(), password, finalRole, display_name.trim().slice(0, 40), dob, signupLanguage(req));
   recordAgeAttestation(id, req);
 
   // Mark the invite as used by this model
@@ -1562,7 +1571,7 @@ app.post('/api/auth/quick-signup', (req, res) => {
   // 18+ is attested (checkbox + timestamp + IP on file) — never a fake DOB.
   // Fan policy (Corry, Oct 12 2026): attestation + payment card is enough —
   // no ID upload for fans. ID verification is for models only (2257).
-  const id = createUser(username.trim(), password, 'fan', username.trim().slice(0, 40), null);
+  const id = createUser(username.trim(), password, 'fan', username.trim().slice(0, 40), null, signupLanguage(req));
   recordAgeAttestation(id, req);
   db.prepare('UPDATE users SET pay_full_name = ?, pay_method = ?, pay_card_last4 = ?, pay_cashtag = ? WHERE id = ?')
     .run(full_name.trim().slice(0, 80), pay_method, card_last4 || null, cashtag || null, id);
@@ -5475,7 +5484,7 @@ app.post('/api/admin/models', ...adminOnly, (req, res) => {
     return res.status(409).json({ error: 'username_taken' });
   // Admin-added models skip the public age gate — Corry verifies ID in person
   // (2257). Real DOB lives on her ID verification record, never a placeholder.
-  const id = createUser(username.trim(), password, 'model', display_name.trim().slice(0, 40), null);
+  const id = createUser(username.trim(), password, 'model', display_name.trim().slice(0, 40), null, signupLanguage(req));
   db.prepare(`UPDATE models SET bio = ?, per_message_cents = ?, per_minute_cents = ? WHERE user_id = ?`)
     .run((bio || '').slice(0, 280),
          Number.isInteger(per_message_cents) ? per_message_cents : 149,
