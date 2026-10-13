@@ -592,6 +592,31 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 .live-leaderboard.king-pop .lb-king { animation: kingPop .55s ease; }
 @keyframes kingPop { 0% { transform: scale(1); } 40% { transform: scale(1.22) rotate(-2deg); } 100% { transform: scale(1); } }
 
+/* ---------- FaceTime: waiting panel + model request card ---------- */
+.ft-panel {
+  position: fixed; left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom));
+  z-index: 60; max-width: 480px; margin: 0 auto;
+  background: linear-gradient(135deg, rgba(60,20,45,.97), rgba(35,12,30,.97));
+  border: 1px solid rgba(255,92,158,.55); border-radius: 16px;
+  padding: 12px 14px; box-shadow: 0 10px 34px rgba(0,0,0,.5);
+  display: flex; flex-direction: column; gap: 6px; align-items: flex-start;
+}
+.ft-line { font-size: 14.5px; color: #fff; }
+.ft-sub { font-size: 12.5px; color: rgba(255,255,255,.72); }
+.ft-panel .btn { margin-top: 4px; }
+.ft-req-modal {
+  position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center;
+  background: rgba(10,4,12,.55); padding: 20px;
+}
+.ft-req-card {
+  background: #241126; border: 1px solid rgba(255,92,158,.5); border-radius: 20px;
+  padding: 22px 20px; text-align: center; max-width: 340px; width: 100%;
+  display: flex; flex-direction: column; gap: 8px; align-items: center;
+  box-shadow: 0 18px 50px rgba(0,0,0,.55); animation: sheetUp .25s ease;
+}
+.ft-req-title { font-size: 18px; font-weight: 800; color: #fff; }
+.ft-req-actions { display: flex; gap: 10px; margin-top: 8px; }
+
 /* ---------- Virtual gifts ---------- */
 .sheet-backdrop {
   position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.65);
