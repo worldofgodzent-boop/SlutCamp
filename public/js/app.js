@@ -185,6 +185,10 @@ const I18N = {
     rates_saved: '✅ Rates saved!', bio_saved: '✅ Bio saved!', stage_saved: '✅ Stage rates saved!',
     couldnt_save: 'Could not save.',
     earnings_h: 'Earnings 💵', you_keep: 'You keep {pct}% of everything',
+    fc_h: '🏆 Fan Club', fc_sub: 'Your top buyers — who spends the most on you',
+    fc_all: 'All time', fc_month: '30 days', fc_week: '7 days',
+    fc_empty: 'No buyers yet — your fan club is waiting 💋',
+    fc_live: 'Live', fc_1on1: '1-on-1', fc_chat: 'Chat',
     avail_payout: 'Available for payout', total_earned: 'Total earned',
     gifts_received: '🎁 Gifts received', gifts_from_fans_1: '{n} gift from fans',
     gifts_from_fans_n: '{n} gifts from fans', gifts_cut_note: 'Your 60% cut of every gift 💰',
@@ -327,6 +331,10 @@ const I18N = {
     rates_saved: '✅ ¡Tarifas guardadas!', bio_saved: '✅ ¡Bio guardada!', stage_saved: '✅ ¡Tarifas de escenario guardadas!',
     couldnt_save: 'No se pudo guardar.',
     earnings_h: 'Ganancias 💵', you_keep: 'Te quedas con el {pct}% de todo',
+    fc_h: '🏆 Club de Fans', fc_sub: 'Tus mayores compradores — quién gasta más en ti',
+    fc_all: 'Todo', fc_month: '30 días', fc_week: '7 días',
+    fc_empty: 'Aún no hay compradores — tu club de fans te espera 💋',
+    fc_live: 'En vivo', fc_1on1: '1 a 1', fc_chat: 'Chat',
     avail_payout: 'Disponible para retirar', total_earned: 'Total ganado',
     gifts_received: '🎁 Regalos recibidos', gifts_from_fans_1: '{n} regalo de fans',
     gifts_from_fans_n: '{n} regalos de fans', gifts_cut_note: 'Tu 60% de cada regalo 💰',
@@ -469,6 +477,10 @@ const I18N = {
     rates_saved: '✅ Tarifas salvas!', bio_saved: '✅ Bio salva!', stage_saved: '✅ Tarifas de palco salvas!',
     couldnt_save: 'Não foi possível salvar.',
     earnings_h: 'Ganhos 💵', you_keep: 'Você fica com {pct}% de tudo',
+    fc_h: '🏆 Fã-Clube', fc_sub: 'Seus maiores compradores — quem mais gasta com você',
+    fc_all: 'Tudo', fc_month: '30 dias', fc_week: '7 dias',
+    fc_empty: 'Ainda não há compradores — seu fã-clube está esperando 💋',
+    fc_live: 'Ao vivo', fc_1on1: '1 a 1', fc_chat: 'Chat',
     avail_payout: 'Disponível para saque', total_earned: 'Total ganho',
     gifts_received: '🎁 Presentes recebidos', gifts_from_fans_1: '{n} presente de fãs',
     gifts_from_fans_n: '{n} presentes de fãs', gifts_cut_note: 'Seus 60% de cada presente 💰',
@@ -2045,6 +2057,34 @@ async function vWallet() {
 
 /* ---------------- MODEL: earnings / settings ---------------- */
 
+async function loadFanClub(period) {
+  const box = $('#fan-club-body');
+  if (!box) return;
+  document.querySelectorAll('[data-fc]').forEach((b) => {
+    const on = b.dataset.fc === period;
+    b.style.background = on ? 'var(--pink)' : '';
+    b.style.color = on ? '#fff' : '';
+    b.style.borderColor = on ? 'var(--pink)' : '';
+  });
+  const { data } = await api('/model/fan-club?period=' + period);
+  if (!data || !$('#fan-club-body')) return;
+  const medal = ['🥇', '🥈', '🥉'];
+  box.innerHTML = (data.buyers || []).length ? data.buyers.map((r, i) => {
+    const parts = [];
+    if (r.live_cents > 0) parts.push(`🔴 ${t('fc_live')} ${fmt(r.live_cents)}`);
+    if (r.priv_cents > 0) parts.push(`📅 ${t('fc_1on1')} ${fmt(r.priv_cents)}`);
+    if (r.chat_cents > 0) parts.push(`💬 ${t('fc_chat')} ${fmt(r.chat_cents)}`);
+    return `
+    <div class="row" style="padding:9px 0;border-top:1px solid rgba(139,92,246,.1);align-items:center">
+      <span style="font-size:19px;width:32px;text-align:center;flex:none">${medal[i] || (i + 1)}</span>
+      ${avatarHTML(r.fan_name, 'sm')}
+      <span class="grow" style="margin-left:8px"><b>${esc(r.fan_name)}</b>
+        <br><span class="muted small">${parts.join(' · ')} · ${t(r.payments === 1 ? 'payment_1' : 'payment_n', { n: r.payments })}</span></span>
+      <b style="color:var(--green)">${fmt(r.total_cents)}</b>
+    </div>`;
+  }).join('') : `<div class="muted">${t('fc_empty')}</div>`;
+}
+
 async function vModelEarnings() {
   const { data } = await api('/model/earnings');
   const { data: acctData } = await api('/model/payout-account');
@@ -2100,6 +2140,16 @@ async function vModelEarnings() {
           </div>`; }).join('') || `<div class="muted">${t('no_earnings')}</div>`}
       </div>
       <div class="card" style="margin-top:12px">
+        <div style="font-weight:800;margin-bottom:4px">${t('fc_h')}</div>
+        <div class="muted small" style="margin-bottom:10px">${t('fc_sub')}</div>
+        <div class="row" style="gap:8px;margin-bottom:6px">
+          <button class="btn small ghost" data-fc="all">${t('fc_all')}</button>
+          <button class="btn small ghost" data-fc="month">${t('fc_month')}</button>
+          <button class="btn small ghost" data-fc="week">${t('fc_week')}</button>
+        </div>
+        <div id="fan-club-body"><div class="muted small">…</div></div>
+      </div>
+      <div class="card" style="margin-top:12px">
         <div style="font-weight:800;margin-bottom:8px">${t('payouts_h')}</div>
         <div class="row" style="margin-bottom:8px"><span class="grow muted small">${t('bank_account')}</span>
           ${acct ? `<b class="small">•••• ${esc(acct.account_last4)}</b>` : `<span class="small" style="color:var(--pink)">${t('not_set')}</span>`}</div>
@@ -2131,16 +2181,13 @@ async function vModelEarnings() {
             <span>${wdBadge(w.status)}</span>
           </div>`).join('')}
       </div>` : ''}
-      <div class="card" style="margin-top:12px">
-        <div style="font-weight:800;margin-bottom:8px">${t('per_fan')}</div>
-        ${(data.by_fan || []).map((r) => `
-          <div class="row" style="padding:8px 0;border-top:1px solid rgba(139,92,246,.1)">
-            <span class="grow"><b>${esc(r.fan_name)}</b> <span class="muted small">· ${t(r.payments === 1 ? 'payments_1' : 'payments_n', { n: r.payments })}</span></span>
-            <b style="color:var(--green)">${fmt(r.earned_cents)}</b>
-          </div>`).join('') || `<div class="muted">${t('no_earnings')}</div>`}
-      </div>
       <div class="muted small" style="text-align:center">${t('payouts_note')}</div>
     </div>`;
+
+  document.querySelectorAll('[data-fc]').forEach((b) => {
+    b.onclick = () => loadFanClub(b.dataset.fc);
+  });
+  loadFanClub('all');
 
   const baSave = $('#ba-save');
   if (baSave) baSave.onclick = async () => {
