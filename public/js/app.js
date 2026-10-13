@@ -5565,8 +5565,7 @@ async function adminInvitesBody() {
     const url = isAff ? `${baseUrl}/#affiliate/${inv.code}` : `${baseUrl}/?invite=${inv.code}`;
     const status = inv.is_revoked ? '<span style="color:var(--red)">⛔ Revoked</span>'
       : inv.used_by ? `<span style="color:var(--green)">✅ Used by ${esc(inv.used_by.display_name)}${inv.used_by.banned ? ' (deactivated)' : ''}</span>`
-      : inv.expired ? '<span style="color:var(--red)">⌛ Expired — hit Refresh to give her 6 more hours</span>'
-      : `<span style="color:var(--yellow)">⏳ Waiting for signup</span>${inv.expires_at ? `<br><span class="small muted">Expires ${timeHM(inv.expires_at)}</span>` : ''}`;
+      : '<span style="color:var(--yellow)">⏳ Waiting for signup</span>';
     return `
       <div class="card" style="padding:12px">
         <div class="row"><span class="grow"><b>${esc(inv.label) || 'Untitled invite'}</b><br>
@@ -5574,7 +5573,6 @@ async function adminInvitesBody() {
           ${inv.used_at ? `<br><span class="small muted">Used ${timeHM(inv.used_at)}</span>` : ''}</span></div>
         <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
           ${!inv.is_revoked ? `<button class="btn small" data-inv-copy="${inv.code}" data-aff="${isAff ? 1 : 0}">📋 Copy link</button>` : ''}
-          ${!inv.is_revoked && !inv.used_by ? `<button class="btn small ghost" data-inv-refresh="${inv.id}">🔄 Refresh (6h)</button>` : ''}
           ${!inv.is_revoked ? `<button class="btn small danger" data-inv-revoke="${inv.id}" data-used="${inv.used_by ? 1 : 0}">Revoke</button>` : ''}
         </div>
       </div>`;
@@ -5582,7 +5580,7 @@ async function adminInvitesBody() {
   return `
     <div class="card">
       <div style="font-weight:800;margin-bottom:6px">✉️ Generate model invite link</div>
-      <div class="muted small">Send this link to a model — she signs up through it and gets a model account. Links expire in 6 hours; if she's slow, hit 🔄 Refresh on her link below — same link, 6 fresh hours, nothing to resend. You can revoke it anytime.</div>
+      <div class="muted small">Send this link to a model — she signs up through it and gets a model account. You can revoke it anytime.</div>
       <label class="field">Label (e.g. her name)<input class="input" id="inv-label" placeholder="Bunny"></label>
       <button class="btn" id="inv-gen">Generate invite link</button>
     </div>
@@ -6214,15 +6212,6 @@ function wireAdminBody(tab) {
       await api(`/admin/invites/${b.dataset.invRevoke}/revoke`, {
         method: 'POST', body: JSON.stringify({ deactivate_model: deactivate }) });
       toast('⛔ Invite revoked' + (deactivate ? ' + model deactivated' : ''));
-      show('admin', {});
-    };
-  });
-
-  document.querySelectorAll('[data-inv-refresh]').forEach((b) => {
-    b.onclick = async () => {
-      const { status } = await api(`/admin/invites/${b.dataset.invRefresh}/refresh`, {
-        method: 'POST', body: JSON.stringify({}) });
-      toast(status === 200 ? '🔄 Link refreshed — same link, good for 6 more hours.' : 'Could not refresh that link.');
       show('admin', {});
     };
   });

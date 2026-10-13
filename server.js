@@ -1346,7 +1346,7 @@ app.post('/api/auth/signup', (req, res) => {
     if (invite.used_by)
       return res.status(400).json({ error: 'invite_used', message: 'This invite link has already been used.' });
     if (invite.expires_at && new Date(invite.expires_at + 'Z') < new Date())
-      return res.status(400).json({ error: 'invite_expired', message: 'This invite link has expired. Ask for it to be refreshed.' });
+      return res.status(400).json({ error: 'invite_expired', message: 'This invite link has expired. Ask for a new one.' });
     finalRole = 'model';
   }
   // Referral-code flow: a partner's link attributes the new model to that recruiter
@@ -4993,21 +4993,6 @@ app.post('/api/admin/invites/:id/revoke', ...adminOnly, (req, res) => {
     modelDeactivated = true;
   }
   res.json({ ok: true, model_deactivated: modelDeactivated });
-});
-
-// Admin: refresh an invite link — SAME code, fresh 6-hour window.
-// For when a model took too long to sign up and her link expired (or is about to).
-// The link she already has keeps working; no new link needs to be sent.
-app.post('/api/admin/invites/:id/refresh', ...adminOnly, (req, res) => {
-  const inv = db.prepare('SELECT * FROM invite_links WHERE id = ?').get(req.params.id);
-  if (!inv) return res.status(404).json({ error: 'not_found' });
-  if (inv.is_revoked)
-    return res.status(400).json({ error: 'revoked', message: 'This invite was revoked. Generate a new one instead.' });
-  if (inv.used_by)
-    return res.status(400).json({ error: 'already_used', message: 'This invite was already used to sign up.' });
-  db.prepare(`UPDATE invite_links SET expires_at = datetime('now', '+6 hours') WHERE id = ?`).run(inv.id);
-  const row = db.prepare('SELECT expires_at FROM invite_links WHERE id = ?').get(inv.id);
-  res.json({ ok: true, id: inv.id, code: inv.code, expires_at: row.expires_at });
 });
 
 /* ---------------- Recruiters / partners ---------------- */
