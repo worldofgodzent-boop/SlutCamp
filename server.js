@@ -184,9 +184,7 @@ CREATE TABLE IF NOT EXISTS models (
   per_minute_cents  INTEGER NOT NULL DEFAULT 399,
   is_online        INTEGER NOT NULL DEFAULT 0,
   explicit_join_cents INTEGER NOT NULL DEFAULT 2500,
-  explicit_mic_join_cents INTEGER NOT NULL DEFAULT 1500,
-  join_cents INTEGER NOT NULL DEFAULT 1000,
-  mic_join_cents INTEGER NOT NULL DEFAULT 500
+  explicit_mic_join_cents INTEGER NOT NULL DEFAULT 1500
 );
 
 -- Model likes (fans tap heart on model cards)
@@ -326,25 +324,6 @@ CREATE TABLE IF NOT EXISTS calls (
   minutes_billed INTEGER NOT NULL DEFAULT 0,
   created_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
-
--- FaceTime (instant 1-on-1 from chat): fan prepays a duration block and
--- requests; model accepts (starts now or queues behind her current call).
-CREATE TABLE IF NOT EXISTS facetime_requests (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  fan_id            INTEGER NOT NULL REFERENCES users(id),
-  model_id          INTEGER NOT NULL REFERENCES users(id),
-  duration_min      INTEGER NOT NULL,
-  amount_cents      INTEGER NOT NULL,
-  status            TEXT NOT NULL DEFAULT 'pending'
-    CHECK(status IN ('pending','queued','invited','in_call','done','declined','cancelled','expired')),
-  call_id           INTEGER REFERENCES calls(id),
-  invite_expires_ms INTEGER,
-  created_at        TEXT NOT NULL DEFAULT (datetime('now')),
-  decided_at        TEXT,
-  ended_at          TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_ft_model_status ON facetime_requests (model_id, status, id);
-CREATE INDEX IF NOT EXISTS idx_ft_fan ON facetime_requests (fan_id, status);
 
 CREATE TABLE IF NOT EXISTS transactions (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -589,10 +568,6 @@ function addColumnIfMissing(table, col, def) {
   if (!cols.includes(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
 }
 addColumnIfMissing('messages', 'media_id', 'INTEGER REFERENCES media_items(id)');
-addColumnIfMissing('calls', 'prepaid_min', 'INTEGER NOT NULL DEFAULT 0');
-addColumnIfMissing('calls', 'is_explicit', 'INTEGER NOT NULL DEFAULT 0');
-addColumnIfMissing('calls', 'explicit_pending', 'INTEGER NOT NULL DEFAULT 0');
-addColumnIfMissing('calls', 'facetime_req_id', 'INTEGER');
 addColumnIfMissing('models', 'per_voice_cents', 'INTEGER NOT NULL DEFAULT 299');
 addColumnIfMissing('models', 'explicit_rate_cents', 'INTEGER NOT NULL DEFAULT 499');
 addColumnIfMissing('models', 'photo_url', "TEXT NOT NULL DEFAULT ''");
@@ -614,17 +589,10 @@ addColumnIfMissing('live_join_requests', 'is_explicit', 'INTEGER NOT NULL DEFAUL
 addColumnIfMissing('live_join_requests', 'mode', "TEXT NOT NULL DEFAULT 'video'");
 addColumnIfMissing('models', 'explicit_join_cents', 'INTEGER NOT NULL DEFAULT 2500');
 addColumnIfMissing('models', 'explicit_mic_join_cents', 'INTEGER NOT NULL DEFAULT 1500');
-addColumnIfMissing('models', 'join_cents', 'INTEGER NOT NULL DEFAULT 1000');
-addColumnIfMissing('models', 'mic_join_cents', 'INTEGER NOT NULL DEFAULT 500');
 addColumnIfMissing('calls', 'booking_id', 'INTEGER REFERENCES bookings(id)');
 addColumnIfMissing('platform_stats', 'explicit_entry_cents', 'INTEGER NOT NULL DEFAULT 499');
 addColumnIfMissing('platform_stats', 'admin_phone', 'TEXT');
 addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0');
-addColumnIfMissing('platform_stats', 'test_money_cleared_at', 'TEXT');
-addColumnIfMissing('transactions', 'is_test', 'INTEGER NOT NULL DEFAULT 0');
-// Admin visibility switch: hidden models vanish from the public listings
-// (home grid, Lives) without touching their account (Corry, Oct 12 2026).
-addColumnIfMissing('models', 'is_hidden', 'INTEGER NOT NULL DEFAULT 0');
 // Fraud protection: account status ('active' | 'frozen') + ledger IP on every money row
 addColumnIfMissing('users', 'status', "TEXT NOT NULL DEFAULT 'active'");
 addColumnIfMissing('transactions', 'ip', 'TEXT');
@@ -635,21 +603,6 @@ addColumnIfMissing('users', 'name_changed_at', 'TEXT');
 // UI language preference ('en' | 'es' | 'pt') — set from the in-app language
 // picker, returned by /api/me so it follows the user across devices
 addColumnIfMissing('users', 'language', "TEXT NOT NULL DEFAULT 'en'");
-
-// Model welcome celebration: welcomed_at NULL = not yet welcomed. Everyone
-// who already has an account when this ships counts as welcomed — only NEW
-// model signups get the congratulations overlay.
-(function () {
-  const cols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
-  if (!cols.includes('welcomed_at')) {
-    db.exec('ALTER TABLE users ADD COLUMN welcomed_at TEXT');
-    db.exec("UPDATE users SET welcomed_at = datetime('now')");
-  }
-})();
-
-// Welcome MESSAGE in her app inbox (from Asce (Admin)): stamped when sent.
-// NULL = not sent yet; the boot sweep delivers to anyone missing it.
-addColumnIfMissing('users', 'welcome_msg_sent_at', 'TEXT');
 db.exec(`
 CREATE TABLE IF NOT EXISTS name_change_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -900,7 +853,6 @@ const getUserPublic = (u) => ({
   display_name: u.display_name, banned: !!u.banned,
   status: u.status || 'active',
   language: u.language || 'en',
-  welcomed: !!u.welcomed_at,
 });
 
 const fmt$ = (c) => '$' + (c / 100).toFixed(2); // server-side money formatter (cents → $x.xx)
@@ -1170,16 +1122,6 @@ function notifyUser(userId, type, title, body, link) {
   return n;
 }
 
-// Phone buzz for a new chat message — Web Push only, no bell row (the
-// conversation unread badge covers in-app). Skipped when the recipient is
-// in the app right now: their socket already delivered it live.
-function buzzChatRecipient(userId, title, body) {
-  if (!userId) return;
-  const set = socketsBySubject.get(`u:${userId}`);
-  if (set && set.size) return;
-  sendWebPush(userId, { title, body, link: '/' }).catch(() => {});
-}
-
 // Notify every online admin about something (safety incidents, etc.)
 function pushToAdmins(event) {
   const admins = db.prepare(`SELECT id FROM users WHERE role = 'admin'`).all();
@@ -1248,86 +1190,8 @@ function createUser(username, password, role, displayName, dob) {
     'INSERT INTO users (username, password_hash, role, display_name, dob) VALUES (?,?,?,?,?)'
   ).run(username, hash, role, displayName, dob);
   db.prepare('INSERT INTO wallets (user_id) VALUES (?)').run(info.lastInsertRowid);
-  if (role === 'model') {
-    db.prepare('INSERT INTO models (user_id) VALUES (?)').run(info.lastInsertRowid);
-    // Automatic: the congratulations/welcome message lands in her inbox.
-    try { sendModelWelcome(Number(info.lastInsertRowid)); } catch (e) { /* boot sweep retries */ }
-  }
+  if (role === 'model') db.prepare('INSERT INTO models (user_id) VALUES (?)').run(info.lastInsertRowid);
   return Number(info.lastInsertRowid);
-}
-
-/* ------------------------------------------------------------------ */
-/* Model welcome message — congratulations in her app inbox           */
-/* ------------------------------------------------------------------ */
-const MODEL_WELCOME = {
-  en: (name) => `🎉 Congratulations, ${name}!
-
-Welcome to SlutCamp 💋 You're officially one of our models — and you're in early. Early models get seen first, and the fans are already waiting.
-
-💰 You keep 60% of everything: paid messages, live streams + video calls paid per minute at YOUR prices, tips and paid content.
-
-To start earning:
-✍️ Sign your model agreement
-🪪 Verify your ID (2257 — keeps you legal and paid)
-📸 Add your photo, set your prices, and go live
-
-Questions? Just reply right here. Welcome to the family 🔥 — Asce`,
-  es: (name) => `🎉 ¡Felicidades, ${name}!
-
-Bienvenida a SlutCamp 💋 Ya eres oficialmente una de nuestras modelos — y llegaste temprano. Las primeras modelos se ven primero, y los fans ya están esperando.
-
-💰 Te quedas con el 60% de todo: mensajes pagos, lives y videollamadas pagadas por minuto a TUS precios, propinas y contenido pago.
-
-Para empezar a ganar:
-✍️ Firma tu acuerdo de modelo
-🪪 Verifica tu ID (2257 — te mantiene legal y cobrando)
-📸 Sube tu foto, pon tus precios y sal en vivo
-
-¿Preguntas? Responde aquí mismo. Bienvenida a la familia 🔥 — Asce`,
-  pt: (name) => `🎉 Parabéns, ${name}!
-
-Bem-vinda à SlutCamp 💋 Você agora é oficialmente uma das nossas modelos — e chegou cedo. As primeiras modelos são vistas primeiro, e os fãs já estão esperando.
-
-💰 Você fica com 60% de tudo: mensagens pagas, lives e videochamadas pagas por minuto nos SEUS preços, gorjetas e conteúdo pago.
-
-Para começar a ganhar:
-✍️ Assine seu contrato de modelo
-🪪 Verifique seu documento (2257 — mantém você legal e recebendo)
-📸 Adicione sua foto, defina seus preços e entre ao vivo
-
-Dúvidas? Responda aqui mesmo. Bem-vinda à família 🔥 — Asce`,
-};
-
-/* Send the welcome message into a model's inbox exactly once. Sender is
-   the admin account (shows as "Asce (Admin)"). Free (cost 0), never blocks
-   signup — if anything fails, the boot sweep retries next start. */
-function sendModelWelcome(modelUserId) {
-  const m = db.prepare("SELECT id, display_name, language, welcome_msg_sent_at FROM users WHERE id = ? AND role = 'model'")
-    .get(modelUserId);
-  if (!m || m.welcome_msg_sent_at) return false;
-  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
-  if (!admin || admin.id === m.id) return false;
-  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-  if (!conv) {
-    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-    conv = { id: Number(info.lastInsertRowid) };
-  }
-  const make = MODEL_WELCOME[m.language] || MODEL_WELCOME.en;
-  db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-    .run(conv.id, admin.id, make(m.display_name));
-  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
-  db.prepare("UPDATE users SET welcome_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
-  try {
-    notifyUser(m.id, 'welcome', '🎉 Welcome to SlutCamp!',
-      'Congratulations — Asce sent you a message in your inbox 💋', '');
-  } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
-  return true;
-}
-
-/* Boot sweep: every model who never got the welcome message gets it now. */
-function sendPendingModelWelcomes() {
-  const rows = db.prepare("SELECT id FROM users WHERE role = 'model' AND welcome_msg_sent_at IS NULL").all();
-  for (const r of rows) { try { sendModelWelcome(r.id); } catch (e) { /* retry next boot */ } }
 }
 
 function seed() {
@@ -1364,28 +1228,6 @@ function seed() {
   console.log('Seeded: admin/admin123 · bunny|stacey|bella/model123 · fandemo/fan123 ($100)');
 }
 seed();
-sendPendingModelWelcomes();
-
-// One-time pre-launch cleanup (Corry, Oct 12 2026): every cent on the
-// platform so far is TEST money — demo credits only, no real payment has
-// ever been processed. Clear model/recruiter balances so nobody mistakes
-// demo earnings for money actually owed. NOTHING is deleted: transactions
-// stay on the ledger flagged is_test=1, and money displays exclude test
-// rows from here on. Runs exactly once (marker on platform_stats).
-(function clearTestMoneyOnce() {
-  try {
-    const row = db.prepare('SELECT test_money_cleared_at FROM platform_stats WHERE id = 1').get();
-    if (!row || row.test_money_cleared_at) return;
-    db.prepare('UPDATE transactions SET is_test = 1 WHERE is_test = 0').run();
-    db.prepare(`UPDATE wallets SET earnings_cents = 0, paid_out_cents = 0
-                WHERE user_id IN (SELECT id FROM users WHERE role IN ('model','recruiter'))`).run();
-    db.prepare('UPDATE platform_stats SET earnings_cents = 0 WHERE id = 1').run();
-    db.prepare(`UPDATE withdrawals SET status = 'rejected', decided_at = datetime('now'),
-                note = 'Pre-launch test balance cleared' WHERE status = 'pending'`).run();
-    db.prepare("UPDATE platform_stats SET test_money_cleared_at = datetime('now') WHERE id = 1").run();
-    console.log('[cleanup] Pre-launch test money cleared (transactions flagged is_test, balances zeroed).');
-  } catch (e) { console.log('[cleanup] test money clear failed:', e.message); }
-})();
 
 /* ------------------------------------------------------------------ */
 /* Public: guest tokens + model browsing (no login needed)              */
@@ -1412,10 +1254,10 @@ app.get('/api/models', (req, res) => {
            (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS live_viewers,
            (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) AS like_count,
            (SELECT COALESCE(SUM(gross_cents), 0) FROM transactions
-             WHERE model_id = u.id AND type <> 'payout' AND is_test = 0) AS total_sales_cents
+             WHERE model_id = u.id AND type <> 'payout') AS total_sales_cents
     FROM users u JOIN models m ON m.user_id = u.id
     LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live'
-    WHERE u.role = 'model' AND u.banned = 0 AND m.is_hidden = 0
+    WHERE u.role = 'model' AND u.banned = 0
     ORDER BY m.is_featured DESC,
              (total_sales_cents / 100.0 + like_count) DESC,
              like_count DESC, m.is_online DESC, u.created_at DESC, u.display_name ASC
@@ -1504,7 +1346,7 @@ app.post('/api/auth/signup', (req, res) => {
     if (invite.used_by)
       return res.status(400).json({ error: 'invite_used', message: 'This invite link has already been used.' });
     if (invite.expires_at && new Date(invite.expires_at + 'Z') < new Date())
-      return res.status(400).json({ error: 'invite_expired', message: 'This invite link has expired. Ask for it to be refreshed.' });
+      return res.status(400).json({ error: 'invite_expired', message: 'This invite link has expired. Ask for a new one.' });
     finalRole = 'model';
   }
   // Referral-code flow: a partner's link attributes the new model to that recruiter
@@ -1536,7 +1378,16 @@ app.post('/api/auth/signup', (req, res) => {
   }
 
   // Migrate guest history → new account (chats, free-trial counts, strikes)
-  mergeGuestIntoUser(id, guest_token);
+  if (guest_token && /^[a-f0-9]{32}$/.test(guest_token)) {
+    const gk = `g:${guest_token}`, uk = `u:${id}`;
+    db.prepare(`UPDATE conversations SET fan_id = ?, guest_token = NULL
+                WHERE guest_token = ?`).run(id, guest_token);
+    db.prepare(`UPDATE free_trials SET subject_key = ? WHERE subject_key = ?`).run(uk, gk);
+    db.prepare(`UPDATE strikes SET subject_key = ? WHERE subject_key = ?`).run(uk, gk);
+    db.prepare(`UPDATE messages SET guest_token = NULL WHERE guest_token = ?
+                AND conversation_id IN (SELECT id FROM conversations WHERE fan_id = ?)`)
+      .run(guest_token, id);
+  }
 
   const token = createSession(id);
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
@@ -1568,60 +1419,17 @@ app.post('/api/auth/quick-signup', (req, res) => {
     .run(full_name.trim().slice(0, 80), pay_method, card_last4 || null, cashtag || null, id);
 
   // Migrate guest history to the new account
-  mergeGuestIntoUser(id, guest_token);
+  if (guest_token && /^[a-f0-9]{32}$/.test(guest_token)) {
+    const gk = 'g:' + guest_token, uk = 'u:' + id;
+    db.prepare('UPDATE conversations SET fan_id = ?, guest_token = NULL WHERE guest_token = ?').run(id, guest_token);
+    db.prepare('UPDATE free_trials SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
+    db.prepare('UPDATE strikes SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
+  }
 
   const token = createSession(id);
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   res.json({ token, user: getUserPublic(user) });
 });
-
-// Fold a guest's history into a real account (signup + login).
-// Conflict-safe: if the fan already has a thread with a model the guest
-// chatted with, the guest messages move INTO that thread and the guest
-// thread is removed — a plain UPDATE crashes on UNIQUE(fan_id, model_id)
-// and fails the whole login (bit Corry's fandemo login, Oct 12 2026).
-// Merges must never fail auth: every step is guarded; worst case the
-// history simply stays guest-owned.
-function mergeGuestIntoUser(userId, guest_token) {
-  if (!guest_token || !/^[a-f0-9]{32}$/.test(guest_token)) return;
-  const gk = `g:${guest_token}`, uk = `u:${userId}`;
-  try {
-    const guestConvs = db.prepare(
-      'SELECT id, model_id FROM conversations WHERE guest_token = ? AND fan_id IS NULL').all(guest_token);
-    for (const gc of guestConvs) {
-      const existing = db.prepare(
-        'SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(userId, gc.model_id);
-      if (existing) {
-        db.prepare('UPDATE messages SET conversation_id = ? WHERE conversation_id = ?').run(existing.id, gc.id);
-        db.prepare('DELETE FROM conversations WHERE id = ?').run(gc.id);
-      } else {
-        db.prepare('UPDATE conversations SET fan_id = ?, guest_token = NULL WHERE id = ?').run(userId, gc.id);
-      }
-    }
-  } catch (e) { console.log('[auth] guest conversation merge failed:', e.message); }
-  try {
-    db.prepare(`DELETE FROM free_trials WHERE subject_key = ?
-                 AND model_id IN (SELECT model_id FROM free_trials WHERE subject_key = ?)`).run(gk, uk);
-    db.prepare('UPDATE free_trials SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
-  } catch (e) { console.log('[auth] free_trials merge failed:', e.message); }
-  try {
-    const gs = db.prepare('SELECT strikes, flagged FROM strikes WHERE subject_key = ?').get(gk);
-    if (gs) {
-      const us = db.prepare('SELECT strikes, flagged FROM strikes WHERE subject_key = ?').get(uk);
-      if (us) {
-        db.prepare('UPDATE strikes SET strikes = ?, flagged = ? WHERE subject_key = ?')
-          .run(us.strikes + gs.strikes, Math.max(us.flagged, gs.flagged), uk);
-        db.prepare('DELETE FROM strikes WHERE subject_key = ?').run(gk);
-      } else {
-        db.prepare('UPDATE strikes SET subject_key = ? WHERE subject_key = ?').run(uk, gk);
-      }
-    }
-  } catch (e) { console.log('[auth] strikes merge failed:', e.message); }
-  try {
-    db.prepare(`UPDATE messages SET guest_token = NULL WHERE guest_token = ?
-                AND conversation_id IN (SELECT id FROM conversations WHERE fan_id = ?)`).run(guest_token, userId);
-  } catch (e) { /* cosmetic cleanup only */ }
-}
 
 app.post('/api/auth/login', (req, res) => {
   const { username, password, guest_token } = req.body || {};
@@ -1634,7 +1442,13 @@ app.post('/api/auth/login', (req, res) => {
   // Admin can ONLY log in via the secret admin route (#boss). Never here.
   if (user.role === 'admin') return res.status(403).json({ error: 'not_here' });
 
-  if (guest_token) mergeGuestIntoUser(user.id, guest_token);
+  if (guest_token && /^[a-f0-9]{32}$/.test(guest_token)) {
+    const gk = `g:${guest_token}`, uk = `u:${user.id}`;
+    db.prepare(`UPDATE conversations SET fan_id = ?, guest_token = NULL
+                WHERE guest_token = ? AND fan_id IS NULL`).run(user.id, guest_token);
+    db.prepare(`UPDATE free_trials SET subject_key = ? WHERE subject_key = ?`).run(uk, gk);
+    db.prepare(`UPDATE strikes SET subject_key = ? WHERE subject_key = ?`).run(uk, gk);
+  }
 
   const token = createSession(user.id);
   res.json({ token, user: getUserPublic(user) });
@@ -1786,13 +1600,6 @@ app.patch('/api/me/language', identMiddleware, requireUser, (req, res) => {
     return res.status(400).json({ error: 'bad_language', message: 'Supported languages: en, es, pt.' });
   db.prepare('UPDATE users SET language = ? WHERE id = ?').run(lang, req.user.id);
   res.json({ ok: true, language: lang });
-});
-
-// Model welcome celebration — mark it seen so it shows exactly once.
-app.post('/api/me/welcomed', identMiddleware, requireUser, (req, res) => {
-  db.prepare("UPDATE users SET welcomed_at = datetime('now') WHERE id = ? AND welcomed_at IS NULL")
-    .run(req.user.id);
-  res.json({ ok: true });
 });
 
 // Model submits a name change request for admin approval
@@ -2105,8 +1912,6 @@ app.post('/api/messages', identMiddleware, (req, res) => {
         : `u:${conv.model_id}`)
     : `u:${conv.model_id}`;
   pushToSubject(otherKey, { type: 'chat:new', conversation_id: conv.id, message: full });
-  buzzChatRecipient(isModelSender ? conv.fan_id : conv.model_id,
-    `💬 ${full.sender_name}`, text.slice(0, 120));
 
   res.json({ message: full, cost_cents: costCents, free_remaining: freeLeft,
     balance_cents: req.ident.kind === 'user' ? getWallet(req.ident.user.id).credits_cents : null });
@@ -2234,8 +2039,6 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
       : `u:${conv.model_id}`;
     const receiverMsg = { ...full, media: receiverMedia };
     pushToSubject(otherKey, { type: 'chat:new', conversation_id: conv.id, message: receiverMsg });
-    buzzChatRecipient(isModelSender ? conv.fan_id : conv.model_id,
-      `💬 ${full.sender_name}`, MEDIA_LABELS[kind] || 'New message');
 
     res.json({ message: full, cost_cents: costCents, free_remaining: freeLeft,
       balance_cents: req.ident.kind === 'user' ? getWallet(req.ident.user.id).credits_cents : null });
@@ -2726,13 +2529,12 @@ app.post('/api/credits/buy', identMiddleware, requireUser, requireRole('fan'), (
 
 app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const { bio, per_message_cents, per_minute_cents, per_voice_cents, explicit_rate_cents,
-          explicit_join_cents, explicit_mic_join_cents, join_cents, mic_join_cents,
-          is_online } = req.body || {};
+          explicit_join_cents, explicit_mic_join_cents, is_online } = req.body || {};
   const updates = [], params = [];
   // Model-settable 1-on-1 rates (tighter ranges than the admin override)
   const rateRange = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
   const badRate = (v, lo, hi) => v !== undefined && !rateRange(v, lo, hi);
-  if (badRate(per_message_cents, 50, 1000) || badRate(per_minute_cents, 500, 100000) ||
+  if (badRate(per_message_cents, 50, 1000) || badRate(per_minute_cents, 100, 2000) ||
       badRate(per_voice_cents, 50, 1000))
     return res.status(400).json({ error: 'bad_rate',
       message: 'Rates out of range.' });
@@ -2740,7 +2542,7 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
   if (rateRange(per_message_cents, 50, 1000)) {
     updates.push('per_message_cents = ?'); params.push(per_message_cents);
   }
-  if (rateRange(per_minute_cents, 500, 100000)) {
+  if (rateRange(per_minute_cents, 100, 2000)) {
     updates.push('per_minute_cents = ?'); params.push(per_minute_cents);
   }
   if (rateRange(per_voice_cents, 50, 1000)) {
@@ -2749,24 +2551,16 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
   if (Number.isInteger(explicit_rate_cents) && explicit_rate_cents >= 0 && explicit_rate_cents <= 20000) {
     updates.push('explicit_rate_cents = ?'); params.push(explicit_rate_cents);
   }
-  if (Number.isInteger(explicit_join_cents) && explicit_join_cents >= 500 && explicit_join_cents <= 100000) {
+  if (Number.isInteger(explicit_join_cents) && explicit_join_cents >= 500 && explicit_join_cents <= 10000) {
     updates.push('explicit_join_cents = ?'); params.push(explicit_join_cents);
   }
-  if (Number.isInteger(explicit_mic_join_cents) && explicit_mic_join_cents >= 500 && explicit_mic_join_cents <= 100000) {
+  if (Number.isInteger(explicit_mic_join_cents) && explicit_mic_join_cents >= 500 && explicit_mic_join_cents <= 10000) {
     updates.push('explicit_mic_join_cents = ?'); params.push(explicit_mic_join_cents);
-  }
-  if (Number.isInteger(join_cents) && join_cents >= 500 && join_cents <= 100000) {
-    updates.push('join_cents = ?'); params.push(join_cents);
-  }
-  if (Number.isInteger(mic_join_cents) && mic_join_cents >= 500 && mic_join_cents <= 100000) {
-    updates.push('mic_join_cents = ?'); params.push(mic_join_cents);
   }
   if (is_online === 0 || is_online === 1) { updates.push('is_online = ?'); params.push(is_online); }
   if (!updates.length) return res.status(400).json({ error: 'nothing_to_update' });
   params.push(req.user.id);
   db.prepare(`UPDATE models SET ${updates.join(', ')} WHERE user_id = ?`).run(...params);
-  // Going offline empties her FaceTime line (refunded + notified).
-  if (is_online === 0) ftCancelAll(req.user.id, 'she went offline');
   res.json({ model: db.prepare('SELECT * FROM models WHERE user_id = ?').get(req.user.id) });
 });
 
@@ -3350,47 +3144,22 @@ app.post('/api/tax-profile', identMiddleware, requireUser, requireRole('model', 
   res.json({ ok: true, tax_id_last4: last4, tax_id_type: idType });
 });
 
-// Model Fan Club: her top buyers ranked, with a Live / 1-on-1 / Chat split.
-// Gross spend per fan (refunds net out — refund rows carry negative gross).
-app.get('/api/model/fan-club', identMiddleware, requireUser, requireRole('model'), (req, res) => {
-  const period = ['week', 'month'].includes(req.query.period) ? req.query.period : 'all';
-  const since = period === 'week' ? `datetime('now','-7 days')`
-              : period === 'month' ? `datetime('now','-30 days')` : null;
-  const where = `t.model_id = ? AND t.is_test = 0 AND t.fan_id IS NOT NULL` +
-    (since ? ` AND t.created_at >= ${since}` : '');
-  const buyers = db.prepare(`
-    SELECT t.fan_id, u.display_name AS fan_name,
-      SUM(t.gross_cents) AS total_cents,
-      SUM(CASE WHEN t.type LIKE 'live%' OR t.type LIKE 'priority%' THEN t.gross_cents ELSE 0 END) AS live_cents,
-      SUM(CASE WHEN t.type LIKE 'booking%' OR t.type LIKE 'call%' THEN t.gross_cents ELSE 0 END) AS priv_cents,
-      SUM(CASE WHEN t.type LIKE 'live%' OR t.type LIKE 'priority%' OR t.type LIKE 'booking%' OR t.type LIKE 'call%' THEN 0 ELSE t.gross_cents END) AS chat_cents,
-      SUM(CASE WHEN t.gross_cents > 0 THEN 1 ELSE 0 END) AS payments,
-      MAX(t.created_at) AS last_at
-    FROM transactions t JOIN users u ON u.id = t.fan_id
-    WHERE ${where}
-    GROUP BY t.fan_id HAVING total_cents > 0
-    ORDER BY total_cents DESC LIMIT 10`).all(req.user.id);
-  const total = db.prepare(
-    `SELECT COUNT(DISTINCT t.fan_id) AS n FROM transactions t WHERE ${where}`).get(req.user.id);
-  res.json({ period, buyers, total_buyers: total.n });
-});
-
 app.get('/api/model/earnings', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const wallet = getWallet(req.user.id);
   const byFan = db.prepare(`
     SELECT COALESCE(u.display_name, 'Guest Fan') AS fan_name,
            SUM(t.model_cents) AS earned_cents, COUNT(*) AS payments
     FROM transactions t LEFT JOIN users u ON u.id = t.fan_id
-    WHERE t.model_id = ? AND t.is_test = 0 AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift')
+    WHERE t.model_id = ? AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift')
     GROUP BY t.fan_id ORDER BY earned_cents DESC`).all(req.user.id);
   const byType = db.prepare(`
     SELECT t.type, SUM(t.model_cents) AS earned_cents, COUNT(*) AS n
     FROM transactions t
-    WHERE t.model_id = ? AND t.is_test = 0 AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift')
+    WHERE t.model_id = ? AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift')
     GROUP BY t.type`).all(req.user.id);
   const gifts = db.prepare(`
     SELECT COALESCE(SUM(t.model_cents), 0) AS gifts_cents, COUNT(*) AS gift_count
-    FROM transactions t WHERE t.model_id = ? AND t.is_test = 0 AND t.type = 'gift' AND t.model_cents > 0`).get(req.user.id);
+    FROM transactions t WHERE t.model_id = ? AND t.type = 'gift' AND t.model_cents > 0`).get(req.user.id);
   res.json({ earnings_cents: wallet.earnings_cents, paid_out_cents: wallet.paid_out_cents,
     pending_cents: wallet.earnings_cents - wallet.paid_out_cents, by_fan: byFan, by_type: byType,
     gifts_cents: gifts.gifts_cents, gift_count: gifts.gift_count });
@@ -3420,12 +3189,6 @@ function endCall(callId, reason) {
   }
   pushToSubject(`u:${call.fan_id}`, { type: 'call:ended', call_id: callId, reason: reason || 'ended' });
   pushToSubject(`u:${call.model_id}`, { type: 'call:ended', call_id: callId, reason: reason || 'ended' });
-  // FaceTime: close out the request and bring the next fan in line.
-  if (call.facetime_req_id) {
-    const fr = ftGet(call.facetime_req_id);
-    if (fr && fr.status === 'in_call') ftFinish(fr, 'done', null);
-  }
-  ftPromote(call.model_id);
 }
 
 function billCallMinute(callId) {
@@ -3435,23 +3198,9 @@ function billCallMinute(callId) {
     if (t) { clearInterval(t); activeCallTimers.delete(callId); }
     return;
   }
-  if (call.prepaid_min > 0) {
-    // FaceTime block: already paid upfront — just count down to the cap.
-    db.prepare('UPDATE calls SET minutes_billed = minutes_billed + 1 WHERE id = ?').run(callId);
-    const upd = db.prepare('SELECT * FROM calls WHERE id = ?').get(callId);
-    const remaining = Math.max(0, upd.prepaid_min - upd.minutes_billed);
-    pushToSubject(`u:${call.fan_id}`, { type: 'call:tick', call_id: callId,
-      minutes_billed: upd.minutes_billed, remaining_min: remaining, prepaid: true,
-      balance_cents: getWallet(call.fan_id).credits_cents });
-    pushToSubject(`u:${call.model_id}`, { type: 'call:tick', call_id: callId,
-      minutes_billed: upd.minutes_billed, remaining_min: remaining, prepaid: true });
-    if (remaining <= 0) endCall(callId, 'time_up');
-    return;
-  }
   try {
-    const rate = call.is_explicit ? call.rate_cents * 2 : call.rate_cents;
-    chargeFan(call.fan_id, call.model_id, rate, 'call',
-      `Video call minute ${call.minutes_billed + 1}${call.is_explicit ? ' (explicit)' : ''}`);
+    chargeFan(call.fan_id, call.model_id, call.rate_cents, 'call',
+      `Video call minute ${call.minutes_billed + 1}`);
     db.prepare('UPDATE calls SET minutes_billed = minutes_billed + 1 WHERE id = ?').run(callId);
     const upd = db.prepare('SELECT * FROM calls WHERE id = ?').get(callId);
     pushToSubject(`u:${call.fan_id}`, { type: 'call:tick', call_id: callId,
@@ -3471,9 +3220,6 @@ app.post('/api/calls', identMiddleware, requireUser, requireRole('fan'), (req, r
     WHERE u.id = ? AND u.role = 'model' AND u.banned = 0`).get(req.body.model_id);
   if (!row) return res.status(404).json({ error: 'model_not_found' });
   if (!row.is_online) return res.status(409).json({ error: 'model_offline' });
-  const liveNow = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`).get(row.id);
-  if (liveNow) return res.status(409).json({ error: 'model_live',
-    message: "She's live right now — video calls are locked during lives. Join her stage or book a 1-on-1." });
   let conv = db.prepare('SELECT * FROM conversations WHERE fan_id = ? AND model_id = ?')
     .get(req.user.id, row.id);
   if (conv) conv = maybeAutoUnpause(conv);
@@ -3513,283 +3259,6 @@ app.get('/api/calls/:id', identMiddleware, requireUser, (req, res) => {
   if (call.model_id !== req.user.id && call.fan_id !== req.user.id && req.user.role !== 'admin')
     return res.status(403).json({ error: 'forbidden' });
   res.json({ call });
-});
-
-/* ------------------------------------------------------------------ */
-/* FaceTime: prepaid instant 1-on-1 requests + queue (Oct 13, 2026)    */
-/* Fan prepays a block (10/15/30/45/60 min) from chat. The model       */
-/* accepts -> his call starts now, or he queues behind her current     */
-/* call with live position + ETA updates. Locked while she's LIVE      */
-/* (book a 1-on-1 instead) or offline — requests need her "Online".    */
-/* Mid-call, she can flip to explicit: remaining minutes cost double,  */
-/* the fan pays the uplift to continue explicit.                       */
-/* ------------------------------------------------------------------ */
-const FACETIME_DURATIONS = [10, 15, 30, 45, 60];
-const FT_INVITE_WINDOW_MS = 90 * 1000;
-
-function ftGet(id) {
-  return db.prepare('SELECT * FROM facetime_requests WHERE id = ?').get(id);
-}
-function ftActiveCall(modelId) {
-  return db.prepare(`SELECT * FROM calls WHERE model_id = ? AND status = 'active'
-                     ORDER BY id DESC LIMIT 1`).get(modelId);
-}
-function ftCallRemainingMin(call) {
-  if (!call) return 0;
-  if (call.prepaid_min > 0) return Math.max(0, call.prepaid_min - call.minutes_billed);
-  return 10; // metered legacy call: rough ETA estimate only
-}
-function ftQueueState(modelId) {
-  const queued = db.prepare(`SELECT * FROM facetime_requests
-    WHERE model_id = ? AND status = 'queued' ORDER BY id`).all(modelId);
-  const invited = db.prepare(`SELECT * FROM facetime_requests
-    WHERE model_id = ? AND status = 'invited' ORDER BY id LIMIT 1`).get(modelId);
-  return { queued, invited, active: ftActiveCall(modelId) };
-}
-function ftPositionEta(modelId, reqRow) {
-  if (reqRow.status === 'invited') return { position: 0, eta_min: 0 };
-  if (reqRow.status !== 'queued') return { position: null, eta_min: null };
-  const { queued, invited, active } = ftQueueState(modelId);
-  let eta = ftCallRemainingMin(active);
-  let ahead = 0;
-  if (invited) { eta += invited.duration_min; ahead += 1; }
-  for (const q of queued) {
-    if (q.id === reqRow.id) break;
-    eta += q.duration_min; ahead += 1;
-  }
-  return { position: ahead + 1, eta_min: eta };
-}
-function ftPublic(reqRow) {
-  const fan = db.prepare('SELECT display_name FROM users WHERE id = ?').get(reqRow.fan_id);
-  const model = db.prepare('SELECT display_name FROM users WHERE id = ?').get(reqRow.model_id);
-  const pe = ftPositionEta(reqRow.model_id, reqRow);
-  return { id: reqRow.id, fan_id: reqRow.fan_id, fan_name: fan ? fan.display_name : 'Fan',
-    model_id: reqRow.model_id, model_name: model ? model.display_name : '',
-    duration_min: reqRow.duration_min, amount_cents: reqRow.amount_cents,
-    status: reqRow.status, call_id: reqRow.call_id,
-    position: pe.position, eta_min: pe.eta_min, created_at: reqRow.created_at };
-}
-function ftPushFan(reqRow, extra = {}) {
-  pushToSubject(`u:${reqRow.fan_id}`, { type: 'facetime:update',
-    request: ftPublic(reqRow), ...extra });
-}
-function ftPushQueue(modelId) {
-  for (const q of ftQueueState(modelId).queued) ftPushFan(q);
-}
-function ftFinish(reqRow, status, refundNote) {
-  db.prepare(`UPDATE facetime_requests SET status = ?,
-              ended_at = datetime('now') WHERE id = ?`).run(status, reqRow.id);
-  if (refundNote)
-    refundFan(reqRow.fan_id, reqRow.model_id, reqRow.amount_cents, 'call_refund', refundNote);
-  const fresh = ftGet(reqRow.id);
-  ftPushFan(fresh);
-  pushToSubject(`u:${reqRow.model_id}`, { type: 'facetime:update', request: ftPublic(fresh) });
-  return fresh;
-}
-function ftPromote(modelId) {
-  const { queued, invited, active } = ftQueueState(modelId);
-  if (active || invited || !queued.length) return;
-  const next = queued[0];
-  db.prepare(`UPDATE facetime_requests SET status = 'invited',
-              decided_at = datetime('now'), invite_expires_ms = ? WHERE id = ?`)
-    .run(Date.now() + FT_INVITE_WINDOW_MS, next.id);
-  const fresh = ftGet(next.id);
-  ftPushFan(fresh);
-  notifyUser(fresh.fan_id, 'facetime', '📹 Your turn!',
-    `${fresh.model_name} is ready for your FaceTime — join in the next 90 seconds or the spot passes on.`,
-    '/#chat');
-  ftPushQueue(modelId);
-}
-function ftCancelAll(modelId, reason) {
-  const rows = db.prepare(`SELECT * FROM facetime_requests WHERE model_id = ?
-    AND status IN ('pending','queued','invited') ORDER BY id`).all(modelId);
-  for (const r of rows) {
-    db.prepare(`UPDATE facetime_requests SET status = 'cancelled',
-                ended_at = datetime('now') WHERE id = ?`).run(r.id);
-    refundFan(r.fan_id, r.model_id, r.amount_cents, 'call_refund', `FaceTime cancelled — ${reason}`);
-    ftPushFan(ftGet(r.id), { reason });
-  }
-  if (rows.length) ftPushQueue(modelId);
-}
-function ftSweep() {
-  const stale = db.prepare(`SELECT * FROM facetime_requests WHERE status = 'pending'
-    AND created_at <= datetime('now', '-3 minutes')`).all();
-  for (const r of stale) ftFinish(r, 'expired', 'FaceTime request expired — no answer');
-  const missed = db.prepare(`SELECT * FROM facetime_requests WHERE status = 'invited'
-    AND invite_expires_ms IS NOT NULL AND invite_expires_ms < ?`).all(Date.now());
-  const touched = new Set();
-  for (const r of missed) {
-    ftFinish(r, 'cancelled', 'FaceTime turn missed — refunded');
-    touched.add(r.model_id);
-  }
-  for (const m of touched) ftPromote(m);
-}
-setInterval(ftSweep, 30 * 1000);
-
-app.post('/api/facetime/request', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
-  const duration = Number(req.body.duration_min);
-  if (!FACETIME_DURATIONS.includes(duration))
-    return res.status(400).json({ error: 'bad_duration', allowed: FACETIME_DURATIONS });
-  const row = db.prepare(`
-    SELECT u.id, u.display_name, m.is_online, m.per_minute_cents FROM users u
-    JOIN models m ON m.user_id = u.id
-    WHERE u.id = ? AND u.role = 'model' AND u.banned = 0`).get(req.body.model_id);
-  if (!row) return res.status(404).json({ error: 'model_not_found' });
-  const live = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`).get(row.id);
-  if (live) return res.status(409).json({ error: 'model_live',
-    message: "She's live right now — FaceTime is locked during lives. Join her stage or book a 1-on-1." });
-  if (!row.is_online) return res.status(409).json({ error: 'model_offline' });
-  let conv = db.prepare('SELECT * FROM conversations WHERE fan_id = ? AND model_id = ?')
-    .get(req.user.id, row.id);
-  if (conv) conv = maybeAutoUnpause(conv);
-  if (conv && conv.is_paused)
-    return res.status(423).json({ error: 'chat_paused', message: 'Chat is paused by safety monitor.' });
-  const dup = db.prepare(`SELECT id FROM facetime_requests WHERE fan_id = ? AND model_id = ?
-    AND status IN ('pending','queued','invited','in_call')`).get(req.user.id, row.id);
-  if (dup) return res.status(409).json({ error: 'already_requested', request_id: dup.id });
-  const amount = duration * row.per_minute_cents;
-  if (getWallet(req.user.id).credits_cents < amount)
-    return res.status(402).json({ error: 'insufficient_credits', needed_cents: amount,
-      balance_cents: getWallet(req.user.id).credits_cents });
-  try {
-    chargeFan(req.user.id, row.id, amount, 'call',
-      `FaceTime ${duration} min with ${row.display_name}`, clientIp(req));
-  } catch (e) {
-    return res.status(402).json({ error: 'insufficient_credits', needed_cents: amount });
-  }
-  const info = db.prepare(`INSERT INTO facetime_requests (fan_id, model_id, duration_min, amount_cents)
-    VALUES (?,?,?,?)`).run(req.user.id, row.id, duration, amount);
-  const fresh = ftGet(Number(info.lastInsertRowid));
-  pushToSubject(`u:${row.id}`, { type: 'facetime:request', request: ftPublic(fresh) });
-  notifyUser(row.id, 'facetime', '📹 FaceTime request',
-    `${req.user.display_name} wants a ${duration}-min FaceTime with you — $${(amount / 100).toFixed(2)}.`,
-    '/#chat');
-  res.json({ request: ftPublic(fresh) });
-});
-
-app.get('/api/facetime/mine', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
-  const r = db.prepare(`SELECT * FROM facetime_requests WHERE fan_id = ?
-    AND status IN ('pending','queued','invited','in_call') ORDER BY id DESC LIMIT 1`).get(req.user.id);
-  res.json({ request: r ? ftPublic(r) : null });
-});
-
-app.get('/api/facetime/incoming', identMiddleware, requireUser, requireRole('model'), (req, res) => {
-  const rows = db.prepare(`SELECT * FROM facetime_requests WHERE model_id = ?
-    AND status IN ('pending','queued','invited','in_call') ORDER BY id`).all(req.user.id);
-  res.json({ requests: rows.map(ftPublic) });
-});
-
-app.post('/api/facetime/:id/accept', identMiddleware, requireUser, requireRole('model'), (req, res) => {
-  const r = ftGet(req.params.id);
-  if (!r || r.model_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
-  if (r.status !== 'pending') return res.status(409).json({ error: 'not_pending' });
-  const { queued, invited, active } = ftQueueState(req.user.id);
-  if (active || invited) {
-    db.prepare(`UPDATE facetime_requests SET status = 'queued',
-                decided_at = datetime('now') WHERE id = ?`).run(r.id);
-    const fresh = ftGet(r.id);
-    ftPushFan(fresh);
-    ftPushQueue(req.user.id);
-    return res.json({ request: ftPublic(fresh), queued: true });
-  }
-  db.prepare(`UPDATE facetime_requests SET status = 'invited',
-              decided_at = datetime('now'), invite_expires_ms = ? WHERE id = ?`)
-    .run(Date.now() + FT_INVITE_WINDOW_MS, r.id);
-  const fresh = ftGet(r.id);
-  ftPushFan(fresh);
-  notifyUser(fresh.fan_id, 'facetime', '📹 She accepted!',
-    `${fresh.model_name} accepted your FaceTime — join in the next 90 seconds.`, '/#chat');
-  res.json({ request: ftPublic(fresh), queued: false });
-});
-
-app.post('/api/facetime/:id/decline', identMiddleware, requireUser, requireRole('model'), (req, res) => {
-  const r = ftGet(req.params.id);
-  if (!r || r.model_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
-  if (!['pending', 'queued'].includes(r.status))
-    return res.status(409).json({ error: 'not_decidable' });
-  ftFinish(r, 'declined', 'FaceTime declined — refunded');
-  ftPushQueue(req.user.id);
-  res.json({ ok: true });
-});
-
-app.post('/api/facetime/:id/cancel', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
-  const r = ftGet(req.params.id);
-  if (!r || r.fan_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
-  if (!['pending', 'queued', 'invited'].includes(r.status))
-    return res.status(409).json({ error: 'not_cancellable' });
-  const wasInvited = r.status === 'invited';
-  ftFinish(r, 'cancelled', 'FaceTime cancelled by fan — refunded');
-  if (wasInvited) ftPromote(r.model_id); else ftPushQueue(r.model_id);
-  res.json({ ok: true });
-});
-
-app.post('/api/facetime/:id/join', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
-  const r = ftGet(req.params.id);
-  if (!r || r.fan_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
-  if (r.status !== 'invited') return res.status(409).json({ error: 'not_invited' });
-  const m = db.prepare('SELECT per_minute_cents FROM models WHERE user_id = ?').get(r.model_id);
-  const info = db.prepare(`INSERT INTO calls (fan_id, model_id, rate_cents, prepaid_min, facetime_req_id)
-    VALUES (?,?,?,?,?)`).run(r.fan_id, r.model_id, m.per_minute_cents, r.duration_min, r.id);
-  const callId = Number(info.lastInsertRowid);
-  db.prepare(`UPDATE facetime_requests SET status = 'in_call', call_id = ? WHERE id = ?`)
-    .run(callId, r.id);
-  const fresh = ftGet(r.id);
-  ftPushFan(fresh);
-  pushToSubject(`u:${r.model_id}`, { type: 'facetime:update', request: ftPublic(fresh) });
-  res.json({ call_id: callId, rate_cents: m.per_minute_cents, prepaid_min: r.duration_min });
-});
-
-/* Mid-call explicit switch: she offers, he pays the uplift (remaining     */
-/* prepaid minutes at her rate again = double total), or per-minute       */
-/* doubling on legacy metered calls.                                      */
-app.post('/api/calls/:id/explicit-request', identMiddleware, requireUser, requireRole('model'), (req, res) => {
-  const call = db.prepare('SELECT * FROM calls WHERE id = ?').get(req.params.id);
-  if (!call || call.model_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
-  if (call.status !== 'active') return res.status(409).json({ error: 'call_not_active' });
-  if (call.booking_id) return res.status(409).json({ error: 'not_for_bookings' });
-  if (call.is_explicit) return res.status(409).json({ error: 'already_explicit' });
-  if (call.explicit_pending) return res.status(409).json({ error: 'already_pending' });
-  const remaining = call.prepaid_min > 0 ? call.prepaid_min - call.minutes_billed : null;
-  if (remaining !== null && remaining <= 0) return res.status(409).json({ error: 'no_time_left' });
-  const extra = remaining !== null ? remaining * call.rate_cents : 0;
-  db.prepare('UPDATE calls SET explicit_pending = 1 WHERE id = ?').run(call.id);
-  pushToSubject(`u:${call.fan_id}`, { type: 'call:explicit_offer', call_id: call.id,
-    extra_cents: extra, remaining_min: remaining, per_min_cents: call.rate_cents });
-  res.json({ ok: true, extra_cents: extra, remaining_min: remaining });
-});
-
-app.post('/api/calls/:id/explicit-accept', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
-  const call = db.prepare('SELECT * FROM calls WHERE id = ?').get(req.params.id);
-  if (!call || call.fan_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
-  if (call.status !== 'active' || !call.explicit_pending)
-    return res.status(409).json({ error: 'no_offer' });
-  if (call.prepaid_min > 0) {
-    const remaining = Math.max(0, call.prepaid_min - call.minutes_billed);
-    const extra = remaining * call.rate_cents;
-    if (extra > 0) {
-      if (getWallet(req.user.id).credits_cents < extra)
-        return res.status(402).json({ error: 'insufficient_credits', needed_cents: extra,
-          balance_cents: getWallet(req.user.id).credits_cents });
-      try {
-        chargeFan(req.user.id, call.model_id, extra, 'call_explicit',
-          `Explicit FaceTime — ${remaining} min`, clientIp(req));
-      } catch (e) {
-        return res.status(402).json({ error: 'insufficient_credits', needed_cents: extra });
-      }
-    }
-  }
-  db.prepare('UPDATE calls SET is_explicit = 1, explicit_pending = 0 WHERE id = ?').run(call.id);
-  pushToSubject(`u:${call.fan_id}`, { type: 'call:explicit_on', call_id: call.id });
-  pushToSubject(`u:${call.model_id}`, { type: 'call:explicit_on', call_id: call.id });
-  res.json({ ok: true });
-});
-
-app.post('/api/calls/:id/explicit-decline', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
-  const call = db.prepare('SELECT * FROM calls WHERE id = ?').get(req.params.id);
-  if (!call || call.fan_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
-  db.prepare('UPDATE calls SET explicit_pending = 0 WHERE id = ? AND explicit_pending = 1').run(call.id);
-  pushToSubject(`u:${call.model_id}`, { type: 'call:explicit_declined', call_id: call.id });
-  res.json({ ok: true });
 });
 
 /* ------------------------------------------------------------------ */
@@ -3989,12 +3458,6 @@ app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), 
   const existing = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`)
     .get(req.user.id);
   if (existing) return res.status(409).json({ error: 'already_live', session_id: existing.id });
-  // FaceTime locks while she's live: an active call must end first, and
-  // everyone waiting in her FaceTime line is refunded + told why.
-  if (ftActiveCall(req.user.id))
-    return res.status(409).json({ error: 'in_facetime_call',
-      message: 'End your FaceTime call before going live.' });
-  ftCancelAll(req.user.id, 'she went live');
   const m = db.prepare('SELECT explicit_rate_cents FROM models WHERE user_id = ?').get(req.user.id);
   const explicit_rate_cents = Number.isInteger(req.body.explicit_rate_cents) &&
     req.body.explicit_rate_cents >= 0 ? req.body.explicit_rate_cents : (m ? m.explicit_rate_cents : 499);
@@ -4111,7 +3574,7 @@ app.get('/api/live', (req, res) => {
            (SELECT COALESCE(SUM(gross_cents),0) FROM gift_events WHERE session_id = ls.id) AS gift_cents
     FROM live_sessions ls JOIN users u ON u.id = ls.model_id
     LEFT JOIN models mo ON mo.user_id = u.id
-    WHERE ls.status = 'live' AND u.banned = 0 AND COALESCE(mo.is_hidden, 0) = 0`).all();
+    WHERE ls.status = 'live' AND u.banned = 0`).all();
   res.json({ live: rows });
 });
 
@@ -4137,8 +3600,6 @@ app.post('/api/live/:id/join', identMiddleware, requireUser, requireRole('fan'),
     explicit_grace_sec: getGiftGraceSec(), explicit_entry_cents: getEntryCents(),
     explicit_join_cents: jr.explicit_join_cents,
     explicit_mic_join_cents: jr.explicit_mic_join_cents,
-    join_cents: jr.join_cents,
-    mic_join_cents: jr.mic_join_cents,
     priority: currentPriority(sess.id) });
 });
 
@@ -4606,25 +4067,20 @@ const STAGE_MINUTES = 3;
 // Regular (non-explicit) prices are fixed platform-wide; explicit tiers come
 // from the MODEL's own rates (she sets them in Settings).
 function modelJoinRates(modelId) {
-  const m = db.prepare(`SELECT explicit_join_cents, explicit_mic_join_cents,
-                               join_cents, mic_join_cents FROM models WHERE user_id = ?`)
+  const m = db.prepare(`SELECT explicit_join_cents, explicit_mic_join_cents FROM models WHERE user_id = ?`)
     .get(modelId);
-  const pick = (v, dflt) => (m && Number.isInteger(v)) ? v : dflt;
   return {
-    explicit_join_cents: pick(m && m.explicit_join_cents, 2500),
-    explicit_mic_join_cents: pick(m && m.explicit_mic_join_cents, 1500),
-    join_cents: pick(m && m.join_cents, JOIN_FEE_CENTS),
-    mic_join_cents: pick(m && m.mic_join_cents, MIC_JOIN_FEE_CENTS),
+    explicit_join_cents: m && Number.isInteger(m.explicit_join_cents) ? m.explicit_join_cents : 2500,
+    explicit_mic_join_cents: m && Number.isInteger(m.explicit_mic_join_cents) ? m.explicit_mic_join_cents : 1500,
   };
 }
 function stageJoinFee(isExplicit, mode, rates) {
-  // All stage joins are model-priced ($5–$1,000, set in her Settings);
-  // platform constants remain only as fallbacks when rates are unavailable.
-  const r = rates || { explicit_join_cents: EXPLICIT_JOIN_FEE_CENTS,
-                       explicit_mic_join_cents: EXPLICIT_MIC_JOIN_FEE_CENTS,
-                       join_cents: JOIN_FEE_CENTS, mic_join_cents: MIC_JOIN_FEE_CENTS };
-  if (isExplicit) return mode === 'mic' ? r.explicit_mic_join_cents : r.explicit_join_cents;
-  return mode === 'mic' ? r.mic_join_cents : r.join_cents;
+  if (isExplicit) {
+    const r = rates || { explicit_join_cents: EXPLICIT_JOIN_FEE_CENTS,
+                         explicit_mic_join_cents: EXPLICIT_MIC_JOIN_FEE_CENTS };
+    return mode === 'mic' ? r.explicit_mic_join_cents : r.explicit_join_cents;
+  }
+  return mode === 'mic' ? MIC_JOIN_FEE_CENTS : JOIN_FEE_CENTS;
 }
 
 function priorityJSON(pm) {
@@ -5182,23 +4638,16 @@ app.get('/api/live/schedule', (req, res) => {
   res.json({ upcoming: out.slice(0, 50) });
 });
 
-// GET the live crown race: top-3 spenders of THIS session. Everything a fan
-// spends with her while the live runs counts — gifts, tips, stage joins,
-// explicit minutes/entries, priority messages (windowed to the session).
+// GET top-3 gifters leaderboard for a stream
 app.get('/api/live/:id/leaderboard', identMiddleware, requireUser, (req, res) => {
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
   if (!sess) return res.status(404).json({ error: 'not_found' });
   const top = db.prepare(`
-    SELECT t.fan_id, u.display_name AS fan_name,
-           SUM(t.gross_cents) AS total_cents,
-           SUM(CASE WHEN t.gross_cents > 0 THEN 1 ELSE 0 END) AS gift_count
-    FROM transactions t JOIN users u ON u.id = t.fan_id
-    WHERE t.model_id = ? AND t.is_test = 0 AND t.fan_id IS NOT NULL
-      AND t.created_at >= ?
-      AND (t.type LIKE 'live%' OR t.type LIKE 'priority%'
-           OR t.type IN ('gift', 'tip', 'tip_menu'))
-    GROUP BY t.fan_id HAVING total_cents > 0
-    ORDER BY total_cents DESC LIMIT 3`).all(sess.model_id, sess.started_at);
+    SELECT ge.fan_id, u.display_name AS fan_name,
+           SUM(ge.gross_cents) AS total_cents, COUNT(*) AS gift_count
+    FROM gift_events ge JOIN users u ON u.id = ge.fan_id
+    WHERE ge.session_id = ?
+    GROUP BY ge.fan_id ORDER BY total_cents DESC LIMIT 3`).all(sess.id);
   const totals = db.prepare(`
     SELECT COALESCE(SUM(gross_cents),0) AS gift_cents, COUNT(*) AS gift_count
     FROM gift_events WHERE session_id = ?`).get(sess.id);
@@ -5292,7 +4741,7 @@ app.get('/api/admin/stats', ...adminOnly, (req, res) => {
       (SELECT COUNT(*) FROM strikes WHERE flagged = 1) AS flagged_accounts,
       (SELECT COUNT(*) FROM dmca_notices WHERE status IN ('received','under_review')) AS open_dmca,
       (SELECT COALESCE(SUM(gross_cents),0) FROM transactions
-        WHERE is_test = 0 AND type IN ('message','call','tip','ppv','voice','live_explicit','gift')) AS gross_volume_cents`).get();
+        WHERE type IN ('message','call','tip','ppv','voice','live_explicit','gift')) AS gross_volume_cents`).get();
   res.json({ ...stats, ...counts });
 });
 
@@ -5412,7 +4861,7 @@ app.post('/api/admin/safety/ban-guest', ...adminOnly, (req, res) => {
 app.get('/api/admin/models', ...adminOnly, (req, res) => {
   res.json({ models: db.prepare(`
     SELECT u.id, u.username, u.display_name, u.banned, u.created_at,
-           m.bio, m.per_message_cents, m.per_minute_cents, m.is_online, m.photo_url, m.is_hidden,
+           m.bio, m.per_message_cents, m.per_minute_cents, m.is_online, m.photo_url,
            r.name AS recruiter_name,
            w.earnings_cents, w.paid_out_cents,
            (w.earnings_cents - w.paid_out_cents) AS pending_cents
@@ -5421,42 +4870,6 @@ app.get('/api/admin/models', ...adminOnly, (req, res) => {
     WHERE u.role = 'model' ORDER BY u.display_name`).all() });
 });
 
-
-// Admin (moderator) → model inbox: read the mod thread with one model.
-// The thread is the conversation where the admin is the fan-side party —
-// the same one the automatic welcome message lands in.
-app.get('/api/admin/models/:id/thread', ...adminOnly, (req, res) => {
-  const m = db.prepare("SELECT id, display_name FROM users WHERE id = ? AND role = 'model'").get(req.params.id);
-  if (!m) return res.status(404).json({ error: 'not_found' });
-  const conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(req.user.id, m.id);
-  if (!conv) return res.json({ conversation_id: null, messages: [] });
-  db.prepare('UPDATE messages SET is_read = 1 WHERE conversation_id = ? AND sender_id = ?').run(conv.id, m.id);
-  const messages = db.prepare(`
-    SELECT msg.id, msg.body, msg.created_at, msg.sender_id,
-           CASE WHEN msg.sender_id = ? THEN 'You (Admin)' ELSE ? END AS sender_name
-    FROM messages msg WHERE msg.conversation_id = ? ORDER BY msg.id ASC LIMIT 200`)
-    .all(req.user.id, m.display_name, conv.id);
-  res.json({ conversation_id: conv.id, messages });
-});
-
-// Admin (moderator) → model inbox: text a model as Asce (Admin).
-// Lands in her app inbox with a bell notification. Always free.
-app.post('/api/admin/models/:id/message', ...adminOnly, (req, res) => {
-  const m = db.prepare("SELECT id, display_name FROM users WHERE id = ? AND role = 'model'").get(req.params.id);
-  if (!m) return res.status(404).json({ error: 'not_found' });
-  const body = String(req.body?.body || '').trim().slice(0, 2000);
-  if (!body) return res.status(400).json({ error: 'empty', message: 'Write a message first.' });
-  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(req.user.id, m.id);
-  if (!conv) {
-    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(req.user.id, m.id);
-    conv = { id: Number(info.lastInsertRowid) };
-  }
-  const info = db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-    .run(conv.id, req.user.id, body);
-  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
-  try { notifyUser(m.id, 'message', '💬 Asce (Admin)', body.slice(0, 90), ''); } catch (e) { /* bell is a bonus */ }
-  res.json({ ok: true, conversation_id: conv.id, message_id: Number(info.lastInsertRowid) });
-});
 
 // Admin: toggle featured (pinned to top) for a model
 app.post('/api/admin/models/:id/feature', ...adminOnly, (req, res) => {
@@ -5484,7 +4897,7 @@ app.post('/api/admin/models', ...adminOnly, (req, res) => {
 });
 
 app.put('/api/admin/models/:id', ...adminOnly, (req, res) => {
-  const { display_name, bio, per_message_cents, per_minute_cents, is_online, banned, is_hidden } = req.body || {};
+  const { display_name, bio, per_message_cents, per_minute_cents, is_online, banned } = req.body || {};
   const u = db.prepare(`SELECT * FROM users WHERE id = ? AND role = 'model'`).get(req.params.id);
   if (!u) return res.status(404).json({ error: 'not_found' });
   if (typeof display_name === 'string' && display_name.trim())
@@ -5496,7 +4909,6 @@ app.put('/api/admin/models/:id', ...adminOnly, (req, res) => {
   if (Number.isInteger(per_message_cents) && per_message_cents >= 0) { upd.push('per_message_cents = ?'); params.push(per_message_cents); }
   if (Number.isInteger(per_minute_cents) && per_minute_cents >= 0) { upd.push('per_minute_cents = ?'); params.push(per_minute_cents); }
   if (is_online === 0 || is_online === 1) { upd.push('is_online = ?'); params.push(is_online); }
-  if (is_hidden === 0 || is_hidden === 1) { upd.push('is_hidden = ?'); params.push(is_hidden); }
   if (upd.length) { params.push(u.id); db.prepare(`UPDATE models SET ${upd.join(', ')} WHERE user_id = ?`).run(...params); }
   res.json({ ok: true });
 });
@@ -5581,21 +4993,6 @@ app.post('/api/admin/invites/:id/revoke', ...adminOnly, (req, res) => {
     modelDeactivated = true;
   }
   res.json({ ok: true, model_deactivated: modelDeactivated });
-});
-
-// Admin: refresh an invite link — SAME code, fresh 6-hour window.
-// For when a model took too long to sign up and her link expired (or is about to).
-// The link she already has keeps working; no new link needs to be sent.
-app.post('/api/admin/invites/:id/refresh', ...adminOnly, (req, res) => {
-  const inv = db.prepare('SELECT * FROM invite_links WHERE id = ?').get(req.params.id);
-  if (!inv) return res.status(404).json({ error: 'not_found' });
-  if (inv.is_revoked)
-    return res.status(400).json({ error: 'revoked', message: 'This invite was revoked. Generate a new one instead.' });
-  if (inv.used_by)
-    return res.status(400).json({ error: 'already_used', message: 'This invite was already used to sign up.' });
-  db.prepare(`UPDATE invite_links SET expires_at = datetime('now', '+6 hours') WHERE id = ?`).run(inv.id);
-  const row = db.prepare('SELECT expires_at FROM invite_links WHERE id = ?').get(inv.id);
-  res.json({ ok: true, id: inv.id, code: inv.code, expires_at: row.expires_at });
 });
 
 /* ---------------- Recruiters / partners ---------------- */
@@ -5695,9 +5092,9 @@ app.get('/api/recruiter/dashboard', identMiddleware, requireUser, requireRole('r
     SELECT u.id, u.username, u.display_name, u.created_at, u.banned, m.photo_url,
            w.earnings_cents AS model_earnings_cents,
            (SELECT COALESCE(SUM(t.gross_cents), 0) FROM transactions t
-             WHERE t.model_id = u.id AND t.is_test = 0 AND t.gross_cents > 0) AS gross_generated_cents,
+             WHERE t.model_id = u.id AND t.gross_cents > 0) AS gross_generated_cents,
            (SELECT COALESCE(SUM(t.recruiter_cents), 0) FROM transactions t
-             WHERE t.model_id = u.id AND t.is_test = 0 AND t.recruiter_cents > 0) AS my_cut_cents
+             WHERE t.model_id = u.id AND t.recruiter_cents > 0) AS my_cut_cents
     FROM users u JOIN models m ON m.user_id = u.id JOIN wallets w ON w.user_id = u.id
     WHERE m.recruiter_id = ? ORDER BY u.display_name`).all(r.id);
   const wallet = getWallet(req.user.id);
@@ -5717,7 +5114,7 @@ app.get('/api/admin/fans', ...adminOnly, (req, res) => {
   res.json({ fans: db.prepare(`
     SELECT u.id, u.username, u.display_name, u.banned, u.created_at, w.credits_cents,
            (SELECT COALESCE(SUM(gross_cents),0) FROM transactions t
-             WHERE t.fan_id = u.id AND t.is_test = 0 AND t.type IN ('message','call','gift')) AS spent_cents
+             WHERE t.fan_id = u.id AND t.type IN ('message','call','gift')) AS spent_cents
     FROM users u JOIN wallets w ON w.user_id = u.id
     WHERE u.role = 'fan' ORDER BY spent_cents DESC LIMIT 200`).all() });
 });
