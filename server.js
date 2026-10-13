@@ -603,21 +603,6 @@ addColumnIfMissing('users', 'name_changed_at', 'TEXT');
 // UI language preference ('en' | 'es' | 'pt') — set from the in-app language
 // picker, returned by /api/me so it follows the user across devices
 addColumnIfMissing('users', 'language', "TEXT NOT NULL DEFAULT 'en'");
-
-// Model welcome celebration: welcomed_at NULL = not yet welcomed. Everyone
-// who already has an account when this ships counts as welcomed — only NEW
-// model signups get the congratulations overlay.
-(function () {
-  const cols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
-  if (!cols.includes('welcomed_at')) {
-    db.exec('ALTER TABLE users ADD COLUMN welcomed_at TEXT');
-    db.exec("UPDATE users SET welcomed_at = datetime('now')");
-  }
-})();
-
-// Welcome MESSAGE in her app inbox (from Asce (Admin)): stamped when sent.
-// NULL = not sent yet; the boot sweep delivers to anyone missing it.
-addColumnIfMissing('users', 'welcome_msg_sent_at', 'TEXT');
 db.exec(`
 CREATE TABLE IF NOT EXISTS name_change_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -868,7 +853,6 @@ const getUserPublic = (u) => ({
   display_name: u.display_name, banned: !!u.banned,
   status: u.status || 'active',
   language: u.language || 'en',
-  welcomed: !!u.welcomed_at,
 });
 
 const fmt$ = (c) => '$' + (c / 100).toFixed(2); // server-side money formatter (cents → $x.xx)
@@ -1206,86 +1190,8 @@ function createUser(username, password, role, displayName, dob) {
     'INSERT INTO users (username, password_hash, role, display_name, dob) VALUES (?,?,?,?,?)'
   ).run(username, hash, role, displayName, dob);
   db.prepare('INSERT INTO wallets (user_id) VALUES (?)').run(info.lastInsertRowid);
-  if (role === 'model') {
-    db.prepare('INSERT INTO models (user_id) VALUES (?)').run(info.lastInsertRowid);
-    // Automatic: the congratulations/welcome message lands in her inbox.
-    try { sendModelWelcome(Number(info.lastInsertRowid)); } catch (e) { /* boot sweep retries */ }
-  }
+  if (role === 'model') db.prepare('INSERT INTO models (user_id) VALUES (?)').run(info.lastInsertRowid);
   return Number(info.lastInsertRowid);
-}
-
-/* ------------------------------------------------------------------ */
-/* Model welcome message — congratulations in her app inbox           */
-/* ------------------------------------------------------------------ */
-const MODEL_WELCOME = {
-  en: (name) => `🎉 Congratulations, ${name}!
-
-Welcome to SlutCamp 💋 You're officially one of our models — and you're in early. Early models get seen first, and the fans are already waiting.
-
-💰 You keep 60% of everything: paid messages, live streams + video calls paid per minute at YOUR prices, tips and paid content.
-
-To start earning:
-✍️ Sign your model agreement
-🪪 Verify your ID (2257 — keeps you legal and paid)
-📸 Add your photo, set your prices, and go live
-
-Questions? Just reply right here. Welcome to the family 🔥 — Asce`,
-  es: (name) => `🎉 ¡Felicidades, ${name}!
-
-Bienvenida a SlutCamp 💋 Ya eres oficialmente una de nuestras modelos — y llegaste temprano. Las primeras modelos se ven primero, y los fans ya están esperando.
-
-💰 Te quedas con el 60% de todo: mensajes pagos, lives y videollamadas pagadas por minuto a TUS precios, propinas y contenido pago.
-
-Para empezar a ganar:
-✍️ Firma tu acuerdo de modelo
-🪪 Verifica tu ID (2257 — te mantiene legal y cobrando)
-📸 Sube tu foto, pon tus precios y sal en vivo
-
-¿Preguntas? Responde aquí mismo. Bienvenida a la familia 🔥 — Asce`,
-  pt: (name) => `🎉 Parabéns, ${name}!
-
-Bem-vinda à SlutCamp 💋 Você agora é oficialmente uma das nossas modelos — e chegou cedo. As primeiras modelos são vistas primeiro, e os fãs já estão esperando.
-
-💰 Você fica com 60% de tudo: mensagens pagas, lives e videochamadas pagas por minuto nos SEUS preços, gorjetas e conteúdo pago.
-
-Para começar a ganhar:
-✍️ Assine seu contrato de modelo
-🪪 Verifique seu documento (2257 — mantém você legal e recebendo)
-📸 Adicione sua foto, defina seus preços e entre ao vivo
-
-Dúvidas? Responda aqui mesmo. Bem-vinda à família 🔥 — Asce`,
-};
-
-/* Send the welcome message into a model's inbox exactly once. Sender is
-   the admin account (shows as "Asce (Admin)"). Free (cost 0), never blocks
-   signup — if anything fails, the boot sweep retries next start. */
-function sendModelWelcome(modelUserId) {
-  const m = db.prepare("SELECT id, display_name, language, welcome_msg_sent_at FROM users WHERE id = ? AND role = 'model'")
-    .get(modelUserId);
-  if (!m || m.welcome_msg_sent_at) return false;
-  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
-  if (!admin || admin.id === m.id) return false;
-  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-  if (!conv) {
-    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-    conv = { id: Number(info.lastInsertRowid) };
-  }
-  const make = MODEL_WELCOME[m.language] || MODEL_WELCOME.en;
-  db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-    .run(conv.id, admin.id, make(m.display_name));
-  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
-  db.prepare("UPDATE users SET welcome_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
-  try {
-    notifyUser(m.id, 'welcome', '🎉 Welcome to SlutCamp!',
-      'Congratulations — Asce sent you a message in your inbox 💋', '');
-  } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
-  return true;
-}
-
-/* Boot sweep: every model who never got the welcome message gets it now. */
-function sendPendingModelWelcomes() {
-  const rows = db.prepare("SELECT id FROM users WHERE role = 'model' AND welcome_msg_sent_at IS NULL").all();
-  for (const r of rows) { try { sendModelWelcome(r.id); } catch (e) { /* retry next boot */ } }
 }
 
 function seed() {
@@ -1322,7 +1228,6 @@ function seed() {
   console.log('Seeded: admin/admin123 · bunny|stacey|bella/model123 · fandemo/fan123 ($100)');
 }
 seed();
-sendPendingModelWelcomes();
 
 /* ------------------------------------------------------------------ */
 /* Public: guest tokens + model browsing (no login needed)              */
@@ -1441,7 +1346,7 @@ app.post('/api/auth/signup', (req, res) => {
     if (invite.used_by)
       return res.status(400).json({ error: 'invite_used', message: 'This invite link has already been used.' });
     if (invite.expires_at && new Date(invite.expires_at + 'Z') < new Date())
-      return res.status(400).json({ error: 'invite_expired', message: 'This invite link has expired. Ask for it to be refreshed.' });
+      return res.status(400).json({ error: 'invite_expired', message: 'This invite link has expired. Ask for a new one.' });
     finalRole = 'model';
   }
   // Referral-code flow: a partner's link attributes the new model to that recruiter
@@ -1695,13 +1600,6 @@ app.patch('/api/me/language', identMiddleware, requireUser, (req, res) => {
     return res.status(400).json({ error: 'bad_language', message: 'Supported languages: en, es, pt.' });
   db.prepare('UPDATE users SET language = ? WHERE id = ?').run(lang, req.user.id);
   res.json({ ok: true, language: lang });
-});
-
-// Model welcome celebration — mark it seen so it shows exactly once.
-app.post('/api/me/welcomed', identMiddleware, requireUser, (req, res) => {
-  db.prepare("UPDATE users SET welcomed_at = datetime('now') WHERE id = ? AND welcomed_at IS NULL")
-    .run(req.user.id);
-  res.json({ ok: true });
 });
 
 // Model submits a name change request for admin approval
@@ -5095,21 +4993,6 @@ app.post('/api/admin/invites/:id/revoke', ...adminOnly, (req, res) => {
     modelDeactivated = true;
   }
   res.json({ ok: true, model_deactivated: modelDeactivated });
-});
-
-// Admin: refresh an invite link — SAME code, fresh 6-hour window.
-// For when a model took too long to sign up and her link expired (or is about to).
-// The link she already has keeps working; no new link needs to be sent.
-app.post('/api/admin/invites/:id/refresh', ...adminOnly, (req, res) => {
-  const inv = db.prepare('SELECT * FROM invite_links WHERE id = ?').get(req.params.id);
-  if (!inv) return res.status(404).json({ error: 'not_found' });
-  if (inv.is_revoked)
-    return res.status(400).json({ error: 'revoked', message: 'This invite was revoked. Generate a new one instead.' });
-  if (inv.used_by)
-    return res.status(400).json({ error: 'already_used', message: 'This invite was already used to sign up.' });
-  db.prepare(`UPDATE invite_links SET expires_at = datetime('now', '+6 hours') WHERE id = ?`).run(inv.id);
-  const row = db.prepare('SELECT expires_at FROM invite_links WHERE id = ?').get(inv.id);
-  res.json({ ok: true, id: inv.id, code: inv.code, expires_at: row.expires_at });
 });
 
 /* ---------------- Recruiters / partners ---------------- */
