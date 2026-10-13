@@ -84,19 +84,11 @@ const I18N = {
     tab_home: 'Home', tab_safety: 'Safety', tab_more: 'More',
     language: 'Language', language_note: 'Choose the language for your app.',
     language_set: '🌐 Language updated!',
-    language_search_ph: 'Type your language…', cancel: 'Cancel',
-    wm_title: 'Congratulations, {name}! 🎉', wm_welcome: 'Welcome to SlutCamp 💋',
-    wm_body: "You're officially a SlutCamp model — and you're in early. Early models get seen first, and the fans are already waiting.",
-    wm_money: '💰 You keep 60% of everything: paid messages, live streams + video calls paid per minute at YOUR prices, tips and paid content.',
-    wm_steps_h: 'To start earning:',
-    wm_step1: '✍️ Sign your model agreement', wm_step2: '🪪 Verify your ID (2257 — keeps you legal and paid)', wm_step3: '📸 Add your photo, set your prices, and go live',
-    wm_btn: "Let's set me up 🔥",
     home_sub: 'Chat & video call the models · 18+ only',
     free3_title: '🎁 First 3 messages FREE',
     free3_sub: 'with every model you try. No account needed to start.',
     login_signup: 'Log in / Sign up', share_app: '📤 Share SlutCamp',
     no_models: 'No models yet.',
-    pager_prev: '← Prev', pager_next: 'Next →', pager_page: 'Page {x} of {y}',
     terms_line: '18+ only. By chatting you agree to the', terms: 'Terms',
     like_need_fan: 'Log in as a fan to like models 💜',
     link_copied: 'Link copied — send it to your boys 📤',
@@ -171,7 +163,6 @@ const I18N = {
     save_rates: 'Save rates',
     stage_rates_h: '🔞 Explicit stage rates',
     ejv_l: '🎥 Explicit video + mic join:', ejm_l: '🎙️ Explicit mic join:',
-    jv_l: '🎥 Video + mic join:', jm_l: '🎙️ Mic join:',
     save_stage_rates: 'Save stage rates',
     schedule_h: '📅 My Live Schedule', add_slot: 'Add slot',
     slot_title_ph: 'Title (optional) — e.g. Late night hangout',
@@ -185,10 +176,6 @@ const I18N = {
     rates_saved: '✅ Rates saved!', bio_saved: '✅ Bio saved!', stage_saved: '✅ Stage rates saved!',
     couldnt_save: 'Could not save.',
     earnings_h: 'Earnings 💵', you_keep: 'You keep {pct}% of everything',
-    fc_h: '🏆 Fan Club', fc_sub: 'Your top buyers — who spends the most on you',
-    fc_all: 'All time', fc_month: '30 days', fc_week: '7 days',
-    fc_empty: 'No buyers yet — your fan club is waiting 💋',
-    fc_live: 'Live', fc_1on1: '1-on-1', fc_chat: 'Chat',
     avail_payout: 'Available for payout', total_earned: 'Total earned',
     gifts_received: '🎁 Gifts received', gifts_from_fans_1: '{n} gift from fans',
     gifts_from_fans_n: '{n} gifts from fans', gifts_cut_note: 'Your 60% cut of every gift 💰',
@@ -230,19 +217,11 @@ const I18N = {
     tab_home: 'Inicio', tab_safety: 'Seguridad', tab_more: 'Más',
     language: 'Idioma', language_note: 'Elige el idioma de tu app.',
     language_set: '🌐 ¡Idioma actualizado!',
-    language_search_ph: 'Escribe tu idioma…', cancel: 'Cancelar',
-    wm_title: '¡Felicidades, {name}! 🎉', wm_welcome: 'Bienvenida a SlutCamp 💋',
-    wm_body: 'Ya eres oficialmente una modelo de SlutCamp — y llegaste temprano. Las primeras modelos se ven primero, y los fans ya están esperando.',
-    wm_money: '💰 Te quedas con el 60% de todo: mensajes pagos, lives y videollamadas pagadas por minuto a TUS precios, propinas y contenido pago.',
-    wm_steps_h: 'Para empezar a ganar:',
-    wm_step1: '✍️ Firma tu acuerdo de modelo', wm_step2: '🪪 Verifica tu ID (2257 — te mantiene legal y cobrando)', wm_step3: '📸 Sube tu foto, pon tus precios y sal en vivo',
-    wm_btn: 'Vamos a configurar todo 🔥',
     home_sub: 'Chatea y haz videollamadas con las modelos · Solo 18+',
     free3_title: '🎁 Primeros 3 mensajes GRATIS',
     free3_sub: 'con cada modelo que pruebes. No necesitas cuenta para empezar.',
     login_signup: 'Iniciar sesión / Registrarse', share_app: '📤 Compartir SlutCamp',
     no_models: 'Aún no hay modelos.',
-    pager_prev: '← Anterior', pager_next: 'Siguiente →', pager_page: 'Página {x} de {y}',
     terms_line: 'Solo 18+. Al chatear aceptas los', terms: 'Términos',
     like_need_fan: 'Inicia sesión como fan para dar me gusta 💜',
     link_copied: 'Enlace copiado — envíaselo a tus amigos 📤',
@@ -317,7 +296,6 @@ const I18N = {
     save_rates: 'Guardar tarifas',
     stage_rates_h: '🔞 Tarifas de escenario explícito',
     ejv_l: '🎥 Unión explícita con video + micrófono:', ejm_l: '🎙️ Unión explícita solo micrófono:',
-    jv_l: '🎥 Unión con video + micrófono:', jm_l: '🎙️ Unión solo micrófono:',
     save_stage_rates: 'Guardar tarifas de escenario',
     schedule_h: '📅 Mi horario en vivo', add_slot: 'Agregar horario',
     slot_title_ph: 'Título (opcional) — ej. Charla nocturna',
@@ -331,10 +309,6 @@ const I18N = {
     rates_saved: '✅ ¡Tarifas guardadas!', bio_saved: '✅ ¡Bio guardada!', stage_saved: '✅ ¡Tarifas de escenario guardadas!',
     couldnt_save: 'No se pudo guardar.',
     earnings_h: 'Ganancias 💵', you_keep: 'Te quedas con el {pct}% de todo',
-    fc_h: '🏆 Club de Fans', fc_sub: 'Tus mayores compradores — quién gasta más en ti',
-    fc_all: 'Todo', fc_month: '30 días', fc_week: '7 días',
-    fc_empty: 'Aún no hay compradores — tu club de fans te espera 💋',
-    fc_live: 'En vivo', fc_1on1: '1 a 1', fc_chat: 'Chat',
     avail_payout: 'Disponible para retirar', total_earned: 'Total ganado',
     gifts_received: '🎁 Regalos recibidos', gifts_from_fans_1: '{n} regalo de fans',
     gifts_from_fans_n: '{n} regalos de fans', gifts_cut_note: 'Tu 60% de cada regalo 💰',
@@ -376,19 +350,11 @@ const I18N = {
     tab_home: 'Início', tab_safety: 'Segurança', tab_more: 'Mais',
     language: 'Idioma', language_note: 'Escolha o idioma do seu app.',
     language_set: '🌐 Idioma atualizado!',
-    language_search_ph: 'Digite seu idioma…', cancel: 'Cancelar',
-    wm_title: 'Parabéns, {name}! 🎉', wm_welcome: 'Bem-vinda à SlutCamp 💋',
-    wm_body: 'Você agora é oficialmente uma modelo da SlutCamp — e chegou cedo. As primeiras modelos são vistas primeiro, e os fãs já estão esperando.',
-    wm_money: '💰 Você fica com 60% de tudo: mensagens pagas, lives e videochamadas pagas por minuto nos SEUS preços, gorjetas e conteúdo pago.',
-    wm_steps_h: 'Para começar a ganhar:',
-    wm_step1: '✍️ Assine seu contrato de modelo', wm_step2: '🪪 Verifique seu documento (2257 — mantém você legal e recebendo)', wm_step3: '📸 Adicione sua foto, defina seus preços e entre ao vivo',
-    wm_btn: 'Vamos montar meu perfil 🔥',
     home_sub: 'Converse e faça videochamadas com as modelos · Somente 18+',
     free3_title: '🎁 Primeiras 3 mensagens GRÁTIS',
     free3_sub: 'com cada modelo que você testar. Não precisa de conta para começar.',
     login_signup: 'Entrar / Cadastrar', share_app: '📤 Compartilhar o SlutCamp',
     no_models: 'Ainda não há modelos.',
-    pager_prev: '← Anterior', pager_next: 'Próxima →', pager_page: 'Página {x} de {y}',
     terms_line: 'Somente 18+. Ao conversar, você concorda com os', terms: 'Termos',
     like_need_fan: 'Entre como fã para curtir as modelos 💜',
     link_copied: 'Link copiado — manda pros seus amigos 📤',
@@ -463,7 +429,6 @@ const I18N = {
     save_rates: 'Salvar tarifas',
     stage_rates_h: '🔞 Tarifas de palco explícito',
     ejv_l: '🎥 Entrada explícita com vídeo + microfone:', ejm_l: '🎙️ Entrada explícita só com microfone:',
-    jv_l: '🎥 Entrada com vídeo + microfone:', jm_l: '🎙️ Entrada só com microfone:',
     save_stage_rates: 'Salvar tarifas de palco',
     schedule_h: '📅 Minha agenda de lives', add_slot: 'Adicionar horário',
     slot_title_ph: 'Título (opcional) — ex. Bate-papo da noite',
@@ -477,10 +442,6 @@ const I18N = {
     rates_saved: '✅ Tarifas salvas!', bio_saved: '✅ Bio salva!', stage_saved: '✅ Tarifas de palco salvas!',
     couldnt_save: 'Não foi possível salvar.',
     earnings_h: 'Ganhos 💵', you_keep: 'Você fica com {pct}% de tudo',
-    fc_h: '🏆 Fã-Clube', fc_sub: 'Seus maiores compradores — quem mais gasta com você',
-    fc_all: 'Tudo', fc_month: '30 dias', fc_week: '7 dias',
-    fc_empty: 'Ainda não há compradores — seu fã-clube está esperando 💋',
-    fc_live: 'Ao vivo', fc_1on1: '1 a 1', fc_chat: 'Chat',
     avail_payout: 'Disponível para saque', total_earned: 'Total ganho',
     gifts_received: '🎁 Presentes recebidos', gifts_from_fans_1: '{n} presente de fãs',
     gifts_from_fans_n: '{n} presentes de fãs', gifts_cut_note: 'Seus 60% de cada presente 💰',
@@ -531,42 +492,10 @@ function t(key, vars) {
   return s;
 }
 
-/* Language picker — ONE compact link. Tapping it opens a sheet with a
-   scrollable list of languages; she can scroll and tap, or TYPE to filter. */
+/* Language pills — one delegated click handler drives every picker */
 function langPillsHTML() {
-  const cur = LANGS.find((l) => l.code === LANG) || LANGS[0];
-  return `<button type="button" class="lang-link" data-langtoggle>${cur.flag} ${cur.label} <span class="lang-caret">▾</span></button>`;
-}
-function openLangSheet() {
-  let sheet = document.getElementById('langSheet');
-  if (!sheet) {
-    sheet = document.createElement('div');
-    sheet.id = 'langSheet';
-    sheet.className = 'lang-sheet';
-    document.body.appendChild(sheet);
-    sheet.addEventListener('click', (e) => { if (e.target === sheet) closeLangSheet(); });
-  }
-  sheet.innerHTML = `
-    <div class="lang-sheet-card">
-      <div class="lang-sheet-title">🌐 ${t('language')}</div>
-      <input class="input lang-search" type="text" placeholder="${t('language_search_ph')}" autocomplete="off">
-      <div class="lang-list">${LANGS.map((l) =>
-        `<button type="button" class="lang-opt${LANG === l.code ? ' on' : ''}" data-setlang="${l.code}"><span>${l.flag} ${l.label}</span>${LANG === l.code ? '<span class="lang-check">✓</span>' : ''}</button>`).join('')}</div>
-      <button type="button" class="btn ghost" data-langclose style="width:100%">${t('cancel')}</button>
-    </div>`;
-  sheet.hidden = false;
-  const input = sheet.querySelector('.lang-search');
-  input.addEventListener('input', () => {
-    const q = input.value.trim().toLowerCase();
-    sheet.querySelectorAll('.lang-opt').forEach((b) => {
-      b.style.display = b.textContent.toLowerCase().includes(q) ? '' : 'none';
-    });
-  });
-  setTimeout(() => { try { input.focus(); } catch (e) { /* noop */ } }, 60);
-}
-function closeLangSheet() {
-  const sheet = document.getElementById('langSheet');
-  if (sheet) sheet.hidden = true;
+  return `<div class="lang-pills">${LANGS.map((l) =>
+    `<button type="button" class="lang-pill${LANG === l.code ? ' on' : ''}" data-setlang="${l.code}">${l.flag} ${l.label}</button>`).join('')}</div>`;
 }
 function langCardHTML() {
   return `<div class="card">
@@ -601,12 +530,9 @@ async function setLang(code) {
   show(S.view, S.viewParams || {});
 }
 document.addEventListener('click', (e) => {
-  if (e.target.closest('[data-langtoggle]')) { openLangSheet(); return; }
-  if (e.target.closest('[data-langclose]')) { closeLangSheet(); return; }
   const b = e.target.closest('[data-setlang]');
-  if (b) { closeLangSheet(); setLang(b.dataset.setlang); }
+  if (b) setLang(b.dataset.setlang);
 });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLangSheet(); });
 document.documentElement.lang = LANG === 'pt' ? 'pt-BR' : LANG;
 
 /* ---------------- state ---------------- */
@@ -1151,42 +1077,16 @@ function modelTileHTML(m, opts) {
 /* Featured model gets the big hero tile on top; everyone else fills the grid
    in the ranked order /api/models returns (likes + sales). #1 regular wears
    the 👑 Top Model crown — the featured headliner doesn't compete. */
-/* Home grid pagination (Corry, Oct 12 2026): the ranked girls chart runs
-   10 to a page — Top 10 on page 1, next 10 on page 2, and so on. The
-   featured headliner (hero) stays pinned above the chart on every page. */
-let homePage = 1;
-const HOME_PAGE_SIZE = 10;
-
 function homeTilesHTML(models, heartFor) {
   const featured = models.find((m) => m.is_featured);
   const rest = featured ? models.filter((m) => m.id !== featured.id) : models;
   const heart = (m) => (heartFor ? heartFor(m) : '');
-  const pages = Math.max(1, Math.ceil(rest.length / HOME_PAGE_SIZE));
-  if (homePage > pages) homePage = pages;
-  if (homePage < 1) homePage = 1;
-  const start = (homePage - 1) * HOME_PAGE_SIZE;
-  const slice = rest.slice(start, start + HOME_PAGE_SIZE);
   return `
     ${featured ? modelTileHTML(featured, { hero: true, heartHTML: heart(featured) }) : ''}
     <div class="tile-grid">
-      ${slice.map((m, i) => modelTileHTML(m, { crown: start + i === 0, heartHTML: heart(m) })).join('')}
-    </div>
-    ${pages > 1 ? `
-    <div class="row" style="justify-content:center;align-items:center;gap:10px;margin-top:16px">
-      <button class="btn small ghost pg-btn" data-pg="${homePage - 1}" ${homePage <= 1 ? 'disabled style="opacity:.4"' : ''}>${t('pager_prev')}</button>
-      <span class="small muted">${t('pager_page', { x: homePage, y: pages })}</span>
-      <button class="btn small ghost pg-btn" data-pg="${homePage + 1}" ${homePage >= pages ? 'disabled style="opacity:.4"' : ''}>${t('pager_next')}</button>
-    </div>` : ''}`;
+      ${rest.map((m, i) => modelTileHTML(m, { crown: i === 0, heartHTML: heart(m) })).join('')}
+    </div>`;
 }
-
-// Pager clicks (one delegated listener for both the guest + fan home grids)
-document.addEventListener('click', (e) => {
-  const b = e.target.closest('.pg-btn');
-  if (!b || b.disabled) return;
-  homePage = parseInt(b.dataset.pg) || 1;
-  show(S.view, {});
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-});
 
 /* "🔴 Lives" home button — opens the Live Now grid. The count is REAL data
    from /api/models (is_live flags) — only shown when someone is truly live. */
@@ -1693,47 +1593,11 @@ async function checkContractGate() {
   } catch (e) { S.contractSigned = true; /* fail open on network error */ }
 }
 
-/* One-time congratulations for NEW models — fires after signup/login when
-   the account has never been welcomed (users.welcomed_at). Existing models
-   were backfilled server-side, so this only greets fresh signups. */
-let welcomeShownThisSession = false;
-function maybeShowModelWelcome() {
-  if (welcomeShownThisSession) return;
-  const u = S.user;
-  if (!u || u.role !== 'model' || u.welcomed) return;
-  if (['liveBroadcast', 'liveWatch', 'liveModWatch'].includes(S.view)) return;
-  welcomeShownThisSession = true;
-  u.welcomed = true; // optimistic — server stamps it below
-  api('/me/welcomed', { method: 'POST', body: JSON.stringify({}) }).catch(() => {});
-  let el = document.getElementById('modelWelcome');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'modelWelcome';
-    el.className = 'model-welcome';
-    document.body.appendChild(el);
-  }
-  el.innerHTML = `
-    <div class="mw-card">
-      <img class="mw-lips" src="/img/lips-logo.png" alt="">
-      <div class="mw-confetti">🎉 💋 🔥</div>
-      <div class="mw-title">${t('wm_title', { name: esc(u.display_name) })}</div>
-      <div class="mw-welcome">${t('wm_welcome')}</div>
-      <p class="mw-body">${t('wm_body')}</p>
-      <p class="mw-money">${t('wm_money')}</p>
-      <div class="mw-steps-h">${t('wm_steps_h')}</div>
-      <div class="mw-steps"><div>${t('wm_step1')}</div><div>${t('wm_step2')}</div><div>${t('wm_step3')}</div></div>
-      <button class="btn mw-btn" id="mw-go">${t('wm_btn')}</button>
-    </div>`;
-  el.hidden = false;
-  el.querySelector('#mw-go').onclick = () => { el.hidden = true; };
-}
-
 async function refreshMe() {
   const { status, data } = await api('/me');
   if (status === 200) {
     S.user = data.user; S.wallet = data.wallet; S.model = data.model || null;
     syncLangFromUser(data.user);
-    maybeShowModelWelcome();
     if (data.commission_pct !== undefined) S.commissionPct = data.commission_pct;
   } else if (status === 401 || status === 403) {
     logout(false);
@@ -2057,34 +1921,6 @@ async function vWallet() {
 
 /* ---------------- MODEL: earnings / settings ---------------- */
 
-async function loadFanClub(period) {
-  const box = $('#fan-club-body');
-  if (!box) return;
-  document.querySelectorAll('[data-fc]').forEach((b) => {
-    const on = b.dataset.fc === period;
-    b.style.background = on ? 'var(--pink)' : '';
-    b.style.color = on ? '#fff' : '';
-    b.style.borderColor = on ? 'var(--pink)' : '';
-  });
-  const { data } = await api('/model/fan-club?period=' + period);
-  if (!data || !$('#fan-club-body')) return;
-  const medal = ['🥇', '🥈', '🥉'];
-  box.innerHTML = (data.buyers || []).length ? data.buyers.map((r, i) => {
-    const parts = [];
-    if (r.live_cents > 0) parts.push(`🔴 ${t('fc_live')} ${fmt(r.live_cents)}`);
-    if (r.priv_cents > 0) parts.push(`📅 ${t('fc_1on1')} ${fmt(r.priv_cents)}`);
-    if (r.chat_cents > 0) parts.push(`💬 ${t('fc_chat')} ${fmt(r.chat_cents)}`);
-    return `
-    <div class="row" style="padding:9px 0;border-top:1px solid rgba(139,92,246,.1);align-items:center">
-      <span style="font-size:19px;width:32px;text-align:center;flex:none">${medal[i] || (i + 1)}</span>
-      ${avatarHTML(r.fan_name, 'sm')}
-      <span class="grow" style="margin-left:8px"><b>${esc(r.fan_name)}</b>
-        <br><span class="muted small">${parts.join(' · ')} · ${t(r.payments === 1 ? 'payment_1' : 'payment_n', { n: r.payments })}</span></span>
-      <b style="color:var(--green)">${fmt(r.total_cents)}</b>
-    </div>`;
-  }).join('') : `<div class="muted">${t('fc_empty')}</div>`;
-}
-
 async function vModelEarnings() {
   const { data } = await api('/model/earnings');
   const { data: acctData } = await api('/model/payout-account');
@@ -2140,16 +1976,6 @@ async function vModelEarnings() {
           </div>`; }).join('') || `<div class="muted">${t('no_earnings')}</div>`}
       </div>
       <div class="card" style="margin-top:12px">
-        <div style="font-weight:800;margin-bottom:4px">${t('fc_h')}</div>
-        <div class="muted small" style="margin-bottom:10px">${t('fc_sub')}</div>
-        <div class="row" style="gap:8px;margin-bottom:6px">
-          <button class="btn small ghost" data-fc="all">${t('fc_all')}</button>
-          <button class="btn small ghost" data-fc="month">${t('fc_month')}</button>
-          <button class="btn small ghost" data-fc="week">${t('fc_week')}</button>
-        </div>
-        <div id="fan-club-body"><div class="muted small">…</div></div>
-      </div>
-      <div class="card" style="margin-top:12px">
         <div style="font-weight:800;margin-bottom:8px">${t('payouts_h')}</div>
         <div class="row" style="margin-bottom:8px"><span class="grow muted small">${t('bank_account')}</span>
           ${acct ? `<b class="small">•••• ${esc(acct.account_last4)}</b>` : `<span class="small" style="color:var(--pink)">${t('not_set')}</span>`}</div>
@@ -2181,13 +2007,16 @@ async function vModelEarnings() {
             <span>${wdBadge(w.status)}</span>
           </div>`).join('')}
       </div>` : ''}
+      <div class="card" style="margin-top:12px">
+        <div style="font-weight:800;margin-bottom:8px">${t('per_fan')}</div>
+        ${(data.by_fan || []).map((r) => `
+          <div class="row" style="padding:8px 0;border-top:1px solid rgba(139,92,246,.1)">
+            <span class="grow"><b>${esc(r.fan_name)}</b> <span class="muted small">· ${t(r.payments === 1 ? 'payments_1' : 'payments_n', { n: r.payments })}</span></span>
+            <b style="color:var(--green)">${fmt(r.earned_cents)}</b>
+          </div>`).join('') || `<div class="muted">${t('no_earnings')}</div>`}
+      </div>
       <div class="muted small" style="text-align:center">${t('payouts_note')}</div>
     </div>`;
-
-  document.querySelectorAll('[data-fc]').forEach((b) => {
-    b.onclick = () => loadFanClub(b.dataset.fc);
-  });
-  loadFanClub('all');
 
   const baSave = $('#ba-save');
   if (baSave) baSave.onclick = async () => {
@@ -2631,8 +2460,8 @@ async function vModelSettings() {
         <div class="muted small" style="margin-bottom:10px">${t('rates_note')}</div>
         <label class="field">${t('per_text')} <b id="s-msg-label">${fmt(m.per_message_cents || 149)}</b>
           <input type="range" id="s-msg" min="50" max="1000" step="25" value="${m.per_message_cents || 149}" style="width:100%"></label>
-        <label class="field">${t('per_min_video_l')} <b id="s-min-label">${fmt(Math.max(500, m.per_minute_cents || 500))}</b>
-          <input type="range" id="s-min" min="500" max="100000" step="100" value="${Math.max(500, m.per_minute_cents || 500)}" style="width:100%"></label>
+        <label class="field">${t('per_min_video_l')} <b id="s-min-label">${fmt(m.per_minute_cents || 399)}</b>
+          <input type="range" id="s-min" min="100" max="2000" step="25" value="${m.per_minute_cents || 399}" style="width:100%"></label>
         <label class="field">${t('per_voice')} <b id="s-voice-label">${fmt(m.per_voice_cents || 299)}</b>
           <input type="range" id="s-voice" min="50" max="1000" step="25" value="${m.per_voice_cents || 299}" style="width:100%"></label>
         <label class="field">${t('explicit_rate_l')}<input class="input" id="s-exp" type="number" step="0.01" min="0" value="${((m.explicit_rate_cents || 499) / 100).toFixed(2)}"></label>
@@ -2641,15 +2470,11 @@ async function vModelSettings() {
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:6px">${t('stage_rates_h')}</div>
-        <div class="muted small" style="margin-bottom:10px">You set what fans pay to join you <b>on camera/mic on stage</b> — regular and explicit. Every stage rate runs <b>$5–$1,000</b>, your call.</div>
-        <label class="field">${t('jv_l')} <b id="s-rjv-label">${fmt(m.join_cents || 1000)}</b>
-          <input type="range" id="s-rjv" min="500" max="100000" step="100" value="${m.join_cents || 1000}" style="width:100%"></label>
-        <label class="field">${t('jm_l')} <b id="s-rjm-label">${fmt(m.mic_join_cents || 500)}</b>
-          <input type="range" id="s-rjm" min="500" max="100000" step="100" value="${m.mic_join_cents || 500}" style="width:100%"></label>
+        <div class="muted small" style="margin-bottom:10px">What fans pay to join you <b>on camera/mic while you're explicit</b>. Regular (non-explicit) joins stay $10 video+mic / $5 mic-only.</div>
         <label class="field">${t('ejv_l')} <b id="s-ejv-label">${fmt(m.explicit_join_cents || 2500)}</b>
-          <input type="range" id="s-ejv" min="500" max="100000" step="100" value="${m.explicit_join_cents || 2500}" style="width:100%"></label>
+          <input type="range" id="s-ejv" min="500" max="10000" step="100" value="${m.explicit_join_cents || 2500}" style="width:100%"></label>
         <label class="field">${t('ejm_l')} <b id="s-ejm-label">${fmt(m.explicit_mic_join_cents || 1500)}</b>
-          <input type="range" id="s-ejm" min="500" max="100000" step="100" value="${m.explicit_mic_join_cents || 1500}" style="width:100%"></label>
+          <input type="range" id="s-ejm" min="500" max="10000" step="100" value="${m.explicit_mic_join_cents || 1500}" style="width:100%"></label>
         <button class="btn" id="s-ej-save" style="margin-top:8px">${t('save_stage_rates')}</button>
       </div>
       <div class="card">
@@ -2727,20 +2552,15 @@ async function vModelSettings() {
     toast(status === 200 ? t('bio_saved') : t('couldnt_save'));
   };
   // Explicit stage rate sliders — live label updates
-  const ejv = $('#s-ejv'), ejm = $('#s-ejm'), rjv = $('#s-rjv'), rjm = $('#s-rjm');
+  const ejv = $('#s-ejv'), ejm = $('#s-ejm');
   if (ejv) ejv.oninput = () => { $('#s-ejv-label').textContent = fmt(parseInt(ejv.value)); };
   if (ejm) ejm.oninput = () => { $('#s-ejm-label').textContent = fmt(parseInt(ejm.value)); };
-  if (rjv) rjv.oninput = () => { $('#s-rjv-label').textContent = fmt(parseInt(rjv.value)); };
-  if (rjm) rjm.oninput = () => { $('#s-rjm-label').textContent = fmt(parseInt(rjm.value)); };
   const ejSave = $('#s-ej-save');
   if (ejSave) ejSave.onclick = async () => {
     const explicit_join_cents = parseInt(ejv.value);
     const explicit_mic_join_cents = parseInt(ejm.value);
-    const join_cents = parseInt(rjv.value);
-    const mic_join_cents = parseInt(rjm.value);
     const { status } = await api('/model/profile', {
-      method: 'PUT', body: JSON.stringify({ explicit_join_cents, explicit_mic_join_cents,
-        join_cents, mic_join_cents }) });
+      method: 'PUT', body: JSON.stringify({ explicit_join_cents, explicit_mic_join_cents }) });
     toast(status === 200 ? t('stage_saved') : t('couldnt_save'));
     if (status === 200) refreshMe();
   };
@@ -3059,8 +2879,7 @@ async function vChat(params) {
       <button class="send-btn" id="c-send" ${conv.is_paused ? 'disabled' : ''}>➤</button>
     </div>
     <div id="action-sheet" class="hidden"></div>
-    <input type="file" id="ppv-file-img" class="file-offscreen" accept="image/*">
-    <input type="file" id="ppv-file-vid" class="file-offscreen" accept="video/*">`;
+    <input type="file" id="ppv-file" class="hidden" accept="image/jpeg,image/png,image/webp,video/mp4">`;
 
   $('#c-back').onclick = () => {
     if (!S.user) show('landing', {});
@@ -3076,23 +2895,6 @@ async function vChat(params) {
     conv.other.per_minute_cents || 399);
   const pb = $('#c-plus');
   if (pb) pb.onclick = openActionSheet;
-  // PPV pickers: real inputs opened natively by the sheet's <label for> taps.
-  // (A synthetic input.click() gets ignored by iOS in the home-screen app —
-  // the label tap is a native gesture, so the picker always opens.)
-  const bindPpv = (id, kind) => {
-    const inp = $(id);
-    if (!inp) return;
-    inp.onchange = () => {
-      const f = inp.files && inp.files[0];
-      inp.value = '';
-      closeActionSheet();
-      if (!f) return;
-      if (f.size > 30 * 1024 * 1024) return toast('File too big — 30MB max.');
-      openPpvPriceSheet(f, kind);
-    };
-  };
-  bindPpv('#ppv-file-img', 'ppv_image');
-  bindPpv('#ppv-file-vid', 'ppv_video');
   const gb = $('#c-gift');
   if (gb) gb.onclick = openChatGiftPanel;
   const tmb = $('#c-tipmenu');
@@ -3291,8 +3093,8 @@ function openActionSheet() {
     <div class="sheet">
       <div class="sheet-title">Send…</div>
       ${isModel ? `
-        <label class="sheet-btn" for="ppv-file-img">📸 Photo <span class="muted small">— set your price</span></label>
-        <label class="sheet-btn" for="ppv-file-vid">🎥 Video <span class="muted small">— set your price</span></label>
+        <button class="sheet-btn" id="sh-photo">📸 Photo <span class="muted small">— set your price</span></button>
+        <button class="sheet-btn" id="sh-video">🎥 Video <span class="muted small">— set your price</span></button>
         <button class="sheet-btn" id="sh-voice">🎤 Voice note <span class="muted small">— fan pays ${voicePrice}</span></button>
       ` : `
         <button class="sheet-btn" id="sh-voice">🎤 Voice note</button>
@@ -3304,6 +3106,8 @@ function openActionSheet() {
   $('#sheet-bg').onclick = closeActionSheet;
   $('#sh-cancel').onclick = closeActionSheet;
   const bind = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
+  bind('#sh-photo', () => { closeActionSheet(); pickPpvFile('ppv_image'); });
+  bind('#sh-video', () => { closeActionSheet(); pickPpvFile('ppv_video'); });
   bind('#sh-voice', () => { closeActionSheet(); startVoiceRecord(); });
   bind('#sh-tip', () => { closeActionSheet(); openTipModal(); });
 }
@@ -3311,6 +3115,23 @@ function openActionSheet() {
 function closeActionSheet() {
   const sheet = $('#action-sheet');
   if (sheet) sheet.classList.add('hidden');
+}
+
+function pickPpvFile(kind) {
+  // iOS Safari blocks clicks on display:none inputs — create a visible-but-offscreen one
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = kind === 'ppv_video' ? 'video/*' : 'image/*';
+  input.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.01;z-index:9999;';
+  input.onchange = () => {
+    const f = input.files[0];
+    input.remove();
+    if (!f) return;
+    if (f.size > 30 * 1024 * 1024) return toast('File too big — 30MB max.');
+    openPpvPriceSheet(f, kind);
+  };
+  document.body.appendChild(input);
+  input.click();
 }
 
 // In-app price picker (replaces fragile prompt() which iOS often blocks)
@@ -4746,13 +4567,6 @@ function stageJoinFee(explicit, mode) {
     }
     return mode === 'mic' ? EXPLICIT_MIC_JOIN_FEE_CENTS : EXPLICIT_JOIN_FEE_CENTS;
   }
-  // Regular joins are model-priced too (her Settings, $5–$1,000)
-  if (L && Number.isInteger(L.joinCents) && Number.isInteger(L.micJoinCents)) {
-    return mode === 'mic' ? L.micJoinCents : L.joinCents;
-  }
-  if (S.model && Number.isInteger(S.model.join_cents)) {
-    return mode === 'mic' ? (S.model.mic_join_cents || 500) : S.model.join_cents;
-  }
   return mode === 'mic' ? MIC_JOIN_FEE_CENTS : JOIN_FEE_CENTS;
 }
 const stageModeEmoji = (mode) => mode === 'mic' ? '🎙️' : '🎥';
@@ -4995,8 +4809,6 @@ async function watchLive(sessionId) {
              entryPaid: !!data.explicit_paid, entryCents: data.explicit_entry_cents || 499,
              explicitJoinCents: data.explicit_join_cents || 2500,
              explicitMicJoinCents: data.explicit_mic_join_cents || 1500,
-             joinCents: data.join_cents || 1000,
-             micJoinCents: data.mic_join_cents || 500,
              explicitSource: data.is_explicit ? 'manual' : null,
              graceSec: data.explicit_grace_sec || 180,
              chat: [], gifts: [], leaderboard: [] };
@@ -5723,13 +5535,10 @@ async function adminModelsBody() {
             <span class="small" style="color:${m.is_online ? 'var(--green)' : 'var(--muted)'}">● ${m.is_online ? 'Online' : 'Offline'}</span>
             <span class="small muted"> · ${fmt(m.per_message_cents)}/msg · ${fmt(m.per_minute_cents)}/min</span><br>
             <span class="small" style="color:var(--green)">Owed: ${fmt(m.pending_cents)}</span>
-            ${m.recruiter_name ? `<br><span class="small" style="color:var(--gold)">🤝 via ${esc(m.recruiter_name)}</span>` : ''}
-            ${m.is_hidden ? `<br><span class="small" style="color:var(--peach)">👻 Hidden from the main screen</span>` : ''}</div>
+            ${m.recruiter_name ? `<br><span class="small" style="color:var(--gold)">🤝 via ${esc(m.recruiter_name)}</span>` : ''}</div>
           <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
             <button class="btn small ghost" data-m-edit="${m.id}">✏️ Rates</button>
             <button class="btn small ghost" data-m-photo="${m.id}">📷 Photo</button>
-            <button class="btn small ghost" data-m-msg="${m.id}">💬 Message</button>
-            <button class="btn small ghost" data-m-hide="${m.id}">${m.is_hidden ? '👀 Show' : '👻 Hide'}</button>
             <button class="btn small ghost" data-m-toggle="${m.id}">${m.banned ? "✅ Reactivate" : "⏸️ Deactivate"}</button>
             <button class="btn small danger" data-m-del="${m.id}">Remove</button>
           </div>
@@ -5756,8 +5565,7 @@ async function adminInvitesBody() {
     const url = isAff ? `${baseUrl}/#affiliate/${inv.code}` : `${baseUrl}/?invite=${inv.code}`;
     const status = inv.is_revoked ? '<span style="color:var(--red)">⛔ Revoked</span>'
       : inv.used_by ? `<span style="color:var(--green)">✅ Used by ${esc(inv.used_by.display_name)}${inv.used_by.banned ? ' (deactivated)' : ''}</span>`
-      : inv.expired ? '<span style="color:var(--red)">⌛ Expired — hit Refresh to give her 6 more hours</span>'
-      : `<span style="color:var(--yellow)">⏳ Waiting for signup</span>${inv.expires_at ? `<br><span class="small muted">Expires ${timeHM(inv.expires_at)}</span>` : ''}`;
+      : '<span style="color:var(--yellow)">⏳ Waiting for signup</span>';
     return `
       <div class="card" style="padding:12px">
         <div class="row"><span class="grow"><b>${esc(inv.label) || 'Untitled invite'}</b><br>
@@ -5765,7 +5573,6 @@ async function adminInvitesBody() {
           ${inv.used_at ? `<br><span class="small muted">Used ${timeHM(inv.used_at)}</span>` : ''}</span></div>
         <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
           ${!inv.is_revoked ? `<button class="btn small" data-inv-copy="${inv.code}" data-aff="${isAff ? 1 : 0}">📋 Copy link</button>` : ''}
-          ${!inv.is_revoked && !inv.used_by ? `<button class="btn small ghost" data-inv-refresh="${inv.id}">🔄 Refresh (6h)</button>` : ''}
           ${!inv.is_revoked ? `<button class="btn small danger" data-inv-revoke="${inv.id}" data-used="${inv.used_by ? 1 : 0}">Revoke</button>` : ''}
         </div>
       </div>`;
@@ -5773,7 +5580,7 @@ async function adminInvitesBody() {
   return `
     <div class="card">
       <div style="font-weight:800;margin-bottom:6px">✉️ Generate model invite link</div>
-      <div class="muted small">Send this link to a model — she signs up through it and gets a model account. Links expire in 6 hours; if she's slow, hit 🔄 Refresh on her link below — same link, 6 fresh hours, nothing to resend. You can revoke it anytime.</div>
+      <div class="muted small">Send this link to a model — she signs up through it and gets a model account. You can revoke it anytime.</div>
       <label class="field">Label (e.g. her name)<input class="input" id="inv-label" placeholder="Bunny"></label>
       <button class="btn" id="inv-gen">Generate invite link</button>
     </div>
@@ -6409,15 +6216,6 @@ function wireAdminBody(tab) {
     };
   });
 
-  document.querySelectorAll('[data-inv-refresh]').forEach((b) => {
-    b.onclick = async () => {
-      const { status } = await api(`/admin/invites/${b.dataset.invRefresh}/refresh`, {
-        method: 'POST', body: JSON.stringify({}) });
-      toast(status === 200 ? '🔄 Link refreshed — same link, good for 6 more hours.' : 'Could not refresh that link.');
-      show('admin', {});
-    };
-  });
-
   // Partners
   const ptAdd = $('#pt-add');
   if (ptAdd) ptAdd.onclick = async () => {
@@ -6511,51 +6309,6 @@ function wireAdminBody(tab) {
         });
       };
       inp.click();
-    };
-  });
-  document.querySelectorAll('[data-m-msg]').forEach((b) => {
-    b.onclick = async () => {
-      const id = b.dataset.mMsg;
-      const box = $('#edit-' + id);
-      const renderThread = async () => {
-        const { data } = await api(`/admin/models/${id}/thread`);
-        const msgs = (data && data.messages) || [];
-        box.innerHTML = `
-          <div style="margin-top:10px">
-            <div class="small muted" style="margin-bottom:6px">💬 Her inbox thread — she sees “Asce (Admin)”. Her replies land here too.</div>
-            <div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
-              ${msgs.length ? msgs.map((x) => `<div style="background:rgba(0,0,0,.25);border-radius:10px;padding:7px 9px">
-                <b class="small">${esc(x.sender_name)}</b> <span class="small muted">${timeHM(x.created_at)}</span>
-                <div style="white-space:pre-wrap;font-size:14px">${esc(x.body)}</div></div>`).join('') : '<div class="small muted">No messages yet — say the first word.</div>'}
-            </div>
-            <textarea class="input" id="mm-${id}" rows="2" placeholder="Text her as moderator…"></textarea>
-            <div class="row" style="margin-top:6px;gap:6px">
-              <button class="btn small" id="mm-send-${id}">Send to her inbox</button>
-              <button class="btn small ghost" id="mm-refresh-${id}">↻ Refresh</button>
-            </div>
-          </div>`;
-        $('#mm-send-' + id).onclick = async () => {
-          const body = $('#mm-' + id).value.trim();
-          if (!body) return;
-          const { status } = await api(`/admin/models/${id}/message`, {
-            method: 'POST', body: JSON.stringify({ body }) });
-          if (status === 200) { toast('💬 Sent to her inbox'); renderThread(); }
-          else toast('Could not send.');
-        };
-        $('#mm-refresh-' + id).onclick = renderThread;
-      };
-      renderThread();
-    };
-  });
-  document.querySelectorAll('[data-m-hide]').forEach((b) => {
-    b.onclick = async () => {
-      const id = b.dataset.mHide;
-      const { data } = await api('/admin/models');
-      const m = (data.models || []).find((x) => x.id === parseInt(id));
-      await api(`/admin/models/${id}`, { method: 'PUT',
-        body: JSON.stringify({ is_hidden: m.is_hidden ? 0 : 1 }) });
-      toast(m.is_hidden ? '👀 She\'s back on the main screen' : '👻 Hidden — she vanished from the main screen');
-      show('admin', {});
     };
   });
   go('#nm-add', async () => {
