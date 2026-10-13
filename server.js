@@ -4851,16 +4851,23 @@ app.get('/api/live/schedule', (req, res) => {
   res.json({ upcoming: out.slice(0, 50) });
 });
 
-// GET top-3 gifters leaderboard for a stream
+// GET the live crown race: top-3 spenders of THIS session. Everything a fan
+// spends with her while the live runs counts — gifts, tips, stage joins,
+// explicit minutes/entries, priority messages (windowed to the session).
 app.get('/api/live/:id/leaderboard', identMiddleware, requireUser, (req, res) => {
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
   if (!sess) return res.status(404).json({ error: 'not_found' });
   const top = db.prepare(`
-    SELECT ge.fan_id, u.display_name AS fan_name,
-           SUM(ge.gross_cents) AS total_cents, COUNT(*) AS gift_count
-    FROM gift_events ge JOIN users u ON u.id = ge.fan_id
-    WHERE ge.session_id = ?
-    GROUP BY ge.fan_id ORDER BY total_cents DESC LIMIT 3`).all(sess.id);
+    SELECT t.fan_id, u.display_name AS fan_name,
+           SUM(t.gross_cents) AS total_cents,
+           SUM(CASE WHEN t.gross_cents > 0 THEN 1 ELSE 0 END) AS gift_count
+    FROM transactions t JOIN users u ON u.id = t.fan_id
+    WHERE t.model_id = ? AND t.is_test = 0 AND t.fan_id IS NOT NULL
+      AND t.created_at >= ?
+      AND (t.type LIKE 'live%' OR t.type LIKE 'priority%'
+           OR t.type IN ('gift', 'tip', 'tip_menu'))
+    GROUP BY t.fan_id HAVING total_cents > 0
+    ORDER BY total_cents DESC LIMIT 3`).all(sess.model_id, sess.started_at);
   const totals = db.prepare(`
     SELECT COALESCE(SUM(gross_cents),0) AS gift_cents, COUNT(*) AS gift_count
     FROM gift_events WHERE session_id = ?`).get(sess.id);
