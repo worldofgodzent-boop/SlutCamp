@@ -650,6 +650,17 @@ addColumnIfMissing('users', 'language', "TEXT NOT NULL DEFAULT 'en'");
 // Welcome MESSAGE in her app inbox (from Asce (Admin)): stamped when sent.
 // NULL = not sent yet; the boot sweep delivers to anyone missing it.
 addColumnIfMissing('users', 'welcome_msg_sent_at', 'TEXT');
+
+// Guide MESSAGE (how the app works / how she makes money) — lands right
+// behind the welcome DM in her admin thread. NULL = not sent yet; the
+// boot sweep delivers to anyone missing it.
+addColumnIfMissing('users', 'guide_msg_sent_at', 'TEXT');
+
+// Guide VIDEO message (1-minute tour) — same thread, lands behind the
+// guide DM. Gated on the video file existing on disk: until it ships, the
+// stamp stays NULL and nobody gets the message; once the file lands, the
+// boot sweep delivers it to every model missing the stamp.
+addColumnIfMissing('users', 'guide_video_sent_at', 'TEXT');
 db.exec(`
 CREATE TABLE IF NOT EXISTS name_change_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1261,6 +1272,10 @@ function createUser(username, password, role, displayName, dob, language) {
     db.prepare('INSERT INTO models (user_id) VALUES (?)').run(info.lastInsertRowid);
     // Automatic: the congratulations/welcome message lands in her inbox.
     try { sendModelWelcome(Number(info.lastInsertRowid)); } catch (e) { /* boot sweep retries */ }
+    // Right behind it: the "how it works / how you make money" playbook DM.
+    try { sendModelGuide(Number(info.lastInsertRowid)); } catch (e) { /* boot sweep retries */ }
+    // And the 1-minute tour video — sent only once the video file exists.
+    try { sendModelGuideVideo(Number(info.lastInsertRowid)); } catch (e) { /* boot sweep retries */ }
   }
   return Number(info.lastInsertRowid);
 }
@@ -1339,6 +1354,154 @@ function sendPendingModelWelcomes() {
   for (const r of rows) { try { sendModelWelcome(r.id); } catch (e) { /* retry next boot */ } }
 }
 
+/* ------------------------------------------------------------------ */
+/* Model guide message — how the app works + how she makes money.     */
+/* Lands in the same admin thread, right behind the welcome DM.       */
+/* (One message: the copy is ~1.5k chars; messages.body is unbounded  */
+/* TEXT and this insert path has no cap — the 2,000-char slice only   */
+/* applies to user-typed chat via POST /api/messages.)                */
+/* ------------------------------------------------------------------ */
+const MODEL_GUIDE = {
+  en: `💋 How SlutCamp works — and how you get paid
+
+Welcome in! Here's the whole game, quick:
+
+🏠 HOME — the shop window. Fans scroll the girls here. Your spot is earned: more likes ❤️ + more sales = higher up, and the #1 girl wears the 👑. Peek at the other girls from your Home tab — see what the top girls charge and how they do it.
+
+💬 CHATS — fans pay per message at YOUR price. Every text he sends you earns. Set your price in Settings.
+
+📹 FACETIME — private video by the minute (10–60 min, he pays upfront). Accept when you want; if you're mid-call he waits in line. Mid-call you can offer to switch explicit for double. Your rate, your call.
+
+🔴 GO LIVE — stream to everyone. Fans pay to join your stage, tip you, and fight for the 👑 at the top of your live (top spender of the stream). Your biggest spenders land in your 🏆 Fan Club under Earnings — treat them sweet, they pay the rent.
+
+📅 BOOKINGS — fans schedule FaceTime dates ahead. Guaranteed prepaid minutes.
+
+💰 YOUR MONEY — you keep 60% of EVERYTHING. Watch it live in Earnings. Before your first payout, add your tax info (W-9) in Settings — you're a 1099 contractor, we never touch your taxes.
+
+⚠️ THE ONE RULE — everything stays on SlutCamp. Never move a fan to Cash App, Venmo, Zelle or another app, and never drop your number or socials in chat. The system listens for it — it ends the stream and strikes your account. Protect your bag.
+
+Start here: sign your agreement → verify your ID → photo + prices → go live. Fans are waiting 🔥
+
+Questions? Reply right here, I read everything. — Asce`,
+  es: `💋 Cómo funciona SlutCamp — y cómo te pagan
+
+¡Bienvenida! Aquí va todo el juego, rápido:
+
+🏠 INICIO — el escaparate. Los fans recorren a las chicas aquí. Tu lugar se gana: más likes ❤️ + más ventas = más arriba, y la chica #1 lleva la 👑. Espía a las demás chicas desde tu pestaña de Inicio — mira cuánto cobran las mejores y cómo lo hacen.
+
+💬 CHATS — los fans pagan por mensaje a TU precio. Cada texto que te manda te hace ganar. Pon tu precio en Ajustes.
+
+📹 FACETIME — video privado por minuto (10–60 min, él paga por adelantado). Acepta cuando quieras; si estás en una llamada, él espera en la fila. A mitad de llamada puedes ofrecer cambiar a explícito por el doble. Tu tarifa, tú decides.
+
+🔴 SAL EN VIVO — transmite para todos. Los fans pagan por unirse a tu escenario, te dan propinas y pelean por la 👑 en lo alto de tu live (el que más gasta de la transmisión). Tus fans que más gastan llegan a tu 🏆 Fan Club en Ganancias — trátalos bien, ellos pagan la renta.
+
+📅 RESERVAS — los fans reservan fechas de FaceTime por adelantado. Minutos prepagados garantizados.
+
+💰 TU DINERO — te quedas con el 60% de TODO. Míralo en vivo en Ganancias. Antes de tu primer pago, agrega tu información de impuestos (W-9) en Ajustes — eres contratista 1099, nunca tocamos tus impuestos.
+
+⚠️ LA ÚNICA REGLA — todo se queda en SlutCamp. Nunca muevas a un fan a Cash App, Venmo, Zelle u otra app, y nunca dejes tu número ni tus redes en el chat. El sistema lo escucha — termina la transmisión y sanciona tu cuenta. Protege tu bolsa.
+
+Empieza aquí: firma tu acuerdo → verifica tu ID → foto + precios → sal en vivo. Los fans están esperando 🔥
+
+¿Preguntas? Responde aquí mismo, leo todo. — Asce`,
+  pt: `💋 Como a SlutCamp funciona — e como você é paga
+
+Bem-vinda! Aqui está o jogo todo, rapidinho:
+
+🏠 INÍCIO — a vitrine. Os fãs passam pelas garotas aqui. Seu lugar é conquistado: mais likes ❤️ + mais vendas = mais no topo, e a garota nº 1 usa a 👑. Espie as outras garotas na sua aba Início — veja quanto as tops cobram e como elas fazem.
+
+💬 CHATS — os fãs pagam por mensagem no SEU preço. Cada texto que ele te manda, você ganha. Defina seu preço em Configurações.
+
+📹 FACETIME — vídeo privado por minuto (10–60 min, ele paga adiantado). Aceite quando quiser; se estiver no meio de uma chamada, ele espera na fila. No meio da chamada você pode oferecer trocar para explícito pelo dobro. Sua tarifa, você decide.
+
+🔴 ENTRE AO VIVO — transmita para todo mundo. Os fãs pagam para entrar no seu palco, te dão gorjetas e brigam pela 👑 no topo da sua live (quem mais gasta na transmissão). Seus maiores gastadores caem no seu 🏆 Fan Club em Ganhos — trate-os com carinho, são eles que pagam o aluguel.
+
+📅 AGENDAMENTOS — os fãs agendam datas de FaceTime com antecedência. Minutos pré-pagos garantidos.
+
+💰 SEU DINHEIRO — você fica com 60% de TUDO. Acompanhe ao vivo em Ganhos. Antes do seu primeiro pagamento, adicione suas informações fiscais (W-9) em Configurações — você é autônoma 1099, a gente nunca mexe nos seus impostos.
+
+⚠️ A ÚNICA REGRA — tudo fica na SlutCamp. Nunca leve um fã para o Cash App, Venmo, Zelle ou outro app, e nunca jogue seu número ou suas redes no chat. O sistema escuta — ele encerra a transmissão e penaliza sua conta. Proteja sua grana.
+
+Comece aqui: assine seu contrato → verifique seu documento → foto + preços → entre ao vivo. Os fãs estão esperando 🔥
+
+Dúvidas? Responda aqui mesmo, eu leio tudo. — Asce`,
+};
+
+/* Send the guide message into a model's inbox exactly once (same
+   mechanics as the welcome: admin sender, free, stamped, bell ping). */
+function sendModelGuide(modelUserId) {
+  const m = db.prepare("SELECT id, display_name, language, guide_msg_sent_at FROM users WHERE id = ? AND role = 'model'")
+    .get(modelUserId);
+  if (!m || m.guide_msg_sent_at) return false;
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin || admin.id === m.id) return false;
+  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
+  if (!conv) {
+    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
+    conv = { id: Number(info.lastInsertRowid) };
+  }
+  const text = MODEL_GUIDE[m.language] || MODEL_GUIDE.en;
+  db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+    .run(conv.id, admin.id, text);
+  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+  db.prepare("UPDATE users SET guide_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
+  try {
+    notifyUser(m.id, 'guide', '💋 How SlutCamp works',
+      'Asce sent you the playbook — how the app works and how you get paid 💰', '');
+  } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+  return true;
+}
+
+/* Boot sweep: every model who never got the guide message gets it now. */
+function sendPendingModelGuides() {
+  const rows = db.prepare("SELECT id FROM users WHERE role = 'model' AND guide_msg_sent_at IS NULL").all();
+  for (const r of rows) { try { sendModelGuide(r.id); } catch (e) { /* retry next boot */ } }
+}
+
+/* ------------------------------------------------------------------ */
+/* Model guide VIDEO message — the 1-minute tour, same admin thread.  */
+/* The video file ships separately (public/video/model-guide.mp4).   */
+/* Until it exists on disk: send nothing, leave the stamp NULL — the  */
+/* boot sweep then delivers it to everyone the moment the file lands. */
+/*                                                                    */
+/* Delivery is a plain text link, NOT a native media_items message:   */
+/* free admin→model media would render locked for her (the unlock     */
+/* path is fan-only — serializer unlock logic + POST /unlock are      */
+/* fan-role), while the static /video/ URL plays for anyone.          */
+/* ------------------------------------------------------------------ */
+const GUIDE_VIDEO_FILE = path.join(__dirname, 'public', 'video', 'model-guide.mp4');
+const GUIDE_VIDEO_TEXT = '🎬 Watch your 1-minute tour: https://slutcamp.onrender.com/video/model-guide.mp4';
+
+function sendModelGuideVideo(modelUserId) {
+  const m = db.prepare("SELECT id, display_name, language, guide_video_sent_at FROM users WHERE id = ? AND role = 'model'")
+    .get(modelUserId);
+  if (!m || m.guide_video_sent_at) return false;
+  if (!fs.existsSync(GUIDE_VIDEO_FILE)) return false; // video not shipped yet — stay unstamped
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin || admin.id === m.id) return false;
+  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
+  if (!conv) {
+    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
+    conv = { id: Number(info.lastInsertRowid) };
+  }
+  db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+    .run(conv.id, admin.id, GUIDE_VIDEO_TEXT);
+  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+  db.prepare("UPDATE users SET guide_video_sent_at = datetime('now') WHERE id = ?").run(m.id);
+  try {
+    notifyUser(m.id, 'guide_video', '🎬 Your 1-minute tour is here',
+      'Asce sent you a quick video tour of how SlutCamp works 💋', '');
+  } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+  return true;
+}
+
+/* Boot sweep: once the video file exists, every model missing it gets it. */
+function sendPendingModelGuideVideos() {
+  if (!fs.existsSync(GUIDE_VIDEO_FILE)) return; // video not shipped yet
+  const rows = db.prepare("SELECT id FROM users WHERE role = 'model' AND guide_video_sent_at IS NULL").all();
+  for (const r of rows) { try { sendModelGuideVideo(r.id); } catch (e) { /* retry next boot */ } }
+}
+
 function seed() {
   const count = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
   if (count > 0) return;
@@ -1374,6 +1537,8 @@ function seed() {
 }
 seed();
 sendPendingModelWelcomes();
+sendPendingModelGuides();
+sendPendingModelGuideVideos();
 
 // One-time pre-launch cleanup (Corry, Oct 12 2026): every cent on the
 // platform so far is TEST money — demo credits only, no real payment has
