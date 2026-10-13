@@ -3000,7 +3000,8 @@ async function vChat(params) {
       <button class="send-btn" id="c-send" ${conv.is_paused ? 'disabled' : ''}>➤</button>
     </div>
     <div id="action-sheet" class="hidden"></div>
-    <input type="file" id="ppv-file" class="hidden" accept="image/jpeg,image/png,image/webp,video/mp4">`;
+    <input type="file" id="ppv-file-img" class="file-offscreen" accept="image/*">
+    <input type="file" id="ppv-file-vid" class="file-offscreen" accept="video/*">`;
 
   $('#c-back').onclick = () => {
     if (!S.user) show('landing', {});
@@ -3016,6 +3017,23 @@ async function vChat(params) {
     conv.other.per_minute_cents || 399);
   const pb = $('#c-plus');
   if (pb) pb.onclick = openActionSheet;
+  // PPV pickers: real inputs opened natively by the sheet's <label for> taps.
+  // (A synthetic input.click() gets ignored by iOS in the home-screen app —
+  // the label tap is a native gesture, so the picker always opens.)
+  const bindPpv = (id, kind) => {
+    const inp = $(id);
+    if (!inp) return;
+    inp.onchange = () => {
+      const f = inp.files && inp.files[0];
+      inp.value = '';
+      closeActionSheet();
+      if (!f) return;
+      if (f.size > 30 * 1024 * 1024) return toast('File too big — 30MB max.');
+      openPpvPriceSheet(f, kind);
+    };
+  };
+  bindPpv('#ppv-file-img', 'ppv_image');
+  bindPpv('#ppv-file-vid', 'ppv_video');
   const gb = $('#c-gift');
   if (gb) gb.onclick = openChatGiftPanel;
   const tmb = $('#c-tipmenu');
@@ -3214,8 +3232,8 @@ function openActionSheet() {
     <div class="sheet">
       <div class="sheet-title">Send…</div>
       ${isModel ? `
-        <button class="sheet-btn" id="sh-photo">📸 Photo <span class="muted small">— set your price</span></button>
-        <button class="sheet-btn" id="sh-video">🎥 Video <span class="muted small">— set your price</span></button>
+        <label class="sheet-btn" for="ppv-file-img">📸 Photo <span class="muted small">— set your price</span></label>
+        <label class="sheet-btn" for="ppv-file-vid">🎥 Video <span class="muted small">— set your price</span></label>
         <button class="sheet-btn" id="sh-voice">🎤 Voice note <span class="muted small">— fan pays ${voicePrice}</span></button>
       ` : `
         <button class="sheet-btn" id="sh-voice">🎤 Voice note</button>
@@ -3227,8 +3245,6 @@ function openActionSheet() {
   $('#sheet-bg').onclick = closeActionSheet;
   $('#sh-cancel').onclick = closeActionSheet;
   const bind = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
-  bind('#sh-photo', () => { closeActionSheet(); pickPpvFile('ppv_image'); });
-  bind('#sh-video', () => { closeActionSheet(); pickPpvFile('ppv_video'); });
   bind('#sh-voice', () => { closeActionSheet(); startVoiceRecord(); });
   bind('#sh-tip', () => { closeActionSheet(); openTipModal(); });
 }
@@ -3236,23 +3252,6 @@ function openActionSheet() {
 function closeActionSheet() {
   const sheet = $('#action-sheet');
   if (sheet) sheet.classList.add('hidden');
-}
-
-function pickPpvFile(kind) {
-  // iOS Safari blocks clicks on display:none inputs — create a visible-but-offscreen one
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = kind === 'ppv_video' ? 'video/*' : 'image/*';
-  input.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.01;z-index:9999;';
-  input.onchange = () => {
-    const f = input.files[0];
-    input.remove();
-    if (!f) return;
-    if (f.size > 30 * 1024 * 1024) return toast('File too big — 30MB max.');
-    openPpvPriceSheet(f, kind);
-  };
-  document.body.appendChild(input);
-  input.click();
 }
 
 // In-app price picker (replaces fragile prompt() which iOS often blocks)
