@@ -85,6 +85,12 @@ const I18N = {
     language: 'Language', language_note: 'Choose the language for your app.',
     language_set: '🌐 Language updated!',
     language_search_ph: 'Type your language…', cancel: 'Cancel',
+    wm_title: 'Congratulations, {name}! 🎉', wm_welcome: 'Welcome to SlutCamp 💋',
+    wm_body: "You're officially a SlutCamp model — and you're in early. Early models get seen first, and the fans are already waiting.",
+    wm_money: '💰 You keep 60% of everything: paid messages, live streams + video calls paid per minute at YOUR prices, tips and paid content.',
+    wm_steps_h: 'To start earning:',
+    wm_step1: '✍️ Sign your model agreement', wm_step2: '🪪 Verify your ID (2257 — keeps you legal and paid)', wm_step3: '📸 Add your photo, set your prices, and go live',
+    wm_btn: "Let's set me up 🔥",
     home_sub: 'Chat & video call the models · 18+ only',
     free3_title: '🎁 First 3 messages FREE',
     free3_sub: 'with every model you try. No account needed to start.',
@@ -219,6 +225,12 @@ const I18N = {
     language: 'Idioma', language_note: 'Elige el idioma de tu app.',
     language_set: '🌐 ¡Idioma actualizado!',
     language_search_ph: 'Escribe tu idioma…', cancel: 'Cancelar',
+    wm_title: '¡Felicidades, {name}! 🎉', wm_welcome: 'Bienvenida a SlutCamp 💋',
+    wm_body: 'Ya eres oficialmente una modelo de SlutCamp — y llegaste temprano. Las primeras modelos se ven primero, y los fans ya están esperando.',
+    wm_money: '💰 Te quedas con el 60% de todo: mensajes pagos, lives y videollamadas pagadas por minuto a TUS precios, propinas y contenido pago.',
+    wm_steps_h: 'Para empezar a ganar:',
+    wm_step1: '✍️ Firma tu acuerdo de modelo', wm_step2: '🪪 Verifica tu ID (2257 — te mantiene legal y cobrando)', wm_step3: '📸 Sube tu foto, pon tus precios y sal en vivo',
+    wm_btn: 'Vamos a configurar todo 🔥',
     home_sub: 'Chatea y haz videollamadas con las modelos · Solo 18+',
     free3_title: '🎁 Primeros 3 mensajes GRATIS',
     free3_sub: 'con cada modelo que pruebes. No necesitas cuenta para empezar.',
@@ -353,6 +365,12 @@ const I18N = {
     language: 'Idioma', language_note: 'Escolha o idioma do seu app.',
     language_set: '🌐 Idioma atualizado!',
     language_search_ph: 'Digite seu idioma…', cancel: 'Cancelar',
+    wm_title: 'Parabéns, {name}! 🎉', wm_welcome: 'Bem-vinda à SlutCamp 💋',
+    wm_body: 'Você agora é oficialmente uma modelo da SlutCamp — e chegou cedo. As primeiras modelos são vistas primeiro, e os fãs já estão esperando.',
+    wm_money: '💰 Você fica com 60% de tudo: mensagens pagas, lives e videochamadas pagas por minuto nos SEUS preços, gorjetas e conteúdo pago.',
+    wm_steps_h: 'Para começar a ganhar:',
+    wm_step1: '✍️ Assine seu contrato de modelo', wm_step2: '🪪 Verifique seu documento (2257 — mantém você legal e recebendo)', wm_step3: '📸 Adicione sua foto, defina seus preços e entre ao vivo',
+    wm_btn: 'Vamos montar meu perfil 🔥',
     home_sub: 'Converse e faça videochamadas com as modelos · Somente 18+',
     free3_title: '🎁 Primeiras 3 mensagens GRÁTIS',
     free3_sub: 'com cada modelo que você testar. Não precisa de conta para começar.',
@@ -1631,11 +1649,47 @@ async function checkContractGate() {
   } catch (e) { S.contractSigned = true; /* fail open on network error */ }
 }
 
+/* One-time congratulations for NEW models — fires after signup/login when
+   the account has never been welcomed (users.welcomed_at). Existing models
+   were backfilled server-side, so this only greets fresh signups. */
+let welcomeShownThisSession = false;
+function maybeShowModelWelcome() {
+  if (welcomeShownThisSession) return;
+  const u = S.user;
+  if (!u || u.role !== 'model' || u.welcomed) return;
+  if (['liveBroadcast', 'liveWatch', 'liveModWatch'].includes(S.view)) return;
+  welcomeShownThisSession = true;
+  u.welcomed = true; // optimistic — server stamps it below
+  api('/me/welcomed', { method: 'POST', body: JSON.stringify({}) }).catch(() => {});
+  let el = document.getElementById('modelWelcome');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'modelWelcome';
+    el.className = 'model-welcome';
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `
+    <div class="mw-card">
+      <img class="mw-lips" src="/img/lips-logo.png" alt="">
+      <div class="mw-confetti">🎉 💋 🔥</div>
+      <div class="mw-title">${t('wm_title', { name: esc(u.display_name) })}</div>
+      <div class="mw-welcome">${t('wm_welcome')}</div>
+      <p class="mw-body">${t('wm_body')}</p>
+      <p class="mw-money">${t('wm_money')}</p>
+      <div class="mw-steps-h">${t('wm_steps_h')}</div>
+      <div class="mw-steps"><div>${t('wm_step1')}</div><div>${t('wm_step2')}</div><div>${t('wm_step3')}</div></div>
+      <button class="btn mw-btn" id="mw-go">${t('wm_btn')}</button>
+    </div>`;
+  el.hidden = false;
+  el.querySelector('#mw-go').onclick = () => { el.hidden = true; };
+}
+
 async function refreshMe() {
   const { status, data } = await api('/me');
   if (status === 200) {
     S.user = data.user; S.wallet = data.wallet; S.model = data.model || null;
     syncLangFromUser(data.user);
+    maybeShowModelWelcome();
     if (data.commission_pct !== undefined) S.commissionPct = data.commission_pct;
   } else if (status === 401 || status === 403) {
     logout(false);
