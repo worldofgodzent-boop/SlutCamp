@@ -593,6 +593,8 @@ addColumnIfMissing('calls', 'booking_id', 'INTEGER REFERENCES bookings(id)');
 addColumnIfMissing('platform_stats', 'explicit_entry_cents', 'INTEGER NOT NULL DEFAULT 499');
 addColumnIfMissing('platform_stats', 'admin_phone', 'TEXT');
 addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('platform_stats', 'test_money_cleared_at', 'TEXT');
+addColumnIfMissing('transactions', 'is_test', 'INTEGER NOT NULL DEFAULT 0');
 // Fraud protection: account status ('active' | 'frozen') + ledger IP on every money row
 addColumnIfMissing('users', 'status', "TEXT NOT NULL DEFAULT 'active'");
 addColumnIfMissing('transactions', 'ip', 'TEXT');
@@ -1324,6 +1326,27 @@ function seed() {
 seed();
 sendPendingModelWelcomes();
 
+// One-time pre-launch cleanup (Corry, Oct 12 2026): every cent on the
+// platform so far is TEST money — demo credits only, no real payment has
+// ever been processed. Clear model/recruiter balances so nobody mistakes
+// demo earnings for money actually owed. NOTHING is deleted: transactions
+// stay on the ledger flagged is_test=1, and money displays exclude test
+// rows from here on. Runs exactly once (marker on platform_stats).
+(function clearTestMoneyOnce() {
+  try {
+    const row = db.prepare('SELECT test_money_cleared_at FROM platform_stats WHERE id = 1').get();
+    if (!row || row.test_money_cleared_at) return;
+    db.prepare('UPDATE transactions SET is_test = 1 WHERE is_test = 0').run();
+    db.prepare(`UPDATE wallets SET earnings_cents = 0, paid_out_cents = 0
+                WHERE user_id IN (SELECT id FROM users WHERE role IN ('model','recruiter'))`).run();
+    db.prepare('UPDATE platform_stats SET earnings_cents = 0 WHERE id = 1').run();
+    db.prepare(`UPDATE withdrawals SET status = 'rejected', decided_at = datetime('now'),
+                note = 'Pre-launch test balance cleared' WHERE status = 'pending'`).run();
+    db.prepare("UPDATE platform_stats SET test_money_cleared_at = datetime('now') WHERE id = 1").run();
+    console.log('[cleanup] Pre-launch test money cleared (transactions flagged is_test, balances zeroed).');
+  } catch (e) { console.log('[cleanup] test money clear failed:', e.message); }
+})();
+
 /* ------------------------------------------------------------------ */
 /* Public: guest tokens + model browsing (no login needed)              */
 /* ------------------------------------------------------------------ */
@@ -1349,7 +1372,7 @@ app.get('/api/models', (req, res) => {
            (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS live_viewers,
            (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) AS like_count,
            (SELECT COALESCE(SUM(gross_cents), 0) FROM transactions
-             WHERE model_id = u.id AND type <> 'payout') AS total_sales_cents
+             WHERE model_id = u.id AND type <> 'payout' AND is_test = 0) AS total_sales_cents
     FROM users u JOIN models m ON m.user_id = u.id
     LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live'
     WHERE u.role = 'model' AND u.banned = 0
@@ -3280,16 +3303,16 @@ app.get('/api/model/earnings', identMiddleware, requireUser, requireRole('model'
     SELECT COALESCE(u.display_name, 'Guest Fan') AS fan_name,
            SUM(t.model_cents) AS earned_cents, COUNT(*) AS payments
     FROM transactions t LEFT JOIN users u ON u.id = t.fan_id
-    WHERE t.model_id = ? AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift')
+    WHERE t.model_id = ? AND t.is_test = 0 AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift')
     GROUP BY t.fan_id ORDER BY earned_cents DESC`).all(req.user.id);
   const byType = db.prepare(`
     SELECT t.type, SUM(t.model_cents) AS earned_cents, COUNT(*) AS n
     FROM transactions t
-    WHERE t.model_id = ? AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift')
+    WHERE t.model_id = ? AND t.is_test = 0 AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift')
     GROUP BY t.type`).all(req.user.id);
   const gifts = db.prepare(`
     SELECT COALESCE(SUM(t.model_cents), 0) AS gifts_cents, COUNT(*) AS gift_count
-    FROM transactions t WHERE t.model_id = ? AND t.type = 'gift' AND t.model_cents > 0`).get(req.user.id);
+    FROM transactions t WHERE t.model_id = ? AND t.is_test = 0 AND t.type = 'gift' AND t.model_cents > 0`).get(req.user.id);
   res.json({ earnings_cents: wallet.earnings_cents, paid_out_cents: wallet.paid_out_cents,
     pending_cents: wallet.earnings_cents - wallet.paid_out_cents, by_fan: byFan, by_type: byType,
     gifts_cents: gifts.gifts_cents, gift_count: gifts.gift_count });
@@ -4871,7 +4894,7 @@ app.get('/api/admin/stats', ...adminOnly, (req, res) => {
       (SELECT COUNT(*) FROM strikes WHERE flagged = 1) AS flagged_accounts,
       (SELECT COUNT(*) FROM dmca_notices WHERE status IN ('received','under_review')) AS open_dmca,
       (SELECT COALESCE(SUM(gross_cents),0) FROM transactions
-        WHERE type IN ('message','call','tip','ppv','voice','live_explicit','gift')) AS gross_volume_cents`).get();
+        WHERE is_test = 0 AND type IN ('message','call','tip','ppv','voice','live_explicit','gift')) AS gross_volume_cents`).get();
   res.json({ ...stats, ...counts });
 });
 
@@ -5273,9 +5296,9 @@ app.get('/api/recruiter/dashboard', identMiddleware, requireUser, requireRole('r
     SELECT u.id, u.username, u.display_name, u.created_at, u.banned, m.photo_url,
            w.earnings_cents AS model_earnings_cents,
            (SELECT COALESCE(SUM(t.gross_cents), 0) FROM transactions t
-             WHERE t.model_id = u.id AND t.gross_cents > 0) AS gross_generated_cents,
+             WHERE t.model_id = u.id AND t.is_test = 0 AND t.gross_cents > 0) AS gross_generated_cents,
            (SELECT COALESCE(SUM(t.recruiter_cents), 0) FROM transactions t
-             WHERE t.model_id = u.id AND t.recruiter_cents > 0) AS my_cut_cents
+             WHERE t.model_id = u.id AND t.is_test = 0 AND t.recruiter_cents > 0) AS my_cut_cents
     FROM users u JOIN models m ON m.user_id = u.id JOIN wallets w ON w.user_id = u.id
     WHERE m.recruiter_id = ? ORDER BY u.display_name`).all(r.id);
   const wallet = getWallet(req.user.id);
@@ -5295,7 +5318,7 @@ app.get('/api/admin/fans', ...adminOnly, (req, res) => {
   res.json({ fans: db.prepare(`
     SELECT u.id, u.username, u.display_name, u.banned, u.created_at, w.credits_cents,
            (SELECT COALESCE(SUM(gross_cents),0) FROM transactions t
-             WHERE t.fan_id = u.id AND t.type IN ('message','call','gift')) AS spent_cents
+             WHERE t.fan_id = u.id AND t.is_test = 0 AND t.type IN ('message','call','gift')) AS spent_cents
     FROM users u JOIN wallets w ON w.user_id = u.id
     WHERE u.role = 'fan' ORDER BY spent_cents DESC LIMIT 200`).all() });
 });
