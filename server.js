@@ -184,7 +184,9 @@ CREATE TABLE IF NOT EXISTS models (
   per_minute_cents  INTEGER NOT NULL DEFAULT 399,
   is_online        INTEGER NOT NULL DEFAULT 0,
   explicit_join_cents INTEGER NOT NULL DEFAULT 2500,
-  explicit_mic_join_cents INTEGER NOT NULL DEFAULT 1500
+  explicit_mic_join_cents INTEGER NOT NULL DEFAULT 1500,
+  join_cents INTEGER NOT NULL DEFAULT 1000,
+  mic_join_cents INTEGER NOT NULL DEFAULT 500
 );
 
 -- Model likes (fans tap heart on model cards)
@@ -589,6 +591,8 @@ addColumnIfMissing('live_join_requests', 'is_explicit', 'INTEGER NOT NULL DEFAUL
 addColumnIfMissing('live_join_requests', 'mode', "TEXT NOT NULL DEFAULT 'video'");
 addColumnIfMissing('models', 'explicit_join_cents', 'INTEGER NOT NULL DEFAULT 2500');
 addColumnIfMissing('models', 'explicit_mic_join_cents', 'INTEGER NOT NULL DEFAULT 1500');
+addColumnIfMissing('models', 'join_cents', 'INTEGER NOT NULL DEFAULT 1000');
+addColumnIfMissing('models', 'mic_join_cents', 'INTEGER NOT NULL DEFAULT 500');
 addColumnIfMissing('calls', 'booking_id', 'INTEGER REFERENCES bookings(id)');
 addColumnIfMissing('platform_stats', 'explicit_entry_cents', 'INTEGER NOT NULL DEFAULT 499');
 addColumnIfMissing('platform_stats', 'admin_phone', 'TEXT');
@@ -2699,12 +2703,13 @@ app.post('/api/credits/buy', identMiddleware, requireUser, requireRole('fan'), (
 
 app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const { bio, per_message_cents, per_minute_cents, per_voice_cents, explicit_rate_cents,
-          explicit_join_cents, explicit_mic_join_cents, is_online } = req.body || {};
+          explicit_join_cents, explicit_mic_join_cents, join_cents, mic_join_cents,
+          is_online } = req.body || {};
   const updates = [], params = [];
   // Model-settable 1-on-1 rates (tighter ranges than the admin override)
   const rateRange = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
   const badRate = (v, lo, hi) => v !== undefined && !rateRange(v, lo, hi);
-  if (badRate(per_message_cents, 50, 1000) || badRate(per_minute_cents, 100, 2000) ||
+  if (badRate(per_message_cents, 50, 1000) || badRate(per_minute_cents, 500, 100000) ||
       badRate(per_voice_cents, 50, 1000))
     return res.status(400).json({ error: 'bad_rate',
       message: 'Rates out of range.' });
@@ -2712,7 +2717,7 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
   if (rateRange(per_message_cents, 50, 1000)) {
     updates.push('per_message_cents = ?'); params.push(per_message_cents);
   }
-  if (rateRange(per_minute_cents, 100, 2000)) {
+  if (rateRange(per_minute_cents, 500, 100000)) {
     updates.push('per_minute_cents = ?'); params.push(per_minute_cents);
   }
   if (rateRange(per_voice_cents, 50, 1000)) {
@@ -2721,11 +2726,17 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
   if (Number.isInteger(explicit_rate_cents) && explicit_rate_cents >= 0 && explicit_rate_cents <= 20000) {
     updates.push('explicit_rate_cents = ?'); params.push(explicit_rate_cents);
   }
-  if (Number.isInteger(explicit_join_cents) && explicit_join_cents >= 500 && explicit_join_cents <= 10000) {
+  if (Number.isInteger(explicit_join_cents) && explicit_join_cents >= 500 && explicit_join_cents <= 100000) {
     updates.push('explicit_join_cents = ?'); params.push(explicit_join_cents);
   }
-  if (Number.isInteger(explicit_mic_join_cents) && explicit_mic_join_cents >= 500 && explicit_mic_join_cents <= 10000) {
+  if (Number.isInteger(explicit_mic_join_cents) && explicit_mic_join_cents >= 500 && explicit_mic_join_cents <= 100000) {
     updates.push('explicit_mic_join_cents = ?'); params.push(explicit_mic_join_cents);
+  }
+  if (Number.isInteger(join_cents) && join_cents >= 500 && join_cents <= 100000) {
+    updates.push('join_cents = ?'); params.push(join_cents);
+  }
+  if (Number.isInteger(mic_join_cents) && mic_join_cents >= 500 && mic_join_cents <= 100000) {
+    updates.push('mic_join_cents = ?'); params.push(mic_join_cents);
   }
   if (is_online === 0 || is_online === 1) { updates.push('is_online = ?'); params.push(is_online); }
   if (!updates.length) return res.status(400).json({ error: 'nothing_to_update' });
@@ -3770,6 +3781,8 @@ app.post('/api/live/:id/join', identMiddleware, requireUser, requireRole('fan'),
     explicit_grace_sec: getGiftGraceSec(), explicit_entry_cents: getEntryCents(),
     explicit_join_cents: jr.explicit_join_cents,
     explicit_mic_join_cents: jr.explicit_mic_join_cents,
+    join_cents: jr.join_cents,
+    mic_join_cents: jr.mic_join_cents,
     priority: currentPriority(sess.id) });
 });
 
@@ -4237,20 +4250,25 @@ const STAGE_MINUTES = 3;
 // Regular (non-explicit) prices are fixed platform-wide; explicit tiers come
 // from the MODEL's own rates (she sets them in Settings).
 function modelJoinRates(modelId) {
-  const m = db.prepare(`SELECT explicit_join_cents, explicit_mic_join_cents FROM models WHERE user_id = ?`)
+  const m = db.prepare(`SELECT explicit_join_cents, explicit_mic_join_cents,
+                               join_cents, mic_join_cents FROM models WHERE user_id = ?`)
     .get(modelId);
+  const pick = (v, dflt) => (m && Number.isInteger(v)) ? v : dflt;
   return {
-    explicit_join_cents: m && Number.isInteger(m.explicit_join_cents) ? m.explicit_join_cents : 2500,
-    explicit_mic_join_cents: m && Number.isInteger(m.explicit_mic_join_cents) ? m.explicit_mic_join_cents : 1500,
+    explicit_join_cents: pick(m && m.explicit_join_cents, 2500),
+    explicit_mic_join_cents: pick(m && m.explicit_mic_join_cents, 1500),
+    join_cents: pick(m && m.join_cents, JOIN_FEE_CENTS),
+    mic_join_cents: pick(m && m.mic_join_cents, MIC_JOIN_FEE_CENTS),
   };
 }
 function stageJoinFee(isExplicit, mode, rates) {
-  if (isExplicit) {
-    const r = rates || { explicit_join_cents: EXPLICIT_JOIN_FEE_CENTS,
-                         explicit_mic_join_cents: EXPLICIT_MIC_JOIN_FEE_CENTS };
-    return mode === 'mic' ? r.explicit_mic_join_cents : r.explicit_join_cents;
-  }
-  return mode === 'mic' ? MIC_JOIN_FEE_CENTS : JOIN_FEE_CENTS;
+  // All stage joins are model-priced ($5–$1,000, set in her Settings);
+  // platform constants remain only as fallbacks when rates are unavailable.
+  const r = rates || { explicit_join_cents: EXPLICIT_JOIN_FEE_CENTS,
+                       explicit_mic_join_cents: EXPLICIT_MIC_JOIN_FEE_CENTS,
+                       join_cents: JOIN_FEE_CENTS, mic_join_cents: MIC_JOIN_FEE_CENTS };
+  if (isExplicit) return mode === 'mic' ? r.explicit_mic_join_cents : r.explicit_join_cents;
+  return mode === 'mic' ? r.mic_join_cents : r.join_cents;
 }
 
 function priorityJSON(pm) {
