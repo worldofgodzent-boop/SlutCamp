@@ -614,6 +614,10 @@ addColumnIfMissing('users', 'language', "TEXT NOT NULL DEFAULT 'en'");
     db.exec("UPDATE users SET welcomed_at = datetime('now')");
   }
 })();
+
+// Welcome MESSAGE in her app inbox (from Asce (Admin)): stamped when sent.
+// NULL = not sent yet; the boot sweep delivers to anyone missing it.
+addColumnIfMissing('users', 'welcome_msg_sent_at', 'TEXT');
 db.exec(`
 CREATE TABLE IF NOT EXISTS name_change_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1202,8 +1206,86 @@ function createUser(username, password, role, displayName, dob) {
     'INSERT INTO users (username, password_hash, role, display_name, dob) VALUES (?,?,?,?,?)'
   ).run(username, hash, role, displayName, dob);
   db.prepare('INSERT INTO wallets (user_id) VALUES (?)').run(info.lastInsertRowid);
-  if (role === 'model') db.prepare('INSERT INTO models (user_id) VALUES (?)').run(info.lastInsertRowid);
+  if (role === 'model') {
+    db.prepare('INSERT INTO models (user_id) VALUES (?)').run(info.lastInsertRowid);
+    // Automatic: the congratulations/welcome message lands in her inbox.
+    try { sendModelWelcome(Number(info.lastInsertRowid)); } catch (e) { /* boot sweep retries */ }
+  }
   return Number(info.lastInsertRowid);
+}
+
+/* ------------------------------------------------------------------ */
+/* Model welcome message — congratulations in her app inbox           */
+/* ------------------------------------------------------------------ */
+const MODEL_WELCOME = {
+  en: (name) => `🎉 Congratulations, ${name}!
+
+Welcome to SlutCamp 💋 You're officially one of our models — and you're in early. Early models get seen first, and the fans are already waiting.
+
+💰 You keep 60% of everything: paid messages, live streams + video calls paid per minute at YOUR prices, tips and paid content.
+
+To start earning:
+✍️ Sign your model agreement
+🪪 Verify your ID (2257 — keeps you legal and paid)
+📸 Add your photo, set your prices, and go live
+
+Questions? Just reply right here. Welcome to the family 🔥 — Asce`,
+  es: (name) => `🎉 ¡Felicidades, ${name}!
+
+Bienvenida a SlutCamp 💋 Ya eres oficialmente una de nuestras modelos — y llegaste temprano. Las primeras modelos se ven primero, y los fans ya están esperando.
+
+💰 Te quedas con el 60% de todo: mensajes pagos, lives y videollamadas pagadas por minuto a TUS precios, propinas y contenido pago.
+
+Para empezar a ganar:
+✍️ Firma tu acuerdo de modelo
+🪪 Verifica tu ID (2257 — te mantiene legal y cobrando)
+📸 Sube tu foto, pon tus precios y sal en vivo
+
+¿Preguntas? Responde aquí mismo. Bienvenida a la familia 🔥 — Asce`,
+  pt: (name) => `🎉 Parabéns, ${name}!
+
+Bem-vinda à SlutCamp 💋 Você agora é oficialmente uma das nossas modelos — e chegou cedo. As primeiras modelos são vistas primeiro, e os fãs já estão esperando.
+
+💰 Você fica com 60% de tudo: mensagens pagas, lives e videochamadas pagas por minuto nos SEUS preços, gorjetas e conteúdo pago.
+
+Para começar a ganhar:
+✍️ Assine seu contrato de modelo
+🪪 Verifique seu documento (2257 — mantém você legal e recebendo)
+📸 Adicione sua foto, defina seus preços e entre ao vivo
+
+Dúvidas? Responda aqui mesmo. Bem-vinda à família 🔥 — Asce`,
+};
+
+/* Send the welcome message into a model's inbox exactly once. Sender is
+   the admin account (shows as "Asce (Admin)"). Free (cost 0), never blocks
+   signup — if anything fails, the boot sweep retries next start. */
+function sendModelWelcome(modelUserId) {
+  const m = db.prepare("SELECT id, display_name, language, welcome_msg_sent_at FROM users WHERE id = ? AND role = 'model'")
+    .get(modelUserId);
+  if (!m || m.welcome_msg_sent_at) return false;
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin || admin.id === m.id) return false;
+  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
+  if (!conv) {
+    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
+    conv = { id: Number(info.lastInsertRowid) };
+  }
+  const make = MODEL_WELCOME[m.language] || MODEL_WELCOME.en;
+  db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+    .run(conv.id, admin.id, make(m.display_name));
+  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+  db.prepare("UPDATE users SET welcome_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
+  try {
+    notifyUser(m.id, 'welcome', '🎉 Welcome to SlutCamp!',
+      'Congratulations — Asce sent you a message in your inbox 💋', '');
+  } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+  return true;
+}
+
+/* Boot sweep: every model who never got the welcome message gets it now. */
+function sendPendingModelWelcomes() {
+  const rows = db.prepare("SELECT id FROM users WHERE role = 'model' AND welcome_msg_sent_at IS NULL").all();
+  for (const r of rows) { try { sendModelWelcome(r.id); } catch (e) { /* retry next boot */ } }
 }
 
 function seed() {
@@ -1240,6 +1322,7 @@ function seed() {
   console.log('Seeded: admin/admin123 · bunny|stacey|bella/model123 · fandemo/fan123 ($100)');
 }
 seed();
+sendPendingModelWelcomes();
 
 /* ------------------------------------------------------------------ */
 /* Public: guest tokens + model browsing (no login needed)              */
