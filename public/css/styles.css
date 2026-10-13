@@ -485,6 +485,8 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
   border-radius: 14px; padding: 15px 16px; margin-bottom: 8px; cursor: pointer;
 }
 .sheet-btn.cancel { text-align: center; color: var(--muted); margin-top: 4px; }
+/* Real file inputs the action sheet opens via <label for> — offscreen, never display:none */
+.file-offscreen { position: fixed; left: -9999px; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
 /* ---------- Tips ---------- */
 .tip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
