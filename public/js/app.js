@@ -96,6 +96,7 @@ const I18N = {
     free3_sub: 'with every model you try. No account needed to start.',
     login_signup: 'Log in / Sign up', share_app: '📤 Share SlutCamp',
     no_models: 'No models yet.',
+    pager_prev: '← Prev', pager_next: 'Next →', pager_page: 'Page {x} of {y}',
     terms_line: '18+ only. By chatting you agree to the', terms: 'Terms',
     like_need_fan: 'Log in as a fan to like models 💜',
     link_copied: 'Link copied — send it to your boys 📤',
@@ -236,6 +237,7 @@ const I18N = {
     free3_sub: 'con cada modelo que pruebes. No necesitas cuenta para empezar.',
     login_signup: 'Iniciar sesión / Registrarse', share_app: '📤 Compartir SlutCamp',
     no_models: 'Aún no hay modelos.',
+    pager_prev: '← Anterior', pager_next: 'Siguiente →', pager_page: 'Página {x} de {y}',
     terms_line: 'Solo 18+. Al chatear aceptas los', terms: 'Términos',
     like_need_fan: 'Inicia sesión como fan para dar me gusta 💜',
     link_copied: 'Enlace copiado — envíaselo a tus amigos 📤',
@@ -376,6 +378,7 @@ const I18N = {
     free3_sub: 'com cada modelo que você testar. Não precisa de conta para começar.',
     login_signup: 'Entrar / Cadastrar', share_app: '📤 Compartilhar o SlutCamp',
     no_models: 'Ainda não há modelos.',
+    pager_prev: '← Anterior', pager_next: 'Próxima →', pager_page: 'Página {x} de {y}',
     terms_line: 'Somente 18+. Ao conversar, você concorda com os', terms: 'Termos',
     like_need_fan: 'Entre como fã para curtir as modelos 💜',
     link_copied: 'Link copiado — manda pros seus amigos 📤',
@@ -1133,16 +1136,42 @@ function modelTileHTML(m, opts) {
 /* Featured model gets the big hero tile on top; everyone else fills the grid
    in the ranked order /api/models returns (likes + sales). #1 regular wears
    the 👑 Top Model crown — the featured headliner doesn't compete. */
+/* Home grid pagination (Corry, Oct 12 2026): the ranked girls chart runs
+   10 to a page — Top 10 on page 1, next 10 on page 2, and so on. The
+   featured headliner (hero) stays pinned above the chart on every page. */
+let homePage = 1;
+const HOME_PAGE_SIZE = 10;
+
 function homeTilesHTML(models, heartFor) {
   const featured = models.find((m) => m.is_featured);
   const rest = featured ? models.filter((m) => m.id !== featured.id) : models;
   const heart = (m) => (heartFor ? heartFor(m) : '');
+  const pages = Math.max(1, Math.ceil(rest.length / HOME_PAGE_SIZE));
+  if (homePage > pages) homePage = pages;
+  if (homePage < 1) homePage = 1;
+  const start = (homePage - 1) * HOME_PAGE_SIZE;
+  const slice = rest.slice(start, start + HOME_PAGE_SIZE);
   return `
     ${featured ? modelTileHTML(featured, { hero: true, heartHTML: heart(featured) }) : ''}
     <div class="tile-grid">
-      ${rest.map((m, i) => modelTileHTML(m, { crown: i === 0, heartHTML: heart(m) })).join('')}
-    </div>`;
+      ${slice.map((m, i) => modelTileHTML(m, { crown: start + i === 0, heartHTML: heart(m) })).join('')}
+    </div>
+    ${pages > 1 ? `
+    <div class="row" style="justify-content:center;align-items:center;gap:10px;margin-top:16px">
+      <button class="btn small ghost pg-btn" data-pg="${homePage - 1}" ${homePage <= 1 ? 'disabled style="opacity:.4"' : ''}>${t('pager_prev')}</button>
+      <span class="small muted">${t('pager_page', { x: homePage, y: pages })}</span>
+      <button class="btn small ghost pg-btn" data-pg="${homePage + 1}" ${homePage >= pages ? 'disabled style="opacity:.4"' : ''}>${t('pager_next')}</button>
+    </div>` : ''}`;
 }
+
+// Pager clicks (one delegated listener for both the guest + fan home grids)
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('.pg-btn');
+  if (!b || b.disabled) return;
+  homePage = parseInt(b.dataset.pg) || 1;
+  show(S.view, {});
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
 
 /* "🔴 Lives" home button — opens the Live Now grid. The count is REAL data
    from /api/models (is_live flags) — only shown when someone is truly live. */
@@ -5627,11 +5656,13 @@ async function adminModelsBody() {
             <span class="small" style="color:${m.is_online ? 'var(--green)' : 'var(--muted)'}">● ${m.is_online ? 'Online' : 'Offline'}</span>
             <span class="small muted"> · ${fmt(m.per_message_cents)}/msg · ${fmt(m.per_minute_cents)}/min</span><br>
             <span class="small" style="color:var(--green)">Owed: ${fmt(m.pending_cents)}</span>
-            ${m.recruiter_name ? `<br><span class="small" style="color:var(--gold)">🤝 via ${esc(m.recruiter_name)}</span>` : ''}</div>
+            ${m.recruiter_name ? `<br><span class="small" style="color:var(--gold)">🤝 via ${esc(m.recruiter_name)}</span>` : ''}
+            ${m.is_hidden ? `<br><span class="small" style="color:var(--peach)">👻 Hidden from the main screen</span>` : ''}</div>
           <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
             <button class="btn small ghost" data-m-edit="${m.id}">✏️ Rates</button>
             <button class="btn small ghost" data-m-photo="${m.id}">📷 Photo</button>
             <button class="btn small ghost" data-m-msg="${m.id}">💬 Message</button>
+            <button class="btn small ghost" data-m-hide="${m.id}">${m.is_hidden ? '👀 Show' : '👻 Hide'}</button>
             <button class="btn small ghost" data-m-toggle="${m.id}">${m.banned ? "✅ Reactivate" : "⏸️ Deactivate"}</button>
             <button class="btn small danger" data-m-del="${m.id}">Remove</button>
           </div>
@@ -6447,6 +6478,17 @@ function wireAdminBody(tab) {
         $('#mm-refresh-' + id).onclick = renderThread;
       };
       renderThread();
+    };
+  });
+  document.querySelectorAll('[data-m-hide]').forEach((b) => {
+    b.onclick = async () => {
+      const id = b.dataset.mHide;
+      const { data } = await api('/admin/models');
+      const m = (data.models || []).find((x) => x.id === parseInt(id));
+      await api(`/admin/models/${id}`, { method: 'PUT',
+        body: JSON.stringify({ is_hidden: m.is_hidden ? 0 : 1 }) });
+      toast(m.is_hidden ? '👀 She\'s back on the main screen' : '👻 Hidden — she vanished from the main screen');
+      show('admin', {});
     };
   });
   go('#nm-add', async () => {
