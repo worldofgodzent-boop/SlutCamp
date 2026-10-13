@@ -5631,6 +5631,7 @@ async function adminModelsBody() {
           <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
             <button class="btn small ghost" data-m-edit="${m.id}">✏️ Rates</button>
             <button class="btn small ghost" data-m-photo="${m.id}">📷 Photo</button>
+            <button class="btn small ghost" data-m-msg="${m.id}">💬 Message</button>
             <button class="btn small ghost" data-m-toggle="${m.id}">${m.banned ? "✅ Reactivate" : "⏸️ Deactivate"}</button>
             <button class="btn small danger" data-m-del="${m.id}">Remove</button>
           </div>
@@ -6412,6 +6413,40 @@ function wireAdminBody(tab) {
         });
       };
       inp.click();
+    };
+  });
+  document.querySelectorAll('[data-m-msg]').forEach((b) => {
+    b.onclick = async () => {
+      const id = b.dataset.mMsg;
+      const box = $('#edit-' + id);
+      const renderThread = async () => {
+        const { data } = await api(`/admin/models/${id}/thread`);
+        const msgs = (data && data.messages) || [];
+        box.innerHTML = `
+          <div style="margin-top:10px">
+            <div class="small muted" style="margin-bottom:6px">💬 Her inbox thread — she sees “Asce (Admin)”. Her replies land here too.</div>
+            <div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
+              ${msgs.length ? msgs.map((x) => `<div style="background:rgba(0,0,0,.25);border-radius:10px;padding:7px 9px">
+                <b class="small">${esc(x.sender_name)}</b> <span class="small muted">${timeHM(x.created_at)}</span>
+                <div style="white-space:pre-wrap;font-size:14px">${esc(x.body)}</div></div>`).join('') : '<div class="small muted">No messages yet — say the first word.</div>'}
+            </div>
+            <textarea class="input" id="mm-${id}" rows="2" placeholder="Text her as moderator…"></textarea>
+            <div class="row" style="margin-top:6px;gap:6px">
+              <button class="btn small" id="mm-send-${id}">Send to her inbox</button>
+              <button class="btn small ghost" id="mm-refresh-${id}">↻ Refresh</button>
+            </div>
+          </div>`;
+        $('#mm-send-' + id).onclick = async () => {
+          const body = $('#mm-' + id).value.trim();
+          if (!body) return;
+          const { status } = await api(`/admin/models/${id}/message`, {
+            method: 'POST', body: JSON.stringify({ body }) });
+          if (status === 200) { toast('💬 Sent to her inbox'); renderThread(); }
+          else toast('Could not send.');
+        };
+        $('#mm-refresh-' + id).onclick = renderThread;
+      };
+      renderThread();
     };
   });
   go('#nm-add', async () => {
