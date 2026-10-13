@@ -520,9 +520,14 @@ const I18N = {
 
 let LANG = (() => {
   try {
-    const l = localStorage.getItem('wc_lang');
-    return LANGS.some((x) => x.code === l) ? l : 'en';
-  } catch (e) { return 'en'; }
+    const saved = localStorage.getItem('wc_lang');
+    if (LANGS.some((x) => x.code === saved)) return saved;
+  } catch (e) { /* fall through to browser-language detection */ }
+  // First visit: greet her in her own browser language (pt-BR phone -> pt).
+  const nav = String((typeof navigator !== 'undefined' && navigator.language) || '').toLowerCase();
+  if (nav.startsWith('pt')) return 'pt';
+  if (nav.startsWith('es')) return 'es';
+  return 'en';
 })();
 
 function t(key, vars) {
@@ -1474,7 +1479,7 @@ async function doSignup(role) {
   if (!agree18) return toast('You must confirm you are 18+');
   const { status, data } = await api('/auth/signup', {
     method: 'POST',
-    body: JSON.stringify({ username, password, role, display_name, dob, agree18, guest_token: S.guestToken }),
+    body: JSON.stringify({ username, password, role, display_name, dob, agree18, guest_token: S.guestToken, language: LANG }),
   });
   if (status === 200) return afterLogin(data);
   const msgs = { username_taken: 'Username is taken 😕', must_be_18: 'You must be 18 or older.',
@@ -1536,7 +1541,7 @@ async function vInviteSignup(code) {
     const { status, data } = await api('/auth/signup', {
       method: 'POST',
       body: JSON.stringify({ username, password, role: 'model', display_name, dob, agree18,
-        guest_token: S.guestToken, invite_code: code }),
+        guest_token: S.guestToken, invite_code: code, language: LANG }),
     });
     if (status === 200) return afterLogin(data);
     const msgs = { username_taken: 'Username is taken 😕', must_be_18: 'You must be 18 or older.',
@@ -1598,7 +1603,7 @@ async function vRecruiterSignup(code) {
     const { status, data } = await api('/auth/signup', {
       method: 'POST',
       body: JSON.stringify({ username, password, role: 'model', display_name, dob, agree18,
-        guest_token: S.guestToken, referral_code: code }),
+        guest_token: S.guestToken, referral_code: code, language: LANG }),
     });
     if (status === 200) return afterLogin(data);
     const msgs = { username_taken: 'Username is taken 😕', must_be_18: 'You must be 18 or older.',
@@ -2011,6 +2016,7 @@ async function doQuickSignup(payMethod) {
       card_last4: payMethod === 'card' ? $('#q-cardnum').value.replace(/\s/g, '').slice(-4) : null,
       cashtag: payMethod === 'cashapp' ? $('#q-cashtag').value.trim() : null,
       guest_token: S.guestToken,
+      language: LANG,
     }),
   });
   if (status === 200 && data.token) {
