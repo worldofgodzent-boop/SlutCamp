@@ -84,6 +84,7 @@ const I18N = {
     tab_home: 'Home', tab_safety: 'Safety', tab_more: 'More',
     language: 'Language', language_note: 'Choose the language for your app.',
     language_set: '🌐 Language updated!',
+    language_search_ph: 'Type your language…', cancel: 'Cancel',
     home_sub: 'Chat & video call the models · 18+ only',
     free3_title: '🎁 First 3 messages FREE',
     free3_sub: 'with every model you try. No account needed to start.',
@@ -217,6 +218,7 @@ const I18N = {
     tab_home: 'Inicio', tab_safety: 'Seguridad', tab_more: 'Más',
     language: 'Idioma', language_note: 'Elige el idioma de tu app.',
     language_set: '🌐 ¡Idioma actualizado!',
+    language_search_ph: 'Escribe tu idioma…', cancel: 'Cancelar',
     home_sub: 'Chatea y haz videollamadas con las modelos · Solo 18+',
     free3_title: '🎁 Primeros 3 mensajes GRATIS',
     free3_sub: 'con cada modelo que pruebes. No necesitas cuenta para empezar.',
@@ -350,6 +352,7 @@ const I18N = {
     tab_home: 'Início', tab_safety: 'Segurança', tab_more: 'Mais',
     language: 'Idioma', language_note: 'Escolha o idioma do seu app.',
     language_set: '🌐 Idioma atualizado!',
+    language_search_ph: 'Digite seu idioma…', cancel: 'Cancelar',
     home_sub: 'Converse e faça videochamadas com as modelos · Somente 18+',
     free3_title: '🎁 Primeiras 3 mensagens GRÁTIS',
     free3_sub: 'com cada modelo que você testar. Não precisa de conta para começar.',
@@ -492,10 +495,42 @@ function t(key, vars) {
   return s;
 }
 
-/* Language pills — one delegated click handler drives every picker */
+/* Language picker — ONE compact link. Tapping it opens a sheet with a
+   scrollable list of languages; she can scroll and tap, or TYPE to filter. */
 function langPillsHTML() {
-  return `<div class="lang-pills">${LANGS.map((l) =>
-    `<button type="button" class="lang-pill${LANG === l.code ? ' on' : ''}" data-setlang="${l.code}">${l.flag} ${l.label}</button>`).join('')}</div>`;
+  const cur = LANGS.find((l) => l.code === LANG) || LANGS[0];
+  return `<button type="button" class="lang-link" data-langtoggle>${cur.flag} ${cur.label} <span class="lang-caret">▾</span></button>`;
+}
+function openLangSheet() {
+  let sheet = document.getElementById('langSheet');
+  if (!sheet) {
+    sheet = document.createElement('div');
+    sheet.id = 'langSheet';
+    sheet.className = 'lang-sheet';
+    document.body.appendChild(sheet);
+    sheet.addEventListener('click', (e) => { if (e.target === sheet) closeLangSheet(); });
+  }
+  sheet.innerHTML = `
+    <div class="lang-sheet-card">
+      <div class="lang-sheet-title">🌐 ${t('language')}</div>
+      <input class="input lang-search" type="text" placeholder="${t('language_search_ph')}" autocomplete="off">
+      <div class="lang-list">${LANGS.map((l) =>
+        `<button type="button" class="lang-opt${LANG === l.code ? ' on' : ''}" data-setlang="${l.code}"><span>${l.flag} ${l.label}</span>${LANG === l.code ? '<span class="lang-check">✓</span>' : ''}</button>`).join('')}</div>
+      <button type="button" class="btn ghost" data-langclose style="width:100%">${t('cancel')}</button>
+    </div>`;
+  sheet.hidden = false;
+  const input = sheet.querySelector('.lang-search');
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    sheet.querySelectorAll('.lang-opt').forEach((b) => {
+      b.style.display = b.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+  setTimeout(() => { try { input.focus(); } catch (e) { /* noop */ } }, 60);
+}
+function closeLangSheet() {
+  const sheet = document.getElementById('langSheet');
+  if (sheet) sheet.hidden = true;
 }
 function langCardHTML() {
   return `<div class="card">
@@ -530,9 +565,12 @@ async function setLang(code) {
   show(S.view, S.viewParams || {});
 }
 document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-langtoggle]')) { openLangSheet(); return; }
+  if (e.target.closest('[data-langclose]')) { closeLangSheet(); return; }
   const b = e.target.closest('[data-setlang]');
-  if (b) setLang(b.dataset.setlang);
+  if (b) { closeLangSheet(); setLang(b.dataset.setlang); }
 });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLangSheet(); });
 document.documentElement.lang = LANG === 'pt' ? 'pt-BR' : LANG;
 
 /* ---------------- state ---------------- */
