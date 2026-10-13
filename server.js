@@ -603,17 +603,6 @@ addColumnIfMissing('users', 'name_changed_at', 'TEXT');
 // UI language preference ('en' | 'es' | 'pt') — set from the in-app language
 // picker, returned by /api/me so it follows the user across devices
 addColumnIfMissing('users', 'language', "TEXT NOT NULL DEFAULT 'en'");
-
-// Model welcome celebration: welcomed_at NULL = not yet welcomed. Everyone
-// who already has an account when this ships counts as welcomed — only NEW
-// model signups get the congratulations overlay.
-(function () {
-  const cols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
-  if (!cols.includes('welcomed_at')) {
-    db.exec('ALTER TABLE users ADD COLUMN welcomed_at TEXT');
-    db.exec("UPDATE users SET welcomed_at = datetime('now')");
-  }
-})();
 db.exec(`
 CREATE TABLE IF NOT EXISTS name_change_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -864,7 +853,6 @@ const getUserPublic = (u) => ({
   display_name: u.display_name, banned: !!u.banned,
   status: u.status || 'active',
   language: u.language || 'en',
-  welcomed: !!u.welcomed_at,
 });
 
 const fmt$ = (c) => '$' + (c / 100).toFixed(2); // server-side money formatter (cents → $x.xx)
@@ -1358,7 +1346,7 @@ app.post('/api/auth/signup', (req, res) => {
     if (invite.used_by)
       return res.status(400).json({ error: 'invite_used', message: 'This invite link has already been used.' });
     if (invite.expires_at && new Date(invite.expires_at + 'Z') < new Date())
-      return res.status(400).json({ error: 'invite_expired', message: 'This invite link has expired. Ask for it to be refreshed.' });
+      return res.status(400).json({ error: 'invite_expired', message: 'This invite link has expired. Ask for a new one.' });
     finalRole = 'model';
   }
   // Referral-code flow: a partner's link attributes the new model to that recruiter
@@ -1612,13 +1600,6 @@ app.patch('/api/me/language', identMiddleware, requireUser, (req, res) => {
     return res.status(400).json({ error: 'bad_language', message: 'Supported languages: en, es, pt.' });
   db.prepare('UPDATE users SET language = ? WHERE id = ?').run(lang, req.user.id);
   res.json({ ok: true, language: lang });
-});
-
-// Model welcome celebration — mark it seen so it shows exactly once.
-app.post('/api/me/welcomed', identMiddleware, requireUser, (req, res) => {
-  db.prepare("UPDATE users SET welcomed_at = datetime('now') WHERE id = ? AND welcomed_at IS NULL")
-    .run(req.user.id);
-  res.json({ ok: true });
 });
 
 // Model submits a name change request for admin approval
@@ -5012,21 +4993,6 @@ app.post('/api/admin/invites/:id/revoke', ...adminOnly, (req, res) => {
     modelDeactivated = true;
   }
   res.json({ ok: true, model_deactivated: modelDeactivated });
-});
-
-// Admin: refresh an invite link — SAME code, fresh 6-hour window.
-// For when a model took too long to sign up and her link expired (or is about to).
-// The link she already has keeps working; no new link needs to be sent.
-app.post('/api/admin/invites/:id/refresh', ...adminOnly, (req, res) => {
-  const inv = db.prepare('SELECT * FROM invite_links WHERE id = ?').get(req.params.id);
-  if (!inv) return res.status(404).json({ error: 'not_found' });
-  if (inv.is_revoked)
-    return res.status(400).json({ error: 'revoked', message: 'This invite was revoked. Generate a new one instead.' });
-  if (inv.used_by)
-    return res.status(400).json({ error: 'already_used', message: 'This invite was already used to sign up.' });
-  db.prepare(`UPDATE invite_links SET expires_at = datetime('now', '+6 hours') WHERE id = ?`).run(inv.id);
-  const row = db.prepare('SELECT expires_at FROM invite_links WHERE id = ?').get(inv.id);
-  res.json({ ok: true, id: inv.id, code: inv.code, expires_at: row.expires_at });
 });
 
 /* ---------------- Recruiters / partners ---------------- */
