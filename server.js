@@ -603,6 +603,17 @@ addColumnIfMissing('users', 'name_changed_at', 'TEXT');
 // UI language preference ('en' | 'es' | 'pt') — set from the in-app language
 // picker, returned by /api/me so it follows the user across devices
 addColumnIfMissing('users', 'language', "TEXT NOT NULL DEFAULT 'en'");
+
+// Model welcome celebration: welcomed_at NULL = not yet welcomed. Everyone
+// who already has an account when this ships counts as welcomed — only NEW
+// model signups get the congratulations overlay.
+(function () {
+  const cols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
+  if (!cols.includes('welcomed_at')) {
+    db.exec('ALTER TABLE users ADD COLUMN welcomed_at TEXT');
+    db.exec("UPDATE users SET welcomed_at = datetime('now')");
+  }
+})();
 db.exec(`
 CREATE TABLE IF NOT EXISTS name_change_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -853,6 +864,7 @@ const getUserPublic = (u) => ({
   display_name: u.display_name, banned: !!u.banned,
   status: u.status || 'active',
   language: u.language || 'en',
+  welcomed: !!u.welcomed_at,
 });
 
 const fmt$ = (c) => '$' + (c / 100).toFixed(2); // server-side money formatter (cents → $x.xx)
@@ -1600,6 +1612,13 @@ app.patch('/api/me/language', identMiddleware, requireUser, (req, res) => {
     return res.status(400).json({ error: 'bad_language', message: 'Supported languages: en, es, pt.' });
   db.prepare('UPDATE users SET language = ? WHERE id = ?').run(lang, req.user.id);
   res.json({ ok: true, language: lang });
+});
+
+// Model welcome celebration — mark it seen so it shows exactly once.
+app.post('/api/me/welcomed', identMiddleware, requireUser, (req, res) => {
+  db.prepare("UPDATE users SET welcomed_at = datetime('now') WHERE id = ? AND welcomed_at IS NULL")
+    .run(req.user.id);
+  res.json({ ok: true });
 });
 
 // Model submits a name change request for admin approval
