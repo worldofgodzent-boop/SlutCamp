@@ -616,6 +616,14 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 }
 .ft-req-title { font-size: 18px; font-weight: 800; color: #fff; }
 .ft-req-actions { display: flex; gap: 10px; margin-top: 8px; }
+.peek-rows { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.peek-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px; padding: 9px 12px; font-size: 13.5px;
+}
+.peek-row span { color: rgba(255,255,255,.65); }
+.peek-row b { color: #fff; text-align: right; }
 
 /* ---------- Virtual gifts ---------- */
 .sheet-backdrop {
