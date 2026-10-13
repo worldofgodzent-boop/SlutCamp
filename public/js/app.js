@@ -887,11 +887,29 @@ function handleWS(m) {
     handleSignal(m);
   } else if (m.type === 'call:tick' && S.call && m.call_id === S.call.id) {
     S.call.minutes = m.minutes_billed;
+    if (m.remaining_min != null) S.call.remainingMin = m.remaining_min;
     updateCallHUD();
     if (m.balance_cents != null && S.wallet) { S.wallet.credits_cents = m.balance_cents; }
   } else if (m.type === 'call:ended' && S.call && m.call_id === S.call.id) {
     endCallUI(m.reason === 'insufficient_credits'
-      ? 'Out of credits — call ended.' : 'Call ended.');
+      ? 'Out of credits — call ended.'
+      : m.reason === 'time_up' ? "⏰ Time's up — FaceTime over!" : 'Call ended.');
+  } else if (m.type === 'facetime:request') {
+    if (S.user && S.user.role === 'model') showFtRequestCard(m.request);
+  } else if (m.type === 'facetime:update') {
+    if (S.user && S.user.role === 'fan') updateFtPanel(m.request, m.reason);
+    if (S.user && S.user.role === 'model') refreshFtCard();
+  } else if (m.type === 'call:explicit_offer' && S.call && m.call_id === S.call.id) {
+    showExplicitOffer(m);
+  } else if (m.type === 'call:explicit_on' && S.call && m.call_id === S.call.id) {
+    S.call.explicit = true;
+    S.call.explicitPending = false;
+    syncExplicitBtn();
+    toast('🔞 Explicit mode ON');
+  } else if (m.type === 'call:explicit_declined') {
+    if (S.call) S.call.explicitPending = false;
+    syncExplicitBtn();
+    toast('He passed on explicit — keeping it normal.');
   } else if (m.type === 'safety:incident' && S.user && S.user.role === 'admin') {
     toast(`🚨 Safety flag: "${m.incident.matched}" (${m.incident.total_strikes} strikes)`, 4000);
     if (S.view === 'admin' && S.adminTab === 'safety') show('admin', {});
@@ -3070,7 +3088,9 @@ async function vChat(params) {
   // Anti-copy for fans: no selecting/copying messages, no pasting into chat
   if (!isModel) lockCopyForFans(app, $('#c-input'));
   const vb = $('#c-video');
-  if (vb) vb.onclick = startCall;
+  if (vb) vb.onclick = openFaceTimeSheet;
+  if (!isModel && S.user) refreshFtPanel();
+  if (isModel) refreshFtCard();
   const bb = $('#c-book');
   if (bb) bb.onclick = () => openBookingSheet(conv.other.id, conv.other.display_name,
     conv.other.per_minute_cents || 399);
@@ -3545,24 +3565,244 @@ function updateCallHUD() {
   const mm = String(Math.floor(s / 60)).padStart(2, '0');
   const ss = String(s % 60).padStart(2, '0');
   const t = $('#call-timer'), c = $('#call-cost');
-  if (t) t.textContent = `${mm}:${ss}`;
-  if (c) c.textContent = `~${fmt((S.call.minutes || 0) * S.call.rate)}`;
+  if (t) t.textContent = S.call.prepaidMin
+    ? `${mm}:${ss} · ${S.call.remainingMin != null ? S.call.remainingMin : S.call.prepaidMin} min left`
+    : `${mm}:${ss}`;
+  if (c) c.textContent = (S.call.prepaidMin
+    ? `📹 FaceTime ${S.call.prepaidMin} min`
+    : `~${fmt((S.call.minutes || 0) * S.call.rate)}`) + (S.call.explicit ? ' · 🔞 EXPLICIT' : '');
 }
 
-async function startCall() {
-  const modelId = S.conv.other.id;
-  const { status, data } = await api('/calls', {
-    method: 'POST', body: JSON.stringify({ model_id: modelId }) });
-  if (status !== 200) {
-    if (data.error === 'model_offline') return toast('She is offline right now.');
-    if (data.error === 'insufficient_credits') return showBuyCredits(data.needed_cents);
-    return toast('Could not start call.');
+/* ---------------- FaceTime: prepaid requests + queue ---------------- */
+const FACETIME_DURATIONS = [10, 15, 30, 45, 60];
+let ftPoll = null;
+let ftMine = null;
+
+function ftSheet(html) {
+  let s = $('#ft-sheet');
+  if (s) s.remove();
+  s = document.createElement('div');
+  s.id = 'ft-sheet';
+  s.className = 'sheet-backdrop';
+  s.innerHTML = `<div class="sheet">${html}</div>`;
+  s.addEventListener('click', (e) => { if (e.target === s) s.remove(); });
+  document.body.appendChild(s);
+  return s;
+}
+function ftCloseSheet() { const s = $('#ft-sheet'); if (s) s.remove(); }
+
+function openFaceTimeSheet() {
+  const other = S.conv && S.conv.other;
+  if (!other) return;
+  const rate = other.per_minute_cents || 0;
+  ftSheet(`<div class="sheet-title">📹 FaceTime ${esc(other.display_name)}</div>
+    <div class="muted small" style="margin-bottom:10px">Pay upfront — if she accepts, you're on. If she's in a call, you take a spot in line and we'll tell you your place + the wait. Full refund if she declines or it doesn't happen.</div>
+    ${FACETIME_DURATIONS.map((d) => `
+      <button class="sheet-btn ft-dur" data-d="${d}">📹 ${d} minutes<span class="sheet-btn-sub">${fmt(rate * d)}</span></button>`).join('')}`);
+  document.querySelectorAll('.ft-dur').forEach((b) => {
+    b.onclick = async () => {
+      ftCloseSheet();
+      const { status, data } = await api('/facetime/request', { method: 'POST',
+        body: JSON.stringify({ model_id: other.id, duration_min: Number(b.dataset.d) }) });
+      if (status !== 200) {
+        if (data.error === 'model_live')
+          return toast(data.message || "🔴 She's live — FaceTime is locked during lives. Join her stage or book a 1-on-1!", 5000);
+        if (data.error === 'model_offline') return toast('She is offline right now.');
+        if (data.error === 'insufficient_credits') return showBuyCredits(data.needed_cents);
+        if (data.error === 'already_requested') {
+          toast('You already have a FaceTime request with her ⏳');
+          return refreshFtPanel();
+        }
+        if (data.error === 'chat_paused') return toast('Chat is paused by the safety monitor.');
+        return toast('Could not send the FaceTime request.');
+      }
+      toast('FaceTime request sent 📹');
+      if (S.wallet) refreshMe();
+      updateFtPanel(data.request);
+    };
+  });
+}
+
+function ftPanelEl() {
+  let el = $('#ft-panel');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'ft-panel';
+    el.className = 'ft-panel hidden';
+    document.body.appendChild(el);
   }
-  const callId = data.call_id;
+  return el;
+}
+function startFtPoll() { if (!ftPoll) ftPoll = setInterval(refreshFtPanel, 5000); }
+function stopFtPoll() { if (ftPoll) { clearInterval(ftPoll); ftPoll = null; } }
+
+function updateFtPanel(req, reason) {
+  const el = ftPanelEl();
+  if (!req || ['done', 'declined', 'cancelled', 'expired'].includes(req.status)) {
+    const wasActive = !!(ftMine && req && ftMine.id === req.id && ftMine.status !== req.status);
+    el.classList.add('hidden');
+    stopFtPoll();
+    ftMine = null;
+    if (wasActive && req) {
+      if (req.status === 'declined') toast(`${req.model_name} declined the FaceTime — you were refunded.`, 4000);
+      else if (req.status === 'expired') toast('No answer — FaceTime expired, you were refunded.', 4000);
+      else if (req.status === 'cancelled' && reason === 'she went live')
+        toast(`🔴 ${req.model_name} went live — FaceTime refunded. Join her stage or book a 1-on-1!`, 5000);
+      else if (req.status === 'cancelled' && reason === 'she went offline')
+        toast(`${req.model_name} went offline — FaceTime refunded.`, 4000);
+      else if (req.status === 'cancelled') toast('Your FaceTime turn passed — you were refunded.', 4000);
+      refreshMe();
+    }
+    return;
+  }
+  ftMine = req;
+  if (req.status === 'in_call') { el.classList.add('hidden'); stopFtPoll(); return; }
+  el.classList.remove('hidden');
+  if (req.status === 'pending') {
+    el.innerHTML = `<div class="ft-line">⏳ <b>Waiting for ${esc(req.model_name)}</b> to accept your ${req.duration_min}-min FaceTime…</div>
+      <div class="ft-sub">Paid ${fmt(req.amount_cents)} · full refund if she declines or doesn't answer</div>
+      <button class="btn ghost small" id="ft-cancel">Cancel &amp; refund</button>`;
+  } else if (req.status === 'queued') {
+    el.innerHTML = `<div class="ft-line">📹 <b>You're in line — #${req.position}</b> for ${esc(req.model_name)}</div>
+      <div class="ft-sub">About ${req.eta_min} min wait · your ${req.duration_min}-min FaceTime starts right after</div>
+      <button class="btn ghost small" id="ft-cancel">Leave line &amp; refund</button>`;
+  } else if (req.status === 'invited') {
+    el.innerHTML = `<div class="ft-line">💚 <b>${esc(req.model_name)} is ready for you!</b></div>
+      <div class="ft-sub">Join now — the spot passes to the next fan in ~90 seconds</div>
+      <button class="btn" id="ft-join">Join FaceTime 📹</button>
+      <button class="btn ghost small" id="ft-cancel">Cancel &amp; refund</button>`;
+    const j = $('#ft-join');
+    if (j) j.onclick = joinFtCall;
+  }
+  const c = $('#ft-cancel');
+  if (c) c.onclick = async () => {
+    await api(`/facetime/${req.id}/cancel`, { method: 'POST' }).catch(() => {});
+    el.classList.add('hidden');
+    stopFtPoll();
+    ftMine = null;
+    toast('FaceTime cancelled — refunded.');
+    refreshMe();
+  };
+  startFtPoll();
+}
+
+async function refreshFtPanel() {
+  if (!S.user || S.user.role !== 'fan') return;
+  try {
+    const { data } = await api('/facetime/mine');
+    if (data.request) updateFtPanel(data.request);
+    else { ftPanelEl().classList.add('hidden'); stopFtPoll(); ftMine = null; }
+  } catch (e) { /* ignore */ }
+}
+
+async function joinFtCall() {
+  if (!ftMine) return;
+  const req = ftMine;
+  const { status, data } = await api(`/facetime/${req.id}/join`, { method: 'POST' });
+  if (status !== 200) {
+    toast('That spot expired — checking your refund…');
+    return refreshFtPanel();
+  }
+  ftPanelEl().classList.add('hidden');
+  stopFtPoll();
+  beginCallMedia(data.call_id, data.rate_cents, req.model_id, data.prepaid_min);
+}
+
+/* Model side: FaceTime request card (Accept / Decline) */
+function showFtRequestCard(req) {
+  if (!req || req.status !== 'pending') return;
+  hideFtRequestCard();
+  const el = document.createElement('div');
+  el.id = 'ft-req-modal';
+  el.className = 'ft-req-modal';
+  el.innerHTML = `<div class="ft-req-card">
+      <div style="font-size:32px">📹</div>
+      <div class="ft-req-title">${esc(req.fan_name)} wants FaceTime</div>
+      <div class="muted">${req.duration_min} minutes · ${fmt(req.amount_cents)} — already paid 💰</div>
+      <div class="muted small">If you're in a call, Accept puts him in line.</div>
+      <div class="ft-req-actions">
+        <button class="btn" id="ft-acc">Accept ✅</button>
+        <button class="btn ghost" id="ft-dec">Decline</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  $('#ft-acc').onclick = async () => {
+    const { data } = await api(`/facetime/${req.id}/accept`, { method: 'POST' });
+    hideFtRequestCard();
+    if (data && data.queued) toast(`Added to your line — he's #${data.request.position} 📹`, 4000);
+    else toast("Accepted — he's joining now 📹");
+    refreshFtCard();
+  };
+  $('#ft-dec').onclick = async () => {
+    await api(`/facetime/${req.id}/decline`, { method: 'POST' }).catch(() => {});
+    hideFtRequestCard();
+    toast('Declined — he was refunded.');
+    refreshFtCard();
+  };
+}
+function hideFtRequestCard() { const el = $('#ft-req-modal'); if (el) el.remove(); }
+async function refreshFtCard() {
+  if (!S.user || S.user.role !== 'model') return;
+  try {
+    const { data } = await api('/facetime/incoming');
+    const pend = (data.requests || []).find((r) => r.status === 'pending');
+    if (pend) showFtRequestCard(pend); else hideFtRequestCard();
+  } catch (e) { /* ignore */ }
+}
+
+/* Mid-call explicit switch (model offers, fan pays the uplift) */
+function syncExplicitBtn() {
+  const hud = document.querySelector('#active-call .call-hud');
+  if (!hud) return;
+  let btn = $('#call-explicit-btn');
+  const show = !!(S.call && S.user && S.user.role === 'model' && !S.call.bookingId);
+  if (!show) { if (btn) btn.remove(); return; }
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.id = 'call-explicit-btn';
+    btn.className = 'btn small';
+    btn.style.background = 'linear-gradient(135deg,#ef4444,#ec4899)';
+    btn.style.marginLeft = '8px';
+    hud.appendChild(btn);
+    btn.onclick = requestExplicit;
+  }
+  if (S.call.explicit) { btn.textContent = '🔞 Explicit ON'; btn.disabled = true; }
+  else if (S.call.explicitPending) { btn.textContent = '🔞 Offer sent…'; btn.disabled = true; }
+  else { btn.textContent = '🔞 Go explicit'; btn.disabled = false; }
+}
+async function requestExplicit() {
+  if (!S.call) return;
+  const { status } = await api(`/calls/${S.call.id}/explicit-request`, { method: 'POST' });
+  if (status !== 200) return toast('Could not send the explicit offer.');
+  S.call.explicitPending = true;
+  syncExplicitBtn();
+  toast("Offer sent — he pays the uplift for the rest of the call 🔞", 4000);
+}
+function showExplicitOffer(m) {
+  const txt = m.remaining_min != null
+    ? `Pay ${fmt(m.extra_cents)} and the rest of this call (${m.remaining_min} min) goes explicit 🔞`
+    : `Explicit is double per minute (${fmt(m.per_min_cents * 2)}/min) from now on 🔞`;
+  ftSheet(`<div class="sheet-title">🔞 She wants to get explicit</div>
+    <div class="muted small" style="margin-bottom:12px">${txt}</div>
+    <button class="sheet-btn" id="exp-yes">💦 Yes — go explicit</button>
+    <button class="sheet-btn" id="exp-no">Stay normal</button>`);
+  $('#exp-yes').onclick = async () => {
+    ftCloseSheet();
+    const { status } = await api(`/calls/${m.call_id}/explicit-accept`, { method: 'POST' });
+    if (status === 402) { toast('Not enough credits for explicit 😕'); return showBuyCredits(m.extra_cents); }
+    if (status !== 200) toast('Could not switch to explicit.');
+    else refreshMe();
+  };
+  $('#exp-no').onclick = async () => {
+    ftCloseSheet();
+    await api(`/calls/${m.call_id}/explicit-decline`, { method: 'POST' }).catch(() => {});
+  };
+}
+
+async function beginCallMedia(callId, rateCents, modelId, prepaidMin) {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
   } catch (e) { return toast('Camera/mic permission needed 📹'); }
-
   pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
   localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
   pc.onicecandidate = (e) => {
@@ -3570,18 +3810,17 @@ async function startCall() {
       payload: { kind: 'ice', call_id: callId, candidate: e.candidate } }));
   };
   pc.ontrack = (e) => { $('#remote-video').srcObject = e.streams[0]; };
-
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
   S.ws.send(JSON.stringify({ type: 'signal', to: modelId,
     payload: { kind: 'invite', call_id: callId, sdp: offer,
-               from_name: S.user.display_name, rate: data.rate_cents } }));
-
-  S.call = { id: callId, rate: data.rate_cents, seconds: 0, minutes: 0, role: 'fan' };
+               from_name: S.user.display_name, rate: rateCents } }));
+  S.call = { id: callId, rate: rateCents, seconds: 0, minutes: 0, role: 'fan',
+             prepaidMin: prepaidMin || 0, remainingMin: prepaidMin || null };
   $('#active-call').classList.remove('hidden');
   $('#local-video').srcObject = localStream;
   $('#call-timer').textContent = 'Calling…';
-  callTimerInt = setInterval(() => { S.call.seconds++; updateCallHUD(); }, 1000);
+  callTimerInt = setInterval(() => { if (S.call) { S.call.seconds++; updateCallHUD(); } }, 1000);
   toast('Calling… waiting for her to pick up 📞');
 }
 
@@ -3592,6 +3831,17 @@ async function handleSignal(m) {
     if (!S.user || S.user.role !== 'model') return;
     S.call = { id: p.call_id, rate: p.rate, seconds: 0, minutes: 0, role: 'model',
                from: m.from, fromName: p.from_name, offer: p.sdp };
+    // FaceTime she already accepted: no second ring — connect straight away.
+    try {
+      const { data } = await api('/facetime/incoming');
+      const match = (data.requests || []).find((r) => r.call_id === p.call_id && r.status === 'in_call');
+      if (match) {
+        S.call.prepaidMin = match.duration_min;
+        S.call.remainingMin = match.duration_min;
+        acceptCall();
+        return;
+      }
+    } catch (e) { /* fall through to the ring */ }
     $('#call-name').textContent = p.from_name || 'Fan';
     $('#call-avatar').outerHTML = avatarHTML(p.from_name || '?', 'xl').replace('class="avatar xl"', 'id="call-avatar" class="avatar xl"');
     $('#call-overlay').classList.remove('hidden');
@@ -3625,7 +3875,8 @@ async function acceptCall() {
   await api(`/calls/${S.call.id}/accept`, { method: 'POST' }); // starts billing clock
   $('#active-call').classList.remove('hidden');
   $('#local-video').srcObject = localStream;
-  callTimerInt = setInterval(() => { S.call.seconds++; updateCallHUD(); }, 1000);
+  syncExplicitBtn();
+  callTimerInt = setInterval(() => { if (S.call) { S.call.seconds++; updateCallHUD(); } }, 1000);
 }
 
 function declineCall() {
@@ -3655,6 +3906,7 @@ function endCallUI(msg) {
   if (localStream) { localStream.getTracks().forEach((t) => t.stop()); localStream = null; }
   $('#remote-video').srcObject = null;
   S.call = null;
+  syncExplicitBtn();
   if (msg) toast(msg);
   if (S.user && S.user.role === 'fan') refreshMe();
 }
