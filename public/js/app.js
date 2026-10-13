@@ -171,6 +171,7 @@ const I18N = {
     save_rates: 'Save rates',
     stage_rates_h: '🔞 Explicit stage rates',
     ejv_l: '🎥 Explicit video + mic join:', ejm_l: '🎙️ Explicit mic join:',
+    jv_l: '🎥 Video + mic join:', jm_l: '🎙️ Mic join:',
     save_stage_rates: 'Save stage rates',
     schedule_h: '📅 My Live Schedule', add_slot: 'Add slot',
     slot_title_ph: 'Title (optional) — e.g. Late night hangout',
@@ -312,6 +313,7 @@ const I18N = {
     save_rates: 'Guardar tarifas',
     stage_rates_h: '🔞 Tarifas de escenario explícito',
     ejv_l: '🎥 Unión explícita con video + micrófono:', ejm_l: '🎙️ Unión explícita solo micrófono:',
+    jv_l: '🎥 Unión con video + micrófono:', jm_l: '🎙️ Unión solo micrófono:',
     save_stage_rates: 'Guardar tarifas de escenario',
     schedule_h: '📅 Mi horario en vivo', add_slot: 'Agregar horario',
     slot_title_ph: 'Título (opcional) — ej. Charla nocturna',
@@ -453,6 +455,7 @@ const I18N = {
     save_rates: 'Salvar tarifas',
     stage_rates_h: '🔞 Tarifas de palco explícito',
     ejv_l: '🎥 Entrada explícita com vídeo + microfone:', ejm_l: '🎙️ Entrada explícita só com microfone:',
+    jv_l: '🎥 Entrada com vídeo + microfone:', jm_l: '🎙️ Entrada só com microfone:',
     save_stage_rates: 'Salvar tarifas de palco',
     schedule_h: '📅 Minha agenda de lives', add_slot: 'Adicionar horário',
     slot_title_ph: 'Título (opcional) — ex. Bate-papo da noite',
@@ -2581,8 +2584,8 @@ async function vModelSettings() {
         <div class="muted small" style="margin-bottom:10px">${t('rates_note')}</div>
         <label class="field">${t('per_text')} <b id="s-msg-label">${fmt(m.per_message_cents || 149)}</b>
           <input type="range" id="s-msg" min="50" max="1000" step="25" value="${m.per_message_cents || 149}" style="width:100%"></label>
-        <label class="field">${t('per_min_video_l')} <b id="s-min-label">${fmt(m.per_minute_cents || 399)}</b>
-          <input type="range" id="s-min" min="100" max="2000" step="25" value="${m.per_minute_cents || 399}" style="width:100%"></label>
+        <label class="field">${t('per_min_video_l')} <b id="s-min-label">${fmt(Math.max(500, m.per_minute_cents || 500))}</b>
+          <input type="range" id="s-min" min="500" max="100000" step="100" value="${Math.max(500, m.per_minute_cents || 500)}" style="width:100%"></label>
         <label class="field">${t('per_voice')} <b id="s-voice-label">${fmt(m.per_voice_cents || 299)}</b>
           <input type="range" id="s-voice" min="50" max="1000" step="25" value="${m.per_voice_cents || 299}" style="width:100%"></label>
         <label class="field">${t('explicit_rate_l')}<input class="input" id="s-exp" type="number" step="0.01" min="0" value="${((m.explicit_rate_cents || 499) / 100).toFixed(2)}"></label>
@@ -2591,11 +2594,15 @@ async function vModelSettings() {
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:6px">${t('stage_rates_h')}</div>
-        <div class="muted small" style="margin-bottom:10px">What fans pay to join you <b>on camera/mic while you're explicit</b>. Regular (non-explicit) joins stay $10 video+mic / $5 mic-only.</div>
+        <div class="muted small" style="margin-bottom:10px">You set what fans pay to join you <b>on camera/mic on stage</b> — regular and explicit. Every stage rate runs <b>$5–$1,000</b>, your call.</div>
+        <label class="field">${t('jv_l')} <b id="s-rjv-label">${fmt(m.join_cents || 1000)}</b>
+          <input type="range" id="s-rjv" min="500" max="100000" step="100" value="${m.join_cents || 1000}" style="width:100%"></label>
+        <label class="field">${t('jm_l')} <b id="s-rjm-label">${fmt(m.mic_join_cents || 500)}</b>
+          <input type="range" id="s-rjm" min="500" max="100000" step="100" value="${m.mic_join_cents || 500}" style="width:100%"></label>
         <label class="field">${t('ejv_l')} <b id="s-ejv-label">${fmt(m.explicit_join_cents || 2500)}</b>
-          <input type="range" id="s-ejv" min="500" max="10000" step="100" value="${m.explicit_join_cents || 2500}" style="width:100%"></label>
+          <input type="range" id="s-ejv" min="500" max="100000" step="100" value="${m.explicit_join_cents || 2500}" style="width:100%"></label>
         <label class="field">${t('ejm_l')} <b id="s-ejm-label">${fmt(m.explicit_mic_join_cents || 1500)}</b>
-          <input type="range" id="s-ejm" min="500" max="10000" step="100" value="${m.explicit_mic_join_cents || 1500}" style="width:100%"></label>
+          <input type="range" id="s-ejm" min="500" max="100000" step="100" value="${m.explicit_mic_join_cents || 1500}" style="width:100%"></label>
         <button class="btn" id="s-ej-save" style="margin-top:8px">${t('save_stage_rates')}</button>
       </div>
       <div class="card">
@@ -2673,15 +2680,20 @@ async function vModelSettings() {
     toast(status === 200 ? t('bio_saved') : t('couldnt_save'));
   };
   // Explicit stage rate sliders — live label updates
-  const ejv = $('#s-ejv'), ejm = $('#s-ejm');
+  const ejv = $('#s-ejv'), ejm = $('#s-ejm'), rjv = $('#s-rjv'), rjm = $('#s-rjm');
   if (ejv) ejv.oninput = () => { $('#s-ejv-label').textContent = fmt(parseInt(ejv.value)); };
   if (ejm) ejm.oninput = () => { $('#s-ejm-label').textContent = fmt(parseInt(ejm.value)); };
+  if (rjv) rjv.oninput = () => { $('#s-rjv-label').textContent = fmt(parseInt(rjv.value)); };
+  if (rjm) rjm.oninput = () => { $('#s-rjm-label').textContent = fmt(parseInt(rjm.value)); };
   const ejSave = $('#s-ej-save');
   if (ejSave) ejSave.onclick = async () => {
     const explicit_join_cents = parseInt(ejv.value);
     const explicit_mic_join_cents = parseInt(ejm.value);
+    const join_cents = parseInt(rjv.value);
+    const mic_join_cents = parseInt(rjm.value);
     const { status } = await api('/model/profile', {
-      method: 'PUT', body: JSON.stringify({ explicit_join_cents, explicit_mic_join_cents }) });
+      method: 'PUT', body: JSON.stringify({ explicit_join_cents, explicit_mic_join_cents,
+        join_cents, mic_join_cents }) });
     toast(status === 200 ? t('stage_saved') : t('couldnt_save'));
     if (status === 200) refreshMe();
   };
@@ -4687,6 +4699,13 @@ function stageJoinFee(explicit, mode) {
     }
     return mode === 'mic' ? EXPLICIT_MIC_JOIN_FEE_CENTS : EXPLICIT_JOIN_FEE_CENTS;
   }
+  // Regular joins are model-priced too (her Settings, $5–$1,000)
+  if (L && Number.isInteger(L.joinCents) && Number.isInteger(L.micJoinCents)) {
+    return mode === 'mic' ? L.micJoinCents : L.joinCents;
+  }
+  if (S.model && Number.isInteger(S.model.join_cents)) {
+    return mode === 'mic' ? (S.model.mic_join_cents || 500) : S.model.join_cents;
+  }
   return mode === 'mic' ? MIC_JOIN_FEE_CENTS : JOIN_FEE_CENTS;
 }
 const stageModeEmoji = (mode) => mode === 'mic' ? '🎙️' : '🎥';
@@ -4929,6 +4948,8 @@ async function watchLive(sessionId) {
              entryPaid: !!data.explicit_paid, entryCents: data.explicit_entry_cents || 499,
              explicitJoinCents: data.explicit_join_cents || 2500,
              explicitMicJoinCents: data.explicit_mic_join_cents || 1500,
+             joinCents: data.join_cents || 1000,
+             micJoinCents: data.mic_join_cents || 500,
              explicitSource: data.is_explicit ? 'manual' : null,
              graceSec: data.explicit_grace_sec || 180,
              chat: [], gifts: [], leaderboard: [] };
