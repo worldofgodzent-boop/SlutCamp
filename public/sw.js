@@ -56,3 +56,35 @@ self.addEventListener('fetch', (e) => {
     );
   }
 });
+
+// Web Push: show the alert on the phone (lock screen / home screen).
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; }
+  catch (err) { d = { title: 'SlutCamp 💋', body: e.data ? e.data.text() : '' }; }
+  const title = d.title || 'SlutCamp 💋';
+  e.waitUntil(self.registration.showNotification(title, {
+    body: d.body || '',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    data: { link: d.link || '/' },
+    vibrate: [80, 40, 80],
+  }));
+});
+
+// Tapping the alert opens (or focuses) the app.
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const link = (e.notification.data && e.notification.data.link) || '/';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if ('focus' in c) {
+          if ('navigate' in c) c.navigate(link).catch(() => {});
+          return c.focus();
+        }
+      }
+      return self.clients.openWindow(link);
+    })
+  );
+});
