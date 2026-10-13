@@ -6137,7 +6137,7 @@ async function adminModelsBody() {
             ${m.recruiter_name ? `<br><span class="small" style="color:var(--gold)">🤝 via ${esc(m.recruiter_name)}</span>` : ''}
             ${m.is_hidden ? `<br><span class="small" style="color:var(--peach)">👻 Hidden from the main screen</span>` : ''}</div>
           <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
-            <button class="btn small ghost" data-m-edit="${m.id}">✏️ Rates</button>
+            <button class="btn small ghost" data-m-edit="${m.id}">✏️ Edit</button>
             <button class="btn small ghost" data-m-photo="${m.id}">📷 Photo</button>
             <button class="btn small ghost" data-m-msg="${m.id}">💬 Message</button>
             <button class="btn small ghost" data-m-hide="${m.id}">${m.is_hidden ? '👀 Show' : '👻 Hide'}</button>
@@ -6869,21 +6869,31 @@ function wireAdminBody(tab) {
 
   // Models
   document.querySelectorAll('[data-m-edit]').forEach((b) => {
-    b.onclick = () => {
+    b.onclick = async () => {
       const id = b.dataset.mEdit;
       const box = $('#edit-' + id);
+      const { data } = await api('/admin/models');
+      const m = (data.models || []).find((x) => x.id === parseInt(id));
+      const bio = (m && m.bio) || '';
       box.innerHTML = `
         <div class="row" style="margin-top:8px">
-          <input class="input" id="em-${id}" type="number" step="0.01" placeholder="$/msg" style="margin-top:0">
-          <input class="input" id="ev-${id}" type="number" step="0.01" placeholder="$/min" style="margin-top:0">
+          <input class="input" id="em-${id}" type="number" step="0.01" placeholder="$/msg" style="margin-top:0" value="${m ? (m.per_message_cents / 100).toFixed(2) : ''}">
+          <input class="input" id="ev-${id}" type="number" step="0.01" placeholder="$/min" style="margin-top:0" value="${m ? (m.per_minute_cents / 100).toFixed(2) : ''}">
           <button class="btn small" id="es-${id}">Save</button>
-        </div>`;
+        </div>
+        <label class="field" style="margin-top:8px">Bio<textarea class="input" id="eb-${id}" rows="3" maxlength="280" placeholder="Her bio — fans see it on her card">${esc(bio)}</textarea></label>
+        <div class="small muted" style="text-align:right"><span id="ebc-${id}">${bio.length}</span>/280</div>`;
+      const bioBox = $('#eb-' + id);
+      bioBox.oninput = () => { $('#ebc-' + id).textContent = bioBox.value.length; };
       $('#es-' + id).onclick = async () => {
         const per_message_cents = Math.round(parseFloat($('#em-' + id).value || '0') * 100);
         const per_minute_cents = Math.round(parseFloat($('#ev-' + id).value || '0') * 100);
+        const payload = { per_message_cents, per_minute_cents };
+        const bioEl = $('#eb-' + id);
+        if (bioEl) payload.bio = bioEl.value;
         await api(`/admin/models/${id}`, { method: 'PUT',
-          body: JSON.stringify({ per_message_cents, per_minute_cents }) });
-        toast('✅ Rates updated'); show('admin', {});
+          body: JSON.stringify(payload) });
+        toast('✅ Saved'); show('admin', {});
       };
     };
   });
