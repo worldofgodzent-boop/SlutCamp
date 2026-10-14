@@ -179,6 +179,10 @@ const I18N = {
     crypto_failed: 'Could not create the invoice — try again in a moment.',
     crypto_status_pending: 'Waiting', crypto_status_confirming: 'Confirming', crypto_status_credited: 'Credited',
     crypto_status_credited_partial: 'Partial', crypto_status_expired: 'Expired', crypto_status_underpaid: 'Review',
+    crypto_dest_tag: 'Destination tag — REQUIRED',
+    crypto_tag_note: 'Enter this tag in your wallet app exactly as shown — without it, your payment cannot be matched to your account.',
+    crypto_exact_note: 'Send this exact amount — the amount itself is how your payment gets matched to your account.',
+    crypto_shared_note: 'This is our shared deposit address — every fan sends here; your payment is matched by the details on this screen.',
     splash_welcome: 'Welcome to SlutCamp,', splash_paradise: 'sluts paradise 😈',
     splash_nutt: 'We hope you enjoy your Nutt 💦', enter: 'Enter 🔥',
     settings_h: 'Settings ⚙️',
@@ -346,6 +350,10 @@ const I18N = {
     crypto_failed: 'No se pudo crear la factura — inténtalo en un momento.',
     crypto_status_pending: 'Esperando', crypto_status_confirming: 'Confirmando', crypto_status_credited: 'Acreditado',
     crypto_status_credited_partial: 'Parcial', crypto_status_expired: 'Vencida', crypto_status_underpaid: 'Revisión',
+    crypto_dest_tag: 'Etiqueta de destino — OBLIGATORIA',
+    crypto_tag_note: 'Ingresa esta etiqueta en tu billetera exactamente como se muestra — sin ella, tu pago no puede vincularse a tu cuenta.',
+    crypto_exact_note: 'Envía este monto exacto — el monto en sí es cómo tu pago se vincula a tu cuenta.',
+    crypto_shared_note: 'Esta es nuestra dirección de depósito compartida — todos los fans envían aquí; tu pago se vincula por los datos de esta pantalla.',
     splash_welcome: 'Bienvenido a SlutCamp,', splash_paradise: 'el paraíso travieso 😈',
     splash_nutt: 'Esperamos que disfrutes tu Nutt 💦', enter: 'Entrar 🔥',
     settings_h: 'Ajustes ⚙️',
@@ -513,6 +521,10 @@ const I18N = {
     crypto_failed: 'Não foi possível criar a fatura — tente em instantes.',
     crypto_status_pending: 'Aguardando', crypto_status_confirming: 'Confirmando', crypto_status_credited: 'Creditado',
     crypto_status_credited_partial: 'Parcial', crypto_status_expired: 'Expirada', crypto_status_underpaid: 'Revisão',
+    crypto_dest_tag: 'Tag de destino — OBRIGATÓRIA',
+    crypto_tag_note: 'Digite esta tag no seu app de carteira exatamente como mostrado — sem ela, seu pagamento não pode ser vinculado à sua conta.',
+    crypto_exact_note: 'Envie este valor exato — o próprio valor é como seu pagamento é vinculado à sua conta.',
+    crypto_shared_note: 'Este é nosso endereço de depósito compartilhado — todos os fãs enviam para cá; seu pagamento é vinculado pelos dados desta tela.',
     splash_welcome: 'Bem-vindo ao SlutCamp,', splash_paradise: 'o paraíso das safadas 😈',
     splash_nutt: 'Esperamos que você aproveite seu Nutt 💦', enter: 'Entrar 🔥',
     settings_h: 'Configurações ⚙️',
@@ -2261,9 +2273,12 @@ async function vWallet() {
       <div class="card" id="crypto-card">
         <div style="font-weight:800;font-size:16px">₿ ${t('crypto_h')}</div>
         <div class="muted small" style="margin:4px 0 10px">${t('crypto_note')}</div>
-        <div class="row" style="gap:8px;margin-bottom:10px">
+        <div class="row" style="gap:8px;margin-bottom:10px;flex-wrap:wrap">
           <button class="btn small grow" data-coin="USDT">💵 USDT · ${t('crypto_dollars')}</button>
           <button class="btn small ghost grow" data-coin="BTC">₿ Bitcoin</button>
+          <button class="btn small ghost grow" data-coin="ETH">Ξ Ethereum</button>
+          <button class="btn small ghost grow" data-coin="SOL">◎ Solana</button>
+          <button class="btn small ghost grow" data-coin="XRP">✕ XRP</button>
         </div>
         <div id="crypto-pkgs">
           ${pkgs.map((p) => `
@@ -2337,8 +2352,17 @@ function renderCryptoInvoice(inv) {
       <div class="muted small">${t('crypto_send_exact')}</div>
       <div style="font-size:30px;font-weight:900">${inv.amount_crypto} ${inv.coin}</div>
       <div class="muted small" style="margin-bottom:8px">≈ ${fmt(inv.package_usd_cents)} USD</div>
+      ${inv.coin === 'SOL' ? `<div class="small" style="color:var(--gold);margin:0 auto 8px;max-width:300px">${t('crypto_exact_note')}</div>` : ''}
       <div class="muted small">${t('crypto_to')}</div>
       <div style="font-family:monospace;font-size:12px;word-break:break-all;background:rgba(0,0,0,.25);border-radius:8px;padding:8px">${esc(inv.address)}</div>
+      ${inv.shared_address ? `<div class="muted small" style="margin:6px auto 0;max-width:300px">${t('crypto_shared_note')}</div>` : ''}
+      ${inv.dest_tag ? `
+      <div style="margin-top:12px">
+        <div class="small" style="color:var(--gold);font-weight:800">${t('crypto_dest_tag')}</div>
+        <div style="font-size:30px;font-weight:900;letter-spacing:2px">${inv.dest_tag}</div>
+        <div class="small" style="color:var(--gold);margin:2px auto 0;max-width:300px">${t('crypto_tag_note')}</div>
+        <button class="btn small ghost" id="ci-copy-tag" style="margin-top:6px">📋 ${t('crypto_copy')} tag</button>
+      </div>` : ''}
       <div class="row" style="gap:8px;margin-top:10px">
         <button class="btn small grow" id="ci-copy">📋 ${t('crypto_copy')}</button>
         <a class="btn small ghost grow" href="${esc(inv.payment_uri)}" style="text-decoration:none;display:flex;align-items:center;justify-content:center">${t('crypto_open_wallet')}</a>
@@ -2352,6 +2376,11 @@ function renderCryptoInvoice(inv) {
   if (cp) cp.onclick = async () => {
     try { await navigator.clipboard.writeText(inv.address); toast(t('crypto_copied')); }
     catch (e) { toast(inv.address); }
+  };
+  const cpt = $('#ci-copy-tag');
+  if (cpt) cpt.onclick = async () => {
+    try { await navigator.clipboard.writeText(String(inv.dest_tag)); toast(t('crypto_copied')); }
+    catch (e) { toast(String(inv.dest_tag)); }
   };
   const nq = $('#ci-newquote');
   if (nq) nq.onclick = () => startCryptoInvoice(inv.package_id);
@@ -2407,7 +2436,7 @@ async function loadCryptoRecent() {
     <div class="muted small" style="margin:14px 0 6px;font-weight:700">${t('crypto_recent')}</div>
     ${rows.slice(0, 5).map((inv) => `
       <div class="row small" style="padding:6px 0;border-top:1px solid rgba(255,255,255,.06)">
-        <span class="grow">${inv.coin === 'BTC' ? '₿' : '💵'} ${inv.amount_crypto} ${inv.coin} <span class="muted">· ${fmt(inv.package_usd_cents)}</span></span>
+        <span class="grow">${({ BTC: '₿', USDT: '💵', ETH: 'Ξ', SOL: '◎', XRP: '✕' })[inv.coin] || '🪙'} ${inv.amount_crypto} ${inv.coin} <span class="muted">· ${fmt(inv.package_usd_cents)}</span></span>
         <span class="muted">${t('crypto_status_' + inv.status)}</span>
       </div>`).join('')}`;
   // If the newest invoice is still open, reopen its pay screen so the fan never loses it.
@@ -6429,7 +6458,7 @@ async function adminPayoutsBody() {
     <div class="card" style="padding:12px">
       ${tCoins.map((c) => `
         <div class="row" style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)">
-          <span class="grow"><b>${c.coin === 'BTC' ? '₿ Bitcoin' : '💵 USDT'}</b>
+          <span class="grow"><b>${({ BTC: '₿ Bitcoin', USDT: '💵 USDT', ETH: 'Ξ Ethereum', SOL: '◎ Solana', XRP: '✕ XRP' })[c.coin] || c.coin}</b>
             <span class="small muted">awaiting sweep</span><br>
             <span class="small muted">${c.count} invoice${c.count === 1 ? '' : 's'}${c.placeholder ? ' · ⚠ test addresses' : ''}</span></span>
           <span style="text-align:right"><b>${c.amount_crypto} ${c.coin}</b><br>
@@ -6455,6 +6484,21 @@ async function adminPayoutsBody() {
           <input id="cs-usdt-addr" value="${esc(tSet.sweep_usdt_address || '')}" placeholder="Coinbase USDT (ERC-20) deposit address" style="flex:1">
           <button class="btn small ghost" data-copy-val="${esc(tSet.sweep_usdt_address || '')}">📋 Copy</button>
         </div>
+        <div class="small muted">ETH deposit address</div>
+        <div class="row" style="gap:6px;margin:2px 0 8px">
+          <input id="cs-eth-addr" value="${esc(tSet.sweep_eth_address || '')}" placeholder="Coinbase ETH deposit address" style="flex:1">
+          <button class="btn small ghost" data-copy-val="${esc(tSet.sweep_eth_address || '')}">📋 Copy</button>
+        </div>
+        <div class="small muted">SOL deposit address</div>
+        <div class="row" style="gap:6px;margin:2px 0 8px">
+          <input id="cs-sol-addr" value="${esc(tSet.sweep_sol_address || '')}" placeholder="Coinbase SOL deposit address" style="flex:1">
+          <button class="btn small ghost" data-copy-val="${esc(tSet.sweep_sol_address || '')}">📋 Copy</button>
+        </div>
+        <div class="small muted">XRP deposit address</div>
+        <div class="row" style="gap:6px;margin:2px 0 8px">
+          <input id="cs-xrp-addr" value="${esc(tSet.sweep_xrp_address || '')}" placeholder="Coinbase XRP deposit address" style="flex:1">
+          <button class="btn small ghost" data-copy-val="${esc(tSet.sweep_xrp_address || '')}">📋 Copy</button>
+        </div>
         <div class="row" style="gap:6px">
           <span class="small muted">Sweep hint at $</span>
           <input id="cs-threshold" type="number" min="0" value="${tSet.sweep_threshold_usd || 200}" style="width:90px">
@@ -6465,7 +6509,7 @@ async function adminPayoutsBody() {
       ${cInvs.slice(0, 50).map((inv) => `
         <div class="row small" style="padding:7px 0;border-top:1px solid rgba(255,255,255,.06);align-items:flex-start">
           <span class="grow"><b>${esc(inv.fan_name || '')}</b> <span class="muted">@${esc(inv.fan_username || '')}</span><br>
-            <span class="muted">#${inv.id} · ${timeHM(inv.created_at)} · ${inv.coin} ${esc(inv.amount_crypto)} for ${fmt(inv.package_usd_cents)} pkg</span><br>
+            <span class="muted">#${inv.id} · ${timeHM(inv.created_at)} · ${inv.coin} ${esc(inv.amount_crypto)} for ${fmt(inv.package_usd_cents)} pkg${inv.dest_tag ? ` · tag ${inv.dest_tag}` : ''}</span><br>
             <span class="muted">recv ${esc(inv.received_amount || '0')} ${inv.coin}${inv.confirmations ? ` · ${inv.confirmations} conf` : ''}${inv.excess_units > 0 ? ` · ⚠ excess on invoice` : ''}${inv.swept_at ? ' · swept ✓' : ''}${inv.credited_via ? ` · via ${esc(inv.credited_via)}` : ''}</span><br>
             <span class="muted" style="font-family:monospace;font-size:11px">${esc(inv.address)}</span>
             ${inv.txid ? `<br><span class="muted" style="font-family:monospace;font-size:11px">tx ${esc(String(inv.txid).slice(0, 24))}…</span>` : ''}
@@ -7296,6 +7340,9 @@ function wireAdminBody(tab) {
       method: 'POST', body: JSON.stringify({
         sweep_btc_address: $('#cs-btc-addr').value,
         sweep_usdt_address: $('#cs-usdt-addr').value,
+        sweep_eth_address: $('#cs-eth-addr').value,
+        sweep_sol_address: $('#cs-sol-addr').value,
+        sweep_xrp_address: $('#cs-xrp-addr').value,
         sweep_threshold_usd: parseInt($('#cs-threshold').value || '200', 10),
       }) });
     toast(status === 200 ? '✅ Treasury settings saved' : 'Save failed');
@@ -8051,7 +8098,7 @@ function vBilling() {
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">9. Paying with crypto</div>
-        <div class="small muted">You can also load credits with Bitcoin (BTC) or USDT from the Wallet tab. The exchange rate is locked when your invoice is created and stays fixed for 30 minutes — send the exact amount shown to the address on your invoice. Credits are added automatically after 1 network confirmation. Crypto loads are final: once credits are in your wallet they follow the same rules as card loads (section 5), and crypto cannot be refunded back to a wallet address. If you send less than the invoice amount, you receive proportional credits automatically when the payment window closes. If you send more than the package price, the package is credited in full and the extra amount is recorded — email us (section 8) with your transaction ID and we will make it right.</div>
+        <div class="small muted">You can also load credits with Bitcoin (BTC), USDT, Ethereum (ETH), Solana (SOL) or XRP from the Wallet tab. The exchange rate is locked when your invoice is created and stays fixed for 30 minutes — send the exact amount shown to the address on your invoice. Two coins need one extra detail, shown big on your invoice: for <b>XRP</b>, always include the destination tag, and for <b>Solana</b>, send the exact amount to the last decimal — the tag and the exact amount are how your payment is matched to your account. Credits are added automatically after 1 network confirmation. Crypto loads are final: once credits are in your wallet they follow the same rules as card loads (section 5), and crypto cannot be refunded back to a wallet address. If you send less than the invoice amount, you receive proportional credits automatically when the payment window closes. If you send more than the package price, the package is credited in full and the extra amount is recorded — email us (section 8) with your transaction ID and we will make it right.</div>
       </div>
       <p class="muted small" style="text-align:center;margin:16px 0">This page is a plain-language summary, not legal advice.<br>Operated by World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="bl-terms" style="color:var(--pink)">Terms of Service</a> · <a href="javascript:void(0)" id="bl-privacy" style="color:var(--pink)">Privacy Policy</a> · <a href="javascript:void(0)" id="bl-2257" style="color:var(--pink)">2257 Statement</a> · <a href="javascript:void(0)" id="bl-dmca" style="color:var(--pink)">DMCA</a></p>
       <button class="btn ghost" id="b-back">← Back</button>

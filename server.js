@@ -5888,16 +5888,21 @@ app.get('/api/recruiter/dashboard', identMiddleware, requireUser, requireRole('r
 });
 
 /* ------------------------------------------------------------------ */
-/* Crypto wallet loads (v1, Oct 13 2026) — watch-only, see lib/crypto  */
-/* Fan loads in BTC + USDT; watcher credits after 1 confirmation.      */
-/* Admin: invoice list + manual mark-credited + Crypto Treasury sweep. */
+/* Crypto wallet loads (watch-only, see lib/crypto)                    */
+/* Fan loads in USDT / BTC / ETH / SOL / XRP; watcher credits after    */
+/* 1 confirmation. Admin: invoice list + manual mark-credited +        */
+/* Crypto Treasury sweep.                                              */
 /* ------------------------------------------------------------------ */
 const { createCryptoService } = require('./lib/crypto');
 const cryptoSvc = createCryptoService({ db, txn, notifyUser, packages: CREDIT_PACKAGES });
 
 app.get('/api/crypto/config', (req, res) => {
   res.json({
-    coins: [{ coin: 'USDT', label: 'USDT (ERC-20)' }, { coin: 'BTC', label: 'Bitcoin (BTC)' }],
+    coins: [
+      { coin: 'USDT', label: 'USDT (ERC-20)' }, { coin: 'BTC', label: 'Bitcoin (BTC)' },
+      { coin: 'ETH', label: 'Ethereum (ETH)' }, { coin: 'SOL', label: 'Solana (SOL)' },
+      { coin: 'XRP', label: 'XRP' },
+    ],
     required_confirmations: cryptoSvc.REQUIRED_CONFS,
     ttl_minutes: cryptoSvc.TTL_MIN,
   });
