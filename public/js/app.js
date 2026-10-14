@@ -8670,7 +8670,7 @@ function vBilling() {
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">8. Get help</div>
-        <div class="small muted">Billing and account support:<br>Email: <b>worldofgodzent@gmail.com</b><br>In the app: message the admin from your inbox.<br>CCBill consumer support (24/7): <a href="https://support.ccbill.com" target="_blank" rel="noopener" style="color:var(--pink)">support.ccbill.com</a><br>Copyright / DMCA matters: use the DMCA page linked below.</div>
+        <div class="small muted">Billing and account support:<br>Email: <b>worldofgodzent@gmail.com</b><br>Phone (call or text): <b>(210) 943-6509</b><br>In the app: message the admin from your inbox.<br>CCBill consumer support (24/7): <a href="https://support.ccbill.com" target="_blank" rel="noopener" style="color:var(--pink)">support.ccbill.com</a><br>Copyright / DMCA matters: use the DMCA page linked below.</div>
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">9. Paying with crypto</div>
