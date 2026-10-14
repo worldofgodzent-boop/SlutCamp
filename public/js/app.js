@@ -164,7 +164,7 @@ const I18N = {
     crypto_send_exact: 'Send exactly',
     crypto_to: 'to',
     crypto_copy: 'Copy', crypto_copied: 'Copied!',
-    crypto_open_wallet: 'Open in wallet app',
+    crypto_open_wallet: 'Open in wallet app', crypto_pay_with: 'Pay with your wallet', crypto_connect_pay: 'Connect wallet & pay', crypto_sent: 'Payment sent — your credits are on the way', crypto_no_wallet: 'No wallet found in this browser — scan the QR or use Open in wallet app',
     crypto_scan: 'Scan with your wallet app',
     crypto_waiting: 'Waiting for payment…',
     crypto_detected: 'Payment detected — confirming ({n}/{m})…',
@@ -335,7 +335,7 @@ const I18N = {
     crypto_send_exact: 'Envía exactamente',
     crypto_to: 'a',
     crypto_copy: 'Copiar', crypto_copied: '¡Copiado!',
-    crypto_open_wallet: 'Abrir en la billetera',
+    crypto_open_wallet: 'Abrir en la billetera', crypto_pay_with: 'Paga con tu billetera', crypto_connect_pay: 'Conectar billetera y pagar', crypto_sent: 'Pago enviado — tus créditos van en camino', crypto_no_wallet: 'No se encontró billetera en este navegador — escanea el QR o usa Abrir en la billetera',
     crypto_scan: 'Escanea con tu billetera',
     crypto_waiting: 'Esperando el pago…',
     crypto_detected: 'Pago detectado — confirmando ({n}/{m})…',
@@ -506,7 +506,7 @@ const I18N = {
     crypto_send_exact: 'Envie exatamente',
     crypto_to: 'para',
     crypto_copy: 'Copiar', crypto_copied: 'Copiado!',
-    crypto_open_wallet: 'Abrir na carteira',
+    crypto_open_wallet: 'Abrir na carteira', crypto_pay_with: 'Pague com sua carteira', crypto_connect_pay: 'Conectar carteira e pagar', crypto_sent: 'Pagamento enviado — seus créditos estão a caminho', crypto_no_wallet: 'Nenhuma carteira encontrada neste navegador — escaneie o QR ou use Abrir na carteira',
     crypto_scan: 'Escaneie com sua carteira',
     crypto_waiting: 'Aguardando pagamento…',
     crypto_detected: 'Pagamento detectado — confirmando ({n}/{m})…',
@@ -2362,6 +2362,84 @@ function cryptoStatusText(inv) {
   return t('crypto_waiting');
 }
 
+const USDT_CONTRACT_CLIENT = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
+
+// Named wallet-app deep links. The generic coin URI (ethereum:/bitcoin:/solana:)
+// only works when some app registered the scheme — USDT's EIP-681 contract-call
+// form and bitcoin: frequently have NO handler, which reads as a dead button.
+// MetaMask's own link domain always reaches MetaMask with the transfer prefilled.
+function walletDeepLinkBtn(inv) {
+  let href = null, label = '';
+  if (inv.coin === 'USDT') {
+    href = `https://metamask.app.link/send/${USDT_CONTRACT_CLIENT}@1/transfer?address=${inv.address}&uint256=${inv.amount_units}`;
+    label = '🦊 MetaMask';
+  } else if (inv.coin === 'ETH') {
+    const wei = (BigInt(Math.trunc(inv.amount_units)) * 1000000000n).toString();
+    href = `https://metamask.app.link/send/${inv.address}?value=${wei}`;
+    label = '🦊 MetaMask';
+  }
+  if (!href) return '';
+  return `<a class="btn small ghost grow" href="${href}" target="_blank" rel="noopener" style="text-decoration:none;display:flex;align-items:center;justify-content:center">${label}</a>`;
+}
+
+let solWeb3LoadPromise = null;
+function loadSolanaWeb3() {
+  if (typeof solanaWeb3 !== 'undefined') return Promise.resolve(true);
+  if (!solWeb3LoadPromise) {
+    solWeb3LoadPromise = new Promise((resolve) => {
+      const sc = document.createElement('script');
+      sc.src = 'https://cdn.jsdelivr.net/npm/@solana/web3.js@1.95.3/lib/index.iife.min.js';
+      sc.onload = () => resolve(typeof solanaWeb3 !== 'undefined');
+      sc.onerror = () => resolve(false);
+      document.head.appendChild(sc);
+    });
+  }
+  return solWeb3LoadPromise;
+}
+
+// Connect-and-pay through the wallet the fan already has in this browser
+// (MetaMask / Coinbase Wallet extension, Phantom). The server watches the
+// receiving address, so a send from any wallet credits exactly the same way.
+async function payWithConnectedWallet(inv) {
+  try {
+    if (inv.coin === 'ETH' || inv.coin === 'USDT') {
+      const provider = window.ethereum;
+      if (!provider) { toast(t('crypto_no_wallet')); return; }
+      const accounts = await provider.request({ method: 'eth_requestAccounts' });
+      const from = accounts && accounts[0];
+      if (!from) { toast(t('crypto_no_wallet')); return; }
+      let tx;
+      if (inv.coin === 'ETH') {
+        const wei = BigInt(Math.trunc(inv.amount_units)) * 1000000000n;
+        tx = { from, to: inv.address, value: '0x' + wei.toString(16) };
+      } else {
+        const data = '0xa9059cbb' +
+          inv.address.slice(2).padStart(64, '0') +
+          BigInt(Math.trunc(inv.amount_units)).toString(16).padStart(64, '0');
+        tx = { from, to: USDT_CONTRACT_CLIENT, data };
+      }
+      await provider.request({ method: 'eth_sendTransaction', params: [tx] });
+      toast(t('crypto_sent'));
+    } else if (inv.coin === 'SOL') {
+      const provider = (window.phantom && window.phantom.solana) || window.solana;
+      if (!provider) { toast(t('crypto_no_wallet')); return; }
+      if (!(await loadSolanaWeb3())) { toast(t('crypto_no_wallet')); return; }
+      const resp = await provider.connect();
+      const fromPub = (resp && resp.publicKey) || provider.publicKey;
+      const conn = new solanaWeb3.Connection('https://api.mainnet-beta.solana.com', 'confirmed');
+      const tx = new solanaWeb3.Transaction().add(solanaWeb3.SystemProgram.transfer({
+        fromPubkey: fromPub, toPubkey: new solanaWeb3.PublicKey(inv.address),
+        lamports: Math.trunc(inv.amount_units),
+      }));
+      const { blockhash } = await conn.getLatestBlockhash('confirmed');
+      tx.recentBlockhash = blockhash; tx.feePayer = fromPub;
+      if (provider.signAndSendTransaction) await provider.signAndSendTransaction(tx);
+      else { const signed = await provider.signTransaction(tx); await conn.sendRawTransaction(signed.serialize()); }
+      toast(t('crypto_sent'));
+    }
+  } catch (e) { /* declined in the wallet — QR / copy / deep-link paths remain */ }
+}
+
 function renderCryptoInvoice(inv) {
   const box = $('#crypto-invoice');
   if (!box) return;
@@ -2391,15 +2469,29 @@ function renderCryptoInvoice(inv) {
         <div class="small" style="color:var(--gold);margin:2px auto 0;max-width:300px">${t('crypto_tag_note')}</div>
         <button class="btn small ghost" id="ci-copy-tag" style="margin-top:6px">📋 ${t('crypto_copy')} tag</button>
       </div>` : ''}
-      <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
-        <button class="btn small grow" id="ci-copy">📋 ${t('crypto_copy')}</button>
-        <a class="btn small ghost grow" href="${esc(inv.payment_uri)}" style="text-decoration:none;display:flex;align-items:center;justify-content:center">${t('crypto_open_wallet')}</a>
+      <div style="margin-top:14px">
+        <div class="muted small" style="font-weight:700;margin-bottom:8px">👛 ${t('crypto_pay_with')}</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <button class="btn small grow" id="ci-connect" style="display:none">🔗 ${t('crypto_connect_pay')}</button>
+          ${walletDeepLinkBtn(inv)}
+          <a class="btn small ghost grow" href="${esc(inv.payment_uri)}" style="text-decoration:none;display:flex;align-items:center;justify-content:center">${t('crypto_open_wallet')}</a>
+        </div>
+      </div>
+      <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn small ghost grow" id="ci-copy">📋 ${t('crypto_copy')}</button>
       </div>
       <div id="ci-status" style="margin-top:12px;font-weight:700">${cryptoStatusText(inv)}</div>
       ${terminal ? '' : `<div id="ci-count" class="muted small" style="margin-top:4px">${t('crypto_time_left', { t: mm + ':' + ss })}</div>`}
       ${inv.status === 'expired' ? `<button class="btn" id="ci-newquote" style="width:100%;margin-top:10px">${t('crypto_new_quote')}</button>` : ''}
       ${inv.address_placeholder ? `<div class="small" style="color:var(--gold);margin-top:8px">⚠ Test address — crypto is in setup mode</div>` : ''}
     </div>`;
+  const cn = $('#ci-connect');
+  if (cn) {
+    const isEvm = inv.coin === 'ETH' || inv.coin === 'USDT';
+    const hasProvider = (isEvm && typeof window !== 'undefined' && !!window.ethereum) ||
+      (inv.coin === 'SOL' && typeof window !== 'undefined' && !!((window.phantom && window.phantom.solana) || window.solana));
+    if (hasProvider) { cn.style.display = ''; cn.onclick = () => payWithConnectedWallet(inv); }
+  }
   const cp = $('#ci-copy');
   if (cp) cp.onclick = async () => {
     try { await navigator.clipboard.writeText(inv.address); toast(t('crypto_copied')); }
