@@ -2648,11 +2648,21 @@ function wbtn(href, label) {
   return `<a class="btn small ghost wbtn" href="${href}" target="_blank" rel="noopener" style="text-decoration:none;display:flex;align-items:center;justify-content:center">${label}</a>`;
 }
 
+// MetaMask publishes no Solana send link, but its /dapp/ universal link is
+// real: it opens MetaMask's own browser on our pay screen (the pay_invoice
+// flag reopens this exact invoice; MetaMask's provider then powers Connect).
+function mmDappHref(inv) {
+  return `https://metamask.app.link/dapp/${window.location.host}/?pay_invoice=${inv.id}`;
+}
+
 function walletButtonsHtml(inv) {
   const btns = [];
   const mm = metamaskHref(inv);
   if (mm) btns.push(wbtn(mm, '🦊 MetaMask'));
-  if (inv.coin === 'SOL') btns.push('<button class="btn small ghost wbtn" id="ci-phantom" style="width:100%">👻 Phantom</button>');
+  if (inv.coin === 'SOL') {
+    btns.push(wbtn(mmDappHref(inv), '🦊 MetaMask'));
+    btns.push('<button class="btn small ghost wbtn" id="ci-phantom" style="width:100%">👻 Phantom</button>');
+  }
   btns.push(wbtn(esc(inv.payment_uri), '🔵 Coinbase Wallet'));
   const tw = trustHref(inv);
   if (tw) btns.push(wbtn(tw, '🛡️ Trust Wallet'));
@@ -6643,12 +6653,28 @@ async function refreshPresenceCard() {
     strip.innerHTML = '<div class="muted small">Collecting data — bars appear as the minutes pass.</div>';
     return;
   }
-  const max = Math.max(1, ...samples.map((s) => s.total));
-  strip.innerHTML = samples.map((s) => {
-    const h = Math.max(2, Math.round((s.total / max) * 44));
-    const when = new Date(s.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    return `<div style="flex:1;min-width:2px;height:${h}px;background:linear-gradient(180deg,var(--purple),var(--pink));border-radius:2px 2px 0 0" title="${when} — ${s.total} on the app (${s.guests} guests · ${s.fans} fans · ${s.models} models)"></div>`;
+  const buckets = presenceBuckets(samples, 48);
+  const max = Math.max(1, ...buckets);
+  strip.innerHTML = buckets.map((total) => {
+    const h = Math.max(2, Math.round((total / max) * 44));
+    return `<div style="flex:1 1 0;min-width:0;height:${h}px;background:linear-gradient(180deg,var(--purple),var(--pink));border-radius:2px 2px 0 0" title="${total} on the app"></div>`;
   }).join('');
+}
+
+// The strip renders a FIXED number of bars (max per bucket across the window)
+// so its width never depends on how many samples arrived — one bar per
+// minute used to need ~480px and spilled out of the card on phones.
+function presenceBuckets(samples, n) {
+  const sorted = [...samples].sort((a, b) => a.ts - b.ts);
+  const buckets = new Array(n).fill(0);
+  if (!sorted.length) return buckets;
+  const minTs = sorted[0].ts;
+  const span = Math.max(1, sorted[sorted.length - 1].ts - minTs);
+  for (const sm of sorted) {
+    const idx = Math.min(n - 1, Math.floor(((sm.ts - minTs) / span) * n));
+    if (sm.total > buckets[idx]) buckets[idx] = sm.total;
+  }
+  return buckets;
 }
 
 async function vAdmin() {
@@ -6684,18 +6710,18 @@ async function vAdmin() {
     <div class="header"><h1>Moderator 🛡️</h1><div class="sub">Hey Corry — everything at a glance</div></div>
     <div class="screen">
       <button class="btn" id="a-preview-fan" style="width:100%;padding:16px;font-size:17px;font-weight:800;margin-bottom:12px;background:linear-gradient(135deg,var(--pink),#ff8fab);box-shadow:0 6px 22px rgba(255,92,158,.35)">👁 Preview the app (fan view)</button>
-      <div class="card" id="presence-card" style="padding:14px;margin-bottom:12px">
-        <div class="row" style="align-items:flex-start">
-          <span class="grow">
-            <span id="presence-total" style="font-size:22px;font-weight:800">🟢 — on the app now</span><br>
+      <div class="card" id="presence-card" style="padding:14px;margin-bottom:12px;overflow:hidden;box-sizing:border-box;max-width:100%">
+        <div class="row" style="align-items:flex-start;min-width:0">
+          <span class="grow" style="min-width:0">
+            <span id="presence-total" style="font-size:clamp(19px,5.6vw,22px);font-weight:800">🟢 — on the app now</span><br>
             <span class="small muted" id="presence-split">Counting…</span>
           </span>
-          <span style="text-align:right">
-            <div id="presence-peak" style="font-size:22px;font-weight:800">—</div>
+          <span style="text-align:right;flex-shrink:0">
+            <div id="presence-peak" style="font-size:clamp(19px,5.6vw,22px);font-weight:800">—</div>
             <div class="small muted">peak today</div>
           </span>
         </div>
-        <div id="presence-strip" style="display:flex;align-items:flex-end;gap:2px;height:44px;margin-top:10px"></div>
+        <div id="presence-strip" style="display:flex;align-items:flex-end;gap:2px;height:44px;margin-top:10px;width:100%;overflow:hidden;box-sizing:border-box"></div>
         <div class="small muted" style="margin-top:6px">Last 2 hours · refreshes every 10s</div>
       </div>
       <div class="tabs">${tabs.map(([id, l]) =>
