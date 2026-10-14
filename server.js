@@ -1143,6 +1143,16 @@ function notifyUser(userId, type, title, body, link) {
   return n;
 }
 
+// Phone buzz for a new chat message — Web Push only, no bell row (the
+// conversation unread badge covers in-app). Skipped when the recipient is
+// in the app right now: their socket already delivered it live.
+function buzzChatRecipient(userId, title, body) {
+  if (!userId) return;
+  const set = socketsBySubject.get(`u:${userId}`);
+  if (set && set.size) return;
+  sendWebPush(userId, { title, body, link: '/' }).catch(() => {});
+}
+
 // Notify every online admin about something (safety incidents, etc.)
 function pushToAdmins(event) {
   const admins = db.prepare(`SELECT id FROM users WHERE role = 'admin'`).all();
@@ -2068,6 +2078,8 @@ app.post('/api/messages', identMiddleware, (req, res) => {
         : `u:${conv.model_id}`)
     : `u:${conv.model_id}`;
   pushToSubject(otherKey, { type: 'chat:new', conversation_id: conv.id, message: full });
+  buzzChatRecipient(isModelSender ? conv.fan_id : conv.model_id,
+    `💬 ${full.sender_name}`, text.slice(0, 120));
 
   res.json({ message: full, cost_cents: costCents, free_remaining: freeLeft,
     balance_cents: req.ident.kind === 'user' ? getWallet(req.ident.user.id).credits_cents : null });
@@ -2195,6 +2207,8 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
       : `u:${conv.model_id}`;
     const receiverMsg = { ...full, media: receiverMedia };
     pushToSubject(otherKey, { type: 'chat:new', conversation_id: conv.id, message: receiverMsg });
+    buzzChatRecipient(isModelSender ? conv.fan_id : conv.model_id,
+      `💬 ${full.sender_name}`, MEDIA_LABELS[kind] || 'New message');
 
     res.json({ message: full, cost_cents: costCents, free_remaining: freeLeft,
       balance_cents: req.ident.kind === 'user' ? getWallet(req.ident.user.id).credits_cents : null });
