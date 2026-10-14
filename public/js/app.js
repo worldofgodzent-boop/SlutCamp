@@ -207,6 +207,12 @@ const I18N = {
     photo_note: 'Fans see this next to your name in chats and on the model grid.',
     change_photo: '📷 Change my photo',
     tip_menu: '💰 Tip Menu', add_tip_item: '➕ Add tip item',
+    rb_h: '🚫 Region Blocker',
+    rb_note: 'Hide yourself from the places you pick. Fans there will not see you anywhere on SlutCamp — no profile, no chat, no lives, no calls. Perfect for keeping your hometown, your state, or a whole country from finding you.',
+    rb_country: 'Country', rb_state: 'State', rb_county: 'County', rb_city: 'City',
+    rb_city_ph: 'Type a city name', rb_add: '🚫 Block this region',
+    rb_none: 'No regions blocked — you are visible everywhere.',
+    rb_remove: 'Remove', rb_added: 'Blocked', rb_removed: 'Region unblocked',
     rates_saved: '✅ Rates saved!', bio_saved: '✅ Bio saved!', stage_saved: '✅ Stage rates saved!',
     couldnt_save: 'Could not save.',
     earnings_h: 'Earnings 💵', you_keep: 'You keep {pct}% of everything',
@@ -378,6 +384,12 @@ const I18N = {
     photo_note: 'Los fans ven esto junto a tu nombre en los chats y en la lista de modelos.',
     change_photo: '📷 Cambiar mi foto',
     tip_menu: '💰 Menú de propinas', add_tip_item: '➕ Agregar propina',
+    rb_h: '🚫 Bloqueo por región',
+    rb_note: 'Escóndete de los lugares que elijas. Los fans allí no te verán en ningún lugar de SlutCamp: ni perfil, ni chat, ni en vivo, ni llamadas. Perfecto para que tu ciudad, tu estado o un país entero no te encuentre.',
+    rb_country: 'País', rb_state: 'Estado', rb_county: 'Condado', rb_city: 'Ciudad',
+    rb_city_ph: 'Escribe una ciudad', rb_add: '🚫 Bloquear esta región',
+    rb_none: 'Sin regiones bloqueadas: eres visible en todas partes.',
+    rb_remove: 'Quitar', rb_added: 'Bloqueado', rb_removed: 'Región desbloqueada',
     rates_saved: '✅ ¡Tarifas guardadas!', bio_saved: '✅ ¡Bio guardada!', stage_saved: '✅ ¡Tarifas de escenario guardadas!',
     couldnt_save: 'No se pudo guardar.',
     earnings_h: 'Ganancias 💵', you_keep: 'Te quedas con el {pct}% de todo',
@@ -549,6 +561,12 @@ const I18N = {
     photo_note: 'Os fãs veem isso ao lado do seu nome nas conversas e na lista de modelos.',
     change_photo: '📷 Trocar minha foto',
     tip_menu: '💰 Menu de gorjetas', add_tip_item: '➕ Adicionar item',
+    rb_h: '🚫 Bloqueio por região',
+    rb_note: 'Esconda-se dos lugares que você escolher. Os fãs de lá não vão te ver em nenhum lugar do SlutCamp: sem perfil, sem chat, sem lives, sem chamadas. Perfeito para a sua cidade, seu estado ou um país inteiro não te encontrar.',
+    rb_country: 'País', rb_state: 'Estado', rb_county: 'Condado', rb_city: 'Cidade',
+    rb_city_ph: 'Digite uma cidade', rb_add: '🚫 Bloquear esta região',
+    rb_none: 'Nenhuma região bloqueada — você está visível em todo lugar.',
+    rb_remove: 'Remover', rb_added: 'Bloqueado', rb_removed: 'Região desbloqueada',
     rates_saved: '✅ Tarifas salvas!', bio_saved: '✅ Bio salva!', stage_saved: '✅ Tarifas de palco salvas!',
     couldnt_save: 'Não foi possível salvar.',
     earnings_h: 'Ganhos 💵', you_keep: 'Você fica com {pct}% de tudo',
@@ -1441,6 +1459,8 @@ async function openChatWithModel(modelId) {
   if (status === 200) show('chat', { conv: data.conversation });
   else if (data && data.error === 'id_verification_required')
     toast('This model is not available right now.');
+  else if (data && data.error === 'region_blocked')
+    toast('This model is not available in your region.');
   else toast('Could not open chat.');
 }
 
@@ -3525,6 +3545,27 @@ async function vModelSettings() {
         </div>
         <button class="btn" id="tm-add" style="margin-top:8px">${t('add_tip_item')}</button>
       </div>
+      <div class="card" id="regionblock-card" style="margin-top:12px">
+        <div style="font-weight:800;margin-bottom:6px">${t('rb_h')}</div>
+        <div class="muted small" style="margin-bottom:10px">${t('rb_note')}</div>
+        <div id="rb-list"><span class="muted small">Loading…</span></div>
+        <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
+          <select class="input" id="rb-level" style="flex:1">
+            <option value="country">${t('rb_country')}</option>
+            <option value="state">${t('rb_state')}</option>
+            <option value="county">${t('rb_county')}</option>
+            <option value="city">${t('rb_city')}</option>
+          </select>
+          <select class="input" id="rb-country" style="flex:1"></select>
+        </div>
+        <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap" id="rb-us-row" hidden>
+          <select class="input" id="rb-state" style="flex:1"></select>
+          <select class="input" id="rb-county" style="flex:1" hidden></select>
+        </div>
+        <input class="input" id="rb-city" list="rb-city-list" placeholder="${t('rb_city_ph')}" maxlength="80" style="margin-top:8px" hidden>
+        <datalist id="rb-city-list"></datalist>
+        <button class="btn" id="rb-add" style="margin-top:8px">${t('rb_add')}</button>
+      </div>
     </div>`;
   $('#s-save').onclick = async () => {
     const per_message_cents = parseInt($('#s-msg').value);
@@ -3704,6 +3745,77 @@ async function vModelSettings() {
       toast('✅ Tip item added!');
     } else toast('Could not add tip item.');
   };
+  // ---------- 🚫 Region blocker ----------
+  async function loadRegionBlocks() {
+    const list = $('#rb-list');
+    if (!list) return;
+    const { data } = await api('/model/region-blocks');
+    const blocks = (data && data.blocks) || [];
+    list.innerHTML = blocks.length ? blocks.map((b) => `
+      <div class="row" style="justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+        <span>🚫 <b>${esc(b.label)}</b> <span class="muted small">(${esc(b.level)})</span></span>
+        <button class="btn ghost small danger" data-rb-del="${b.id}">${t('rb_remove')}</button>
+      </div>`).join('')
+      : `<div class="muted small">${t('rb_none')}</div>`;
+    list.querySelectorAll('[data-rb-del]').forEach((btn) => btn.onclick = async () => {
+      const { status } = await api('/model/region-blocks/' + btn.dataset.rbDel, { method: 'DELETE' });
+      if (status === 200) { toast(t('rb_removed')); loadRegionBlocks(); }
+      else toast(t('couldnt_save'));
+    });
+  }
+  async function rbFetchOptions(state) {
+    const { data } = await api('/geo/options' + (state ? '?state=' + encodeURIComponent(state) : ''));
+    return data || {};
+  }
+  function rbSyncVisibility() {
+    const levelSel = $('#rb-level'), countrySel = $('#rb-country');
+    if (!levelSel || !countrySel) return;
+    const isUS = countrySel.value === 'US';
+    // State/county granularity exists for the US only
+    levelSel.querySelectorAll('option').forEach((o) => {
+      o.disabled = !isUS && (o.value === 'state' || o.value === 'county');
+    });
+    if (!isUS && (levelSel.value === 'state' || levelSel.value === 'county')) levelSel.value = 'country';
+    $('#rb-us-row').hidden = !(isUS && levelSel.value !== 'country');
+    $('#rb-county').hidden = levelSel.value !== 'county';
+    $('#rb-city').hidden = levelSel.value !== 'city';
+  }
+  async function rbInit() {
+    const levelSel = $('#rb-level');
+    if (!levelSel) return;
+    const base = await rbFetchOptions();
+    $('#rb-country').innerHTML = (base.countries || []).map((c) =>
+      `<option value="${c.code}"${c.code === 'US' ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
+    $('#rb-state').innerHTML = (base.states || []).map((s) =>
+      `<option value="${s.code}">${esc(s.name)}</option>`).join('');
+    const loadStateDetail = async () => {
+      const d = await rbFetchOptions($('#rb-state').value);
+      $('#rb-county').innerHTML = (d.counties || []).map((c) =>
+        `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      $('#rb-city-list').innerHTML = (d.cities || []).map((c) =>
+        `<option value="${esc(c)}">`).join('');
+    };
+    levelSel.onchange = rbSyncVisibility;
+    $('#rb-country').onchange = rbSyncVisibility;
+    $('#rb-state').onchange = loadStateDetail;
+    $('#rb-add').onclick = async () => {
+      const body = { level: levelSel.value, country_code: $('#rb-country').value };
+      if (!$('#rb-us-row').hidden) body.state_code = $('#rb-state').value;
+      if (levelSel.value === 'county') body.county_name = $('#rb-county').value;
+      if (levelSel.value === 'city') body.city_name = $('#rb-city').value.trim();
+      const { status, data } = await api('/model/region-blocks', {
+        method: 'POST', body: JSON.stringify(body) });
+      if (status === 200) {
+        toast('🚫 ' + t('rb_added') + ': ' + (data.label || ''));
+        $('#rb-city').value = '';
+        loadRegionBlocks();
+      } else toast((data && data.message) || t('couldnt_save'));
+    };
+    await loadStateDetail();
+    rbSyncVisibility();
+    loadRegionBlocks();
+  }
+  rbInit();
   // 🪪 ID verification submit (3 files via multipart)
   const gotoHome = $('#goto-home');
   if (gotoHome) gotoHome.onclick = () => show('fanModels', {});

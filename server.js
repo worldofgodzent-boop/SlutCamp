@@ -25,6 +25,7 @@ const multer = require('multer');
 const { DatabaseSync } = require('node:sqlite');
 const { WebSocketServer } = require('ws');
 const { transcribeAudio } = require('./lib/transcribe');
+const geoLib = require('./lib/geo');
 
 const app = express();
 const server = http.createServer(app);
@@ -769,6 +770,22 @@ CREATE TABLE IF NOT EXISTS follows (
 CREATE INDEX IF NOT EXISTS idx_follows_model ON follows(model_id);
 CREATE INDEX IF NOT EXISTS idx_follows_fan ON follows(fan_id);
 
+-- Region blocks: models hide themselves from fans in chosen places
+-- (level: country | state | county | city). Resolved per-request from the
+-- fan's IP via lib/geo.js; matching fans never see the model at all.
+CREATE TABLE IF NOT EXISTS model_region_blocks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  model_id INTEGER NOT NULL REFERENCES users(id),
+  level TEXT NOT NULL CHECK(level IN ('country','state','county','city')),
+  country_code TEXT NOT NULL DEFAULT 'US',
+  state_code TEXT,
+  county_name TEXT,
+  city_name TEXT,
+  label TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_mrb_model ON model_region_blocks(model_id);
+
 -- In-app notifications (bell icon)
 CREATE TABLE IF NOT EXISTS notifications (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1100,6 +1117,36 @@ const clientIp = (req) => {
   const fwd = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
   return fwd || req.ip || (req.socket && req.socket.remoteAddress) || '';
 };
+
+/* ---------------- Region blocking (lib/geo.js) ----------------
+   Models can hide themselves from regions (country/state/county/city).
+   Resolution is IP-based and FAIL-OPEN: unknown location = never blocked. */
+const geoOfReq = (req) => geoLib.lookupIp(clientIp(req));
+function modelRegionBlocked(modelId, geo) {
+  if (!geo) return false;
+  const blocks = db.prepare('SELECT * FROM model_region_blocks WHERE model_id = ?').all(modelId);
+  return geoLib.matchesAny(blocks, geo);
+}
+// Every model id blocked for this geo (one pass — used by list endpoints)
+function blockedModelIds(geo) {
+  if (!geo) return new Set();
+  const set = new Set();
+  for (const b of db.prepare('SELECT * FROM model_region_blocks').all()) {
+    if (geoLib.blockMatches(b, geo)) set.add(b.model_id);
+  }
+  return set;
+}
+const regionBlocked = (res) => res.status(403).json({ error: 'region_blocked',
+  message: 'This model is not available in your region.' });
+// Role of the Bearer-session viewer on public endpoints (null = guest/anon)
+function viewerRoleOf(req) {
+  const h = req.headers.authorization || '';
+  if (!h.startsWith('Bearer ')) return null;
+  const uid = getSessionUserId(h.slice(7));
+  if (!uid) return null;
+  const u = db.prepare('SELECT role FROM users WHERE id = ?').get(uid);
+  return u ? u.role : null;
+}
 
 function identMiddleware(req, res, next) {
   const ident = getIdentity(req);
@@ -1604,7 +1651,15 @@ app.get('/api/models', (req, res) => {
       likedSet = new Set(liked.map((l) => l.model_id));
     }
   }
-  res.json({ models: rows.map((r) => {
+  // Region blocking: fans/guests never see models who blocked their region.
+  // Models and admins browsing the grid are exempt.
+  let visible = rows;
+  const vRole = viewerRoleOf(req);
+  if (vRole !== 'model' && vRole !== 'admin') {
+    const blocked = blockedModelIds(geoOfReq(req));
+    if (blocked.size) visible = rows.filter((r) => !blocked.has(r.id));
+  }
+  res.json({ models: visible.map((r) => {
     const sched = db.prepare(`SELECT day_of_week, start_time FROM live_schedule
       WHERE model_id = ? ORDER BY day_of_week, start_time`).all(r.id);
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -1624,6 +1679,7 @@ app.post('/api/models/:id/like', identMiddleware, requireUser, requireRole('fan'
   const modelId = parseInt(req.params.id);
   const model = db.prepare("SELECT id FROM users WHERE id = ? AND role = 'model'").get(modelId);
   if (!model) return res.status(404).json({ error: 'not_found' });
+  if (modelRegionBlocked(modelId, geoOfReq(req))) return regionBlocked(res);
   const existing = db.prepare('SELECT 1 FROM model_likes WHERE fan_id = ? AND model_id = ?')
     .get(req.user.id, modelId);
   if (existing) {
@@ -2115,6 +2171,7 @@ app.post('/api/conversations/start', identMiddleware, (req, res) => {
   if (!isIdVerified(model.id))
     return res.status(403).json({ error: 'id_verification_required',
       message: 'This model is not available right now.' });
+  if (modelRegionBlocked(model.id, geoOfReq(req))) return regionBlocked(res);
 
   let conv;
   if (req.ident.kind === 'user') {
@@ -2186,6 +2243,11 @@ app.post('/api/messages', identMiddleware, (req, res) => {
       message: '🪪 This model must complete ID verification before chatting.' });
 
   const isModelSender = req.ident.kind === 'user' && req.ident.user.role === 'model';
+
+  // Region block: a fan/guest in a region the model blocked cannot write to her.
+  // (The model herself is never blocked from her own threads.)
+  if (!isModelSender && modelRegionBlocked(conv.model_id, geoOfReq(req)))
+    return regionBlocked(res);
 
   /* --- 1. SAFETY SCAN (before billing — blocked messages are never charged) --- */
   const matched = safetyScan(text);
@@ -2422,6 +2484,7 @@ app.post('/api/media/:id/unlock', identMiddleware, requireUser, requireRole('fan
   if (!media) return res.status(404).json({ error: 'not_found' });
   const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(media.conversation_id);
   if (!conv || conv.fan_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+  if (modelRegionBlocked(conv.model_id, geoOfReq(req))) return regionBlocked(res);
 
   const already = db.prepare('SELECT 1 FROM media_unlocks WHERE media_id = ? AND fan_id = ?')
     .get(media.id, req.user.id);
@@ -2677,11 +2740,85 @@ app.delete('/api/model/tip-menu/:id', identMiddleware, requireUser, requireRole(
   res.json({ ok: true });
 });
 
+/* ---------------- Region blocker: options + model CRUD ---------------- */
+// Option lists for the blocker UI (countries + US states always; counties/cities per pick)
+app.get('/api/geo/options', identMiddleware, requireUser, requireRole('model', 'admin'), (req, res) => {
+  const state = String(req.query.state || '').toUpperCase();
+  const county = String(req.query.county || '');
+  const out = {
+    countries: geoLib.COUNTRIES.map(([code, name]) => ({ code, name })),
+    states: Object.entries(geoLib.US_STATES).map(([code, name]) => ({ code, name })),
+  };
+  if (state && geoLib.US_STATES[state]) {
+    out.counties = geoLib.countiesFor(state);
+    out.cities = county && out.counties.includes(county)
+      ? geoLib.citiesFor(state, county)
+      : geoLib.citiesForState(state);
+  }
+  res.json(out);
+});
+
+app.get('/api/model/region-blocks', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const blocks = db.prepare('SELECT * FROM model_region_blocks WHERE model_id = ? ORDER BY id').all(req.user.id);
+  res.json({ blocks });
+});
+
+app.post('/api/model/region-blocks', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const level = String(req.body.level || '');
+  if (!['country', 'state', 'county', 'city'].includes(level))
+    return res.status(400).json({ error: 'bad_level' });
+  const country = String(req.body.country_code || 'US').toUpperCase().slice(0, 2);
+  let state = req.body.state_code ? String(req.body.state_code).toUpperCase().slice(0, 2) : null;
+  let county = req.body.county_name ? String(req.body.county_name).trim().slice(0, 80) : null;
+  let city = req.body.city_name ? String(req.body.city_name).trim().slice(0, 80) : null;
+  if (!geoLib.COUNTRY_NAMES[country]) return res.status(400).json({ error: 'bad_country' });
+  if (level === 'country') { state = null; county = null; city = null; }
+  else if (country === 'US') {
+    if (!state || !geoLib.US_STATES[state]) return res.status(400).json({ error: 'bad_state' });
+    if (level === 'county' && (!county || !geoLib.countiesFor(state).includes(county)))
+      return res.status(400).json({ error: 'bad_county' });
+  } else {
+    // State/county granularity is US-only; other countries: city or whole country.
+    if (level === 'state' || level === 'county')
+      return res.status(400).json({ error: 'us_only_level',
+        message: 'State and county blocking is for the United States. For other countries, block the city or the whole country.' });
+    state = null; county = null;
+  }
+  if (level === 'state') { county = null; city = null; }
+  if (level === 'county') city = null;
+  if (level === 'city' && (!city || city.length < 2))
+    return res.status(400).json({ error: 'bad_city' });
+  if (level !== 'city') city = null;
+  const count = db.prepare('SELECT COUNT(*) AS n FROM model_region_blocks WHERE model_id = ?').get(req.user.id).n;
+  if (count >= 200) return res.status(400).json({ error: 'too_many', message: 'You can block up to 200 regions.' });
+  const dup = db.prepare(`SELECT id FROM model_region_blocks WHERE model_id = ? AND level = ?
+    AND country_code IS ? AND state_code IS ? AND county_name IS ? AND city_name IS ?`)
+    .get(req.user.id, level, country, state, county, city);
+  if (dup) return res.status(409).json({ error: 'already_blocked', message: 'That region is already blocked.' });
+  const countryName = geoLib.COUNTRY_NAMES[country];
+  const label = level === 'country' ? countryName
+    : level === 'state' ? `${geoLib.US_STATES[state]}, USA`
+    : level === 'county' ? `${county} ${state === 'LA' ? 'Parish' : 'County'}, ${state}`
+    : country === 'US' ? `${city}, ${state}` : `${city}, ${countryName}`;
+  const info = db.prepare(`INSERT INTO model_region_blocks
+    (model_id, level, country_code, state_code, county_name, city_name, label)
+    VALUES (?,?,?,?,?,?,?)`).run(req.user.id, level, country, state, county, city, label);
+  res.json({ ok: true, id: Number(info.lastInsertRowid), label });
+});
+
+app.delete('/api/model/region-blocks/:id', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const r = db.prepare('DELETE FROM model_region_blocks WHERE id = ? AND model_id = ?')
+    .run(req.params.id, req.user.id);
+  if (!r.changes) return res.status(404).json({ error: 'not_found' });
+  res.json({ ok: true });
+});
+
 // POST /api/models/:id/tip — fan buys a tip-menu item { menu_id, context: 'profile'|'live'|'chat' }
 app.post('/api/models/:id/tip', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
   const modelId = parseInt(req.params.id);
   const model = db.prepare('SELECT * FROM users WHERE id = ? AND role = ?').get(modelId, 'model');
   if (!model) return res.status(404).json({ error: 'model_not_found' });
+  if (modelRegionBlocked(modelId, geoOfReq(req))) return regionBlocked(res);
   let item = db.prepare('SELECT * FROM tip_menus WHERE id = ? AND model_id = ?')
     .get(req.body.menu_id, modelId);
   if (!item && String(req.body.menu_id).startsWith('default-')) {
@@ -3644,6 +3781,7 @@ app.post('/api/calls', identMiddleware, requireUser, requireRole('fan'), (req, r
     JOIN models m ON m.user_id = u.id
     WHERE u.id = ? AND u.role = 'model' AND u.banned = 0`).get(req.body.model_id);
   if (!row) return res.status(404).json({ error: 'model_not_found' });
+  if (modelRegionBlocked(row.id, geoOfReq(req))) return regionBlocked(res);
   if (!row.is_online) return res.status(409).json({ error: 'model_offline' });
   const liveNow = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`).get(row.id);
   if (liveNow) return res.status(409).json({ error: 'model_live',
@@ -3809,6 +3947,7 @@ app.post('/api/facetime/request', identMiddleware, requireUser, requireRole('fan
     JOIN models m ON m.user_id = u.id
     WHERE u.id = ? AND u.role = 'model' AND u.banned = 0`).get(req.body.model_id);
   if (!row) return res.status(404).json({ error: 'model_not_found' });
+  if (modelRegionBlocked(row.id, geoOfReq(req))) return regionBlocked(res);
   const live = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`).get(row.id);
   if (live) return res.status(409).json({ error: 'model_live',
     message: "She's live right now — FaceTime is locked during lives. Join her stage or book a 1-on-1." });
@@ -4259,7 +4398,13 @@ app.get('/api/live/schedule', (req, res) => {
     }
   }
   upcoming.sort((a, b) => a.starts_at - b.starts_at);
-  res.json({ upcoming: upcoming.slice(0, 20) });
+  const vRoleS = viewerRoleOf(req);
+  let visUpcoming = upcoming;
+  if (vRoleS !== 'model' && vRoleS !== 'admin') {
+    const blockedS = blockedModelIds(geoOfReq(req));
+    if (blockedS.size) visUpcoming = upcoming.filter((u) => !blockedS.has(u.model_id));
+  }
+  res.json({ upcoming: visUpcoming.slice(0, 20) });
 });
 
 app.get('/api/live/:id', identMiddleware, requireUser, (req, res) => {
@@ -4329,6 +4474,11 @@ app.get('/api/live', (req, res) => {
     FROM live_sessions ls JOIN users u ON u.id = ls.model_id
     LEFT JOIN models mo ON mo.user_id = u.id
     WHERE ls.status = 'live' AND u.banned = 0 AND COALESCE(mo.is_hidden, 0) = 0`).all();
+  const vRole = viewerRoleOf(req);
+  if (vRole !== 'model' && vRole !== 'admin') {
+    const blocked = blockedModelIds(geoOfReq(req));
+    if (blocked.size) return res.json({ live: rows.filter((r) => !blocked.has(r.model_id)) });
+  }
   res.json({ live: rows });
 });
 
@@ -4337,6 +4487,7 @@ app.post('/api/live/:id/join', identMiddleware, requireUser, requireRole('fan'),
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ? AND status = \'live\'')
     .get(req.params.id);
   if (!sess) return res.status(404).json({ error: 'not_live' });
+  if (modelRegionBlocked(sess.model_id, geoOfReq(req))) return regionBlocked(res);
   db.prepare('INSERT OR IGNORE INTO live_viewers (session_id, fan_id) VALUES (?,?)')
     .run(sess.id, req.user.id);
   // Tell the model someone new is watching (she'll open a peer connection)
@@ -4364,6 +4515,7 @@ app.post('/api/live/:id/pay', identMiddleware, requireUser, requireRole('fan'), 
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ? AND status = \'live\'')
     .get(req.params.id);
   if (!sess) return res.status(404).json({ error: 'not_live' });
+  if (modelRegionBlocked(sess.model_id, geoOfReq(req))) return regionBlocked(res);
   const viewer = db.prepare('SELECT * FROM live_viewers WHERE session_id = ? AND fan_id = ?')
     .get(sess.id, req.user.id);
   if (!viewer) return res.status(403).json({ error: 'join_first' });
@@ -4387,6 +4539,7 @@ app.post('/api/live/:id/pay', identMiddleware, requireUser, requireRole('fan'), 
 app.post('/api/live/:id/explicit-entry', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
   const sess = liveSessionOr404(req, res);
   if (!sess) return;
+  if (modelRegionBlocked(sess.model_id, geoOfReq(req))) return regionBlocked(res);
   if (!sess.is_explicit) return res.status(400).json({ error: 'not_explicit' });
   const viewer = db.prepare('SELECT * FROM live_viewers WHERE session_id = ? AND fan_id = ?')
     .get(sess.id, req.user.id);
@@ -4700,6 +4853,7 @@ function sendLiveGift(sess, fanId, gift, ip = null) {
 app.post('/api/live/:id/gift', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
   const sess = liveSessionOr404(req, res);
   if (!sess) return;
+  if (modelRegionBlocked(sess.model_id, geoOfReq(req))) return regionBlocked(res);
   const viewer = db.prepare('SELECT * FROM live_viewers WHERE session_id = ? AND fan_id = ?')
     .get(sess.id, req.user.id);
   if (!viewer) return res.status(403).json({ error: 'join_first' });
@@ -4730,6 +4884,7 @@ app.post('/api/gifts/send', identMiddleware, requireUser, requireRole('fan'), (r
   const modelId = parseInt(req.body.model_id);
   const model = db.prepare('SELECT * FROM users WHERE id = ? AND role = ?').get(modelId, 'model');
   if (!model) return res.status(404).json({ error: 'model_not_found' });
+  if (modelRegionBlocked(modelId, geoOfReq(req))) return regionBlocked(res);
   const context = req.body.context === 'live' ? 'live' : 'chat';
 
   if (context === 'live') {
@@ -5184,6 +5339,7 @@ app.post('/api/bookings', identMiddleware, requireUser, requireRole('fan'), (req
     JOIN models m ON m.user_id = u.id
     WHERE u.id = ? AND u.role = 'model'`).get(modelId);
   if (!model || model.banned) return res.status(404).json({ error: 'model_not_found' });
+  if (modelRegionBlocked(modelId, geoOfReq(req))) return regionBlocked(res);
   if (!BOOKING_DURATIONS.includes(durationMin))
     return res.status(400).json({ error: 'bad_duration' });
   const now = Date.now();
