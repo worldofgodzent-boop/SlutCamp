@@ -1470,7 +1470,7 @@ function sendPendingModelGuides() {
 /* fan-role), while the static /video/ URL plays for anyone.          */
 /* ------------------------------------------------------------------ */
 const GUIDE_VIDEO_FILE = path.join(__dirname, 'public', 'video', 'model-guide.mp4');
-const GUIDE_VIDEO_TEXT = '🎬 Watch your 1-minute tour: https://slutcamp.onrender.com/video/model-guide.mp4';
+const GUIDE_VIDEO_TEXT = '🎬 Watch your 1-minute tour: https://slutcamp.app/video/model-guide.mp4';
 
 function sendModelGuideVideo(modelUserId) {
   const m = db.prepare("SELECT id, display_name, language, guide_video_sent_at FROM users WHERE id = ? AND role = 'model'")

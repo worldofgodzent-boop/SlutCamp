@@ -8524,7 +8524,7 @@ function vDmca() {
         <label class="field">Your full name<input class="input" id="dm-name" maxlength="120" placeholder="Jane Doe"></label>
         <label class="field">Your email<input class="input" id="dm-email" type="email" maxlength="160" placeholder="you@example.com"></label>
         <label class="field">Describe the copyrighted work<input class="input" id="dm-work" maxlength="4000" placeholder="e.g. my photo series 'Summer 2026', published at…"></label>
-        <label class="field">SlutCamp URL(s) where it appears (one per line)<textarea class="input" id="dm-urls" rows="3" maxlength="4000" placeholder="https://slutcamp.onrender.com/…"></textarea></label>
+        <label class="field">SlutCamp URL(s) where it appears (one per line)<textarea class="input" id="dm-urls" rows="3" maxlength="4000" placeholder="https://slutcamp.app/…"></textarea></label>
         <label class="small" style="display:flex;gap:8px;align-items:flex-start;margin:10px 0">
           <input type="checkbox" id="dm-goodfaith" style="margin-top:3px">
           <span class="muted">I have a good-faith belief that the use of the material above is not authorized by the copyright owner, its agent, or the law. I swear under penalty of perjury that the information in this notice is accurate and that I am the copyright owner or authorized to act on the owner's behalf.</span>

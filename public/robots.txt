@@ -3,4 +3,4 @@ Allow: /
 Disallow: /#boss
 Disallow: /api/
 
-Sitemap: https://slutcamp.onrender.com/sitemap.xml
+Sitemap: https://slutcamp.app/sitemap.xml
