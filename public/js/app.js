@@ -7588,7 +7588,7 @@ function vDmca() {
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">📮 Designated copyright agent</div>
         <div class="small muted">DMCA Agent, World of Godz Entertainment LLC<br>
-        Email: <b>dmca@slutcamp.app</b><br>
+        Email: <b>worldofgodzent+dmca@gmail.com</b><br>
         <span class="small" style="opacity:.7">(Mailing address: to be provided)</span></div>
       </div>
       <div class="card">
@@ -7608,7 +7608,7 @@ function vDmca() {
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">↩️ Counter-notice (for models)</div>
-        <div class="small muted">If your content was removed and you believe it was a mistake or misidentification, you may file a counter-notice. Email <b>dmca@slutcamp.app</b> with: your name and contact info, the URL(s) removed, a statement under penalty of perjury that you have a good-faith belief the material was removed by mistake, and your typed signature. If the original complainant doesn't file a court action within 10–14 business days, we may restore the content.</div>
+        <div class="small muted">If your content was removed and you believe it was a mistake or misidentification, you may file a counter-notice. Email <b>worldofgodzent+dmca@gmail.com</b> with: your name and contact info, the URL(s) removed, a statement under penalty of perjury that you have a good-faith belief the material was removed by mistake, and your typed signature. If the original complainant doesn't file a court action within 10–14 business days, we may restore the content.</div>
       </div>
       <p class="muted small" style="text-align:center;margin:16px 0">This page is a plain-language summary, not legal advice.<br>Operated by World of Godz Entertainment LLC.</p>
       <button class="btn ghost" id="dm-back">← Back</button>
