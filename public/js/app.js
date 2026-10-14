@@ -8179,11 +8179,15 @@ $('#call-decline').onclick = declineCall;
 $('#call-hangup').onclick = hangupCall;
 
 /* ---------------- 18+ age gate ---------------- */
-// Resolves when the visitor has verified they are 18+. Shows a full-screen
-// date-of-birth gate on every load where the localStorage flag is missing.
+// Resolves when the visitor has verified they are 18+. The full-screen
+// date-of-birth gate pops on EVERY visit for anyone who is not signed in
+// (Corry, Oct 14, 2026) — passing is never remembered across loads.
+// Signed-in accounts skip it: they attested 18+ with a DOB at signup.
 function checkAgeGate() {
   return new Promise((resolve) => {
-    if (localStorage.getItem('slutcamp_age_ok') === '1') return resolve();
+    if (S.token) return resolve();
+    // Retire the old "remember me" flag from earlier versions.
+    try { localStorage.removeItem('slutcamp_age_ok'); } catch (e) { /* ignore */ }
     const gate = $('#age-gate');
     gate.classList.remove('hidden');
     // Set max to today so future dates can't be picked
@@ -8217,7 +8221,6 @@ function checkAgeGate() {
         (now.getMonth() === birth.getMonth() && now.getDate() >= birth.getDate());
       if (!hadBirthday) age--;
       if (age >= 18) {
-        localStorage.setItem('slutcamp_age_ok', '1');
         gate.classList.add('hidden');
         resolve();
       } else {
