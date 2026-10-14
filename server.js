@@ -5961,6 +5961,51 @@ app.post('/api/admin/crypto-invoices/actions/sweep', ...adminOnly, (req, res) =>
 
 cryptoSvc.start();
 
+/* ------------------------------------------------------------------ */
+/* Live presence (COUNTS ONLY — see lib/presence)                      */
+/* Clients ping every ~30s; the Moderator panel reads aggregate        */
+/* counts. No names or identities are ever returned.                   */
+/* ------------------------------------------------------------------ */
+const { createPresenceService } = require('./lib/presence');
+const presenceSvc = createPresenceService({ db });
+
+app.post('/api/presence/ping', (req, res) => {
+  // Tolerant identity resolution (no identMiddleware — a brand-new guest
+  // with no token yet must still count). Anything unresolvable is simply
+  // not counted; the ping always answers 204 and never errors.
+  let key = null, role = null;
+  const ident = getIdentity(req);
+  if (ident && ident.kind === 'user') {
+    key = 'u:' + ident.user.id;
+    role = ident.user.role === 'fan' ? 'fan'
+      : ident.user.role === 'model' ? 'model' : 'staff';
+  } else if (ident && ident.kind === 'guest') {
+    key = 'g:' + ident.token;
+    role = 'guest';
+  } else {
+    const anon = req.body && typeof req.body.anon_id === 'string' ? req.body.anon_id : '';
+    if (/^[a-f0-9]{32}$/.test(anon)) { key = 'g:' + anon; role = 'guest'; }
+  }
+  if (key) presenceSvc.ping(key, role);
+  res.status(204).end();
+});
+
+/* Moderator-panel guard: admins only, everyone else (fans, models,
+   guests) gets 403 — counts are staff information. */
+const modOnly = (req, res, next) => {
+  if (req.ident.kind !== 'user' || req.ident.user.role !== 'admin') {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  req.user = req.ident.user;
+  next();
+};
+
+app.get('/api/mod/presence', identMiddleware, modOnly, (req, res) => {
+  res.json(presenceSvc.snapshot());
+});
+
+presenceSvc.start();
+
 app.get('/api/admin/fans', ...adminOnly, (req, res) => {
   res.json({ fans: db.prepare(`
     SELECT u.id, u.username, u.display_name, u.banned, u.created_at, w.credits_cents,

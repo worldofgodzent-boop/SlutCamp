@@ -6195,6 +6195,50 @@ function endLiveView(msg) {
 
 /* ---------------- ADMIN (continued) ---------------- */
 
+/* ---------------- live presence card (Moderator — counts only) ----------------
+   Big live headcount + split + peak today + 2h history strip, fed by
+   GET /api/mod/presence every 10s while the panel is open. The timer
+   self-clears when the view changes (same lifecycle pattern as the
+   live-stage polls). No names anywhere — numbers only. */
+let presenceCardTimer = null;
+
+function stopPresenceCard() {
+  if (presenceCardTimer) { clearInterval(presenceCardTimer); presenceCardTimer = null; }
+}
+
+function startPresenceCard() {
+  stopPresenceCard();
+  refreshPresenceCard();
+  presenceCardTimer = setInterval(() => {
+    if (S.view !== 'admin' || !document.getElementById('presence-card')) { stopPresenceCard(); return; }
+    refreshPresenceCard();
+  }, 10000);
+}
+
+async function refreshPresenceCard() {
+  if (!document.getElementById('presence-card')) return;
+  const { data } = await api('/mod/presence');
+  if (!data || !data.now) return;
+  const totalEl = document.getElementById('presence-total');
+  if (!totalEl) return; // view changed mid-flight
+  totalEl.textContent = `🟢 ${data.now.total} on the app now`;
+  document.getElementById('presence-split').textContent =
+    `${data.now.guests} guests · ${data.now.fans} fans · ${data.now.models} models`;
+  document.getElementById('presence-peak').textContent = data.peakToday;
+  const strip = document.getElementById('presence-strip');
+  const samples = data.samples || [];
+  if (!samples.length) {
+    strip.innerHTML = '<div class="muted small">Collecting data — bars appear as the minutes pass.</div>';
+    return;
+  }
+  const max = Math.max(1, ...samples.map((s) => s.total));
+  strip.innerHTML = samples.map((s) => {
+    const h = Math.max(2, Math.round((s.total / max) * 44));
+    const when = new Date(s.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    return `<div style="flex:1;min-width:2px;height:${h}px;background:linear-gradient(180deg,var(--purple),var(--pink));border-radius:2px 2px 0 0" title="${when} — ${s.total} on the app (${s.guests} guests · ${s.fans} fans · ${s.models} models)"></div>`;
+  }).join('');
+}
+
 async function vAdmin() {
   const tab = S.adminTab || 'dash';
   const { data: stats } = await api('/admin/stats');
@@ -6228,6 +6272,20 @@ async function vAdmin() {
     <div class="header"><h1>Moderator 🛡️</h1><div class="sub">Hey Corry — everything at a glance</div></div>
     <div class="screen">
       <button class="btn" id="a-preview-fan" style="width:100%;padding:16px;font-size:17px;font-weight:800;margin-bottom:12px;background:linear-gradient(135deg,var(--pink),#ff8fab);box-shadow:0 6px 22px rgba(255,92,158,.35)">👁 Preview the app (fan view)</button>
+      <div class="card" id="presence-card" style="padding:14px;margin-bottom:12px">
+        <div class="row" style="align-items:flex-start">
+          <span class="grow">
+            <span id="presence-total" style="font-size:22px;font-weight:800">🟢 — on the app now</span><br>
+            <span class="small muted" id="presence-split">Counting…</span>
+          </span>
+          <span style="text-align:right">
+            <div id="presence-peak" style="font-size:22px;font-weight:800">—</div>
+            <div class="small muted">peak today</div>
+          </span>
+        </div>
+        <div id="presence-strip" style="display:flex;align-items:flex-end;gap:2px;height:44px;margin-top:10px"></div>
+        <div class="small muted" style="margin-top:6px">Last 2 hours · refreshes every 10s</div>
+      </div>
       <div class="tabs">${tabs.map(([id, l]) =>
         `<button data-atab="${id}" class="${tab === id ? 'active' : ''}">${l}${id === 'safety' && stats.open_incidents ? ` <span class="unread-badge">${stats.open_incidents}</span>` : ''}${id === 'dmca' && stats.open_dmca ? ` <span class="unread-badge">${stats.open_dmca}</span>` : ''}</button>`).join('')}
       </div>
@@ -6239,6 +6297,7 @@ async function vAdmin() {
   const pvBtn = $('#a-preview-fan');
   if (pvBtn) pvBtn.onclick = enterFanPreview;
   wireAdminBody(tab);
+  startPresenceCard();
 }
 
 async function adminDashBody(s) {
@@ -7616,11 +7675,50 @@ function checkAgeGate() {
   });
 }
 
+/* ---------------- presence heartbeat ----------------
+   Pings /api/presence/ping every 30s while the app is open, so the
+   Moderator panel can show a live headcount. Logged-in users ping under
+   their session; guests under their guest token — or a persistent
+   anonymous id (generated once) until they have one. Counts only; the
+   ping carries no content. Fire-and-forget: a failed ping must never
+   break or slow the app. */
+function presenceAnonId() {
+  let id = null;
+  try { id = localStorage.getItem('wc_anon'); } catch (e) { /* storage unavailable */ }
+  if (!id || !/^[a-f0-9]{32}$/.test(id)) {
+    const b = new Uint8Array(16);
+    crypto.getRandomValues(b);
+    id = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+    try { localStorage.setItem('wc_anon', id); } catch (e) { /* ignore */ }
+  }
+  return id;
+}
+
+function presencePing() {
+  try {
+    if (S.token || S.guestToken) {
+      api('/presence/ping', { method: 'POST', body: '{}' }).catch(() => {});
+    } else {
+      fetch('/api/presence/ping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anon_id: presenceAnonId() }),
+      }).catch(() => {});
+    }
+  } catch (e) { /* heartbeat must never break the app */ }
+}
+
+function startPresenceHeartbeat() {
+  presencePing();
+  setInterval(presencePing, 30000);
+}
+
 /* ---------------- boot ---------------- */
 
 (async function boot() {
   // Age gate first — nothing else renders until confirmed 18+
   await checkAgeGate();
+  startPresenceHeartbeat();
   // Visitor analytics: log one visit per session (powers Corry's growth dashboard)
   try {
     if (!sessionStorage.getItem('sc_visit')) {
