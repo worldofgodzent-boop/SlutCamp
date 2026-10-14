@@ -158,7 +158,7 @@ const I18N = {
     guest_wallet_sub: "You're browsing as a guest. Sign up free to buy credits and unlock chats, live streams, gifts, and more.",
     create_free_account: '✨ Create free account',
     have_account_login: 'Already have an account? Log in',
-    crypto_h: 'Load with Crypto ₿',
+    crypto_h: 'Load with Crypto',
     crypto_note: 'Pay from your own wallet app. Credits land automatically after 1 network confirmation.',
     crypto_dollars: 'in dollars',
     crypto_send_exact: 'Send exactly',
@@ -329,7 +329,7 @@ const I18N = {
     guest_wallet_sub: 'Estás explorando como invitado. Regístrate gratis para comprar créditos y desbloquear chats, transmisiones en vivo, regalos y más.',
     create_free_account: '✨ Crear cuenta gratis',
     have_account_login: '¿Ya tienes cuenta? Inicia sesión',
-    crypto_h: 'Cargar con cripto ₿',
+    crypto_h: 'Cargar con cripto',
     crypto_note: 'Paga desde tu billetera. Los créditos llegan automáticamente tras 1 confirmación de red.',
     crypto_dollars: 'en dólares',
     crypto_send_exact: 'Envía exactamente',
@@ -500,7 +500,7 @@ const I18N = {
     guest_wallet_sub: 'Você está navegando como visitante. Cadastre-se grátis para comprar créditos e liberar conversas, lives, presentes e muito mais.',
     create_free_account: '✨ Criar conta grátis',
     have_account_login: 'Já tem conta? Entrar',
-    crypto_h: 'Carregar com cripto ₿',
+    crypto_h: 'Carregar com cripto',
     crypto_note: 'Pague do seu app de carteira. Os créditos caem automaticamente após 1 confirmação da rede.',
     crypto_dollars: 'em dólares',
     crypto_send_exact: 'Envie exatamente',
@@ -2265,25 +2265,19 @@ async function vWallet() {
       </div>
       ${pkgs.map((p) => `
         <button class="pkg" data-pkg="${p.id}">
-          <span style="font-size:28px">🪙</span>
+          <span class="pkg-coin">🪙</span>
           <span class="amt">${p.credits_cents / 100} ${t('credits_word')}</span>
           <span class="price">${p.label}</span>
           ${p.descriptor ? `<span class="muted small" style="width:100%">${esc(p.descriptor)}</span>` : ''}
         </button>`).join('')}
       <div class="card" id="crypto-card">
-        <div style="font-weight:800;font-size:16px">₿ ${t('crypto_h')}</div>
-        <div class="muted small" style="margin:4px 0 10px">${t('crypto_note')}</div>
-        <div class="row" style="gap:8px;margin-bottom:10px;flex-wrap:wrap">
-          <button class="btn small grow" data-coin="USDT">💵 USDT · ${t('crypto_dollars')}</button>
-          <button class="btn small ghost grow" data-coin="BTC">₿ Bitcoin</button>
-          <button class="btn small ghost grow" data-coin="ETH">Ξ Ethereum</button>
-          <button class="btn small ghost grow" data-coin="SOL">◎ Solana</button>
-          <button class="btn small ghost grow" data-coin="XRP">✕ XRP</button>
-        </div>
+        <div style="font-weight:800;font-size:17px;letter-spacing:.2px">${t('crypto_h')}</div>
+        <div class="muted small" style="margin:4px 0 12px">${t('crypto_note')}</div>
+        <div class="coin-grid" id="crypto-coins"></div>
         <div id="crypto-pkgs">
           ${pkgs.map((p) => `
           <button class="pkg" data-cpkg="${p.id}">
-            <span style="font-size:24px">🪙</span>
+            <span class="pkg-coin">🪙</span>
             <span class="amt">${p.credits_cents / 100} ${t('credits_word')}</span>
             <span class="price">${p.label}</span>
           </button>`).join('')}
@@ -2303,15 +2297,35 @@ async function vWallet() {
   });
   // Crypto loads (single-screen flow: coin -> package -> pay screen)
   stopCryptoTimers();
-  app.querySelectorAll('[data-coin]').forEach((b) => {
-    b.onclick = () => {
-      cryptoCoinSel = b.dataset.coin;
-      app.querySelectorAll('[data-coin]').forEach((x) => {
-        const on = x.dataset.coin === cryptoCoinSel;
-        x.classList.toggle('ghost', !on);
-      });
+  // Coin chips render from the live /crypto/config — only coins whose receiving
+  // is actually set up appear (unconfigured coins like XRP never render).
+  (async () => {
+    const grid = $('#crypto-coins');
+    if (!grid) return;
+    const META = {
+      USDT: { g: '₮', label: 'USDT', color: '#2bb673' },
+      BTC: { g: '₿', label: 'Bitcoin', color: '#f7931a' },
+      ETH: { g: 'Ξ', label: 'Ethereum', color: '#a9b7f0' },
+      SOL: { g: '◎', label: 'Solana', color: '#14f195' },
+      XRP: { g: '✕', label: 'XRP', color: '#c0c6ce' },
     };
-  });
+    const { data: cfg } = await api('/crypto/config');
+    const coins = ((cfg && cfg.coins) || []).map((c) => c.coin).filter((c) => META[c]);
+    if (!coins.length) { const card = $('#crypto-card'); if (card) card.style.display = 'none'; return; }
+    if (!coins.includes(cryptoCoinSel)) cryptoCoinSel = coins[0];
+    if (coins.length < 4) grid.style.gridTemplateColumns = `repeat(${coins.length}, 1fr)`;
+    grid.innerHTML = coins.map((c) => `
+      <button class="coin-chip${c === cryptoCoinSel ? ' on' : ''}" data-coin="${c}">
+        <span class="cs" style="color:${META[c].color}">${META[c].g}</span>
+        <span class="cl">${META[c].label}</span>
+      </button>`).join('');
+    grid.querySelectorAll('[data-coin]').forEach((b) => {
+      b.onclick = () => {
+        cryptoCoinSel = b.dataset.coin;
+        grid.querySelectorAll('[data-coin]').forEach((x) => x.classList.toggle('on', x.dataset.coin === cryptoCoinSel));
+      };
+    });
+  })();
   app.querySelectorAll('[data-cpkg]').forEach((b) => {
     b.onclick = () => startCryptoInvoice(b.dataset.cpkg);
   });
