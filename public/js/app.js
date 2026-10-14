@@ -1057,6 +1057,7 @@ const TABS = {
     { id: 'wallet', ico: '💰', lk: 'tab_wallet', view: 'wallet' },
   ],
   model: [
+    { id: 'home', ico: '🏠', lk: 'tab_home', view: 'fanModels' },
     { id: 'chats', ico: '💬', lk: 'tab_chats', view: 'modelChats' },
     { id: 'book', ico: '📅', lk: 'tab_bookings', view: 'bookings' },
     { id: 'earn', ico: '💵', lk: 'tab_earnings', view: 'modelEarnings' },
@@ -1774,18 +1775,54 @@ function logout(msg) {
 
 /* ---------------- FAN: models / chats / wallet ---------------- */
 
+/* Model browsing the home screen: tap a sister's tile for her public card
+   (status, home rank, rates) — look-only, no fan actions. */
+function openModelPeek(m, models) {
+  const featured = models.find((x) => x.is_featured);
+  const rest = featured ? models.filter((x) => x.id !== featured.id) : models;
+  const rankIdx = rest.findIndex((x) => x.id === m.id);
+  const isMe = !!(S.user && S.user.id === m.id);
+  const rankLine = m.is_featured
+    ? '⭐ Featured — pinned at the top'
+    : rankIdx === 0 ? '👑 #1 on the home screen'
+    : rankIdx > 0 ? `#${rankIdx + 1} on the home screen` : '';
+  const status = m.is_live
+    ? `🔴 LIVE now — ${m.live_viewers || 0} watching`
+    : m.is_online ? '🟢 Online now' : '⚫ Offline';
+  ftSheet(`
+    <div style="text-align:center">
+      ${avatarHTML(m.display_name, 'xl', m.photo_url)}
+      <div class="sheet-title" style="margin-top:8px">${esc(m.display_name)}${isMe ? ' (that\'s you! 💅)' : ''}</div>
+      <div class="muted small">@${esc(m.username)}</div>
+    </div>
+    <div class="peek-rows">
+      <div class="peek-row"><span>Status</span><b>${status}</b></div>
+      ${rankLine ? `<div class="peek-row"><span>Home rank</span><b>${rankLine}</b></div>` : ''}
+      <div class="peek-row"><span>Messages</span><b>${fmt(m.per_message_cents)} / msg</b></div>
+      <div class="peek-row"><span>Video calls</span><b>${fmt(m.per_minute_cents)} / min</b></div>
+      ${m.schedule_summary ? `<div class="peek-row"><span>Usually live</span><b>${esc(m.schedule_summary)}</b></div>` : ''}
+    </div>
+    ${m.bio ? `<div class="muted small" style="margin-top:10px">${esc(m.bio)}</div>` : ''}
+    <button class="sheet-btn" style="margin-top:12px" onclick="document.getElementById('ft-sheet').remove()">Close</button>`);
+}
+
 async function vFanModels() {
   const { data } = await api('/models');
   const models = data.models || [];
   await refreshMe();
+  const isModelViewer = !!(S.user && S.user.role === 'model');
   let following = [];
-  try { const f = await api('/follows'); following = f.data.following || []; } catch (e) {}
+  if (!isModelViewer) {
+    try { const f = await api('/follows'); following = f.data.following || []; } catch (e) {}
+  }
   app.innerHTML = `
     <div class="header"><h1>Slut<span class="logo">Camp</span></h1>
-      <div><span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span></div></div>
+      <div>${isModelViewer
+        ? '<span class="balance-pill">👀 Browsing the home screen</span>'
+        : `<span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span>`}</div></div>
     <div class="screen">
       ${livesBtnHTML(models)}
-      ${models.length ? homeTilesHTML(models, (m) => `
+      ${models.length ? homeTilesHTML(models, isModelViewer ? null : (m) => `
             <span class="follow-btn tile-heart ${following.includes(m.id) ? 'following' : ''}" data-follow="${m.id}" title="${t('follow_title')}">${following.includes(m.id) ? '❤️' : '🤍'}</span>`)
         : `<div class="empty"><div class="big">😴</div>${t('no_models')}</div>`}
     </div>`;
@@ -1793,6 +1830,11 @@ async function vFanModels() {
   if (lv) lv.onclick = () => show('lives', {});
   app.querySelectorAll('[data-model]').forEach((b) => {
     b.onclick = () => {
+      if (isModelViewer) {
+        const m = models.find((x) => x.id === parseInt(b.dataset.model));
+        if (m) openModelPeek(m, models);
+        return;
+      }
       const liveId = b.dataset.live;
       if (liveId) return watchLive(parseInt(liveId));
       openChatWithModel(parseInt(b.dataset.model));
@@ -1859,7 +1901,7 @@ async function vLives() {
   const models = data.models || [];
   const live = models.filter((m) => m.is_live);
   const online = models.filter((m) => !m.is_live && m.is_online);
-  const backView = S.user && S.user.role === 'fan' ? 'fanModels' : 'landing';
+  const backView = S.user && (S.user.role === 'fan' || S.user.role === 'model') ? 'fanModels' : 'landing';
   app.innerHTML = `
     <div class="header"><h1>${t('live_now_h')}</h1>
       ${S.user && S.user.role === 'fan'
@@ -1880,6 +1922,11 @@ async function vLives() {
     </div>`;
   app.querySelectorAll('[data-model]').forEach((b) => {
     b.onclick = () => {
+      if (S.user && S.user.role === 'model') {
+        const m = models.find((x) => x.id === parseInt(b.dataset.model));
+        if (m) openModelPeek(m, models);
+        return;
+      }
       const liveId = b.dataset.live;
       if (liveId) return watchLive(parseInt(liveId));
       openChatWithModel(parseInt(b.dataset.model));
@@ -2649,6 +2696,7 @@ async function vModelSettings() {
     <div class="header"><h1>${t('settings_h')}</h1></div>
     <div class="screen">
       ${idvBanner}
+      <button class="btn" id="goto-home" style="width:100%;padding:16px;font-size:17px;font-weight:800;margin-bottom:12px;background:linear-gradient(135deg,var(--pink),#ff8fab);box-shadow:0 6px 22px rgba(255,92,158,.35)">🏠 Home Screen — see the girls 🔥</button>
       ${langCardHTML()}
       <div class="card">
         <div style="font-weight:800;margin-bottom:6px">${t('my_rates')}</div>
@@ -2909,6 +2957,8 @@ async function vModelSettings() {
     } else toast('Could not add tip item.');
   };
   // 🪪 ID verification submit (3 files via multipart)
+  const gotoHome = $('#goto-home');
+  if (gotoHome) gotoHome.onclick = () => show('fanModels', {});
   const idvBtn = $('#idv-submit');
   if (idvBtn) idvBtn.onclick = async () => {
     const front = $('#idv-front').files[0], back = $('#idv-back').files[0], selfie = $('#idv-selfie').files[0];
