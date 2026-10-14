@@ -459,7 +459,7 @@ body.bg-blur #app { filter: blur(24px); }
 }
 .coin-chip:active { transform: scale(.96); }
 .coin-chip .cs { font-size: 21px; line-height: 1; font-weight: 800; }
-.coin-chip .cl { font-size: 11px; font-weight: 700; letter-spacing: .4px; opacity: .85; white-space: nowrap; }
+.coin-chip .cl { font-size: 11px; font-weight: 700; letter-spacing: .4px; opacity: .85; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .coin-chip.on {
   background: linear-gradient(145deg, #ff5c9e, #ff7eb3);
   border-color: rgba(255,255,255,.35); color: #fff;
@@ -467,6 +467,15 @@ body.bg-blur #app { filter: blur(24px); }
 }
 .coin-chip.on .cl { opacity: 1; }
 .coin-chip.on .cs { color: #fff !important; }
+
+/* Narrow phones: 4-across tiles cannot hold full coin names — go 2x2 instead
+   of letting words crowd or spill out of their tiles. */
+@media (max-width: 400px) {
+  .coin-grid { grid-template-columns: repeat(2, 1fr); }
+}
+/* QR + invoice block always fit the card, never wider than it */
+#crypto-invoice svg { max-width: 100%; height: auto; }
+.pkg > span { min-width: 0; }
 
 .empty { text-align: center; color: var(--muted); padding: 40px 20px; }
 .empty .big { font-size: 44px; margin-bottom: 10px; }

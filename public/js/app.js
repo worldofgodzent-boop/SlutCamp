@@ -2376,9 +2376,9 @@ function renderCryptoInvoice(inv) {
   box.innerHTML = `
     <div style="text-align:center;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);margin-top:6px">
       <div class="muted small">${t('crypto_scan')}</div>
-      <div style="background:#fff;border-radius:14px;padding:10px;width:252px;margin:10px auto;line-height:0">${inv.qr_svg || ''}</div>
+      <div style="background:#fff;border-radius:14px;padding:10px;width:min(252px,100%);box-sizing:border-box;margin:10px auto;line-height:0">${inv.qr_svg || ''}</div>
       <div class="muted small">${t('crypto_send_exact')}</div>
-      <div style="font-size:30px;font-weight:900">${inv.amount_crypto} ${inv.coin}</div>
+      <div style="font-size:clamp(21px,6.4vw,30px);font-weight:900;letter-spacing:-.3px;padding:0 4px">${inv.amount_crypto} ${inv.coin}</div>
       <div class="muted small" style="margin-bottom:8px">≈ ${fmt(inv.package_usd_cents)} USD</div>
       ${inv.coin === 'SOL' ? `<div class="small" style="color:var(--gold);margin:0 auto 8px;max-width:300px">${t('crypto_exact_note')}</div>` : ''}
       <div class="muted small">${t('crypto_to')}</div>
@@ -2391,7 +2391,7 @@ function renderCryptoInvoice(inv) {
         <div class="small" style="color:var(--gold);margin:2px auto 0;max-width:300px">${t('crypto_tag_note')}</div>
         <button class="btn small ghost" id="ci-copy-tag" style="margin-top:6px">📋 ${t('crypto_copy')} tag</button>
       </div>` : ''}
-      <div class="row" style="gap:8px;margin-top:10px">
+      <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
         <button class="btn small grow" id="ci-copy">📋 ${t('crypto_copy')}</button>
         <a class="btn small ghost grow" href="${esc(inv.payment_uri)}" style="text-decoration:none;display:flex;align-items:center;justify-content:center">${t('crypto_open_wallet')}</a>
       </div>
@@ -2463,7 +2463,7 @@ async function loadCryptoRecent() {
   box.innerHTML = `
     <div class="muted small" style="margin:14px 0 6px;font-weight:700">${t('crypto_recent')}</div>
     ${rows.slice(0, 5).map((inv) => `
-      <div class="row small" style="padding:6px 0;border-top:1px solid rgba(255,255,255,.06)">
+      <div class="row small" style="padding:6px 0;border-top:1px solid rgba(255,255,255,.06);flex-wrap:wrap;row-gap:2px">
         <span class="grow">${({ BTC: '₿', USDT: '💵', ETH: 'Ξ', SOL: '◎', XRP: '✕' })[inv.coin] || '🪙'} ${inv.amount_crypto} ${inv.coin} <span class="muted">· ${fmt(inv.package_usd_cents)}</span></span>
         <span class="muted">${t('crypto_status_' + inv.status)}</span>
       </div>`).join('')}`;
@@ -2857,7 +2857,7 @@ async function vBookings() {
               <span class="small muted">${bookingWhen(b.scheduled_at)} · ${b.duration_min}min · ${fmt(b.total_cents)}</span><br>
               <span class="small" style="color:var(--gold);font-weight:700">${b.status === 'in_progress' ? 'In progress' : '⏱ ' + bookingCountdown(b.scheduled_at)}</span></span>
           </div>
-          <div class="row" style="gap:8px;margin-top:10px">
+          <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
             ${canGoLive ? `<button class="btn small" data-bk-start="${b.id}">🔴 Go Live Now</button>` : ''}
             ${canJoin ? `<button class="btn small" data-bk-join="${b.id}">📹 Join Private Session</button>` : ''}
             ${waitingLive ? `<span class="small muted">She'll go live at the scheduled time — you'll get a ping 📲</span>` : ''}
@@ -3077,7 +3077,7 @@ async function vModelSettings() {
         <div style="font-weight:800;margin-bottom:6px">${t('schedule_h')}</div>
         <div class="muted small" style="margin-bottom:10px">Set regular weekly times, go live spontaneously anytime, or both. Fans see your schedule on the Live tab.</div>
         <div id="sched-list"><span class="muted small">Loading…</span></div>
-        <div class="row" style="gap:8px;margin-top:10px">
+        <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
           <select class="input" id="sched-day" style="flex:1">
             ${t('day_names').split(',').map((d, i) => `<option value="${(i + 1) % 7}">${d}</option>`).join('')}
           </select>
@@ -3119,7 +3119,7 @@ async function vModelSettings() {
         <div style="font-weight:800;margin-bottom:6px">${t('tip_menu')}</div>
         <div class="muted small" style="margin-bottom:10px">Fans pick from your menu and pay instantly — like TikTok gifts but your own custom list. You keep 60% of every tip.</div>
         <div id="tipmenu-list"><span class="muted small">Loading…</span></div>
-        <div class="row" style="gap:8px;margin-top:10px">
+        <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
           <input class="input" id="tm-emoji" placeholder="😈" maxlength="8" style="flex:0 0 52px;text-align:center;font-size:20px">
           <input class="input" id="tm-label" placeholder="e.g. Blow a kiss" maxlength="60" style="flex:2">
           <input class="input" id="tm-price" type="number" step="0.01" min="1" max="1000" placeholder="$" style="flex:1">
