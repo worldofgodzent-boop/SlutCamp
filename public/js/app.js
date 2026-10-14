@@ -2663,6 +2663,11 @@ function walletButtonsHtml(inv) {
     btns.push(wbtn(mmDappHref(inv), '🦊 MetaMask'));
     btns.push('<button class="btn small ghost wbtn" id="ci-phantom" style="width:100%">👻 Phantom</button>');
   }
+  if (inv.coin === 'BTC') {
+    // MetaMask carries Bitcoin accounts but publishes no BTC send link; the
+    // /dapp/ link opens the real app on this invoice like it does for SOL.
+    btns.push(wbtn(mmDappHref(inv), '🦊 MetaMask'));
+  }
   btns.push(wbtn(esc(inv.payment_uri), '🔵 Coinbase Wallet'));
   const tw = trustHref(inv);
   if (tw) btns.push(wbtn(tw, '🛡️ Trust Wallet'));
