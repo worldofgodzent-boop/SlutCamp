@@ -8630,7 +8630,7 @@ function vDmca() {
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">📮 Designated copyright agent</div>
         <div class="small muted">DMCA Agent, World of Godz Entertainment LLC<br>
-        Email: <b>worldofgodzent+dmca@gmail.com</b><br>
+        Email: <b>dmca@slutcamp.app</b><br>
         <span class="small" style="opacity:.7">(Mailing address: to be provided)</span></div>
       </div>
       <div class="card">
@@ -8650,7 +8650,7 @@ function vDmca() {
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">↩️ Counter-notice (for models)</div>
-        <div class="small muted">If your content was removed and you believe it was a mistake or misidentification, you may file a counter-notice. Email <b>worldofgodzent+dmca@gmail.com</b> with: your name and contact info, the URL(s) removed, a statement under penalty of perjury that you have a good-faith belief the material was removed by mistake, and your typed signature. If the original complainant doesn't file a court action within 10–14 business days, we may restore the content.</div>
+        <div class="small muted">If your content was removed and you believe it was a mistake or misidentification, you may file a counter-notice. Email <b>dmca@slutcamp.app</b> with: your name and contact info, the URL(s) removed, a statement under penalty of perjury that you have a good-faith belief the material was removed by mistake, and your typed signature. If the original complainant doesn't file a court action within 10–14 business days, we may restore the content.</div>
       </div>
       <p class="muted small" style="text-align:center;margin:16px 0">This page is a plain-language summary, not legal advice.<br>Operated by World of Godz Entertainment LLC.</p>
       <button class="btn ghost" id="dm-back">← Back</button>
@@ -8693,7 +8693,7 @@ function vPrivacy() {
     <div class="screen">
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">1. Who operates SlutCamp</div>
-        <div class="small muted">SlutCamp is operated by World of Godz Entertainment LLC ("WOGENT"), San Antonio, Texas, USA. This policy explains what information the platform collects, why, and the choices you have. Privacy questions: <b>worldofgodzent@gmail.com</b>.</div>
+        <div class="small muted">SlutCamp is operated by World of Godz Entertainment LLC ("WOGENT"), San Antonio, Texas, USA. This policy explains what information the platform collects, why, and the choices you have. Privacy questions: <b>support@slutcamp.app</b>.</div>
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">2. Information you give us</div>
@@ -8785,7 +8785,7 @@ function vBilling() {
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">8. Get help</div>
-        <div class="small muted">Billing and account support:<br>Email: <b>worldofgodzent@gmail.com</b><br>Phone (call or text): <b>(210) 943-6509</b><br>In the app: message the admin from your inbox.<br>CCBill consumer support (24/7): <a href="https://support.ccbill.com" target="_blank" rel="noopener" style="color:var(--pink)">support.ccbill.com</a><br>Copyright / DMCA matters: use the DMCA page linked below.</div>
+        <div class="small muted">Billing and account support:<br>Email: <b>support@slutcamp.app</b><br>Phone (call or text): <b>(210) 943-6509</b><br>In the app: message the admin from your inbox.<br>CCBill consumer support (24/7): <a href="https://support.ccbill.com" target="_blank" rel="noopener" style="color:var(--pink)">support.ccbill.com</a><br>Copyright / DMCA matters: use the DMCA page linked below.</div>
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">9. Paying with crypto</div>
@@ -8829,7 +8829,7 @@ function vStatement2257() {
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">Content complaints</div>
-        <div class="small muted">To report content, request a removal, or raise a concern about any depiction on this website, email <b>worldofgodzent@gmail.com</b> or use the DMCA / takedown page linked below. Content complaints are reviewed and resolved within 7 business days.</div>
+        <div class="small muted">To report content, request a removal, or raise a concern about any depiction on this website, email <b>support@slutcamp.app</b> or use the DMCA / takedown page linked below. Content complaints are reviewed and resolved within 7 business days.</div>
       </div>
       <p class="muted small" style="text-align:center;margin:16px 0">Operated by World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="sf-terms" style="color:var(--pink)">Terms of Service</a> · <a href="javascript:void(0)" id="sf-privacy" style="color:var(--pink)">Privacy Policy</a> · <a href="javascript:void(0)" id="sf-billing" style="color:var(--pink)">Billing & Refunds</a> · <a href="javascript:void(0)" id="sf-dmca" style="color:var(--pink)">DMCA</a></p>
       <button class="btn ghost" id="s-back">← Back</button>
