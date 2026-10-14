@@ -2404,22 +2404,41 @@ function cryptoStatusText(inv) {
 
 const USDT_CONTRACT_CLIENT = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
 
-// Named wallet-app deep links. The generic coin URI (ethereum:/bitcoin:/solana:)
-// only works when some app registered the scheme — USDT's EIP-681 contract-call
-// form and bitcoin: frequently have NO handler, which reads as a dead button.
-// MetaMask's own link domain always reaches MetaMask with the transfer prefilled.
-function walletDeepLinkBtn(inv) {
-  let href = null, label = '';
-  if (inv.coin === 'USDT') {
-    href = `https://metamask.app.link/send/${USDT_CONTRACT_CLIENT}@1/transfer?address=${inv.address}&uint256=${inv.amount_units}`;
-    label = '🦊 MetaMask';
-  } else if (inv.coin === 'ETH') {
+// Named wallet-app buttons. Fans tap the wallet they actually have instead
+// of one generic link whose coin URI may have no handler on their device
+// (USDT's EIP-681 contract-call form and bitcoin: often claim nothing).
+function metamaskHref(inv) {
+  if (inv.coin === 'USDT') return `https://metamask.app.link/send/${USDT_CONTRACT_CLIENT}@1/transfer?address=${inv.address}&uint256=${inv.amount_units}`;
+  if (inv.coin === 'ETH') {
     const wei = (BigInt(Math.trunc(inv.amount_units)) * 1000000000n).toString();
-    href = `https://metamask.app.link/send/${inv.address}?value=${wei}`;
-    label = '🦊 MetaMask';
+    return `https://metamask.app.link/send/${inv.address}?value=${wei}`;
   }
-  if (!href) return '';
-  return `<a class="btn small ghost grow" href="${href}" target="_blank" rel="noopener" style="text-decoration:none;display:flex;align-items:center;justify-content:center">${label}</a>`;
+  return null;
+}
+
+// Trust Wallet's documented payment-link format (SLIP-44 coin ids; the fan's
+// own wallet choice — platform funds never touch it).
+function trustHref(inv) {
+  const slip = { BTC: 0, ETH: 60, SOL: 501 }[inv.coin];
+  if (inv.coin === 'USDT') return `https://link.trustwallet.com/send?coin=60&token_id=${USDT_CONTRACT_CLIENT}&address=${encodeURIComponent(inv.address)}&amount=${inv.amount_crypto}`;
+  if (slip === undefined) return null;
+  return `https://link.trustwallet.com/send?coin=${slip}&address=${encodeURIComponent(inv.address)}&amount=${inv.amount_crypto}`;
+}
+
+function wbtn(href, label) {
+  return `<a class="btn small ghost wbtn" href="${href}" target="_blank" rel="noopener" style="text-decoration:none;display:flex;align-items:center;justify-content:center">${label}</a>`;
+}
+
+function walletButtonsHtml(inv) {
+  const btns = [];
+  const mm = metamaskHref(inv);
+  if (mm) btns.push(wbtn(mm, '🦊 MetaMask'));
+  if (inv.coin === 'SOL') btns.push(wbtn(esc(inv.payment_uri), '👻 Phantom'));
+  btns.push(wbtn(esc(inv.payment_uri), '🔵 Coinbase Wallet'));
+  const tw = trustHref(inv);
+  if (tw) btns.push(wbtn(tw, '🛡️ Trust Wallet'));
+  btns.push(wbtn(esc(inv.payment_uri), '🔗 ' + t('crypto_open_wallet')));
+  return btns.join('');
 }
 
 let solWeb3LoadPromise = null;
@@ -2512,11 +2531,8 @@ function renderCryptoInvoice(inv) {
       </div>` : ''}
       <div style="margin-top:14px">
         <div class="muted small" style="font-weight:700;margin-bottom:8px">👛 ${t('crypto_pay_with')}</div>
-        <div class="row" style="gap:8px;flex-wrap:wrap">
-          <button class="btn small grow" id="ci-connect" style="display:none">🔗 ${t('crypto_connect_pay')}</button>
-          ${walletDeepLinkBtn(inv)}
-          <a class="btn small ghost grow" href="${esc(inv.payment_uri)}" style="text-decoration:none;display:flex;align-items:center;justify-content:center">${t('crypto_open_wallet')}</a>
-        </div>
+        <button class="btn" id="ci-connect" style="display:none;width:100%;margin-bottom:8px">🔗 ${t('crypto_connect_pay')}</button>
+        <div class="wallet-grid">${walletButtonsHtml(inv)}</div>
       </div>
       <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">
         <button class="btn small ghost grow" id="ci-copy">📋 ${t('crypto_copy')}</button>

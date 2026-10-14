@@ -476,6 +476,10 @@ body.bg-blur #app { filter: blur(24px); }
 .coin-chip.on .cl { opacity: 1; }
 .coin-chip.on .cs { color: #fff !important; }
 
+/* Named wallet buttons on the crypto pay screen */
+.wallet-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.wallet-grid .wbtn { width: 100%; margin-top: 0; }
+
 /* Narrow phones: 4-across tiles cannot hold full coin names — go 2x2 instead
    of letting words crowd or spill out of their tiles. */
 @media (max-width: 400px) {
