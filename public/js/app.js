@@ -1174,7 +1174,7 @@ function show(view, params) {
     modelChats: vModelChats, modelEarnings: vModelEarnings, modelSettings: vModelSettings,
     admin: vAdmin, chat: vChat,
     liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch, liveModWatch: vLiveModWatch,
-    bookings: vBookings, terms: vTerms,
+    bookings: vBookings, terms: vTerms, privacy: vPrivacy, billing: vBilling, statement2257: vStatement2257,
     adminLogin: vAdminLogin, modelContract: vModelContract,
     recruiter: vRecruiter, notifications: vNotifications, dmca: vDmca,
   };
@@ -1304,7 +1304,7 @@ async function vLanding() {
         <button class="btn ghost" id="share-app" style="border-color:var(--pink);color:var(--pink)">${t('share_app')}</button>
       </div>
       <div class="lang-row">${langPillsHTML()}</div>
-      <p class="muted small" style="text-align:center;margin-top:16px">${t('terms_line')} <a href="javascript:void(0)" id="go-terms" style="color:var(--pink)">${t('terms')}</a> · <a href="javascript:void(0)" id="go-dmca" style="color:var(--pink)">DMCA</a>.</p>
+      <p class="muted small" style="text-align:center;margin-top:16px">${t('terms_line')} <a href="javascript:void(0)" id="go-terms" style="color:var(--pink)">${t('terms')}</a> · <a href="javascript:void(0)" id="go-privacy" style="color:var(--pink)">Privacy</a> · <a href="javascript:void(0)" id="go-billing" style="color:var(--pink)">Billing & Refunds</a> · <a href="javascript:void(0)" id="go-2257" style="color:var(--pink)">2257 Statement</a> · <a href="javascript:void(0)" id="go-dmca" style="color:var(--pink)">DMCA</a>.</p>
     </div>`;
   app.querySelectorAll('[data-model]').forEach((b) => {
     b.onclick = () => {
@@ -1334,6 +1334,12 @@ async function vLanding() {
   if (sh) sh.onclick = shareApp;
   const gt = $('#go-terms');
   if (gt) gt.onclick = () => show('terms', {});
+  const gp = $('#go-privacy');
+  if (gp) gp.onclick = () => show('privacy', {});
+  const gb = $('#go-billing');
+  if (gb) gb.onclick = () => show('billing', {});
+  const g7 = $('#go-2257');
+  if (g7) g7.onclick = () => show('statement2257', {});
   const gd = $('#go-dmca');
   if (gd) gd.onclick = () => show('dmca', {});
 }
@@ -7472,11 +7478,14 @@ function vTerms() {
         <div style="font-weight:800;margin-bottom:8px">10. Changes</div>
         <div class="small muted">Features, prices, rates, and these terms may change at any time. Continued use means you accept the current terms.</div>
       </div>
-      <p class="muted small" style="text-align:center;margin:16px 0">These terms are a plain-language summary, not legal advice.<br>Operated by World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Copyright takedown →</a></p>
+      <p class="muted small" style="text-align:center;margin:16px 0">These terms are a plain-language summary, not legal advice.<br>Operated by World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Privacy Policy</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Billing & Refunds</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">2257 Statement</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Copyright takedown →</a></p>
       <button class="btn ghost" id="t-back">← Back</button>
     </div>`;
   $('#t-back').onclick = () => history.length > 1 ? history.back() : show('landing', {});
   $('#t-dmca').onclick = () => show('dmca', {});
+  $('#t-privacy').onclick = () => show('privacy', {});
+  $('#t-billing').onclick = () => show('billing', {});
+  $('#t-2257').onclick = () => show('statement2257', {});
 }
 
 /* ---------------- MODEL CONTRACT (sign before first use) ---------------- */
@@ -7628,6 +7637,162 @@ function vDmca() {
     else toast(data.error === 'bad_email' ? 'Check your email address' : 'Something went wrong — try again');
     btn.disabled = false;
   };
+}
+
+/* ---------------- PRIVACY POLICY (public) ---------------- */
+
+function vPrivacy() {
+  tabbar.classList.add('hidden');
+  app.innerHTML = `
+    <div class="header">
+      <h1>Slut<span class="logo">Camp</span> 🔒</h1>
+      <div class="sub">Privacy Policy · Last updated October 13, 2026</div>
+    </div>
+    <div class="screen">
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">1. Who operates SlutCamp</div>
+        <div class="small muted">SlutCamp is operated by World of Godz Entertainment LLC ("WOGENT"), San Antonio, Texas, USA. This policy explains what information the platform collects, why, and the choices you have. Privacy questions: <b>worldofgodzent@gmail.com</b>.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">2. Information you give us</div>
+        <div class="small muted">Account details (username, email address, password — stored hashed — and your 18+ date-of-birth confirmation), profile information and photos, messages, media and content you send or post, and — for models — identity documents for age and identity verification and tax information (such as a W-9) used for payouts and 1099 reporting.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">3. Payment information</div>
+        <div class="small muted">Purchases are processed by CCBill, our authorized third-party billing processor. Your full card number goes directly to the processor — we never receive or store it. We keep a record of what you bought, the amount, and when.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">4. Information collected automatically</div>
+        <div class="small muted">IP address, device and browser details, timestamps, and usage activity. Your 18+ confirmation is recorded with a timestamp and IP address. We use local storage on your device to keep you signed in and remember your language preference.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">5. How we use information</div>
+        <div class="small muted">To run the platform (accounts, chats, calls, live streams, and your wallet), process payments and model payouts, verify age and identity, handle required tax reporting, communicate with you, and keep the platform safe and legal.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">6. Safety monitoring</div>
+        <div class="small muted">Chats and live streams are monitored for safety and rule compliance, including automated tools that detect sharing of contact or payment information and other prohibited conduct (see the Terms of Service). Do not put private information in chats that you would not want reviewed for safety.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">7. What we share</div>
+        <div class="small muted">We do not sell personal information. We share only what is needed: with our billing processor to take payments, with hosting and service providers to run the app, with tax authorities for required reporting (for example, model 1099 forms), and when required by law or legal process, or to protect someone from harm.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">8. How long we keep it</div>
+        <div class="small muted">Account information is kept while your account is active. Transaction and tax records are kept as long as the law requires. Performer verification records (18 U.S.C. § 2257) are retained for at least five years, as federal law requires. Older chat messages and chat media are deleted automatically on a rolling basis (generally after 14 days). Money records are never deleted.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">9. Your choices</div>
+        <div class="small muted">You can update your profile at any time in Settings. To ask about, correct, or delete your personal information, email us at the address in section 1. Some records (transactions, tax filings, and 2257 verification records) must be kept by law even after an account closes.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">10. Adults only</div>
+        <div class="small muted">SlutCamp is an 18+ service. We do not knowingly collect information from anyone under 18, and accounts found to belong to minors are removed.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">11. Changes</div>
+        <div class="small muted">We may update this policy from time to time. The current version always lives on this page, with the date at the top.</div>
+      </div>
+      <p class="muted small" style="text-align:center;margin:16px 0">This policy is a plain-language summary, not legal advice.<br>Operated by World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="pv-terms" style="color:var(--pink)">Terms of Service</a> · <a href="javascript:void(0)" id="pv-billing" style="color:var(--pink)">Billing & Refunds</a> · <a href="javascript:void(0)" id="pv-2257" style="color:var(--pink)">2257 Statement</a> · <a href="javascript:void(0)" id="pv-dmca" style="color:var(--pink)">DMCA</a></p>
+      <button class="btn ghost" id="p-back">← Back</button>
+    </div>`;
+  $('#p-back').onclick = () => history.length > 1 ? history.back() : show('landing', {});
+  $('#pv-terms').onclick = () => show('terms', {});
+  $('#pv-billing').onclick = () => show('billing', {});
+  $('#pv-2257').onclick = () => show('statement2257', {});
+  $('#pv-dmca').onclick = () => show('dmca', {});
+}
+
+/* ---------------- BILLING, REFUNDS & CANCELLATION (public) ---------------- */
+
+function vBilling() {
+  tabbar.classList.add('hidden');
+  app.innerHTML = `
+    <div class="header">
+      <h1>Slut<span class="logo">Camp</span> 💳</h1>
+      <div class="sub">Billing, Refunds & Cancellation · Last updated October 13, 2026</div>
+    </div>
+    <div class="screen">
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">1. Who is billing you</div>
+        <div class="small muted">SlutCamp is operated by World of Godz Entertainment LLC. All card payments are processed securely by <b>CCBill</b>, our authorized third-party billing processor.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">2. What shows on your statement</div>
+        <div class="small muted">Charges appear discreetly as a CCBill charge referencing <b>"WOGENT"</b>. The word "SlutCamp" will never appear on your card statement.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">3. What you are buying</div>
+        <div class="small muted">Fans buy credit packages for the SlutCamp wallet. The full price is shown before you confirm — no hidden fees and no surprise charges. Credits are added to your wallet as soon as payment clears, and can be spent on chats, calls, gifts, live access, and bookings at the rates shown in the app.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">4. Recurring charges</div>
+        <div class="small muted">SlutCamp does not currently charge automatic recurring subscriptions — you only pay when you choose to buy credits. If a recurring plan is ever offered, its full price and renewal terms will be shown before checkout, and you will be able to cancel it at any time from your wallet or through CCBill.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">5. Refunds</div>
+        <div class="small muted">Spent credits are non-refundable (see Terms of Service, section 9). Unused credits stay in your wallet and are not redeemable for cash. If you were charged in error, charged twice for the same purchase, or a paid purchase never reached your wallet, contact us within 60 days of the charge and we will make it right — approved refunds are returned to your original payment method, generally within 5–10 business days.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">6. Cancellation</div>
+        <div class="small muted">You may stop using SlutCamp at any time. Cancellation stops any future charges; it does not refund charges already made. To close your account or cancel any billing arrangement, email us (section 8) or contact CCBill consumer support.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">7. Chargebacks</div>
+        <div class="small muted">Please contact us before disputing a charge with your bank — most billing problems are simple misunderstandings that we can fix quickly, including refunding genuine billing errors. Accounts with chargebacks may be closed and any remaining wallet credits forfeited.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">8. Get help</div>
+        <div class="small muted">Billing and account support:<br>Email: <b>worldofgodzent@gmail.com</b><br>In the app: message the admin from your inbox.<br>CCBill consumer support (24/7): <a href="https://support.ccbill.com" target="_blank" rel="noopener" style="color:var(--pink)">support.ccbill.com</a><br>Copyright / DMCA matters: use the DMCA page linked below.</div>
+      </div>
+      <p class="muted small" style="text-align:center;margin:16px 0">This page is a plain-language summary, not legal advice.<br>Operated by World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="bl-terms" style="color:var(--pink)">Terms of Service</a> · <a href="javascript:void(0)" id="bl-privacy" style="color:var(--pink)">Privacy Policy</a> · <a href="javascript:void(0)" id="bl-2257" style="color:var(--pink)">2257 Statement</a> · <a href="javascript:void(0)" id="bl-dmca" style="color:var(--pink)">DMCA</a></p>
+      <button class="btn ghost" id="b-back">← Back</button>
+    </div>`;
+  $('#b-back').onclick = () => history.length > 1 ? history.back() : show('landing', {});
+  $('#bl-terms').onclick = () => show('terms', {});
+  $('#bl-privacy').onclick = () => show('privacy', {});
+  $('#bl-2257').onclick = () => show('statement2257', {});
+  $('#bl-dmca').onclick = () => show('dmca', {});
+}
+
+/* ---------------- 2257 COMPLIANCE STATEMENT (public) ---------------- */
+
+function vStatement2257() {
+  tabbar.classList.add('hidden');
+  app.innerHTML = `
+    <div class="header">
+      <h1>Slut<span class="logo">Camp</span> 📋</h1>
+      <div class="sub">18 U.S.C. § 2257 Record-Keeping Requirements Compliance Statement</div>
+    </div>
+    <div class="screen">
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">Compliance statement</div>
+        <div class="small muted">All models, actors, actresses, and other persons who appear in any visual depiction of actual or simulated sexually explicit conduct appearing on or otherwise contained in this website were over the age of eighteen (18) years at the time of the creation of such depictions.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">Performer verification</div>
+        <div class="small muted">Every performer on SlutCamp must pass government-issued ID verification before appearing in any content, chat, or live stream. For content created by independent creators, the producing creator maintains the original production records, and the Custodian of Records below maintains the platform's age and identity verification records for every performer who appears on this website.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">📮 Custodian of Records</div>
+        <div class="small muted">The records required to be maintained pursuant to 18 U.S.C. § 2257 and 28 C.F.R. Part 75 are kept by the Custodian of Records at the following address, and are available for inspection during normal business hours:<br><br>
+        <b>Custodian of Records</b><br>
+        World of Godz Entertainment LLC dba SlutCamp<br>
+        7511 Oak Chase St<br>
+        San Antonio, TX 78239, USA</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">Content complaints</div>
+        <div class="small muted">To report content, request a removal, or raise a concern about any depiction on this website, email <b>worldofgodzent@gmail.com</b> or use the DMCA / takedown page linked below. Content complaints are reviewed and resolved within 7 business days.</div>
+      </div>
+      <p class="muted small" style="text-align:center;margin:16px 0">Operated by World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="sf-terms" style="color:var(--pink)">Terms of Service</a> · <a href="javascript:void(0)" id="sf-privacy" style="color:var(--pink)">Privacy Policy</a> · <a href="javascript:void(0)" id="sf-billing" style="color:var(--pink)">Billing & Refunds</a> · <a href="javascript:void(0)" id="sf-dmca" style="color:var(--pink)">DMCA</a></p>
+      <button class="btn ghost" id="s-back">← Back</button>
+    </div>`;
+  $('#s-back').onclick = () => history.length > 1 ? history.back() : show('landing', {});
+  $('#sf-terms').onclick = () => show('terms', {});
+  $('#sf-privacy').onclick = () => show('privacy', {});
+  $('#sf-billing').onclick = () => show('billing', {});
+  $('#sf-dmca').onclick = () => show('dmca', {});
 }
 
 /* ---------------- DMCA: admin queue ---------------- */
