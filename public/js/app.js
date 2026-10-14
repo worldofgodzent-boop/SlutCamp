@@ -4023,7 +4023,7 @@ async function vChat(params) {
       inp.value = '';
       closeActionSheet();
       if (!f) return;
-      if (f.size > 30 * 1024 * 1024) return toast('File too big — 30MB max.');
+      if (f.size > 200 * 1024 * 1024) return toast('File too big — 200MB max.');
       openPpvPriceSheet(f, kind);
     };
   };

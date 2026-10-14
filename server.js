@@ -92,7 +92,7 @@ const upload = multer({
     filename: (req, file, cb) =>
       cb(null, crypto.randomBytes(16).toString('hex') + path.extname(file.originalname || '').slice(0, 8)),
   }),
-  limits: { fileSize: 30 * 1024 * 1024 }, // 30MB cap (short videos)
+  limits: { fileSize: 200 * 1024 * 1024 }, // 200MB cap — phone videos (1080p/4K HEVC) pass 30MB in seconds
   fileFilter: (req, file, cb) => {
     const ok = /^(image\/[a-z0-9.+-]+|video\/[a-z0-9.+-]+|audio\/(mp4|mpeg|ogg|webm|wav|x-m4a))$/.test(file.mimetype);
     cb(ok ? null : new Error('bad_file_type'), ok);
@@ -2362,7 +2362,7 @@ const MEDIA_LABELS = {
 // Models attach PPV with a price; fans can send voice notes (billed as normal message).
 app.post('/api/media/send', identMiddleware, (req, res) => {
   upload.single('file')(req, res, (err) => {
-    if (err) return res.status(400).json({ error: 'bad_file', message: 'Upload a photo, video, or audio file under 30MB.' });
+    if (err) return res.status(400).json({ error: 'bad_file', message: 'Upload a photo, video, or audio file under 200MB.' });
     if (!req.file) return res.status(400).json({ error: 'no_file' });
     if (req.ident.kind === 'user' && req.ident.user.role === 'admin')
       return res.status(403).json({ error: 'admins_cannot_chat' });
@@ -2375,12 +2375,11 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
     }
     const conv0 = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conversation_id);
     if (!conv0) { fs.unlink(req.file.path, () => {}); return res.status(404).json({ error: 'not_found' }); }
-    const conv = maybeAutoUnpause(conv0);
+    let conv = maybeAutoUnpause(conv0);
     const mine = req.ident.kind === 'user'
       ? (conv.fan_id === req.ident.user.id || conv.model_id === req.ident.user.id)
       : conv.guest_token === req.ident.token;
     if (!mine) { fs.unlink(req.file.path, () => {}); return res.status(403).json({ error: 'forbidden' }); }
-    conv = maybeAutoUnpause(conv);
     if (conv.is_paused) { fs.unlink(req.file.path, () => {}); return res.status(423).json({ error: 'chat_paused' }); }
 
     const isModelSender = req.ident.kind === 'user' && req.ident.user.role === 'model';
