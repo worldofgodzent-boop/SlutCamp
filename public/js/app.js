@@ -2488,11 +2488,14 @@ function walletButtonsHtml(inv) {
   const btns = [];
   const mm = metamaskHref(inv);
   if (mm) btns.push(wbtn(mm, '🦊 MetaMask'));
-  if (inv.coin === 'SOL') btns.push(wbtn(esc(inv.payment_uri), '👻 Phantom'));
+  // Phantom is multichain (Solana, Ethereum, Bitcoin) — it gets its own named
+  // button for every coin. The old generic "Open in wallet app" button is
+  // gone: it just opened whichever wallet the phone picked for the coin's
+  // link (Coinbase on Corry's phone), duplicating the Coinbase button.
+  btns.push(wbtn(esc(inv.payment_uri), '👻 Phantom'));
   btns.push(wbtn(esc(inv.payment_uri), '🔵 Coinbase Wallet'));
   const tw = trustHref(inv);
   if (tw) btns.push(wbtn(tw, '🛡️ Trust Wallet'));
-  btns.push(wbtn(esc(inv.payment_uri), '🔗 ' + t('crypto_open_wallet')));
   return btns.join('');
 }
 
