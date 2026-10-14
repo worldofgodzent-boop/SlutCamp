@@ -164,7 +164,7 @@ const I18N = {
     crypto_send_exact: 'Send exactly',
     crypto_to: 'to',
     crypto_copy: 'Copy', crypto_copied: 'Copied!',
-    crypto_open_wallet: 'Open in wallet app', crypto_add_more: 'Add more', ccbill_redirect: 'Taking you to the secure checkout…', ccbill_secure_note: 'Secure checkout by CCBill — you finish on their payment page, then your credits land right here.', ccbill_success: '💳 Payment approved! Your credits land as soon as CCBill confirms — usually just a few seconds.', ccbill_fail: 'That card payment didn\'t go through — no charge was made. Try again, or load with crypto instead.', crypto_load: 'Load', crypto_pay_with: 'Pay with your wallet', crypto_connect_pay: 'Connect wallet & pay', crypto_sent: 'Payment sent — your credits are on the way', crypto_no_wallet: 'No wallet found in this browser — scan the QR or use Open in wallet app',
+    crypto_open_wallet: 'Open in wallet app', crypto_add_more: 'Add more', ccbill_redirect: 'Taking you to the secure checkout…', ccbill_secure_note: 'Secure checkout by CCBill — you finish on their payment page, then your credits land right here.', ccbill_success: '💳 Payment approved! Your credits land as soon as CCBill confirms — usually just a few seconds.', ccbill_fail: 'That card payment didn\'t go through — no charge was made. Try again, or load with crypto instead.', crypto_load: 'Load', crypto_pay_with: 'Pay with your wallet', crypto_connect_pay: 'Connect wallet & pay', crypto_sent: 'Payment sent — your credits are on the way', crypto_in_wallet: 'You are in your wallet\'s browser — Connect pays right from this wallet.', crypto_phantom_fail: 'Phantom payment didn\'t complete — nothing was sent.', crypto_no_wallet: 'No wallet found in this browser — scan the QR or use Open in wallet app',
     crypto_scan: 'Scan with your wallet app',
     crypto_waiting: 'Waiting for payment…',
     crypto_detected: 'Payment detected — confirming ({n}/{m})…',
@@ -335,7 +335,7 @@ const I18N = {
     crypto_send_exact: 'Envía exactamente',
     crypto_to: 'a',
     crypto_copy: 'Copiar', crypto_copied: '¡Copiado!',
-    crypto_open_wallet: 'Abrir en la billetera', crypto_add_more: 'Agregar más', ccbill_redirect: 'Llevándote al pago seguro…', ccbill_secure_note: 'Pago seguro con CCBill — terminas en su página de pago y tus créditos llegan aquí.', ccbill_success: '💳 ¡Pago aprobado! Tus créditos llegan en cuanto CCBill confirma — normalmente unos segundos.', ccbill_fail: 'Ese pago con tarjeta no pasó — no se hizo ningún cargo. Inténtalo de nuevo o carga con cripto.', crypto_load: 'Cargar', crypto_pay_with: 'Paga con tu billetera', crypto_connect_pay: 'Conectar billetera y pagar', crypto_sent: 'Pago enviado — tus créditos van en camino', crypto_no_wallet: 'No se encontró billetera en este navegador — escanea el QR o usa Abrir en la billetera',
+    crypto_open_wallet: 'Abrir en la billetera', crypto_add_more: 'Agregar más', ccbill_redirect: 'Llevándote al pago seguro…', ccbill_secure_note: 'Pago seguro con CCBill — terminas en su página de pago y tus créditos llegan aquí.', ccbill_success: '💳 ¡Pago aprobado! Tus créditos llegan en cuanto CCBill confirma — normalmente unos segundos.', ccbill_fail: 'Ese pago con tarjeta no pasó — no se hizo ningún cargo. Inténtalo de nuevo o carga con cripto.', crypto_load: 'Cargar', crypto_pay_with: 'Paga con tu billetera', crypto_connect_pay: 'Conectar billetera y pagar', crypto_sent: 'Pago enviado — tus créditos van en camino', crypto_in_wallet: 'Estás en el navegador de tu billetera — Conectar paga desde esta billetera.', crypto_phantom_fail: 'El pago con Phantom no se completó — no se envió nada.', crypto_no_wallet: 'No se encontró billetera en este navegador — escanea el QR o usa Abrir en la billetera',
     crypto_scan: 'Escanea con tu billetera',
     crypto_waiting: 'Esperando el pago…',
     crypto_detected: 'Pago detectado — confirmando ({n}/{m})…',
@@ -506,7 +506,7 @@ const I18N = {
     crypto_send_exact: 'Envie exatamente',
     crypto_to: 'para',
     crypto_copy: 'Copiar', crypto_copied: 'Copiado!',
-    crypto_open_wallet: 'Abrir na carteira', crypto_add_more: 'Adicionar mais', ccbill_redirect: 'Levando você ao pagamento seguro…', ccbill_secure_note: 'Pagamento seguro pela CCBill — você finaliza na página de pagamento deles e seus créditos chegam aqui.', ccbill_success: '💳 Pagamento aprovado! Seus créditos chegam assim que a CCBill confirmar — normalmente alguns segundos.', ccbill_fail: 'Esse pagamento no cartão não passou — nenhuma cobrança foi feita. Tente de novo ou carregue com cripto.', crypto_load: 'Carregar', crypto_pay_with: 'Pague com sua carteira', crypto_connect_pay: 'Conectar carteira e pagar', crypto_sent: 'Pagamento enviado — seus créditos estão a caminho', crypto_no_wallet: 'Nenhuma carteira encontrada neste navegador — escaneie o QR ou use Abrir na carteira',
+    crypto_open_wallet: 'Abrir na carteira', crypto_add_more: 'Adicionar mais', ccbill_redirect: 'Levando você ao pagamento seguro…', ccbill_secure_note: 'Pagamento seguro pela CCBill — você finaliza na página de pagamento deles e seus créditos chegam aqui.', ccbill_success: '💳 Pagamento aprovado! Seus créditos chegam assim que a CCBill confirmar — normalmente alguns segundos.', ccbill_fail: 'Esse pagamento no cartão não passou — nenhuma cobrança foi feita. Tente de novo ou carregue com cripto.', crypto_load: 'Carregar', crypto_pay_with: 'Pague com sua carteira', crypto_connect_pay: 'Conectar carteira e pagar', crypto_sent: 'Pagamento enviado — seus créditos estão a caminho', crypto_in_wallet: 'Você está no navegador da sua carteira — Conectar paga direto desta carteira.', crypto_phantom_fail: 'O pagamento com Phantom não foi concluído — nada foi enviado.', crypto_no_wallet: 'Nenhuma carteira encontrada neste navegador — escaneie o QR ou use Abrir na carteira',
     crypto_scan: 'Escaneie com sua carteira',
     crypto_waiting: 'Aguardando pagamento…',
     crypto_detected: 'Pagamento detectado — confirmando ({n}/{m})…',
@@ -2496,20 +2496,152 @@ function trustHref(inv) {
   return `https://link.trustwallet.com/send?coin=${slip}&address=${encodeURIComponent(inv.address)}&amount=${inv.amount_crypto}`;
 }
 
-// Phantom never claims the coin URI schemes (ethereum:/bitcoin:/solana:) —
-// iOS hands those to Coinbase Wallet, so a Phantom button pointing at the
-// coin link opens the WRONG app. The one door Phantom itself answers is its
-// universal-link browser: it opens our app INSIDE Phantom, where Phantom
-// provides the wallet behind the pay screen's Connect & pay button, and the
-// pay_invoice flag lands the fan back on this exact invoice after login.
-function phantomHref(inv) {
-  const origin = window.location.origin;
-  const target = `${origin}/?pay_invoice=${inv.id}`;
-  return `https://phantom.app/ul/browse/${encodeURIComponent(target)}?ref=${encodeURIComponent(origin)}`;
+/* Phantom deep-link payments (SOL). Phantom publishes NO plain payment
+   link: the coin URI schemes go to whichever wallet registered them
+   (Coinbase on most iPhones), and its phantom.app/ul "browse" link dead-ends
+   on an App Store page from our context (Corry's test, Oct 14). The one real
+   door is Phantom's documented deep-link protocol — connect, then
+   signAndSendTransaction, X25519-encrypted payloads over phantom.app/ul/v1
+   redirects. Solana-scoped by design; other coins simply have no Phantom
+   door from a web page. The server's on-chain watcher credits by amount no
+   matter how the fan gets back, so a lost return redirect never loses a
+   completed payment — the return handling is confirmation UX only. */
+const B58_ALPHA = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+function b58encode(bytes) {
+  if (!bytes.length) return '';
+  let zeros = 0; while (zeros < bytes.length && bytes[zeros] === 0) zeros++;
+  const digits = [0];
+  for (let i = zeros; i < bytes.length; i++) {
+    let carry = bytes[i];
+    for (let k = 0; k < digits.length; k++) { carry += digits[k] << 8; digits[k] = carry % 58; carry = (carry / 58) | 0; }
+    while (carry) { digits.push(carry % 58); carry = (carry / 58) | 0; }
+  }
+  let out = '1'.repeat(zeros);
+  for (let i = digits.length - 1; i >= 0; i--) out += B58_ALPHA[digits[i]];
+  return out;
 }
+function b58decode(str) {
+  if (!str) return new Uint8Array(0);
+  let zeros = 0; while (zeros < str.length && str[zeros] === '1') zeros++;
+  const bytes = [0];
+  for (let i = zeros; i < str.length; i++) {
+    const idx = B58_ALPHA.indexOf(str[i]);
+    if (idx < 0) return new Uint8Array(0);
+    let carry = idx;
+    for (let k = 0; k < bytes.length; k++) { carry += bytes[k] * 58; bytes[k] = carry & 0xff; carry >>= 8; }
+    while (carry) { bytes.push(carry & 0xff); carry >>= 8; }
+  }
+  const out = new Uint8Array(zeros + bytes.length);
+  for (let i = 0; i < bytes.length; i++) out[zeros + i] = bytes[bytes.length - 1 - i];
+  return out;
+}
+let naclLoadPromise = null;
+function loadNacl() {
+  if (typeof nacl !== 'undefined') return Promise.resolve(true);
+  if (!naclLoadPromise) {
+    naclLoadPromise = new Promise((resolve) => {
+      const sc = document.createElement('script');
+      sc.src = 'https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl-fast.min.js';
+      sc.onload = () => resolve(typeof nacl !== 'undefined');
+      sc.onerror = () => resolve(false);
+      document.head.appendChild(sc);
+    });
+  }
+  return naclLoadPromise;
+}
+function phStore() { try { return JSON.parse(localStorage.getItem('sc_ph_dapp') || '{}'); } catch (e) { return {}; } }
+function phSave(o) { try { localStorage.setItem('sc_ph_dapp', JSON.stringify(o)); } catch (e) {} }
 
-function wbtnTab(href, label) {
-  return `<a class="btn small ghost wbtn" href="${href}" style="text-decoration:none;display:flex;align-items:center;justify-content:center">${label}</a>`;
+async function phantomPaySOL(inv) {
+  if (!(await loadNacl())) { toast(t('crypto_failed')); return; }
+  try { localStorage.setItem('sc_pay_invoice', String(inv.id)); } catch (e) {}
+  let st = phStore();
+  if (!st.secret) {
+    const kp = nacl.box.keyPair();
+    st = { secret: b58encode(kp.secretKey), pub: b58encode(kp.publicKey) };
+    phSave(st);
+  }
+  if (!st.session || !st.walletPub || !st.shared) { phantomConnectRedirect(); return; }
+  phantomSendRedirect(inv, st);
+}
+function phantomConnectRedirect() {
+  const st = phStore();
+  const origin = window.location.origin;
+  const q = new URLSearchParams({
+    app_url: origin,
+    dapp_encryption_public_key: st.pub,
+    redirect_link: origin + '/?phantom=connect',
+    cluster: 'mainnet-beta',
+  });
+  window.location.href = 'https://phantom.app/ul/v1/connect?' + q.toString();
+}
+async function phantomSendRedirect(inv, st) {
+  if (!(await loadSolanaWeb3())) { toast(t('crypto_failed')); return; }
+  try {
+    const conn = new solanaWeb3.Connection('https://api.mainnet-beta.solana.com', 'confirmed');
+    const fromPub = new solanaWeb3.PublicKey(st.walletPub);
+    const tx = new solanaWeb3.Transaction().add(solanaWeb3.SystemProgram.transfer({
+      fromPubkey: fromPub, toPubkey: new solanaWeb3.PublicKey(inv.address),
+      lamports: Math.trunc(inv.amount_units) }));
+    const { blockhash } = await conn.getLatestBlockhash('confirmed');
+    tx.recentBlockhash = blockhash; tx.feePayer = fromPub;
+    const serialized = tx.serialize({ requireAllSignatures: false, verifySignatures: false });
+    const payload = { session: st.session, transaction: b58encode(serialized) };
+    const nonce = nacl.randomBytes(24);
+    const encrypted = nacl.box.after(new TextEncoder().encode(JSON.stringify(payload)), nonce, b58decode(st.shared));
+    const origin = window.location.origin;
+    const q = new URLSearchParams({
+      dapp_encryption_public_key: st.pub,
+      nonce: b58encode(nonce),
+      redirect_link: origin + '/?phantom=sent',
+      payload: b58encode(encrypted),
+    });
+    window.location.href = 'https://phantom.app/ul/v1/signAndSendTransaction?' + q.toString();
+  } catch (e) { toast(t('crypto_failed')); }
+}
+// Boot-time: consume Phantom's redirect returns. True = this URL was one.
+async function phantomHandleReturn(qs) {
+  const kind = qs.get('phantom');
+  if (kind !== 'connect' && kind !== 'sent') return false;
+  try {
+    const invId = localStorage.getItem('sc_pay_invoice');
+    if (invId && /^\d+$/.test(invId)) window.__payInvoice = parseInt(invId, 10);
+    if (qs.get('errorCode')) { toast(t('crypto_phantom_fail')); return true; }
+    if (!(await loadNacl())) return true;
+    const st = phStore();
+    if (!st.secret) return true; // keys lost across the switch — watcher still credits any send
+    const nonce = b58decode(qs.get('nonce') || '');
+    const data = b58decode(qs.get('data') || '');
+    if (kind === 'connect') {
+      const phantomPub = b58decode(qs.get('phantom_encryption_public_key') || '');
+      if (!phantomPub.length || !data.length) return true;
+      const shared = nacl.box.before(phantomPub, b58decode(st.secret));
+      const opened = nacl.box.open.after(data, nonce, shared);
+      if (!opened) return true;
+      const info = JSON.parse(new TextDecoder().decode(opened));
+      const st2 = { ...st, shared: b58encode(shared), session: info.session, walletPub: info.public_key };
+      phSave(st2);
+      // Continue straight into the payment the fan came for.
+      if (window.__payInvoice) {
+        const { status, data: d } = await api('/crypto/invoices/' + window.__payInvoice);
+        if (status === 200 && d.invoice && d.invoice.status === 'pending') phantomSendRedirect(d.invoice, st2);
+      }
+      return true;
+    }
+    // kind === 'sent'
+    if (st.shared && data.length) {
+      const opened = nacl.box.open.after(data, nonce, b58decode(st.shared));
+      if (opened) toast(t('crypto_sent'));
+    } else toast(t('crypto_sent'));
+    return true;
+  } catch (e) { return true; }
+}
+function inWalletBrowser(inv) {
+  // Already inside a wallet's own browser/extension: the app buttons would
+  // bounce the fan around (or loop) — Connect pays right here instead.
+  if (inv.coin === 'ETH' || inv.coin === 'USDT') return typeof window !== 'undefined' && !!window.ethereum;
+  if (inv.coin === 'SOL') return typeof window !== 'undefined' && !!((window.phantom && window.phantom.solana) || window.solana);
+  return false;
 }
 
 function wbtn(href, label) {
@@ -2520,11 +2652,7 @@ function walletButtonsHtml(inv) {
   const btns = [];
   const mm = metamaskHref(inv);
   if (mm) btns.push(wbtn(mm, '🦊 MetaMask'));
-  // Phantom is multichain (Solana, Ethereum, Bitcoin) — it gets its own named
-  // button for every coin. The old generic "Open in wallet app" button is
-  // gone: it just opened whichever wallet the phone picked for the coin's
-  // link (Coinbase on Corry's phone), duplicating the Coinbase button.
-  btns.push(wbtnTab(phantomHref(inv), '👻 Phantom'));
+  if (inv.coin === 'SOL') btns.push('<button class="btn small ghost wbtn" id="ci-phantom" style="width:100%">👻 Phantom</button>');
   btns.push(wbtn(esc(inv.payment_uri), '🔵 Coinbase Wallet'));
   const tw = trustHref(inv);
   if (tw) btns.push(wbtn(tw, '🛡️ Trust Wallet'));
@@ -2622,7 +2750,9 @@ function renderCryptoInvoice(inv) {
       <div style="margin-top:14px">
         <div class="muted small" style="font-weight:700;margin-bottom:8px">👛 ${t('crypto_pay_with')}</div>
         <button class="btn" id="ci-connect" style="display:none;width:100%;margin-bottom:8px">🔗 ${t('crypto_connect_pay')}</button>
-        <div class="wallet-grid">${walletButtonsHtml(inv)}</div>
+        ${inWalletBrowser(inv)
+          ? `<div class="muted small">${t('crypto_in_wallet')}</div>`
+          : `<div class="wallet-grid">${walletButtonsHtml(inv)}</div>`}
       </div>
       <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">
         <button class="btn small ghost grow" id="ci-copy">📋 ${t('crypto_copy')}</button>
@@ -2639,6 +2769,8 @@ function renderCryptoInvoice(inv) {
       (inv.coin === 'SOL' && typeof window !== 'undefined' && !!((window.phantom && window.phantom.solana) || window.solana));
     if (hasProvider) { cn.style.display = ''; cn.onclick = () => payWithConnectedWallet(inv); }
   }
+  const ph = $('#ci-phantom');
+  if (ph) ph.onclick = () => phantomPaySOL(inv);
   const cp = $('#ci-copy');
   if (cp) cp.onclick = async () => {
     try { await navigator.clipboard.writeText(inv.address); toast(t('crypto_copied')); }
@@ -8017,6 +8149,13 @@ function startPresenceHeartbeat() {
       } catch (e) {}
     }
     if (dirty) window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+  } catch (e) {}
+  // Phantom deep-link returns (?phantom=connect|sent): consume them first —
+  // a connect return continues straight into the payment send.
+  try {
+    if (await phantomHandleReturn(new URLSearchParams(window.location.search))) {
+      try { window.history.replaceState({}, '', window.location.pathname + window.location.hash); } catch (e) {}
+    }
   } catch (e) {}
   // Age gate first — nothing else renders until confirmed 18+
   await checkAgeGate();
