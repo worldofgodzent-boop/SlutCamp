@@ -5887,6 +5887,75 @@ app.get('/api/recruiter/dashboard', identMiddleware, requireUser, requireRole('r
   });
 });
 
+/* ------------------------------------------------------------------ */
+/* Crypto wallet loads (v1, Oct 13 2026) — watch-only, see lib/crypto  */
+/* Fan loads in BTC + USDT; watcher credits after 1 confirmation.      */
+/* Admin: invoice list + manual mark-credited + Crypto Treasury sweep. */
+/* ------------------------------------------------------------------ */
+const { createCryptoService } = require('./lib/crypto');
+const cryptoSvc = createCryptoService({ db, txn, notifyUser, packages: CREDIT_PACKAGES });
+
+app.get('/api/crypto/config', (req, res) => {
+  res.json({
+    coins: [{ coin: 'USDT', label: 'USDT (ERC-20)' }, { coin: 'BTC', label: 'Bitcoin (BTC)' }],
+    required_confirmations: cryptoSvc.REQUIRED_CONFS,
+    ttl_minutes: cryptoSvc.TTL_MIN,
+  });
+});
+
+app.post('/api/crypto/invoices', identMiddleware, requireUser, requireRole('fan'), async (req, res) => {
+  const pkg = CREDIT_PACKAGES.find((p) => p.id === (req.body && req.body.package_id));
+  if (!pkg) return res.status(400).json({ error: 'bad_package' });
+  try {
+    const invoice = await cryptoSvc.createInvoice(req.user.id, pkg, String((req.body && req.body.coin) || 'USDT').toUpperCase());
+    res.status(201).json({ invoice });
+  } catch (e) {
+    if (e.code === 'rate_unavailable') return res.status(503).json({ error: 'rate_unavailable' });
+    if (e.code === 'coin_not_configured') return res.status(503).json({ error: 'coin_not_configured' });
+    if (e.code === 'bad_coin') return res.status(400).json({ error: 'bad_coin' });
+    console.error('crypto: invoice create failed —', e.message);
+    res.status(500).json({ error: 'invoice_failed' });
+  }
+});
+
+app.get('/api/crypto/invoices', identMiddleware, requireUser, async (req, res) => {
+  const rows = cryptoSvc.listUserInvoices(req.user.id, 20);
+  res.json({ invoices: await Promise.all(rows.map((r) => cryptoSvc.publicInvoice(r, false))) });
+});
+
+app.get('/api/crypto/invoices/:id', identMiddleware, requireUser, async (req, res) => {
+  const inv = cryptoSvc.getInvoice(parseInt(req.params.id, 10));
+  if (!inv || inv.user_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
+  res.json({ invoice: await cryptoSvc.publicInvoice(inv, true) });
+});
+
+app.get('/api/admin/crypto-invoices', ...adminOnly, (req, res) => {
+  res.json({ invoices: cryptoSvc.listAllInvoices(200) });
+});
+
+app.post('/api/admin/crypto-invoices/:id/mark-credited', ...adminOnly, (req, res) => {
+  const out = cryptoSvc.markCreditedAdmin(parseInt(req.params.id, 10), req.user.id);
+  if (out.error === 'not_found') return res.status(404).json(out);
+  if (out.error) return res.status(409).json(out);
+  res.json(out);
+});
+
+app.get('/api/admin/crypto-treasury', ...adminOnly, async (req, res) => {
+  res.json(await cryptoSvc.treasury());
+});
+
+app.post('/api/admin/crypto-settings', ...adminOnly, (req, res) => {
+  res.json({ settings: cryptoSvc.saveSettings(req.body || {}) });
+});
+
+app.post('/api/admin/crypto-invoices/actions/sweep', ...adminOnly, (req, res) => {
+  const out = cryptoSvc.sweep(String((req.body && req.body.coin) || '').toUpperCase());
+  if (out.error) return res.status(400).json(out);
+  res.json(out);
+});
+
+cryptoSvc.start();
+
 app.get('/api/admin/fans', ...adminOnly, (req, res) => {
   res.json({ fans: db.prepare(`
     SELECT u.id, u.username, u.display_name, u.banned, u.created_at, w.credits_cents,

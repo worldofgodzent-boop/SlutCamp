@@ -1,0 +1,78 @@
+{
+  "name": "@scure/btc-signer",
+  "version": "2.4.1",
+  "description": "Audited & minimal library for Bitcoin. Handle transactions, Schnorr, Taproot, UTXO & PSBT",
+  "files": [
+    "*.js",
+    "*.d.ts",
+    "src",
+    "!_type_test.*"
+  ],
+  "dependencies": {
+    "@noble/curves": "2.4.0",
+    "@noble/hashes": "2.4.0",
+    "@scure/base": "2.4.0",
+    "micro-packed": "0.11.1"
+  },
+  "devDependencies": {
+    "@paulmillr/jsbt": "0.7.1",
+    "bismar": "0.1.8",
+    "@scure/bip32": "2.4.0",
+    "micro-ftch": "1.2.0",
+    "prettier": "3.9.6",
+    "typescript": "6.0.3"
+  },
+  "scripts": {
+    "benchmark:size": "bismar -bsm",
+    "build": "tsc",
+    "build:clean": "rm -f *.{js,d.ts}",
+    "check": "jsbt-check",
+    "benchmark": "node benchmark/index.ts",
+    "benchmark:network": "node benchmark/network.ts",
+    "format": "prettier --write src test/*.test.*",
+    "test": "node test/index.ts",
+    "test:slow": "node test/slow.test.ts",
+    "test:extended": "node --experimental-loader ./test/bitcoinjs-test/esm-loader.js ./test/bitcoinjs-test/index.test.js"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./musig2.js": "./musig2.js",
+    "./net.js": "./net.js",
+    "./p2p.js": "./p2p.js",
+    "./payment.js": "./payment.js",
+    "./psbt.js": "./psbt.js",
+    "./script.js": "./script.js",
+    "./transaction.js": "./transaction.js",
+    "./utils.js": "./utils.js",
+    "./utxo.js": "./utxo.js"
+  },
+  "keywords": [
+    "bitcoin",
+    "btc",
+    "sign",
+    "tx",
+    "transaction",
+    "address",
+    "taproot",
+    "schnorr",
+    "psbt",
+    "p2pkh",
+    "p2wpkh",
+    "p2sh",
+    "p2wsh",
+    "p2tr"
+  ],
+  "homepage": "https://paulmillr.com/noble/#scure",
+  "funding": "https://paulmillr.com/funding/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paulmillr/scure-btc-signer.git"
+  },
+  "type": "module",
+  "main": "index.js",
+  "module": "index.js",
+  "types": "index.d.ts",
+  "sideEffects": false,
+  "author": "Paul Miller (https://paulmillr.com)",
+  "license": "MIT"
+}

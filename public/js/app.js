@@ -158,6 +158,27 @@ const I18N = {
     guest_wallet_sub: "You're browsing as a guest. Sign up free to buy credits and unlock chats, live streams, gifts, and more.",
     create_free_account: '✨ Create free account',
     have_account_login: 'Already have an account? Log in',
+    crypto_h: 'Load with Crypto ₿',
+    crypto_note: 'Pay from your own wallet app. Credits land automatically after 1 network confirmation.',
+    crypto_dollars: 'in dollars',
+    crypto_send_exact: 'Send exactly',
+    crypto_to: 'to',
+    crypto_copy: 'Copy', crypto_copied: 'Copied!',
+    crypto_open_wallet: 'Open in wallet app',
+    crypto_scan: 'Scan with your wallet app',
+    crypto_waiting: 'Waiting for payment…',
+    crypto_detected: 'Payment detected — confirming ({n}/{m})…',
+    crypto_confirming: 'Confirming ({n}/{m})…',
+    crypto_credited: '✅ Credits added to your wallet!',
+    crypto_credited_partial: '✅ Partial payment — {amt} credits added.',
+    crypto_expired: 'This quote expired.',
+    crypto_new_quote: '🔄 New quote',
+    crypto_time_left: 'Price locked — {t} left',
+    crypto_underpaid: 'Payment needs review — please contact support.',
+    crypto_recent: 'Recent crypto loads',
+    crypto_failed: 'Could not create the invoice — try again in a moment.',
+    crypto_status_pending: 'Waiting', crypto_status_confirming: 'Confirming', crypto_status_credited: 'Credited',
+    crypto_status_credited_partial: 'Partial', crypto_status_expired: 'Expired', crypto_status_underpaid: 'Review',
     splash_welcome: 'Welcome to SlutCamp,', splash_paradise: 'sluts paradise 😈',
     splash_nutt: 'We hope you enjoy your Nutt 💦', enter: 'Enter 🔥',
     settings_h: 'Settings ⚙️',
@@ -304,6 +325,27 @@ const I18N = {
     guest_wallet_sub: 'Estás explorando como invitado. Regístrate gratis para comprar créditos y desbloquear chats, transmisiones en vivo, regalos y más.',
     create_free_account: '✨ Crear cuenta gratis',
     have_account_login: '¿Ya tienes cuenta? Inicia sesión',
+    crypto_h: 'Cargar con cripto ₿',
+    crypto_note: 'Paga desde tu billetera. Los créditos llegan automáticamente tras 1 confirmación de red.',
+    crypto_dollars: 'en dólares',
+    crypto_send_exact: 'Envía exactamente',
+    crypto_to: 'a',
+    crypto_copy: 'Copiar', crypto_copied: '¡Copiado!',
+    crypto_open_wallet: 'Abrir en la billetera',
+    crypto_scan: 'Escanea con tu billetera',
+    crypto_waiting: 'Esperando el pago…',
+    crypto_detected: 'Pago detectado — confirmando ({n}/{m})…',
+    crypto_confirming: 'Confirmando ({n}/{m})…',
+    crypto_credited: '✅ ¡Créditos agregados a tu billetera!',
+    crypto_credited_partial: '✅ Pago parcial — {amt} créditos agregados.',
+    crypto_expired: 'Esta cotización venció.',
+    crypto_new_quote: '🔄 Nueva cotización',
+    crypto_time_left: 'Precio bloqueado — quedan {t}',
+    crypto_underpaid: 'El pago necesita revisión — contacta a soporte.',
+    crypto_recent: 'Cargas cripto recientes',
+    crypto_failed: 'No se pudo crear la factura — inténtalo en un momento.',
+    crypto_status_pending: 'Esperando', crypto_status_confirming: 'Confirmando', crypto_status_credited: 'Acreditado',
+    crypto_status_credited_partial: 'Parcial', crypto_status_expired: 'Vencida', crypto_status_underpaid: 'Revisión',
     splash_welcome: 'Bienvenido a SlutCamp,', splash_paradise: 'el paraíso travieso 😈',
     splash_nutt: 'Esperamos que disfrutes tu Nutt 💦', enter: 'Entrar 🔥',
     settings_h: 'Ajustes ⚙️',
@@ -450,6 +492,27 @@ const I18N = {
     guest_wallet_sub: 'Você está navegando como visitante. Cadastre-se grátis para comprar créditos e liberar conversas, lives, presentes e muito mais.',
     create_free_account: '✨ Criar conta grátis',
     have_account_login: 'Já tem conta? Entrar',
+    crypto_h: 'Carregar com cripto ₿',
+    crypto_note: 'Pague do seu app de carteira. Os créditos caem automaticamente após 1 confirmação da rede.',
+    crypto_dollars: 'em dólares',
+    crypto_send_exact: 'Envie exatamente',
+    crypto_to: 'para',
+    crypto_copy: 'Copiar', crypto_copied: 'Copiado!',
+    crypto_open_wallet: 'Abrir na carteira',
+    crypto_scan: 'Escaneie com sua carteira',
+    crypto_waiting: 'Aguardando pagamento…',
+    crypto_detected: 'Pagamento detectado — confirmando ({n}/{m})…',
+    crypto_confirming: 'Confirmando ({n}/{m})…',
+    crypto_credited: '✅ Créditos adicionados à sua carteira!',
+    crypto_credited_partial: '✅ Pagamento parcial — {amt} créditos adicionados.',
+    crypto_expired: 'Esta cotação expirou.',
+    crypto_new_quote: '🔄 Nova cotação',
+    crypto_time_left: 'Preço travado — restam {t}',
+    crypto_underpaid: 'O pagamento precisa de revisão — fale com o suporte.',
+    crypto_recent: 'Recargas cripto recentes',
+    crypto_failed: 'Não foi possível criar a fatura — tente em instantes.',
+    crypto_status_pending: 'Aguardando', crypto_status_confirming: 'Confirmando', crypto_status_credited: 'Creditado',
+    crypto_status_credited_partial: 'Parcial', crypto_status_expired: 'Expirada', crypto_status_underpaid: 'Revisão',
     splash_welcome: 'Bem-vindo ao SlutCamp,', splash_paradise: 'o paraíso das safadas 😈',
     splash_nutt: 'Esperamos que você aproveite seu Nutt 💦', enter: 'Entrar 🔥',
     settings_h: 'Configurações ⚙️',
@@ -2195,6 +2258,24 @@ async function vWallet() {
           <span class="price">${p.label}</span>
           ${p.descriptor ? `<span class="muted small" style="width:100%">${esc(p.descriptor)}</span>` : ''}
         </button>`).join('')}
+      <div class="card" id="crypto-card">
+        <div style="font-weight:800;font-size:16px">₿ ${t('crypto_h')}</div>
+        <div class="muted small" style="margin:4px 0 10px">${t('crypto_note')}</div>
+        <div class="row" style="gap:8px;margin-bottom:10px">
+          <button class="btn small grow" data-coin="USDT">💵 USDT · ${t('crypto_dollars')}</button>
+          <button class="btn small ghost grow" data-coin="BTC">₿ Bitcoin</button>
+        </div>
+        <div id="crypto-pkgs">
+          ${pkgs.map((p) => `
+          <button class="pkg" data-cpkg="${p.id}">
+            <span style="font-size:24px">🪙</span>
+            <span class="amt">${p.credits_cents / 100} ${t('credits_word')}</span>
+            <span class="price">${p.label}</span>
+          </button>`).join('')}
+        </div>
+        <div id="crypto-invoice"></div>
+        <div id="crypto-recent"></div>
+      </div>
       ${langCardHTML()}
       <button class="btn ghost" id="w-logout">${t('log_out')}</button>
     </div>`;
@@ -2205,7 +2286,136 @@ async function vWallet() {
       toast(d.message || 'Payment processor coming soon.');
     };
   });
+  // Crypto loads (single-screen flow: coin -> package -> pay screen)
+  stopCryptoTimers();
+  app.querySelectorAll('[data-coin]').forEach((b) => {
+    b.onclick = () => {
+      cryptoCoinSel = b.dataset.coin;
+      app.querySelectorAll('[data-coin]').forEach((x) => {
+        const on = x.dataset.coin === cryptoCoinSel;
+        x.classList.toggle('ghost', !on);
+      });
+    };
+  });
+  app.querySelectorAll('[data-cpkg]').forEach((b) => {
+    b.onclick = () => startCryptoInvoice(b.dataset.cpkg);
+  });
+  loadCryptoRecent();
   $('#w-logout').onclick = () => logout();
+}
+
+/* ---------------- CRYPTO LOADS (fan) ---------------- */
+let cryptoCoinSel = 'USDT';
+let cryptoTimers = [];
+let cryptoExpiresAt = 0;
+
+function stopCryptoTimers() { cryptoTimers.forEach(clearInterval); cryptoTimers = []; }
+
+function cryptoStatusText(inv) {
+  const m = inv.required_confirmations || 1;
+  const n = inv.confirmations || 0;
+  if (inv.status === 'credited') return t('crypto_credited');
+  if (inv.status === 'credited_partial') return t('crypto_credited_partial', { amt: String(Math.round(inv.credited_cents) / 100) });
+  if (inv.status === 'expired') return t('crypto_expired');
+  if (inv.status === 'underpaid') return t('crypto_underpaid');
+  if ((inv.received_units || 0) > 0) return n > 0 ? t('crypto_confirming', { n, m }) : t('crypto_detected', { n, m });
+  return t('crypto_waiting');
+}
+
+function renderCryptoInvoice(inv) {
+  const box = $('#crypto-invoice');
+  if (!box) return;
+  cryptoExpiresAt = Date.parse(String(inv.expires_at).replace(' ', 'T') + 'Z') || 0;
+  const left = Math.max(0, Math.round((cryptoExpiresAt - Date.now()) / 1000));
+  const mm = String(Math.floor(left / 60)).padStart(2, '0');
+  const ss = String(left % 60).padStart(2, '0');
+  const terminal = ['credited', 'credited_partial', 'expired', 'underpaid'].includes(inv.status);
+  box.innerHTML = `
+    <div style="text-align:center;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);margin-top:6px">
+      <div class="muted small">${t('crypto_scan')}</div>
+      <div style="background:#fff;border-radius:14px;padding:10px;width:252px;margin:10px auto;line-height:0">${inv.qr_svg || ''}</div>
+      <div class="muted small">${t('crypto_send_exact')}</div>
+      <div style="font-size:30px;font-weight:900">${inv.amount_crypto} ${inv.coin}</div>
+      <div class="muted small" style="margin-bottom:8px">≈ ${fmt(inv.package_usd_cents)} USD</div>
+      <div class="muted small">${t('crypto_to')}</div>
+      <div style="font-family:monospace;font-size:12px;word-break:break-all;background:rgba(0,0,0,.25);border-radius:8px;padding:8px">${esc(inv.address)}</div>
+      <div class="row" style="gap:8px;margin-top:10px">
+        <button class="btn small grow" id="ci-copy">📋 ${t('crypto_copy')}</button>
+        <a class="btn small ghost grow" href="${esc(inv.payment_uri)}" style="text-decoration:none;display:flex;align-items:center;justify-content:center">${t('crypto_open_wallet')}</a>
+      </div>
+      <div id="ci-status" style="margin-top:12px;font-weight:700">${cryptoStatusText(inv)}</div>
+      ${terminal ? '' : `<div id="ci-count" class="muted small" style="margin-top:4px">${t('crypto_time_left', { t: mm + ':' + ss })}</div>`}
+      ${inv.status === 'expired' ? `<button class="btn" id="ci-newquote" style="width:100%;margin-top:10px">${t('crypto_new_quote')}</button>` : ''}
+      ${inv.address_placeholder ? `<div class="small" style="color:var(--gold);margin-top:8px">⚠ Test address — crypto is in setup mode</div>` : ''}
+    </div>`;
+  const cp = $('#ci-copy');
+  if (cp) cp.onclick = async () => {
+    try { await navigator.clipboard.writeText(inv.address); toast(t('crypto_copied')); }
+    catch (e) { toast(inv.address); }
+  };
+  const nq = $('#ci-newquote');
+  if (nq) nq.onclick = () => startCryptoInvoice(inv.package_id);
+}
+
+function watchCryptoInvoice(id) {
+  stopCryptoTimers();
+  const tick = async () => {
+    if (!$('#crypto-invoice')) { stopCryptoTimers(); return; }
+    const { status, data } = await api('/crypto/invoices/' + id);
+    if (status !== 200 || !data.invoice) return;
+    renderCryptoInvoice(data.invoice);
+    if (data.invoice.status === 'credited' || data.invoice.status === 'credited_partial') {
+      stopCryptoTimers();
+      toast(cryptoStatusText(data.invoice));
+      refreshMe();
+      setTimeout(() => { if ($('#crypto-invoice')) show('wallet', {}); }, 3500);
+    } else if (data.invoice.status === 'expired' || data.invoice.status === 'underpaid') {
+      stopCryptoTimers();
+    }
+  };
+  cryptoTimers.push(setInterval(tick, 8000));
+  cryptoTimers.push(setInterval(() => {
+    const el = $('#ci-count');
+    if (!el || !cryptoExpiresAt) return;
+    const left = Math.max(0, Math.round((cryptoExpiresAt - Date.now()) / 1000));
+    el.textContent = t('crypto_time_left', { t: String(Math.floor(left / 60)).padStart(2, '0') + ':' + String(left % 60).padStart(2, '0') });
+    if (left <= 0) tick();
+  }, 1000));
+}
+
+async function startCryptoInvoice(packageId) {
+  const box = $('#crypto-invoice');
+  if (!box) return;
+  stopCryptoTimers();
+  box.innerHTML = `<div class="muted small" style="text-align:center;padding:12px">…</div>`;
+  const { status, data } = await api('/crypto/invoices', {
+    method: 'POST', body: JSON.stringify({ package_id: packageId, coin: cryptoCoinSel }) });
+  if (status !== 201 || !data.invoice) { toast(t('crypto_failed')); box.innerHTML = ''; return; }
+  renderCryptoInvoice(data.invoice);
+  watchCryptoInvoice(data.invoice.id);
+  loadCryptoRecent();
+}
+
+async function loadCryptoRecent() {
+  const box = $('#crypto-recent');
+  if (!box) return;
+  const { status, data } = await api('/crypto/invoices');
+  if (status !== 200 || !data.invoices) return;
+  const rows = data.invoices;
+  if (!rows.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `
+    <div class="muted small" style="margin:14px 0 6px;font-weight:700">${t('crypto_recent')}</div>
+    ${rows.slice(0, 5).map((inv) => `
+      <div class="row small" style="padding:6px 0;border-top:1px solid rgba(255,255,255,.06)">
+        <span class="grow">${inv.coin === 'BTC' ? '₿' : '💵'} ${inv.amount_crypto} ${inv.coin} <span class="muted">· ${fmt(inv.package_usd_cents)}</span></span>
+        <span class="muted">${t('crypto_status_' + inv.status)}</span>
+      </div>`).join('')}`;
+  // If the newest invoice is still open, reopen its pay screen so the fan never loses it.
+  const open = rows.find((inv) => (inv.status === 'pending' || inv.status === 'confirming') && inv.seconds_left > 0);
+  if (open && !$('#ci-status')) {
+    const { data: d2 } = await api('/crypto/invoices/' + open.id);
+    if (d2 && d2.invoice) { renderCryptoInvoice(d2.invoice); watchCryptoInvoice(d2.invoice.id); }
+  }
 }
 
 /* ---------------- MODEL: earnings / settings ---------------- */
@@ -6209,11 +6419,68 @@ async function adminInvitesBody() {
 async function adminPayoutsBody() {
   const { data } = await api('/admin/payouts');
   const { data: wdData } = await api('/admin/withdrawals');
+  const { data: treasury } = await api('/admin/crypto-treasury');
+  const { data: cInvData } = await api('/admin/crypto-invoices');
+  const cInvs = (cInvData && cInvData.invoices) || [];
+  const tCoins = (treasury && treasury.coins) || [];
+  const tSet = (treasury && treasury.settings) || {};
+  const treasuryHTML = `
+    <h3>₿ Crypto Treasury</h3>
+    <div class="card" style="padding:12px">
+      ${tCoins.map((c) => `
+        <div class="row" style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+          <span class="grow"><b>${c.coin === 'BTC' ? '₿ Bitcoin' : '💵 USDT'}</b>
+            <span class="small muted">awaiting sweep</span><br>
+            <span class="small muted">${c.count} invoice${c.count === 1 ? '' : 's'}${c.placeholder ? ' · ⚠ test addresses' : ''}</span></span>
+          <span style="text-align:right"><b>${c.amount_crypto} ${c.coin}</b><br>
+            <span class="small muted">≈ ${fmt(c.usd_cents)}${c.spot_usd ? '' : ' (est.)'}</span></span>
+          <button class="btn small ${c.worth_sweeping ? '' : 'ghost'}" data-sweep="${c.coin}" ${c.count ? '' : 'disabled'}>Mark swept</button>
+        </div>
+        ${c.worth_sweeping ? `<div class="small" style="color:var(--gold);padding:4px 0">💡 Worth sweeping — unswept is over the $${tSet.sweep_threshold_usd || 200} threshold.</div>` : ''}`).join('')}
+      <div style="margin-top:10px;background:rgba(0,0,0,.25);border-radius:8px;padding:10px">
+        <b class="small">Sweep helper — move funds to ${esc(tSet.exchange || 'Coinbase')}</b>
+        <div class="small" style="margin:8px 0">
+          1️⃣ Send from your wallet to the exchange deposit address below<br>
+          2️⃣ Sell on ${esc(tSet.exchange || 'Coinbase')}<br>
+          3️⃣ Withdraw USD to the business bank account<br>
+          4️⃣ Come back here and tap <b>Mark swept</b>
+        </div>
+        <div class="small muted">BTC deposit address</div>
+        <div class="row" style="gap:6px;margin:2px 0 8px">
+          <input id="cs-btc-addr" value="${esc(tSet.sweep_btc_address || '')}" placeholder="Coinbase BTC deposit address" style="flex:1">
+          <button class="btn small ghost" data-copy-val="${esc(tSet.sweep_btc_address || '')}">📋 Copy</button>
+        </div>
+        <div class="small muted">USDT deposit address</div>
+        <div class="row" style="gap:6px;margin:2px 0 8px">
+          <input id="cs-usdt-addr" value="${esc(tSet.sweep_usdt_address || '')}" placeholder="Coinbase USDT (ERC-20) deposit address" style="flex:1">
+          <button class="btn small ghost" data-copy-val="${esc(tSet.sweep_usdt_address || '')}">📋 Copy</button>
+        </div>
+        <div class="row" style="gap:6px">
+          <span class="small muted">Sweep hint at $</span>
+          <input id="cs-threshold" type="number" min="0" value="${tSet.sweep_threshold_usd || 200}" style="width:90px">
+          <button class="btn small" id="cs-save">Save</button>
+        </div>
+      </div>
+      ${cInvs.length ? `<h4 style="margin:14px 0 6px">Crypto invoices</h4>` : ''}
+      ${cInvs.slice(0, 50).map((inv) => `
+        <div class="row small" style="padding:7px 0;border-top:1px solid rgba(255,255,255,.06);align-items:flex-start">
+          <span class="grow"><b>${esc(inv.fan_name || '')}</b> <span class="muted">@${esc(inv.fan_username || '')}</span><br>
+            <span class="muted">#${inv.id} · ${timeHM(inv.created_at)} · ${inv.coin} ${esc(inv.amount_crypto)} for ${fmt(inv.package_usd_cents)} pkg</span><br>
+            <span class="muted">recv ${esc(inv.received_amount || '0')} ${inv.coin}${inv.confirmations ? ` · ${inv.confirmations} conf` : ''}${inv.excess_units > 0 ? ` · ⚠ excess on invoice` : ''}${inv.swept_at ? ' · swept ✓' : ''}${inv.credited_via ? ` · via ${esc(inv.credited_via)}` : ''}</span><br>
+            <span class="muted" style="font-family:monospace;font-size:11px">${esc(inv.address)}</span>
+            ${inv.txid ? `<br><span class="muted" style="font-family:monospace;font-size:11px">tx ${esc(String(inv.txid).slice(0, 24))}…</span>` : ''}
+          </span>
+          <span style="text-align:right"><b>${esc(inv.status)}</b><br>
+          ${inv.status !== 'credited' && inv.status !== 'credited_partial'
+            ? `<button class="btn small success" data-markcred="${inv.id}" style="margin-top:4px">Mark credited</button>` : ''}</span>
+        </div>`).join('')}
+    </div>`;
   const wds = (wdData && wdData.withdrawals) || [];
   const pending = wds.filter((w) => w.status === 'pending');
   const done = wds.filter((w) => w.status !== 'pending');
   const wdBadge = (s) => s === 'pending' ? t('wd_pending') : s === 'paid' ? t('wd_paid') : t('wd_rejected');
   return `
+    ${treasuryHTML}
     ${pending.length ? `<h3>⏳ Withdrawal requests (${pending.length})</h3>` : ''}
     ${pending.map((w) => `
       <div class="card" style="padding:12px;border-color:var(--pink)">
@@ -6997,9 +7264,46 @@ function wireAdminBody(tab) {
     if (status === 200) show('admin', {});
   });
 
-  // Payouts
-  document.querySelectorAll('[data-pay]').forEach((b) => {
+  // Crypto Treasury (in Payouts view)
+  document.querySelectorAll('[data-markcred]').forEach((b) => {
     b.onclick = async () => {
+      if (!confirm('Credit this fan the full package value now? Use only if you verified the payment yourself.')) return;
+      b.disabled = true;
+      const { status, data } = await api(`/admin/crypto-invoices/${b.dataset.markcred}/mark-credited`, { method: 'POST' });
+      toast(status === 200 ? '✅ Invoice credited' : data.error === 'already_credited' ? 'Already credited' : 'Could not credit');
+      if (status === 200) show('admin', {}); else b.disabled = false;
+    };
+  });
+  document.querySelectorAll('[data-sweep]').forEach((b) => {
+    b.onclick = async () => {
+      if (!confirm(`Mark all unswept ${b.dataset.sweep} invoices as swept? Do this AFTER the funds reach the exchange.`)) return;
+      b.disabled = true;
+      const { status, data } = await api('/admin/crypto-invoices/actions/sweep', {
+        method: 'POST', body: JSON.stringify({ coin: b.dataset.sweep }) });
+      toast(status === 200 ? `✅ Swept ${data.swept} invoice(s)` : 'Sweep failed');
+      if (status === 200) show('admin', {}); else b.disabled = false;
+    };
+  });
+  document.querySelectorAll('[data-copy-val]').forEach((b) => {
+    b.onclick = async () => {
+      const v = b.dataset.copyVal || '';
+      if (!v) return toast('Nothing saved yet');
+      try { await navigator.clipboard.writeText(v); toast('📋 Copied'); } catch (e) { toast(v); }
+    };
+  });
+  go('#cs-save', async () => {
+    const { status } = await api('/admin/crypto-settings', {
+      method: 'POST', body: JSON.stringify({
+        sweep_btc_address: $('#cs-btc-addr').value,
+        sweep_usdt_address: $('#cs-usdt-addr').value,
+        sweep_threshold_usd: parseInt($('#cs-threshold').value || '200', 10),
+      }) });
+    toast(status === 200 ? '✅ Treasury settings saved' : 'Save failed');
+    if (status === 200) show('admin', {});
+  });
+
+  // Payouts
+  document.querySelectorAll('[data-pay]').forEach((b) => {    b.onclick = async () => {
       const id = b.dataset.pay;
       const amount_cents = Math.round(parseFloat($('#pay-' + id).value || '0') * 100);
       if (!amount_cents) return toast('Enter an amount');
@@ -7744,6 +8048,10 @@ function vBilling() {
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">8. Get help</div>
         <div class="small muted">Billing and account support:<br>Email: <b>worldofgodzent@gmail.com</b><br>In the app: message the admin from your inbox.<br>CCBill consumer support (24/7): <a href="https://support.ccbill.com" target="_blank" rel="noopener" style="color:var(--pink)">support.ccbill.com</a><br>Copyright / DMCA matters: use the DMCA page linked below.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">9. Paying with crypto</div>
+        <div class="small muted">You can also load credits with Bitcoin (BTC) or USDT from the Wallet tab. The exchange rate is locked when your invoice is created and stays fixed for 30 minutes — send the exact amount shown to the address on your invoice. Credits are added automatically after 1 network confirmation. Crypto loads are final: once credits are in your wallet they follow the same rules as card loads (section 5), and crypto cannot be refunded back to a wallet address. If you send less than the invoice amount, you receive proportional credits automatically when the payment window closes. If you send more than the package price, the package is credited in full and the extra amount is recorded — email us (section 8) with your transaction ID and we will make it right.</div>
       </div>
       <p class="muted small" style="text-align:center;margin:16px 0">This page is a plain-language summary, not legal advice.<br>Operated by World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="bl-terms" style="color:var(--pink)">Terms of Service</a> · <a href="javascript:void(0)" id="bl-privacy" style="color:var(--pink)">Privacy Policy</a> · <a href="javascript:void(0)" id="bl-2257" style="color:var(--pink)">2257 Statement</a> · <a href="javascript:void(0)" id="bl-dmca" style="color:var(--pink)">DMCA</a></p>
       <button class="btn ghost" id="b-back">← Back</button>
