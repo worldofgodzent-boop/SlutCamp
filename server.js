@@ -5874,6 +5874,26 @@ app.put('/api/admin/models/:id', ...adminOnly, (req, res) => {
   res.json({ ok: true });
 });
 
+// Admin resets a model's password (Corry Oct 14, 2026): she forgot it →
+// he types a new one, or sends none and gets a generated temp password to
+// hand her. All her live sessions die with the old password.
+app.post('/api/admin/models/:id/reset-password', ...adminOnly, (req, res) => {
+  const u = db.prepare(`SELECT * FROM users WHERE id = ? AND role = 'model'`).get(req.params.id);
+  if (!u) return res.status(404).json({ error: 'not_found' });
+  let { password } = req.body || {};
+  let generated = false;
+  if (typeof password !== 'string' || !password.trim()) {
+    const alpha = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    password = Array.from(crypto.randomBytes(10)).map((n) => alpha[n % alpha.length]).join('');
+    generated = true;
+  }
+  password = password.trim();
+  if (password.length < 6) return res.status(400).json({ error: 'password_too_short' });
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(password, 10), u.id);
+  deleteUserSessions(u.id);
+  res.json({ ok: true, generated, ...(generated ? { password } : {}) });
+});
+
 app.delete('/api/admin/models/:id', ...adminOnly, (req, res) => {
   const u = db.prepare(`SELECT * FROM users WHERE id = ? AND role = 'model'`).get(req.params.id);
   if (!u) return res.status(404).json({ error: 'not_found' });

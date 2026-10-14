@@ -6999,6 +6999,7 @@ async function adminModelsBody() {
             <button class="btn small ghost" data-m-edit="${m.id}">✏️ Edit</button>
             <button class="btn small ghost" data-m-photo="${m.id}">📷 Photo</button>
             <button class="btn small ghost" data-m-msg="${m.id}">💬 Message</button>
+            <button class="btn small ghost" data-m-pw="${m.id}">🔑 Password</button>
             <button class="btn small ghost" data-m-hide="${m.id}">${m.is_hidden ? '👀 Show' : '👻 Hide'}</button>
             <button class="btn small ghost" data-m-toggle="${m.id}">${m.banned ? "✅ Reactivate" : "⏸️ Deactivate"}</button>
             <button class="btn small danger" data-m-del="${m.id}">Remove</button>
@@ -7908,6 +7909,48 @@ function wireAdminBody(tab) {
         body: JSON.stringify({ is_hidden: m.is_hidden ? 0 : 1 }) });
       toast(m.is_hidden ? '👀 She\'s back on the main screen' : '👻 Hidden — she vanished from the main screen');
       show('admin', {});
+    };
+  });
+  document.querySelectorAll('[data-m-pw]').forEach((b) => {
+    b.onclick = async () => {
+      const id = b.dataset.mPw;
+      const box = $('#edit-' + id);
+      const { data } = await api('/admin/models');
+      const m = (data.models || []).find((x) => x.id === parseInt(id));
+      const name = m ? (m.display_name || m.username) : 'her';
+      box.innerHTML = `
+        <div style="margin-top:10px">
+          <div class="small muted" style="margin-bottom:6px">🔑 Reset ${esc(name)}'s password — she gets signed out everywhere and logs back in with the new one. Then send it to her (💬 Message works).</div>
+          <div class="row" style="gap:6px;flex-wrap:wrap">
+            <input class="input" id="mpw-${id}" type="text" autocomplete="off" placeholder="New password (min 6 characters)" style="margin-top:0;flex:1;min-width:180px">
+            <button class="btn small" id="mpw-set-${id}">Set password</button>
+            <button class="btn small ghost" id="mpw-gen-${id}">🎲 Generate one</button>
+          </div>
+          <div class="small" id="mpw-out-${id}" style="margin-top:6px"></div>
+        </div>`;
+      const out = $('#mpw-out-' + id);
+      const submit = async (password) => {
+        const { status, data: r } = await api(`/admin/models/${id}/reset-password`, {
+          method: 'POST', body: JSON.stringify({ password }) });
+        if (status === 200 && r && r.ok) {
+          if (r.generated) {
+            out.innerHTML = `✅ Done — her temporary password is <b style="user-select:all">${esc(r.password)}</b><br>Send it to her now; it's what she'll log in with.`;
+          } else {
+            out.innerHTML = '✅ Password updated — send her the new password so she can log in.';
+          }
+        } else if (status === 400) out.textContent = 'Too short — use at least 6 characters.';
+        else out.textContent = 'Could not reset it — try again.';
+      };
+      $('#mpw-set-' + id).onclick = () => {
+        const v = $('#mpw-' + id).value.trim();
+        if (v.length < 6) { out.textContent = 'Too short — use at least 6 characters.'; return; }
+        if (!confirm(`Set a new password for ${name}? She'll be signed out everywhere.`)) return;
+        submit(v);
+      };
+      $('#mpw-gen-' + id).onclick = () => {
+        if (!confirm(`Generate a new temporary password for ${name}? She'll be signed out everywhere.`)) return;
+        submit('');
+      };
     };
   });
   go('#nm-add', async () => {
