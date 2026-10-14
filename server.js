@@ -5912,7 +5912,14 @@ app.get('/api/crypto/config', (req, res) => {
 });
 
 app.post('/api/crypto/invoices', identMiddleware, requireUser, requireRole('fan'), async (req, res) => {
-  const pkg = CREDIT_PACKAGES.find((p) => p.id === (req.body && req.body.package_id));
+  let pkg = CREDIT_PACKAGES.find((p) => p.id === (req.body && req.body.package_id));
+  if (!pkg) {
+    // Custom load amount (the wallet's "Add more" slider): whole dollars, $100-$1,000.
+    const amt = req.body && req.body.amount_cents;
+    if (Number.isInteger(amt) && amt >= 10000 && amt <= 100000 && amt % 100 === 0) {
+      pkg = { id: 'custom', credits_cents: amt, price_cents: amt, label: '$' + (amt / 100) };
+    }
+  }
   if (!pkg) return res.status(400).json({ error: 'bad_package' });
   try {
     const invoice = await cryptoSvc.createInvoice(req.user.id, pkg, String((req.body && req.body.coin) || 'USDT').toUpperCase());

@@ -164,7 +164,7 @@ const I18N = {
     crypto_send_exact: 'Send exactly',
     crypto_to: 'to',
     crypto_copy: 'Copy', crypto_copied: 'Copied!',
-    crypto_open_wallet: 'Open in wallet app', crypto_pay_with: 'Pay with your wallet', crypto_connect_pay: 'Connect wallet & pay', crypto_sent: 'Payment sent — your credits are on the way', crypto_no_wallet: 'No wallet found in this browser — scan the QR or use Open in wallet app',
+    crypto_open_wallet: 'Open in wallet app', crypto_add_more: 'Add more', crypto_load: 'Load', crypto_pay_with: 'Pay with your wallet', crypto_connect_pay: 'Connect wallet & pay', crypto_sent: 'Payment sent — your credits are on the way', crypto_no_wallet: 'No wallet found in this browser — scan the QR or use Open in wallet app',
     crypto_scan: 'Scan with your wallet app',
     crypto_waiting: 'Waiting for payment…',
     crypto_detected: 'Payment detected — confirming ({n}/{m})…',
@@ -335,7 +335,7 @@ const I18N = {
     crypto_send_exact: 'Envía exactamente',
     crypto_to: 'a',
     crypto_copy: 'Copiar', crypto_copied: '¡Copiado!',
-    crypto_open_wallet: 'Abrir en la billetera', crypto_pay_with: 'Paga con tu billetera', crypto_connect_pay: 'Conectar billetera y pagar', crypto_sent: 'Pago enviado — tus créditos van en camino', crypto_no_wallet: 'No se encontró billetera en este navegador — escanea el QR o usa Abrir en la billetera',
+    crypto_open_wallet: 'Abrir en la billetera', crypto_add_more: 'Agregar más', crypto_load: 'Cargar', crypto_pay_with: 'Paga con tu billetera', crypto_connect_pay: 'Conectar billetera y pagar', crypto_sent: 'Pago enviado — tus créditos van en camino', crypto_no_wallet: 'No se encontró billetera en este navegador — escanea el QR o usa Abrir en la billetera',
     crypto_scan: 'Escanea con tu billetera',
     crypto_waiting: 'Esperando el pago…',
     crypto_detected: 'Pago detectado — confirmando ({n}/{m})…',
@@ -506,7 +506,7 @@ const I18N = {
     crypto_send_exact: 'Envie exatamente',
     crypto_to: 'para',
     crypto_copy: 'Copiar', crypto_copied: 'Copiado!',
-    crypto_open_wallet: 'Abrir na carteira', crypto_pay_with: 'Pague com sua carteira', crypto_connect_pay: 'Conectar carteira e pagar', crypto_sent: 'Pagamento enviado — seus créditos estão a caminho', crypto_no_wallet: 'Nenhuma carteira encontrada neste navegador — escaneie o QR ou use Abrir na carteira',
+    crypto_open_wallet: 'Abrir na carteira', crypto_add_more: 'Adicionar mais', crypto_load: 'Carregar', crypto_pay_with: 'Pague com sua carteira', crypto_connect_pay: 'Conectar carteira e pagar', crypto_sent: 'Pagamento enviado — seus créditos estão a caminho', crypto_no_wallet: 'Nenhuma carteira encontrada neste navegador — escaneie o QR ou use Abrir na carteira',
     crypto_scan: 'Escaneie com sua carteira',
     crypto_waiting: 'Aguardando pagamento…',
     crypto_detected: 'Pagamento detectado — confirmando ({n}/{m})…',
@@ -2282,6 +2282,20 @@ async function vWallet() {
             <span class="price">${p.label}</span>
           </button>`).join('')}
         </div>
+        <button class="btn ghost" id="crypto-more-toggle" style="width:100%;margin-top:2px">➕ ${t('crypto_add_more')} <span id="cm-chev" style="display:inline-block;transition:transform .2s">›</span></button>
+        <div id="crypto-more" style="display:none;margin-top:14px">
+          <div class="row" style="justify-content:center;gap:14px">
+            <button class="btn small ghost" id="cm-minus" style="padding:8px 14px">−</button>
+            <div style="text-align:center;min-width:110px">
+              <div id="cm-amt" style="font-size:32px;font-weight:900;line-height:1">$250</div>
+              <div class="muted small" id="cm-credits">250 ${t('credits_word')}</div>
+            </div>
+            <button class="btn small ghost" id="cm-plus" style="padding:8px 14px">+</button>
+          </div>
+          <input type="range" id="cm-range" class="load-slider" min="100" max="1000" step="25" value="250">
+          <div class="row" style="justify-content:space-between"><span class="muted small">$100</span><span class="muted small">$1,000</span></div>
+          <button class="btn" id="cm-go" style="width:100%;margin-top:10px">${t('crypto_load')} $250</button>
+        </div>
         <div id="crypto-invoice"></div>
         <div id="crypto-recent"></div>
       </div>
@@ -2326,13 +2340,38 @@ async function vWallet() {
         syncCoinChips();
         // A pay screen is open: rebuild it for the new coin (same package) so
         // the QR a fan scans always matches the coin highlighted above it.
-        if (cryptoOpenPkg && $('#ci-status')) startCryptoInvoice(cryptoOpenPkg);
+        if ($('#ci-status')) {
+          if (cryptoOpenAmt) startCryptoInvoiceCustom(cryptoOpenAmt);
+          else if (cryptoOpenPkg && cryptoOpenPkg !== 'custom') startCryptoInvoice(cryptoOpenPkg);
+        }
       };
     });
   })();
   app.querySelectorAll('[data-cpkg]').forEach((b) => {
     b.onclick = () => startCryptoInvoice(b.dataset.cpkg);
   });
+  // "Add more" slider: custom loads from $100 to $1,000 in $25 steps.
+  const cmT = $('#crypto-more-toggle'), cmBox = $('#crypto-more');
+  if (cmT && cmBox) {
+    const range = $('#cm-range'), amtEl = $('#cm-amt'), credEl = $('#cm-credits'), go = $('#cm-go');
+    const sync = () => {
+      const v = Number(range.value);
+      amtEl.textContent = '$' + v;
+      credEl.textContent = v + ' ' + t('credits_word');
+      go.textContent = t('crypto_load') + ' $' + v;
+    };
+    cmT.onclick = () => {
+      const opening = cmBox.style.display === 'none';
+      cmBox.style.display = opening ? '' : 'none';
+      const ch = $('#cm-chev'); if (ch) ch.style.transform = opening ? 'rotate(90deg)' : '';
+      if (opening) sync();
+    };
+    range.oninput = sync;
+    $('#cm-minus').onclick = () => { range.value = Math.max(100, Number(range.value) - 25); sync(); };
+    $('#cm-plus').onclick = () => { range.value = Math.min(1000, Number(range.value) + 25); sync(); };
+    go.onclick = () => startCryptoInvoiceCustom(Number(range.value) * 100);
+    sync();
+  }
   loadCryptoRecent();
   $('#w-logout').onclick = () => logout();
 }
@@ -2340,6 +2379,7 @@ async function vWallet() {
 /* ---------------- CRYPTO LOADS (fan) ---------------- */
 let cryptoCoinSel = 'USDT';
 let cryptoOpenPkg = null;
+let cryptoOpenAmt = null;
 let cryptoTimers = [];
 
 function syncCoinChips() {
@@ -2445,6 +2485,7 @@ function renderCryptoInvoice(inv) {
   if (!box) return;
   cryptoCoinSel = inv.coin;
   cryptoOpenPkg = inv.package_id;
+  cryptoOpenAmt = inv.package_id === 'custom' ? inv.package_usd_cents : null;
   syncCoinChips();
   cryptoExpiresAt = Date.parse(String(inv.expires_at).replace(' ', 'T') + 'Z') || 0;
   const left = Math.max(0, Math.round((cryptoExpiresAt - Date.now()) / 1000));
@@ -2503,7 +2544,7 @@ function renderCryptoInvoice(inv) {
     catch (e) { toast(String(inv.dest_tag)); }
   };
   const nq = $('#ci-newquote');
-  if (nq) nq.onclick = () => startCryptoInvoice(inv.package_id);
+  if (nq) nq.onclick = () => { if (inv.package_id === 'custom') startCryptoInvoiceCustom(inv.package_usd_cents); else startCryptoInvoice(inv.package_id); };
 }
 
 function watchCryptoInvoice(id) {
@@ -2539,6 +2580,19 @@ async function startCryptoInvoice(packageId) {
   box.innerHTML = `<div class="muted small" style="text-align:center;padding:12px">…</div>`;
   const { status, data } = await api('/crypto/invoices', {
     method: 'POST', body: JSON.stringify({ package_id: packageId, coin: cryptoCoinSel }) });
+  if (status !== 201 || !data.invoice) { toast(t('crypto_failed')); box.innerHTML = ''; return; }
+  renderCryptoInvoice(data.invoice);
+  watchCryptoInvoice(data.invoice.id);
+  loadCryptoRecent();
+}
+
+async function startCryptoInvoiceCustom(amountCents) {
+  const box = $('#crypto-invoice');
+  if (!box) return;
+  stopCryptoTimers();
+  box.innerHTML = `<div class="muted small" style="text-align:center;padding:12px">…</div>`;
+  const { status, data } = await api('/crypto/invoices', {
+    method: 'POST', body: JSON.stringify({ amount_cents: amountCents, coin: cryptoCoinSel }) });
   if (status !== 201 || !data.invoice) { toast(t('crypto_failed')); box.innerHTML = ''; return; }
   renderCryptoInvoice(data.invoice);
   watchCryptoInvoice(data.invoice.id);
