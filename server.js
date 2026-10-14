@@ -71,6 +71,26 @@ function taxKeyIsEphemeral() { taxKey(); return _taxKeyEphemeral; }
 app.use(express.json({ limit: '256kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+/* ------------------------------------------------------------------ */
+/* Slut Manager gate (defense in depth). Every /api/admin/* endpoint    */
+/* ALSO requires the X-Manager: 1 header, which only the Slut Manager   */
+/* client (public/manager/) sends. The per-route admin-session check    */
+/* remains the real gate — this header rule means an admin session in    */
+/* the PUBLIC app cannot reach admin endpoints anymore, because the     */
+/* public client never sends the header. Same rule for /api/mod/*       */
+/* (admin-only presence counts).                                        */
+/* Exempt: GET /api/admin/id-verifications/:id/photo/:which — loaded    */
+/* by an <img> tag (custom headers are impossible there); it is gated   */
+/* by a single-use token in the query string instead.                   */
+/* ------------------------------------------------------------------ */
+function requireManagerHeader(req, res, next) {
+  if (/^\/id-verifications\/\d+\/photo\//.test(req.path)) return next();
+  if (req.headers['x-manager'] === '1') return next();
+  return res.status(403).json({ error: 'manager_only' });
+}
+app.use('/api/admin', requireManagerHeader);
+app.use('/api/mod', requireManagerHeader);
+
 // Persistent disk on Render (/data) — falls back to local for dev
 const DATA_DIR = fs.existsSync('/data') ? '/data' : __dirname;
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -1862,13 +1882,16 @@ app.post('/api/auth/login', (req, res) => {
   if (user.banned) return res.status(403).json({ error: 'banned' });
   if (user.status === 'frozen') return res.status(403).json({ error: 'account_frozen',
     message: 'Your account has been frozen due to a billing dispute. Contact support.' });
-  // Admin can ONLY log in via the secret admin route (#boss). Never here.
-  if (user.role === 'admin') return res.status(403).json({ error: 'not_here' });
 
   if (guest_token) mergeGuestIntoUser(user.id, guest_token);
 
   const token = createSession(user.id);
-  res.json({ token, user: getUserPublic(user) });
+  // Slut Manager split: the manager account CAN sign in here now, but the
+  // response flags it (manager_account) so the public client shows the
+  // "you're on the manager account" interstitial instead of dropping him
+  // straight into the app. Admin API endpoints stay unreachable from the
+  // public app regardless (X-Manager header rule above).
+  res.json({ token, user: getUserPublic(user), manager_account: user.role === 'admin' });
 });
 
 app.post('/api/auth/logout', identMiddleware, requireUser, (req, res) => {
@@ -1903,6 +1926,30 @@ app.post('/api/auth/admin-login', async (req, res) => {
 
   const token = createSession(user.id);
   res.json({ token, user: getUserPublic(user) });
+});
+
+/* ------------------------------------------------------------------ */
+/* Slut Manager login — the ONLY login door for the Manager app.        */
+/* Same account + password check as the admin login, but any valid      */
+/* NON-admin account is refused with a plain-language error: this app   */
+/* is for the manager account only. Issues the normal session token;    */
+/* the manager client stores it in localStorage['wc_token'], the same   */
+/* key the public app uses (same origin, shared session).               */
+/* ------------------------------------------------------------------ */
+app.post('/api/manager/login', (req, res) => {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  if (adminRateLimited(ip)) return res.status(429).json({ error: 'too_many_attempts' });
+  const { username, password } = req.body || {};
+  const user = db.prepare('SELECT * FROM users WHERE LOWER(username) = LOWER(?)')
+    .get((username || '').trim());
+  if (!user || !bcrypt.compareSync(password || '', user.password_hash))
+    return res.status(401).json({ error: 'bad_login' });
+  if (user.banned) return res.status(403).json({ error: 'banned' });
+  if (user.role !== 'admin') return res.status(403).json({ error: 'not_manager',
+    message: 'This app is for the SlutCamp manager account only' });
+
+  const token = createSession(user.id);
+  res.json({ token, user: getUserPublic(user), manager_account: true });
 });
 
 // Step 2: temp token + SMS code → full session
@@ -5668,6 +5715,22 @@ app.delete('/api/admin/gifts/:id', ...adminOnly, (req, res) => {
 
 /* Admin — moderator dashboard + safety monitor (adminOnly defined above, before live section) */
 
+/* Slut Manager — Overview aggregates for the Manager home screen */
+app.get('/api/admin/overview', ...adminOnly, (req, res) => {
+  const row = db.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM id_verifications WHERE status = 'pending') AS pending_id_reviews,
+      (SELECT COUNT(*) FROM live_sessions WHERE status = 'live') AS live_now,
+      (SELECT COUNT(*) FROM users WHERE role = 'fan' AND banned = 0) AS fans,
+      (SELECT COUNT(*) FROM users WHERE role = 'model' AND banned = 0) AS models,
+      (SELECT COUNT(*) FROM dmca_notices WHERE status IN ('received','under_review')) AS open_dmca,
+      (SELECT COUNT(*) FROM safety_incidents WHERE status = 'open') AS open_incidents,
+      (SELECT COALESCE(SUM(gross_cents),0) FROM transactions
+         WHERE is_test = 0 AND type IN ('message','call','tip','ppv','voice','live_explicit','gift')
+           AND created_at >= datetime('now','start of day')) AS gross_today_cents`).get();
+  res.json(row);
+});
+
 app.get('/api/admin/stats', ...adminOnly, (req, res) => {
   const stats = db.prepare('SELECT * FROM platform_stats WHERE id = 1').get();
   const counts = db.prepare(`
@@ -6694,7 +6757,13 @@ wss.on('connection', (ws, req) => {
 app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
 app.get('/boss', (req, res) => {
-  res.send(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>SlutCamp Admin</title></head><body><script>location.replace('/#boss');</script></body></html>`);
+  res.send(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Slut Manager</title></head><body><script>location.replace('/manager');</script></body></html>`);
+});
+
+/* Slut Manager app shell (the static middleware also serves the folder;
+   these explicit routes keep /manager deterministic). */
+app.get(['/manager', '/manager/'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'manager', 'index.html'));
 });
 
 app.get(/^\/(?!api\/).*/, (req, res) => {
