@@ -2428,6 +2428,22 @@ async function vWallet() {
     sync();
   }
   loadCryptoRecent();
+  // Arrived from a wallet app (the Phantom button) to pay one specific
+  // invoice: open THAT pay screen — inside the wallet's browser its own
+  // Connect & pay button completes the payment with that wallet.
+  if (window.__payInvoice) {
+    const pid = window.__payInvoice;
+    window.__payInvoice = null;
+    try { localStorage.removeItem('sc_pay_invoice'); } catch (e) {}
+    (async () => {
+      const { status, data } = await api('/crypto/invoices/' + pid);
+      if (status === 200 && data.invoice &&
+          (data.invoice.status === 'pending' || data.invoice.status === 'confirming')) {
+        renderCryptoInvoice(data.invoice);
+        watchCryptoInvoice(data.invoice.id);
+      }
+    })();
+  }
   $('#w-logout').onclick = () => logout();
 }
 
@@ -2480,6 +2496,22 @@ function trustHref(inv) {
   return `https://link.trustwallet.com/send?coin=${slip}&address=${encodeURIComponent(inv.address)}&amount=${inv.amount_crypto}`;
 }
 
+// Phantom never claims the coin URI schemes (ethereum:/bitcoin:/solana:) —
+// iOS hands those to Coinbase Wallet, so a Phantom button pointing at the
+// coin link opens the WRONG app. The one door Phantom itself answers is its
+// universal-link browser: it opens our app INSIDE Phantom, where Phantom
+// provides the wallet behind the pay screen's Connect & pay button, and the
+// pay_invoice flag lands the fan back on this exact invoice after login.
+function phantomHref(inv) {
+  const origin = window.location.origin;
+  const target = `${origin}/?pay_invoice=${inv.id}`;
+  return `https://phantom.app/ul/browse/${encodeURIComponent(target)}?ref=${encodeURIComponent(origin)}`;
+}
+
+function wbtnTab(href, label) {
+  return `<a class="btn small ghost wbtn" href="${href}" style="text-decoration:none;display:flex;align-items:center;justify-content:center">${label}</a>`;
+}
+
 function wbtn(href, label) {
   return `<a class="btn small ghost wbtn" href="${href}" target="_blank" rel="noopener" style="text-decoration:none;display:flex;align-items:center;justify-content:center">${label}</a>`;
 }
@@ -2492,7 +2524,7 @@ function walletButtonsHtml(inv) {
   // button for every coin. The old generic "Open in wallet app" button is
   // gone: it just opened whichever wallet the phone picked for the coin's
   // link (Coinbase on Corry's phone), duplicating the Coinbase button.
-  btns.push(wbtn(esc(inv.payment_uri), '👻 Phantom'));
+  btns.push(wbtnTab(phantomHref(inv), '👻 Phantom'));
   btns.push(wbtn(esc(inv.payment_uri), '🔵 Coinbase Wallet'));
   const tw = trustHref(inv);
   if (tw) btns.push(wbtn(tw, '🛡️ Trust Wallet'));
@@ -7968,11 +8000,23 @@ function startPresenceHeartbeat() {
   // routeInitial lands the fan back in the wallet with the right message.
   // (Credits themselves only ever come from CCBill's server webhook.)
   try {
-    const cb = new URLSearchParams(window.location.search).get('ccbill');
-    if (cb === 'success' || cb === 'fail') {
-      window.__ccbillReturn = cb;
-      window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+    const qs = new URLSearchParams(window.location.search);
+    let dirty = false;
+    const cb = qs.get('ccbill');
+    if (cb === 'success' || cb === 'fail') { window.__ccbillReturn = cb; dirty = true; }
+    const pi = qs.get('pay_invoice');
+    if (pi && /^\d+$/.test(pi)) {
+      window.__payInvoice = parseInt(pi, 10);
+      try { localStorage.setItem('sc_pay_invoice', String(window.__payInvoice)); } catch (e) {}
+      dirty = true;
     }
+    if (!window.__payInvoice) {
+      try {
+        const saved = localStorage.getItem('sc_pay_invoice');
+        if (saved && /^\d+$/.test(saved)) window.__payInvoice = parseInt(saved, 10);
+      } catch (e) {}
+    }
+    if (dirty) window.history.replaceState({}, '', window.location.pathname + window.location.hash);
   } catch (e) {}
   // Age gate first — nothing else renders until confirmed 18+
   await checkAgeGate();
@@ -8069,6 +8113,7 @@ async function routeInitial() {
         setTimeout(() => toast(t(r === 'success' ? 'ccbill_success' : 'ccbill_fail')), 700);
         return show('wallet', {});
       }
+      if (window.__payInvoice && S.user.role === 'fan') return show('wallet', {});
       return show('fanModels', {});
     }
     S.token = null;
