@@ -5897,12 +5897,15 @@ const { createCryptoService } = require('./lib/crypto');
 const cryptoSvc = createCryptoService({ db, txn, notifyUser, packages: CREDIT_PACKAGES });
 
 app.get('/api/crypto/config', (req, res) => {
+  // Fans only see coins with REAL receiving config — a coin still on a
+  // placeholder/test address is not offered at all (see createInvoice).
+  const ALL_COINS = [
+    { coin: 'USDT', label: 'USDT (ERC-20)' }, { coin: 'BTC', label: 'Bitcoin (BTC)' },
+    { coin: 'ETH', label: 'Ethereum (ETH)' }, { coin: 'SOL', label: 'Solana (SOL)' },
+    { coin: 'XRP', label: 'XRP' },
+  ];
   res.json({
-    coins: [
-      { coin: 'USDT', label: 'USDT (ERC-20)' }, { coin: 'BTC', label: 'Bitcoin (BTC)' },
-      { coin: 'ETH', label: 'Ethereum (ETH)' }, { coin: 'SOL', label: 'Solana (SOL)' },
-      { coin: 'XRP', label: 'XRP' },
-    ],
+    coins: ALL_COINS.filter((c) => !cryptoSvc.isPlaceholder(c.coin)),
     required_confirmations: cryptoSvc.REQUIRED_CONFS,
     ttl_minutes: cryptoSvc.TTL_MIN,
   });
