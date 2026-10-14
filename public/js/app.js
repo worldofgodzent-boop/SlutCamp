@@ -2321,8 +2321,12 @@ async function vWallet() {
       </button>`).join('');
     grid.querySelectorAll('[data-coin]').forEach((b) => {
       b.onclick = () => {
+        if (b.dataset.coin === cryptoCoinSel) return;
         cryptoCoinSel = b.dataset.coin;
-        grid.querySelectorAll('[data-coin]').forEach((x) => x.classList.toggle('on', x.dataset.coin === cryptoCoinSel));
+        syncCoinChips();
+        // A pay screen is open: rebuild it for the new coin (same package) so
+        // the QR a fan scans always matches the coin highlighted above it.
+        if (cryptoOpenPkg && $('#ci-status')) startCryptoInvoice(cryptoOpenPkg);
       };
     });
   })();
@@ -2335,7 +2339,14 @@ async function vWallet() {
 
 /* ---------------- CRYPTO LOADS (fan) ---------------- */
 let cryptoCoinSel = 'USDT';
+let cryptoOpenPkg = null;
 let cryptoTimers = [];
+
+function syncCoinChips() {
+  const grid = $('#crypto-coins');
+  if (!grid) return;
+  grid.querySelectorAll('[data-coin]').forEach((x) => x.classList.toggle('on', x.dataset.coin === cryptoCoinSel));
+}
 let cryptoExpiresAt = 0;
 
 function stopCryptoTimers() { cryptoTimers.forEach(clearInterval); cryptoTimers = []; }
@@ -2354,6 +2365,9 @@ function cryptoStatusText(inv) {
 function renderCryptoInvoice(inv) {
   const box = $('#crypto-invoice');
   if (!box) return;
+  cryptoCoinSel = inv.coin;
+  cryptoOpenPkg = inv.package_id;
+  syncCoinChips();
   cryptoExpiresAt = Date.parse(String(inv.expires_at).replace(' ', 'T') + 'Z') || 0;
   const left = Math.max(0, Math.round((cryptoExpiresAt - Date.now()) / 1000));
   const mm = String(Math.floor(left / 60)).padStart(2, '0');
