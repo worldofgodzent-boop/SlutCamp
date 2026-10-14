@@ -250,6 +250,9 @@ const I18N = {
     req_waiting_1: '{n} request waiting', req_waiting_n: '{n} requests waiting',
     mic_on: '🎤 Mic on', muted: '🔇 Muted', cam_on: '📹 Cam on', cam_off: '📷 Cam off',
     go_explicit: 'Go Explicit 🔞', end_stream: 'End Stream',
+    pause_live: '⏸ Pause', resume_live: '▶ Resume',
+    brb_title: 'Hold your nutt 💦', brb_sub: "We'll be right back",
+    brb_name: '{name} will be right back',
     say_fans_ph: 'Say something to your fans…',
     explicit_rate_note: 'Explicit rate: {price}/min · Your preview is never blurred',
     notifications_h: '🔔 Notifications', notifications_word: 'Notifications',
@@ -1032,6 +1035,8 @@ function handleWS(m) {
   } else if (m.type === 'live:explicit' && S.live && S.live.role === 'fan' && m.session_id === S.live.sessionId) {
     if (m.explicit_entry_cents) S.live.entryCents = m.explicit_entry_cents;
     onLiveExplicitSignal(m.is_explicit, m.explicit_rate_cents, 'manual');
+  } else if (m.type === 'live:brb' && S.live && m.session_id === S.live.sessionId) {
+    applyLiveBrb(!!m.brb);
   } else if (m.type === 'live:ended' && S.live && m.session_id === S.live.sessionId) {
     endLiveView('Stream ended.');
   } else if (m.type === 'live:killed') {
@@ -4851,13 +4856,19 @@ async function rejoinLiveBroadcast(sessionId) {
   if (status !== 200) return toast('Could not rejoin stream.');
   S.live = { sessionId, role: 'model', stream,
              explicitRate: data.explicit_rate_cents || 499, isExplicit: !!data.is_explicit,
+             brb: false,
              title: data.title || '', chat: [], gifts: [], leaderboard: [] };
+  // If she stepped away before the disconnect, land back on the BRB state
+  // (mutes her fresh tracks + stops the safety bots until she resumes).
+  if (data.brb) applyLiveBrb(true);
   show('liveBroadcast', {});
   loadStreamChat();
   loadLeaderboard();
   toast('🔴 Back live! Welcome back 🎉');
-  startSpeechSafetyBot(sessionId);
-  startAudioChunkBot(sessionId);
+  if (!S.live.brb) {
+    startSpeechSafetyBot(sessionId);
+    startAudioChunkBot(sessionId);
+  }
 }
 
 async function startLiveBroadcast() {
@@ -4885,7 +4896,7 @@ async function startLiveBroadcast() {
     return toast('Camera/mic permission needed 📹');
   }
   S.live = { sessionId: data.session_id, role: 'model', stream,
-             explicitRate: data.explicit_rate_cents, isExplicit: false,
+             explicitRate: data.explicit_rate_cents, isExplicit: false, brb: false,
              title: data.title || '', chat: [], gifts: [], leaderboard: [] };
   show('liveBroadcast', {});
   loadStreamChat();
@@ -5051,6 +5062,49 @@ async function liveToggleExplicit() {
   }
 }
 
+/* --- BRB: she steps away without ending the stream. Fans see the BRB card;
+   her local tracks are disabled so nothing private leaves her camera/mic. --- */
+function liveBrbCardHTML(name) {
+  return `
+    <img class="brb-lips" src="/img/lips-logo.png" alt="">
+    <div class="brb-title">${t('brb_title')}</div>
+    <div class="brb-sub">${t('brb_sub')}</div>
+    ${name ? `<div class="brb-name">${t('brb_name', { name: esc(name) })}</div>` : ''}`;
+}
+
+function applyLiveBrb(on) {
+  const L = S.live;
+  if (!L) return;
+  const was = !!L.brb;
+  L.brb = on;
+  const ov = $('#live-brb-overlay');
+  if (ov) ov.classList.toggle('hidden', !on);
+  if (L.role !== 'model') return;
+  const b = $('#live-pause-btn');
+  if (b) b.textContent = on ? t('resume_live') : t('pause_live');
+  if (!L.stream || on === was) return;
+  const tracks = L.stream.getTracks();
+  if (on) {
+    // Remember her mic/cam toggle states so Resume restores them exactly.
+    L.brbMuted = tracks.map((tr) => tr.enabled);
+    tracks.forEach((tr) => { tr.enabled = false; });
+    stopSpeechSafetyBot(); // her break-time chatter is private — not monitored
+  } else {
+    tracks.forEach((tr, i) => { tr.enabled = !L.brbMuted || L.brbMuted[i] !== false; });
+    L.brbMuted = null;
+    startSpeechSafetyBot(L.sessionId);
+    startAudioChunkBot(L.sessionId);
+  }
+}
+
+async function liveToggleBrb() {
+  const L = S.live;
+  if (!L || L.role !== 'model') return;
+  const { status, data } = await api(`/live/${L.sessionId}/brb`, {
+    method: 'POST', body: JSON.stringify({ on: !L.brb }) });
+  if (status === 200) applyLiveBrb(!!data.brb);
+}
+
 function vLiveBroadcast() {
   const L = S.live;
   if (!L) return show('modelChats', {});
@@ -5060,6 +5114,7 @@ function vLiveBroadcast() {
         <div class="split-pane" id="split-model">
           <video id="live-local" autoplay playsinline muted></video>
           <div class="split-name" id="split-model-name">${esc(S.model?.display_name || 'You')}</div>
+          <div id="live-brb-overlay" class="${L.brb ? '' : 'hidden'}">${liveBrbCardHTML(S.model?.display_name || S.user?.display_name || '')}</div>
         </div>
         <div class="split-pane hidden" id="split-fan">
           <video id="stage-video" autoplay playsinline muted class="hidden"></video>
@@ -5092,6 +5147,7 @@ function vLiveBroadcast() {
             <button class="btn small ghost" id="live-cam-btn" style="flex:1">${t('cam_on')}</button>
           </div>
           <button class="btn" id="live-explicit-btn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">${t('go_explicit')}</button>
+          <button class="btn" id="live-pause-btn" style="background:linear-gradient(135deg,#ff5c9e,#FA4D92);margin-top:8px">${L.brb ? t('resume_live') : t('pause_live')}</button>
           <div class="muted small" style="text-align:center;margin-top:6px">${t('explicit_rate_note', { price: fmt(L.explicitRate) })}</div>
           <button class="btn danger" id="live-end-btn" style="margin-top:10px">${t('end_stream')}</button>
         </div>
@@ -5099,6 +5155,7 @@ function vLiveBroadcast() {
     </div>`;
   $('#live-local').srcObject = L.stream;
   $('#live-explicit-btn').onclick = liveToggleExplicit;
+  $('#live-pause-btn').onclick = liveToggleBrb;
   $('#live-end-btn').onclick = () => { if (confirm('End your live stream?')) endLiveView('Stream ended.'); };
   startLeaderboardPolling();
   const sendBox = $('#stream-chat-box');
@@ -5111,7 +5168,7 @@ function vLiveBroadcast() {
   // Mute mic / camera toggles
   const micBtn = $('#live-mic-btn'), camBtn = $('#live-cam-btn');
   if (micBtn) micBtn.onclick = () => {
-    const L2 = S.live; if (!L2 || !L2.stream) return;
+    const L2 = S.live; if (!L2 || !L2.stream || L2.brb) return;
     const track = L2.stream.getAudioTracks()[0];
     if (!track) return toast('No mic found');
     track.enabled = !track.enabled;
@@ -5119,7 +5176,7 @@ function vLiveBroadcast() {
     micBtn.classList.toggle('danger', !track.enabled);
   };
   if (camBtn) camBtn.onclick = () => {
-    const L2 = S.live; if (!L2 || !L2.stream) return;
+    const L2 = S.live; if (!L2 || !L2.stream || L2.brb) return;
     const track = L2.stream.getVideoTracks()[0];
     if (!track) return toast('No camera found');
     track.enabled = !track.enabled;
@@ -6182,7 +6239,7 @@ async function watchLive(sessionId) {
              modelName: data.model_name, explicitRate: data.explicit_rate_cents,
              paying: !!data.is_paying, blurred: false, monitorOn: false, aiReady: false,
              countdownInt: null, giftCountdownInt: null, title: data.title || '',
-             isExplicit: !!data.is_explicit, explicitUntil: data.explicit_until || 0,
+             isExplicit: !!data.is_explicit, brb: !!data.brb, explicitUntil: data.explicit_until || 0,
              entryPaid: !!data.explicit_paid, entryCents: data.explicit_entry_cents || 499,
              explicitJoinCents: data.explicit_join_cents || 2500,
              explicitMicJoinCents: data.explicit_mic_join_cents || 1500,
@@ -6324,6 +6381,7 @@ function vLiveWatch() {
         <div class="muted small" id="live-countdown" style="margin-top:8px"></div>
         <button class="btn ghost" id="live-stay-free" style="margin-top:8px">Keep watching free (blurred)</button>
       </div>
+      <div id="live-brb-overlay" class="${L.brb ? '' : 'hidden'}">${liveBrbCardHTML(L.modelName)}</div>
       <div id="gift-anim" class="hidden"></div>
       <div id="gift-stack"></div>
       <div class="live-top">

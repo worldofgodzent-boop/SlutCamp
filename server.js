@@ -598,6 +598,7 @@ addColumnIfMissing('models', 'per_voice_cents', 'INTEGER NOT NULL DEFAULT 299');
 addColumnIfMissing('models', 'explicit_rate_cents', 'INTEGER NOT NULL DEFAULT 499');
 addColumnIfMissing('models', 'photo_url', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('live_sessions', 'title', "TEXT NOT NULL DEFAULT ''");
+addColumnIfMissing('live_sessions', 'brb', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_viewers', 'explicit_until', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_viewers', 'explicit_paid', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'explicit_gift_grace_sec', 'INTEGER NOT NULL DEFAULT 180');
@@ -4414,7 +4415,8 @@ app.get('/api/live/:id', identMiddleware, requireUser, (req, res) => {
     return res.status(403).json({ error: 'forbidden' });
   if (sess.status !== 'live') return res.status(410).json({ error: 'ended' });
   res.json({ session_id: sess.id, title: sess.title,
-    explicit_rate_cents: sess.explicit_rate_cents, is_explicit: !!sess.is_explicit });
+    explicit_rate_cents: sess.explicit_rate_cents, is_explicit: !!sess.is_explicit,
+    brb: !!sess.brb });
 });
 
 // Admin: watch a live session as invisible moderator (not counted as viewer, no paywall)
@@ -4428,7 +4430,7 @@ app.post('/api/admin/live/:id/watch', ...adminOnly, (req, res) => {
   const model = db.prepare('SELECT display_name FROM users WHERE id = ?').get(sess.model_id);
   res.json({ ok: true, session_id: sess.id, model_id: sess.model_id,
     model_name: model.display_name, title: sess.title || '',
-    is_explicit: !!sess.is_explicit, is_mod: true });
+    is_explicit: !!sess.is_explicit, brb: !!sess.brb, is_mod: true });
 });
 
 // Admin: leave a moderated watch (tell model to drop the peer connection)
@@ -4466,7 +4468,7 @@ app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
 // Public: who's live right now
 app.get('/api/live', (req, res) => {
   const rows = db.prepare(`
-    SELECT ls.id AS session_id, ls.title, ls.explicit_rate_cents, ls.started_at,
+    SELECT ls.id AS session_id, ls.title, ls.explicit_rate_cents, ls.started_at, ls.brb,
            u.id AS model_id, u.display_name AS model_name, mo.photo_url AS model_photo_url,
            (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS viewers,
            (SELECT COALESCE(SUM(gross_cents),0) FROM gift_events WHERE session_id = ls.id) AS gift_cents
@@ -4499,6 +4501,7 @@ app.post('/api/live/:id/join', identMiddleware, requireUser, requireRole('fan'),
   res.json({ ok: true, session_id: sess.id, model_id: sess.model_id,
     model_name: model.display_name, title: sess.title || '',
     explicit_rate_cents: sess.explicit_rate_cents, is_explicit: !!sess.is_explicit,
+    brb: !!sess.brb,
     is_paying: !!(me && me.is_paying), explicit_until: me ? me.explicit_until : 0,
     explicit_paid: !!(me && me.explicit_paid),
     explicit_grace_sec: getGiftGraceSec(), explicit_entry_cents: getEntryCents(),
@@ -4601,6 +4604,20 @@ app.post('/api/live/:id/mode', identMiddleware, requireUser, requireRole('model'
     explicit_rate_cents: sess.explicit_rate_cents, explicit_grace_sec: getGiftGraceSec(),
     explicit_entry_cents: getEntryCents() });
   res.json({ ok: true, is_explicit: !!isExplicit });
+});
+
+// Model pauses her live ("be right back") — session stays open, viewers see
+// the BRB card instead of her feed. Only she (or an admin) can toggle it.
+app.post('/api/live/:id/brb', identMiddleware, requireUser, (req, res) => {
+  const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
+  if (!sess) return res.status(404).json({ error: 'not_found' });
+  if (req.user.role !== 'admin' && sess.model_id !== req.user.id)
+    return res.status(403).json({ error: 'forbidden' });
+  if (sess.status !== 'live') return res.status(410).json({ error: 'ended' });
+  const brb = req.body.on ? 1 : 0;
+  db.prepare('UPDATE live_sessions SET brb = ? WHERE id = ?').run(brb, sess.id);
+  pushLiveAll(sess.id, { type: 'live:brb', session_id: sess.id, brb: !!brb });
+  res.json({ ok: true, brb: !!brb });
 });
 
 // Fan client reports an AI blur/pay event (server logs it for the admin)

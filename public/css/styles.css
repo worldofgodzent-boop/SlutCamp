@@ -584,6 +584,21 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
   background: rgba(10,5,20,.55);
 }
 #live-blur-overlay .btn { max-width: 320px; }
+#live-brb-overlay {
+  position: absolute; inset: 0; z-index: 6;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 24px; text-align: center;
+  background: radial-gradient(circle at 50% 36%, rgba(250,77,146,.20), rgba(26,13,24,.96) 64%), #1a0d18;
+}
+#live-brb-overlay .brb-lips {
+  width: 110px; height: 110px; border-radius: 50%; object-fit: cover;
+  border: 2px solid rgba(255,92,158,.65);
+  box-shadow: 0 0 28px rgba(255,45,120,.45), 0 0 64px rgba(184,41,221,.30);
+  margin-bottom: 18px;
+}
+#live-brb-overlay .brb-title { font-size: 34px; font-weight: 900; color: #fff; line-height: 1.15; }
+#live-brb-overlay .brb-sub { font-size: 20px; font-weight: 700; color: #ffb3c7; margin-top: 6px; }
+#live-brb-overlay .brb-name { font-size: 14px; color: rgba(255,255,255,.75); margin-top: 14px; }
 #live-pay-hud {
   position: absolute; top: calc(60px + env(safe-area-inset-top)); left: 12px; right: 12px; z-index: 5;
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
