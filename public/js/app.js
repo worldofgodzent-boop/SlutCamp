@@ -164,7 +164,7 @@ const I18N = {
     crypto_send_exact: 'Send exactly',
     crypto_to: 'to',
     crypto_copy: 'Copy', crypto_copied: 'Copied!',
-    crypto_open_wallet: 'Open in wallet app', crypto_add_more: 'Add more', crypto_load: 'Load', crypto_pay_with: 'Pay with your wallet', crypto_connect_pay: 'Connect wallet & pay', crypto_sent: 'Payment sent — your credits are on the way', crypto_no_wallet: 'No wallet found in this browser — scan the QR or use Open in wallet app',
+    crypto_open_wallet: 'Open in wallet app', crypto_add_more: 'Add more', ccbill_redirect: 'Taking you to the secure checkout…', ccbill_secure_note: 'Secure checkout by CCBill — you finish on their payment page, then your credits land right here.', ccbill_success: '💳 Payment approved! Your credits land as soon as CCBill confirms — usually just a few seconds.', ccbill_fail: 'That card payment didn\'t go through — no charge was made. Try again, or load with crypto instead.', crypto_load: 'Load', crypto_pay_with: 'Pay with your wallet', crypto_connect_pay: 'Connect wallet & pay', crypto_sent: 'Payment sent — your credits are on the way', crypto_no_wallet: 'No wallet found in this browser — scan the QR or use Open in wallet app',
     crypto_scan: 'Scan with your wallet app',
     crypto_waiting: 'Waiting for payment…',
     crypto_detected: 'Payment detected — confirming ({n}/{m})…',
@@ -335,7 +335,7 @@ const I18N = {
     crypto_send_exact: 'Envía exactamente',
     crypto_to: 'a',
     crypto_copy: 'Copiar', crypto_copied: '¡Copiado!',
-    crypto_open_wallet: 'Abrir en la billetera', crypto_add_more: 'Agregar más', crypto_load: 'Cargar', crypto_pay_with: 'Paga con tu billetera', crypto_connect_pay: 'Conectar billetera y pagar', crypto_sent: 'Pago enviado — tus créditos van en camino', crypto_no_wallet: 'No se encontró billetera en este navegador — escanea el QR o usa Abrir en la billetera',
+    crypto_open_wallet: 'Abrir en la billetera', crypto_add_more: 'Agregar más', ccbill_redirect: 'Llevándote al pago seguro…', ccbill_secure_note: 'Pago seguro con CCBill — terminas en su página de pago y tus créditos llegan aquí.', ccbill_success: '💳 ¡Pago aprobado! Tus créditos llegan en cuanto CCBill confirma — normalmente unos segundos.', ccbill_fail: 'Ese pago con tarjeta no pasó — no se hizo ningún cargo. Inténtalo de nuevo o carga con cripto.', crypto_load: 'Cargar', crypto_pay_with: 'Paga con tu billetera', crypto_connect_pay: 'Conectar billetera y pagar', crypto_sent: 'Pago enviado — tus créditos van en camino', crypto_no_wallet: 'No se encontró billetera en este navegador — escanea el QR o usa Abrir en la billetera',
     crypto_scan: 'Escanea con tu billetera',
     crypto_waiting: 'Esperando el pago…',
     crypto_detected: 'Pago detectado — confirmando ({n}/{m})…',
@@ -506,7 +506,7 @@ const I18N = {
     crypto_send_exact: 'Envie exatamente',
     crypto_to: 'para',
     crypto_copy: 'Copiar', crypto_copied: 'Copiado!',
-    crypto_open_wallet: 'Abrir na carteira', crypto_add_more: 'Adicionar mais', crypto_load: 'Carregar', crypto_pay_with: 'Pague com sua carteira', crypto_connect_pay: 'Conectar carteira e pagar', crypto_sent: 'Pagamento enviado — seus créditos estão a caminho', crypto_no_wallet: 'Nenhuma carteira encontrada neste navegador — escaneie o QR ou use Abrir na carteira',
+    crypto_open_wallet: 'Abrir na carteira', crypto_add_more: 'Adicionar mais', ccbill_redirect: 'Levando você ao pagamento seguro…', ccbill_secure_note: 'Pagamento seguro pela CCBill — você finaliza na página de pagamento deles e seus créditos chegam aqui.', ccbill_success: '💳 Pagamento aprovado! Seus créditos chegam assim que a CCBill confirmar — normalmente alguns segundos.', ccbill_fail: 'Esse pagamento no cartão não passou — nenhuma cobrança foi feita. Tente de novo ou carregue com cripto.', crypto_load: 'Carregar', crypto_pay_with: 'Pague com sua carteira', crypto_connect_pay: 'Conectar carteira e pagar', crypto_sent: 'Pagamento enviado — seus créditos estão a caminho', crypto_no_wallet: 'Nenhuma carteira encontrada neste navegador — escaneie o QR ou use Abrir na carteira',
     crypto_scan: 'Escaneie com sua carteira',
     crypto_waiting: 'Aguardando pagamento…',
     crypto_detected: 'Pagamento detectado — confirmando ({n}/{m})…',
@@ -2256,6 +2256,26 @@ async function vWallet() {
   await refreshMe();
   const { data } = await api('/credits/packages');
   const pkgs = data.packages || [];
+  let ccbCfg = { configured: false, max_cents: 10000 };
+  try { const cc = await api('/ccbill/config'); if (cc.data) ccbCfg = cc.data; } catch (e) {}
+  const cardMax = Math.floor((ccbCfg.max_cents || 10000) / 100);
+  const cardExtra = !ccbCfg.configured ? '' : `
+      <div class="small muted" style="text-align:center;margin:0 0 10px">${t('ccbill_secure_note')}</div>
+      ${cardMax > 100 ? `
+      <button class="btn ghost" id="card-more-toggle" style="width:100%;margin-top:2px">➕ ${t('crypto_add_more')} <span id="cd-chev" style="display:inline-block;transition:transform .2s">›</span></button>
+      <div id="card-more" style="display:none;margin:14px 0 6px">
+        <div class="row" style="justify-content:center;gap:14px">
+          <button class="btn small ghost" id="cd-minus" style="padding:8px 14px">−</button>
+          <div style="text-align:center;min-width:110px">
+            <div id="cd-amt" style="font-size:32px;font-weight:900;line-height:1">$${Math.min(250, cardMax)}</div>
+            <div class="muted small" id="cd-credits">${Math.min(250, cardMax)} ${t('credits_word')}</div>
+          </div>
+          <button class="btn small ghost" id="cd-plus" style="padding:8px 14px">+</button>
+        </div>
+        <input type="range" id="cd-range" class="load-slider" min="100" max="${cardMax}" step="25" value="${Math.min(250, cardMax)}">
+        <div class="row" style="justify-content:space-between"><span class="muted small">$100</span><span class="muted small">$${cardMax}</span></div>
+        <button class="btn" id="cd-go" style="width:100%;margin-top:10px">${t('crypto_load')} $${Math.min(250, cardMax)}</button>
+      </div>` : ''}`;
   app.innerHTML = `
     <div class="header"><h1>${t('wallet_h')}</h1>
       <div><span class="balance-pill">${t('balance', { amt: fmt(S.wallet.credits_cents) })}</span></div></div>
@@ -2270,6 +2290,7 @@ async function vWallet() {
           <span class="price">${p.label}</span>
           ${p.descriptor ? `<span class="muted small" style="width:100%">${esc(p.descriptor)}</span>` : ''}
         </button>`).join('')}
+      ${cardExtra}
       <div class="card" id="crypto-card">
         <div style="font-weight:800;font-size:17px;letter-spacing:.2px">${t('crypto_h')}</div>
         <div class="muted small" style="margin:4px 0 12px">${t('crypto_note')}</div>
@@ -2304,11 +2325,45 @@ async function vWallet() {
     </div>`;
   app.querySelectorAll('[data-pkg]').forEach((b) => {
     b.onclick = async () => {
-      const { status, data: d } = await api('/credits/buy', {
+      if (ccbCfg.configured) {
+        const { status, data: d } = await api('/ccbill/checkout', {
+          method: 'POST', body: JSON.stringify({ package_id: b.dataset.pkg }) });
+        if (status === 200 && d.url) { toast(t('ccbill_redirect')); window.location.href = d.url; return; }
+        toast((d && d.message) || t('crypto_failed'));
+        return;
+      }
+      const { data: d } = await api('/credits/buy', {
         method: 'POST', body: JSON.stringify({ package: b.dataset.pkg }) });
       toast(d.message || 'Payment processor coming soon.');
     };
   });
+  // Card "Add more" slider (appears once CCBill approves a cap above $100)
+  const cdT = $('#card-more-toggle'), cdBox = $('#card-more');
+  if (cdT && cdBox) {
+    const range = $('#cd-range'), amtEl = $('#cd-amt'), credEl = $('#cd-credits'), go = $('#cd-go');
+    const sync = () => {
+      const v = Number(range.value);
+      amtEl.textContent = '$' + v;
+      credEl.textContent = v + ' ' + t('credits_word');
+      go.textContent = t('crypto_load') + ' $' + v;
+    };
+    cdT.onclick = () => {
+      const opening = cdBox.style.display === 'none';
+      cdBox.style.display = opening ? '' : 'none';
+      const ch = $('#cd-chev'); if (ch) ch.style.transform = opening ? 'rotate(90deg)' : '';
+      if (opening) sync();
+    };
+    range.oninput = sync;
+    $('#cd-minus').onclick = () => { range.value = Math.max(100, Number(range.value) - 25); sync(); };
+    $('#cd-plus').onclick = () => { range.value = Math.min(cardMax, Number(range.value) + 25); sync(); };
+    go.onclick = async () => {
+      const { status, data: d } = await api('/ccbill/checkout', {
+        method: 'POST', body: JSON.stringify({ amount_cents: Number(range.value) * 100 }) });
+      if (status === 200 && d.url) { toast(t('ccbill_redirect')); window.location.href = d.url; return; }
+      toast((d && d.message) || t('crypto_failed'));
+    };
+    sync();
+  }
   // Crypto loads (single-screen flow: coin -> package -> pay screen)
   stopCryptoTimers();
   // Coin chips render from the live /crypto/config — only coins whose receiving
@@ -3531,7 +3586,7 @@ async function renderTaxCard(containerId) {
         <style>body{font-family:sans-serif;max-width:600px;margin:20px auto;padding:20px}h1{font-size:22px}.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #ddd}</style>
         </head><body>
         <h1>📄 Earnings Summary ${year} (1099-NEC)</h1>
-        <p><b>Payer:</b> Phoenix WOG LLC</p>
+        <p><b>Payer:</b> WORLD OF GODZ ENTERTAINMENT LLC</p>
         <p><b>Recipient:</b> ${data.recipient.legal_name}<br>
         ${data.recipient.address_line1}<br>${data.recipient.city}, ${data.recipient.state} ${data.recipient.zip}<br>
         Tax ID: ${data.recipient.tax_id_masked}</p>
@@ -7906,6 +7961,16 @@ function startPresenceHeartbeat() {
 /* ---------------- boot ---------------- */
 
 (async function boot() {
+  // CCBill browser return (?ccbill=success|fail): stash + clean the URL now;
+  // routeInitial lands the fan back in the wallet with the right message.
+  // (Credits themselves only ever come from CCBill's server webhook.)
+  try {
+    const cb = new URLSearchParams(window.location.search).get('ccbill');
+    if (cb === 'success' || cb === 'fail') {
+      window.__ccbillReturn = cb;
+      window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+    }
+  } catch (e) {}
   // Age gate first — nothing else renders until confirmed 18+
   await checkAgeGate();
   startPresenceHeartbeat();
@@ -7996,6 +8061,11 @@ async function routeInitial() {
         return show('modelChats', {});
       }
       if (S.user.role === 'recruiter') return show('recruiter', {});
+      if (window.__ccbillReturn && S.user.role === 'fan') {
+        const r = window.__ccbillReturn; window.__ccbillReturn = null;
+        setTimeout(() => toast(t(r === 'success' ? 'ccbill_success' : 'ccbill_fail')), 700);
+        return show('wallet', {});
+      }
       return show('fanModels', {});
     }
     S.token = null;

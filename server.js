@@ -3487,7 +3487,7 @@ app.get('/api/tax-profile/1099/:year', identMiddleware, requireUser, requireRole
     recipient: { legal_name: p.legal_name, address_line1: p.address_line1,
       address_line2: p.address_line2, city: p.city, state: p.state, zip: p.zip,
       tax_id_masked: p.tax_id_type === 'ein' ? `XX-XXXX${p.tax_id_last4}` : `***-**-${p.tax_id_last4}` },
-    payer: { name: 'Phoenix WOG LLC' },
+    payer: { name: 'WORLD OF GODZ ENTERTAINMENT LLC' },
     note: total >= 60000
       ? 'You earned $600 or more. A 1099-NEC will be filed with the IRS.'
       : 'You earned under $600. No 1099-NEC filing required, but report this income on your taxes.',
@@ -4219,6 +4219,49 @@ app.post('/api/live/:id/leave', identMiddleware, requireUser, requireRole('fan')
 
 // Model (or admin) ends a session
 // Model: get her live session details (for rejoining after disconnect)
+app.get('/api/live/schedule', (req, res) => {
+  const TZ = 'America/Chicago';
+  const rows = db.prepare(`
+    SELECT s.model_id, s.day_of_week, s.start_time, s.title,
+           u.display_name AS model_name, m.photo_url
+    FROM live_schedule s
+    JOIN users u ON u.id = s.model_id
+    JOIN models m ON m.user_id = u.id
+    WHERE u.role = 'model' AND u.banned = 0 AND m.is_hidden = 0`).all();
+  const dtf = new Intl.DateTimeFormat('en-US', { timeZone: TZ, year: 'numeric', month: '2-digit',
+    day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  const p = Object.fromEntries(dtf.formatToParts(new Date()).map((x) => [x.type, x.value]));
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const chiWeekday = dayNames.indexOf(p.weekday);
+  const zonedToUtc = (y, mo, d, h, mi) => {
+    const guess = Date.UTC(y, mo - 1, d, h, mi);
+    const pp = Object.fromEntries(dtf.formatToParts(new Date(guess)).map((x) => [x.type, x.value]));
+    const asUtc = Date.UTC(+pp.year, +pp.month - 1, +pp.day, +pp.hour % 24, +pp.minute, +pp.second);
+    return guess + (guess - asUtc);
+  };
+  const nowMs = Date.now();
+  const upcoming = [];
+  for (const r of rows) {
+    const [hh, mm] = String(r.start_time).split(':').map((x) => parseInt(x, 10) || 0);
+    for (let off = 0; off <= 7; off++) {
+      if ((chiWeekday + off) % 7 !== r.day_of_week) continue;
+      const base = new Date(Date.UTC(+p.year, +p.month - 1, +p.day + off));
+      const starts = zonedToUtc(base.getUTCFullYear(), base.getUTCMonth() + 1, base.getUTCDate(), hh, mm);
+      if (starts <= nowMs) continue;
+      const h12 = ((hh + 11) % 12) + 1;
+      upcoming.push({
+        model_id: r.model_id, model_name: r.model_name, photo_url: r.photo_url || '',
+        title: r.title || '', starts_at: starts,
+        day_label: off === 0 ? 'Today' : off === 1 ? 'Tomorrow' : dayNames[r.day_of_week],
+        time_label: `${h12}:${String(mm).padStart(2, '0')} ${hh >= 12 ? 'PM' : 'AM'}`,
+      });
+      break; // next occurrence only, per slot
+    }
+  }
+  upcoming.sort((a, b) => a.starts_at - b.starts_at);
+  res.json({ upcoming: upcoming.slice(0, 20) });
+});
+
 app.get('/api/live/:id', identMiddleware, requireUser, (req, res) => {
   const sess = db.prepare(`SELECT ls.*, m.explicit_rate_cents FROM live_sessions ls
     LEFT JOIN models m ON m.user_id = ls.model_id WHERE ls.id = ?`).get(req.params.id);
@@ -5895,6 +5938,85 @@ app.get('/api/recruiter/dashboard', identMiddleware, requireUser, requireRole('r
 /* ------------------------------------------------------------------ */
 const { createCryptoService } = require('./lib/crypto');
 const cryptoSvc = createCryptoService({ db, txn, notifyUser, packages: CREDIT_PACKAGES });
+
+/* ---------------- CCBill card loads (FlexForms Dynamic Pricing) ---------------- */
+const { createCcbillService } = require('./lib/ccbill');
+const ccbillSvc = createCcbillService({ db, txn, notifyUser });
+
+app.get('/api/ccbill/config', (req, res) => {
+  res.json({ configured: ccbillSvc.configured(), max_cents: ccbillSvc.maxCents() });
+});
+
+app.post('/api/ccbill/checkout', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  if (!ccbillSvc.configured()) {
+    return res.status(503).json({ error: 'payment_not_connected', message: 'Card payments are launching soon.' });
+  }
+  let pkg = CREDIT_PACKAGES.find((p) => p.id === (req.body && req.body.package_id));
+  let amount = pkg ? pkg.price_cents : null;
+  if (!pkg) {
+    const amt = req.body && req.body.amount_cents;
+    if (Number.isInteger(amt) && amt % 100 === 0 && amt >= 1000 && amt <= 100000) {
+      amount = amt; pkg = { id: 'custom' };
+    }
+  }
+  if (!amount) return res.status(400).json({ error: 'bad_package' });
+  if (amount > ccbillSvc.maxCents()) {
+    return res.status(400).json({ error: 'over_limit',
+      message: `Card loads are capped at $${ccbillSvc.maxCents() / 100} per transaction right now — crypto loads go up to $1,000.` });
+  }
+  // Same fraud velocity gate as every other purchase path.
+  const v = checkPurchaseVelocity(req.user.id, amount, null);
+  if (!v.ok) {
+    logPurchaseAttempt(req.user.id, pkg, amount, null, clientIp(req), 'blocked', v.error);
+    return res.status(429).json({ error: v.error, message: v.message });
+  }
+  try {
+    const { url } = ccbillSvc.createCheckout(req.user.id, amount, pkg.id);
+    logPurchaseAttempt(req.user.id, pkg, amount, null, clientIp(req), 'pending', 'ccbill_checkout');
+    res.json({ url });
+  } catch (e) {
+    if (e.code === 'bad_amount') return res.status(400).json({ error: 'bad_amount' });
+    console.error('ccbill: checkout failed —', e.message);
+    res.status(500).json({ error: 'checkout_failed' });
+  }
+});
+
+// CCBill server-to-server posts: Webhooks (JSON) + classic Approval Post
+// (form-encoded). This endpoint is the ONLY place card credits are issued.
+app.post('/api/ccbill/webhook', express.urlencoded({ extended: true }), (req, res) => {
+  try {
+    const r = ccbillSvc.handleEvent(req.body || {});
+    res.json({ ok: true, handled: r.handled });
+  } catch (e) {
+    console.error('ccbill: webhook error —', e.message);
+    res.json({ ok: true, handled: 'error' }); // still 200 — never invite a retry storm
+  }
+});
+
+// Classic Denial Post gets its own URL so a denial can never be mistaken
+// for an approval (it carries no eventType of its own).
+app.post('/api/ccbill/denial', express.urlencoded({ extended: true }), (req, res) => {
+  try { ccbillSvc.handleEvent({ ...(req.body || {}), eventType: 'NewSaleFailure' }); } catch (e) {}
+  res.json({ ok: true });
+});
+
+// Browser return from CCBill's hosted form. NEVER credits — the webhook does.
+app.get('/api/ccbill/return', (req, res) => {
+  const ok = req.query.result === 'success' || req.query.mppResponse === 'CheckoutSuccess';
+  res.redirect(302, `/?ccbill=${ok ? 'success' : 'fail'}`);
+});
+
+app.get('/api/admin/ccbill/orders', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+  const rows = db.prepare(`SELECT o.*, u.username FROM ccbill_orders o
+    JOIN users u ON u.id = o.user_id ORDER BY o.id DESC LIMIT 100`).all();
+  res.json({ orders: rows });
+});
+app.post('/api/admin/ccbill/orders/:id/credit', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+  const r = ccbillSvc.markCreditedAdmin(parseInt(req.params.id, 10), req.user.id);
+  if (r.error) return res.status(400).json({ error: r.error });
+  res.json({ ok: true });
+});
+
 
 app.get('/api/crypto/config', (req, res) => {
   // Fans only see coins with REAL receiving config — a coin still on a
