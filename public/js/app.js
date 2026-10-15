@@ -153,6 +153,48 @@ const I18N = {
     enter_user_pass: 'Enter username + password',
     login_failed: 'Login failed — check your details.',
     account_banned: '⛔ This account is banned.',
+    model_age_id_note: 'Models must also complete ID verification with SlutCamp (2257).',
+    stage_name_label: 'Display name (your stage name)',
+    invited_model_sub: "You've been invited to join as a model",
+    paid_chat_h: '💰 Get paid to chat with fans',
+    invite_earn_sub: '$1.49 per text · $3.99/min video · tips & PPV unlocks<br>Weekly payouts from SlutCamp',
+    rec_earn_sub: 'You keep 60% of everything · $1.49 per text · $3.99/min video<br>Weekly payouts from SlutCamp',
+    invited_by: 'Invited by <b>{name}</b> 🤝',
+    age_id_note: 'SlutCamp will verify your ID in person (2257 compliance) before you go live.',
+    create_model_btn: 'Create model account',
+    fill_all_fields: 'Fill in every field',
+    must_confirm_18: 'You must confirm you are 18+',
+    err_username_taken: 'Username is taken 😕',
+    err_must_be_18: 'You must be 18 or older.',
+    err_password_short: 'Password needs 6+ characters.',
+    err_signup_failed: 'Signup failed.',
+    err_bad_invite: 'Invite link is invalid or revoked.',
+    err_invite_used: 'Invite link already used.',
+    err_bad_referral: 'Referral link is invalid.',
+    invalid_invite_h: 'This invite link is invalid,<br>already used, or revoked.',
+    invalid_invite_sub: 'Ask SlutCamp for a fresh invite link.',
+    invalid_ref_h: 'This referral link is invalid.',
+    invalid_ref_sub: 'Ask the person who sent it for a fresh link.',
+    back_browsing: '← Back to browsing',
+    aff_invite_sub: 'Affiliate invite',
+    aff_become_h: '🤝 Become a SlutCamp Affiliate',
+    aff_become_sub: 'Recruit models · Earn 20% of everything they make<br>Your own referral link · Recruiter dashboard',
+    your_name: 'Your name',
+    aff_agreement_h: '📋 Affiliate Agreement (vR1.0)',
+    aff_agree: 'I have read the Affiliate Agreement above and I <b>agree</b> to all terms.',
+    aff_accept_btn: 'Accept & Create Affiliate Account',
+    aff_must_agree: 'You must accept the Affiliate Agreement to continue.',
+    aff_invalid_h: 'This invite link is invalid or expired.',
+    aff_invalid_sub: 'Ask Corry for a fresh invite link.',
+    err_invite_invalid: 'Invite link is invalid.',
+    err_invite_expired: 'Invite link expired.',
+    gate_verify_h: 'VERIFY YOUR AGE',
+    gate_sub: 'Enter your date of birth. You must be 18 or older to enter.',
+    gate_btn: 'VERIFY & ENTER',
+    gate_err_empty: 'Please enter your date of birth.',
+    gate_err_invalid: 'Please enter a valid date of birth.',
+    gate_denied: 'You must be 18 or older to enter SlutCamp.',
+    gate_back_google: '← Back to Google',
     welcome_user: 'Welcome, {name}! 🎉', logged_out: 'Logged out.',
     qs_sub: 'Create your account — 30 seconds', your_account: '👤 Your account',
     pick_username_ph: 'pick a username',
@@ -367,6 +409,48 @@ const I18N = {
     enter_user_pass: 'Ingresa usuario y contraseña',
     login_failed: 'Error al iniciar sesión — revisa tus datos.',
     account_banned: '⛔ Esta cuenta está suspendida.',
+    model_age_id_note: 'Las modelos también deben completar la verificación de identidad con SlutCamp (2257).',
+    stage_name_label: 'Nombre visible (tu nombre artístico)',
+    invited_model_sub: 'Te invitaron a unirte como modelo',
+    paid_chat_h: '💰 Gana dinero chateando con fans',
+    invite_earn_sub: '$1.49 por mensaje · $3.99/min de video · propinas y contenido pago<br>Pagos semanales de SlutCamp',
+    rec_earn_sub: 'Te quedas con el 60% de todo · $1.49 por mensaje · $3.99/min de video<br>Pagos semanales de SlutCamp',
+    invited_by: 'Invitada por <b>{name}</b> 🤝',
+    age_id_note: 'SlutCamp verificará tu identificación en persona (cumplimiento 2257) antes de que puedas salir en vivo.',
+    create_model_btn: 'Crear cuenta de modelo',
+    fill_all_fields: 'Completa todos los campos',
+    must_confirm_18: 'Debes confirmar que tienes 18 años o más',
+    err_username_taken: 'Ese nombre de usuario ya está en uso 😕',
+    err_must_be_18: 'Debes tener 18 años o más.',
+    err_password_short: 'La contraseña necesita 6+ caracteres.',
+    err_signup_failed: 'El registro falló.',
+    err_bad_invite: 'El enlace de invitación no es válido o fue revocado.',
+    err_invite_used: 'Este enlace de invitación ya fue usado.',
+    err_bad_referral: 'El enlace de referido no es válido.',
+    invalid_invite_h: 'Este enlace de invitación no es válido,<br>ya fue usado o fue revocado.',
+    invalid_invite_sub: 'Pide a SlutCamp un enlace de invitación nuevo.',
+    invalid_ref_h: 'Este enlace de referido no es válido.',
+    invalid_ref_sub: 'Pide un enlace nuevo a la persona que te lo envió.',
+    back_browsing: '← Volver a explorar',
+    aff_invite_sub: 'Invitación de afiliado',
+    aff_become_h: '🤝 Conviértete en afiliado de SlutCamp',
+    aff_become_sub: 'Recluta modelos · Gana el 20% de todo lo que ellas ganen<br>Tu propio enlace de referido · Panel de reclutador',
+    your_name: 'Tu nombre',
+    aff_agreement_h: '📋 Acuerdo de Afiliado (vR1.0)',
+    aff_agree: 'He leído el Acuerdo de Afiliado anterior y <b>acepto</b> todos sus términos.',
+    aff_accept_btn: 'Aceptar y crear cuenta de afiliado',
+    aff_must_agree: 'Debes aceptar el Acuerdo de Afiliado para continuar.',
+    aff_invalid_h: 'Este enlace de invitación no es válido o ya expiró.',
+    aff_invalid_sub: 'Pide a Corry un enlace de invitación nuevo.',
+    err_invite_invalid: 'El enlace de invitación no es válido.',
+    err_invite_expired: 'El enlace de invitación expiró.',
+    gate_verify_h: 'VERIFICA TU EDAD',
+    gate_sub: 'Ingresa tu fecha de nacimiento. Debes tener 18 años o más para entrar.',
+    gate_btn: 'VERIFICAR Y ENTRAR',
+    gate_err_empty: 'Por favor ingresa tu fecha de nacimiento.',
+    gate_err_invalid: 'Por favor ingresa una fecha de nacimiento válida.',
+    gate_denied: 'Debes tener 18 años o más para entrar a SlutCamp.',
+    gate_back_google: '← Volver a Google',
     welcome_user: '¡Bienvenido, {name}! 🎉', logged_out: 'Sesión cerrada.',
     qs_sub: 'Crea tu cuenta — 30 segundos', your_account: '👤 Tu cuenta',
     pick_username_ph: 'elige un usuario',
@@ -578,6 +662,48 @@ const I18N = {
     enter_user_pass: 'Digite usuário e senha',
     login_failed: 'Falha no login — verifique seus dados.',
     account_banned: '⛔ Esta conta está banida.',
+    model_age_id_note: 'As modelos também devem concluir a verificação de identidade com a SlutCamp (2257).',
+    stage_name_label: 'Nome de exibição (seu nome artístico)',
+    invited_model_sub: 'Você foi convidada para entrar como modelo',
+    paid_chat_h: '💰 Ganhe dinheiro conversando com fãs',
+    invite_earn_sub: '$1.49 por mensagem · $3.99/min de vídeo · gorjetas e conteúdo pago<br>Pagamentos semanais da SlutCamp',
+    rec_earn_sub: 'Você fica com 60% de tudo · $1.49 por mensagem · $3.99/min de vídeo<br>Pagamentos semanais da SlutCamp',
+    invited_by: 'Convidada por <b>{name}</b> 🤝',
+    age_id_note: 'A SlutCamp verificará seu documento de identidade pessoalmente (conformidade 2257) antes de você entrar ao vivo.',
+    create_model_btn: 'Criar conta de modelo',
+    fill_all_fields: 'Preencha todos os campos',
+    must_confirm_18: 'Você deve confirmar que tem 18 anos ou mais',
+    err_username_taken: 'Esse nome de usuário já está em uso 😕',
+    err_must_be_18: 'Você deve ter 18 anos ou mais.',
+    err_password_short: 'A senha precisa de 6+ caracteres.',
+    err_signup_failed: 'O cadastro falhou.',
+    err_bad_invite: 'O link de convite é inválido ou foi revogado.',
+    err_invite_used: 'Este link de convite já foi usado.',
+    err_bad_referral: 'O link de indicação é inválido.',
+    invalid_invite_h: 'Este link de convite é inválido,<br>já foi usado ou foi revogado.',
+    invalid_invite_sub: 'Peça à SlutCamp um novo link de convite.',
+    invalid_ref_h: 'Este link de indicação é inválido.',
+    invalid_ref_sub: 'Peça um link novo para a pessoa que enviou.',
+    back_browsing: '← Voltar a explorar',
+    aff_invite_sub: 'Convite de afiliado',
+    aff_become_h: '🤝 Torne-se um afiliado SlutCamp',
+    aff_become_sub: 'Recrute modelos · Ganhe 20% de tudo o que elas ganharem<br>Seu próprio link de indicação · Painel de recrutador',
+    your_name: 'Seu nome',
+    aff_agreement_h: '📋 Acordo de Afiliado (vR1.0)',
+    aff_agree: 'Li o Acordo de Afiliado acima e <b>concordo</b> com todos os termos.',
+    aff_accept_btn: 'Aceitar e criar conta de afiliado',
+    aff_must_agree: 'Você deve aceitar o Acordo de Afiliado para continuar.',
+    aff_invalid_h: 'Este link de convite é inválido ou expirou.',
+    aff_invalid_sub: 'Peça ao Corry um novo link de convite.',
+    err_invite_invalid: 'O link de convite é inválido.',
+    err_invite_expired: 'O link de convite expirou.',
+    gate_verify_h: 'VERIFIQUE SUA IDADE',
+    gate_sub: 'Digite sua data de nascimento. Você deve ter 18 anos ou mais para entrar.',
+    gate_btn: 'VERIFICAR E ENTRAR',
+    gate_err_empty: 'Por favor, digite sua data de nascimento.',
+    gate_err_invalid: 'Por favor, digite uma data de nascimento válida.',
+    gate_denied: 'Você deve ter 18 anos ou mais para entrar no SlutCamp.',
+    gate_back_google: '← Voltar ao Google',
     welcome_user: 'Bem-vindo, {name}! 🎉', logged_out: 'Você saiu.',
     qs_sub: 'Crie sua conta — 30 segundos', your_account: '👤 Sua conta',
     pick_username_ph: 'escolha um usuário',
@@ -734,6 +860,19 @@ function t(key, vars) {
   return s;
 }
 
+/* Pre-login entry surfaces that live OUTSIDE the show() view map — the
+   static age gate, the welcome splash, and the invite / referral /
+   affiliate signup forms — register a re-render hook here so a
+   language switch redraws THAT screen in the new language instead of
+   dumping the visitor onto the landing view mid-signup. show() clears
+   entryRerender (any in-app navigation means the entry form was
+   left); routeInitial clears splashLangRefresh (the splash handed off
+   to the real destination); checkAgeGate clears its own hook when the
+   visitor passes or is denied. */
+let entryRerender = null;
+let splashLangRefresh = null;
+let gateLangRefresh = null;
+
 /* Language picker — ONE compact link. Tapping it opens a sheet with a
    scrollable list of languages; she can scroll and tap, or TYPE to filter. */
 function langPillsHTML() {
@@ -757,6 +896,10 @@ function openLangSheet() {
         `<button type="button" class="lang-opt${LANG === l.code ? ' on' : ''}" data-setlang="${l.code}"><span>${l.flag} ${l.label}</span>${LANG === l.code ? '<span class="lang-check">✓</span>' : ''}</button>`).join('')}</div>
       <button type="button" class="btn ghost" data-langclose style="width:100%">${t('cancel')}</button>
     </div>`;
+  // The age gate and the welcome splash sit at z-index 9999 — while
+  // either is up, the sheet must ride above it or the language options
+  // hide behind the door.
+  sheet.classList.toggle('over-splash', !!splashLangRefresh || !!gateLangRefresh);
   sheet.hidden = false;
   const input = sheet.querySelector('.lang-search');
   input.addEventListener('input', () => {
@@ -798,9 +941,18 @@ async function setLang(code) {
   if (code === LANG || !applyLang(code)) return;
   if (S.token) api('/me/language', { method: 'PATCH', body: JSON.stringify({ language: code }) }).catch(() => {});
   toast(t('language_set'));
+  // At the age gate there is nothing else on screen — just re-label
+  // the gate in place; the boot sequence is still waiting on it.
+  if (gateLangRefresh) { gateLangRefresh(); return; }
+  // On the welcome splash there is no view to re-render yet — just swap
+  // the splash's own lines in place (routing happens on Enter).
+  if (splashLangRefresh) { splashLangRefresh(); return; }
   // Re-render the current view in place. Never tear down a live stream —
   // its labels pick the new language up on the next navigation.
   if (['liveBroadcast', 'liveWatch'].includes(S.view)) { renderTabbar(); return; }
+  // Entry forms (invite / referral / affiliate signup) aren't show()
+  // views — redraw the form itself so she keeps her place at the door.
+  if (entryRerender) { entryRerender(); return; }
   show(S.view, S.viewParams || {});
 }
 document.addEventListener('click', (e) => {
@@ -1446,6 +1598,8 @@ async function refreshTabBadges() {
 const MODEL_VIEWS = ['modelChats', 'modelEarnings', 'modelSettings', 'bookings', 'liveBroadcast', 'chat'];
 
 function show(view, params) {
+  // Any show() navigation means a pre-login entry form was left behind.
+  entryRerender = null;
   // Gate: unsigned models must sign the contract first
   if (S.user && S.user.role === 'model' && S.contractSigned === false
       && view !== 'modelContract' && MODEL_VIEWS.includes(view)) {
@@ -1684,7 +1838,7 @@ function vAuth(params) {
         <button id="t-signup" class="${mode === 'signup' ? 'active' : ''}">${t('sign_up')}</button>
       </div>
       <div id="auth-body"></div>
-      <div class="lang-row" style="margin-top:14px">${langPillsHTML()}</div>
+      ${mode === 'login' ? `<div class="lang-row" style="margin-top:14px">${langPillsHTML()}</div>` : ''}
       <button class="btn ghost" id="back-browse" style="margin-top:16px">${t('keep_browsing')}</button>
     </div>`;
   $('#t-login').onclick = () => show('auth', { mode: 'login' });
@@ -1714,9 +1868,10 @@ function renderAuthBody(mode, role) {
       <label class="field">${t('password_hint')}${pwField('a-pass', 'new-password')}</label>
       <label class="field">${t('dob')}<input class="input" id="a-dob" type="date"></label>
       <div class="age-box">🔞 <b>${t('age18_only')}</b> ${t('age18_line')}
-        ${role === 'model' ? 'Models must also complete ID verification with SlutCamp (2257).' : t('fan_age_line')}</div>
+        ${role === 'model' ? t('model_age_id_note') : t('fan_age_line')}</div>
       <label class="checkbox-row"><input type="checkbox" id="a-18">
         <span>${t('confirm18')}</span></label>
+      <div class="lang-row">${langPillsHTML()}</div>
       <button class="btn" id="a-go">${t('create_account_btn')}</button>`;
     let r = role;
     $('#r-fan').onclick = () => { r = 'fan'; $('#r-fan').classList.add('selected'); $('#r-model').classList.remove('selected'); };
@@ -1741,21 +1896,23 @@ async function doSignup(role) {
   const password = $('#a-pass').value;
   const dob = $('#a-dob').value;
   const agree18 = $('#a-18').checked;
-  if (!display_name || !username || !password || !dob) return toast('Fill in every field');
-  if (!agree18) return toast('You must confirm you are 18+');
+  if (!display_name || !username || !password || !dob) return toast(t('fill_all_fields'));
+  if (!agree18) return toast(t('must_confirm_18'));
   const { status, data } = await api('/auth/signup', {
     method: 'POST',
     body: JSON.stringify({ username, password, role, display_name, dob, agree18, guest_token: S.guestToken, language: LANG }),
   });
   if (status === 200) return afterLogin(data);
-  const msgs = { username_taken: 'Username is taken 😕', must_be_18: 'You must be 18 or older.',
-    password_too_short: 'Password needs 6+ characters.' };
-  toast(msgs[data.error] || 'Signup failed.');
+  const msgs = { username_taken: t('err_username_taken'), must_be_18: t('err_must_be_18'),
+    password_too_short: t('err_password_short') };
+  toast(msgs[data.error] || t('err_signup_failed'));
 }
 
 /* ---------------- MODEL INVITE SIGNUP (?invite=CODE) ---------------- */
 
 async function vInviteSignup(code) {
+  // Language switches redraw this form (it isn't a show() view).
+  entryRerender = () => vInviteSignup(code);
   // Validate the code first
   let valid = false, label = '';
   try {
@@ -1769,30 +1926,32 @@ async function vInviteSignup(code) {
       <div class="header"><h1>Slut<span class="logo">Camp</span></h1></div>
       <div class="screen"><div class="card" style="text-align:center">
         <div style="font-size:40px">⛔</div>
-        <div style="font-weight:800;margin:8px 0">This invite link is invalid,<br>already used, or revoked.</div>
-        <div class="muted small">Ask SlutCamp for a fresh invite link.</div>
-        <button class="btn ghost" style="margin-top:12px" onclick="show('landing',{})">← Back to browsing</button>
+        <div style="font-weight:800;margin:8px 0">${t('invalid_invite_h')}</div>
+        <div class="muted small">${t('invalid_invite_sub')}</div>
+        <div class="lang-row">${langPillsHTML()}</div>
+        <button class="btn ghost" style="margin-top:12px" onclick="show('landing',{})">${t('back_browsing')}</button>
       </div></div>`;
     return;
   }
 
   app.innerHTML = `
     <div class="header"><h1>Slut<span class="logo">Camp</span> 💃</h1>
-      <div class="sub">You've been invited to join as a model${label ? ` · <b>${esc(label)}</b>` : ''}</div></div>
+      <div class="sub">${t('invited_model_sub')}${label ? ` · <b>${esc(label)}</b>` : ''}</div></div>
     <div class="screen">
       <div class="card" style="background:linear-gradient(135deg,#3b1d6e,#1a0f2e);text-align:center">
-        <div style="font-size:18px;font-weight:800">💰 Get paid to chat with fans</div>
-        <div class="muted small" style="margin-top:4px">$1.49 per text · $3.99/min video · tips & PPV unlocks<br>Weekly payouts from SlutCamp</div>
+        <div style="font-size:18px;font-weight:800">${t('paid_chat_h')}</div>
+        <div class="muted small" style="margin-top:4px">${t('invite_earn_sub')}</div>
       </div>
-      <label class="field">Display name (your stage name)<input class="input" id="i-name" maxlength="40"></label>
-      <label class="field">Username<input class="input" id="i-user" autocomplete="username"></label>
-      <label class="field">Password (6+ characters)${pwField('i-pass', 'new-password')}</label>
-      <label class="field">Date of birth<input class="input" id="i-dob" type="date"></label>
-      <div class="age-box">🔞 <b>18+ only.</b> SlutCamp will verify your ID in person (2257 compliance) before you go live.</div>
+      <label class="field">${t('stage_name_label')}<input class="input" id="i-name" maxlength="40"></label>
+      <label class="field">${t('username')}<input class="input" id="i-user" autocomplete="username"></label>
+      <label class="field">${t('password_hint')}${pwField('i-pass', 'new-password')}</label>
+      <label class="field">${t('dob')}<input class="input" id="i-dob" type="date"></label>
+      <div class="age-box">🔞 <b>${t('age18_only')}</b> ${t('age_id_note')}</div>
       <label class="checkbox-row"><input type="checkbox" id="i-18">
-        <span>I confirm I am <b>18 years or older</b>.</span></label>
-      <button class="btn" id="i-go">Create model account</button>
-      <button class="btn ghost" id="i-back" style="margin-top:12px">← Back</button>
+        <span>${t('confirm18')}</span></label>
+      <div class="lang-row">${langPillsHTML()}</div>
+      <button class="btn" id="i-go">${t('create_model_btn')}</button>
+      <button class="btn ghost" id="i-back" style="margin-top:12px">${t('back')}</button>
     </div>`;
 
   $('#i-back').onclick = () => show('landing', {});
@@ -1802,23 +1961,25 @@ async function vInviteSignup(code) {
     const password = $('#i-pass').value;
     const dob = $('#i-dob').value;
     const agree18 = $('#i-18').checked;
-    if (!display_name || !username || !password || !dob) return toast('Fill in every field');
-    if (!agree18) return toast('You must confirm you are 18+');
+    if (!display_name || !username || !password || !dob) return toast(t('fill_all_fields'));
+    if (!agree18) return toast(t('must_confirm_18'));
     const { status, data } = await api('/auth/signup', {
       method: 'POST',
       body: JSON.stringify({ username, password, role: 'model', display_name, dob, agree18,
         guest_token: S.guestToken, invite_code: code, language: LANG }),
     });
     if (status === 200) return afterLogin(data);
-    const msgs = { username_taken: 'Username is taken 😕', must_be_18: 'You must be 18 or older.',
-      password_too_short: 'Password needs 6+ characters.',
-      bad_invite: 'Invite link is invalid or revoked.', invite_used: 'Invite link already used.' };
-    toast(msgs[data.error] || data.message || 'Signup failed.');
+    const msgs = { username_taken: t('err_username_taken'), must_be_18: t('err_must_be_18'),
+      password_too_short: t('err_password_short'),
+      bad_invite: t('err_bad_invite'), invite_used: t('err_invite_used') };
+    toast(msgs[data.error] || data.message || t('err_signup_failed'));
   };
 }
 
 /* Partner referral signup: model joins through a recruiter's link */
 async function vRecruiterSignup(code) {
+  // Language switches redraw this form (it isn't a show() view).
+  entryRerender = () => vRecruiterSignup(code);
   let valid = false, recruiterName = '';
   try {
     const { status, data } = await api(`/referral/${encodeURIComponent(code)}`);
@@ -1831,30 +1992,32 @@ async function vRecruiterSignup(code) {
       <div class="header"><h1>Slut<span class="logo">Camp</span></h1></div>
       <div class="screen"><div class="card" style="text-align:center">
         <div style="font-size:40px">⛔</div>
-        <div style="font-weight:800;margin:8px 0">This referral link is invalid.</div>
-        <div class="muted small">Ask the person who sent it for a fresh link.</div>
-        <button class="btn ghost" style="margin-top:12px" onclick="show('landing',{})">← Back to browsing</button>
+        <div style="font-weight:800;margin:8px 0">${t('invalid_ref_h')}</div>
+        <div class="muted small">${t('invalid_ref_sub')}</div>
+        <div class="lang-row">${langPillsHTML()}</div>
+        <button class="btn ghost" style="margin-top:12px" onclick="show('landing',{})">${t('back_browsing')}</button>
       </div></div>`;
     return;
   }
 
   app.innerHTML = `
     <div class="header"><h1>Slut<span class="logo">Camp</span> 💃</h1>
-      <div class="sub">Invited by <b>${esc(recruiterName)}</b> 🤝</div></div>
+      <div class="sub">${t('invited_by', { name: esc(recruiterName) })}</div></div>
     <div class="screen">
       <div class="card" style="background:linear-gradient(135deg,#3b1d6e,#1a0f2e);text-align:center">
-        <div style="font-size:18px;font-weight:800">💰 Get paid to chat with fans</div>
-        <div class="muted small" style="margin-top:4px">You keep 60% of everything · $1.49 per text · $3.99/min video<br>Weekly payouts from SlutCamp</div>
+        <div style="font-size:18px;font-weight:800">${t('paid_chat_h')}</div>
+        <div class="muted small" style="margin-top:4px">${t('rec_earn_sub')}</div>
       </div>
-      <label class="field">Display name (your stage name)<input class="input" id="i-name" maxlength="40"></label>
-      <label class="field">Username<input class="input" id="i-user" autocomplete="username"></label>
-      <label class="field">Password (6+ characters)${pwField('i-pass', 'new-password')}</label>
-      <label class="field">Date of birth<input class="input" id="i-dob" type="date"></label>
-      <div class="age-box">🔞 <b>18+ only.</b> SlutCamp will verify your ID in person (2257 compliance) before you go live.</div>
+      <label class="field">${t('stage_name_label')}<input class="input" id="i-name" maxlength="40"></label>
+      <label class="field">${t('username')}<input class="input" id="i-user" autocomplete="username"></label>
+      <label class="field">${t('password_hint')}${pwField('i-pass', 'new-password')}</label>
+      <label class="field">${t('dob')}<input class="input" id="i-dob" type="date"></label>
+      <div class="age-box">🔞 <b>${t('age18_only')}</b> ${t('age_id_note')}</div>
       <label class="checkbox-row"><input type="checkbox" id="i-18">
-        <span>I confirm I am <b>18 years or older</b>.</span></label>
-      <button class="btn" id="i-go">Create model account</button>
-      <button class="btn ghost" id="i-back" style="margin-top:12px">← Back</button>
+        <span>${t('confirm18')}</span></label>
+      <div class="lang-row">${langPillsHTML()}</div>
+      <button class="btn" id="i-go">${t('create_model_btn')}</button>
+      <button class="btn ghost" id="i-back" style="margin-top:12px">${t('back')}</button>
     </div>`;
 
   $('#i-back').onclick = () => show('landing', {});
@@ -1864,23 +2027,27 @@ async function vRecruiterSignup(code) {
     const password = $('#i-pass').value;
     const dob = $('#i-dob').value;
     const agree18 = $('#i-18').checked;
-    if (!display_name || !username || !password || !dob) return toast('Fill in every field');
-    if (!agree18) return toast('You must confirm you are 18+');
+    if (!display_name || !username || !password || !dob) return toast(t('fill_all_fields'));
+    if (!agree18) return toast(t('must_confirm_18'));
     const { status, data } = await api('/auth/signup', {
       method: 'POST',
       body: JSON.stringify({ username, password, role: 'model', display_name, dob, agree18,
         guest_token: S.guestToken, referral_code: code, language: LANG }),
     });
     if (status === 200) return afterLogin(data);
-    const msgs = { username_taken: 'Username is taken 😕', must_be_18: 'You must be 18 or older.',
-      password_too_short: 'Password needs 6+ characters.',
-      bad_referral: 'Referral link is invalid.' };
-    toast(msgs[data.error] || data.message || 'Signup failed.');
+    const msgs = { username_taken: t('err_username_taken'), must_be_18: t('err_must_be_18'),
+      password_too_short: t('err_password_short'),
+      bad_referral: t('err_bad_referral') };
+    toast(msgs[data.error] || data.message || t('err_signup_failed'));
   };
 }
 
 /* Affiliate signup via Corry's invite link — agreement popup required */
 async function vAffiliateSignup(code) {
+  // Language switches redraw this form (it isn't a show() view). The
+  // agreement text itself stays English — legal copy, like the rest of
+  // the app's long-tail legal strings; only the form chrome translates.
+  entryRerender = () => vAffiliateSignup(code);
   let valid = false, label = '';
   try {
     const { status, data } = await api(`/affiliate-invite/${encodeURIComponent(code)}`);
@@ -1893,9 +2060,10 @@ async function vAffiliateSignup(code) {
       <div class="header"><h1>Slut<span class="logo">Camp</span></h1></div>
       <div class="screen"><div class="card" style="text-align:center">
         <div style="font-size:40px">⛔</div>
-        <div style="font-weight:800;margin:8px 0">This invite link is invalid or expired.</div>
-        <div class="muted small">Ask Corry for a fresh invite link.</div>
-        <button class="btn ghost" style="margin-top:12px" onclick="show('landing',{})">← Back to browsing</button>
+        <div style="font-weight:800;margin:8px 0">${t('aff_invalid_h')}</div>
+        <div class="muted small">${t('aff_invalid_sub')}</div>
+        <div class="lang-row">${langPillsHTML()}</div>
+        <button class="btn ghost" style="margin-top:12px" onclick="show('landing',{})">${t('back_browsing')}</button>
       </div></div>`;
     return;
   }
@@ -1915,23 +2083,24 @@ async function vAffiliateSignup(code) {
 
   app.innerHTML = `
     <div class="header"><h1>Slut<span class="logo">Camp</span> 🤝</h1>
-      <div class="sub">Affiliate invite${label ? ` · ${esc(label)}` : ''}</div></div>
+      <div class="sub">${t('aff_invite_sub')}${label ? ` · ${esc(label)}` : ''}</div></div>
     <div class="screen">
       <div class="card" style="background:linear-gradient(135deg,#3b1d6e,#1a0f2e);text-align:center">
-        <div style="font-size:18px;font-weight:800">🤝 Become a SlutCamp Affiliate</div>
-        <div class="muted small" style="margin-top:4px">Recruit models · Earn 20% of everything they make<br>Your own referral link · Recruiter dashboard</div>
+        <div style="font-size:18px;font-weight:800">${t('aff_become_h')}</div>
+        <div class="muted small" style="margin-top:4px">${t('aff_become_sub')}</div>
       </div>
-      <label class="field">Your name<input class="input" id="a-name" maxlength="40"></label>
-      <label class="field">Username<input class="input" id="a-user" autocomplete="username"></label>
-      <label class="field">Password (6+ characters)${pwField('a-pass', 'new-password')}</label>
+      <label class="field">${t('your_name')}<input class="input" id="a-name" maxlength="40"></label>
+      <label class="field">${t('username')}<input class="input" id="a-user" autocomplete="username"></label>
+      <label class="field">${t('password_hint')}${pwField('a-pass', 'new-password')}</label>
       <div class="card" style="margin-top:12px;max-height:280px;overflow-y:auto;text-align:left">
-        <div style="font-weight:800;margin-bottom:8px">📋 Affiliate Agreement (vR1.0)</div>
+        <div style="font-weight:800;margin-bottom:8px">${t('aff_agreement_h')}</div>
         ${AGREEMENT.map(([t, b]) => `<div style="margin-bottom:10px"><div style="font-weight:700">${esc(t)}</div><div class="small muted">${esc(b)}</div></div>`).join('')}
       </div>
       <label class="checkbox-row" style="margin-top:12px"><input type="checkbox" id="a-agree">
-        <span>I have read the Affiliate Agreement above and I <b>agree</b> to all terms.</span></label>
-      <button class="btn" id="a-go">Accept & Create Affiliate Account</button>
-      <button class="btn ghost" id="a-back" style="margin-top:12px">← Back</button>
+        <span>${t('aff_agree')}</span></label>
+      <div class="lang-row">${langPillsHTML()}</div>
+      <button class="btn" id="a-go">${t('aff_accept_btn')}</button>
+      <button class="btn ghost" id="a-back" style="margin-top:12px">${t('back')}</button>
     </div>`;
 
   $('#a-back').onclick = () => show('landing', {});
@@ -1940,17 +2109,17 @@ async function vAffiliateSignup(code) {
     const username = $('#a-user').value.trim();
     const password = $('#a-pass').value;
     const agreed = $('#a-agree').checked;
-    if (!display_name || !username || !password) return toast('Fill in every field');
-    if (password.length < 6) return toast('Password needs 6+ characters.');
-    if (!agreed) return toast('You must accept the Affiliate Agreement to continue.');
+    if (!display_name || !username || !password) return toast(t('fill_all_fields'));
+    if (password.length < 6) return toast(t('err_password_short'));
+    if (!agreed) return toast(t('aff_must_agree'));
     const { status, data } = await api(`/affiliate-invite/${encodeURIComponent(code)}/signup`, {
       method: 'POST',
       body: JSON.stringify({ username, password, display_name, agreed: true }),
     });
     if (status === 200) return afterLogin(data);
-    const msgs = { username_taken: 'Username is taken 😕', bad_invite: 'Invite link is invalid.',
-      expired: 'Invite link expired.', must_agree: 'You must accept the agreement.', missing_fields: 'Fill in every field.' };
-    toast(msgs[data.error] || 'Signup failed.');
+    const msgs = { username_taken: t('err_username_taken'), bad_invite: t('err_invite_invalid'),
+      expired: t('err_invite_expired'), must_agree: t('aff_must_agree'), missing_fields: t('fill_all_fields') };
+    toast(msgs[data.error] || t('err_signup_failed'));
   };
 }
 
@@ -2291,6 +2460,7 @@ function vQuickSignup() {
         <label class="field">${t('password_hint')}${pwField('q-pass', 'new-password')}</label>
         <label class="checkbox-row"><input type="checkbox" id="q-18">
           <span>${t('confirm18')}</span></label>
+        <div class="lang-row">${langPillsHTML()}</div>
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:10px">${t('payment_info')}</div>
@@ -8761,6 +8931,20 @@ function checkAgeGate() {
     try { localStorage.removeItem('slutcamp_age_ok'); } catch (e) { /* ignore */ }
     const gate = $('#age-gate');
     gate.classList.remove('hidden');
+    // The gate's text lives in static HTML (English at first paint) —
+    // paint it from the dictionary in the visitor's current language,
+    // picker included, and repaint in place if she switches language
+    // right here at the door (see setLang).
+    const paintGate = () => {
+      const q = $('#gate-q');
+      if (!q) return;
+      q.textContent = t('gate_verify_h');
+      $('#gate-sub').textContent = t('gate_sub');
+      $('#gate-btn').textContent = t('gate_btn');
+      $('#gate-lang').innerHTML = langPillsHTML();
+    };
+    gateLangRefresh = paintGate;
+    paintGate();
     // Set max to today so future dates can't be picked
     const dob = $('#age-dob');
     dob.max = new Date().toISOString().slice(0, 10);
@@ -8770,7 +8954,7 @@ function checkAgeGate() {
       err.classList.add('hidden');
       const val = dob.value;
       if (!val) {
-        err.textContent = 'Please enter your date of birth.';
+        err.textContent = t('gate_err_empty');
         err.classList.remove('hidden');
         return;
       }
@@ -8783,7 +8967,7 @@ function checkAgeGate() {
           birth.getMonth() !== parts[1] - 1 ||
           birth.getDate() !== parts[2] ||
           birth > now || parts[0] < 1900) {
-        err.textContent = 'Please enter a valid date of birth.';
+        err.textContent = t('gate_err_invalid');
         err.classList.remove('hidden');
         return;
       }
@@ -8791,14 +8975,15 @@ function checkAgeGate() {
       const hadBirthday = now.getMonth() > birth.getMonth() ||
         (now.getMonth() === birth.getMonth() && now.getDate() >= birth.getDate());
       if (!hadBirthday) age--;
+      gateLangRefresh = null;
       if (age >= 18) {
         gate.classList.add('hidden');
         resolve();
       } else {
         gate.querySelector('.age-gate-card').innerHTML =
           '<h1 class="age-gate-logo">SLUT<span>CAMP</span></h1>' +
-          '<div class="age-gate-denied">You must be 18 or older to enter SlutCamp.</div>' +
-          '<p><a href="https://www.google.com">← Back to Google</a></p>';
+          '<div class="age-gate-denied">' + t('gate_denied') + '</div>' +
+          '<p><a href="https://www.google.com">' + t('gate_back_google') + '</a></p>';
       }
     };
   });
@@ -8895,6 +9080,8 @@ function startPresenceHeartbeat() {
 })();
 
 async function routeInitial() {
+  // The splash handed off — its in-place language hook is done.
+  splashLangRefresh = null;
   // Old secret admin route: #boss → management lives in Slut Manager now
   if (window.location.hash === '#boss') {
     location.replace('/manager');
@@ -9000,6 +9187,18 @@ window.addEventListener('hashchange', () => {
    lands the visitor wherever their link pointed. Audio is best-effort:
    a blocked/failed voice greeting never delays or blocks entering. */
 function vWelcomeSplash(onDone) {
+  // While the splash is up, a language switch just re-labels the splash
+  // in place (see setLang) — the destination routing still waits for
+  // Enter. The hook dies the moment routeInitial takes over.
+  splashLangRefresh = () => {
+    const t1 = document.getElementById('splash-t1');
+    if (!t1) return;
+    t1.textContent = t('splash_welcome');
+    document.getElementById('splash-t2').textContent = t('splash_paradise');
+    document.getElementById('splash-t3').textContent = t('splash_nutt');
+    document.getElementById('splash-enter').textContent = t('enter');
+    document.getElementById('splash-lang').innerHTML = langPillsHTML();
+  };
   tabbar.classList.add('hidden'); tabbar.innerHTML = '';
   app.innerHTML = `
     <div style="position:fixed;inset:0;overflow:hidden;background:radial-gradient(ellipse at center,#2a1040 0%,#0a0510 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;animation:fadeIn .5s ease">
@@ -9013,13 +9212,14 @@ function vWelcomeSplash(onDone) {
         <div style="text-align:center;font-size:28px;margin-top:8px">🏕️💦</div>
       </div>
       <div style="margin-top:24px;text-align:center;animation:fadeIn 1s ease .5s both">
-        <div style="font-size:20px;font-weight:700;color:#fff">${t('splash_welcome')}</div>
-        <div style="font-size:16px;color:#ff8ab5;margin-top:4px">${t('splash_paradise')}</div>
-        <div style="font-size:14px;color:#a78bfa;margin-top:8px">${t('splash_nutt')}</div>
+        <div id="splash-t1" style="font-size:20px;font-weight:700;color:#fff">${t('splash_welcome')}</div>
+        <div id="splash-t2" style="font-size:16px;color:#ff8ab5;margin-top:4px">${t('splash_paradise')}</div>
+        <div id="splash-t3" style="font-size:14px;color:#a78bfa;margin-top:8px">${t('splash_nutt')}</div>
       </div>
       <button id="splash-enter" class="btn" style="margin-top:32px;animation:fadeIn 1s ease 1s both;background:linear-gradient(135deg,#ff2d78,#b829dd);font-size:18px;padding:14px 48px;border-radius:30px">
         ${t('enter')}
       </button>
+      <div class="lang-row" id="splash-lang" style="margin-top:20px;animation:fadeIn 1s ease 1.2s both">${langPillsHTML()}</div>
       </div>
       <style>
         @keyframes logoPop { 0% { transform:scale(.3);opacity:0 } 60% { transform:scale(1.1) } 100% { transform:scale(1);opacity:1 } }
@@ -9043,6 +9243,7 @@ function vWelcomeSplash(onDone) {
   const enter = () => {
     if (handedOff) return;
     handedOff = true;
+    closeLangSheet();
     playGreeting();
     if (typeof onDone === 'function') onDone();
   };

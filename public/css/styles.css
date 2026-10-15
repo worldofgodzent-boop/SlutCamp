@@ -1585,6 +1585,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   display: flex; align-items: center; justify-content: center; padding: 20px;
 }
 .lang-sheet[hidden] { display: none; }
+.lang-sheet.over-splash { z-index: 10050; }
 .lang-sheet-card {
   width: 100%; max-width: 340px; background: var(--card);
   border: 1px solid rgba(255,92,158,.35); border-radius: 20px;

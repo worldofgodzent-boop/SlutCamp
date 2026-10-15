@@ -60,12 +60,15 @@
 <div id="age-gate" class="hidden">
   <div class="age-gate-card">
     <h1 class="age-gate-logo">SLUT<span>CAMP</span></h1>
-    <div class="age-gate-q">VERIFY YOUR AGE</div>
-    <p class="age-gate-sub">Enter your date of birth. You must be 18 or older to enter.</p>
+    <div class="age-gate-q" id="gate-q">VERIFY YOUR AGE</div>
+    <p class="age-gate-sub" id="gate-sub">Enter your date of birth. You must be 18 or older to enter.</p>
     <form id="age-form">
       <input id="age-dob" type="date" class="age-input" min="1900-01-01" required>
+      <!-- Language at the door: app.js fills this picker in below the
+           age input, before she enters anything (EN/ES/PT). -->
+      <div class="lang-row" id="gate-lang"></div>
       <p id="age-error" class="age-error hidden"></p>
-      <button type="submit" class="btn age-yes" style="width:100%;margin-top:12px">VERIFY & ENTER</button>
+      <button type="submit" class="btn age-yes" id="gate-btn" style="width:100%;margin-top:12px">VERIFY & ENTER</button>
     </form>
   </div>
 </div>
@@ -124,7 +127,7 @@
   <button id="install-dismiss" class="btn small ghost">Later</button>
 </div>
 
-<script src="/js/app.js?v=20261012lang"></script>
+<script src="/js/app.js?v=20261015doorlang"></script>
 <script>
   // Register the service worker (offline app shell). Fails silently if unsupported.
   if ('serviceWorker' in navigator) {
