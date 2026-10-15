@@ -101,6 +101,9 @@ const I18N = {
     ath_step1: '1. Tap the Share button ⬆ in your browser bar',
     ath_step2: "2. Tap 'Add to Home Screen'",
     ath_step3: "3. Tap 'Add' — done, she's on your home screen",
+    ath_astep1: '1. Tap the ⋮ menu in your browser',
+    ath_astep2: "2. Tap 'Install app' (or 'Add to Home screen')",
+    ath_astep3: "3. Tap 'Install' — done, she's on your home screen",
     ath_wallet_row: '📲 Add to Home Screen',
     no_models: 'No models yet.',
     pager_prev: '← Prev', pager_next: 'Next →', pager_page: 'Page {x} of {y}',
@@ -303,6 +306,9 @@ const I18N = {
     ath_step1: '1. Toca el botón Compartir ⬆ en la barra de tu navegador',
     ath_step2: "2. Toca 'Añadir a pantalla de inicio'",
     ath_step3: "3. Toca 'Añadir' — listo, ya está en tu pantalla de inicio",
+    ath_astep1: '1. Toca el menú ⋮ en tu navegador',
+    ath_astep2: "2. Toca 'Instalar app' (o 'Añadir a pantalla de inicio')",
+    ath_astep3: "3. Toca 'Instalar' — listo, ya está en tu pantalla de inicio",
     ath_wallet_row: '📲 Añadir a pantalla de inicio',
     no_models: 'Aún no hay modelos.',
     pager_prev: '← Anterior', pager_next: 'Siguiente →', pager_page: 'Página {x} de {y}',
@@ -502,6 +508,9 @@ const I18N = {
     ath_step1: '1. Toque no botão Compartilhar ⬆ na barra do navegador',
     ath_step2: "2. Toque em 'Adicionar à Tela de Início'",
     ath_step3: "3. Toque em 'Adicionar' — pronto, já está na sua tela inicial",
+    ath_astep1: '1. Toque no menu ⋮ do navegador',
+    ath_astep2: "2. Toque em 'Instalar app' (ou 'Adicionar à tela inicial')",
+    ath_astep3: "3. Toque em 'Instalar' — pronto, já está na sua tela inicial",
     ath_wallet_row: '📲 Adicionar à tela inicial',
     no_models: 'Ainda não há modelos.',
     pager_prev: '← Anterior', pager_next: 'Próxima →', pager_page: 'Página {x} de {y}',
@@ -3587,6 +3596,7 @@ async function vModelSettings() {
         </div>
       </div>
       <div class="card" id="tax-card"><div class="muted small">Loading tax info…</div></div>
+      <button class="btn ghost" id="s-ath" style="width:100%;margin-bottom:10px">${t('ath_wallet_row')}</button>
       <button class="btn ghost" id="s-logout">${t('log_out')}</button>
       <div class="card" id="tipmenu-card" style="margin-top:12px">
         <div style="font-weight:800;margin-bottom:6px">${t('tip_menu')}</div>
@@ -3716,6 +3726,8 @@ async function vModelSettings() {
     inp.click();
   };
   $('#s-logout').onclick = () => logout();
+  const sAth = $('#s-ath');
+  if (sAth) sAth.onclick = openAthSheet;
   // Preview video upload (offscreen input for iOS)
   const pvBtn = $('#s-preview-video');
   if (pvBtn) pvBtn.onclick = () => {
@@ -8156,11 +8168,13 @@ function endLiveView(msg) {
   else show('landing', {});
 }
 
-/* ---------------- PWA install: fan "Add to Home Screen" ---------------- */
-// Every fan gets an elegant, dismissible invitation — a slim card on the
-// fan Home view plus a permanent row in the Wallet. Never a blocking
-// popup: an invitation, not a nag (casino rule). Models already have
-// their own flow (the guide DM + video), so all of this is fan-only.
+/* ---------------- PWA install: "Add to Home Screen" ---------------- */
+// Every fan AND every model gets an elegant, dismissible invitation — a
+// slim card on the Home view (fans and models share fanModels), plus a
+// permanent row in the fan Wallet / in Model Settings. Never a blocking
+// popup: an invitation, not a nag (casino rule). One shared implementation
+// and one shared dismissed/installed flag, so whoever installs stops
+// seeing it everywhere.
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
@@ -8179,11 +8193,23 @@ function athIsStandalone() {
     window.navigator.standalone);
 }
 
-// Card markup — rendered with the fan Home view, but visible only for a
-// signed-in fan, in a browser (not the installed app), who has not
-// dismissed it on this device.
+// Which manual fallback the sheet shows when no native install prompt was
+// captured: Android gets the ⋮-menu steps (the how-to video demonstrates
+// iOS, so it would only confuse there); everything else keeps iOS steps.
+function athPlatform() {
+  const ua = (window.navigator && window.navigator.userAgent) || '';
+  if (/Android/i.test(ua)) return 'android';
+  if (/iPhone|iPad|iPod/i.test(ua)) return 'ios';
+  if (window.navigator && window.navigator.platform === 'MacIntel' &&
+      window.navigator.maxTouchPoints > 1) return 'ios'; // iPadOS posing as Mac
+  return 'other';
+}
+
+// Card markup — rendered with the Home view (shared by fans and models),
+// but visible only for a signed-in fan or model, in a browser (not the
+// installed app), who has not dismissed it on this device.
 function athCardHTML() {
-  if (!S.user || S.user.role !== 'fan') return '';
+  if (!S.user || (S.user.role !== 'fan' && S.user.role !== 'model')) return '';
   if (athIsStandalone()) return '';
   try { if (localStorage.getItem('sc_ath_dismissed') === '1') return ''; } catch (e) { /* ignore */ }
   return `
@@ -8205,23 +8231,31 @@ function wireAthCard() {
   };
 }
 
-// The add sheet — two paths: the browser's native install prompt when one
-// was captured (Android/Chrome), otherwise the how-to video + the 3 steps
-// (iOS Safari has no install prompt).
+// The add sheet — paths: the browser's native install prompt when one was
+// captured (Android/Chrome); otherwise platform steps — Android without a
+// captured prompt gets the ⋮-menu steps only (no video: it demonstrates
+// iOS), and iOS (which has no install prompt) gets the video + Share steps.
 function openAthSheet() {
   const sheet = document.createElement('div');
   sheet.className = 'sheet-backdrop';
+  const fallback = athPlatform() === 'android'
+    ? `<div class="ath-steps">
+         <div>${t('ath_astep1')}</div>
+         <div>${t('ath_astep2')}</div>
+         <div>${t('ath_astep3')}</div>
+       </div>`
+    : `<video class="ath-video" controls playsinline preload="metadata" src="/video/add-to-home-screen.mp4"></video>
+       <div class="ath-steps">
+         <div>${t('ath_step1')}</div>
+         <div>${t('ath_step2')}</div>
+         <div>${t('ath_step3')}</div>
+       </div>`;
   sheet.innerHTML = `
     <div class="sheet">
       <div style="font-weight:800;font-size:18px;margin-bottom:12px">${t('ath_sheet_t')}</div>
       ${deferredPrompt
         ? `<button class="btn" id="ath-install" style="width:100%;min-height:44px">${t('ath_install_btn')}</button>`
-        : `<video class="ath-video" controls playsinline preload="metadata" src="/video/add-to-home-screen.mp4"></video>
-           <div class="ath-steps">
-             <div>${t('ath_step1')}</div>
-             <div>${t('ath_step2')}</div>
-             <div>${t('ath_step3')}</div>
-           </div>`}
+        : fallback}
       <button class="btn ghost" id="ath-close" style="width:100%;margin-top:12px">${t('cancel')}</button>
     </div>`;
   document.body.appendChild(sheet);
