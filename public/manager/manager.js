@@ -404,6 +404,8 @@ async function adminInvitesBody() {
   const baseUrl = window.location.origin;
   const modelInvites = invites.filter((i) => i.role !== 'recruiter');
   const affInvites = invites.filter((i) => i.role === 'recruiter');
+  const cleanupCount = typeof data.cleanup_count === 'number' ? data.cleanup_count
+    : invites.filter((i) => !i.used_by || (i.expires_at && new Date(i.expires_at + 'Z') < new Date())).length;
   const inviteCard = (inv, isAff) => {
     const url = isAff ? `${baseUrl}/#affiliate/${inv.code}` : `${baseUrl}/?invite=${inv.code}`;
     const status = inv.is_revoked ? '<span style="color:var(--red)">⛔ Revoked</span>'
@@ -419,6 +421,7 @@ async function adminInvitesBody() {
           ${!inv.is_revoked ? `<button class="btn small" data-inv-copy="${inv.code}" data-aff="${isAff ? 1 : 0}">📋 Copy link</button>` : ''}
           ${!inv.is_revoked && !inv.used_by ? `<button class="btn small ghost" data-inv-refresh="${inv.id}">🔄 Refresh (6h)</button>` : ''}
           ${!inv.is_revoked ? `<button class="btn small danger" data-inv-revoke="${inv.id}" data-used="${inv.used_by ? 1 : 0}">Revoke</button>` : ''}
+          <button class="btn small danger" data-inv-del="${inv.id}" data-used="${inv.used_by ? 1 : 0}">🗑 Delete</button>
         </div>
       </div>`;
   };
@@ -434,6 +437,11 @@ async function adminInvitesBody() {
       <div class="muted small">Send this to someone you want as an affiliate — they sign up, see the Affiliate Agreement, must accept to continue. They get their own referral link and earn 20%.</div>
       <label class="field">Label (e.g. their name)<input class="input" id="aff-label" placeholder="Name"></label>
       <button class="btn" id="aff-gen">Generate affiliate invite</button>
+    </div>
+    <div class="card" style="padding:12px">
+      <div class="row"><span class="grow"><b>🧹 Clean up dead links</b><br>
+        <span class="small muted">${cleanupCount} link${cleanupCount === 1 ? '' : 's'} unused or expired across both lists. Delete them so the screen stays tidy — used invites that are still in their window stay put.</span></span>
+        <button class="btn small danger" id="inv-cleanup" data-count="${cleanupCount}"${cleanupCount ? '' : ' disabled'}>🧹 Delete unused & expired</button></div>
     </div>
     <h3>🤝 Affiliate invites (${affInvites.length})</h3>
     ${affInvites.map((inv) => inviteCard(inv, true)).join('') || '<div class="empty">No affiliate invites yet.</div>'}
@@ -1275,6 +1283,28 @@ function wireAdminBody(tab) {
       M.reload();
     };
   });
+  document.querySelectorAll('[data-inv-del]').forEach((b) => {
+    b.onclick = async () => {
+      const used = b.dataset.used === '1';
+      const msg = used
+        ? 'Delete this used invite from your list?\n\nShe keeps her account — this only removes the link from your list.'
+        : 'Delete this invite link?\n\nIt stops working right away and disappears from your list. This can\'t be undone.';
+      if (!confirm(msg)) return;
+      const { status } = await api(`/admin/invites/${b.dataset.invDel}`, { method: 'DELETE' });
+      toast(status === 200 ? '🗑 Invite deleted' : 'Could not delete that invite.');
+      M.reload();
+    };
+  });
+  const invCleanup = $('#inv-cleanup');
+  if (invCleanup) invCleanup.onclick = async () => {
+    const n = Number(invCleanup.dataset.count || 0);
+    if (!n) { toast('Nothing to clean up 🧹'); return; }
+    if (!confirm(`Delete ${n} links? Every unused or expired link goes; live links nobody used yet will stop working.`)) return;
+    const { status, data } = await api('/admin/invites/cleanup', {
+      method: 'POST', body: JSON.stringify({}) });
+    toast(status === 200 ? `Cleared ${data.deleted} links 🧹` : 'Cleanup failed.');
+    M.reload();
+  };
 
   // Partners
   const ptAdd = $('#pt-add');

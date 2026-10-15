@@ -7465,7 +7465,10 @@ app.get('/api/admin/invites', ...adminOnly, (req, res) => {
            u.banned AS used_by_banned
     FROM invite_links i LEFT JOIN users u ON u.id = i.used_by
     ORDER BY i.id DESC`).all();
-  res.json({ invites: rows.map((r) => ({
+  const cleanupCount = db.prepare(
+    `SELECT COUNT(*) AS n FROM invite_links
+     WHERE used_at IS NULL OR expires_at < datetime('now')`).get().n;
+  res.json({ cleanup_count: cleanupCount, invites: rows.map((r) => ({
     id: r.id, code: r.code, label: r.label, role: r.role || 'model',
     is_revoked: !!r.is_revoked, created_at: r.created_at, used_at: r.used_at,
     expires_at: r.expires_at,
@@ -7501,6 +7504,26 @@ app.post('/api/admin/invites/:id/refresh', ...adminOnly, (req, res) => {
   db.prepare(`UPDATE invite_links SET expires_at = datetime('now', '+6 hours') WHERE id = ?`).run(inv.id);
   const row = db.prepare('SELECT expires_at FROM invite_links WHERE id = ?').get(inv.id);
   res.json({ ok: true, id: inv.id, code: inv.code, expires_at: row.expires_at });
+});
+
+// Admin: bulk cleanup — delete every invite nobody used, plus every expired
+// one (used or not), so dead links stop crowding the list. A used invite
+// whose window is still open is kept (it's her signup history).
+app.post('/api/admin/invites/cleanup', ...adminOnly, (req, res) => {
+  const info = db.prepare(
+    `DELETE FROM invite_links WHERE used_at IS NULL OR expires_at < datetime('now')`
+  ).run();
+  res.json({ ok: true, deleted: Number(info.changes) });
+});
+
+// Admin: delete one invite link outright. The link dies immediately — a
+// signup attempt with its code afterwards fails as invalid. If she already
+// signed up through it, only this history row goes; her account is untouched.
+app.delete('/api/admin/invites/:id', ...adminOnly, (req, res) => {
+  const inv = db.prepare('SELECT * FROM invite_links WHERE id = ?').get(req.params.id);
+  if (!inv) return res.status(404).json({ error: 'not_found' });
+  txn(() => db.prepare('DELETE FROM invite_links WHERE id = ?').run(inv.id));
+  res.json({ ok: true, id: inv.id, was_used: !!inv.used_by });
 });
 
 /* ---------------- Recruiters / partners ---------------- */
