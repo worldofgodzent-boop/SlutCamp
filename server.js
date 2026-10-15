@@ -2168,11 +2168,16 @@ app.get('/api/conversations/:id/messages', identMiddleware, (req, res) => {
   res.json({ messages: msgs.reverse().map((m) => {
     let media = null;
     if (m.media_id) {
-      // Unlocked if: I'm the sender, I'm admin, or I (fan) unlocked it
+      // Unlocked if: I'm the sender, I'm admin, it's free ($0 media is open
+      // to everyone), I'm the model in this conversation (mirrors the file
+      // routes, which let her play anything in her own thread — e.g. a fan's
+      // voice note), or I (fan) unlocked it
       let unlocked = false;
       if (req.ident.kind === 'user') {
         const uid = req.ident.user.id;
         if (req.ident.user.role === 'admin' || m.sender_id === uid) unlocked = true;
+        else if (m.media_price_cents === 0) unlocked = true;
+        else if (req.ident.user.role === 'model' && conv.model_id === uid) unlocked = true;
         else if (meFanId) {
           unlocked = !!db.prepare('SELECT 1 FROM media_unlocks WHERE media_id = ? AND fan_id = ?')
             .get(m.media_id, meFanId);
