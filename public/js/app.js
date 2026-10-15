@@ -255,6 +255,21 @@ const I18N = {
     brb_name: '{name} will be right back',
     say_fans_ph: 'Say something to your fans…',
     explicit_rate_note: 'Explicit rate: {price}/min · Your preview is never blurred',
+    game_category: 'Game Category', game_btn: '🎲 Game',
+    game_regular: 'Regular', game_explicit: 'Explicit 🔞', game_specials: 'Specials 💦',
+    game_unlocks_explicit: 'Unlocks when she goes explicit',
+    game_resting: 'Resting 💤', game_ready: 'Ready ✅',
+    game_off_msg: 'The game is off right now — hang tight 🎲',
+    game_on: 'Game ON', game_off: 'Game OFF',
+    game_add_own: '＋ Add your own',
+    game_label_ph: 'What will you do?', game_price_ph: 'Price $',
+    game_duration_ph: 'Secs (optional)',
+    game_save: 'Save', game_delete: 'Delete',
+    game_queue: 'Requests', game_no_requests: 'No requests yet — they land here the second a fan buys 🎲',
+    game_start: '▶ Start', game_done: '✓ Done', game_skip: '✕ Skip',
+    game_now: 'NOW', game_bought: 'bought',
+    game_your_turn: 'Fans see this exact list. Tap an item to edit it.',
+    game_active: 'On menu', game_refunded_toast: '🎲 {label} was refunded to your wallet.',
     notifications_h: '🔔 Notifications', notifications_word: 'Notifications',
     mark_all_read: 'Mark all read',
   },
@@ -431,6 +446,21 @@ const I18N = {
     mic_on: '🎤 Micrófono activado', muted: '🔇 Silenciado', cam_on: '📹 Cámara activada', cam_off: '📷 Cámara apagada',
     go_explicit: 'Pasar a explícito 🔞', end_stream: 'Terminar transmisión',
     say_fans_ph: 'Di algo a tus fans…',
+    game_category: 'Game Category', game_btn: '🎲 Juego',
+    game_regular: 'Regular', game_explicit: 'Explícito 🔞', game_specials: 'Especiales 💦',
+    game_unlocks_explicit: 'Se desbloquea cuando ella se ponga explícita',
+    game_resting: 'Descansando 💤', game_ready: 'Listo ✅',
+    game_off_msg: 'El juego está apagado ahora — espera un momento 🎲',
+    game_on: 'Juego ON', game_off: 'Juego OFF',
+    game_add_own: '＋ Agrega el tuyo',
+    game_label_ph: '¿Qué harás?', game_price_ph: 'Precio $',
+    game_duration_ph: 'Segs (opcional)',
+    game_save: 'Guardar', game_delete: 'Eliminar',
+    game_queue: 'Solicitudes', game_no_requests: 'Aún no hay solicitudes — llegan aquí en cuanto un fan compre 🎲',
+    game_start: '▶ Empezar', game_done: '✓ Hecho', game_skip: '✕ Saltar',
+    game_now: 'AHORA', game_bought: 'compró',
+    game_your_turn: 'Los fans ven esta misma lista. Toca un ítem para editarlo.',
+    game_active: 'En el menú', game_refunded_toast: '🎲 {label} fue reembolsado a tu billetera.',
     explicit_rate_note: 'Tarifa explícita: {price}/min · Tu vista previa nunca se difumina',
     notifications_h: '🔔 Notificaciones', notifications_word: 'Notificaciones',
     mark_all_read: 'Marcar todo leído',
@@ -608,6 +638,21 @@ const I18N = {
     mic_on: '🎤 Microfone ligado', muted: '🔇 Silenciado', cam_on: '📹 Câmera ligada', cam_off: '📷 Câmera desligada',
     go_explicit: 'Ficar explícita 🔞', end_stream: 'Encerrar live',
     say_fans_ph: 'Diga algo aos seus fãs…',
+    game_category: 'Game Category', game_btn: '🎲 Jogo',
+    game_regular: 'Regular', game_explicit: 'Explícito 🔞', game_specials: 'Especiais 💦',
+    game_unlocks_explicit: 'Desbloqueia quando ela ficar explícita',
+    game_resting: 'Descansando 💤', game_ready: 'Pronto ✅',
+    game_off_msg: 'O jogo está desligado agora — aguenta aí 🎲',
+    game_on: 'Jogo ON', game_off: 'Jogo OFF',
+    game_add_own: '＋ Adicione o seu',
+    game_label_ph: 'O que você vai fazer?', game_price_ph: 'Preço $',
+    game_duration_ph: 'Segs (opcional)',
+    game_save: 'Salvar', game_delete: 'Excluir',
+    game_queue: 'Pedidos', game_no_requests: 'Ainda sem pedidos — eles chegam aqui assim que um fã comprar 🎲',
+    game_start: '▶ Começar', game_done: '✓ Feito', game_skip: '✕ Pular',
+    game_now: 'AGORA', game_bought: 'comprou',
+    game_your_turn: 'Os fãs veem exatamente esta lista. Toque em um item para editá-lo.',
+    game_active: 'No menu', game_refunded_toast: '🎲 {label} foi reembolsado para sua carteira.',
     explicit_rate_note: 'Tarifa explícita: {price}/min · Sua prévia nunca fica borrada',
     notifications_h: '🔔 Notificações', notifications_word: 'Notificações',
     mark_all_read: 'Marcar tudo como lido',
@@ -1058,6 +1103,8 @@ function handleWS(m) {
   } else if (m.type === 'live:explicit' && S.live && S.live.role === 'fan' && m.session_id === S.live.sessionId) {
     if (m.explicit_entry_cents) S.live.entryCents = m.explicit_entry_cents;
     onLiveExplicitSignal(m.is_explicit, m.explicit_rate_cents, 'manual');
+    // Game Category: explicit rows unlock/lock live with her mode
+    if ($('#game-sheet')) renderGameSheetBody();
   } else if (m.type === 'live:brb' && S.live && m.session_id === S.live.sessionId) {
     applyLiveBrb(!!m.brb);
   } else if (m.type === 'live:ended' && S.live && m.session_id === S.live.sessionId) {
@@ -1158,6 +1205,28 @@ function handleWS(m) {
     }, 1000);
   } else if (m.type === 'live:join-request-cancelled' && S.live && S.live.role === 'model' && m.session_id === S.live.sessionId) {
     renderStageRequests();
+  } else if (m.type === 'game:request' && S.live && m.session_id === S.live.sessionId) {
+    // His name + his request splash across BOTH stages
+    showGameSplash(m);
+    if (S.live.role === 'model') {
+      refreshGameBadge();
+      if ($('#game-sheet') && gameEditId == null) renderGamePanelBody();
+      if (typeof refreshMe === 'function') refreshMe();
+    }
+  } else if (m.type === 'game:now' && S.live && m.session_id === S.live.sessionId) {
+    showGameNow(m);
+  } else if (m.type === 'game:update' && S.live && m.session_id === S.live.sessionId) {
+    if (S.live.gameNowId === m.request_id) clearGameNow();
+    if (S.live.role === 'model') {
+      refreshGameBadge();
+      if ($('#game-sheet') && gameEditId == null) renderGamePanelBody();
+    }
+  } else if (m.type === 'game:state' && S.live && m.session_id === S.live.sessionId) {
+    S.live.gameOn = !!m.game_on;
+    if ($('#game-sheet') && S.live.role === 'fan') renderGameSheetBody();
+  } else if (m.type === 'game:refunded' && S.live && m.session_id === S.live.sessionId) {
+    if (m.balance_cents != null && S.wallet) S.wallet.credits_cents = m.balance_cents;
+    toast(t('game_refunded_toast', { label: m.label || '' }), 4000);
   } else if (m.type === 'withdrawal:decided' && S.user && (S.user.role === 'model' || S.user.role === 'recruiter')) {
     if (m.status === 'paid') toast(`💸 ${fmt(m.amount_cents)} is on its way to your bank!`, 4000);
     else toast(`Withdrawal ${fmt(m.amount_cents)} was not approved${m.note ? ': ' + m.note : ''} — funds are still available.`, 4000);
@@ -6113,6 +6182,8 @@ function vLiveBroadcast() {
       ${L.title ? `<div class="live-title">${esc(L.title)}</div>` : ''}
       <div id="priority-banner" class="hidden"></div>
       <div id="gift-stack"></div>
+      <div id="game-splash" class="hidden"></div>
+      <div id="game-now" class="hidden"></div>
       <div id="stage-pip" class="hidden">
         <div id="stage-info" class="stage-info"></div>
         <button class="btn small danger" id="stage-drop-btn">Drop ⏏️</button>
@@ -6135,10 +6206,13 @@ function vLiveBroadcast() {
             <button class="btn small danger" id="live-end-btn">${t('end_stream')}</button>
           </div>
           <div class="muted small" style="text-align:center;margin-top:6px">${t('explicit_rate_note', { price: fmt(L.explicitRate) })}</div>
+          <button class="btn small ghost" id="game-panel-btn" style="width:100%;margin-top:8px">🎲 ${t('game_category')} <span id="game-queue-badge" class="hidden" style="background:var(--pink);color:#fff;border-radius:999px;padding:1px 8px;font-weight:800"></span></button>
         </div>
       </div>
     </div>`;
   $('#live-local').srcObject = L.stream;
+  $('#game-panel-btn').onclick = openGamePanel;
+  refreshGameBadge();
   $('#live-explicit-btn').onclick = liveToggleExplicit;
   $('#live-pause-btn').onclick = liveToggleBrb;
   const brbResumeBtn = $('#live-brb-resume');
@@ -6725,6 +6799,333 @@ async function sendGift(giftId, sheet) {
   }
 }
 
+/* ---------------- GAME CATEGORY (her priced request list on live) ---------------- */
+
+// Splash: his name + his request across the upper stage, on BOTH stages.
+let gameSplashTimer = null;
+function showGameSplash(m) {
+  const el = $('#game-splash');
+  if (!el) return;
+  el.innerHTML = `🔥 <b>${esc(m.fan_name)}</b> ${t('game_bought')}: ${esc(m.label)} <span class="game-splash-price">${fmt(m.price_cents)}</span>`;
+  el.classList.remove('hidden', 'show');
+  void el.offsetWidth; // restart the CSS animation
+  el.classList.add('show');
+  clearTimeout(gameSplashTimer);
+  gameSplashTimer = setTimeout(() => { el.classList.add('hidden'); el.classList.remove('show'); }, 4600);
+}
+
+// NOW chip: what she's doing right now, with a live countdown when the
+// item has a duration. Clears on game:update, expiry, or view change.
+function showGameNow(m) {
+  const L = S.live;
+  if (!L) return;
+  clearGameNow();
+  const el = $('#game-now');
+  if (!el) return;
+  L.gameNowId = m.request_id;
+  const end = m.duration_sec ? Date.now() + m.duration_sec * 1000 : 0;
+  const paint = () => {
+    if (!$('#game-now') || (S.live && S.live.gameNowId !== m.request_id)) { clearGameNow(); return; }
+    let cd = '';
+    if (end) {
+      const left = Math.max(0, Math.round((end - Date.now()) / 1000));
+      if (left <= 0) { clearGameNow(); return; }
+      cd = ` · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+    }
+    el.innerHTML = `🎲 <b>${t('game_now')}:</b> ${esc(m.label)} — ${esc(m.fan_name)}${cd}`;
+  };
+  el.classList.remove('hidden');
+  paint();
+  if (end) L.gameNowInt = setInterval(paint, 500);
+}
+
+function clearGameNow() {
+  const L = S.live;
+  if (L && L.gameNowInt) { clearInterval(L.gameNowInt); L.gameNowInt = null; }
+  if (L) L.gameNowId = null;
+  const el = $('#game-now');
+  if (el) { el.classList.add('hidden'); el.innerHTML = ''; }
+}
+
+// Her stage button badge: open requests waiting in the queue.
+async function refreshGameBadge() {
+  const L = S.live;
+  if (!L || L.role !== 'model') return;
+  const badge = $('#game-queue-badge');
+  if (!badge) return;
+  try {
+    const { status, data } = await api(`/live/${L.sessionId}/game-queue`);
+    if (status !== 200 || !data || !S.live || S.live.sessionId !== L.sessionId) return;
+    const n = (data.requests || []).filter((r) => r.status === 'pending' || r.status === 'current').length;
+    badge.textContent = n;
+    badge.classList.toggle('hidden', n === 0);
+  } catch (e) { /* badge is a bonus */ }
+}
+
+/* ---- FAN: the Game Category sheet ---- */
+
+async function openGameSheet() {
+  const L = S.live;
+  if (!L || L.role !== 'fan') return;
+  let sheet = $('#game-sheet');
+  if (sheet) sheet.remove();
+  sheet = document.createElement('div');
+  sheet.id = 'game-sheet';
+  sheet.className = 'sheet-backdrop';
+  sheet.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-title">🎲 ${t('game_category')}
+        <span class="muted small">· ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span></div>
+      <div id="game-sheet-body"><div class="muted" style="text-align:center;padding:14px">…</div></div>
+      <button class="btn ghost" id="game-close" style="margin-top:10px">Close</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  $('#game-close').onclick = () => sheet.remove();
+  sheet.onclick = (e) => { if (e.target === sheet) sheet.remove(); };
+  renderGameSheetBody();
+}
+
+async function renderGameSheetBody() {
+  const L = S.live;
+  const body = $('#game-sheet-body');
+  if (!L || L.role !== 'fan' || !body) return;
+  const { status, data } = await api(`/live/${L.sessionId}/game-menu`);
+  if (!$('#game-sheet-body')) return; // sheet closed mid-fetch
+  if (status !== 200 || !data) {
+    body.innerHTML = '<div class="muted" style="text-align:center;padding:14px">—</div>';
+    return;
+  }
+  L.gameOn = !!data.game_on;
+  if (!data.game_on) {
+    body.innerHTML = `<div class="muted" style="text-align:center;padding:18px 6px">${t('game_off_msg')}</div>`;
+    return;
+  }
+  const secs = [['regular', t('game_regular')], ['explicit', t('game_explicit')], ['special', t('game_specials')]];
+  body.innerHTML = secs.map(([key, title]) => {
+    const items = (data.sections && data.sections[key]) || [];
+    if (!items.length) return '';
+    return `<div class="game-sec-h">${title}</div>` + items.map((it) => {
+      const locked = key === 'explicit' && !data.is_explicit;
+      const resting = key === 'special' && !it.special_ready;
+      const dur = it.duration_sec ? ` <span class="muted small">· ${it.duration_sec}s</span>` : '';
+      const right = resting
+        ? `<span class="muted small">${t('game_resting')}</span>`
+        : `<span class="tip-price">${fmt(it.price_cents)}</span>${locked ? ' <span>🔒</span>' : ''}`;
+      return `<button class="game-row${locked ? ' locked' : ''}${resting ? ' resting' : ''}" data-game-buy="${it.id}" ${locked || resting ? 'disabled' : ''}>
+        <span class="grow"><span class="title">${esc(it.label)}</span>${dur}
+        ${locked ? `<div class="muted small">🔒 ${t('game_unlocks_explicit')}</div>` : ''}</span>
+        <span class="game-row-right">${right}</span>
+      </button>`;
+    }).join('');
+  }).join('') || '<div class="muted" style="text-align:center;padding:14px">—</div>';
+  body.querySelectorAll('[data-game-buy]').forEach((b) => {
+    b.onclick = () => buyGameItem(parseInt(b.dataset.gameBuy));
+  });
+}
+
+// One tap buys — no confirm dialog (casino rule, same as PPV). The only
+// interruption is an empty balance → top-up.
+async function buyGameItem(itemId) {
+  const L = S.live;
+  if (!L) return;
+  const { status, data } = await api(`/live/${L.sessionId}/game-buy`, {
+    method: 'POST', body: JSON.stringify({ item_id: itemId }) });
+  if (status === 200) {
+    if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
+    toast('🎲 Sent! Watch her screen 🔥', 3000);
+    renderGameSheetBody(); // a bought special flips to Resting, balance repaints
+  } else if (status === 402) {
+    toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500);
+    showBuyCredits(data.needed_cents);
+  } else if (status === 403 && data.error === 'explicit_locked') {
+    toast(`🔒 ${t('game_unlocks_explicit')}`, 3000);
+    renderGameSheetBody();
+  } else if (status === 409) {
+    toast(t('game_resting'), 2500);
+    renderGameSheetBody();
+  } else if (status === 423) {
+    toast(t('game_off_msg'), 3000);
+    renderGameSheetBody();
+  } else {
+    toast("Hmm — that one didn't go through.");
+  }
+}
+
+/* ---- MODEL: list builder + work queue, inside her live ---- */
+
+let gameEditId = null;
+
+async function openGamePanel() {
+  const L = S.live;
+  if (!L || L.role !== 'model') return;
+  gameEditId = null;
+  let sheet = $('#game-sheet');
+  if (sheet) sheet.remove();
+  sheet = document.createElement('div');
+  sheet.id = 'game-sheet';
+  sheet.className = 'sheet-backdrop';
+  sheet.innerHTML = `
+    <div class="sheet game-panel">
+      <div class="sheet-title">🎲 ${t('game_category')}</div>
+      <div id="game-sheet-body"><div class="muted" style="text-align:center;padding:14px">…</div></div>
+      <button class="btn ghost" id="game-close" style="margin-top:10px">Close</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  $('#game-close').onclick = () => sheet.remove();
+  sheet.onclick = (e) => { if (e.target === sheet) sheet.remove(); };
+  renderGamePanelBody();
+}
+
+function gameItemEditorHTML(it) {
+  return `<div class="game-editor" data-editor="${it.id}">
+    <input class="input game-ed-label" type="text" maxlength="80" value="${esc(it.label)}" placeholder="${t('game_label_ph')}">
+    <div class="row" style="gap:8px;margin-top:8px">
+      <input class="input game-ed-price" type="number" min="1" max="1000" step="0.5" value="${(it.price_cents / 100).toFixed(2)}" placeholder="${t('game_price_ph')}" style="flex:1">
+      <input class="input game-ed-duration" type="number" min="0" max="600" step="5" value="${it.duration_sec || ''}" placeholder="${t('game_duration_ph')}" style="flex:1">
+    </div>
+    <label class="game-active-lbl"><input type="checkbox" class="game-ed-active" ${it.active ? 'checked' : ''}> ${t('game_active')}</label>
+    <div class="row" style="gap:8px;margin-top:8px">
+      <button class="btn small" data-game-save="${it.id}" style="flex:1">${t('game_save')}</button>
+      <button class="btn small danger" data-game-delete="${it.id}" style="flex:1">${t('game_delete')}</button>
+    </div>
+  </div>`;
+}
+
+async function renderGamePanelBody() {
+  const L = S.live;
+  const body = $('#game-sheet-body');
+  if (!L || L.role !== 'model' || !body) return;
+  const [{ data: itemsData }, { data: queueData }] = await Promise.all([
+    api('/game/items'),
+    api(`/live/${L.sessionId}/game-queue`),
+  ]);
+  if (!$('#game-sheet-body')) return;
+  const items = (itemsData && itemsData.items) || [];
+  const gameOn = !!(queueData && queueData.game_on);
+  L.gameOn = gameOn;
+  const reqs = (queueData && queueData.requests) || [];
+  const open = reqs.filter((r) => r.status === 'pending' || r.status === 'current');
+  const done = reqs.filter((r) => r.status === 'done').slice(-3);
+
+  const queueHTML = `
+    <div class="game-sec-h">🎯 ${t('game_queue')}</div>
+    ${open.length ? open.map((r) => `
+      <div class="game-req-row${r.status === 'current' ? ' current' : ''}">
+        <span class="grow"><b>${esc(r.fan_name)}</b> · ${esc(r.label)} <span class="tip-price">${fmt(r.price_cents)}</span></span>
+        ${r.status === 'pending' ? `<button class="btn small" data-game-start="${r.id}">${t('game_start')}</button>` : ''}
+        <button class="btn small" data-game-done="${r.id}">${t('game_done')}</button>
+        <button class="btn small danger" data-game-skip="${r.id}">${t('game_skip')}</button>
+      </div>`).join('')
+    : `<div class="muted small" style="padding:4px 2px 8px">${t('game_no_requests')}</div>`}
+    ${done.map((r) => `<div class="game-req-row done"><span class="grow muted">✓ <b>${esc(r.fan_name)}</b> · ${esc(r.label)}</span><span class="muted small">${fmt(r.price_cents)}</span></div>`).join('')}`;
+
+  const secs = [['regular', t('game_regular')], ['explicit', t('game_explicit')], ['special', t('game_specials')]];
+  const itemsHTML = `<div class="muted small" style="margin:12px 0 2px">${t('game_your_turn')}</div>` +
+    secs.map(([key, title]) => {
+      const list = items.filter((i) => i.section === key);
+      return `<div class="game-sec-h">${title}</div>` + list.map((it) => `
+        <div class="game-item-row${it.active ? '' : ' inactive'}" data-game-edit="${it.id}">
+          <span class="grow"><span class="title">${esc(it.label)}</span>${it.duration_sec ? ` <span class="muted small">· ${it.duration_sec}s</span>` : ''}</span>
+          <span class="tip-price">${fmt(it.price_cents)}</span>
+          ${key === 'special' ? `<button class="btn small ${it.special_ready ? '' : 'ghost'}" data-game-ready="${it.id}" data-ready="${it.special_ready ? 0 : 1}">${it.special_ready ? t('game_ready') : t('game_resting')}</button>` : ''}
+        </div>
+        ${gameEditId === it.id ? gameItemEditorHTML(it) : ''}`).join('') + `
+        <div class="game-add" data-add="${key}">
+          <input class="input game-add-label" type="text" maxlength="80" placeholder="${t('game_label_ph')}">
+          <input class="input game-add-price" type="number" min="1" max="1000" step="0.5" placeholder="${t('game_price_ph')}">
+          <input class="input game-add-duration" type="number" min="0" max="600" step="5" placeholder="${t('game_duration_ph')}">
+          <button class="btn small" data-game-add="${key}">${t('game_add_own')}</button>
+        </div>`;
+    }).join('');
+
+  body.innerHTML = `
+    <button class="btn" id="game-toggle" style="width:100%;background:${gameOn ? 'linear-gradient(135deg,#10b981,#047857)' : 'var(--card2)'}">${gameOn ? '🟢 ' + t('game_on') : '⚪ ' + t('game_off')}</button>
+    ${queueHTML}
+    ${itemsHTML}`;
+
+  $('#game-toggle').onclick = async () => {
+    const { status } = await api(`/live/${L.sessionId}/game`, {
+      method: 'POST', body: JSON.stringify({ on: !gameOn }) });
+    if (status === 200) renderGamePanelBody();
+  };
+  body.querySelectorAll('[data-game-start]').forEach((b) => {
+    b.onclick = () => gameResolve(parseInt(b.dataset.gameStart), 'start');
+  });
+  body.querySelectorAll('[data-game-done]').forEach((b) => {
+    b.onclick = () => gameResolve(parseInt(b.dataset.gameDone), 'done');
+  });
+  body.querySelectorAll('[data-game-skip]').forEach((b) => {
+    b.onclick = () => gameResolve(parseInt(b.dataset.gameSkip), 'skip');
+  });
+  body.querySelectorAll('[data-game-ready]').forEach((b) => {
+    b.onclick = async (e) => {
+      e.stopPropagation();
+      const { status } = await api(`/game/items/${b.dataset.gameReady}/ready`, {
+        method: 'POST', body: JSON.stringify({ ready: b.dataset.ready === '1' }) });
+      if (status === 200) renderGamePanelBody();
+    };
+  });
+  body.querySelectorAll('[data-game-edit]').forEach((row) => {
+    row.onclick = () => {
+      gameEditId = gameEditId === parseInt(row.dataset.gameEdit) ? null : parseInt(row.dataset.gameEdit);
+      renderGamePanelBody();
+    };
+  });
+  body.querySelectorAll('[data-game-save]').forEach((b) => {
+    b.onclick = () => gameSaveItem(parseInt(b.dataset.gameSave));
+  });
+  body.querySelectorAll('[data-game-delete]').forEach((b) => {
+    b.onclick = async () => {
+      const { status } = await api(`/game/items/${b.dataset.gameDelete}`, { method: 'DELETE' });
+      if (status === 200) { gameEditId = null; renderGamePanelBody(); }
+    };
+  });
+  body.querySelectorAll('[data-game-add]').forEach((b) => {
+    b.onclick = () => gameAddItem(b.dataset.gameAdd);
+  });
+  refreshGameBadge();
+}
+
+function gameItemError(data) {
+  if (data && data.error === 'label_not_allowed')
+    return toast('⚠️ That label is not allowed — no contact or payment info in game items.', 4000);
+  toast('⚠️ Check the label (1–80 chars), price ($1–$1,000) and seconds (5–600).', 4000);
+}
+
+async function gameSaveItem(id) {
+  const ed = document.querySelector(`[data-editor="${id}"]`);
+  if (!ed) return;
+  const label = ed.querySelector('.game-ed-label').value.trim();
+  const price = Math.round(parseFloat(ed.querySelector('.game-ed-price').value || '0') * 100);
+  const durRaw = ed.querySelector('.game-ed-duration').value;
+  const duration_sec = durRaw === '' ? null : parseInt(durRaw);
+  const active = ed.querySelector('.game-ed-active').checked;
+  const { status, data } = await api(`/game/items/${id}`, {
+    method: 'PUT', body: JSON.stringify({ label, price_cents: price, duration_sec, active }) });
+  if (status === 200) { gameEditId = null; renderGamePanelBody(); toast('✓ Saved'); }
+  else gameItemError(data);
+}
+
+async function gameAddItem(section) {
+  const box = document.querySelector(`[data-add="${section}"]`);
+  if (!box) return;
+  const label = box.querySelector('.game-add-label').value.trim();
+  const price = Math.round(parseFloat(box.querySelector('.game-add-price').value || '0') * 100);
+  const durRaw = box.querySelector('.game-add-duration').value;
+  const duration_sec = durRaw === '' ? null : parseInt(durRaw);
+  const { status, data } = await api('/game/items', {
+    method: 'POST', body: JSON.stringify({ section, label, price_cents: price, duration_sec }) });
+  if (status === 200) renderGamePanelBody();
+  else gameItemError(data);
+}
+
+async function gameResolve(id, action) {
+  const { status } = await api(`/game/requests/${id}/resolve`, {
+    method: 'POST', body: JSON.stringify({ action }) });
+  if (status === 200) { renderGamePanelBody(); refreshGameBadge(); }
+  else toast("That request already changed — list refreshed.", 2500), renderGamePanelBody();
+}
+
 /* ---------------- CHAT GIFTS (TikTok-style emoji gifts in 1:1 chat) ---------------- */
 
 // Parse the gift payload off a message (live WS attach or persisted gift_json)
@@ -7305,6 +7706,8 @@ function vLiveWatch() {
       <div id="live-brb-overlay" class="${L.brb ? '' : 'hidden'}">${liveBrbCardHTML(L.modelName)}<button class="btn ghost" id="live-brb-leave" style="margin-top:18px">Leave stream</button></div>
       <div id="gift-anim" class="hidden"></div>
       <div id="gift-stack"></div>
+      <div id="game-splash" class="hidden"></div>
+      <div id="game-now" class="hidden"></div>
       <div class="live-top">
         <span class="live-badge">🔴 LIVE</span>
         <span class="live-viewers">${esc(L.modelName || '')}</span>
@@ -7323,6 +7726,7 @@ function vLiveWatch() {
           <button class="btn small" id="tipmenu-open-btn" style="margin:0;background:linear-gradient(135deg,#f59e0b,#f97316)" aria-label="Tip menu">💰</button>
           <button class="btn small" id="priority-open-btn" style="margin:0;background:linear-gradient(135deg,#f59e0b,#ef4444)" aria-label="Send priority message">📢</button>
           <button class="btn small" id="stage-join-btn" style="margin:0;background:linear-gradient(135deg,#8b5cf6,#3b82f6)" aria-label="Join live on camera">🎥</button>
+          <button class="btn small" id="game-open-btn" style="margin:0;background:linear-gradient(135deg,#ff5c9e,#FA4D92)" aria-label="Game Category">🎲</button>
         </div>
         <div class="stream-chat-input fan live-typing-bubble">
           <input id="stream-chat-box" class="input" placeholder="Chat is FREE — say hi! 💬" maxlength="500" autocomplete="off">
@@ -7354,6 +7758,7 @@ function vLiveWatch() {
   sendBox.onkeydown = (e) => { if (e.key === 'Enter') sendIt(); };
   lockCopyForFans($('#stream-chat'), sendBox);
   $('#gift-open-btn').onclick = openGiftPanel;
+  $('#game-open-btn').onclick = openGameSheet;
   const tmob = $('#tipmenu-open-btn');
   if (tmob && S.live) tmob.onclick = () => openTipMenuSheet(S.live.modelId, S.live.modelName || 'her', 'live');
   $('#priority-open-btn').onclick = openPriorityPanel;

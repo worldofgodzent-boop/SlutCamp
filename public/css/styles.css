@@ -1619,3 +1619,79 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 .mw-steps-h { font-weight: 800; margin-top: 16px; text-align: left; }
 .mw-steps { text-align: left; margin-top: 6px; display: flex; flex-direction: column; gap: 5px; font-size: 14.5px; color: var(--muted); }
 .mw-btn { width: 100%; margin-top: 18px; }
+
+/* ---------- Game Category ---------- */
+/* Splash: his name + his request across the upper stage (both stages).
+   Above the video, clear of the top control row; never interactive. */
+#game-splash {
+  position: absolute; top: 24%; left: 50%; transform: translateX(-50%);
+  z-index: 8; pointer-events: none; width: max-content; max-width: 92%;
+  background: linear-gradient(135deg, rgba(250,77,146,.92), rgba(139,92,246,.92));
+  color: #fff; font-weight: 700; font-size: 16.5px; text-align: center;
+  padding: 11px 20px; border-radius: 999px; border: 1px solid rgba(255,179,199,.65);
+  box-shadow: 0 8px 32px rgba(250,77,146,.5);
+  opacity: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#game-splash.show { animation: gameSplashIn 4.6s ease forwards; }
+#game-splash .game-splash-price { color: #ffe9a8; font-weight: 900; }
+@keyframes gameSplashIn {
+  0% { opacity: 0; transform: translateX(-50%) translateY(-14px) scale(.92); }
+  8% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.03); }
+  12% { transform: translateX(-50%) scale(1); }
+  85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+}
+/* NOW chip: the request she's performing, with countdown */
+#game-now {
+  position: absolute; top: calc(104px + env(safe-area-inset-top)); left: 50%;
+  transform: translateX(-50%); z-index: 8; pointer-events: none;
+  width: max-content; max-width: 92%;
+  background: rgba(10,5,20,.78); color: #fff; font-size: 14.5px; font-weight: 600;
+  padding: 8px 16px; border-radius: 999px; border: 1px solid var(--pink);
+  box-shadow: 0 4px 22px rgba(250,77,146,.35);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  animation: msgIn .25s ease;
+}
+.game-sec-h {
+  font-weight: 800; font-size: 14.5px; color: var(--peach);
+  margin: 14px 2px 8px; letter-spacing: .2px;
+}
+.game-row {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  min-height: 52px; text-align: left; cursor: pointer; color: var(--text);
+  background: rgba(139,92,246,.1); border: 1px solid rgba(255,179,199,.22);
+  border-radius: 14px; padding: 10px 14px; margin-bottom: 8px;
+  font-family: inherit; font-size: 15.5px;
+}
+.game-row .title { font-weight: 700; }
+.game-row:active { transform: scale(.98); }
+.game-row.locked, .game-row.resting { opacity: .55; filter: grayscale(.45); cursor: default; }
+.game-row.locked:active, .game-row.resting:active { transform: none; }
+.game-row-right { margin-left: auto; white-space: nowrap; }
+/* Model panel */
+.game-panel .game-item-row {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  min-height: 48px; cursor: pointer;
+  background: rgba(139,92,246,.08); border: 1px solid rgba(139,92,246,.22);
+  border-radius: 12px; padding: 8px 12px; margin-bottom: 6px; font-size: 15px;
+}
+.game-panel .game-item-row .title { font-weight: 700; }
+.game-panel .game-item-row.inactive { opacity: .5; }
+.game-editor {
+  background: rgba(0,0,0,.25); border: 1px solid rgba(255,179,199,.25);
+  border-radius: 12px; padding: 10px 12px; margin: -2px 0 10px;
+}
+.game-active-lbl { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 14.5px; color: var(--muted); }
+.game-active-lbl input { width: 20px; height: 20px; accent-color: var(--pink); }
+.game-add {
+  display: grid; grid-template-columns: 1fr 84px 96px; gap: 6px; margin: 2px 0 6px;
+}
+.game-add .game-add-label { grid-column: 1 / -1; }
+.game-add .btn { grid-column: 1 / -1; }
+.game-req-row {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  background: rgba(250,77,146,.12); border: 1px solid rgba(250,77,146,.45);
+  border-radius: 12px; padding: 8px 10px; margin-bottom: 6px; font-size: 14.5px;
+}
+.game-req-row.current { background: rgba(16,185,129,.14); border-color: rgba(16,185,129,.55); }
+.game-req-row.done { background: rgba(139,92,246,.06); border-color: rgba(139,92,246,.18); }

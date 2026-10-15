@@ -471,6 +471,42 @@ CREATE TABLE IF NOT EXISTS live_sessions (
   ended_at            TEXT
 );
 
+-- Game Category: the model's own priced request list for her lives.
+-- She authors items in three sections; presets are copied in on first
+-- fetch so she can edit/delete them like her own.
+CREATE TABLE IF NOT EXISTS game_items (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  model_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  section       TEXT NOT NULL CHECK(section IN ('regular','explicit','special')),
+  label         TEXT NOT NULL,
+  price_cents   INTEGER NOT NULL,
+  duration_sec  INTEGER,
+  active        INTEGER NOT NULL DEFAULT 1,
+  special_ready INTEGER NOT NULL DEFAULT 0,
+  sort          INTEGER NOT NULL DEFAULT 0,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_game_items_model ON game_items(model_id, section, sort, id);
+
+-- Game Category purchases on a live session. Label/price are snapshots
+-- (she can edit her list mid-live; a bought request never changes).
+-- status: pending → current (she started it) → done | skipped (refunded)
+-- | refunded (auto-refund when the live ended first).
+CREATE TABLE IF NOT EXISTS game_requests (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id  INTEGER NOT NULL REFERENCES live_sessions(id) ON DELETE CASCADE,
+  model_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  fan_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  item_id     INTEGER REFERENCES game_items(id) ON DELETE SET NULL,
+  label       TEXT NOT NULL,
+  price_cents INTEGER NOT NULL,
+  status      TEXT NOT NULL DEFAULT 'pending'
+              CHECK(status IN ('pending','current','done','skipped','refunded')),
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  resolved_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_game_req_session ON game_requests(session_id, status, id);
+
 -- Fans watching a live session
 CREATE TABLE IF NOT EXISTS live_viewers (
   session_id   INTEGER NOT NULL REFERENCES live_sessions(id) ON DELETE CASCADE,
@@ -641,6 +677,8 @@ addColumnIfMissing('models', 'explicit_rate_cents', 'INTEGER NOT NULL DEFAULT 49
 addColumnIfMissing('models', 'photo_url', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('live_sessions', 'title', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('live_sessions', 'brb', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('live_sessions', 'game_on', 'INTEGER NOT NULL DEFAULT 0'); // Game Category live this session
+addColumnIfMissing('platform_stats', 'game_category_announced_at', 'TEXT'); // one-time model broadcast stamp
 addColumnIfMissing('live_viewers', 'explicit_until', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_viewers', 'explicit_paid', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'explicit_gift_grace_sec', 'INTEGER NOT NULL DEFAULT 180');
@@ -1650,6 +1688,47 @@ function sendPendingModelHomeScreenVideos() {
   for (const r of rows) { try { sendModelHomeScreenVideo(r.id); } catch (e) { /* retry next boot */ } }
 }
 
+/* ------------------------------------------------------------------ */
+/* Game Category launch announcement — ONE-TIME broadcast to every    */
+/* model, same admin-thread DM pattern as the guide/ATH videos. The   */
+/* stamp lives on platform_stats (game_category_announced_at): once   */
+/* set, no boot ever sends it again. Models who sign up later don't   */
+/* get it (their welcome flow covers features); every model who       */
+/* exists at launch gets exactly one copy.                            */
+/* ------------------------------------------------------------------ */
+const GAME_CATEGORY_ANNOUNCE_TEXT = "🎲 NEW UPDATE: Game Category is here! On your live, fans can now tap Game Category and buy requests from YOUR list — your items, your prices, and his name + his request splash across your screen. Build your list in your live controls (ready-made ideas are already loaded — make them yours), and flip the game ON when you're ready. The Specials shelf holds your rare treats: you decide when they're available 💋 How it works: https://slutcamp.app/img/game-category-announce.png";
+
+function announceGameCategoryToModels() {
+  const st = db.prepare('SELECT game_category_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.game_category_announced_at) return 0;
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin) return 0;
+  const models = db.prepare("SELECT id FROM users WHERE role = 'model' AND banned = 0").all();
+  let sent = 0;
+  for (const m of models) {
+    if (m.id === admin.id) continue;
+    try {
+      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
+      if (!conv) {
+        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
+        conv = { id: Number(info.lastInsertRowid) };
+      }
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, admin.id, GAME_CATEGORY_ANNOUNCE_TEXT);
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(m.id, 'game_category', '🎲 NEW UPDATE: Game Category is here!',
+          'Fans can now buy requests from YOUR list on live — build it in your live controls 💋', '');
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest — flag stays unset only if ALL fail */ }
+  }
+  if (sent > 0 || models.length === 0) {
+    db.prepare("UPDATE platform_stats SET game_category_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
 function seed() {
   const count = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
   if (count > 0) return;
@@ -1688,6 +1767,7 @@ sendPendingModelWelcomes();
 sendPendingModelGuides();
 sendPendingModelGuideVideos();
 sendPendingModelHomeScreenVideos();
+try { const n = announceGameCategoryToModels(); if (n) console.log(`[game] Category announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 
 // One-time pre-launch cleanup (Corry, Oct 12 2026): every cent on the
 // platform so far is TEST money — demo credits only, no real payment has
@@ -4020,12 +4100,12 @@ app.get('/api/model/earnings', identMiddleware, requireUser, requireRole('model'
     SELECT COALESCE(u.display_name, 'Guest Fan') AS fan_name,
            SUM(t.model_cents) AS earned_cents, COUNT(*) AS payments
     FROM transactions t LEFT JOIN users u ON u.id = t.fan_id
-    WHERE t.model_id = ? AND t.is_test = 0 AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift')
+    WHERE t.model_id = ? AND t.is_test = 0 AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift','game')
     GROUP BY t.fan_id ORDER BY earned_cents DESC`).all(req.user.id);
   const byType = db.prepare(`
     SELECT t.type, SUM(t.model_cents) AS earned_cents, COUNT(*) AS n
     FROM transactions t
-    WHERE t.model_id = ? AND t.is_test = 0 AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift')
+    WHERE t.model_id = ? AND t.is_test = 0 AND t.type IN ('message','call','tip','ppv','voice','live_explicit','gift','game')
     GROUP BY t.type`).all(req.user.id);
   const gifts = db.prepare(`
     SELECT COALESCE(SUM(t.model_cents), 0) AS gifts_cents, COUNT(*) AS gift_count
@@ -4794,6 +4874,8 @@ app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
       balance_cents: getWallet(r.fan_id).credits_cents });
   }
   dropStageFan(sess.id, 'stream_ended');
+  // Game Category: requests she never got to are refunded in full.
+  refundPendingGameRequests(sess, clientIp(req));
   pushLiveViewers(sess.id, { type: 'live:ended', session_id: sess.id });
   pushToUser(sess.model_id, { type: 'live:ended', session_id: sess.id });
   res.json({ ok: true });
@@ -4954,6 +5036,296 @@ app.post('/api/live/:id/brb', identMiddleware, requireUser, (req, res) => {
   res.json({ ok: true, brb: !!brb });
 });
 
+/* ------------------------------------------------------------------ */
+/* GAME CATEGORY — her priced request list on live. Fans buy from     */
+/* three sections: regular (any time she's live), explicit (locked    */
+/* until the session is explicit — server-enforced), special (rare;   */
+/* she flips availability, a buy rests it again). Purchases splash    */
+/* across both stages (game:request); she works a queue: start →      */
+/* game:now countdown chip, done, or skip (full refund). Anything     */
+/* still pending when the live ends auto-refunds in full.             */
+/* ------------------------------------------------------------------ */
+
+const GAME_PRESETS = [
+  // [section, label, price_cents, duration_sec]
+  ['regular', 'Twerk for 30 seconds', 1500, 30],
+  ['regular', 'Blow a kiss + say my name', 500, null],
+  ['regular', 'Spin & show my outfit', 500, null],
+  ['regular', 'Dance to a song you pick', 1500, null],
+  ['regular', 'Answer a personal question', 1000, null],
+  ['regular', 'Show my feet', 1000, null],
+  ['explicit', 'Flash', 2000, null],
+  ['explicit', 'Strip one item off', 3500, null],
+  ['explicit', 'Touch myself for 30 seconds', 4000, 30],
+  ['explicit', 'Toy play for 30 seconds', 5000, 30],
+  ['explicit', 'Sit on a toy for 10 seconds', 7500, 10],
+  ['explicit', 'Rate my photo', 2500, null],
+  ['special', 'Moan my name for 1 minute', 5000, 60],
+  ['special', 'Pee on camera', 10000, null],
+  ['special', 'Squirt', 10000, null],
+  ['special', 'Finish on camera', 15000, null],
+  ['special', 'Outfit change — you pick', 4000, null],
+];
+
+// First fetch with an empty list: the starter shelf is COPIED into her
+// own rows so every preset is hers to edit, reprice, or delete.
+function seedGamePresets(modelId) {
+  const n = db.prepare('SELECT COUNT(*) AS c FROM game_items WHERE model_id = ?').get(modelId).c;
+  if (n > 0) return;
+  const ins = db.prepare(`INSERT INTO game_items
+    (model_id, section, label, price_cents, duration_sec, active, special_ready, sort)
+    VALUES (?,?,?,?,?,1,0,?)`);
+  GAME_PRESETS.forEach((p, i) => ins.run(modelId, p[0], p[1], p[2], p[3], i));
+}
+
+const gameItemOut = (it) => ({
+  id: it.id, section: it.section, label: it.label, price_cents: it.price_cents,
+  duration_sec: it.duration_sec, active: !!it.active, special_ready: !!it.special_ready,
+  sort: it.sort,
+});
+
+function validateGameItem(body) {
+  const section = String(body.section || '');
+  if (!['regular', 'explicit', 'special'].includes(section))
+    return { error: 'bad_section' };
+  const label = String(body.label || '').trim();
+  if (label.length < 1 || label.length > 80) return { error: 'bad_label' };
+  const matched = safetyScan(label);
+  if (matched) return { error: 'label_not_allowed', matched };
+  const price = parseInt(body.price_cents);
+  if (!Number.isInteger(price) || price < 100 || price > 100000)
+    return { error: 'bad_price' };
+  let duration = null;
+  if (body.duration_sec !== undefined && body.duration_sec !== null && body.duration_sec !== '' && body.duration_sec !== 0) {
+    duration = parseInt(body.duration_sec);
+    if (!Number.isInteger(duration) || duration < 5 || duration > 600)
+      return { error: 'bad_duration' };
+  }
+  return { section, label, price_cents: price, duration_sec: duration };
+}
+
+/* ---- Model: her list (CRUD) ---- */
+
+app.get('/api/game/items', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  seedGamePresets(req.user.id);
+  const items = db.prepare(
+    'SELECT * FROM game_items WHERE model_id = ? ORDER BY section, sort, id').all(req.user.id);
+  res.json({ items: items.map(gameItemOut) });
+});
+
+app.post('/api/game/items', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  seedGamePresets(req.user.id);
+  const v = validateGameItem(req.body || {});
+  if (v.error) return res.status(400).json(v);
+  const maxSort = db.prepare(
+    'SELECT COALESCE(MAX(sort), -1) AS m FROM game_items WHERE model_id = ? AND section = ?')
+    .get(req.user.id, v.section).m;
+  const info = db.prepare(`INSERT INTO game_items
+    (model_id, section, label, price_cents, duration_sec, active, special_ready, sort)
+    VALUES (?,?,?,?,?,1,0,?)`)
+    .run(req.user.id, v.section, v.label, v.price_cents, v.duration_sec, maxSort + 1);
+  const item = db.prepare('SELECT * FROM game_items WHERE id = ?').get(Number(info.lastInsertRowid));
+  res.json({ item: gameItemOut(item) });
+});
+
+app.put('/api/game/items/:id', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const item = db.prepare('SELECT * FROM game_items WHERE id = ? AND model_id = ?')
+    .get(req.params.id, req.user.id);
+  if (!item) return res.status(404).json({ error: 'not_found' });
+  // Section is fixed at creation; the editor covers label/price/duration/active.
+  const v = validateGameItem({ ...(req.body || {}), section: item.section });
+  if (v.error) return res.status(400).json(v);
+  const active = req.body.active === undefined ? item.active : (req.body.active ? 1 : 0);
+  db.prepare(`UPDATE game_items SET label = ?, price_cents = ?, duration_sec = ?, active = ?
+              WHERE id = ?`)
+    .run(v.label, v.price_cents, v.duration_sec, active, item.id);
+  res.json({ item: gameItemOut(db.prepare('SELECT * FROM game_items WHERE id = ?').get(item.id)) });
+});
+
+app.delete('/api/game/items/:id', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const item = db.prepare('SELECT * FROM game_items WHERE id = ? AND model_id = ?')
+    .get(req.params.id, req.user.id);
+  if (!item) return res.status(404).json({ error: 'not_found' });
+  db.prepare('DELETE FROM game_items WHERE id = ?').run(item.id);
+  res.json({ ok: true });
+});
+
+// Specials shelf: she decides when a rare item is available.
+app.post('/api/game/items/:id/ready', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const item = db.prepare('SELECT * FROM game_items WHERE id = ? AND model_id = ?')
+    .get(req.params.id, req.user.id);
+  if (!item) return res.status(404).json({ error: 'not_found' });
+  if (item.section !== 'special') return res.status(400).json({ error: 'not_special' });
+  const ready = req.body.ready ? 1 : 0;
+  db.prepare('UPDATE game_items SET special_ready = ? WHERE id = ?').run(ready, item.id);
+  res.json({ ok: true, special_ready: !!ready });
+});
+
+/* ---- Live session wiring ---- */
+
+// Model (or admin) flips the game on/off for her live.
+app.post('/api/live/:id/game', identMiddleware, requireUser, (req, res) => {
+  const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
+  if (!sess) return res.status(404).json({ error: 'not_found' });
+  if (req.user.role !== 'admin' && sess.model_id !== req.user.id)
+    return res.status(403).json({ error: 'forbidden' });
+  if (sess.status !== 'live') return res.status(410).json({ error: 'ended' });
+  const on = req.body.on ? 1 : 0;
+  db.prepare('UPDATE live_sessions SET game_on = ? WHERE id = ?').run(on, sess.id);
+  pushLiveAll(sess.id, { type: 'game:state', session_id: sess.id, game_on: !!on });
+  res.json({ ok: true, game_on: !!on });
+});
+
+// Fan-facing menu for a live session (the model can read it too — it's
+// exactly what her fans see, locks and all).
+app.get('/api/live/:id/game-menu', identMiddleware, requireUser, (req, res) => {
+  const sess = liveSessionOr404(req, res);
+  if (!sess) return;
+  if (!isLiveParticipant(sess, req.user)) return res.status(403).json({ error: 'join_first' });
+  seedGamePresets(sess.model_id);
+  const rows = db.prepare(
+    'SELECT * FROM game_items WHERE model_id = ? AND active = 1 ORDER BY section, sort, id')
+    .all(sess.model_id);
+  const sections = { regular: [], explicit: [], special: [] };
+  for (const it of rows) {
+    sections[it.section].push({ id: it.id, label: it.label, price_cents: it.price_cents,
+      duration_sec: it.duration_sec, special_ready: !!it.special_ready });
+  }
+  res.json({ game_on: !!sess.game_on, is_explicit: !!sess.is_explicit, sections });
+});
+
+// Fan buys a request. Gates in order: live → joined → game on → item
+// active → explicit unlocked → special ready → balance (402 = top-up,
+// the casino rule: the ONLY interruption money ever causes).
+app.post('/api/live/:id/game-buy', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const sess = liveSessionOr404(req, res);
+  if (!sess) return;
+  if (modelRegionBlocked(sess.model_id, geoOfReq(req))) return regionBlocked(res);
+  const viewer = db.prepare('SELECT * FROM live_viewers WHERE session_id = ? AND fan_id = ?')
+    .get(sess.id, req.user.id);
+  if (!viewer) return res.status(403).json({ error: 'join_first' });
+  if (!sess.game_on) return res.status(423).json({ error: 'game_off' });
+  const item = db.prepare('SELECT * FROM game_items WHERE id = ? AND model_id = ? AND active = 1')
+    .get(parseInt(req.body.item_id), sess.model_id);
+  if (!item) return res.status(404).json({ error: 'item_not_found' });
+  if (item.section === 'explicit' && !sess.is_explicit)
+    return res.status(403).json({ error: 'explicit_locked' });
+  if (item.section === 'special' && !item.special_ready)
+    return res.status(409).json({ error: 'special_resting' });
+
+  let charged;
+  try {
+    charged = chargeFan(req.user.id, sess.model_id, item.price_cents, 'game',
+      `🎲 Game Category: ${item.label} on stream #${sess.id}`, clientIp(req));
+  } catch (e) {
+    if (e.message === 'insufficient_credits')
+      return res.status(402).json({ error: 'insufficient_credits',
+        needed_cents: item.price_cents, balance_cents: getWallet(req.user.id).credits_cents });
+    throw e;
+  }
+  const info = db.prepare(`INSERT INTO game_requests
+    (session_id, model_id, fan_id, item_id, label, price_cents, status)
+    VALUES (?,?,?,?,?,?, 'pending')`)
+    .run(sess.id, sess.model_id, req.user.id, item.id, item.label, item.price_cents);
+  const requestId = Number(info.lastInsertRowid);
+  if (item.section === 'special')
+    db.prepare('UPDATE game_items SET special_ready = 0 WHERE id = ?').run(item.id);
+  const payload = { type: 'game:request', session_id: sess.id, request_id: requestId,
+    fan_id: req.user.id, fan_name: req.user.display_name, label: item.label,
+    price_cents: item.price_cents, duration_sec: item.duration_sec,
+    section: item.section };
+  pushLiveAll(sess.id, payload);
+  pushToAdmins({ type: 'game:request_admin', session_id: sess.id, model_id: sess.model_id,
+    fan_name: req.user.display_name, label: item.label, gross_cents: item.price_cents });
+  res.json({ ok: true, request_id: requestId,
+    balance_cents: getWallet(req.user.id).credits_cents });
+});
+
+// Her work queue for this session: what's current first, then pending
+// in buy order, then what she already resolved.
+app.get('/api/live/:id/game-queue', identMiddleware, requireUser, (req, res) => {
+  const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
+  if (!sess) return res.status(404).json({ error: 'not_found' });
+  if (req.user.role !== 'admin' && sess.model_id !== req.user.id)
+    return res.status(403).json({ error: 'forbidden' });
+  const rows = db.prepare(`
+    SELECT gr.*, u.display_name AS fan_name FROM game_requests gr
+    JOIN users u ON u.id = gr.fan_id
+    WHERE gr.session_id = ?
+    ORDER BY CASE gr.status WHEN 'current' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END, gr.id`)
+    .all(sess.id);
+  res.json({ game_on: !!sess.game_on, requests: rows.map((r) => ({
+    id: r.id, fan_id: r.fan_id, fan_name: r.fan_name, label: r.label,
+    price_cents: r.price_cents, status: r.status,
+    duration_sec: r.item_id
+      ? (db.prepare('SELECT duration_sec FROM game_items WHERE id = ?').get(r.item_id) || {}).duration_sec ?? null
+      : null,
+    created_at: r.created_at, resolved_at: r.resolved_at })) });
+});
+
+// She works the queue: start (NOW chip everywhere) · done · skip (the
+// fan is refunded in full — her prerogative, he's made whole).
+app.post('/api/game/requests/:id/resolve', identMiddleware, requireUser, (req, res) => {
+  const gr = db.prepare('SELECT * FROM game_requests WHERE id = ?').get(req.params.id);
+  if (!gr) return res.status(404).json({ error: 'not_found' });
+  if (req.user.role !== 'admin' && gr.model_id !== req.user.id)
+    return res.status(403).json({ error: 'forbidden' });
+  const action = String(req.body.action || '');
+  if (!['start', 'done', 'skip'].includes(action))
+    return res.status(400).json({ error: 'bad_action' });
+  if (!['pending', 'current'].includes(gr.status))
+    return res.status(409).json({ error: 'already_resolved', status: gr.status });
+
+  if (action === 'start') {
+    // One NOW at a time: a previously started request steps back to pending.
+    db.prepare(`UPDATE game_requests SET status = 'pending'
+                WHERE session_id = ? AND status = 'current' AND id != ?`).run(gr.session_id, gr.id);
+    db.prepare(`UPDATE game_requests SET status = 'current' WHERE id = ?`).run(gr.id);
+    const item = gr.item_id
+      ? db.prepare('SELECT duration_sec FROM game_items WHERE id = ?').get(gr.item_id) : null;
+    const fan = db.prepare('SELECT display_name FROM users WHERE id = ?').get(gr.fan_id);
+    pushLiveAll(gr.session_id, { type: 'game:now', session_id: gr.session_id,
+      request_id: gr.id, label: gr.label, fan_name: fan ? fan.display_name : '',
+      duration_sec: item ? item.duration_sec : null });
+    return res.json({ ok: true, status: 'current' });
+  }
+  if (action === 'done') {
+    db.prepare(`UPDATE game_requests SET status = 'done', resolved_at = datetime('now')
+                WHERE id = ?`).run(gr.id);
+    pushLiveAll(gr.session_id, { type: 'game:update', session_id: gr.session_id,
+      request_id: gr.id, status: 'done' });
+    return res.json({ ok: true, status: 'done' });
+  }
+  // skip → full refund through the standard reversal path
+  refundFan(gr.fan_id, gr.model_id, gr.price_cents, 'game_refund',
+    `🎲 Game Category skipped by model — refunded: ${gr.label}`, clientIp(req));
+  db.prepare(`UPDATE game_requests SET status = 'skipped', resolved_at = datetime('now')
+              WHERE id = ?`).run(gr.id);
+  pushLiveAll(gr.session_id, { type: 'game:update', session_id: gr.session_id,
+    request_id: gr.id, status: 'skipped' });
+  pushToUser(gr.fan_id, { type: 'game:refunded', session_id: gr.session_id,
+    request_id: gr.id, label: gr.label, refunded_cents: gr.price_cents,
+    balance_cents: getWallet(gr.fan_id).credits_cents });
+  res.json({ ok: true, status: 'skipped', refunded_cents: gr.price_cents });
+});
+
+// Live ended (or was killed) with requests still open: every fan is
+// refunded in full, automatically. Called from the end paths.
+function refundPendingGameRequests(sess, ip) {
+  const open = db.prepare(`SELECT * FROM game_requests
+    WHERE session_id = ? AND status IN ('pending','current')`).all(sess.id);
+  for (const gr of open) {
+    refundFan(gr.fan_id, sess.model_id, gr.price_cents, 'game_refund',
+      `🎲 Game Category — stream ended before: ${gr.label}`, ip || null);
+    db.prepare(`UPDATE game_requests SET status = 'refunded', resolved_at = datetime('now')
+                WHERE id = ?`).run(gr.id);
+    pushToUser(gr.fan_id, { type: 'game:refunded', session_id: sess.id,
+      request_id: gr.id, label: gr.label, refunded_cents: gr.price_cents,
+      balance_cents: getWallet(gr.fan_id).credits_cents });
+  }
+  return open.length;
+}
+
 // Fan client reports an AI blur/pay event (server logs it for the admin)
 app.post('/api/live/:id/blur-event', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
@@ -5014,6 +5386,7 @@ function killLiveSession(sess, reason) {
       balance_cents: getWallet(r.fan_id).credits_cents });
   }
   dropStageFan(sess.id, 'stream_ended');
+  refundPendingGameRequests(sess, 'safety-kill');
   pushLiveViewers(sess.id, { type: 'live:ended', session_id: sess.id, reason });
   pushToUser(sess.model_id, { type: 'live:ended', session_id: sess.id, reason });
 }
@@ -6047,7 +6420,7 @@ app.get('/api/admin/overview', ...adminOnly, (req, res) => {
            COALESCE(SUM(platform_cents),0) AS platform_cents,
            COALESCE(SUM(recruiter_cents),0) AS recruiter_cents
     FROM transactions
-    WHERE is_test = 0 AND type IN ('message','call','tip','ppv','voice','live_explicit','gift')`;
+    WHERE is_test = 0 AND type IN ('message','call','tip','ppv','voice','live_explicit','gift','game')`;
   const today = db.prepare(LEDGER_SUM + ' AND created_at >= ?').get(chicagoStartOfDaySql());
   const allTime = db.prepare(LEDGER_SUM).get();
   res.json({ ...row, gross_today_cents: today.gross_cents, today, all_time: allTime });
@@ -6067,7 +6440,7 @@ app.get('/api/admin/stats', ...adminOnly, (req, res) => {
       (SELECT COUNT(*) FROM strikes WHERE flagged = 1) AS flagged_accounts,
       (SELECT COUNT(*) FROM dmca_notices WHERE status IN ('received','under_review')) AS open_dmca,
       (SELECT COALESCE(SUM(gross_cents),0) FROM transactions
-        WHERE is_test = 0 AND type IN ('message','call','tip','ppv','voice','live_explicit','gift')) AS gross_volume_cents`).get();
+        WHERE is_test = 0 AND type IN ('message','call','tip','ppv','voice','live_explicit','gift','game')) AS gross_volume_cents`).get();
   res.json({ ...stats, ...counts });
 });
 
