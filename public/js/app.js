@@ -1889,8 +1889,10 @@ async function vFanModels() {
   if (!isModelViewer) {
     try { const f = await api('/follows'); following = f.data.following || []; } catch (e) {}
   }
+  const isFanUser = !!(S.user && S.user.role === 'fan');
   app.innerHTML = `
-    <div class="header"><h1>Slut<span class="logo">Camp</span></h1>
+    <div class="header"><div class="home-head-row"><h1>Slut<span class="logo">Camp</span></h1>
+      ${isFanUser ? `<button class="btn small ghost home-logout-btn" id="home-logout">${t('log_out')}</button>` : ''}</div>
       <div>${inPreview
         ? '<span class="balance-pill">👁 Previewing as fan</span>'
         : isModelViewer
@@ -1904,6 +1906,8 @@ async function vFanModels() {
     </div>`;
   const lv = $('#go-lives');
   if (lv) lv.onclick = () => show('lives', {});
+  const hlo = $('#home-logout');
+  if (hlo) hlo.onclick = () => { if (confirm('Log out of SlutCamp?')) logout(); };
   app.querySelectorAll('[data-model]').forEach((b) => {
     b.onclick = () => {
       if (isModelViewer) {

@@ -86,6 +86,12 @@ html, body {
 }
 .balance-pill:active { transform: scale(.95); }
 
+/* Fan home header row: wordmark left, Log out pill right (rendered for
+   logged-in fans only). Sits in the h1 band (inset+12 → ~inset+52), clear
+   above the floating .notif-bell (top: inset+56). */
+.home-head-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.home-logout-btn { min-height: 40px; flex-shrink: 0; }
+
 /* ---------- Admin fan-preview banner (in-flow strip above #app) ---------- */
 .preview-banner {
   flex: 0 0 auto;
