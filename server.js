@@ -2669,7 +2669,10 @@ app.post('/api/media/:id/file-token', identMiddleware, (req, res) => {
   }
   if (!allowed) return res.status(403).json({ error: 'locked' });
   const token = crypto.randomBytes(24).toString('hex');
-  fileTokens.set(token, { mediaId: media.id, userId: uid, expires: Date.now() + 90 * 1000 });
+  // Media elements (esp. iOS AVFoundation) make MULTIPLE requests per playback
+  // (probe + range fetches + play), so the token must stay valid until expiry —
+  // single-use tokens made every phone playback fail with "Error" (Oct 14 bug).
+  fileTokens.set(token, { mediaId: media.id, userId: uid, expires: Date.now() + 10 * 60 * 1000 });
   res.json({ token, url: `/api/media/${media.id}/file?t=${token}` });
 });
 
@@ -2683,10 +2686,12 @@ app.get('/api/media/:id/file', (req, res) => {
     const ft = fileTokens.get(req.query.t);
     if (!ft || ft.mediaId !== media.id || ft.expires < Date.now())
       return res.status(403).json({ error: 'bad_token' });
-    fileTokens.delete(req.query.t); // single use
+    // NOT deleted on use: players re-request (ranges, seeks, retries) with the
+    // same token until it expires. sendFile gives us 206 Range support, which
+    // iOS audio/video playback requires.
     res.setHeader('Content-Type', media.mime);
     res.setHeader('Cache-Control', 'private, max-age=3600');
-    return fs.createReadStream(media.file_path).pipe(res);
+    return res.sendFile(path.resolve(media.file_path));
   }
 
   // Header path (fetch API)
@@ -2706,7 +2711,7 @@ app.get('/api/media/:id/file', (req, res) => {
     message: '🔒 Unlock this to view.' });
   res.setHeader('Content-Type', media.mime);
   res.setHeader('Cache-Control', 'private, max-age=3600');
-  fs.createReadStream(media.file_path).pipe(res);
+  return res.sendFile(path.resolve(media.file_path));
 });
 
 /* ------------------------------------------------------------------ */
