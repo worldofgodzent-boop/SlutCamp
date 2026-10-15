@@ -692,6 +692,7 @@ addColumnIfMissing('live_sessions', 'title', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('live_sessions', 'brb', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_sessions', 'game_on', 'INTEGER NOT NULL DEFAULT 0'); // Game Category live this session
 addColumnIfMissing('platform_stats', 'game_category_announced_at', 'TEXT'); // one-time model broadcast stamp
+addColumnIfMissing('platform_stats', 'agreement_12_announced_at', 'TEXT'); // one-time v1.2 agreement broadcast stamp
 addColumnIfMissing('live_viewers', 'explicit_until', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_viewers', 'explicit_paid', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'explicit_gift_grace_sec', 'INTEGER NOT NULL DEFAULT 180');
@@ -855,11 +856,14 @@ try {
   db.prepare(`UPDATE users SET display_name = 'Asce (Admin)' WHERE username = 'admin' AND display_name = 'Corry (Admin)'`).run();
 } catch (e) { /* already renamed */ }
 
-// Model contract signatures (independent-contractor agreement)
+// Model contract signatures (independent-contractor agreement).
+// History-preserving since v1.2 (Oct 15, 2026): one row PER SIGNING, so
+// re-signing a new version never overwrites the old record — readers
+// always take a user's LATEST row for the relevant version family.
 db.exec(`
 CREATE TABLE IF NOT EXISTS contract_signatures (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
+  user_id INTEGER NOT NULL REFERENCES users(id),
   contract_version TEXT NOT NULL,
   signed_at TEXT NOT NULL DEFAULT (datetime('now')),
   display_name TEXT NOT NULL,
@@ -956,6 +960,42 @@ CREATE TABLE IF NOT EXISTS tip_sends (
 );
 CREATE INDEX IF NOT EXISTS idx_tipsends_model ON tip_sends(model_id, id);
 `);
+
+/* One-time migration (Oct 15, 2026): contract_signatures shipped with a
+   UNIQUE(user_id) constraint — one signature per user, forever — which
+   makes re-signing a new agreement version impossible without erasing
+   the old record. Rebuild the table without it (every existing row is
+   copied verbatim: the v1.1 history stays exactly as signed). Runs only
+   while the stored DDL still carries the constraint. */
+try {
+  const ddl = db.prepare(`SELECT sql FROM sqlite_master
+    WHERE type = 'table' AND name = 'contract_signatures'`).get();
+  if (ddl && /user_id\s+INTEGER\s+NOT\s+NULL\s+UNIQUE/i.test(ddl.sql || '')) {
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.exec(`CREATE TABLE contract_signatures_hist (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        contract_version TEXT NOT NULL,
+        signed_at TEXT NOT NULL DEFAULT (datetime('now')),
+        display_name TEXT NOT NULL,
+        ip TEXT
+      )`);
+      db.exec(`INSERT INTO contract_signatures_hist
+        (id, user_id, contract_version, signed_at, display_name, ip)
+        SELECT id, user_id, contract_version, signed_at, display_name, ip
+        FROM contract_signatures`);
+      db.exec('DROP TABLE contract_signatures');
+      db.exec('ALTER TABLE contract_signatures_hist RENAME TO contract_signatures');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_contract_signatures_user ON contract_signatures(user_id)');
+      db.exec('COMMIT');
+      console.log('[contract] signatures table rebuilt without UNIQUE — history preserved.');
+    } catch (e) {
+      try { db.exec('ROLLBACK'); } catch (err) { /* already closed */ }
+      throw e;
+    }
+  }
+} catch (e) { console.error('[contract] signature migration failed', e); }
 
 // Seed the safety keyword list (admin can edit these later in Settings)
 const DEFAULT_KEYWORDS = [
@@ -1779,6 +1819,46 @@ function announceGameCategoryToModels() {
   return sent;
 }
 
+/* ------------------------------------------------------------------ */
+/* Model agreement v1.2 — ONE-TIME broadcast to every model, same     */
+/* admin-thread DM pattern + flag discipline as the Game Category     */
+/* announcement (agreement_12_announced_at on platform_stats). Every  */
+/* existing model must re-sign: the version-aware contract status     */
+/* locks 1.1 signers to the signing screen until they sign 1.2.        */
+/* ------------------------------------------------------------------ */
+const AGREEMENT_12_ANNOUNCE_TEXT = "📄 New model agreement — please read & sign. We added the 1-on-1 booking + FaceTime waiting-list rules (booking reminders, the 5-minute start window, fan no-shows paying out to you) as agreement v1.2. Open the app and tap to read and sign — it takes 20 seconds. Until you sign, going live and earning stay paused. 💋";
+
+function announceAgreement12ToModels() {
+  const st = db.prepare('SELECT agreement_12_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.agreement_12_announced_at) return 0;
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin) return 0;
+  const models = db.prepare("SELECT id FROM users WHERE role = 'model' AND banned = 0").all();
+  let sent = 0;
+  for (const m of models) {
+    if (m.id === admin.id) continue;
+    try {
+      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
+      if (!conv) {
+        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
+        conv = { id: Number(info.lastInsertRowid) };
+      }
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, admin.id, AGREEMENT_12_ANNOUNCE_TEXT);
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(m.id, 'agreement_12', '📄 New model agreement — please read & sign',
+          'Agreement v1.2 is ready — open the app to read and sign 💋', '');
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest */ }
+  }
+  if (sent > 0 || models.length === 0) {
+    db.prepare("UPDATE platform_stats SET agreement_12_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
 function seed() {
   const count = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
   if (count > 0) return;
@@ -1818,6 +1898,7 @@ sendPendingModelGuides();
 sendPendingModelGuideVideos();
 sendPendingModelHomeScreenVideos();
 try { const n = announceGameCategoryToModels(); if (n) console.log(`[game] Category announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
+try { const n = announceAgreement12ToModels(); if (n) console.log(`[contract] Agreement v1.2 announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 
 // One-time pre-launch cleanup (Corry, Oct 12 2026): every cent on the
 // platform so far is TEST money — demo credits only, no real payment has
@@ -3365,10 +3446,10 @@ function logPurchaseAttempt(userId, pkg, amountCents, cardFingerprint, ip, statu
 }
 
 // Model independent-contractor agreement (served to models for signing)
-const CONTRACT_VERSION = '1.1';
+const CONTRACT_VERSION = '1.2';
 const MODEL_CONTRACT = {
   version: CONTRACT_VERSION,
-  updated: 'October 11, 2026',
+  updated: 'October 15, 2026',
   sections: [
     {
       title: '1. Parties',
@@ -3415,7 +3496,11 @@ const MODEL_CONTRACT = {
       body: 'Either side can end this Agreement at any time. You can stop using the platform whenever you want. If the Company deactivates your account, this Agreement ends immediately, except the confidentiality, non-circumvention, and content-rights sections, which survive termination.',
     },
     {
-      title: '12. Plain-Language Disclaimer',
+      title: '12. Scheduled 1-on-1s & the FaceTime Waiting List',
+      body: 'You control your own 1-on-1 schedule: you set the days and hours when you take private 1-on-1 bookings, and how many you accept per day and per week. A confirmed booking reserves your time for that fan. The platform will send you reminder notices before each booking — 3 days before, 3 hours before, and 15 minutes before. You must start a booked 1-on-1 within 5 minutes of its scheduled start time. If you do not start in time, the fan is automatically refunded in full and receives an apology from the platform, and that booking pays you nothing. If you start on time and the fan does not join within 3 minutes, that is a fan no-show: the fan receives no refund, and the booking is paid to you as earned. You may also get FaceTime requests while you are busy: when you accept a request during another call, the fan joins your waiting list and can see his place in line and his estimated wait. When your call ends, the next fan in line gets a 90-second window to join. By accepting a request, you commit to taking that fan\'s call when his turn comes.',
+    },
+    {
+      title: '13. Plain-Language Disclaimer',
       body: 'This is a plain-language summary written for clarity — it is NOT legal advice, and it has not been reviewed by an attorney. The Company strongly recommends you have your own attorney review this Agreement before signing. If any part of this Agreement is found unenforceable, the rest still applies.',
     },
   ],
@@ -3595,38 +3680,57 @@ app.delete('/api/model/preview-video', identMiddleware, requireUser, requireRole
 /* Model contract — independent-contractor agreement signing          */
 /* ------------------------------------------------------------------ */
 
+/* Signature reads are version-aware (v1.2, Oct 15 2026): signatures
+   are history rows now — one per signing — so "signed" means the
+   model's LATEST model-agreement signature is the CURRENT version.
+   A model who signed 1.1 (or never signed) reads signed:false until
+   she signs 1.2, and the app gate locks her to the signing screen
+   exactly like an unsigned model. Her earlier signatures stay on
+   file untouched. */
+function latestModelSignature(userId) {
+  return db.prepare(`SELECT contract_version, signed_at FROM contract_signatures
+    WHERE user_id = ? AND contract_version NOT LIKE 'R%'
+    ORDER BY id DESC LIMIT 1`).get(userId);
+}
+function latestRecruiterSignature(userId) {
+  return db.prepare(`SELECT contract_version, signed_at FROM contract_signatures
+    WHERE user_id = ? AND contract_version LIKE 'R%'
+    ORDER BY id DESC LIMIT 1`).get(userId);
+}
+
 // Get the current contract + whether this model has signed it
 app.get('/api/model/contract', identMiddleware, requireUser, requireRole('model'), (req, res) => {
-  const sig = db.prepare('SELECT contract_version, signed_at FROM contract_signatures WHERE user_id = ?').get(req.user.id);
+  const sig = latestModelSignature(req.user.id);
   res.json({
     version: MODEL_CONTRACT.version,
     updated: MODEL_CONTRACT.updated,
     sections: MODEL_CONTRACT.sections,
-    signed: !!sig,
+    signed: !!sig && sig.contract_version === MODEL_CONTRACT.version,
     signed_version: sig ? sig.contract_version : null,
     signed_at: sig ? sig.signed_at : null,
   });
 });
 
-// Sign the contract (typed name = electronic signature)
+// Sign the contract (typed name = electronic signature).
+// Re-signing a newer version appends a NEW history row; the previous
+// version's record is never overwritten.
 app.post('/api/model/contract/sign', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const name = String(req.body.display_name || '').trim().slice(0, 80);
   if (!name || name.length < 2) return res.status(400).json({ error: 'bad_name' });
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
-  try {
+  const sig = latestModelSignature(req.user.id);
+  if (!sig || sig.contract_version !== MODEL_CONTRACT.version) {
     db.prepare(`INSERT INTO contract_signatures (user_id, contract_version, display_name, ip)
                 VALUES (?, ?, ?, ?)`)
       .run(req.user.id, MODEL_CONTRACT.version, name, ip.slice(0, 60));
-  } catch (e) {
-    // Already signed — treat as idempotent success
-    if (!String(e.message || '').includes('UNIQUE')) throw e;
   }
+  // Already on the current version — idempotent success, no duplicate row.
   res.json({ ok: true, version: MODEL_CONTRACT.version });
 });
 
 // Recruiter: get agreement status + text
 app.get('/api/recruiter/contract', identMiddleware, requireUser, requireRole('recruiter'), (req, res) => {
-  const sig = db.prepare('SELECT contract_version, signed_at FROM contract_signatures WHERE user_id = ?').get(req.user.id);
+  const sig = latestRecruiterSignature(req.user.id);
   res.json({
     version: RECRUITER_CONTRACT.version,
     updated: RECRUITER_CONTRACT.updated,
@@ -3642,12 +3746,11 @@ app.post('/api/recruiter/contract/sign', identMiddleware, requireUser, requireRo
   const name = String(req.body.display_name || '').trim().slice(0, 80);
   if (!name || name.length < 2) return res.status(400).json({ error: 'bad_name' });
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
-  try {
+  const sig = latestRecruiterSignature(req.user.id);
+  if (!sig || sig.contract_version !== RECRUITER_CONTRACT.version) {
     db.prepare(`INSERT INTO contract_signatures (user_id, contract_version, display_name, ip)
                 VALUES (?, ?, ?, ?)`)
       .run(req.user.id, RECRUITER_CONTRACT.version, name, ip.slice(0, 60));
-  } catch (e) {
-    if (!String(e.message || '').includes('UNIQUE')) throw e;
   }
   res.json({ ok: true, version: RECRUITER_CONTRACT.version });
 });
@@ -3706,7 +3809,8 @@ app.get('/api/admin/contracts', identMiddleware, requireUser, requireRole('admin
     SELECT u.id, u.username, u.display_name, u.banned,
            cs.contract_version, cs.signed_at, cs.display_name AS signed_name
     FROM users u
-    LEFT JOIN contract_signatures cs ON cs.user_id = u.id
+    LEFT JOIN contract_signatures cs
+      ON cs.id = (SELECT MAX(id) FROM contract_signatures WHERE user_id = u.id)
     WHERE u.role = 'model'
     ORDER BY u.display_name
   `).all();
@@ -3859,7 +3963,7 @@ app.get('/api/admin/id-verifications/:id/2257', identMiddleware, requireUser, re
   if (!u) return res.status(404).json({ error: 'not_found' });
   const sig = db.prepare(`SELECT contract_version, display_name AS signed_name,
                                   signed_at, ip FROM contract_signatures
-                          WHERE user_id = ?`).get(v.model_id);
+                          WHERE user_id = ? ORDER BY id DESC LIMIT 1`).get(v.model_id);
   const base = (p) => p ? String(p).split('/').pop() : null;
   const packet = {
     record_type: 'Performer age/identity verification record — 18 U.S.C. §2257',
