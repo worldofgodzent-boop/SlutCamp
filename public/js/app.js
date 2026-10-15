@@ -3906,12 +3906,17 @@ async function vChat(params) {
       ${!conv.is_paused && S.user && S.user.role === 'fan' ? `<button class="icon-btn" id="c-tipmenu" title="Tip menu">💰</button>` : ''}
       <div class="composer-pill" id="c-pill">
         <textarea id="c-input" rows="1" placeholder="${conv.is_paused ? t('chat_paused_ph') : t('msg_placeholder')}" ${conv.is_paused ? 'disabled' : ''} autocomplete="off" enterkeyhint="send"></textarea>
-        <button type="button" class="pill-send" id="c-send" aria-label="Send" ${conv.is_paused ? 'disabled' : ''}>↑</button>
+      </div>
+      ${isModel ? `<label class="icon-btn" id="c-cam" for="ppv-file-cam" title="Send a photo or video">📷</label>` : ''}
+      <div class="composer-slot">
+        <button type="button" class="round-act" id="c-mic" aria-label="Voice note" ${conv.is_paused ? 'disabled' : ''}>🎤</button>
+        <button type="button" class="round-act" id="c-send" aria-label="Send" ${conv.is_paused ? 'disabled' : ''}>↑</button>
       </div>
     </div>
     <div id="action-sheet" class="hidden"></div>
     <input type="file" id="ppv-file-img" class="file-offscreen" accept="image/*">
-    <input type="file" id="ppv-file-vid" class="file-offscreen" accept="video/*">`;
+    <input type="file" id="ppv-file-vid" class="file-offscreen" accept="video/*">
+    <input type="file" id="ppv-file-cam" class="file-offscreen" accept="image/*,video/*">`;
 
   $('#c-back').onclick = () => {
     if (!S.user) show('landing', {});
@@ -3946,6 +3951,21 @@ async function vChat(params) {
   };
   bindPpv('#ppv-file-img', 'ppv_image');
   bindPpv('#ppv-file-vid', 'ppv_video');
+  // WhatsApp-style composer shortcuts: the round 🎤 button beside the bubble
+  // starts a voice note DIRECTLY on the tap (no "+" sheet hop in between —
+  // every intermediate step is a chance for iOS to lose the mic gesture), and
+  // the 📷 label (models only) opens the native picker for photo OR video,
+  // then joins the exact same price-sheet flow as the sheet's pickers.
+  const micBtn = $('#c-mic');
+  if (micBtn) micBtn.onclick = () => startVoiceRecord();
+  const camInp = $('#ppv-file-cam');
+  if (camInp) camInp.onchange = () => {
+    const f = camInp.files && camInp.files[0];
+    camInp.value = '';
+    if (!f) return;
+    if (f.size > 200 * 1024 * 1024) return toast('File too big — 200MB max.');
+    openPpvPriceSheet(f, f.type && f.type.startsWith('video/') ? 'ppv_video' : 'ppv_image');
+  };
   const gb = $('#c-gift');
   if (gb) gb.onclick = openChatGiftPanel;
   const tmb = $('#c-tipmenu');
@@ -4071,12 +4091,17 @@ async function unlockMedia(mediaId) {
   }
 }
 
-/* Composer bubble: in-pill ↑ send button appears on first character, and the
-   textarea auto-grows with content (capped, then scrolls internally). */
+/* Composer bubble: auto-growing textarea in a pill, with ONE round action
+   button in a fixed slot beside the pill (WhatsApp pattern) that swaps with
+   the field's state — empty → 🎤 voice note, text → ↑ send. Both buttons
+   live in the same reserved slot and cross-fade, so the swap never shifts
+   the layout. The textarea auto-grows with content (capped, then scrolls). */
 function syncChatComposer() {
-  const input = $('#c-input'), btn = $('#c-send'), pill = $('#c-pill');
-  if (!input || !btn || !pill) return;
-  btn.classList.toggle('show', input.value.length > 0);
+  const input = $('#c-input'), btn = $('#c-send'), mic = $('#c-mic'), pill = $('#c-pill');
+  if (!input || !pill) return;
+  const hasText = input.value.length > 0;
+  if (btn) btn.classList.toggle('show', hasText);
+  if (mic) mic.classList.toggle('show', !hasText);
   input.style.height = 'auto';
   const sh = input.scrollHeight;
   input.style.height = Math.min(sh, 148) + 'px';
@@ -4302,30 +4327,116 @@ async function uploadMedia(file, kind, priceCents, durationSec) {
 
 let voiceRec = null, voiceChunks = [], voiceStartTs = 0, voiceTimerInt = null;
 
+/* Voice flow is OVERLAY-FIRST: the card is created synchronously inside the
+   tap handler, in a "connecting" state, BEFORE getUserMedia is called — so a
+   tap can never produce "nothing". When the stream resolves, the card swaps
+   to the Recording UI; on ANY failure (unsupported browser, a synchronous
+   throw, a rejected/hung permission request) it swaps to a persistent error
+   card with the plain-language reason and a Close button.
+   Why: the old mic-first flow gated ALL feedback behind the getUserMedia
+   promise. Where navigator.mediaDevices is undefined (some iOS home-screen
+   webviews expose no mediaDevices at all), `navigator.mediaDevices
+   .getUserMedia` throws synchronously — no prompt, no promise, no .catch
+   toast, no overlay: the tap died in total silence. Where mediaDevices
+   exists but the webview never presents the permission UI, the promise can
+   hang unsettled — same visible result. */
 function startVoiceRecord() {
-  // Ask for mic FIRST, before showing any overlay (iOS blocks prompts behind overlays)
-  toast('Requesting mic access… 🎤');
-  navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-    startVoiceUI(stream);
-  }).catch(() => {
-    toast('Mic permission needed — allow mic access in your browser settings 🎤', 4000);
+  const session = { cancelled: false, stream: null };
+  const ov = showVoiceOverlay(session);
+  if (!ov) { toast("Mic couldn't start — try again 🎤", 4000); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia
+      || typeof MediaRecorder === 'undefined') {
+    voiceOverlayError(ov, "Voice notes aren't supported in this browser. Try opening SlutCamp in Safari or Chrome, then tap the mic again 🎤");
+    return;
+  }
+  let gum;
+  try {
+    gum = navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    voiceOverlayError(ov, "The mic couldn't start. Close this and try again 🎤");
+    return;
+  }
+  Promise.resolve(gum).then((stream) => {
+    if (session.cancelled || !ov.isConnected) { // card closed while asking
+      stream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+    session.stream = stream;
+    startVoiceUI(stream, ov);
+  }).catch((err) => {
+    if (session.cancelled || !ov.isConnected) return;
+    const name = err && err.name;
+    if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+      voiceOverlayError(ov, 'Your mic is blocked for SlutCamp. In Safari: tap the icon at the left of the address bar → Website Settings → Microphone → Allow. Or open iPhone Settings → Safari → Microphone → Allow. Then try again 🎤');
+    } else if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+      voiceOverlayError(ov, 'No microphone found on this device 🎤');
+    } else {
+      voiceOverlayError(ov, "The mic couldn't start. Close this and try again 🎤");
+    }
   });
 }
 
-function startVoiceUI(stream) {
+/* The voice overlay shell + its "connecting" card. Cancel here also covers
+   the permission-prompt wait: it flags the session so a late stream is
+   stopped and discarded instead of swapping a dead card into Recording. */
+function showVoiceOverlay(session) {
+  const old = $('#voice-ov');
+  if (old) old.remove();
   const ov = document.createElement('div');
   ov.id = 'voice-ov';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:150;background:rgba(16,6,12,.55);display:flex;align-items:center;justify-content:center;padding:20px';
   ov.innerHTML = `
-    <div class="card" style="max-width:340px;text-align:center">
+    <div class="card" id="voice-card" style="max-width:340px;text-align:center">
+      <div style="font-size:40px">🎤</div>
+      <h3 style="margin:8px 0">Getting your mic ready…</h3>
+      <p class="muted small">If your phone asks to use the microphone, tap <b>Allow</b> 🎤</p>
+      <button class="btn ghost" id="voice-conn-cancel">Cancel</button>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('#voice-conn-cancel').onclick = () => {
+    session.cancelled = true;
+    if (session.stream) session.stream.getTracks().forEach((t) => t.stop());
+    ov.remove();
+  };
+  return ov;
+}
+
+/* Failure state INSIDE the overlay card (never just a toast): the specific
+   reason in plain language + a Close button the user dismisses themselves. */
+function voiceOverlayError(ov, msg) {
+  const card = ov && ov.querySelector('#voice-card');
+  if (!card) { toast(msg, 4500); return; }
+  card.innerHTML = `
+    <div style="font-size:40px">🎤</div>
+    <h3 style="margin:8px 0">Voice note didn't start</h3>
+    <p class="small" style="line-height:1.5;text-align:left">${msg}</p>
+    <button class="btn" id="voice-err-close" style="width:100%">Close</button>`;
+  card.querySelector('#voice-err-close').onclick = () => ov.remove();
+}
+
+/* Recorder hint: models see what the fan pays; fans now see their cost up
+   front (the server charges the model's per-voice price like a text charge).
+   The price is read from S.model (the signed-in user's own model row —
+   only populated for model accounts) or conv.other when present; if neither
+   is in scope, fall back to the neutral text. */
+function voiceHintText() {
+  if (S.user && S.user.role === 'model')
+    return `Fan pays ${fmt(S.model.per_voice_cents)} to listen`;
+  const cents = (S.model && S.model.per_voice_cents != null) ? S.model.per_voice_cents
+    : (S.conv && S.conv.other && S.conv.other.per_voice_cents != null)
+      ? S.conv.other.per_voice_cents : null;
+  return cents != null ? `Costs ${fmt(cents)} — comes out of your balance` : 'Sent as a message';
+}
+
+function startVoiceUI(stream, ov) {
+  const card = ov.querySelector('#voice-card');
+  if (!card) { stream.getTracks().forEach((t) => t.stop()); return; }
+  card.innerHTML = `
       <div style="font-size:40px" id="voice-mic">🎤</div>
       <h3 style="margin:8px 0">Recording… <span id="voice-secs">0s</span></h3>
-      <p class="muted small" id="voice-hint">${S.user && S.user.role === 'model'
-        ? `Fan pays ${fmt(S.model.per_voice_cents)} to listen` : 'Sent as a message'}</p>
+      <p class="muted small" id="voice-hint">${voiceHintText()}</p>
       <button class="btn" id="voice-stop">Send voice note</button>
-      <button class="btn ghost" id="voice-cancel">Cancel</button>
-    </div>`;
-  ov.style.cssText = 'position:fixed;inset:0;z-index:150;background:rgba(16,6,12,.55);display:flex;align-items:center;justify-content:center;padding:20px';
-  document.body.appendChild(ov);
+      <button class="btn ghost" id="voice-cancel">Cancel</button>`;
 
   try {
     const mime = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4'
@@ -4333,8 +4444,7 @@ function startVoiceUI(stream) {
     voiceRec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
   } catch (e) {
     stream.getTracks().forEach((t) => t.stop());
-    ov.remove();
-    toast('Voice recording not supported on this device 🎤');
+    voiceOverlayError(ov, 'Voice recording is not supported on this device 🎤');
     return;
   }
     voiceChunks = [];
