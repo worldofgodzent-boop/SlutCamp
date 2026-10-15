@@ -4408,9 +4408,10 @@ function ftCancelAll(modelId, reason) {
   if (rows.length) ftPushQueue(modelId);
 }
 function ftSweep() {
-  const stale = db.prepare(`SELECT * FROM facetime_requests WHERE status = 'pending'
-    AND created_at <= datetime('now', '-3 minutes')`).all();
-  for (const r of stale) ftFinish(r, 'expired', 'FaceTime request expired — no answer');
+  // Pending requests do NOT expire (owner ruling, Oct 15): an unanswered
+  // request lives in her notification box until she accepts/declines,
+  // the fan cancels, or her session ends (ftCancelAll refunds). Only the
+  // 90-second your-turn window still lapses here.
   const missed = db.prepare(`SELECT * FROM facetime_requests WHERE status = 'invited'
     AND invite_expires_ms IS NOT NULL AND invite_expires_ms < ?`).all(Date.now());
   const touched = new Set();
@@ -4467,9 +4468,12 @@ app.post('/api/facetime/request', identMiddleware, requireUser, requireRole('fan
     VALUES (?,?,?,?)`).run(req.user.id, row.id, duration, amount);
   const fresh = ftGet(Number(info.lastInsertRowid));
   pushToSubject(`u:${row.id}`, { type: 'facetime:request', request: ftPublic(fresh) });
+  // The bell row is the request's persistent home: its link carries the
+  // request id so her notification box can render live Accept/Decline
+  // actions against it until she acts (owner ruling, Oct 15).
   notifyUser(row.id, 'facetime', '📹 FaceTime request',
     `${req.user.display_name} wants a ${duration}-min FaceTime with you — $${(amount / 100).toFixed(2)}.`,
-    '/#chat');
+    `/#ft/${fresh.id}`);
   res.json({ request: ftPublic(fresh) });
 });
 

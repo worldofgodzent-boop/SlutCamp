@@ -5793,7 +5793,7 @@ function updateFtPanel(req, reason) {
   }
   if (req.status === 'pending') {
     el.innerHTML = `<div class="ft-line">⏳ <b>Waiting for ${esc(req.model_name)}</b> to accept your ${req.duration_min}-min FaceTime…</div>
-      <div class="ft-sub">Paid ${fmt(req.amount_cents)} · full refund if she declines or doesn't answer</div>
+      <div class="ft-sub">Paid ${fmt(req.amount_cents)} · she's got it in her notifications — full refund if she declines or you cancel</div>
       <button class="btn ghost small" id="ft-cancel">Cancel &amp; refund</button>`;
   } else if (req.status === 'queued') {
     el.innerHTML = `<div class="row" style="width:100%;align-items:flex-start">
@@ -5847,7 +5847,12 @@ async function joinFtCall() {
   beginCallMedia(data.call_id, data.rate_cents, req.model_id, data.prepaid_min);
 }
 
-/* Model side: FaceTime request card (Accept / Decline) */
+/* Model side: FaceTime request popup (Accept / Decline). Shows on the
+   live WS event (and when she taps the request in her notification box),
+   stays ~9 seconds, then dismisses ITSELF — dismissal is not a decline:
+   the request lives on, actionable, in her notification box until she
+   acts, the fan cancels, or her session ends (owner ruling, Oct 15). */
+let ftPopupTimer = null;
 function showFtRequestCard(req) {
   if (!req || req.status !== 'pending') return;
   hideFtRequestCard();
@@ -5858,35 +5863,52 @@ function showFtRequestCard(req) {
       <div style="font-size:32px">📹</div>
       <div class="ft-req-title">${esc(req.fan_name)} wants FaceTime</div>
       <div class="muted">${req.duration_min} minutes · ${fmt(req.amount_cents)} — already paid 💰</div>
-      <div class="muted small">If you're in a call, Accept puts him in line.</div>
+      <div class="muted small">If you're in a call, Accept puts him in line. No rush — this also waits in your 🔔 notifications.</div>
       <div class="ft-req-actions">
         <button class="btn" id="ft-acc">Accept ✅</button>
         <button class="btn ghost" id="ft-dec">Decline</button>
       </div>
     </div>`;
   document.body.appendChild(el);
-  $('#ft-acc').onclick = async () => {
-    const { data } = await api(`/facetime/${req.id}/accept`, { method: 'POST' });
-    hideFtRequestCard();
-    if (data && data.queued) toast(`Added to your line — he's #${data.request.position} 📹`, 4000);
-    else toast("Accepted — he's joining now 📹");
-    refreshFtCard();
-  };
-  $('#ft-dec').onclick = async () => {
-    await api(`/facetime/${req.id}/decline`, { method: 'POST' }).catch(() => {});
-    hideFtRequestCard();
-    toast('Declined — he was refunded.');
-    refreshFtCard();
-  };
+  $('#ft-acc').onclick = () => ftDoAccept(req);
+  $('#ft-dec').onclick = () => ftDoDecline(req);
+  ftPopupTimer = setTimeout(hideFtRequestCard, 9000);
 }
-function hideFtRequestCard() { const el = $('#ft-req-modal'); if (el) el.remove(); }
+function hideFtRequestCard() {
+  if (ftPopupTimer) { clearTimeout(ftPopupTimer); ftPopupTimer = null; }
+  const el = $('#ft-req-modal');
+  if (el) el.remove();
+}
+/* Shared by the popup AND the notification-box actions, so both surfaces
+   behave identically: busy → he joins her line and she sees his wait;
+   free → the normal invited/ring flow. Decline refunds him in full. */
+async function ftDoAccept(req) {
+  const { status, data } = await api(`/facetime/${req.id}/accept`, { method: 'POST' });
+  hideFtRequestCard();
+  if (status === 200 && data && data.queued) {
+    toast(`He's in your line — #${data.request.position} · about ${data.request.eta_min} min until he's next 📹`, 5000);
+  } else if (status === 200) {
+    toast("Accepted — he's joining now 📹");
+  } else {
+    toast('That request is no longer waiting.', 3000);
+  }
+  refreshFtCard();
+  return data;
+}
+async function ftDoDecline(req) {
+  await api(`/facetime/${req.id}/decline`, { method: 'POST' }).catch(() => {});
+  hideFtRequestCard();
+  toast('Declined — he was refunded.');
+  refreshFtCard();
+}
 async function refreshFtCard() {
   if (!S.user || S.user.role !== 'model') return;
   try {
     const { data } = await api('/facetime/incoming');
-    const pend = (data.requests || []).find((r) => r.status === 'pending');
-    if (pend) showFtRequestCard(pend); else hideFtRequestCard();
+    // Pending requests are NOT re-popped here: the popup is a one-shot
+    // WS moment; unanswered requests persist in her notification box.
     updateModelFtQueue((data.requests || []).filter((r) => ['queued', 'invited'].includes(r.status)));
+    if (S.view === 'notifications') show('notifications', {});
   } catch (e) { /* ignore */ }
 }
 
@@ -6978,32 +7000,108 @@ async function refreshNotifBadge() {
 async function vNotifications() {
   const { data } = await api('/notifications');
   const notifs = data.notifications || [];
+  // FaceTime request bells (link /#ft/<id>) are ACTIONABLE for the model:
+  // join them against her live incoming list so a still-pending request
+  // renders Accept/Decline right here, and a queued one shows his wait.
+  let ftById = {};
+  if (S.user && S.user.role === 'model') {
+    try {
+      const inc = await api('/facetime/incoming');
+      for (const r of (inc.data.requests || [])) ftById[r.id] = r;
+    } catch (e) { /* box still renders as plain history */ }
+  }
+  const ftReqOf = (n) => {
+    const m = /^#ft\/(\d+)$/.exec(String(n.link || '').replace(/^\//, ''));
+    return m ? ftById[parseInt(m[1])] : undefined;
+  };
+  const when = (n) => new Date((n.created_at || '').replace(' ', 'T') + 'Z').toLocaleString();
   app.innerHTML = `
     <div class="header"><h1>${t('notifications_h')}</h1>
       <div><button class="btn ghost small" id="notif-read-all">${t('mark_all_read')}</button></div></div>
     <div class="screen">
-      ${notifs.map((n) => `
+      ${notifs.map((n) => {
+        const fr = ftReqOf(n);
+        if (fr && fr.status === 'pending') return `
+        <div class="list-item ${n.read ? '' : 'unread'}" data-ft-open="${fr.id}">
+          <span class="grow">
+            <span class="title">${esc(n.title)}</span><br>
+            <span class="preview">${esc(fr.fan_name)} wants a FaceTime — ${fr.duration_min} min · ${fmt(fr.amount_cents)}</span><br>
+            <span class="small muted">${when(n)}</span>
+            <span class="row" style="gap:8px;margin-top:8px">
+              <button class="btn small" data-ft-acc="${fr.id}">Accept ✅</button>
+              <button class="btn small ghost" data-ft-dec="${fr.id}">Decline</button>
+            </span>
+          </span>${n.read ? '' : '<span class="unread-dot"></span>'}
+        </div>`;
+        if (fr && (fr.status === 'queued' || fr.status === 'invited' || fr.status === 'in_call')) return `
+        <button class="list-item ${n.read ? '' : 'unread'}" data-notif="${n.id}" data-link="${esc(n.link || '')}">
+          <span class="grow">
+            <span class="title">${esc(n.title)}</span><br>
+            <span class="preview">${fr.status === 'queued'
+              ? `⏳ In your FaceTime line — #${fr.position} · his turn in about ${fr.eta_min} min`
+              : fr.status === 'invited' ? '💚 Invited — he\'s joining now…'
+              : '🔴 On FaceTime now'}</span><br>
+            <span class="small muted">${when(n)}</span>
+          </span>${n.read ? '' : '<span class="unread-dot"></span>'}
+        </button>`;
+        return `
         <button class="list-item ${n.read ? '' : 'unread'}" data-notif="${n.id}" data-link="${esc(n.link || '')}">
           <span class="grow">
             <span class="title">${esc(n.title)}</span><br>
             ${n.body ? `<span class="preview">${esc(n.body)}</span><br>` : ''}
-            <span class="small muted">${new Date((n.created_at || '').replace(' ', 'T') + 'Z').toLocaleString()}</span>
+            <span class="small muted">${when(n)}</span>
           </span>${n.read ? '' : '<span class="unread-dot"></span>'}
-        </button>`).join('') || '<div class="empty"><div class="big">🔔</div>Nothing yet.<br><span class="small">Follow models to get notified when they go live.</span></div>'}
+        </button>`;
+      }).join('') || '<div class="empty"><div class="big">🔔</div>Nothing yet.<br><span class="small">Follow models to get notified when they go live.</span></div>'}
     </div>`;
   $('#notif-read-all').onclick = async () => {
     await api('/notifications/read', { method: 'POST' });
     refreshNotifBadge();
     show('notifications', {});
   };
+  const markRead = async (btn) => {
+    await api('/notifications/read', { method: 'POST',
+      body: JSON.stringify({ ids: [parseInt(btn.dataset.notif)] }) });
+    refreshNotifBadge();
+  };
   app.querySelectorAll('[data-notif]').forEach((b) => {
     b.onclick = async () => {
-      await api('/notifications/read', { method: 'POST',
-        body: JSON.stringify({ ids: [parseInt(b.dataset.notif)] }) });
-      refreshNotifBadge();
+      await markRead(b);
       const link = b.dataset.link;
       if (link === '/#live' && S.user && S.user.role === 'fan') show('fanLive', {});
       else show('notifications', {});
+    };
+  });
+  // Box actions: real Accept/Decline against the live request.
+  const markFtRead = async (reqId) => {
+    const n = notifs.find((x) => x.link === `/#ft/${reqId}`);
+    if (n && !n.read) {
+      await api('/notifications/read', { method: 'POST',
+        body: JSON.stringify({ ids: [n.id] }) }).catch(() => {});
+      refreshNotifBadge();
+    }
+  };
+  app.querySelectorAll('[data-ft-acc]').forEach((b) => {
+    b.onclick = async (e) => {
+      e.stopPropagation();
+      const fr = ftById[parseInt(b.dataset.ftAcc)];
+      if (fr) { await markFtRead(fr.id); await ftDoAccept(fr); }
+      show('notifications', {});
+    };
+  });
+  app.querySelectorAll('[data-ft-dec]').forEach((b) => {
+    b.onclick = async (e) => {
+      e.stopPropagation();
+      const fr = ftById[parseInt(b.dataset.ftDec)];
+      if (fr) { await markFtRead(fr.id); await ftDoDecline(fr); }
+      show('notifications', {});
+    };
+  });
+  // Tapping the pending item (outside the buttons) opens the request card.
+  app.querySelectorAll('[data-ft-open]').forEach((row) => {
+    row.onclick = () => {
+      const fr = ftById[parseInt(row.dataset.ftOpen)];
+      if (fr) showFtRequestCard(fr);
     };
   });
 }
