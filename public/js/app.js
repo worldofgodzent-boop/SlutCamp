@@ -3908,6 +3908,7 @@ async function vChat(params) {
   const canVideo = S.user && S.user.role === 'fan' && other.is_online && !conv.is_paused;
 
   app.innerHTML = `
+    <div class="chat-wrap">
     <div class="chat-header">
       <button class="icon-btn" id="c-back">‹</button>
       ${avatarHTML(other.display_name, 'sm', other.photo_url)}
@@ -3929,6 +3930,7 @@ async function vChat(params) {
         : t('free_msgs_left', { n: conv.free_remaining })}</div>` : ''}
     <div id="messages"></div>
     <div id="typing-ind" class="rate-hint hidden"><i>${t('typing')}</i></div>
+    <div class="chat-footer">
     <div id="emoji-panel" class="emoji-panel hidden">${['😀','😂','😍','😘','😈','🔥','💦','🍑','❤️','💋','👏','🙏','😎','🤤','🥵','💯','🎉','💸','👀','🤪','😏','🫦','💕'].map((e) => `<button type="button" class="emoji-cell" data-emoji="${e}">${e}</button>`).join('')}</div>
     <div class="chat-input-bar">
       ${!conv.is_paused && S.user && S.user.role === 'fan' ? `<button class="icon-btn" id="c-gift" title="Send a gift">🎁</button>` : ''}
@@ -3943,7 +3945,9 @@ async function vChat(params) {
         <button type="button" class="round-act" id="c-send" aria-label="Send" ${conv.is_paused ? 'disabled' : ''}>↑</button>
       </div>
     </div>
-    <input type="file" id="ppv-file-cam" class="file-offscreen" accept="image/*,video/*">`;
+    </div>
+    <input type="file" id="ppv-file-cam" class="file-offscreen" accept="image/*,video/*">
+    </div>`;
 
   $('#c-back').onclick = () => {
     if (!S.user) show('landing', {});

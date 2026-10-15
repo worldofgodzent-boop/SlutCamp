@@ -131,6 +131,27 @@ body.sheet-open #tabbar, body.in-chat #tabbar {
    their own padding covers the safe-area inset. */
 body.sheet-open #app, body.in-chat #app { padding-bottom: env(safe-area-inset-bottom); }
 body.sheet-open .sheet { bottom: 0; }
+/* In-chat layout (three bands): #app stops being the scroller — the chat
+   view is a full-height flex column (.chat-wrap): header band, an
+   independently scrolling #messages band, and a pinned footer band
+   (.chat-footer: emoji panel + composer). The footer is a flex item of
+   the 100dvh column — NOT a sticky element inside the scroll flow — so
+   the composer sits flush on the viewport's bottom edge by construction
+   (its own padding carries the safe-area inset; nothing is reserved
+   beneath it) and neither it nor the open emoji panel can be dragged
+   by, or travel with, message scrolling. This rule follows the union
+   rule above with equal specificity, so in-chat #app padding is 0 (the
+   composer owns the inset now) while non-chat sheet-open keeps the
+   safe-area collapse exactly as before. */
+body.in-chat #app { padding-bottom: 0; overflow: hidden; }
+.chat-wrap { display: flex; flex-direction: column; height: 100%; }
+.chat-wrap .chat-header { flex: 0 0 auto; }
+.chat-wrap #messages {
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+.chat-wrap #messages > * { flex-shrink: 0; }
+.chat-footer { flex: 0 0 auto; }
 #tabbar button {
   flex: 1; background: none; border: none; color: var(--muted);
   font-size: 11px; font-weight: 600;
@@ -363,7 +384,6 @@ label.field { display: block; margin-top: 14px; font-size: 14px; font-weight: 60
 body.bg-blur #app { filter: blur(24px); }
 
 .chat-input-bar {
-  position: sticky; bottom: 0; z-index: 20;
   display: flex; gap: 8px; align-items: center;
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
   background: rgba(18, 8, 31, .98);
