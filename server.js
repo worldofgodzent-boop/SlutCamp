@@ -4062,7 +4062,13 @@ function endCall(callId, reason) {
   // FaceTime: close out the request and bring the next fan in line.
   if (call.facetime_req_id) {
     const fr = ftGet(call.facetime_req_id);
-    if (fr && fr.status === 'in_call') ftFinish(fr, 'done', null);
+    if (fr && fr.status === 'in_call') {
+      // Never actually started (she never accepted — e.g. her camera/mic
+      // failed): the block "didn't happen", so it refunds in full, exactly
+      // as the FaceTime sheet promises. Started calls finish as 'done'.
+      if (!call.started_at) ftFinish(fr, 'cancelled', 'FaceTime never started — refunded');
+      else ftFinish(fr, 'done', null);
+    }
   }
   ftPromote(call.model_id);
 }

@@ -962,8 +962,12 @@ function wsConnect() {
 function handleWS(m) {
   if (m.type && m.type.startsWith('booking:')) { handleBookingPush(m); return; }
   if (m.type === 'chat:new' && S.view === 'chat' && S.conv && m.conversation_id === S.conv.id) {
-    S.messages.push(m.message);
-    renderMessages();
+    // Incremental: append the one bubble; scroll only if he was already
+    // at the bottom (never yank him out of history he's reading).
+    const nearBottom = chatNearBottom();
+    if (!S.messages.find((x) => x.id === m.message.id)) S.messages.push(m.message);
+    appendMessageBubble(m.message);
+    if (nearBottom) pinChatScroll();
     api(`/conversations/${S.conv.id}/read`, { method: 'POST' });
     // TikTok-style gift: emoji flies across the screen for both sides
     const gg = giftOf(m.message);
@@ -971,8 +975,14 @@ function handleWS(m) {
   } else if (m.type === 'chat:new') {
     refreshTabBadges();
   } else if (m.type === 'chat:read' && S.view === 'chat' && S.conv && m.conversation_id === S.conv.id) {
-    S.messages.forEach((x) => { x.is_read = 1; });
-    renderMessages();
+    // Read receipts flip in place — a full rebuild just to turn ✓ blue
+    // was part of the send/receive glitch.
+    S.messages.forEach((x) => {
+      if (!x.is_read) {
+        x.is_read = 1;
+        if (S.user && x.sender_id === S.user.id) updateMessageBubble(x);
+      }
+    });
   } else if (m.type === 'message:reaction' && S.view === 'chat' && S.conv && m.conversation_id === S.conv.id) {
     // Targeted bubble update — never a full re-render, never a scroll yank.
     const msg = S.messages.find((x) => x.id === m.message_id);
@@ -1296,6 +1306,7 @@ function show(view, params) {
   // a chat can never resurrect it, and leaving a chat with a sheet open
   // keeps it hidden only until the sheet closes.
   document.body.classList.toggle('in-chat', view === 'chat');
+  document.body.classList.toggle('in-live', view === 'liveBroadcast' || view === 'liveWatch');
   renderTabbar();
   renderPreviewBanner();
   renderBell();
@@ -3275,7 +3286,7 @@ async function startBookingCall(bookingId, isModel) {
     if (e.candidate && S.ws) S.ws.send(JSON.stringify({ type: 'signal', to: data.other_id,
       payload: { kind: 'ice', call_id: callId, candidate: e.candidate } }));
   };
-  pc.ontrack = (e) => { $('#remote-video').srcObject = e.streams[0]; };
+  wireRemoteVideo(pc);
   if (!isModel) {
     // Fan initiates the WebRTC offer to the model
     const offer = await pc.createOffer();
@@ -3296,6 +3307,7 @@ async function startBookingCall(bookingId, isModel) {
   $('#active-call').classList.remove('hidden');
   $('#local-video').srcObject = localStream;
   $('#call-timer').textContent = 'Private session 💋';
+  armCallWaiting();
   callTimerInt = setInterval(() => { S.call.seconds++; updateCallHUD(); }, 1000);
 }
 
@@ -4494,6 +4506,39 @@ function updateMessageBubble(m) {
   focusEditInput();
 }
 
+/* Incremental append for the send/receive hot paths. renderMessages()
+   rebuilds the ENTIRE list (innerHTML) on every call — that rebuild,
+   plus its forced double scroll snap, racing the iOS keyboard/100dvh
+   resize, was the visible "glitch" on every send (owner video, Oct 14):
+   ghosted/overlapping bubbles, teleports, two-step keyboard motion.
+   Here exactly ONE node is added; existing bubbles keep their identity. */
+function appendMessageBubble(m) {
+  const box = $('#messages');
+  if (!box || !m) return false;
+  if (box.querySelector(`.msg[data-mid="${m.id}"]`)) { updateMessageBubble(m); return false; }
+  const tmp = document.createElement('div');
+  tmp.innerHTML = bubbleHTML(m);
+  const node = tmp.firstElementChild;
+  if (!node) return false;
+  box.appendChild(node);
+  bindMessageActions(box);
+  hydrateMediaSrc(node);
+  return true;
+}
+function chatNearBottom() {
+  const box = $('#messages');
+  if (!box) return true;
+  return box.scrollHeight - box.scrollTop - box.clientHeight < 140;
+}
+/* Scroll ONCE, next frame, after the textarea collapse + viewport have
+   settled — never a synchronous snap, and never touch #app (in-chat it
+   doesn't scroll; the old second snap just fought the flex layout). */
+function pinChatScroll() {
+  const box = $('#messages');
+  if (!box) return;
+  requestAnimationFrame(() => { box.scrollTop = box.scrollHeight; });
+}
+
 function closeReactPop() {
   if (!reactPop) return;
   reactPop.el.remove();
@@ -4604,36 +4649,40 @@ function renderMessages() {
   closeReactPop();
   box.innerHTML = S.messages.map(bubbleHTML).join('');
   box.scrollTop = box.scrollHeight;
-  // keep the input bar visible: scroll chat area to bottom
-  app.scrollTop = app.scrollHeight;
   hydrateMediaSrc(box);
   bindMessageActions(box);
   focusEditInput();
 }
 
+/* One bubble's media state changed (unlock flow) — refresh just it. */
+function refreshMediaBubble(mediaId) {
+  const m = S.messages.find((x) => x.media && x.media.id === mediaId);
+  if (m) updateMessageBubble(m);
+}
+
 async function unlockMedia(mediaId) {
   if (unlockingIds.has(mediaId)) return; // double-tap guard: one tap, one charge attempt
   unlockingIds.add(mediaId);
-  renderMessages(); // PPV tile flips to its "Unlocking…" state
+  refreshMediaBubble(mediaId); // PPV tile flips to its "Unlocking…" state
   let status = 0, data = {};
   try {
     ({ status, data } = await api(`/media/${mediaId}/unlock`, { method: 'POST' }));
   } catch (e) { /* network error — handled as a failure below */ }
   unlockingIds.delete(mediaId);
   if (status === 200) {
-    // Mark unlocked locally and re-render
+    // Mark unlocked locally and refresh just that bubble
     S.messages.forEach((m) => {
       if (m.media && m.media.id === mediaId) m.media.unlocked = true;
     });
-    renderMessages();
+    refreshMediaBubble(mediaId);
     if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
     toast('🔓 Unlocked!');
   } else if (status === 402) {
-    renderMessages(); // restore the tappable tile before routing away
+    refreshMediaBubble(mediaId); // restore the tappable tile before routing away
     toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`);
     if (S.user && S.user.role === 'fan') show('wallet', {});
   } else {
-    renderMessages(); // restore the tappable tile
+    refreshMediaBubble(mediaId); // restore the tappable tile
     toast('Could not unlock.');
   }
 }
@@ -4678,6 +4727,7 @@ async function sendMessage() {
   const text = input.value.trim();
   if (!text || !S.conv) return;
   input.value = '';
+  syncChatComposer(); // collapse NOW, with the tap — not as a second jump after the reply lands
   const { status, data } = await api('/messages', {
     method: 'POST', body: JSON.stringify({ conversation_id: S.conv.id, body: text }),
   });
@@ -4689,8 +4739,9 @@ async function sendMessage() {
     return;
   }
   if (status === 200) {
-    S.messages.push(data.message);
-    renderMessages();
+    if (!S.messages.find((x) => x.id === data.message.id)) S.messages.push(data.message);
+    appendMessageBubble(data.message); // incremental — never rebuild the thread for one send
+    pinChatScroll();
     if (typeof data.free_remaining === 'number') {
       S.conv.free_remaining = data.free_remaining;
       if (!S.user && data.free_remaining === 0) showPaywall();
@@ -4807,8 +4858,9 @@ async function uploadMedia(file, kind, priceCents, durationSec) {
     const r = await fetch('/api/media/send', { method: 'POST', headers, body: fd });
     const data = await r.json();
     if (r.status === 200) {
-      S.messages.push(data.message);
-      renderMessages();
+      if (!S.messages.find((x) => x.id === data.message.id)) S.messages.push(data.message);
+      appendMessageBubble(data.message);
+      pinChatScroll();
       if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
       toast(kind === 'voice' ? '🎤 Voice note sent!' : '🔒 PPV sent!');
     } else if (r.status === 402 && data.error === 'trial_over') {
@@ -5054,6 +5106,169 @@ async function sendTip(amountCents) {
 
 let pc = null, localStream = null, callTimerInt = null;
 
+/* Call media plumbing shared by FaceTime, chat calls and bookings.
+ * The three helpers below exist because of the Oct 14 black-stage bug:
+ *  - wireRemoteVideo: ontrack used to ONLY assign srcObject. iOS Safari
+ *    will not autoplay an UNMUTED element whose stream is assigned in
+ *    code (the muted local preview always played, the remote stage sat
+ *    black). Always play() explicitly; if the browser still refuses,
+ *    turn the status pill into a tap-to-play button.
+ *  - ICE buffering: candidates that arrive before the peer connection
+ *    exists or has a remote description used to be silently discarded.
+ *    The model does an HTTP round-trip (/facetime/incoming) between the
+ *    invite and creating her pc, which reliably ate the fan's first
+ *    (host/srflx) candidates. Buffer them, flush after setRemoteDescription.
+ *  - Waiting state: a call with no rendering remote video must say so
+ *    ("Waiting for her camera…") instead of an infinite black stage. */
+let pendingIce = [];            // [{call_id, candidate}] until pc can take them
+let callWaitTimer = null;       // 8s "no remote track yet" watchdog
+let remoteLive = false;         // remote video actually playing
+let remoteTrackSeen = false;    // a remote VIDEO track has arrived at all
+let callPeerMediaError = false; // peer told us their camera/mic failed
+let callConnTimer = null;       // media-plane supervision deadline (10s)
+let callConnFailed = false;     // connection-failure state is on screen
+
+function signalTo(to, payload) {
+  if (S.ws && to != null) S.ws.send(JSON.stringify({ type: 'signal', to, payload }));
+}
+
+function showCallStatus(text, onTap) {
+  const el = $('#call-status');
+  if (!el) return;
+  el.textContent = text;
+  el.onclick = onTap || null;
+  el.classList.toggle('tappable', !!onTap);
+  el.classList.remove('hidden');
+}
+function hideCallStatus() {
+  const el = $('#call-status');
+  if (el) { el.classList.add('hidden'); el.onclick = null; el.classList.remove('tappable'); }
+}
+function callPeerNoun() { return S.call && S.call.role === 'fan' ? 'her' : 'his'; }
+function armCallWaiting() {
+  remoteLive = false;
+  remoteTrackSeen = false;
+  callPeerMediaError = false;
+  clearTimeout(callWaitTimer);
+  callWaitTimer = setTimeout(() => {
+    // Track-ARRIVAL based only (owner ruling, Oct 14): if any remote video
+    // track has landed, media is flowing — the label must never appear,
+    // even if her room is dark and the picture looks black. It exists
+    // solely for "nothing has arrived at all."
+    if (S.call && !remoteTrackSeen && !callPeerMediaError)
+      showCallStatus(`Waiting for ${callPeerNoun()} camera…`);
+  }, 8000);
+}
+function markRemoteLive() {
+  remoteLive = true;
+  callPeerMediaError = false;
+  clearTimeout(callWaitTimer);
+  hideCallStatus();
+}
+function tryPlayRemote() {
+  const vid = $('#remote-video');
+  if (!vid || !vid.srcObject) return;
+  const p = vid.play();
+  if (p && p.catch) p.catch(() => {
+    if (S.call && !remoteLive)
+      showCallStatus(`▶ Tap to see ${callPeerNoun() === 'her' ? 'her' : 'him'}`,
+        () => { vid.play().then(() => markRemoteLive()).catch(() => {}); });
+  });
+}
+function showCallConnFailed() {
+  callConnFailed = true;
+  showCallStatus('⚠️ Camera connection failed — check your connection and try again');
+}
+function pcConnected(pc_) {
+  return pc_.connectionState === 'connected'
+    || pc_.iceConnectionState === 'connected' || pc_.iceConnectionState === 'completed';
+}
+
+function wireRemoteVideo(pc_) {
+  /* Media-plane supervision. The Oct 14 FaceTime call ran its whole
+   * state machine (accept → active → ticks) while NO media flowed in
+   * either direction — and nothing in either client ever looked at the
+   * peer connection's state, so a media-less call presented as a healthy
+   * video call. Now every call pc is supervised: not connected within
+   * ~10s of the call starting, or a drop to 'failed' at any point, puts
+   * an honest failure state on THIS side's screen (both sides run this,
+   * so both sides learn). Billing is untouched — surfacing only. */
+  callConnFailed = false;
+  clearTimeout(callConnTimer);
+  callConnTimer = setTimeout(() => {
+    if (S.call && pc === pc_ && !pcConnected(pc_)) showCallConnFailed();
+  }, 10000);
+  pc_.onconnectionstatechange = () => {
+    if (pc !== pc_ || !S.call) return;
+    const st = pc_.connectionState;
+    if (st === 'connected') {
+      clearTimeout(callConnTimer);
+      if (callConnFailed) { callConnFailed = false; hideCallStatus(); }
+    } else if (st === 'failed') {
+      clearTimeout(callConnTimer);
+      showCallConnFailed();
+    } else if (st === 'disconnected' && !callConnFailed) {
+      showCallStatus('📶 Connection dropped — reconnecting…');
+    }
+  };
+  pc_.ontrack = (e) => {
+    const vid = $('#remote-video');
+    if (e.streams && e.streams[0]) vid.srcObject = e.streams[0];
+    if (e.track && e.track.kind === 'video') {
+      // A track landed — media is flowing, whatever it looks like (a dark
+      // room is near-black video, not a broken call). The waiting label
+      // is cancelled for good and cleared if it was somehow up.
+      remoteTrackSeen = true;
+      clearTimeout(callWaitTimer);
+      if (!callPeerMediaError && !remoteLive) hideCallStatus();
+      e.track.onunmute = () => tryPlayRemote();
+      e.track.onmute = () => {
+        if (S.call && remoteLive)
+          showCallStatus(`⏸ ${callPeerNoun() === 'her' ? 'Her' : 'His'} camera paused…`);
+      };
+      e.track.onended = () => {
+        if (!S.call) return;
+        remoteLive = false;
+        showCallStatus(`⚠️ ${callPeerNoun() === 'her' ? 'Her' : 'His'} camera stopped — waiting…`);
+      };
+    }
+    tryPlayRemote();
+  };
+}
+async function addIce(candidate) {
+  if (!pc || !pc.remoteDescription || !S.call) {
+    pendingIce.push({ call_id: S.call ? S.call.id : null, candidate });
+    return;
+  }
+  try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch (e) { /* stale */ }
+}
+async function flushIce() {
+  if (!pc || !pc.remoteDescription || !S.call) return;
+  const mine = pendingIce.filter((x) => x.call_id === S.call.id);
+  pendingIce = pendingIce.filter((x) => x.call_id !== S.call.id);
+  for (const x of mine) {
+    try { await pc.addIceCandidate(new RTCIceCandidate(x.candidate)); } catch (e) { /* stale */ }
+  }
+}
+
+/* Blocking "your camera didn't start" card (model side). The fan is told
+ * via a media-error signal; she gets real instructions + a retry that
+ * re-runs acceptCall() with the saved offer. Never a silent phantom join. */
+function showCallError(kind) {
+  const el = $('#call-error');
+  if (!el) return;
+  $('#call-error-title').textContent =
+    kind === 'media' ? '📹 Camera blocked' : '📶 Connection failed';
+  $('#call-error-text').textContent = kind === 'media'
+    ? "SlutCamp couldn't reach your camera/mic, so he can't see you — he's staring at a black screen. Allow camera & mic access for this site (your browser's site settings), then tap Try again."
+    : "The call couldn't connect just now. Check your signal, then tap Try again — he's still waiting.";
+  el.classList.remove('hidden');
+}
+function hideCallError() {
+  const el = $('#call-error');
+  if (el) el.classList.add('hidden');
+}
+
 function updateCallHUD() {
   if (!S.call) return;
   const s = S.call.seconds || 0;
@@ -5297,24 +5512,38 @@ function showExplicitOffer(m) {
 async function beginCallMedia(callId, rateCents, modelId, prepaidMin) {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-  } catch (e) { return toast('Camera/mic permission needed 📹'); }
-  pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-  localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
-  pc.onicecandidate = (e) => {
-    if (e.candidate && S.ws) S.ws.send(JSON.stringify({ type: 'signal', to: modelId,
-      payload: { kind: 'ice', call_id: callId, candidate: e.candidate } }));
-  };
-  pc.ontrack = (e) => { $('#remote-video').srcObject = e.streams[0]; };
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  S.ws.send(JSON.stringify({ type: 'signal', to: modelId,
-    payload: { kind: 'invite', call_id: callId, sdp: offer,
-               from_name: S.user.display_name, rate: rateCents } }));
+  } catch (e) {
+    // He already joined server-side (call row + FaceTime request exist).
+    // Release the call so it closes out — an unstarted FaceTime refunds —
+    // instead of leaving her side waiting on a call that can't happen.
+    await api(`/calls/${callId}/end`, { method: 'POST' }).catch(() => {});
+    return toast('📹 Camera/mic blocked — allow camera access for this site, then try again. The FaceTime never started, so you were refunded.', 6000);
+  }
+  try {
+    pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
+    pc.onicecandidate = (e) => {
+      if (e.candidate && S.ws) S.ws.send(JSON.stringify({ type: 'signal', to: modelId,
+        payload: { kind: 'ice', call_id: callId, candidate: e.candidate } }));
+    };
+    wireRemoteVideo(pc);
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    S.ws.send(JSON.stringify({ type: 'signal', to: modelId,
+      payload: { kind: 'invite', call_id: callId, sdp: offer,
+                 from_name: S.user.display_name, rate: rateCents } }));
+  } catch (e) {
+    await api(`/calls/${callId}/end`, { method: 'POST' }).catch(() => {});
+    if (localStream) { localStream.getTracks().forEach((t) => t.stop()); localStream = null; }
+    if (pc) { try { pc.close(); } catch (err) {} pc = null; }
+    return toast('Could not start the call — the FaceTime never started, so you were refunded.', 5000);
+  }
   S.call = { id: callId, rate: rateCents, seconds: 0, minutes: 0, role: 'fan',
              prepaidMin: prepaidMin || 0, remainingMin: prepaidMin || null };
   $('#active-call').classList.remove('hidden');
   $('#local-video').srcObject = localStream;
   $('#call-timer').textContent = 'Calling…';
+  armCallWaiting();
   callTimerInt = setInterval(() => { if (S.call) { S.call.seconds++; updateCallHUD(); } }, 1000);
   toast('Calling… waiting for her to pick up 📞');
 }
@@ -5344,38 +5573,77 @@ async function handleSignal(m) {
   }
   if (!S.call || p.call_id !== S.call.id) return;
   try {
-    if (p.kind === 'answer' && pc) await pc.setRemoteDescription(new RTCSessionDescription(p.sdp));
-    else if (p.kind === 'ice' && pc) await pc.addIceCandidate(new RTCIceCandidate(p.candidate));
+    if (p.kind === 'answer' && pc) {
+      await pc.setRemoteDescription(new RTCSessionDescription(p.sdp));
+      await flushIce();
+    }
+    else if (p.kind === 'ice') await addIce(p.candidate);
+    else if (p.kind === 'media-error') {
+      // Her camera/mic never started — say so instead of a silent black stage.
+      callPeerMediaError = true;
+      clearTimeout(callWaitTimer);
+      showCallStatus(S.call.role === 'fan'
+        ? "⚠️ Her camera is blocked — she's seeing how to fix it"
+        : "⚠️ His camera is blocked — he's seeing how to fix it");
+    }
     else if (p.kind === 'hangup') endCallUI('Call ended.');
   } catch (e) { /* ignore stale signaling */ }
 }
 
 async function acceptCall() {
   $('#call-overlay').classList.add('hidden');
+  hideCallError();
+  if (!S.call) return;
+  // Re-entrant (the error card's Try again lands here): tear down any
+  // half-built attempt before rebuilding, so a retry can't leak pcs/streams.
+  if (pc) { try { pc.close(); } catch (e) {} pc = null; }
+  if (localStream) { localStream.getTracks().forEach((t) => t.stop()); localStream = null; }
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-  } catch (e) { return toast('Camera/mic permission needed 📹'); }
-  pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-  localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
+  } catch (e) {
+    // NEVER phantom-join: the fan must learn her camera didn't start
+    // (media-error), and she gets a blocking card with the fix + a retry —
+    // not a toast that vanishes while he stares at a black stage.
+    signalTo(S.call.from, { kind: 'media-error', call_id: S.call.id,
+      reason: (e && e.name) || 'denied' });
+    showCallError('media');
+    return;
+  }
   const to = S.call.from;
-  pc.onicecandidate = (e) => {
-    if (e.candidate && S.ws) S.ws.send(JSON.stringify({ type: 'signal', to,
-      payload: { kind: 'ice', call_id: S.call.id, candidate: e.candidate } }));
-  };
-  pc.ontrack = (e) => { $('#remote-video').srcObject = e.streams[0]; };
-  await pc.setRemoteDescription(new RTCSessionDescription(S.call.offer));
-  const answer = await pc.createAnswer();
-  await pc.setLocalDescription(answer);
-  S.ws.send(JSON.stringify({ type: 'signal', to, payload: { kind: 'answer', call_id: S.call.id, sdp: answer } }));
-  await api(`/calls/${S.call.id}/accept`, { method: 'POST' }); // starts billing clock
+  try {
+    pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
+    pc.onicecandidate = (e) => {
+      if (e.candidate && S.ws) S.ws.send(JSON.stringify({ type: 'signal', to,
+        payload: { kind: 'ice', call_id: S.call.id, candidate: e.candidate } }));
+    };
+    wireRemoteVideo(pc);
+    await pc.setRemoteDescription(new RTCSessionDescription(S.call.offer));
+    await flushIce();
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    S.ws.send(JSON.stringify({ type: 'signal', to, payload: { kind: 'answer', call_id: S.call.id, sdp: answer } }));
+    await api(`/calls/${S.call.id}/accept`, { method: 'POST' }); // starts billing clock
+  } catch (e) {
+    // SDP/connect failure used to be an unhandled rejection = the same
+    // silent black stage on his side. Surface it on both sides instead.
+    if (pc) { try { pc.close(); } catch (err) {} pc = null; }
+    if (localStream) { localStream.getTracks().forEach((t) => t.stop()); localStream = null; }
+    signalTo(to, { kind: 'media-error', call_id: S.call.id, reason: 'connect' });
+    showCallError('connect');
+    return;
+  }
   $('#active-call').classList.remove('hidden');
   $('#local-video').srcObject = localStream;
   syncExplicitBtn();
+  armCallWaiting();
   callTimerInt = setInterval(() => { if (S.call) { S.call.seconds++; updateCallHUD(); } }, 1000);
 }
 
 function declineCall() {
   $('#call-overlay').classList.add('hidden');
+  hideCallError();
+  pendingIce = [];
   if (S.call) {
     if (S.ws) S.ws.send(JSON.stringify({ type: 'signal', to: S.call.from,
       payload: { kind: 'hangup', call_id: S.call.id } }));
@@ -5396,7 +5664,16 @@ async function hangupCall() {
 function endCallUI(msg) {
   $('#active-call').classList.add('hidden');
   $('#call-overlay').classList.add('hidden');
+  hideCallError();
+  hideCallStatus();
   clearInterval(callTimerInt);
+  clearTimeout(callWaitTimer);
+  clearTimeout(callConnTimer);
+  pendingIce = [];
+  remoteLive = false;
+  remoteTrackSeen = false;
+  callPeerMediaError = false;
+  callConnFailed = false;
   if (pc) { try { pc.close(); } catch (e) {} pc = null; }
   if (localStream) { localStream.getTracks().forEach((t) => t.stop()); localStream = null; }
   $('#remote-video').srcObject = null;
@@ -5646,6 +5923,8 @@ function liveBrbCardHTML(name) {
     ${name ? `<div class="brb-name">${t('brb_name', { name: esc(name) })}</div>` : ''}`;
 }
 
+function liveEndConfirm() { if (confirm('End your live stream?')) endLiveView('Stream ended.'); }
+
 function applyLiveBrb(on) {
   const L = S.live;
   if (!L) return;
@@ -5653,9 +5932,58 @@ function applyLiveBrb(on) {
   L.brb = on;
   const ov = $('#live-brb-overlay');
   if (ov) ov.classList.toggle('hidden', !on);
+  if (L.role === 'fan') {
+    /* The paused card is never a dead end for viewers either (owner:
+     * "I can't exit unless I close the app"): the card itself carries a
+     * Leave button, re-created + re-bound on every brb application. The
+     * band's own Leave also stays reachable — .live-bottom is z-index 7,
+     * above the card's 6. */
+    let lb = $('#live-brb-leave');
+    if (ov && !lb) {
+      lb = document.createElement('button');
+      lb.id = 'live-brb-leave';
+      lb.className = 'btn ghost';
+      lb.style.marginTop = '18px';
+      lb.textContent = 'Leave stream';
+      ov.appendChild(lb);
+    }
+    if (lb) lb.onclick = () => endLiveView();
+    return;
+  }
   if (L.role !== 'model') return;
   const b = $('#live-pause-btn');
-  if (b) b.textContent = on ? t('resume_live') : t('pause_live');
+  if (b) { b.textContent = on ? t('resume_live') : t('pause_live'); b.onclick = liveToggleBrb; }
+  /* Belt-and-braces exit (Oct 14: a session sat paused 17 minutes — her
+   * Resume taps were being swallowed above the controls layer, and the
+   * server flag could only be cleared by an admin). The BRB card itself
+   * carries a Resume button, and every brb state application re-asserts
+   * BOTH bindings and re-creates the on-card button if a re-render ever
+   * dropped it — while she is paused, a working Resume is guaranteed to
+   * be on screen, bound to the toggle. */
+  let rb = $('#live-brb-resume');
+  if (ov && !rb) {
+    rb = document.createElement('button');
+    rb.id = 'live-brb-resume';
+    rb.className = 'btn';
+    rb.style.marginTop = '18px';
+    rb.textContent = '▶ ' + t('resume_live');
+    ov.appendChild(rb);
+  }
+  if (rb) rb.onclick = liveToggleBrb;
+  // The card also carries her End — while paused, Resume AND End are
+  // both painted from the brb state, never absent.
+  let eb = $('#live-brb-end');
+  if (ov && !eb) {
+    eb = document.createElement('button');
+    eb.id = 'live-brb-end';
+    eb.className = 'btn danger';
+    eb.style.marginTop = '10px';
+    eb.textContent = t('end_stream');
+    ov.appendChild(eb);
+  }
+  if (eb) eb.onclick = liveEndConfirm;
+  const endBtn = $('#live-end-btn');
+  if (endBtn) endBtn.onclick = liveEndConfirm;
   if (!L.stream || on === was) return;
   const tracks = L.stream.getTracks();
   if (on) {
@@ -5677,6 +6005,9 @@ async function liveToggleBrb() {
   const { status, data } = await api(`/live/${L.sessionId}/brb`, {
     method: 'POST', body: JSON.stringify({ on: !L.brb }) });
   if (status === 200) applyLiveBrb(!!data.brb);
+  else toast(L.brb
+    ? "Couldn't resume — check your connection and tap Resume again 📶"
+    : "Couldn't pause — check your connection and tap again 📶", 4000);
 }
 
 function vLiveBroadcast() {
@@ -5688,7 +6019,7 @@ function vLiveBroadcast() {
         <div class="split-pane" id="split-model">
           <video id="live-local" autoplay playsinline muted></video>
           <div class="split-name" id="split-model-name">${esc(S.model?.display_name || 'You')}</div>
-          <div id="live-brb-overlay" class="${L.brb ? '' : 'hidden'}">${liveBrbCardHTML(S.model?.display_name || S.user?.display_name || '')}</div>
+          <div id="live-brb-overlay" class="${L.brb ? '' : 'hidden'}">${liveBrbCardHTML(S.model?.display_name || S.user?.display_name || '')}<button class="btn" id="live-brb-resume" style="margin-top:18px">▶ ${t('resume_live')}</button><button class="btn danger" id="live-brb-end" style="margin-top:10px">${t('end_stream')}</button></div>
         </div>
         <div class="split-pane hidden" id="split-fan">
           <video id="stage-video" autoplay playsinline muted class="hidden"></video>
@@ -5711,7 +6042,7 @@ function vLiveBroadcast() {
       <div id="live-leaderboard" class="live-leaderboard hidden"></div>
       <div class="broadcast-bottom">
         <div id="stream-chat" class="stream-chat"></div>
-        <div class="stream-chat-input">
+        <div class="stream-chat-input live-typing-bubble">
           <input id="stream-chat-box" class="input" placeholder="${t('say_fans_ph')}" maxlength="500" autocomplete="off">
           <button class="btn small" id="stream-chat-send" style="margin:0">➤</button>
         </div>
@@ -5730,7 +6061,11 @@ function vLiveBroadcast() {
   $('#live-local').srcObject = L.stream;
   $('#live-explicit-btn').onclick = liveToggleExplicit;
   $('#live-pause-btn').onclick = liveToggleBrb;
-  $('#live-end-btn').onclick = () => { if (confirm('End your live stream?')) endLiveView('Stream ended.'); };
+  const brbResumeBtn = $('#live-brb-resume');
+  if (brbResumeBtn) brbResumeBtn.onclick = liveToggleBrb;
+  const brbEndBtn = $('#live-brb-end');
+  if (brbEndBtn) brbEndBtn.onclick = liveEndConfirm;
+  $('#live-end-btn').onclick = liveEndConfirm;
   startLeaderboardPolling();
   const sendBox = $('#stream-chat-box');
   const sendIt = () => {
@@ -6884,7 +7219,7 @@ function vLiveWatch() {
         <div class="muted small" id="live-countdown" style="margin-top:8px"></div>
         <button class="btn ghost" id="live-stay-free" style="margin-top:8px">Keep watching free (blurred)</button>
       </div>
-      <div id="live-brb-overlay" class="${L.brb ? '' : 'hidden'}">${liveBrbCardHTML(L.modelName)}</div>
+      <div id="live-brb-overlay" class="${L.brb ? '' : 'hidden'}">${liveBrbCardHTML(L.modelName)}<button class="btn ghost" id="live-brb-leave" style="margin-top:18px">Leave stream</button></div>
       <div id="gift-anim" class="hidden"></div>
       <div id="gift-stack"></div>
       <div class="live-top">
@@ -6899,28 +7234,40 @@ function vLiveWatch() {
       <div id="live-pay-hud" class="hidden"></div>
       <div id="live-gift-hud" class="hidden"></div>
       <div id="stream-chat" class="stream-chat fan"></div>
-      <div class="stream-chat-input fan">
-        <input id="stream-chat-box" class="input" placeholder="Chat is FREE — say hi! 💬" maxlength="500" autocomplete="off">
-        <button class="btn small" id="stream-chat-send" style="margin:0">➤</button>
-        <button class="btn small" id="gift-open-btn" style="margin:0;background:linear-gradient(135deg,#ec4899,#8b5cf6)">🎁</button>
-        <button class="btn small" id="tipmenu-open-btn" style="margin:0;background:linear-gradient(135deg,#f59e0b,#f97316)" aria-label="Tip menu">💰</button>
-        <button class="btn small" id="priority-open-btn" style="margin:0;background:linear-gradient(135deg,#f59e0b,#ef4444)" aria-label="Send priority message">📢</button>
-        <button class="btn small" id="stage-join-btn" style="margin:0;background:linear-gradient(135deg,#8b5cf6,#3b82f6)" aria-label="Join live on camera">🎥</button>
-      </div>
-      <div id="stage-banner" class="hidden"></div>
-      <div class="live-controls">
-        <button class="btn ghost" id="live-leave-btn">Leave stream</button>
+      <div class="live-bottom">
+        <div class="live-actions-row">
+          <button class="btn small" id="gift-open-btn" style="margin:0;background:linear-gradient(135deg,#ec4899,#8b5cf6)">🎁</button>
+          <button class="btn small" id="tipmenu-open-btn" style="margin:0;background:linear-gradient(135deg,#f59e0b,#f97316)" aria-label="Tip menu">💰</button>
+          <button class="btn small" id="priority-open-btn" style="margin:0;background:linear-gradient(135deg,#f59e0b,#ef4444)" aria-label="Send priority message">📢</button>
+          <button class="btn small" id="stage-join-btn" style="margin:0;background:linear-gradient(135deg,#8b5cf6,#3b82f6)" aria-label="Join live on camera">🎥</button>
+        </div>
+        <div class="stream-chat-input fan live-typing-bubble">
+          <input id="stream-chat-box" class="input" placeholder="Chat is FREE — say hi! 💬" maxlength="500" autocomplete="off">
+          <button class="btn small" id="stream-chat-send" style="margin:0" aria-label="Send">➤</button>
+        </div>
+        <div id="stage-banner" class="hidden"></div>
+        <div class="live-controls">
+          <button class="btn ghost" id="live-leave-btn">Leave stream</button>
+        </div>
       </div>
     </div>`;
   $('#live-leave-btn').onclick = () => endLiveView();
+  const brbLeave = $('#live-brb-leave');
+  if (brbLeave) brbLeave.onclick = () => endLiveView();
   const sf = $('#live-stay-free');
   if (sf) sf.onclick = () => { clearInterval(S.live.countdownInt); $('#live-blur-overlay').classList.add('hidden'); };
   const sendBox = $('#stream-chat-box');
+  // Two-row band (owner's design): the action icons own the row above,
+  // the typing bubble owns its own full-width row — no width war, no
+  // focus-expansion needed; typed text is always fully visible.
   const sendIt = () => {
     const v = sendBox.value.trim();
     if (v) { sendStreamChat(v); sendBox.value = ''; }
   };
-  $('#stream-chat-send').onclick = sendIt;
+  const stageSendBtn = $('#stream-chat-send');
+  stageSendBtn.onclick = sendIt;
+  // Keep the input focused (and the keyboard up) when send is tapped.
+  stageSendBtn.addEventListener('pointerdown', (e) => e.preventDefault());
   sendBox.onkeydown = (e) => { if (e.key === 'Enter') sendIt(); };
   lockCopyForFans($('#stream-chat'), sendBox);
   $('#gift-open-btn').onclick = openGiftPanel;
@@ -7325,6 +7672,9 @@ if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !navigator.standalone &&
 $('#call-accept').onclick = acceptCall;
 $('#call-decline').onclick = declineCall;
 $('#call-hangup').onclick = hangupCall;
+$('#call-error-retry').onclick = () => { hideCallError(); acceptCall(); };
+$('#call-error-end').onclick = () => { hideCallError(); hangupCall(); };
+$('#remote-video').addEventListener('playing', markRemoteLive);
 
 /* ---------------- 18+ age gate ---------------- */
 // Resolves when the visitor has verified they are 18+. The full-screen

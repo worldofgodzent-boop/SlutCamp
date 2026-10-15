@@ -93,10 +93,23 @@
 <div id="active-call" class="hidden">
   <video id="remote-video" autoplay playsinline></video>
   <video id="local-video" autoplay playsinline muted></video>
+  <div id="call-status" class="hidden"></div>
   <div class="call-hud">
     <div id="call-timer">00:00</div>
     <div id="call-cost" class="muted">$0.00</div>
     <button id="call-hangup" class="btn-call decline">✕</button>
+  </div>
+</div>
+
+<!-- Call could not start (camera/mic blocked or connect failed) -->
+<div id="call-error" class="hidden">
+  <div class="call-card">
+    <h2 id="call-error-title">📹 Camera blocked</h2>
+    <p id="call-error-text" class="muted"></p>
+    <div class="call-actions">
+      <button id="call-error-end" class="btn ghost">End call</button>
+      <button id="call-error-retry" class="btn">Try again</button>
+    </div>
   </div>
 </div>
 
