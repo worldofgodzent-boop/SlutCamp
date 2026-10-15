@@ -4211,7 +4211,6 @@ function openActionSheet() {
   const sheet = $('#action-sheet');
   const isModel = S.user && S.user.role === 'model';
   const isFan = S.user && S.user.role === 'fan';
-  const voicePrice = isModel && S.model ? fmt(S.model.per_voice_cents) : null;
   sheet.innerHTML = `
     <div class="sheet-backdrop" id="sheet-bg"></div>
     <div class="sheet">
@@ -4219,7 +4218,7 @@ function openActionSheet() {
       ${isModel ? `
         <label class="sheet-btn" for="ppv-file-img">📸 Photo <span class="muted small">— set your price</span></label>
         <label class="sheet-btn" for="ppv-file-vid">🎥 Video <span class="muted small">— set your price</span></label>
-        <button class="sheet-btn" id="sh-voice">🎤 Voice note <span class="muted small">— fan pays ${voicePrice}</span></button>
+        <button class="sheet-btn" id="sh-voice">🎤 Voice note <span class="muted small">— he hears it free 💋</span></button>
       ` : `
         <button class="sheet-btn" id="sh-voice">🎤 Voice note</button>
         ${isFan ? `<button class="sheet-btn" id="sh-tip">🎁 Send a tip</button>` : ''}
@@ -4414,14 +4413,13 @@ function voiceOverlayError(ov, msg) {
   card.querySelector('#voice-err-close').onclick = () => ov.remove();
 }
 
-/* Recorder hint: models see what the fan pays; fans now see their cost up
-   front (the server charges the model's per-voice price like a text charge).
-   The price is read from S.model (the signed-in user's own model row —
-   only populated for model accounts) or conv.other when present; if neither
-   is in scope, fall back to the neutral text. */
+/* Recorder hint: models see their note is free for the fan to hear; fans
+   see their send cost up front (the server charges the model's per-voice
+   price like a text charge). The fan's price is read from conv.other when
+   present; if not in scope, fall back to the neutral text. */
 function voiceHintText() {
   if (S.user && S.user.role === 'model')
-    return `Fan pays ${fmt(S.model.per_voice_cents)} to listen`;
+    return 'He hears it free 💋';
   const cents = (S.model && S.model.per_voice_cents != null) ? S.model.per_voice_cents
     : (S.conv && S.conv.other && S.conv.other.per_voice_cents != null)
       ? S.conv.other.per_voice_cents : null;

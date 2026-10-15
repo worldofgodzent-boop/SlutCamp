@@ -2174,14 +2174,15 @@ function otherParty(conv, ident) {
   const otherId = meIsFanSide ? conv.model_id : conv.fan_id;
   if (!otherId) { // guest on the other side (model viewing a guest chat)
     return { id: 0, display_name: 'Guest Fan', role: 'fan', is_online: true,
-             per_message_cents: 0, per_minute_cents: 0, is_guest: true };
+             per_message_cents: 0, per_minute_cents: 0, per_voice_cents: 0, is_guest: true };
   }
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(otherId);
   const m = u.role === 'model' ? db.prepare('SELECT * FROM models WHERE user_id = ?').get(otherId) : null;
   return { ...getUserPublic(u), is_online: m ? effectiveOnline(u.presence_override, m.is_online) : false,
            photo_url: m ? (m.photo_url || '') : '',
            per_message_cents: m ? m.per_message_cents : 0,
-           per_minute_cents: m ? m.per_minute_cents : 0 };
+           per_minute_cents: m ? m.per_minute_cents : 0,
+           per_voice_cents: m ? m.per_voice_cents : 0 };
 }
 
 function convWhere(ident) {
@@ -2486,7 +2487,7 @@ const MEDIA_LABELS = {
 };
 
 // POST /api/media/send (multipart: file + fields conversation_id, kind, price_cents, duration_sec)
-// Models attach PPV with a price; fans can send voice notes (billed as normal message).
+// Models attach PPV with a price; fans can send voice notes (billed at her per-voice rate).
 app.post('/api/media/send', identMiddleware, (req, res) => {
   upload.single('file')(req, res, (err) => {
     if (err) return res.status(400).json({ error: 'bad_file', message: 'Upload a photo, video, or audio file under 200MB.' });
@@ -2518,20 +2519,22 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
       return res.status(403).json({ error: 'fans_cannot_upload_media' });
     }
 
-    // Price: models set whatever they want for PPV/voice. Fans' voice notes = normal message billing.
+    // Price: models set whatever they want for PPV/voice. Fans' voice notes bill at her per-voice rate.
     let priceCents = 0;
     if (isModelSender && kind !== 'voice') {
       priceCents = parseInt(req.body.price_cents) || 0;
       // PPV price: $1–$100, or $0 for a free preview (unlocked for everyone)
       if (priceCents !== 0 && (priceCents < 100 || priceCents > 10000)) { fs.unlink(req.file.path, () => {}); return res.status(400).json({ error: 'bad_price', message: 'PPV price must be $1–$100 (or $0 for a free preview).' }); }
     } else if (isModelSender && kind === 'voice') {
-      const m = db.prepare('SELECT per_voice_cents FROM models WHERE user_id = ?').get(req.ident.user.id);
-      priceCents = parseInt(req.body.price_cents);
-      if (!Number.isInteger(priceCents) || priceCents < 0) priceCents = m ? m.per_voice_cents : 299;
+      // Voice notes: pay to SEND, free to LISTEN (owner rule). A model's voice
+      // note is stored at price 0 so the fan just plays it — no unlock charge.
+      // (Her per_voice_cents is what FANS pay to send HER a voice note.)
+      priceCents = 0;
     }
     const durationSec = Math.max(0, Math.min(3600, parseInt(req.body.duration_sec) || 0));
 
-    // Fan/guest billing for sending (models send free; fan voice note = normal message rate)
+    // Fan/guest billing for sending (models send free; a fan voice note bills
+    // at the model's per-voice rate, auto-deducted exactly like a text charge)
     let costCents = 0;
     let freeLeft = 0;
     if (isFanSender) {
@@ -2548,10 +2551,16 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
         fs.unlink(req.file.path, () => {});
         return res.status(402).json({ error: 'trial_over' });
       } else {
-        const model = db.prepare('SELECT * FROM models WHERE user_id = ?').get(conv.model_id);
-        costCents = model.per_message_cents;
+        // Registered fan: charge the model's per-voice rate for a voice note
+        // (per_message_cents if the voice rate is somehow absent).
+        const model = db.prepare('SELECT per_message_cents, per_voice_cents FROM models WHERE user_id = ?')
+          .get(conv.model_id);
+        costCents = model ? model.per_message_cents : 0;
+        if (model && kind === 'voice' && Number.isInteger(model.per_voice_cents)) {
+          costCents = model.per_voice_cents;
+        }
         try {
-          chargeFan(req.ident.user.id, conv.model_id, costCents, 'message', 'Voice note message', clientIp(req));
+          chargeFan(req.ident.user.id, conv.model_id, costCents, 'voice', 'Voice note', clientIp(req));
         } catch (e) {
           fs.unlink(req.file.path, () => {});
           return res.status(402).json({ error: 'insufficient_credits', needed_cents: costCents,
