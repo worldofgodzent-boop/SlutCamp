@@ -120,7 +120,6 @@ body.sheet-open #tabbar {
    (no black slab behind the sheet) and sheets pin flush to the screen's
    bottom edge — their own padding covers the safe-area inset. */
 body.sheet-open #app { padding-bottom: env(safe-area-inset-bottom); }
-body.sheet-open #action-sheet { height: 100dvh; }
 body.sheet-open .sheet { bottom: 0; }
 #tabbar button {
   flex: 1; background: none; border: none; color: var(--muted);
@@ -576,8 +575,34 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 .ppv-vid { width: 220px; max-width: 100%; border-radius: 12px; margin-top: 6px; display: block; background: #000; }
 .ppv-audio { width: 220px; max-width: 100%; margin-top: 6px; }
 
-/* ---------- Action sheet (iPhone style) ---------- */
-#action-sheet { position: fixed; inset: 0; z-index: 140; }
+/* ---------- Chat media loading veil ---------- */
+.media-wrap {
+  position: relative; display: block; width: 220px; max-width: 100%;
+  margin-top: 6px; border-radius: 12px; overflow: hidden; background: var(--bg2);
+}
+.media-wrap.media-img { min-height: 110px; }
+.media-wrap.media-vid { min-height: 124px; }
+.media-wrap.media-aud { min-height: 48px; }
+.media-wrap .ppv-img, .media-wrap .ppv-vid, .media-wrap .ppv-audio {
+  width: 100%; margin-top: 0; border-radius: 0;
+}
+.media-load {
+  position: absolute; inset: 0; z-index: 2;
+  display: none; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  background: rgba(26,13,24,.55); pointer-events: none;
+}
+.media-wrap.is-loading .media-load, .media-wrap.is-error .media-load { display: flex; }
+.media-wrap.is-error .media-load { pointer-events: auto; cursor: pointer; }
+.media-spin {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  border: 3px solid rgba(255,92,158,.25); border-top-color: var(--pink);
+  animation: media-spin .8s linear infinite;
+}
+.media-wrap.is-error .media-spin { display: none; }
+@keyframes media-spin { to { transform: rotate(360deg); } }
+.media-load-tx { font-size: 12px; font-weight: 600; color: var(--peach); padding: 0 10px; text-align: center; }
+
+/* ---------- Bottom sheets (iPhone style) ---------- */
 .sheet-backdrop { position: absolute; inset: 0; background: rgba(16,6,12,.5); }
 .sheet {
   position: absolute; left: 0; right: 0; bottom: 0; max-width: 480px; margin: 0 auto;
@@ -595,7 +620,7 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
   border-radius: 14px; padding: 15px 16px; margin-bottom: 8px; cursor: pointer;
 }
 .sheet-btn.cancel { text-align: center; color: var(--muted); margin-top: 4px; }
-/* Real file inputs the action sheet opens via <label for> — offscreen, never display:none */
+/* Real file input the composer's 📷 label opens via <label for> — offscreen, never display:none */
 .file-offscreen { position: fixed; left: -9999px; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
 /* ---------- Tips ---------- */
@@ -755,9 +780,6 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
   position: fixed; inset: 0; z-index: 50; background: rgba(16,6,12,.5);
   display: flex; align-items: flex-end; justify-content: center;
 }
-/* Inside #action-sheet the backdrop is a scrim over the sheet container,
-   not a root overlay — anchor it to the container, not the viewport */
-#action-sheet .sheet-backdrop { position: absolute; }
 .sheet {
   width: 100%; max-width: 480px; background: #1c1030;
   border-radius: 20px 20px 0 0; padding: 18px 16px calc(10px + env(safe-area-inset-bottom));
@@ -1060,7 +1082,11 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
 /* ---------------- Notifications bell + follows + tip menu ---------------- */
 .notif-bell {
-  position: fixed; top: 12px; right: 12px; z-index: 900;
+  /* Lowered out of the Dynamic Island / status zone (owner: "bring it down
+     so I can click it"): the whole 44px target now sits below the safe-area
+     inset AND below the header content row (inset+10 → inset+54, where the
+     chat 📹 / Book 1-on-1 buttons live), so it never covers them either. */
+  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 56px); right: 12px; z-index: 900;
   width: 44px; height: 44px; border-radius: 50%;
   background: var(--card); border: 1px solid rgba(139,92,246,.35);
   font-size: 20px; cursor: pointer;

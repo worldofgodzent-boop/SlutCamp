@@ -3901,7 +3901,6 @@ async function vChat(params) {
     <div id="messages"></div>
     <div id="typing-ind" class="rate-hint hidden"><i>${t('typing')}</i></div>
     <div class="chat-input-bar">
-      ${!conv.is_paused ? `<button class="icon-btn" id="c-plus" title="More">＋</button>` : ''}
       ${!conv.is_paused && S.user && S.user.role === 'fan' ? `<button class="icon-btn" id="c-gift" title="Send a gift">🎁</button>` : ''}
       ${!conv.is_paused && S.user && S.user.role === 'fan' ? `<button class="icon-btn" id="c-tipmenu" title="Tip menu">💰</button>` : ''}
       <div class="composer-pill" id="c-pill">
@@ -3913,9 +3912,6 @@ async function vChat(params) {
         <button type="button" class="round-act" id="c-send" aria-label="Send" ${conv.is_paused ? 'disabled' : ''}>↑</button>
       </div>
     </div>
-    <div id="action-sheet" class="hidden"></div>
-    <input type="file" id="ppv-file-img" class="file-offscreen" accept="image/*">
-    <input type="file" id="ppv-file-vid" class="file-offscreen" accept="video/*">
     <input type="file" id="ppv-file-cam" class="file-offscreen" accept="image/*,video/*">`;
 
   $('#c-back').onclick = () => {
@@ -3932,30 +3928,13 @@ async function vChat(params) {
   const bb = $('#c-book');
   if (bb) bb.onclick = () => openBookingSheet(conv.other.id, conv.other.display_name,
     conv.other.per_minute_cents || 399);
-  const pb = $('#c-plus');
-  if (pb) pb.onclick = openActionSheet;
-  // PPV pickers: real inputs opened natively by the sheet's <label for> taps.
-  // (A synthetic input.click() gets ignored by iOS in the home-screen app —
-  // the label tap is a native gesture, so the picker always opens.)
-  const bindPpv = (id, kind) => {
-    const inp = $(id);
-    if (!inp) return;
-    inp.onchange = () => {
-      const f = inp.files && inp.files[0];
-      inp.value = '';
-      closeActionSheet();
-      if (!f) return;
-      if (f.size > 200 * 1024 * 1024) return toast('File too big — 200MB max.');
-      openPpvPriceSheet(f, kind);
-    };
-  };
-  bindPpv('#ppv-file-img', 'ppv_image');
-  bindPpv('#ppv-file-vid', 'ppv_video');
   // WhatsApp-style composer shortcuts: the round 🎤 button beside the bubble
-  // starts a voice note DIRECTLY on the tap (no "+" sheet hop in between —
+  // starts a voice note DIRECTLY on the tap (no sheet hop in between —
   // every intermediate step is a chance for iOS to lose the mic gesture), and
   // the 📷 label (models only) opens the native picker for photo OR video,
-  // then joins the exact same price-sheet flow as the sheet's pickers.
+  // then joins the PPV price-sheet flow. (A synthetic input.click() gets
+  // ignored by iOS in the home-screen app — the label tap is a native
+  // gesture, so the picker always opens.)
   const micBtn = $('#c-mic');
   if (micBtn) micBtn.onclick = () => startVoiceRecord();
   const camInp = $('#ppv-file-cam');
@@ -4019,12 +3998,17 @@ function mediaHTML(m) {
   if (!m.media) return '';
   const md = m.media;
   if (md.unlocked) {
+    // Every unlocked tile wears a loading veil (spinner + "Loading…") until
+    // its bytes are actually ready — no more black/dead tiles while media
+    // streams in. The veil returns while a video buffers and turns into a
+    // tap-to-retry card if the load fails.
+    const veil = `<span class="media-load"><span class="media-spin"></span><span class="media-load-tx">Loading…</span></span>`;
     if (md.kind === 'ppv_image')
-      return `<img class="ppv-img" data-media-src="${md.id}" alt="photo">`;
+      return `<span class="media-wrap media-img is-loading"><img class="ppv-img" data-media-src="${md.id}" alt="photo">${veil}</span>`;
     if (md.kind === 'ppv_video')
-      return `<video class="ppv-vid" data-media-src="${md.id}" controls playsinline preload="none"></video>`;
+      return `<span class="media-wrap media-vid is-loading"><video class="ppv-vid" data-media-src="${md.id}" controls playsinline preload="metadata"></video>${veil}</span>`;
     if (md.kind === 'voice')
-      return `<audio class="ppv-audio" data-media-src="${md.id}" controls preload="none"></audio>`;
+      return `<span class="media-wrap media-aud is-loading"><audio class="ppv-audio" data-media-src="${md.id}" controls preload="none"></audio>${veil}</span>`;
     return '';
   }
   // Locked: pretty blurred tile, no bytes leak until paid
@@ -4055,16 +4039,73 @@ function mediaHTML(m) {
   </button>`;
 }
 
+/* Loading veil states for chat media: 'loading' (spinner + "Loading…"),
+   'ready' (veil gone), 'error' ("Couldn't load — tap to retry", manual
+   retry only). Elements are recreated on every renderMessages, so handlers
+   are bound per element at hydration time and never leak across renders. */
+function mediaSetState(el, state) {
+  const w = el.closest('.media-wrap');
+  if (!w) return;
+  w.classList.toggle('is-loading', state === 'loading');
+  w.classList.toggle('is-error', state === 'error');
+  const tx = w.querySelector('.media-load-tx');
+  if (tx) tx.textContent = state === 'error' ? "Couldn't load — tap to retry" : 'Loading…';
+}
+
+function bindMediaState(el) {
+  if (el.dataset.stateBound) return;
+  el.dataset.stateBound = '1';
+  const tag = el.tagName;
+  if (tag === 'IMG') {
+    el.addEventListener('load', () => mediaSetState(el, 'ready'));
+    el.addEventListener('error', () => { if (el.dataset.hydrated) mediaSetState(el, 'error'); });
+  } else if (tag === 'VIDEO') {
+    el.addEventListener('loadeddata', () => mediaSetState(el, 'ready'));
+    el.addEventListener('waiting', () => mediaSetState(el, 'loading'));
+    el.addEventListener('seeking', () => mediaSetState(el, 'loading'));
+    el.addEventListener('playing', () => mediaSetState(el, 'ready'));
+    el.addEventListener('canplay', () => mediaSetState(el, 'ready'));
+    el.addEventListener('error', () => { if (el.dataset.hydrated) mediaSetState(el, 'error'); }, true);
+  } else if (tag === 'AUDIO') {
+    el.addEventListener('canplay', () => mediaSetState(el, 'ready'));
+    el.addEventListener('error', () => { if (el.dataset.hydrated) mediaSetState(el, 'error'); }, true);
+  }
+  const w = el.closest('.media-wrap');
+  const veil = w && w.querySelector('.media-load');
+  if (veil) veil.addEventListener('click', () => {
+    if (!w.classList.contains('is-error')) return;
+    delete el.dataset.hydrated;
+    hydrateOneMedia(el);
+  });
+}
+
+async function hydrateOneMedia(el) {
+  el.dataset.hydrated = '1';
+  mediaSetState(el, 'loading');
+  try {
+    const { status, data } = await api(`/media/${el.dataset.mediaSrc}/file-token`, { method: 'POST' });
+    if (status === 200 && data.url) {
+      el.src = data.url;
+      if (el.tagName !== 'IMG') { try { el.load(); } catch (e) { /* fresh el */ } }
+      // Audio streams on demand once it has its URL — the native player
+      // takes over from here ('canplay' also clears the veil).
+      if (el.tagName === 'AUDIO') mediaSetState(el, 'ready');
+      if (el.tagName === 'IMG' && el.complete && el.naturalWidth > 0) mediaSetState(el, 'ready');
+    } else {
+      mediaSetState(el, 'error');
+    }
+  } catch (e) {
+    mediaSetState(el, 'error');
+  }
+}
+
 async function hydrateMediaSrc(scope) {
   // Resolve authed file URLs for unlocked media (img/video/audio tags can't send headers)
   const els = (scope || document).querySelectorAll('[data-media-src]');
   for (const el of els) {
+    bindMediaState(el);
     if (el.dataset.hydrated) continue;
-    el.dataset.hydrated = '1';
-    try {
-      const { status, data } = await api(`/media/${el.dataset.mediaSrc}/file-token`, { method: 'POST' });
-      if (status === 200 && data.url) el.src = data.url;
-    } catch (e) { /* leave broken, user can retry */ }
+    await hydrateOneMedia(el);
   }
 }
 
@@ -4136,27 +4177,17 @@ function syncChatComposer() {
   pill.classList.toggle('grown', sh > 42);
 }
 
-/* Tab bar vanishes while any sheet/modal flow is open (chat "+" Send sheet,
-   PPV price sheet, voice recorder, gift/tip/FaceTime/booking sheets…) and
+/* Tab bar vanishes while any sheet/modal flow is open (PPV price sheet,
+   voice recorder, gift/tip/FaceTime/booking sheets…) and
    pops back the moment it closes. A MutationObserver catches EVERY open and
    close path (send, cancel, backdrop tap, programmatic remove), so the state
    can never desync; leaving a view removes the sheet node, which restores
-   the bar too. Sheets are: .sheet-backdrop modals, the chat #action-sheet,
-   and the fixed overlays #ppv-price-overlay / #voice-ov / #tip-ov / #paywall.
-   Note: the closed #action-sheet keeps a stale .sheet-backdrop child inside
-   it, so backdrop nodes nested in #action-sheet are only counted while the
-   action sheet itself is unhidden. */
+   the bar too. Sheets are: .sheet-backdrop modals (tip menu, gift, FaceTime,
+   booking, priority, stage…) and the fixed overlays #ppv-price-overlay /
+   #voice-ov / #tip-ov / #paywall. */
 function syncSheetState() {
-  let open = !!document.querySelector(
-    '#ppv-price-overlay, #voice-ov, #tip-ov, #paywall');
-  if (!open) {
-    const as = $('#action-sheet');
-    open = !!as && !as.classList.contains('hidden');
-  }
-  if (!open) {
-    open = [...document.querySelectorAll('.sheet-backdrop')]
-      .some((el) => !el.closest('#action-sheet'));
-  }
+  const open = !!document.querySelector(
+    '#ppv-price-overlay, #voice-ov, #tip-ov, #paywall, .sheet-backdrop');
   document.body.classList.toggle('sheet-open', open);
 }
 if (window.MutationObserver) {
@@ -4233,38 +4264,7 @@ function showBuyCredits(needed) {
   if (S.user && S.user.role === 'fan') show('wallet', {});
 }
 
-/* ---------------- CHAT ACTION SHEET: PPV / voice / tips ---------------- */
-
-function openActionSheet() {
-  const sheet = $('#action-sheet');
-  const isModel = S.user && S.user.role === 'model';
-  const isFan = S.user && S.user.role === 'fan';
-  sheet.innerHTML = `
-    <div class="sheet-backdrop" id="sheet-bg"></div>
-    <div class="sheet">
-      <div class="sheet-title">Send…</div>
-      ${isModel ? `
-        <label class="sheet-btn" for="ppv-file-img">📸 Photo <span class="muted small">— set your price</span></label>
-        <label class="sheet-btn" for="ppv-file-vid">🎥 Video <span class="muted small">— set your price</span></label>
-        <button class="sheet-btn" id="sh-voice">🎤 Voice note <span class="muted small">— he hears it free 💋</span></button>
-      ` : `
-        <button class="sheet-btn" id="sh-voice">🎤 Voice note</button>
-        ${isFan ? `<button class="sheet-btn" id="sh-tip">🎁 Send a tip</button>` : ''}
-      `}
-      <button class="sheet-btn cancel" id="sh-cancel">Cancel</button>
-    </div>`;
-  sheet.classList.remove('hidden');
-  $('#sheet-bg').onclick = closeActionSheet;
-  $('#sh-cancel').onclick = closeActionSheet;
-  const bind = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
-  bind('#sh-voice', () => { closeActionSheet(); startVoiceRecord(); });
-  bind('#sh-tip', () => { closeActionSheet(); openTipModal(); });
-}
-
-function closeActionSheet() {
-  const sheet = $('#action-sheet');
-  if (sheet) sheet.classList.add('hidden');
-}
+/* ---------------- PPV PRICE SHEET ---------------- */
 
 // In-app price picker (replaces fragile prompt() which iOS often blocks)
 function openPpvPriceSheet(file, kind) {
@@ -5701,18 +5701,31 @@ async function openTipMenuSheet(modelId, modelName, context) {
             <span class="tip-price">${fmt(t.price_cents)}</span>
           </button>`).join('') || '<div class="muted">No tip menu yet — check back soon!</div>'}
       </div>
+      ${context === 'chat' ? `
+      <button class="tip-item" id="tip-custom-row" style="margin-top:8px">
+        <span class="tip-emoji">💸</span>
+        <span class="grow"><span class="title">Custom tip amount</span></span>
+        <span class="tip-price">$1+</span>
+      </button>` : ''}
       <button class="btn ghost" id="tip-close" style="margin-top:10px">Close</button>
     </div>`;
   document.body.appendChild(sheet);
   const close = () => sheet.remove();
   $('#tip-close').onclick = close;
+  const customRow = $('#tip-custom-row');
+  if (customRow) customRow.onclick = () => { close(); openTipModal(); };
   sheet.onclick = (e) => { if (e.target === sheet) close(); };
   sheet.querySelectorAll('[data-tip]').forEach((b) => {
-    b.onclick = () => sendTip(parseInt(b.dataset.tip), modelId, modelName, context);
+    b.onclick = () => sendTipMenuPick(parseInt(b.dataset.tip), modelId, modelName, context);
   });
 }
 
-async function sendTip(menuId, modelId, modelName, context) {
+// Tip-MENU pick (POST /api/models/:id/tip). Named distinctly from the plain
+// tip modal's sendTip(amountCents → POST /api/tips): the two used to share
+// the name sendTip, and this later declaration shadowed the modal's for
+// EVERY call site — plain in-chat tipping posted to /api/models/undefined/tip
+// and failed silently (production bug, fixed Oct 14).
+async function sendTipMenuPick(menuId, modelId, modelName, context) {
   const sheet = $('#tip-sheet');
   if (sheet) sheet.remove();
   const { status, data } = await api(`/models/${modelId}/tip`, {
