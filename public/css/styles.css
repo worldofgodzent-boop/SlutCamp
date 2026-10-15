@@ -108,12 +108,6 @@ html, body {
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
   border-top: 1px solid rgba(255,255,255,.08);
   display: flex; z-index: 30;
-  transition: transform .28s ease, opacity .28s ease;
-}
-/* Sheet/modal open (chat Send flow, price sheet, voice UI, gift/tip…) →
-   the tab bar slides away so the sheet never stacks on top of it */
-body.sheet-open #tabbar {
-  transform: translateY(105%); opacity: 0; pointer-events: none;
 }
 #tabbar button {
   flex: 1; background: none; border: none; color: var(--muted);
