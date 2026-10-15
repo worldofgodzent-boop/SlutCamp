@@ -334,6 +334,16 @@ async function adminLiveBody() {
       </div>`).join('') || '<div class="muted">No events logged.</div>'}`;
 }
 
+/* Presence override (Models tab): effective status = what fans actually
+   see. 'auto' → her own is_online toggle; 'on'/'off' → admin-forced. */
+function presEff(m) {
+  const ovr = m.presence_override || 'auto';
+  return ovr === 'on' ? true : ovr === 'off' ? false : !!m.is_online;
+}
+function presForced(m) {
+  return !!m.presence_override && m.presence_override !== 'auto';
+}
+
 async function adminModelsBody() {
   const { data } = await api('/admin/models');
   const models = data.models || [];
@@ -345,7 +355,7 @@ async function adminModelsBody() {
           : `<div class="model-article-photo model-article-initial">${esc(m.display_name[0] || '?')}</div>`}
         <div class="model-article-body">
           <div><b>${esc(m.display_name)}</b> <span class="small muted">@${esc(m.username)}</span><br>
-            <span class="small" style="color:${m.is_online ? 'var(--green)' : 'var(--muted)'}">● ${m.is_online ? 'Online' : 'Offline'}</span>
+            <span class="small" id="pres-status-${m.id}" style="color:${presEff(m) ? 'var(--green)' : 'var(--muted)'}">${presEff(m) ? '●' : '○'} ${presEff(m) ? 'Online' : 'Offline'}${presForced(m) ? ' (forced)' : ''}</span>
             <span class="small muted"> · ${fmt(m.per_message_cents)}/msg · ${fmt(m.per_minute_cents)}/min</span><br>
             <span class="small" style="color:var(--green)">Owed: ${fmt(m.pending_cents)}</span>
             ${m.recruiter_name ? `<br><span class="small" style="color:var(--gold)">🤝 via ${esc(m.recruiter_name)}</span>` : ''}
@@ -359,6 +369,12 @@ async function adminModelsBody() {
             <button class="btn small ghost" data-m-toggle="${m.id}">${m.banned ? "✅ Reactivate" : "⏸️ Deactivate"}</button>
             <button class="btn small danger" data-m-del="${m.id}">Remove</button>
           </div>
+          ${m.is_featured ? '' : `<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center">
+            <span class="small muted">👁 Fans see her as:</span>
+            <button class="btn small ${!presForced(m) ? '' : 'ghost'}" data-m-pres="${m.id}" data-mode="auto">Auto</button>
+            <button class="btn small ${m.presence_override === 'on' ? '' : 'ghost'}" data-m-pres="${m.id}" data-mode="on">Online</button>
+            <button class="btn small ${m.presence_override === 'off' ? '' : 'ghost'}" data-m-pres="${m.id}" data-mode="off">Offline</button>
+          </div>`}
         </div>
         <div id="edit-${m.id}" style="flex-basis:100%"></div>
       </div>`).join('')}
@@ -1272,6 +1288,29 @@ function wireAdminBody(tab) {
       await api(`/admin/models/${id}`, { method: 'PUT',
         body: JSON.stringify({ banned: m.banned ? 0 : 1 }) });
       M.reload();
+    };
+  });
+  document.querySelectorAll('[data-m-pres]').forEach((b) => {
+    b.onclick = async () => {
+      const id = b.dataset.mPres;
+      const mode = b.dataset.mode;
+      const { status, data } = await api(`/admin/models/${id}/presence`, {
+        method: 'POST', body: JSON.stringify({ mode }) });
+      if (status !== 200 || !data || data.error) {
+        toast('⚠️ ' + ((data && data.message) || 'Could not update presence'));
+        return;
+      }
+      // Update this row in place: status dot/word + which segment is active.
+      const st = $('#pres-status-' + id);
+      if (st) {
+        st.style.color = data.online ? 'var(--green)' : 'var(--muted)';
+        st.textContent = `${data.online ? '●' : '○'} ${data.online ? 'Online' : 'Offline'}${data.presence_override !== 'auto' ? ' (forced)' : ''}`;
+      }
+      document.querySelectorAll(`[data-m-pres="${id}"]`).forEach((x) => {
+        x.classList.toggle('ghost', x.dataset.mode !== data.presence_override);
+      });
+      toast(data.presence_override === 'auto' ? '👁 Presence: Auto — her app decides'
+        : data.presence_override === 'on' ? '👁 Fans now see her Online' : '👁 Fans now see her Offline');
     };
   });
   document.querySelectorAll('[data-m-del]').forEach((b) => {

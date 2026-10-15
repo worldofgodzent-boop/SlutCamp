@@ -658,6 +658,11 @@ addColumnIfMissing('users', 'name_changed_at', 'TEXT');
 // picker, returned by /api/me so it follows the user across devices
 addColumnIfMissing('users', 'language', "TEXT NOT NULL DEFAULT 'en'");
 
+// Admin presence override per model ('auto' | 'on' | 'off'): 'auto' = her own
+// is_online toggle decides; 'on'/'off' force what fans SEE. Display/discovery
+// only — never blocks her app, messages or going live (Asce, Oct 14 2026).
+addColumnIfMissing('users', 'presence_override', "TEXT NOT NULL DEFAULT 'auto'");
+
 // Model welcome celebration: welcomed_at NULL = not yet welcomed. Everyone
 // who already has an account when this ships counts as welcomed — only NEW
 // model signups get the congratulations overlay.
@@ -1647,7 +1652,7 @@ app.post('/api/guest/token', (req, res) => {
 // refund rows are negative and net against sales automatically.
 app.get('/api/models', (req, res) => {
   const rows = db.prepare(`
-    SELECT u.id, u.username, u.display_name, m.bio, m.per_message_cents,
+    SELECT u.id, u.username, u.display_name, u.presence_override, m.bio, m.per_message_cents,
            m.per_minute_cents, m.per_voice_cents, m.is_online, m.photo_url,
            m.preview_video_url, m.is_featured,
            ls.id AS live_session_id, ls.explicit_rate_cents AS live_explicit_rate_cents,
@@ -1660,7 +1665,9 @@ app.get('/api/models', (req, res) => {
     WHERE u.role = 'model' AND u.banned = 0 AND m.is_hidden = 0
     ORDER BY m.is_featured DESC,
              (total_sales_cents / 100.0 + like_count) DESC,
-             like_count DESC, m.is_online DESC, u.created_at DESC, u.display_name ASC
+             like_count DESC,
+             (CASE u.presence_override WHEN 'on' THEN 1 WHEN 'off' THEN 0 ELSE m.is_online END) DESC,
+             u.created_at DESC, u.display_name ASC
   `).all();
   // Check which models the current fan has liked (if logged in)
   let likedSet = new Set();
@@ -1687,7 +1694,9 @@ app.get('/api/models', (req, res) => {
     const summary = sched.length
       ? sched.map((s) => `${days[s.day_of_week]} ${s.start_time.replace(/^0/, '')}`).join(', ')
       : '';
-    return { ...r, is_live: !!r.live_session_id, is_featured: !!r.is_featured,
+    const { presence_override, ...pub } = r;
+    return { ...pub, is_online: effectiveOnline(presence_override, r.is_online),
+      is_live: !!r.live_session_id, is_featured: !!r.is_featured,
       live_viewers: r.live_viewers || 0, schedule_summary: summary, liked: likedSet.has(r.id),
       likes_count: r.like_count || 0,
       total_sales: Math.round(r.total_sales_cents || 0) / 100,
@@ -2093,6 +2102,17 @@ app.post('/api/model/name-change-request', identMiddleware, requireUser, require
 /* Conversations + messages (guests allowed, models free to reply)     */
 /* ------------------------------------------------------------------ */
 
+/* The ONE place a model's fan-visible online status is decided.
+   presence_override 'on' → always online, 'off' → always offline,
+   'auto' (default) → her own models.is_online toggle is the truth.
+   Display/discovery only: call gates and her own app keep using the raw
+   toggle, so an override can never block her from working. */
+function effectiveOnline(presenceOverride, realOnline) {
+  if (presenceOverride === 'on') return true;
+  if (presenceOverride === 'off') return false;
+  return !!realOnline;
+}
+
 function otherParty(conv, ident) {
   const meIsFanSide = ident.kind === 'user'
     ? conv.fan_id === ident.user.id
@@ -2104,7 +2124,7 @@ function otherParty(conv, ident) {
   }
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(otherId);
   const m = u.role === 'model' ? db.prepare('SELECT * FROM models WHERE user_id = ?').get(otherId) : null;
-  return { ...getUserPublic(u), is_online: m ? !!m.is_online : false,
+  return { ...getUserPublic(u), is_online: m ? effectiveOnline(u.presence_override, m.is_online) : false,
            photo_url: m ? (m.photo_url || '') : '',
            per_message_cents: m ? m.per_message_cents : 0,
            per_minute_cents: m ? m.per_minute_cents : 0 };
@@ -5742,7 +5762,8 @@ app.get('/api/admin/stats', ...adminOnly, (req, res) => {
     SELECT
       (SELECT COUNT(*) FROM users WHERE role = 'fan' AND banned = 0) AS fans,
       (SELECT COUNT(*) FROM users WHERE role = 'model' AND banned = 0) AS models,
-      (SELECT COUNT(*) FROM models WHERE is_online = 1) AS models_online,
+      (SELECT COUNT(*) FROM models m JOIN users u ON u.id = m.user_id
+        WHERE (CASE u.presence_override WHEN 'on' THEN 1 WHEN 'off' THEN 0 ELSE m.is_online END) = 1) AS models_online,
       (SELECT COUNT(*) FROM conversations) AS conversations,
       (SELECT COUNT(*) FROM calls WHERE status = 'active') AS active_calls,
       (SELECT COUNT(*) FROM safety_incidents WHERE status = 'open') AS open_incidents,
@@ -5868,8 +5889,8 @@ app.post('/api/admin/safety/ban-guest', ...adminOnly, (req, res) => {
 
 app.get('/api/admin/models', ...adminOnly, (req, res) => {
   res.json({ models: db.prepare(`
-    SELECT u.id, u.username, u.display_name, u.banned, u.created_at,
-           m.bio, m.per_message_cents, m.per_minute_cents, m.is_online, m.photo_url, m.is_hidden,
+    SELECT u.id, u.username, u.display_name, u.banned, u.created_at, u.presence_override,
+           m.bio, m.per_message_cents, m.per_minute_cents, m.is_online, m.photo_url, m.is_hidden, m.is_featured,
            r.name AS recruiter_name,
            w.earnings_cents, w.paid_out_cents,
            (w.earnings_cents - w.paid_out_cents) AS pending_cents
@@ -5922,6 +5943,23 @@ app.post('/api/admin/models/:id/feature', ...adminOnly, (req, res) => {
   const val = req.body && req.body.featured === false ? 0 : 1;
   db.prepare('UPDATE models SET is_featured = ? WHERE user_id = ?').run(val, req.params.id);
   res.json({ ok: true, featured: !!val });
+});
+
+// Admin: per-model presence override — Auto (her own toggle decides) /
+// Online (fans see her online even with her app closed) / Offline (fans see
+// her offline even with her app open). DISPLAY ONLY: it never blocks her
+// app, her messages, or going live; a live session stays listed as live.
+app.post('/api/admin/models/:id/presence', ...adminOnly, (req, res) => {
+  const mode = req.body && req.body.mode;
+  if (!['auto', 'on', 'off'].includes(mode))
+    return res.status(400).json({ error: 'bad_mode', message: "mode must be 'auto', 'on' or 'off'." });
+  const u = db.prepare(`SELECT u.id, u.role, u.presence_override, m.is_online, m.is_featured
+    FROM users u LEFT JOIN models m ON m.user_id = u.id WHERE u.id = ?`).get(req.params.id);
+  if (!u || u.role !== 'model') return res.status(404).json({ error: 'not_found' });
+  if (u.is_featured)
+    return res.status(400).json({ error: 'featured_account', message: 'The featured system account has no presence control.' });
+  db.prepare('UPDATE users SET presence_override = ? WHERE id = ?').run(mode, u.id);
+  res.json({ id: u.id, presence_override: mode, online: effectiveOnline(mode, u.is_online) });
 });
 
 app.post('/api/admin/models', ...adminOnly, (req, res) => {
