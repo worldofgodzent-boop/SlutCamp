@@ -4010,6 +4010,11 @@ async function loadMessages() {
   renderMessages();
 }
 
+// Media ids with an unlock request currently in flight (double-tap guard).
+// The server also charges at most once per unlock record, but the client
+// never fires a second request while one is out.
+const unlockingIds = new Set();
+
 function mediaHTML(m) {
   if (!m.media) return '';
   const md = m.media;
@@ -4028,11 +4033,25 @@ function mediaHTML(m) {
     ? `Voice note${md.duration_sec ? ` (${md.duration_sec}s)` : ''}`
     : md.kind === 'ppv_video' ? 'Private video' : 'Private photo';
   const mine = S.user && m.sender_id === S.user.id;
-  return `<button class="ppv-lock" data-unlock="${md.id}" ${mine ? 'disabled' : ''}>
+  if (md.kind === 'voice') {
+    return `<button class="ppv-lock" data-unlock="${md.id}" ${mine ? 'disabled' : ''}>
     <span class="ppv-lock-bg">${icon}</span>
     <span class="ppv-lock-label">🔒 ${label}</span>
     ${mine ? `<span class="ppv-unlock-price">Priced at ${fmt(md.price_cents)}</span>`
            : `<span class="ppv-unlock-btn">Unlock for ${fmt(md.price_cents)}</span>`}
+  </button>`;
+  }
+  // Locked PPV photo/video (casino rule): the WHOLE tile is the buy button —
+  // price shown up front, one tap on the content itself bills his balance and
+  // opens it in place. No separate unlock step, no confirmation dialog.
+  const unlocking = unlockingIds.has(md.id);
+  return `<button class="ppv-lock ppv-tap${unlocking ? ' unlocking' : ''}" data-unlock="${md.id}" ${mine || unlocking ? 'disabled' : ''}>
+    <span class="ppv-lock-bg">${icon}</span>
+    <span class="ppv-lock-label">🔒 ${label}</span>
+    ${mine ? `<span class="ppv-unlock-price">Priced at ${fmt(md.price_cents)}</span>`
+           : unlocking
+             ? `<span class="ppv-unlock-btn">Unlocking…</span>`
+             : `<span class="ppv-unlock-btn">Unlock for ${fmt(md.price_cents)}</span><span class="ppv-tap-hint">Tap to unlock</span>`}
   </button>`;
 }
 
@@ -4074,7 +4093,14 @@ function renderMessages() {
 }
 
 async function unlockMedia(mediaId) {
-  const { status, data } = await api(`/media/${mediaId}/unlock`, { method: 'POST' });
+  if (unlockingIds.has(mediaId)) return; // double-tap guard: one tap, one charge attempt
+  unlockingIds.add(mediaId);
+  renderMessages(); // PPV tile flips to its "Unlocking…" state
+  let status = 0, data = {};
+  try {
+    ({ status, data } = await api(`/media/${mediaId}/unlock`, { method: 'POST' }));
+  } catch (e) { /* network error — handled as a failure below */ }
+  unlockingIds.delete(mediaId);
   if (status === 200) {
     // Mark unlocked locally and re-render
     S.messages.forEach((m) => {
@@ -4084,9 +4110,11 @@ async function unlockMedia(mediaId) {
     if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
     toast('🔓 Unlocked!');
   } else if (status === 402) {
+    renderMessages(); // restore the tappable tile before routing away
     toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`);
     if (S.user && S.user.role === 'fan') show('wallet', {});
   } else {
+    renderMessages(); // restore the tappable tile
     toast('Could not unlock.');
   }
 }
