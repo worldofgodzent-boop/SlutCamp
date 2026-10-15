@@ -1891,11 +1891,11 @@ function sendPendingModelIdVerifies() {
 const AFFILIATE_IMG_FILE = path.join(__dirname, 'public', 'img', 'affiliate-program-announce.png');
 const AFFILIATE_IMG_URL = 'https://slutcamp.app/img/affiliate-program-announce.png';
 const MODEL_AFFILIATE = {
-  en: `💰 One more way to make money here: our affiliate program. Recruit other models onto SlutCamp with your personal link, and you'll make 20% of everything those models make. It's that simple: they earn, you earn. Interested? Reply right here and we'll send your affiliate signup link and set up your personal recruiting link. If you have any questions, let me know. 💋
+  en: `💰 One more way to make money here: our affiliate program. Recruit other models onto SlutCamp with your personal link, and you'll make 20% of everything those models make. It's that simple: they earn, you earn. ⏳ This offer is limited — the program won't be around forever, so get set up while it's open. Interested? Reply right here and we'll send your affiliate signup link and set up your personal recruiting link. If you have any questions, let me know. 💋
 ${AFFILIATE_IMG_URL}`,
-  es: `💰 Otra forma de ganar dinero aquí: nuestro programa de afiliadas. Recluta a otras modelos en SlutCamp con tu enlace personal y ganarás el 20% de todo lo que esas modelos ganen. Así de simple: ellas ganan, tú ganas. ¿Te interesa? Responde aquí mismo y te enviamos tu enlace de registro de afiliada y configuramos tu enlace personal de reclutamiento. Si tienes preguntas, avísame. 💋
+  es: `💰 Otra forma de ganar dinero aquí: nuestro programa de afiliadas. Recluta a otras modelos en SlutCamp con tu enlace personal y ganarás el 20% de todo lo que esas modelos ganen. Así de simple: ellas ganan, tú ganas. ⏳ Esta oferta es limitada — el programa no estará disponible para siempre, así que actívalo mientras esté abierto. ¿Te interesa? Responde aquí mismo y te enviamos tu enlace de registro de afiliada y configuramos tu enlace personal de reclutamiento. Si tienes preguntas, avísame. 💋
 ${AFFILIATE_IMG_URL}`,
-  pt: `💰 Outra forma de ganhar dinheiro aqui: nosso programa de afiliadas. Recrute outras modelos para a SlutCamp com seu link pessoal e você ganha 20% de tudo que essas modelos ganharem. É simples assim: elas ganham, você ganha. Quer participar? Responda aqui mesmo e enviamos seu link de cadastro de afiliada e configuramos seu link pessoal de recrutamento. Se tiver dúvidas, é só me chamar. 💋
+  pt: `💰 Outra forma de ganhar dinheiro aqui: nosso programa de afiliadas. Recrute outras modelos para a SlutCamp com seu link pessoal e você ganha 20% de tudo que essas modelos ganharem. É simples assim: elas ganham, você ganha. ⏳ Esta oferta é limitada — o programa não estará disponível para sempre, então garanta o seu enquanto está aberto. Quer participar? Responda aqui mesmo e enviamos seu link de cadastro de afiliada e configuramos seu link pessoal de recrutamento. Se tiver dúvidas, é só me chamar. 💋
 ${AFFILIATE_IMG_URL}`,
 };
 
