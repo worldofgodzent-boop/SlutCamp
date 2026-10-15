@@ -1438,6 +1438,38 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 }
 .live-wrap.broadcast .live-top { top: 0; left: 0; right: 0; }
 .live-wrap.broadcast .live-title { top: 44px; left: 12px; right: 12px; }
+/* Go Explicit — a neat LITTLE stage chip, top-left (owner: "Put the
+ * 'Go Explicit' on the top left. Not too far up" + "doesn't have to
+ * be too big"). It left the broadcaster's bottom stack entirely,
+ * which also ends its old collision with the typing bubble for good.
+ * Compact by design: 38px tall, label-sized type, width hugs its
+ * label — a corner switch, not a banner. (Deliberately NOT .btn,
+ * which is a full-width block.) Placement: left 14px; the top clears
+ * the whole top stack — the badge/title cluster bottoms out ≈90px
+ * (+ inset) in the stage idiom, and the two transient top elements
+ * that share the left column, the priority banner (top:100px +
+ * inset, full-width) and the crown leaderboard (top:104px + inset),
+ * end ≈140px — so the chip takes the first clear line under them,
+ * 142px + inset: still the stage's upper-left, deliberately NOT
+ * jammed against the top edge. z-index 8 keeps it tappable above
+ * the stage layers; the bell is top-right, the gift stack right —
+ * no neighbours. liveToggleExplicit still finds it by id and
+ * repaints label + gradient (violet = SFW, green = Explicit ON). */
+.live-wrap.broadcast #live-explicit-btn {
+  position: absolute; z-index: 8;
+  top: calc(142px + env(safe-area-inset-top)); left: 14px;
+  height: 38px; min-height: 38px; width: auto; padding: 0 14px; margin: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; border-radius: 999px; cursor: pointer;
+  color: #fff; font-family: inherit; font-size: 13px; font-weight: 700;
+  box-shadow: 0 4px 16px rgba(0,0,0,.45);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none; -webkit-user-select: none;
+}
+/* While she's paused the BRB card owns the stage: the chip hides
+ * with the rest of the controls (a mode switch has no business on
+ * the break card, and nothing may overlap its copy or exits). */
+.live-wrap.broadcast.brb-on #live-explicit-btn { display: none; }
 .live-wrap.broadcast .broadcast-bottom {
   /* z-index 7: ABOVE #live-brb-overlay (z 6). The BRB card is inset:0
    * over her pane and used to blanket this whole bar — after tapping
@@ -1459,16 +1491,26 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
  * stack — once the controls grew, the block spilled upward and "Go
  * Explicit" landed ON the typing bubble, "Say something to your
  * fans…" ghosting through it. In flow, the rows stack in markup
- * order (chat → toggles → bubble → Go Explicit → Pause → rate →
- * End Stream) and can never overlap, whatever their heights. */
+ * order (chat → toggles → bubble → [Pause | End Stream] pair →
+ * rate note) and can never overlap, whatever their heights.
+ * (Go Explicit has since left the stack entirely — it's the
+ * top-left stage chip now.) */
 .live-wrap.broadcast .broadcast-bottom .stream-chat,
 .live-wrap.broadcast .broadcast-bottom .stream-chat-input,
 .live-wrap.broadcast .broadcast-bottom .live-controls { position: static; }
 .live-wrap.broadcast .broadcast-bottom .live-controls { margin-top: 8px; }
+/* Pause + End Stream: ONE side-by-side pair row (owner: "beside
+ * each other like the Mic and Camera") — same flex pattern as the
+ * toggle row above the bubble, each half flex:1, ≥44px tall; the
+ * explicit-rate note stays its own slim line under the pair. */
+.live-wrap.broadcast .live-action-row .btn {
+  flex: 1 1 0; min-width: 0; min-height: 44px; margin: 0;
+  display: flex; align-items: center; justify-content: center;
+}
 /* Paused (BRB) composition — ONE clean card, nothing stacked under
  * it. While .brb-on (driven by the same flag applyLiveBrb toggles),
  * the broadcaster's control stack — toggles row + .live-controls
- * (Go Explicit, bar Pause/Resume, rate line, End Stream) — leaves
+ * (bar Pause/Resume, rate line, End Stream) — leaves
  * the flow entirely; the card carries the only Resume + End Stream,
  * and her chat feed + typing bubble stay live in their normal spot
  * (chat and tips flow during a break by design). display:none also

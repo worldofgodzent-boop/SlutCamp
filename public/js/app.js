@@ -1307,6 +1307,9 @@ function show(view, params) {
   // keeps it hidden only until the sheet closes.
   document.body.classList.toggle('in-chat', view === 'chat');
   document.body.classList.toggle('in-live', view === 'liveBroadcast' || view === 'liveWatch');
+  // Every view change passes through here: drop any live-band keyboard
+  // tracking (and its transform) before the old band leaves the DOM.
+  untrackLiveBand();
   renderTabbar();
   renderPreviewBanner();
   renderBell();
@@ -5940,6 +5943,9 @@ function applyLiveBrb(on) {
    * Streams, toggles and rate line all overlapping the card). */
   const wrap = $('.live-wrap');
   if (wrap) wrap.classList.toggle('brb-on', on);
+  // If the keyboard is up, the viewer's card bound rides the band's
+  // translated position — re-derive it under the new brb state.
+  applyLiveKbOffset();
   if (L.role === 'fan') {
     /* The paused card is never a dead end for viewers either (owner:
      * "I can't exit unless I close the app"): the card itself carries a
@@ -6018,6 +6024,70 @@ async function liveToggleBrb() {
     : "Couldn't pause — check your connection and tap again 📶", 4000);
 }
 
+/* --- Live typing band rides the keyboard (owner: "Typing bubble at
+ * the bottom. Move with keyboard"). The live bands (.live-bottom /
+ * .broadcast-bottom) are position:absolute; bottom:0 inside a 100dvh
+ * wrap: when the iOS keyboard opens, the layout viewport does NOT
+ * shrink for it — the keyboard overlays the visual viewport and the
+ * band stays glued to the layout bottom, hidden behind the keys.
+ * (The DM chat footer never had this bug: it is a flex item of the
+ * 100dvh shell column — no independent anchor — so it follows the
+ * shell by construction; see the audit note at trackLiveBand.)
+ * Fix: translate the band by the exact gap between the layout
+ * viewport and the visual viewport:
+ *   offset = innerHeight − (visualViewport.height + offsetTop)
+ * That gap IS the keyboard height when the layout didn't resize, and
+ * ≈0 when the platform resized the layout itself — self-correcting
+ * on both behaviors. No CSS transition on the transform: iOS streams
+ * visualViewport resize events through the keyboard's own animation,
+ * so applying the offset directly tracks it 1:1 — a transition would
+ * double-animate and lag behind the keys. --- */
+let kbTrack = null; // { band, overlay } while a live view is active
+
+function liveKbOffset() {
+  const vv = window.visualViewport;
+  if (!vv) return 0;
+  return Math.max(0, Math.round(window.innerHeight - (vv.height + vv.offsetTop)));
+}
+
+function applyLiveKbOffset() {
+  if (!kbTrack) return;
+  const off = liveKbOffset();
+  kbTrack.band.style.transform = off > 0 ? `translateY(${-off}px)` : '';
+  /* Viewer BRB card: its CSS bound (bottom:176px) pins it just above
+   * the band's RESTING top edge. Keep that exact relationship while
+   * the band is translated: card bottom = 176 + offset, so the card
+   * always ends where the band currently begins. (The broadcaster's
+   * card is pane-bound, not band-bound — nothing to re-derive.) */
+  const ov = kbTrack.overlay;
+  if (ov) {
+    const wrap = kbTrack.band.closest ? kbTrack.band.closest('.live-wrap') : null;
+    const bounded = !!wrap && wrap.classList.contains('brb-on')
+      && !wrap.classList.contains('broadcast');
+    ov.style.bottom = bounded && off > 0 ? `${176 + off}px` : '';
+  }
+}
+
+function trackLiveBand(band) {
+  untrackLiveBand();
+  if (!band || !window.visualViewport) return; // no vv → band keeps its flush bottom:0 anchor
+  kbTrack = { band, overlay: document.getElementById('live-brb-overlay') };
+  window.visualViewport.addEventListener('resize', applyLiveKbOffset);
+  window.visualViewport.addEventListener('scroll', applyLiveKbOffset);
+  applyLiveKbOffset();
+}
+
+function untrackLiveBand() {
+  if (!kbTrack) return;
+  kbTrack.band.style.transform = '';
+  if (kbTrack.overlay) kbTrack.overlay.style.bottom = '';
+  if (window.visualViewport) {
+    window.visualViewport.removeEventListener('resize', applyLiveKbOffset);
+    window.visualViewport.removeEventListener('scroll', applyLiveKbOffset);
+  }
+  kbTrack = null;
+}
+
 function vLiveBroadcast() {
   const L = S.live;
   if (!L) return show('modelChats', {});
@@ -6039,6 +6109,7 @@ function vLiveBroadcast() {
         <span class="live-badge">🔴 LIVE</span>
         <span id="live-viewer-count" class="live-viewers">${t('watching', { n: 0 })}</span>
       </div>
+      <button id="live-explicit-btn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">${t('go_explicit')}</button>
       ${L.title ? `<div class="live-title">${esc(L.title)}</div>` : ''}
       <div id="priority-banner" class="hidden"></div>
       <div id="gift-stack"></div>
@@ -6059,10 +6130,11 @@ function vLiveBroadcast() {
           <button class="btn small" id="stream-chat-send" style="margin:0">➤</button>
         </div>
         <div class="live-controls">
-          <button class="btn" id="live-explicit-btn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">${t('go_explicit')}</button>
-          <button class="btn" id="live-pause-btn" style="background:linear-gradient(135deg,#ff5c9e,#FA4D92);margin-top:8px">${L.brb ? t('resume_live') : t('pause_live')}</button>
+          <div class="row live-action-row" style="gap:8px">
+            <button class="btn small" id="live-pause-btn" style="background:linear-gradient(135deg,#ff5c9e,#FA4D92)">${L.brb ? t('resume_live') : t('pause_live')}</button>
+            <button class="btn small danger" id="live-end-btn">${t('end_stream')}</button>
+          </div>
           <div class="muted small" style="text-align:center;margin-top:6px">${t('explicit_rate_note', { price: fmt(L.explicitRate) })}</div>
-          <button class="btn danger" id="live-end-btn" style="margin-top:10px">${t('end_stream')}</button>
         </div>
       </div>
     </div>`;
@@ -6111,6 +6183,9 @@ function vLiveBroadcast() {
     if (S.live && S.live.role === 'model') renderStageRequests();
     else clearInterval(S.live.stagePoll);
   }, 5000);
+  // Typing band (toggles + bubble + controls together, one unit)
+  // rides the keyboard; show() untracks on the way out.
+  trackLiveBand($('.broadcast-bottom'));
 }
 
 // Live mic level indicator for the broadcaster
@@ -7297,6 +7372,8 @@ function vLiveWatch() {
   };
   renderStreamChat();
   renderLeaderboard();
+  // Typing band rides the keyboard; show() untracks on the way out.
+  trackLiveBand($('.live-bottom'));
 }
 
 // AI frame sampling: every 2s while watching free & unblurred
