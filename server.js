@@ -688,6 +688,12 @@ addColumnIfMissing('users', 'guide_msg_sent_at', 'TEXT');
 // stamp stays NULL and nobody gets the message; once the file lands, the
 // boot sweep delivers it to every model missing the stamp.
 addColumnIfMissing('users', 'guide_video_sent_at', 'TEXT');
+
+// Add-to-home-screen VIDEO message — same thread, same delivery pattern
+// as the guide video. Gated on the video file existing on disk: until it
+// ships, the stamp stays NULL; once the file lands, the boot sweep
+// delivers it to every model missing the stamp.
+addColumnIfMissing('users', 'ath_video_sent_at', 'TEXT');
 db.exec(`
 CREATE TABLE IF NOT EXISTS name_change_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1349,6 +1355,8 @@ function createUser(username, password, role, displayName, dob, language) {
     try { sendModelGuide(Number(info.lastInsertRowid)); } catch (e) { /* boot sweep retries */ }
     // And the 1-minute tour video — sent only once the video file exists.
     try { sendModelGuideVideo(Number(info.lastInsertRowid)); } catch (e) { /* boot sweep retries */ }
+    // And the add-to-home-screen video — sent only once the video file exists.
+    try { sendModelHomeScreenVideo(Number(info.lastInsertRowid)); } catch (e) { /* boot sweep retries */ }
   }
   return Number(info.lastInsertRowid);
 }
@@ -1575,6 +1583,51 @@ function sendPendingModelGuideVideos() {
   for (const r of rows) { try { sendModelGuideVideo(r.id); } catch (e) { /* retry next boot */ } }
 }
 
+/* ------------------------------------------------------------------ */
+/* Add-to-home-screen VIDEO message — same admin thread, same pattern */
+/* as the guide video above. The video file ships in the repo at      */
+/* public/video/add-to-home-screen.mp4. Until it exists on disk: send */
+/* nothing, leave the stamp NULL — the boot sweep then delivers it to */
+/* everyone the moment the file lands.                                */
+/*                                                                    */
+/* Delivery is a plain text link, NOT a native media_items message —  */
+/* same reason as the guide video: free admin→model media would       */
+/* render locked for her, while the static /video/ URL plays for      */
+/* anyone.                                                            */
+/* ------------------------------------------------------------------ */
+const ATH_VIDEO_FILE = path.join(__dirname, 'public', 'video', 'add-to-home-screen.mp4');
+const ATH_VIDEO_TEXT = '📲 Put SlutCamp on your home screen — watch this, takes 30 seconds: https://slutcamp.app/video/add-to-home-screen.mp4';
+
+function sendModelHomeScreenVideo(modelUserId) {
+  const m = db.prepare("SELECT id, display_name, language, ath_video_sent_at FROM users WHERE id = ? AND role = 'model'")
+    .get(modelUserId);
+  if (!m || m.ath_video_sent_at) return false;
+  if (!fs.existsSync(ATH_VIDEO_FILE)) return false; // video not shipped yet — stay unstamped
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin || admin.id === m.id) return false;
+  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
+  if (!conv) {
+    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
+    conv = { id: Number(info.lastInsertRowid) };
+  }
+  db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+    .run(conv.id, admin.id, ATH_VIDEO_TEXT);
+  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+  db.prepare("UPDATE users SET ath_video_sent_at = datetime('now') WHERE id = ?").run(m.id);
+  try {
+    notifyUser(m.id, 'home_screen_video', '📲 Put SlutCamp on your home screen',
+      'Asce sent you a 30-second video showing how to add SlutCamp to your home screen 💋', '');
+  } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+  return true;
+}
+
+/* Boot sweep: once the video file exists, every model missing it gets it. */
+function sendPendingModelHomeScreenVideos() {
+  if (!fs.existsSync(ATH_VIDEO_FILE)) return; // video not shipped yet
+  const rows = db.prepare("SELECT id FROM users WHERE role = 'model' AND ath_video_sent_at IS NULL").all();
+  for (const r of rows) { try { sendModelHomeScreenVideo(r.id); } catch (e) { /* retry next boot */ } }
+}
+
 function seed() {
   const count = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
   if (count > 0) return;
@@ -1612,6 +1665,7 @@ seed();
 sendPendingModelWelcomes();
 sendPendingModelGuides();
 sendPendingModelGuideVideos();
+sendPendingModelHomeScreenVideos();
 
 // One-time pre-launch cleanup (Corry, Oct 12 2026): every cent on the
 // platform so far is TEST money — demo credits only, no real payment has
