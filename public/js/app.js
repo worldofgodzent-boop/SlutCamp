@@ -5932,6 +5932,14 @@ function applyLiveBrb(on) {
   L.brb = on;
   const ov = $('#live-brb-overlay');
   if (ov) ov.classList.toggle('hidden', !on);
+  /* The paused-state composition hangs off this one class, driven by
+   * the same flag, so it can never desync: while brb is on, the stage
+   * shows ONLY the card (+ its exits) and the chat bubble — the normal
+   * control stack drops out of the flow entirely instead of piling up
+   * under the card (Oct 14, Stacey's screen: two Resumes, two End
+   * Streams, toggles and rate line all overlapping the card). */
+  const wrap = $('.live-wrap');
+  if (wrap) wrap.classList.toggle('brb-on', on);
   if (L.role === 'fan') {
     /* The paused card is never a dead end for viewers either (owner:
      * "I can't exit unless I close the app"): the card itself carries a
@@ -5966,7 +5974,7 @@ function applyLiveBrb(on) {
     rb.id = 'live-brb-resume';
     rb.className = 'btn';
     rb.style.marginTop = '18px';
-    rb.textContent = '▶ ' + t('resume_live');
+    rb.textContent = t('resume_live');
     ov.appendChild(rb);
   }
   if (rb) rb.onclick = liveToggleBrb;
@@ -6014,12 +6022,12 @@ function vLiveBroadcast() {
   const L = S.live;
   if (!L) return show('modelChats', {});
   app.innerHTML = `
-    <div class="live-wrap broadcast">
+    <div class="live-wrap broadcast${L.brb ? ' brb-on' : ''}">
       <div id="live-split" class="live-split full">
         <div class="split-pane" id="split-model">
           <video id="live-local" autoplay playsinline muted></video>
           <div class="split-name" id="split-model-name">${esc(S.model?.display_name || 'You')}</div>
-          <div id="live-brb-overlay" class="${L.brb ? '' : 'hidden'}">${liveBrbCardHTML(S.model?.display_name || S.user?.display_name || '')}<button class="btn" id="live-brb-resume" style="margin-top:18px">▶ ${t('resume_live')}</button><button class="btn danger" id="live-brb-end" style="margin-top:10px">${t('end_stream')}</button></div>
+          <div id="live-brb-overlay" class="${L.brb ? '' : 'hidden'}">${liveBrbCardHTML(S.model?.display_name || S.user?.display_name || '')}<button class="btn" id="live-brb-resume" style="margin-top:18px">${t('resume_live')}</button><button class="btn danger" id="live-brb-end" style="margin-top:10px">${t('end_stream')}</button></div>
         </div>
         <div class="split-pane hidden" id="split-fan">
           <video id="stage-video" autoplay playsinline muted class="hidden"></video>
@@ -6042,15 +6050,15 @@ function vLiveBroadcast() {
       <div id="live-leaderboard" class="live-leaderboard hidden"></div>
       <div class="broadcast-bottom">
         <div id="stream-chat" class="stream-chat"></div>
+        <div class="row live-toggle-row" style="gap:8px;margin-bottom:8px">
+          <button class="btn small ghost" id="live-mic-btn" style="flex:1">${t('mic_on')}</button>
+          <button class="btn small ghost" id="live-cam-btn" style="flex:1">${t('cam_on')}</button>
+        </div>
         <div class="stream-chat-input live-typing-bubble">
           <input id="stream-chat-box" class="input" placeholder="${t('say_fans_ph')}" maxlength="500" autocomplete="off">
           <button class="btn small" id="stream-chat-send" style="margin:0">➤</button>
         </div>
         <div class="live-controls">
-          <div class="row" style="gap:8px;margin-bottom:8px">
-            <button class="btn small ghost" id="live-mic-btn" style="flex:1">${t('mic_on')}</button>
-            <button class="btn small ghost" id="live-cam-btn" style="flex:1">${t('cam_on')}</button>
-          </div>
           <button class="btn" id="live-explicit-btn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">${t('go_explicit')}</button>
           <button class="btn" id="live-pause-btn" style="background:linear-gradient(135deg,#ff5c9e,#FA4D92);margin-top:8px">${L.brb ? t('resume_live') : t('pause_live')}</button>
           <div class="muted small" style="text-align:center;margin-top:6px">${t('explicit_rate_note', { price: fmt(L.explicitRate) })}</div>
@@ -7207,7 +7215,7 @@ function vLiveWatch() {
   const L = S.live;
   if (!L) return show('fanModels', {});
   app.innerHTML = `
-    <div class="live-wrap">
+    <div class="live-wrap${L.brb ? ' brb-on' : ''}">
       <video id="live-remote" autoplay playsinline muted></video>
       <button id="live-unmute" class="hidden" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;padding:12px 24px;border-radius:999px;border:none;background:rgba(0,0,0,.7);color:#fff;font-size:16px;font-weight:700;cursor:pointer">🔊 Tap for sound</button>
       <video id="fan-selfview" autoplay playsinline muted class="hidden"></video>

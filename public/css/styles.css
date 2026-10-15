@@ -1451,9 +1451,36 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   padding: 40px 12px calc(12px + env(safe-area-inset-bottom));
 }
 .live-wrap.broadcast .broadcast-bottom .stream-chat {
-  max-height: 18vh; background: transparent; border: none;
+  max-height: 18vh; background: transparent; border: none; margin-bottom: 8px;
 }
+/* One control per row, strictly in flow (Oct 14, Stacey's stage): the
+ * stack used to be three absolutely-positioned layers whose magic
+ * bottom offsets (196px / 148px / 20px) were sized for a shorter
+ * stack — once the controls grew, the block spilled upward and "Go
+ * Explicit" landed ON the typing bubble, "Say something to your
+ * fans…" ghosting through it. In flow, the rows stack in markup
+ * order (chat → toggles → bubble → Go Explicit → Pause → rate →
+ * End Stream) and can never overlap, whatever their heights. */
+.live-wrap.broadcast .broadcast-bottom .stream-chat,
+.live-wrap.broadcast .broadcast-bottom .stream-chat-input,
+.live-wrap.broadcast .broadcast-bottom .live-controls { position: static; }
 .live-wrap.broadcast .broadcast-bottom .live-controls { margin-top: 8px; }
+/* Paused (BRB) composition — ONE clean card, nothing stacked under
+ * it. While .brb-on (driven by the same flag applyLiveBrb toggles),
+ * the broadcaster's control stack — toggles row + .live-controls
+ * (Go Explicit, bar Pause/Resume, rate line, End Stream) — leaves
+ * the flow entirely; the card carries the only Resume + End Stream,
+ * and her chat feed + typing bubble stay live in their normal spot
+ * (chat and tips flow during a break by design). display:none also
+ * guarantees no hidden element can intercept her taps. */
+.live-wrap.broadcast.brb-on .broadcast-bottom .live-toggle-row,
+.live-wrap.broadcast.brb-on .broadcast-bottom .live-controls { display: none; }
+/* Viewer, paused: the band (actions + typing bubble) stays — chat
+ * and tips flow during a break — but the band's own Leave hides so
+ * the card's Leave stream is the ONE exit, and the card is bounded
+ * to the stage above the band so the two never bleed together. */
+.live-wrap.brb-on:not(.broadcast) .live-bottom .live-controls { display: none; }
+.live-wrap.brb-on:not(.broadcast) #live-brb-overlay { bottom: 176px; }
 
 /* ---- Mic level meter ---- */
 #mic-meter {
