@@ -69,6 +69,69 @@ function decTax(stored) {
 function taxKeyIsEphemeral() { taxKey(); return _taxKeyEphemeral; }
 
 app.use(express.json({ limit: '256kb' }));
+
+/* ------------------------------------------------------------------ */
+/* Invite link previews — an invite link must say WHICH kind it is    */
+/* before anyone taps it. Chat apps (iMessage, X, WhatsApp) build     */
+/* the preview from the served <title>/OG tags, and both invite       */
+/* kinds used to serve the generic homepage tags — the owner once     */
+/* sent a model invite to someone meant to be an affiliate because    */
+/* the links looked identical (Oct 15). So the two invite URL forms   */
+/* get their own tags injected at serve time:                         */
+/*   GET /?invite=<code>    → "Your Model Invite" tags                */
+/*   GET /affiliate/<code>  → "SlutCamp Affiliate" tags               */
+/* Everything else falls through to the static shell, byte-for-byte   */
+/* untouched. The affiliate path form also gets a one-line shim that  */
+/* moves the code into the #affiliate/<code> hash the client router   */
+/* reads, so it lands on the affiliate signup exactly like the hash   */
+/* link the Manager generates.                                        */
+/* ------------------------------------------------------------------ */
+const INDEX_HTML_PATH = path.join(__dirname, 'public', 'index.html');
+let _indexCache = { mtimeMs: 0, html: '' };
+function indexHtml() {
+  const st = fs.statSync(INDEX_HTML_PATH);
+  if (st.mtimeMs !== _indexCache.mtimeMs) {
+    _indexCache = { mtimeMs: st.mtimeMs, html: fs.readFileSync(INDEX_HTML_PATH, 'utf8') };
+  }
+  return _indexCache.html;
+}
+function inviteMeta(html, meta) {
+  let out = html
+    .replace(/<title>[^<]*<\/title>/, '<title>' + meta.title + '</title>')
+    .replace(/(<meta name="description" content=")[^"]*(")/, '$1' + meta.desc + '$2')
+    .replace(/(<meta property="og:title" content=")[^"]*(")/, '$1' + meta.title + '$2')
+    .replace(/(<meta property="og:description" content=")[^"]*(")/, '$1' + meta.desc + '$2')
+    .replace(/(<meta property="og:url" content=")[^"]*(")/, '$1' + meta.url + '$2')
+    .replace(/(<meta name="twitter:title" content=")[^"]*(")/, '$1' + meta.title + '$2')
+    .replace(/(<meta name="twitter:description" content=")[^"]*(")/, '$1' + meta.desc + '$2');
+  if (meta.shim) out = out.replace('<script src="/js/app.js', meta.shim + '\n<script src="/js/app.js');
+  return out;
+}
+app.use((req, res, next) => {
+  if (req.method !== 'GET') return next();
+  const aff = req.path.match(/^\/affiliate\/([a-f0-9]{18})$/);
+  if (aff) {
+    const code = aff[1];
+    const html = inviteMeta(indexHtml(), {
+      title: "SlutCamp Affiliate — You're invited to earn 20%",
+      desc: "You've been invited to join the SlutCamp affiliate program. Recruit models with your personal link and earn 20% of everything they make. Open your invite to get started.",
+      url: 'https://slutcamp.app/affiliate/' + code,
+      shim: "<script>try{history.replaceState({},'','/#affiliate/" + code + "')}catch(e){}</script>",
+    });
+    return res.type('html').set('Cache-Control', 'public, max-age=0').send(html);
+  }
+  if (req.path === '/' && /^[a-f0-9]{18}$/.test(String(req.query.invite || ''))) {
+    const code = String(req.query.invite);
+    const html = inviteMeta(indexHtml(), {
+      title: 'SlutCamp — Your Model Invite 💋',
+      desc: 'Your personal invite to join SlutCamp as a model. Create your model account, go live, chat with fans, and keep 60% of everything you earn. Open your invite to claim it.',
+      url: 'https://slutcamp.app/?invite=' + code,
+    });
+    return res.type('html').set('Cache-Control', 'public, max-age=0').send(html);
+  }
+  return next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 /* ------------------------------------------------------------------ */

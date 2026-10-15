@@ -407,18 +407,22 @@ async function adminInvitesBody() {
   const cleanupCount = typeof data.cleanup_count === 'number' ? data.cleanup_count
     : invites.filter((i) => !i.used_by || (i.expires_at && new Date(i.expires_at + 'Z') < new Date())).length;
   const inviteCard = (inv, isAff) => {
-    const url = isAff ? `${baseUrl}/#affiliate/${inv.code}` : `${baseUrl}/?invite=${inv.code}`;
+    const url = isAff ? `${baseUrl}/affiliate/${inv.code}` : `${baseUrl}/?invite=${inv.code}`;
     const status = inv.is_revoked ? '<span style="color:var(--red)">⛔ Revoked</span>'
       : inv.used_by ? `<span style="color:var(--green)">✅ Used by ${esc(inv.used_by.display_name)}${inv.used_by.banned ? ' (deactivated)' : ''}</span>`
       : inv.expired ? '<span style="color:var(--red)">⌛ Expired — hit Refresh to give her 6 more hours</span>'
       : `<span style="color:var(--yellow)">⏳ Waiting for signup</span>${inv.expires_at ? `<br><span class="small muted">Expires ${timeHM(inv.expires_at)}</span>` : ''}`;
+    const chip = isAff
+      ? '<span style="display:inline-block;padding:3px 12px;border-radius:999px;font-size:12.5px;font-weight:800;letter-spacing:.6px;background:rgba(245,198,107,.16);color:var(--gold);border:1.5px solid var(--gold)">🤝 AFFILIATE INVITE</span>'
+      : '<span style="display:inline-block;padding:3px 12px;border-radius:999px;font-size:12.5px;font-weight:800;letter-spacing:.6px;background:rgba(255,92,158,.16);color:var(--pink);border:1.5px solid var(--pink)">💃 MODEL INVITE</span>';
     return `
       <div class="card" style="padding:12px">
+        <div style="margin-bottom:8px">${chip}</div>
         <div class="row"><span class="grow"><b>${esc(inv.label) || 'Untitled invite'}</b><br>
           <span class="small muted">${url}</span><br>${status}
           ${inv.used_at ? `<br><span class="small muted">Used ${timeHM(inv.used_at)}</span>` : ''}</span></div>
         <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
-          ${!inv.is_revoked ? `<button class="btn small" data-inv-copy="${inv.code}" data-aff="${isAff ? 1 : 0}">📋 Copy link</button>` : ''}
+          ${!inv.is_revoked ? `<button class="btn small" data-inv-copy="${inv.code}" data-aff="${isAff ? 1 : 0}" data-inv-label="${esc(inv.label || '')}">📋 Copy link</button>` : ''}
           ${!inv.is_revoked && !inv.used_by ? `<button class="btn small ghost" data-inv-refresh="${inv.id}">🔄 Refresh (6h)</button>` : ''}
           ${!inv.is_revoked ? `<button class="btn small danger" data-inv-revoke="${inv.id}" data-used="${inv.used_by ? 1 : 0}">Revoke</button>` : ''}
           <button class="btn small danger" data-inv-del="${inv.id}" data-used="${inv.used_by ? 1 : 0}">🗑 Delete</button>
@@ -1234,7 +1238,8 @@ function wireAdminBody(tab) {
       method: 'POST', body: JSON.stringify({ label, base_url: window.location.origin }) });
     if (status === 200) {
       const url = `${window.location.origin}/?invite=${data.code}`;
-      try { await navigator.clipboard.writeText(url); toast('✅ Invite link copied! Send it to her.'); }
+      const copyText = `💃 MODEL invite${label ? ` for ${label}` : ''}: ${url}`;
+      try { await navigator.clipboard.writeText(copyText); toast('✅ Invite link copied! Send it to her.'); }
       catch { toast('✅ Invite created — copy it from the list below.'); }
     } else toast('Could not create invite.');
     M.reload();
@@ -1244,8 +1249,9 @@ function wireAdminBody(tab) {
     const { status, data } = await api('/admin/invites', {
       method: 'POST', body: JSON.stringify({ label, role: 'recruiter', base_url: window.location.origin }) });
     if (status === 200) {
-      const url = `${window.location.origin}/#affiliate/${data.code}`;
-      try { await navigator.clipboard.writeText(url); toast('✅ Affiliate invite copied! Send it to them.'); }
+      const url = `${window.location.origin}/affiliate/${data.code}`;
+      const copyText = `🤝 AFFILIATE invite${label ? ` for ${label}` : ''}: ${url}`;
+      try { await navigator.clipboard.writeText(copyText); toast('✅ Affiliate invite copied! Send it to them.'); }
       catch { toast('✅ Affiliate invite created — copy it from the list below.'); }
     } else toast('Could not create invite.');
     M.reload();
@@ -1253,10 +1259,15 @@ function wireAdminBody(tab) {
   document.querySelectorAll('[data-inv-copy]').forEach((b) => {
     b.onclick = async () => {
       const isAff = b.dataset.aff === '1';
-      const url = isAff ? `${window.location.origin}/#affiliate/${b.dataset.invCopy}`
+      const url = isAff ? `${window.location.origin}/affiliate/${b.dataset.invCopy}`
                         : `${window.location.origin}/?invite=${b.dataset.invCopy}`;
-      try { await navigator.clipboard.writeText(url); toast('📋 Link copied!'); }
-      catch { prompt('Copy this link:', url); }
+      // The copied text NAMES the type — a bare URL reads identically in a
+      // chat thread, which is how a model invite once went to an affiliate.
+      const label = b.dataset.invLabel || '';
+      const copyText = isAff ? `🤝 AFFILIATE invite${label ? ` for ${label}` : ''}: ${url}`
+                             : `💃 MODEL invite${label ? ` for ${label}` : ''}: ${url}`;
+      try { await navigator.clipboard.writeText(copyText); toast('📋 Link copied!'); }
+      catch { prompt('Copy this link:', copyText); }
     };
   });
   document.querySelectorAll('[data-inv-revoke]').forEach((b) => {
