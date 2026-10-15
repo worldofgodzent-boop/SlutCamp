@@ -3904,8 +3904,10 @@ async function vChat(params) {
       ${!conv.is_paused ? `<button class="icon-btn" id="c-plus" title="More">＋</button>` : ''}
       ${!conv.is_paused && S.user && S.user.role === 'fan' ? `<button class="icon-btn" id="c-gift" title="Send a gift">🎁</button>` : ''}
       ${!conv.is_paused && S.user && S.user.role === 'fan' ? `<button class="icon-btn" id="c-tipmenu" title="Tip menu">💰</button>` : ''}
-      <input id="c-input" placeholder="${conv.is_paused ? t('chat_paused_ph') : t('msg_placeholder')}" ${conv.is_paused ? 'disabled' : ''} autocomplete="off">
-      <button class="send-btn" id="c-send" ${conv.is_paused ? 'disabled' : ''}>➤</button>
+      <div class="composer-pill" id="c-pill">
+        <textarea id="c-input" rows="1" placeholder="${conv.is_paused ? t('chat_paused_ph') : t('msg_placeholder')}" ${conv.is_paused ? 'disabled' : ''} autocomplete="off" enterkeyhint="send"></textarea>
+        <button type="button" class="pill-send" id="c-send" aria-label="Send" ${conv.is_paused ? 'disabled' : ''}>↑</button>
+      </div>
     </div>
     <div id="action-sheet" class="hidden"></div>
     <input type="file" id="ppv-file-img" class="file-offscreen" accept="image/*">
@@ -3959,11 +3961,18 @@ async function vChat(params) {
   api(`/conversations/${conv.id}/read`, { method: 'POST' });
 
   const input = $('#c-input');
-  const send = () => sendMessage();
+  const send = () => {
+    const r = sendMessage();
+    syncChatComposer();
+    if (r && r.then) r.then(syncChatComposer);
+  };
   $('#c-send').onclick = send;
-  input.onkeydown = (e) => { if (e.key === 'Enter') send(); };
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  };
   let typingTimer = null;
   input.oninput = () => {
+    syncChatComposer();
     if (S.ws && S.ws.readyState === 1)
       S.ws.send(JSON.stringify({ type: 'typing', conversation_id: conv.id, is_typing: true }));
     clearTimeout(typingTimer);
@@ -3972,6 +3981,7 @@ async function vChat(params) {
         S.ws.send(JSON.stringify({ type: 'typing', conversation_id: conv.id, is_typing: false }));
     }, 1500);
   };
+  syncChatComposer();
 }
 
 async function loadMessages() {
@@ -4059,6 +4069,18 @@ async function unlockMedia(mediaId) {
   } else {
     toast('Could not unlock.');
   }
+}
+
+/* Composer bubble: in-pill ↑ send button appears on first character, and the
+   textarea auto-grows with content (capped, then scrolls internally). */
+function syncChatComposer() {
+  const input = $('#c-input'), btn = $('#c-send'), pill = $('#c-pill');
+  if (!input || !btn || !pill) return;
+  btn.classList.toggle('show', input.value.length > 0);
+  input.style.height = 'auto';
+  const sh = input.scrollHeight;
+  input.style.height = Math.min(sh, 148) + 'px';
+  pill.classList.toggle('grown', sh > 42);
 }
 
 async function sendMessage() {
