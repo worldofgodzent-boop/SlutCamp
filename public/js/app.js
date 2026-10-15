@@ -95,6 +95,13 @@ const I18N = {
     free3_title: '🎁 First 3 messages FREE',
     free3_sub: 'with every model you try. No account needed to start.',
     login_signup: 'Log in / Sign up', share_app: '📤 Share SlutCamp',
+    ath_card_t: 'Put SlutCamp on your home screen', ath_card_sub: 'Opens like a real app, one tap.',
+    ath_btn: 'Add the app', ath_sheet_t: '📲 Add SlutCamp to your home screen',
+    ath_install_btn: 'Install the app', ath_installed: 'Added — find SlutCamp on your home screen 💋',
+    ath_step1: '1. Tap the Share button ⬆ in your browser bar',
+    ath_step2: "2. Tap 'Add to Home Screen'",
+    ath_step3: "3. Tap 'Add' — done, she's on your home screen",
+    ath_wallet_row: '📲 Add to Home Screen',
     no_models: 'No models yet.',
     pager_prev: '← Prev', pager_next: 'Next →', pager_page: 'Page {x} of {y}',
     terms_line: '18+ only. By chatting you agree to the', terms: 'Terms',
@@ -290,6 +297,13 @@ const I18N = {
     free3_title: '🎁 Primeros 3 mensajes GRATIS',
     free3_sub: 'con cada modelo que pruebes. No necesitas cuenta para empezar.',
     login_signup: 'Iniciar sesión / Registrarse', share_app: '📤 Compartir SlutCamp',
+    ath_card_t: 'Pon SlutCamp en tu pantalla de inicio', ath_card_sub: 'Se abre como una app real, con un toque.',
+    ath_btn: 'Añadir la app', ath_sheet_t: '📲 Añade SlutCamp a tu pantalla de inicio',
+    ath_install_btn: 'Instalar la app', ath_installed: 'Agregado — busca SlutCamp en tu pantalla de inicio 💋',
+    ath_step1: '1. Toca el botón Compartir ⬆ en la barra de tu navegador',
+    ath_step2: "2. Toca 'Añadir a pantalla de inicio'",
+    ath_step3: "3. Toca 'Añadir' — listo, ya está en tu pantalla de inicio",
+    ath_wallet_row: '📲 Añadir a pantalla de inicio',
     no_models: 'Aún no hay modelos.',
     pager_prev: '← Anterior', pager_next: 'Siguiente →', pager_page: 'Página {x} de {y}',
     terms_line: 'Solo 18+. Al chatear aceptas los', terms: 'Términos',
@@ -482,6 +496,13 @@ const I18N = {
     free3_title: '🎁 Primeiras 3 mensagens GRÁTIS',
     free3_sub: 'com cada modelo que você testar. Não precisa de conta para começar.',
     login_signup: 'Entrar / Cadastrar', share_app: '📤 Compartilhar o SlutCamp',
+    ath_card_t: 'Coloque o SlutCamp na sua tela inicial', ath_card_sub: 'Abre como um app de verdade, com um toque.',
+    ath_btn: 'Adicionar o app', ath_sheet_t: '📲 Adicionar o SlutCamp à tela inicial',
+    ath_install_btn: 'Instalar o app', ath_installed: 'Adicionado — encontre o SlutCamp na sua tela inicial 💋',
+    ath_step1: '1. Toque no botão Compartilhar ⬆ na barra do navegador',
+    ath_step2: "2. Toque em 'Adicionar à Tela de Início'",
+    ath_step3: "3. Toque em 'Adicionar' — pronto, já está na sua tela inicial",
+    ath_wallet_row: '📲 Adicionar à tela inicial',
     no_models: 'Ainda não há modelos.',
     pager_prev: '← Anterior', pager_next: 'Próxima →', pager_page: 'Página {x} de {y}',
     terms_line: 'Somente 18+. Ao conversar, você concorda com os', terms: 'Termos',
@@ -2007,11 +2028,13 @@ async function vFanModels() {
         ? '<span class="balance-pill">👀 Browsing the home screen</span>'
         : `<span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span>`}</div></div>
     <div class="screen">
+      ${athCardHTML()}
       ${livesBtnHTML(models)}
       ${models.length ? homeTilesHTML(models, isModelViewer ? null : (m) => `
             <span class="follow-btn tile-heart ${following.includes(m.id) ? 'following' : ''}" data-follow="${m.id}" title="${t('follow_title')}">${following.includes(m.id) ? '❤️' : '🤍'}</span>`)
         : `<div class="empty"><div class="big">😴</div>${t('no_models')}</div>`}
     </div>`;
+  wireAthCard();
   const lv = $('#go-lives');
   if (lv) lv.onclick = () => show('lives', {});
   const hlo = $('#home-logout');
@@ -2367,6 +2390,7 @@ async function vWallet() {
         <div id="crypto-invoice"></div>
         <div id="crypto-recent"></div>
       </div>
+      <button class="btn ghost" id="w-ath" style="width:100%;margin-bottom:10px">${t('ath_wallet_row')}</button>
       ${langCardHTML()}
       <button class="btn ghost" id="w-logout">${t('log_out')}</button>
     </div>`;
@@ -2491,6 +2515,8 @@ async function vWallet() {
       }
     })();
   }
+  const wth = $('#w-ath');
+  if (wth) wth.onclick = openAthSheet;
   $('#w-logout').onclick = () => logout();
 }
 
@@ -8130,31 +8156,98 @@ function endLiveView(msg) {
   else show('landing', {});
 }
 
-/* ---------------- PWA install ---------------- */
-
+/* ---------------- PWA install: fan "Add to Home Screen" ---------------- */
+// Every fan gets an elegant, dismissible invitation — a slim card on the
+// fan Home view plus a permanent row in the Wallet. Never a blocking
+// popup: an invitation, not a nag (casino rule). Models already have
+// their own flow (the guide DM + video), so all of this is fan-only.
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  if (!localStorage.getItem('wc_install_dismissed')) $('#install-banner').classList.remove('hidden');
 });
-$('#install-btn').onclick = async () => {
-  if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; }
-  $('#install-banner').classList.add('hidden');
-};
-$('#install-dismiss').onclick = () => {
-  localStorage.setItem('wc_install_dismissed', '1');
-  $('#install-banner').classList.add('hidden');
-};
-// iOS Safari: no beforeinstallprompt — show manual hint once
-if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !navigator.standalone &&
-    !localStorage.getItem('wc_install_dismissed')) {
-  setTimeout(() => {
-    const b = $('#install-banner');
-    b.querySelector('span').textContent = '📲 Tap Share → "Add to Home Screen" to install';
-    b.querySelector('#install-btn').style.display = 'none';
-    b.classList.remove('hidden');
-  }, 3000);
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  try { localStorage.setItem('sc_ath_dismissed', '1'); } catch (e) { /* ignore */ }
+  const card = $('#ath-card');
+  if (card) card.remove();
+  toast(t('ath_installed'));
+});
+
+function athIsStandalone() {
+  return !!((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+    window.navigator.standalone);
+}
+
+// Card markup — rendered with the fan Home view, but visible only for a
+// signed-in fan, in a browser (not the installed app), who has not
+// dismissed it on this device.
+function athCardHTML() {
+  if (!S.user || S.user.role !== 'fan') return '';
+  if (athIsStandalone()) return '';
+  try { if (localStorage.getItem('sc_ath_dismissed') === '1') return ''; } catch (e) { /* ignore */ }
+  return `
+  <div class="card ath-card" id="ath-card">
+    <button class="ath-x" id="ath-dismiss" aria-label="Dismiss">✕</button>
+    <div class="ath-t">📲 ${t('ath_card_t')}</div>
+    <div class="muted small ath-sub">${t('ath_card_sub')}</div>
+    <button class="btn" id="ath-open">${t('ath_btn')}</button>
+  </div>`;
+}
+
+function wireAthCard() {
+  const card = $('#ath-card');
+  if (!card) return;
+  $('#ath-open').onclick = openAthSheet;
+  $('#ath-dismiss').onclick = () => {
+    try { localStorage.setItem('sc_ath_dismissed', '1'); } catch (e) { /* ignore */ }
+    card.remove();
+  };
+}
+
+// The add sheet — two paths: the browser's native install prompt when one
+// was captured (Android/Chrome), otherwise the how-to video + the 3 steps
+// (iOS Safari has no install prompt).
+function openAthSheet() {
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet-backdrop';
+  sheet.innerHTML = `
+    <div class="sheet">
+      <div style="font-weight:800;font-size:18px;margin-bottom:12px">${t('ath_sheet_t')}</div>
+      ${deferredPrompt
+        ? `<button class="btn" id="ath-install" style="width:100%;min-height:44px">${t('ath_install_btn')}</button>`
+        : `<video class="ath-video" controls playsinline preload="metadata" src="/video/add-to-home-screen.mp4"></video>
+           <div class="ath-steps">
+             <div>${t('ath_step1')}</div>
+             <div>${t('ath_step2')}</div>
+             <div>${t('ath_step3')}</div>
+           </div>`}
+      <button class="btn ghost" id="ath-close" style="width:100%;margin-top:12px">${t('cancel')}</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  const close = () => {
+    const v = sheet.querySelector('video');
+    if (v) { try { v.pause(); } catch (e) { /* ignore */ } }
+    sheet.remove();
+  };
+  sheet.querySelector('#ath-close').onclick = close;
+  sheet.onclick = (e) => { if (e.target === sheet) close(); };
+  const ib = sheet.querySelector('#ath-install');
+  if (ib) ib.onclick = async () => {
+    if (!deferredPrompt) return;
+    const ev = deferredPrompt;
+    deferredPrompt = null;
+    try { ev.prompt(); } catch (e) { /* ignore */ }
+    let choice = null;
+    try { choice = await ev.userChoice; } catch (e) { /* ignore */ }
+    if (choice && choice.outcome === 'accepted') {
+      try { localStorage.setItem('sc_ath_dismissed', '1'); } catch (e) { /* ignore */ }
+      const card = $('#ath-card');
+      if (card) card.remove();
+      close();
+      toast(t('ath_installed'));
+    }
+  };
 }
 
 /* ---------------- call overlay buttons ---------------- */
