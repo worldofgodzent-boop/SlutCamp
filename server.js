@@ -1310,13 +1310,27 @@ async function sendWebPush(userId, payload) {
   return { sent, skipped: false };
 }
 
+// Total unread DM messages waiting for a user — the exact math behind
+// GET /api/conversations (each conversation's unread_count summed), so the
+// home-screen icon badge can never disagree with the in-app badges.
+function totalUnreadDms(userId) {
+  if (!userId) return 0;
+  const row = db.prepare(`
+    SELECT COUNT(*) AS n FROM messages m
+    JOIN conversations c ON c.id = m.conversation_id
+    WHERE (c.fan_id = ? OR c.model_id = ?)
+      AND m.sender_id != ? AND m.is_read = 0`).get(userId, userId, userId);
+  return row ? row.n : 0;
+}
+
 function notifyUser(userId, type, title, body, link) {
   const info = db.prepare(
     `INSERT INTO notifications (user_id, type, title, body, link) VALUES (?,?,?,?,?)`)
     .run(userId, type, title, body || null, link || null);
   const n = db.prepare('SELECT * FROM notifications WHERE id = ?').get(info.lastInsertRowid);
   pushToUser(userId, { type: 'notification:new', notification: n });
-  sendWebPush(userId, { title, body: body || '', link: link || '/' }).catch(() => {});
+  sendWebPush(userId, { title, body: body || '', link: link || '/',
+    badge_unread: totalUnreadDms(userId) }).catch(() => {});
   return n;
 }
 
@@ -1327,7 +1341,10 @@ function buzzChatRecipient(userId, title, body) {
   if (!userId) return;
   const set = socketsBySubject.get(`u:${userId}`);
   if (set && set.size) return;
-  sendWebPush(userId, { title, body, link: '/' }).catch(() => {});
+  // badge_unread is counted AFTER the new message was saved (callers buzz
+  // post-insert), so the icon badge includes the message that just landed.
+  sendWebPush(userId, { title, body, link: '/',
+    badge_unread: totalUnreadDms(userId) }).catch(() => {});
 }
 
 // Notify every online admin about something (safety incidents, etc.)
@@ -1336,7 +1353,9 @@ function pushToAdmins(event) {
   for (const a of admins) pushToUser(a.id, event);
 }
 
-// 2257 ID verification: a model must be approved before going live or receiving paid chats
+// 2257 ID verification: a model must be approved before going live.
+// (Since Oct 15 it no longer gates fan→model texting — owner rule: fans
+// can always text her; the message waits in her inbox.)
 function isIdVerified(modelUserId) {
   const r = db.prepare('SELECT status FROM id_verifications WHERE model_id = ?').get(modelUserId);
   return !!(r && r.status === 'approved');
@@ -2413,9 +2432,10 @@ app.post('/api/conversations/start', identMiddleware, (req, res) => {
     SELECT u.id FROM users u JOIN models m ON m.user_id = u.id
     WHERE u.id = ? AND u.role = 'model' AND u.banned = 0`).get(req.body.model_id);
   if (!model) return res.status(404).json({ error: 'model_not_found' });
-  if (!isIdVerified(model.id))
-    return res.status(403).json({ error: 'id_verification_required',
-      message: 'This model is not available right now.' });
+  // Owner rule (Oct 15): a fan can ALWAYS open a chat with a model —
+  // her online presence and ID-verification state never gate fan→model
+  // texting (verification still gates HER going live + payouts). Region
+  // blocks below still apply.
   if (modelRegionBlocked(model.id, geoOfReq(req))) return regionBlocked(res);
 
   let conv;
@@ -2482,10 +2502,10 @@ app.post('/api/messages', identMiddleware, (req, res) => {
   if (conv.is_paused)
     return res.status(423).json({ error: 'chat_paused',
       message: '⚠️ This chat is paused by the safety monitor.' });
-  // Unverified models cannot receive any chat activity (paid or otherwise)
-  if (!isIdVerified(conv.model_id))
-    return res.status(403).json({ error: 'id_verification_required',
-      message: '🪪 This model must complete ID verification before chatting.' });
+  // Owner rule (Oct 15): text messages ALWAYS land, whatever her presence
+  // or ID-verification state — a fan is never blocked from texting a model
+  // for being "offline" (safety pause above, region block below, the
+  // safety scan and billing still apply exactly as before).
 
   const isModelSender = req.ident.kind === 'user' && req.ident.user.role === 'model';
 

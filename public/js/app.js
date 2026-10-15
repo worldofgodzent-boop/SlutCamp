@@ -1043,7 +1043,8 @@ function handleWS(m) {
     if (!S.messages.find((x) => x.id === m.message.id)) S.messages.push(m.message);
     appendMessageBubble(m.message);
     if (nearBottom) pinChatScroll();
-    api(`/conversations/${S.conv.id}/read`, { method: 'POST' });
+    api(`/conversations/${S.conv.id}/read`, { method: 'POST' })
+      .then(() => refreshTabBadges()).catch(() => {});
     // TikTok-style gift: emoji flies across the screen for both sides
     const gg = giftOf(m.message);
     if (gg) flyGiftAnim(gg.emoji, m.message.sender_name || 'Someone', gg.name);
@@ -1375,6 +1376,20 @@ function vManagerGate() {
   $('#mg-logout').onclick = () => logout();
 }
 
+/* Home-screen icon badge (Badging API): mirrors the in-app unread total
+   onto the installed app's icon. Feature-detected — where the API does
+   not exist this is a silent no-op. Best-effort only, never throws. */
+function updateAppBadge(n) {
+  try {
+    if (!('setAppBadge' in navigator)) return;
+    let p = null;
+    if (n > 0) p = navigator.setAppBadge(n);
+    else if ('clearAppBadge' in navigator) p = navigator.clearAppBadge();
+    else p = navigator.setAppBadge(0);
+    if (p && p.catch) p.catch(() => {});
+  } catch (e) { /* badge is best-effort */ }
+}
+
 async function refreshTabBadges() {
   if (!S.user) return;
   try {
@@ -1384,6 +1399,7 @@ async function refreshTabBadges() {
       const b = document.getElementById('badge-' + id);
       if (b) { b.textContent = total; b.classList.toggle('hidden', !total); }
     });
+    updateAppBadge(total);
   } catch (e) { /* ignore */ }
 }
 
@@ -1609,8 +1625,6 @@ async function openChatWithModel(modelId) {
     method: 'POST', body: JSON.stringify({ model_id: modelId }),
   });
   if (status === 200) show('chat', { conv: data.conversation });
-  else if (data && data.error === 'id_verification_required')
-    toast('This model is not available right now.');
   else if (data && data.error === 'region_blocked')
     toast('This model is not available in your region.');
   else toast('Could not open chat.');
@@ -4114,7 +4128,8 @@ async function vChat(params) {
   };
 
   await loadMessages();
-  api(`/conversations/${conv.id}/read`, { method: 'POST' });
+  api(`/conversations/${conv.id}/read`, { method: 'POST' })
+    .then(() => refreshTabBadges()).catch(() => {});
 
   const input = $('#c-input');
   const send = () => {
@@ -4870,8 +4885,6 @@ async function sendMessage() {
     show('chat', { conv: S.conv, keepMessages: true });
     return toast('⚠️ This chat is paused.');
   }
-  if (status === 403 && data.error === 'id_verification_required')
-    return toast('🪪 This model must complete ID verification before chatting.');
   if (status === 0 || data.error === 'network_error') {
     input.value = text; // restore the message
     return toast('Connection issue — check your signal and try again 📶');
@@ -8734,6 +8747,9 @@ async function vModelContract() {
 /* Blur app content when backgrounded (screen-record deterrent) */
 document.addEventListener('visibilitychange', () => {
   document.body.classList.toggle('bg-blur', document.hidden);
+  // Back in the foreground: resync the tab + home-screen icon badges —
+  // messages may have landed (and been read elsewhere) while we were away.
+  if (!document.hidden && S.user) refreshTabBadges();
 });
 window.addEventListener('blur', () => document.body.classList.add('bg-blur'));
 window.addEventListener('focus', () => document.body.classList.remove('bg-blur'));

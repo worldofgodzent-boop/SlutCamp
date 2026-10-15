@@ -72,13 +72,23 @@ self.addEventListener('push', (e) => {
   try { d = e.data ? e.data.json() : {}; }
   catch (err) { d = { title: 'SlutCamp 💋', body: e.data ? e.data.text() : '' }; }
   const title = d.title || 'SlutCamp 💋';
-  e.waitUntil(self.registration.showNotification(title, {
+  // Home-screen icon badge: payloads carry the recipient's unread DM
+  // count (badge_unread) — mirror it onto the app icon so waiting
+  // messages show even while the app is closed. Best-effort: where the
+  // Badging API does not exist this silently does nothing.
+  let badgeWork = Promise.resolve();
+  try {
+    if (typeof d.badge_unread === 'number' && 'setAppBadge' in navigator) {
+      badgeWork = Promise.resolve(navigator.setAppBadge(d.badge_unread)).catch(() => {});
+    }
+  } catch (err) { /* badge is best-effort */ }
+  e.waitUntil(Promise.all([badgeWork, self.registration.showNotification(title, {
     body: d.body || '',
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-192.png',
     data: { link: d.link || '/' },
     vibrate: [80, 40, 80],
-  }));
+  })]));
 });
 
 // Tapping the alert opens (or focuses) the app.
