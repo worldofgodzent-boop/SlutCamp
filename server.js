@@ -5808,6 +5808,35 @@ app.delete('/api/admin/gifts/:id', ...adminOnly, (req, res) => {
 
 /* Admin — moderator dashboard + safety monitor (adminOnly defined above, before live section) */
 
+/* Money on the Manager reads ONE ruler: the transactions ledger, with the
+   same filters for every window, so the cards always reconcile —
+   gross = model + platform + recruiter, per window, by construction.
+   The platform_stats earnings counter is NOT used here (it's all-time,
+   cumulative, and drifts from the ledger). */
+
+/* Start of today in America/Chicago as a SQLite UTC timestamp string
+   ('YYYY-MM-DD HH:MM:SS', the transactions.created_at format). The Chicago
+   offset is resolved at the target date and iterated, so DST transition
+   days stay correct. */
+function chicagoStartOfDaySql(now = new Date()) {
+  const tz = 'America/Chicago';
+  const dayFmt = new Intl.DateTimeFormat('en-US',
+    { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
+  const dp = Object.fromEntries(dayFmt.formatToParts(now).map((p) => [p.type, p.value]));
+  const y = +dp.year, m = +dp.month, d = +dp.day;
+  const fullFmt = new Intl.DateTimeFormat('en-US',
+    { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const offsetAt = (date) => {
+    const p = Object.fromEntries(fullFmt.formatToParts(date).map((x) => [x.type, x.value]));
+    return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second)
+      - Math.floor(date.getTime() / 1000) * 1000;
+  };
+  let utcMs = Date.UTC(y, m - 1, d, 0, 0, 0);
+  for (let i = 0; i < 3; i++) utcMs = Date.UTC(y, m - 1, d, 0, 0, 0) - offsetAt(new Date(utcMs));
+  return new Date(utcMs).toISOString().slice(0, 19).replace('T', ' ');
+}
+
 /* Slut Manager — Overview aggregates for the Manager home screen */
 app.get('/api/admin/overview', ...adminOnly, (req, res) => {
   const row = db.prepare(`
@@ -5817,11 +5846,17 @@ app.get('/api/admin/overview', ...adminOnly, (req, res) => {
       (SELECT COUNT(*) FROM users WHERE role = 'fan' AND banned = 0) AS fans,
       (SELECT COUNT(*) FROM users WHERE role = 'model' AND banned = 0) AS models,
       (SELECT COUNT(*) FROM dmca_notices WHERE status IN ('received','under_review')) AS open_dmca,
-      (SELECT COUNT(*) FROM safety_incidents WHERE status = 'open') AS open_incidents,
-      (SELECT COALESCE(SUM(gross_cents),0) FROM transactions
-         WHERE is_test = 0 AND type IN ('message','call','tip','ppv','voice','live_explicit','gift')
-           AND created_at >= datetime('now','start of day')) AS gross_today_cents`).get();
-  res.json(row);
+      (SELECT COUNT(*) FROM safety_incidents WHERE status = 'open') AS open_incidents`).get();
+  const LEDGER_SUM = `
+    SELECT COALESCE(SUM(gross_cents),0) AS gross_cents,
+           COALESCE(SUM(model_cents),0) AS model_cents,
+           COALESCE(SUM(platform_cents),0) AS platform_cents,
+           COALESCE(SUM(recruiter_cents),0) AS recruiter_cents
+    FROM transactions
+    WHERE is_test = 0 AND type IN ('message','call','tip','ppv','voice','live_explicit','gift')`;
+  const today = db.prepare(LEDGER_SUM + ' AND created_at >= ?').get(chicagoStartOfDaySql());
+  const allTime = db.prepare(LEDGER_SUM).get();
+  res.json({ ...row, gross_today_cents: today.gross_cents, today, all_time: allTime });
 });
 
 app.get('/api/admin/stats', ...adminOnly, (req, res) => {

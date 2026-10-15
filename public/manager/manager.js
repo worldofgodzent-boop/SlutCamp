@@ -210,11 +210,21 @@ function bookingWhen(at) {
     ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
-async function adminDashBody(s) {
+async function adminDashBody(s, o) {
+  // Money comes from the /admin/overview LEDGER sums (one ruler, matching
+  // windows) — never the platform_stats counter or the commission setting.
+  const t = (o && o.today) || {};
+  const a = (o && o.all_time) || {};
+  const eff = (part, whole) => (whole > 0 ? `${(part / whole * 100).toFixed(1)}%` : null);
+  const tEff = eff(t.platform_cents, t.gross_cents);
+  const aEff = eff(a.platform_cents, a.gross_cents);
   return `
     <div class="stat-grid">
-      <div class="stat"><div class="n" style="color:var(--green)">${fmt(s.earnings_cents)}</div><div class="l">Platform earnings (${s.commission_pct}%)</div></div>
-      <div class="stat"><div class="n">${fmt(s.gross_volume_cents)}</div><div class="l">Total fan spending</div></div>
+      <div class="stat"><div class="n" style="color:var(--green)">${fmt(t.platform_cents || 0)}</div><div class="l">Platform earnings today</div>${tEff ? `<div class="l" style="font-size:11px">${tEff} of today's gross</div>` : ''}</div>
+      <div class="stat"><div class="n">${fmt(t.model_cents || 0)}</div><div class="l">Models earned today</div></div>
+      ${t.recruiter_cents > 0 ? `<div class="stat"><div class="n">${fmt(t.recruiter_cents)}</div><div class="l">Recruiters today</div></div>` : ''}
+      <div class="stat"><div class="n">${fmt(a.gross_cents || 0)}</div><div class="l">Total fan spending · all-time</div></div>
+      <div class="stat"><div class="n" style="color:var(--green)">${fmt(a.platform_cents || 0)}</div><div class="l">Platform earnings · all-time</div>${aEff ? `<div class="l" style="font-size:11px">${aEff} of all-time gross</div>` : ''}</div>
       <div class="stat"><div class="n">${s.models_online}/${s.models}</div><div class="l">Models online</div></div>
       <div class="stat"><div class="n">${s.active_calls}</div><div class="l">Live calls</div></div>
       <div class="stat"><div class="n" style="color:${s.open_incidents ? 'var(--red)' : 'inherit'}">${s.open_incidents}</div><div class="l">Open safety flags</div></div>
@@ -557,7 +567,7 @@ async function adminFansBody() {
       <div class="card" style="padding:12px">
         <div class="row"><span class="grow"><b>${esc(f.display_name)}</b>
           <span class="small muted">@${esc(f.username)}</span><br>
-          <span class="small">Balance ${fmt(f.credits_cents)} · Spent ${fmt(f.spent_cents)}</span>
+          <span class="small">Balance ${fmt(f.credits_cents)} · Spent ${fmt(f.spent_cents)} <span class="muted">(msgs, calls, gifts)</span></span>
           ${f.banned ? ' <span class="small" style="color:var(--red)">⛔ banned</span>' : ''}</span></div>
         <div class="row" style="margin-top:8px">
           <input class="input" id="cr-${f.id}" type="number" step="0.01" placeholder="$ credits" style="margin-top:0;max-width:130px">
@@ -763,7 +773,7 @@ async function adminMoreBody(s) {
     </div>
     <div class="card">
       <div style="font-weight:800;margin-bottom:6px">Platform commission</div>
-      <div class="muted small">You keep this % of every payment. Models get the rest.</div>
+      <div class="muted small">Base split on fan charges — your cut before any partner share (partners take half of your cut on their models). The real blended rate varies by type; the Overview shows it from the ledger.</div>
       <div class="row" style="margin-top:8px">
         <input class="input" id="set-comm" type="number" min="0" max="90" value="${s.commission_pct}" style="margin-top:0;max-width:100px">
         <span><b>%</b></span>
@@ -1712,7 +1722,7 @@ async function overviewBody(stats) {
       <div class="stat"><div class="n" style="color:${o.open_dmca ? 'var(--red)' : 'inherit'}">${o.open_dmca ?? '—'}</div><div class="l">Open DMCA</div></div>
       <div class="stat"><div class="n" style="color:var(--green)">${fmt(o.gross_today_cents || 0)}</div><div class="l">Gross today</div></div>
     </div>`;
-  return PRESENCE_CARD + tiles + (await adminDashBody(stats));
+  return PRESENCE_CARD + tiles + (await adminDashBody(stats, o));
 }
 
 const SCREENS = {
