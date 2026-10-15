@@ -458,6 +458,14 @@ body.bg-blur #app { filter: blur(24px); }
   max-width: 86%; z-index: 5; backdrop-filter: blur(4px);
 }
 #call-status.tappable { cursor: pointer; border-color: var(--pink, #ff5c9e); }
+#call-join-timer {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  top: calc(78px + env(safe-area-inset-top));
+  background: rgba(20, 10, 35, .82); border: 1px solid var(--pink, #ff5c9e);
+  color: #fff; padding: 8px 16px; border-radius: 999px;
+  font-size: 15px; font-weight: 700; text-align: center;
+  max-width: 86%; z-index: 5; backdrop-filter: blur(4px);
+}
 .call-card { text-align: center; padding: 24px; }
 .call-card h2 { margin: 16px 0 4px; }
 .call-actions { display: flex; gap: 28px; justify-content: center; margin-top: 28px; }

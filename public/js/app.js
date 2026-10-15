@@ -256,7 +256,7 @@ const I18N = {
     no_earnings: 'No earnings yet — go online and chat! 💬',
     payouts_note: 'Payouts are sent by SlutCamp. Available balance updates after each message.',
     bookings_h: 'Bookings 📅', bookings_sub: 'Private 1-on-1 lives — paid upfront',
-    bk1_h: '📅 1-on-1 Bookings', bk1_sub: 'Your private 1-on-1 hours — fans book and pay upfront, first come first served. Times are Central (CT).',
+    bk1_h: '📅 1-on-1 Bookings', bk1_sub: 'Your private 1-on-1 hours — fans book and pay upfront, first come first served. Times are Central (CT). Start within 5 minutes of the booked time or the fan is auto-refunded in full. If he doesn\'t join within 3 minutes of your start, you keep the booking — no-shows aren\'t refunded to him.',
     bk_day_cap: 'Max 1-on-1s per day', bk_week_cap: 'Max per week', bk_no_limit: 'No limit',
     bk_save_avail: 'Save availability', bk_avail_saved: '✅ Availability saved',
     bk_upcoming: 'Upcoming 1-on-1s', bk_none_up: 'No upcoming 1-on-1s yet.',
@@ -470,7 +470,7 @@ const I18N = {
     no_earnings: 'Aún no tienes ganancias — ¡ponte en línea y chatea! 💬',
     payouts_note: 'Los retiros los envía SlutCamp. Tu saldo disponible se actualiza tras cada mensaje.',
     bookings_h: 'Reservas 📅', bookings_sub: 'En vivos privados 1 a 1 — pagados por adelantado',
-    bk1_h: '📅 Reservas 1 a 1', bk1_sub: 'Tus horas privadas 1 a 1 — los fans reservan y pagan por adelantado, en orden de llegada. Horarios en hora central (CT).',
+    bk1_h: '📅 Reservas 1 a 1', bk1_sub: 'Tus horas privadas 1 a 1 — los fans reservan y pagan por adelantado, en orden de llegada. Horarios en hora central (CT). Comienza dentro de los 5 minutos de la hora reservada o el fan recibe un reembolso completo automático. Si él no entra dentro de los 3 minutos de tu inicio, la reserva es tuya — los que no se presentan no reciben reembolso.',
     bk_day_cap: 'Máx. de 1 a 1 por día', bk_week_cap: 'Máx. por semana', bk_no_limit: 'Sin límite',
     bk_save_avail: 'Guardar disponibilidad', bk_avail_saved: '✅ Disponibilidad guardada',
     bk_upcoming: 'Próximos 1 a 1', bk_none_up: 'Aún no tienes 1 a 1 próximos.',
@@ -681,7 +681,7 @@ const I18N = {
     no_earnings: 'Ainda sem ganhos — fique online e converse! 💬',
     payouts_note: 'Os saques são enviados pela SlutCamp. O saldo disponível atualiza a cada mensagem.',
     bookings_h: 'Reservas 📅', bookings_sub: 'Lives privadas 1 a 1 — pagas adiantado',
-    bk1_h: '📅 Reservas 1 a 1', bk1_sub: 'Seus horários privados 1 a 1 — os fãs reservam e pagam adiantado, por ordem de chegada. Horários no horário central (CT).',
+    bk1_h: '📅 Reservas 1 a 1', bk1_sub: 'Seus horários privados 1 a 1 — os fãs reservam e pagam adiantado, por ordem de chegada. Horários no horário central (CT). Comece dentro de 5 minutos do horário reservado ou o fã recebe reembolso total automático. Se ele não entrar dentro de 3 minutos do seu início, a reserva é sua — faltas não são reembolsadas.',
     bk_day_cap: 'Máx. de 1 a 1 por dia', bk_week_cap: 'Máx. por semana', bk_no_limit: 'Sem limite',
     bk_save_avail: 'Salvar disponibilidade', bk_avail_saved: '✅ Disponibilidade salva',
     bk_upcoming: 'Próximos 1 a 1', bk_none_up: 'Nenhum 1 a 1 próximo ainda.',
@@ -1124,6 +1124,10 @@ function handleWS(m) {
   } else if (m.type === 'call:ended' && S.call && m.call_id === S.call.id) {
     endCallUI(m.reason === 'insufficient_credits'
       ? 'Out of credits — call ended.'
+      : m.reason === 'fan_no_show'
+        ? (S.call.role === 'model'
+          ? '💔 He never showed up — the booking is paid, you keep it.'
+          : "💔 You missed the 1-on-1 — no-shows aren't refunded.")
       : m.reason === 'time_up' ? "⏰ Time's up — FaceTime over!" : 'Call ended.');
   } else if (m.type === 'facetime:request') {
     if (S.user && S.user.role === 'model') showFtRequestCard(m.request);
@@ -3409,6 +3413,10 @@ async function vBookings() {
               <span class="small muted">${b.kind === 'slot' ? bookingWhenCT(b.scheduled_at) : bookingWhen(b.scheduled_at)} · ${b.duration_min}min · ${fmt(b.total_cents)}</span><br>
               <span class="small" style="color:var(--gold);font-weight:700">${b.status === 'in_progress' ? 'In progress' : '⏱ ' + bookingCountdown(b.scheduled_at)}</span></span>
           </div>
+          ${b.status === 'in_progress' && b.fan_join_deadline ? `
+          <div class="small" style="color:#ff8fa5;font-weight:700;margin-top:8px">${isModel
+            ? `⏳ He has <span data-join-cd="${b.fan_join_deadline}">3:00</span> to join — a no-show keeps the booking paid to you`
+            : `⏳ She's waiting — join within <span data-join-cd="${b.fan_join_deadline}">3:00</span> or it's a no-show (no refund)`}</div>` : ''}
           <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
             ${canGoLive ? `<button class="btn small" data-bk-start="${b.id}">🔴 Go Live Now</button>` : ''}
             ${canJoin ? `<button class="btn small" data-bk-join="${b.id}">📹 Join Private Session</button>` : ''}
@@ -3437,7 +3445,7 @@ async function vBookings() {
     if (!confirm('Cancel this booking?')) return;
     const { status, data } = await api(`/bookings/${b.dataset.bkCancel}/cancel`, { method: 'POST' });
     toast(status === 200
-      ? (data.refunded_cents ? `Cancelled — ${fmt(data.refunded_cents)} refunded.` : 'Cancelled (no refund — inside 1 hour).')
+      ? (data.refunded_cents ? `Cancelled — ${fmt(data.refunded_cents)} refunded.` : 'Cancelled (no refund — inside the cancellation window).')
       : 'Could not cancel.');
     show('bookings', {});
   });
@@ -3473,11 +3481,13 @@ async function startBookingCall(bookingId, isModel) {
     S.ws.send(JSON.stringify({ type: 'signal', to: data.other_id,
       payload: { kind: 'invite', call_id: callId, sdp: offer,
                  from_name: S.user.display_name, rate: 0, booking: true } }));
-    S.call = { id: callId, rate: 0, seconds: 0, minutes: 0, role: 'fan', bookingId };
+    S.call = { id: callId, rate: 0, seconds: 0, minutes: 0, role: 'fan', bookingId,
+               joinDeadline: data.fan_join_deadline || null };
     toast('Calling… waiting for her to pick up 📞');
   } else {
     // Model waits for the fan's offer (or initiates if fan already waiting)
     S.call = { id: callId, rate: 0, seconds: 0, minutes: 0, role: 'model', bookingId,
+               joinDeadline: data.fan_join_deadline || null,
                from: data.other_id, fromName: data.other_name };
     $('#call-name').textContent = data.other_name || 'Fan';
     $('#call-overlay').classList.remove('hidden');
@@ -3505,11 +3515,16 @@ function handleBookingPush(m) {
   } else if ((m.type === 'booking:declined' || m.type === 'booking:no_show' ||
               m.type === 'booking:cancelled') && S.user.role === 'fan') {
     toast(m.type === 'booking:cancelled' && !m.refunded_cents
-      ? 'Booking cancelled (no refund — inside 1 hour).'
+      ? 'Booking cancelled (no refund — inside the cancellation window).'
       : `Refunded ${fmt(m.refunded_cents || 0)}`, 4000);
     if (S.view === 'bookings') show('bookings', {});
   } else if (m.type === 'booking:live' && S.user.role === 'fan') {
-    toast("🔴 She's live! Tap to join your private session.", 5000);
+    toast('📹 Your 1-on-1 is now active — you have 3 minutes to get to the call ⏰', 6000);
+    if (S.view === 'bookings') show('bookings', {});
+  } else if (m.type === 'booking:fan_no_show') {
+    toast(S.user.role === 'model'
+      ? '💔 He never showed up — the booking is paid, you keep it.'
+      : "💔 You missed your 1-on-1 — no-show bookings aren't refunded.", 6000);
     if (S.view === 'bookings') show('bookings', {});
   } else if (m.type === 'booking:completed') {
     if (S.view === 'bookings') show('bookings', {});
@@ -3541,6 +3556,7 @@ function openBookingSheet(modelId, modelName, rateCents) {
         <span class="grow" style="font-weight:800">Total</span>
         <b id="bk-total" style="font-size:20px;color:var(--green)">${fmt(rate * 30)}</b>
       </div>
+      <div class="small" style="border:1px solid var(--pink);border-radius:10px;padding:10px 12px;margin:0 0 12px;line-height:1.5">⏰ <b>Show up on time:</b> when your 1-on-1 goes active, you have <b>3 minutes</b> to join the call. If you're a no-show, <b>there will be no refund</b> — you booked a slot another fan could have taken, and her time was reserved just for you. (Plans change? Cancel 1+ hour ahead for a full refund.)</div>
       <button class="btn" id="bk-pay">Pay & Request</button>
       <button class="btn ghost" id="bk-cancel" style="margin-top:8px">Cancel</button>
     </div>`;
@@ -3605,7 +3621,7 @@ async function openSlotBookingSheet(modelId, modelName, rateCents) {
     sheet.innerHTML = `
     <div class="sheet">
       <div style="font-weight:800;font-size:18px;margin-bottom:4px">📅 Book a 1-on-1 — ${esc(modelName)}</div>
-      <div class="muted small" style="margin-bottom:12px">Her openings, Central time · pay upfront, the slot is yours · full refund if it doesn't happen</div>
+      <div class="muted small" style="margin-bottom:12px">Her openings, Central time · pay upfront, the slot is yours · full refund if SHE doesn't show</div>
       <div class="bk-day-strip">
         ${grid.days.map((d, i) => { const L = chiDayLabel(d.date); return `
           <button class="bk-day ${i === selDay ? 'on' : ''}" data-day="${i}">
@@ -3632,6 +3648,7 @@ async function openSlotBookingSheet(modelId, modelName, rateCents) {
         <span class="grow" style="font-weight:800">${selSlot ? `${chiDayLabel(day.date).dow} ${chiTimeLabel(selSlot.starts_at)} CT · ${selDur} min` : 'Pick a time'}</span>
         <b style="font-size:20px;color:var(--green)">${fmt(price)}</b>
       </div>
+      <div class="small" style="border:1px solid var(--pink);border-radius:10px;padding:10px 12px;margin:0 0 12px;line-height:1.5">⏰ <b>Show up on time:</b> when your 1-on-1 goes active, you have <b>3 minutes</b> to join the call. If you're a no-show, <b>there will be no refund</b> — you booked a slot another fan could have taken, and her time was reserved just for you. (Plans change? Cancel 2+ hours ahead for a full refund.)</div>
       <button class="btn" id="bk2-pay" ${selSlot ? '' : 'disabled style="opacity:.45"'}>Confirm &amp; pay ${fmt(price)}</button>
       <button class="btn ghost" id="bk2-cancel" style="margin-top:8px">Cancel</button>
     </div>`;
@@ -3659,7 +3676,7 @@ async function openSlotBookingSheet(modelId, modelName, rateCents) {
           <div style="font-size:40px">💋</div>
           <div style="font-weight:800;font-size:19px;margin:6px 0">${t('bk_youre_booked')}!</div>
           <div class="muted">${esc(modelName)} · ${bookingWhenCT(Date.parse(selSlot.starts_at))} · ${selDur} min</div>
-          <div class="small muted" style="margin:10px 0">She'll get a reminder before your time. Be here a couple minutes early — your session opens right from your Bookings tab.</div>
+          <div class="small muted" style="margin:10px 0">She'll get a reminder before your time. Be here a couple minutes early — your session opens right from your Bookings tab. Join within 3 minutes of her going live, or it's a no-show with no refund.</div>
           <button class="btn" id="bk2-view">View my bookings</button>
           <button class="btn ghost" id="bk2-done" style="margin-top:8px">Done</button>
         </div>`;
@@ -5642,7 +5659,37 @@ function updateCallHUD() {
   if (c) c.textContent = (S.call.prepaidMin
     ? `📹 FaceTime ${S.call.prepaidMin} min`
     : `~${fmt((S.call.minutes || 0) * S.call.rate)}`) + (S.call.explicit ? ' · 🔞 EXPLICIT' : '');
+  updateJoinCountdown();
 }
+
+/* The fan's 3-minute join window on a booking call (deadline stamped by
+   the server at activation). Render-only — the kill is server-side. */
+function updateJoinCountdown() {
+  const el = $('#call-join-timer');
+  if (!el) return;
+  const dl = S.call && S.call.joinDeadline;
+  if (!dl || remoteLive) { el.classList.add('hidden'); return; }
+  const left = Math.max(0, Math.round((dl - Date.now()) / 1000));
+  const mm = Math.floor(left / 60), ss = String(left % 60).padStart(2, '0');
+  el.textContent = S.call.role === 'model'
+    ? `⏳ Waiting for him to join — ${mm}:${ss} left`
+    : `⏳ Waiting for her to pick up — ${mm}:${ss} left`;
+  el.classList.remove('hidden');
+}
+
+/* Live M:SS for [data-join-cd] countdowns (the fan's join window on the
+   Bookings tab). When one hits zero, refresh the bookings view once —
+   the server sweep resolves the booking within seconds. */
+setInterval(() => {
+  document.querySelectorAll('[data-join-cd]').forEach((el) => {
+    const left = Math.max(0, Math.round((parseInt(el.dataset.joinCd) - Date.now()) / 1000));
+    el.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+    if (left === 0 && !el.dataset.cdDone) {
+      el.dataset.cdDone = '1';
+      if (S.view === 'bookings') show('bookings', {});
+    }
+  });
+}, 1000);
 
 /* ---------------- FaceTime: prepaid requests + queue ---------------- */
 const FACETIME_DURATIONS = [10, 15, 30, 45, 60];
@@ -6085,6 +6132,8 @@ function endCallUI(msg) {
   $('#call-overlay').classList.add('hidden');
   hideCallError();
   hideCallStatus();
+  const jt = $('#call-join-timer');
+  if (jt) jt.classList.add('hidden');
   clearInterval(callTimerInt);
   clearTimeout(callWaitTimer);
   clearTimeout(callConnTimer);
@@ -8911,7 +8960,7 @@ function vTerms() {
   app.innerHTML = `
     <div class="header">
       <h1>Slut<span class="logo">Camp</span> 📜</h1>
-      <div class="sub">Terms of Service · Last updated October 10, 2026</div>
+      <div class="sub">Terms of Service · Last updated October 15, 2026</div>
     </div>
     <div class="screen">
       <div class="card">
@@ -8935,8 +8984,8 @@ function vTerms() {
         <div class="small muted">Group streams are free to watch; explicit viewing requires a paid entry fee plus ongoing gifts to stay unblurred. Stage joins (video or mic) are 3 minutes, then timed out — re-pay to return. The model approves every stage join; declined requests are refunded in full. Priority messages are paid banners with optional paid voice.</div>
       </div>
       <div class="card">
-        <div style="font-weight:800;margin-bottom:8px">6. Bookings</div>
-        <div class="small muted">Private 1-on-1 lives are booked in advance and paid upfront. The model must accept. Fan cancellation 1+ hour before = full refund; inside 1 hour = no refund. Model cancellation or no-show (15 min late) = full refund to the fan.</div>
+        <div style="font-weight:800;margin-bottom:8px">6. 1-on-1 Bookings &amp; No-Shows</div>
+        <div class="small muted">Booking a private 1-on-1 reserves the model's time just for you — bookings are paid upfront. When your 1-on-1 goes active, you have <b>3 minutes</b> to join the call; if you're a no-show, <b>there is no refund</b> — you booked a slot another fan could have taken, and her time was reserved for you. If the model doesn't start within <b>5 minutes</b> of the booked time, that's her no-show: you get a <b>full refund, automatically</b>. Fans can cancel for a full refund <b>2+ hours</b> before the start (requested bookings: 1+ hour ahead); the model can cancel anytime for a full refund.</div>
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">7. Model Access</div>

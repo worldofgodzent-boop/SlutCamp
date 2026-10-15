@@ -725,6 +725,11 @@ addColumnIfMissing('bookings', 'fan_present', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('bookings', 'reminded_3d', 'TEXT');
 addColumnIfMissing('bookings', 'reminded_3h', 'TEXT');
 addColumnIfMissing('bookings', 'reminded_15m', 'TEXT');
+// No-show rules (owner ruling, Oct 15): fan_join_deadline (ms epoch) is
+// stamped when the model activates a booking — his 3-minute join clock;
+// start_notified_at dedupes her "your 1-on-1 is now active" ping.
+addColumnIfMissing('bookings', 'fan_join_deadline', 'INTEGER');
+addColumnIfMissing('bookings', 'start_notified_at', 'TEXT');
 addColumnIfMissing('platform_stats', 'explicit_entry_cents', 'INTEGER NOT NULL DEFAULT 499');
 addColumnIfMissing('platform_stats', 'admin_phone', 'TEXT');
 addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0');
@@ -4178,7 +4183,7 @@ function endCall(callId, reason) {
     db.prepare(`UPDATE bookings SET status = 'completed', decided_at = datetime('now')
                 WHERE id = ? AND status = 'in_progress'`).run(call.booking_id);
     const b = db.prepare('SELECT * FROM bookings WHERE id = ?').get(call.booking_id);
-    if (b) {
+    if (b && b.status === 'completed') {
       pushToUser(b.fan_id, { type: 'booking:completed', booking_id: b.id });
       pushToUser(b.model_id, { type: 'booking:completed', booking_id: b.id });
     }
@@ -6094,7 +6099,8 @@ app.get('/api/live/:id/stage', identMiddleware, requireUser, (req, res) => {
 
 const BOOKING_DURATIONS = [15, 30, 60];
 const BOOKING_MAX_DAYS = 7;
-const BOOKING_NOSHOW_MIN = 15;
+const BOOKING_NOSHOW_MIN = 5; // model no-show window (owner ruling Oct 15: was 15)
+const FAN_JOIN_MIN = 3;       // fan's join window once the model activates
 const BOOKING_FAN_CANCEL_HOURS = 1;
 
 function bookingFor(b, userId) {
@@ -6111,6 +6117,7 @@ function bookingFor(b, userId) {
     scheduled_at: b.scheduled_at, duration_min: b.duration_min,
     total_cents: b.total_cents, rate_cents: b.rate_cents,
     status: b.status, kind: b.kind || 'request',
+    fan_join_deadline: b.fan_join_deadline || null,
     created_at: b.created_at, decided_at: b.decided_at,
     other_name: u ? u.display_name : '?', other_photo_url: photo_url,
     is_fan_side: isFan,
@@ -6277,11 +6284,70 @@ function bookingCallStarted(b) {
     AND started_at IS NOT NULL LIMIT 1`).get(b.id);
 }
 
-/* No-show resolution: start + 15 min, the call never started → full
-   refund (the standing never-started rule). If the model never showed
-   (never tapped Start / opened the session), the fan also gets the
-   SlutCamp apology DM and she gets the "you missed it" bell. If she
-   showed and he flaked, no apology — just a plain bell to her. */
+/* Session activation (owner ruling, Oct 15): when the model starts a
+   booking — her Start tap, or opening the session herself — the fan's
+   3-minute join clock starts. He is notified immediately (bell + push +
+   WS) and the deadline lives on the booking row (fan_join_deadline, ms
+   epoch), so every surface renders the same server-set countdown and the
+   sweep — never a client clock — enforces it. */
+function activateBookingSession(b) {
+  if (!b) return null;
+  if (b.fan_join_deadline) return b.fan_join_deadline;
+  if (bookingCallStarted(b)) return null;
+  const deadline = Date.now() + FAN_JOIN_MIN * 60 * 1000;
+  db.prepare('UPDATE bookings SET fan_join_deadline = ? WHERE id = ?').run(deadline, b.id);
+  b.fan_join_deadline = deadline;
+  const model = db.prepare('SELECT display_name FROM users WHERE id = ?').get(b.model_id);
+  const modelName = model ? model.display_name : 'Your model';
+  const copy = `📹 Your FaceTime call with ${modelName} is now active — you have 3 minutes to get to the call.`;
+  pushToUser(b.fan_id, { type: 'booking:live', booking_id: b.id,
+    fan_join_deadline: deadline, message: copy });
+  try { notifyUser(b.fan_id, 'booking', '📹 Your 1-on-1 is now active', copy, '/#bookings'); }
+  catch (e) { /* bell is a bonus */ }
+  return deadline;
+}
+
+/* Fan no-show (owner ruling, Oct 15): the model showed up and opened the
+   room; the fan never got there inside his 3 minutes. NO refund — the
+   slot was reserved for him and her time was held, so the charge stands
+   and she keeps her earnings (no ledger movement at all). Her waiting
+   call hangs up automatically and BOTH sides are told he never showed. */
+function settleFanNoShow(b) {
+  db.prepare(`UPDATE bookings SET status = 'fan_no_show', decided_at = datetime('now')
+              WHERE id = ?`).run(b.id);
+  // Hang up her waiting room via the normal end path (the booking is
+  // already resolved, so endCall won't flip it to 'completed').
+  const open = db.prepare(`SELECT id FROM calls WHERE booking_id = ? AND status != 'ended'`)
+    .all(b.id);
+  for (const c of open) endCall(c.id, 'fan_no_show');
+  pushToUser(b.fan_id, { type: 'booking:fan_no_show', booking_id: b.id });
+  pushToUser(b.model_id, { type: 'booking:fan_no_show', booking_id: b.id });
+  const fan = db.prepare('SELECT display_name FROM users WHERE id = ?').get(b.fan_id);
+  const model = db.prepare('SELECT display_name FROM users WHERE id = ?').get(b.model_id);
+  const fanName = fan ? fan.display_name : 'A fan';
+  const modelName = model ? model.display_name : 'Your model';
+  try { notifyUser(b.model_id, 'booking', '💔 Fan no-show',
+    `💔 ${fanName} never showed up for your 1-on-1 — the booking is paid, you keep it.`, '/#bookings'); }
+  catch (e) { /* bell is a bonus */ }
+  try { notifyUser(b.fan_id, 'booking', '📅 You missed your 1-on-1',
+    `You missed your 1-on-1 with ${modelName} — no-show bookings aren't refunded (your slot was reserved for you).`, '/#bookings'); }
+  catch (e) { /* bell is a bonus */ }
+}
+
+function checkFanJoinDeadline(b) {
+  if (!b || b.status !== 'in_progress' || !b.fan_join_deadline) return b;
+  if (Date.now() < b.fan_join_deadline) return b;
+  if (bookingCallStarted(b)) return b;
+  if (b.fan_present) return b; // he got to the call inside his window
+  settleFanNoShow(b);
+  return db.prepare('SELECT * FROM bookings WHERE id = ?').get(b.id);
+}
+
+/* Model no-show resolution: start + 5 min, she never opened the room and
+   the call never started → full refund (the standing never-started
+   rule), the SlutCamp apology DM to the fan, and her "you missed it"
+   bell. (Her showing up moves the booking to the fan-deadline track
+   above — this path is only for when she never arrives.) */
 function settleBookingNoShow(b) {
   db.prepare(`UPDATE bookings SET status = 'no_show', decided_at = datetime('now') WHERE id = ?`)
     .run(b.id);
@@ -6295,22 +6361,25 @@ function settleBookingNoShow(b) {
   const model = db.prepare('SELECT display_name FROM users WHERE id = ?').get(b.model_id);
   const fanName = fan ? fan.display_name : 'A fan';
   const modelName = model ? model.display_name : 'Your model';
-  if (!b.model_present) {
-    sendAdminApologyDm(b.fan_id, modelName, b.total_cents);
-    try { notifyUser(b.model_id, 'booking', '📅 You missed a 1-on-1',
-      `You missed your 1-on-1 with ${fanName} — he was refunded in full.`, '/#bookings'); }
-    catch (e) { /* bell is a bonus */ }
-  } else {
-    try { notifyUser(b.model_id, 'booking', '📅 1-on-1 didn\'t start',
-      `Your 1-on-1 with ${fanName} didn't start — he was refunded in full.`, '/#bookings'); }
-    catch (e) { /* bell is a bonus */ }
-  }
+  sendAdminApologyDm(b.fan_id, modelName, b.total_cents);
+  try { notifyUser(b.model_id, 'booking', '📅 You missed a 1-on-1',
+    `You missed your 1-on-1 with ${fanName} — he was refunded in full.`, '/#bookings'); }
+  catch (e) { /* bell is a bonus */ }
 }
 
 function checkNoShow(b) {
   if (!b || !['approved', 'booked', 'in_progress'].includes(b.status)) return b;
-  if (Date.now() <= b.scheduled_at + BOOKING_NOSHOW_MIN * 60 * 1000) return b;
   if (bookingCallStarted(b)) return b;
+  // Once she has activated the session, the fan's 3-minute deadline owns
+  // the booking — her no-show clock no longer applies to it.
+  if (b.fan_join_deadline) return checkFanJoinDeadline(b);
+  if (Date.now() <= b.scheduled_at + BOOKING_NOSHOW_MIN * 60 * 1000) return b;
+  if (b.model_present) {
+    // She opened the room but no deadline was stamped (activation stamps
+    // it — this is only a safety net): start his 3-minute clock now.
+    activateBookingSession(b);
+    return db.prepare('SELECT * FROM bookings WHERE id = ?').get(b.id);
+  }
   settleBookingNoShow(b);
   return db.prepare('SELECT * FROM bookings WHERE id = ?').get(b.id);
 }
@@ -6350,10 +6419,43 @@ function bookingRemindersSweep() {
   }
 }
 
-/* One sweep entry for bookings: reminders → no-shows → completions.
-   Runs on a 60s interval and lazily from GET /api/bookings. */
+/* At the booked start time, the model is told her 1-on-1 is now active
+   and her 5-minute clock is running (owner ruling, Oct 15). Stamped via
+   start_notified_at, so it fires exactly once; if her window has already
+   closed, the stamp is written silently and the no-show sweep resolves
+   the booking instead. */
+function bookingStartNoticesSweep() {
+  const now = Date.now();
+  const rows = db.prepare(`SELECT * FROM bookings
+    WHERE status IN ('booked','approved','in_progress')
+      AND scheduled_at <= ? AND start_notified_at IS NULL AND model_present = 0`)
+    .all(now);
+  for (const b of rows) {
+    db.prepare(`UPDATE bookings SET start_notified_at = datetime('now') WHERE id = ?`).run(b.id);
+    if (bookingCallStarted(b)) continue;
+    if (now > b.scheduled_at + BOOKING_NOSHOW_MIN * 60 * 1000) continue; // her window already closed
+    const fan = db.prepare('SELECT display_name FROM users WHERE id = ?').get(b.fan_id);
+    const fanName = fan ? fan.display_name : 'A fan';
+    try {
+      notifyUser(b.model_id, 'booking', '📅 Your 1-on-1 is now active',
+        `📅 Your 1-on-1 with ${fanName} is now active — you have 5 minutes to get to the call or their money will be fully refunded.`, '/#bookings');
+    } catch (e) { /* bell is a bonus */ }
+  }
+}
+
+/* One sweep entry for bookings: reminders → start notices → fan join
+   deadlines → model no-shows → completions. Runs on a 15s interval (the
+   3-minute fan window and 5-minute model window need the tight cadence)
+   and lazily from GET /api/bookings. */
 function runBookingSweeps() {
   try { bookingRemindersSweep(); } catch (e) { console.error('booking reminders', e); }
+  try { bookingStartNoticesSweep(); } catch (e) { console.error('booking start notices', e); }
+  try {
+    const act = db.prepare(`SELECT * FROM bookings
+      WHERE status = 'in_progress' AND fan_join_deadline IS NOT NULL AND fan_join_deadline < ?`)
+      .all(Date.now());
+    for (const b of act) checkFanJoinDeadline(b);
+  } catch (e) { console.error('booking fan-deadline sweep', e); }
   try {
     const due = db.prepare(`SELECT * FROM bookings
       WHERE status IN ('booked','approved','in_progress') AND scheduled_at < ?`)
@@ -6362,7 +6464,7 @@ function runBookingSweeps() {
   } catch (e) { console.error('booking no-show sweep', e); }
   try { settleFinishedBookings(); } catch (e) { console.error('booking settle', e); }
 }
-setInterval(runBookingSweeps, 60 * 1000);
+setInterval(runBookingSweeps, 15 * 1000);
 
 // Auto-complete in-progress bookings whose scheduled end has passed
 function settleFinishedBookings() {
@@ -6645,9 +6747,10 @@ app.post('/api/bookings/:id/start', identMiddleware, requireUser, requireRole('m
   db.prepare(`UPDATE bookings SET status = 'in_progress', model_present = 1,
               decided_at = datetime('now') WHERE id = ?`)
     .run(b.id);
-  pushToUser(b.fan_id, { type: 'booking:live', booking_id: b.id,
-    message: "🔴 She's live! Tap to join your private session." });
-  res.json({ ok: true });
+  // Activation: his 3-minute join clock starts now (bell + push + WS).
+  const fresh = db.prepare('SELECT * FROM bookings WHERE id = ?').get(b.id);
+  const deadline = activateBookingSession(fresh);
+  res.json({ ok: true, fan_join_deadline: deadline });
 });
 
 // Either party opens the private video session (prepaid — rate 0, no per-minute billing)
@@ -6667,11 +6770,18 @@ app.post('/api/bookings/:id/call', identMiddleware, requireUser, (req, res) => {
     db.prepare(`UPDATE bookings SET status = 'in_progress', decided_at = datetime('now') WHERE id = ?`)
       .run(b.id);
   }
+  // The model opening the session is activation too (same as her Start
+  // tap): the fan's 3-minute join clock starts, once.
+  if (req.user.id === b.model_id)
+    activateBookingSession(db.prepare('SELECT * FROM bookings WHERE id = ?').get(b.id));
+  const dlRow = db.prepare('SELECT fan_join_deadline FROM bookings WHERE id = ?').get(b.id);
+  const fanJoinDeadline = dlRow ? dlRow.fan_join_deadline : null;
   const existing = db.prepare(`SELECT * FROM calls WHERE booking_id = ? AND status != 'ended'
     ORDER BY id DESC`).get(b.id);
   const otherId = req.user.id === b.fan_id ? b.model_id : b.fan_id;
   const other = db.prepare('SELECT display_name FROM users WHERE id = ?').get(otherId);
   if (existing) return res.json({ ok: true, call_id: existing.id, resumed: true,
+    fan_join_deadline: fanJoinDeadline,
     other_id: otherId, other_name: other ? other.display_name : '?' });
   // Prepaid: the booked minutes ride the call as prepaid_min, so the call
   // counts down and ends at the cap — no per-minute charges on top.
@@ -6679,6 +6789,7 @@ app.post('/api/bookings/:id/call', identMiddleware, requireUser, (req, res) => {
     VALUES (?,?,0,?,?)`)
     .run(b.fan_id, b.model_id, b.id, b.duration_min);
   res.json({ ok: true, call_id: Number(info.lastInsertRowid),
+    fan_join_deadline: fanJoinDeadline,
     other_id: otherId, other_name: other ? other.display_name : '?' });
 });
 
