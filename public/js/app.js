@@ -4566,6 +4566,18 @@ async function saveEditMsg(msgId) {
     method: 'POST', body: JSON.stringify({ body: text }),
   });
   const m = S.messages.find((x) => x.id === msgId);
+  if (status === 200 && data.flagged) {
+    // Safety monitor blocked the edit — original text stays, chat paused.
+    // Same toast + paused state as a blocked send (see sendMessage).
+    editingMsgId = null;
+    if (m) updateMessageBubble(m);
+    toast(`⚠️ ${data.strikes >= 3 ? 'FLAGGED FOR REVIEW — ' : ''}Contact sharing is not allowed. Chat paused.`);
+    if (S.conv) {
+      S.conv.is_paused = true;
+      show('chat', { conv: S.conv, keepMessages: true });
+    }
+    return;
+  }
   if (status === 200) {
     editingMsgId = null;
     if (m) { m.body = data.body; m.edited = true; m.edited_at = data.edited_at; updateMessageBubble(m); }

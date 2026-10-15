@@ -2588,6 +2588,13 @@ app.post('/api/messages/:id/react', identMiddleware, (req, res) => {
  * (no media, no gift payload, no tip/system message, not safety-flagged).
  * Editing never re-charges, never touches read state or cost_cents; the
  * pre-edit body is preserved in message_edits as an audit trail.
+ * The new body runs through safetyScan with the SAME consequences as a
+ * fresh send: a hit diverts like a flagged send — the edit never lands
+ * (original body stays), the chat pauses, an incident + strike are
+ * recorded, both sides are warned, admins are alerted, and the client
+ * gets the send path's 200 {flagged:true,...} payload. A rejected edit
+ * writes no message_edits row: it changes nothing about the message
+ * (the attempt itself lives in the incident's flagged_text, as with sends).
  */
 const EDIT_WINDOW_MS = 5 * 60 * 1000;
 app.post('/api/messages/:id/edit', identMiddleware, (req, res) => {
@@ -2606,13 +2613,48 @@ app.post('/api/messages/:id/edit', identMiddleware, (req, res) => {
   const text = ((req.body || {}).body || '').trim().slice(0, 2000);
   if (!text) return res.status(400).json({ error: 'empty_message' });
 
+  const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(msg.conversation_id);
+
+  /* --- SAFETY SCAN — same scan, same consequences as POST /api/messages.
+     A hit diverts exactly like a flagged send (see header comment). --- */
+  const matched = safetyScan(text);
+  if (matched) {
+    const senderRole = req.ident.user.role === 'model' ? 'model' : 'fan';
+    const key = subjectKey(req.ident);
+
+    if (conv)
+      db.prepare(`UPDATE conversations SET is_paused = 1, paused_at = datetime('now') WHERE id = ?`).run(conv.id);
+    db.prepare(`INSERT INTO safety_incidents
+      (conversation_id, sender_id, guest_token, sender_role, sender_name, flagged_text, matched)
+      VALUES (?,?,?,?,?,?,?)`).run(
+      msg.conversation_id, req.ident.user.id, null,
+      senderRole, req.ident.user.display_name, text, matched);
+
+    const totalStrikes = addStrike(key);
+    const incident = db.prepare('SELECT * FROM safety_incidents WHERE id = last_insert_rowid()').get();
+
+    const warning = { type: 'chat:paused', conversation_id: msg.conversation_id,
+      warning: '⚠️ Sharing personal contact info is not allowed. This chat is paused pending review.',
+      matched, strikes: totalStrikes };
+    pushToSubject(key, warning);
+    if (conv) {
+      const otherKey = senderRole === 'model'
+        ? (conv.fan_id ? `u:${conv.fan_id}` : `g:${conv.guest_token}`)
+        : `u:${conv.model_id}`;
+      pushToSubject(otherKey, warning);
+    }
+    pushToAdmins({ type: 'safety:incident', incident: { ...incident, total_strikes: totalStrikes } });
+
+    return res.status(200).json({ flagged: true, matched, strikes: totalStrikes,
+      auto_flagged: totalStrikes >= 3 });
+  }
+
   db.prepare('INSERT INTO message_edits (message_id, old_body) VALUES (?,?)')
     .run(msg.id, msg.body);
   db.prepare(`UPDATE messages SET body = ?, edited_at = datetime('now') WHERE id = ?`)
     .run(text, msg.id);
   const fresh = db.prepare('SELECT edited_at FROM messages WHERE id = ?').get(msg.id);
 
-  const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(msg.conversation_id);
   if (conv) {
     const evt = { type: 'message:edited', conversation_id: conv.id,
       message_id: msg.id, body: text, edited_at: fresh.edited_at };
