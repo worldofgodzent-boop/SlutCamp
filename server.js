@@ -439,6 +439,27 @@ CREATE TABLE IF NOT EXISTS media_unlocks (
   UNIQUE(media_id, fan_id)
 );
 
+-- Emoji reactions on chat messages: one per person per message (toggle/replace)
+CREATE TABLE IF NOT EXISTS message_reactions (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  emoji      TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(message_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_reactions_msg ON message_reactions(message_id);
+
+-- Audit trail for message edits: every pre-edit body, oldest first.
+-- Never exposed to fans/models in any serializer (dispute evidence only).
+CREATE TABLE IF NOT EXISTS message_edits (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  old_body   TEXT NOT NULL,
+  edited_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_msgedits_msg ON message_edits(message_id, id);
+
 -- Live cam sessions ("pay to play")
 CREATE TABLE IF NOT EXISTS live_sessions (
   id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -610,6 +631,7 @@ function addColumnIfMissing(table, col, def) {
   if (!cols.includes(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
 }
 addColumnIfMissing('messages', 'media_id', 'INTEGER REFERENCES media_items(id)');
+addColumnIfMissing('messages', 'edited_at', 'TEXT'); // set when the sender edits within the 5-min window
 addColumnIfMissing('calls', 'prepaid_min', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('calls', 'is_explicit', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('calls', 'explicit_pending', 'INTEGER NOT NULL DEFAULT 0');
@@ -2240,6 +2262,19 @@ app.get('/api/conversations/:id/messages', identMiddleware, (req, res) => {
     ORDER BY m.id DESC LIMIT ?`)
     .all(...(before ? [conv.id, before, limit] : [conv.id, limit]));
   const meFanId = req.ident.kind === 'user' && req.ident.user.role === 'fan' ? req.ident.user.id : null;
+  const meUid = req.ident.kind === 'user' ? req.ident.user.id : null;
+  // Batch-load reactions for the whole page (one query, not N+1)
+  const reactionsByMsg = {};
+  if (msgs.length) {
+    const ids = msgs.map((m) => m.id);
+    const rrows = db.prepare(
+      `SELECT message_id, user_id, emoji FROM message_reactions
+       WHERE message_id IN (${ids.map(() => '?').join(',')}) ORDER BY id`).all(...ids);
+    for (const r of rrows) {
+      (reactionsByMsg[r.message_id] = reactionsByMsg[r.message_id] || [])
+        .push({ emoji: r.emoji, user_id: r.user_id, mine: r.user_id === meUid });
+    }
+  }
   res.json({ messages: msgs.reverse().map((m) => {
     let media = null;
     if (m.media_id) {
@@ -2263,6 +2298,8 @@ app.get('/api/conversations/:id/messages', identMiddleware, (req, res) => {
     }
     const { media_kind, media_mime, media_price_cents, media_duration_sec, ...rest } = m;
     return { ...rest, media,
+      reactions: reactionsByMsg[m.id] || [],
+      edited: !!m.edited_at,
       sender_name: m.sender_name || 'Guest Fan', sender_role: m.sender_role || 'fan' };
   }) });
 });
@@ -2460,7 +2497,8 @@ app.post('/api/messages', identMiddleware, (req, res) => {
     SELECT m.*, u.display_name AS sender_name, u.role AS sender_role
     FROM messages m LEFT JOIN users u ON u.id = m.sender_id WHERE m.id = ?`).get(msgId);
   const full = { ...msg, sender_name: msg.sender_name || 'Guest Fan',
-                 sender_role: msg.sender_role || 'fan' };
+                 sender_role: msg.sender_role || 'fan',
+                 reactions: [], edited: false, edited_at: null };
 
   // Deliver to the other side
   const otherKey = req.ident.kind === 'user'
@@ -2474,6 +2512,113 @@ app.post('/api/messages', identMiddleware, (req, res) => {
 
   res.json({ message: full, cost_cents: costCents, free_remaining: freeLeft,
     balance_cents: req.ident.kind === 'user' ? getWallet(req.ident.user.id).credits_cents : null });
+});
+
+/* ------------------------------------------------------------------ */
+/* Message reactions + 5-minute edit                                    */
+/* ------------------------------------------------------------------ */
+
+// The only emojis a reaction can be (exactly these six).
+const REACTION_EMOJIS = ['❤️', '😍', '🔥', '😈', '💦', '👏'];
+// Clients occasionally drop the U+FE0F variation selector (❤️ → ❤) —
+// compare selector-free and always store/return the canonical form.
+const canonicalReaction = (e) => {
+  if (typeof e !== 'string') return null;
+  const bare = e.replace(/️/g, '');
+  return REACTION_EMOJIS.find((x) => x.replace(/️/g, '') === bare) || null;
+};
+
+function reactionsFor(messageId) {
+  return db.prepare(
+    'SELECT emoji, user_id FROM message_reactions WHERE message_id = ? ORDER BY id')
+    .all(messageId);
+}
+
+// WS subject keys for BOTH sides of a conversation (+ an optional extra,
+// e.g. the actor, whose fan_id/model_id slot may not cover an admin).
+function convPushKeys(conv, extraKey) {
+  const keys = new Set([`u:${conv.model_id}`]);
+  if (conv.fan_id) keys.add(`u:${conv.fan_id}`);
+  else if (conv.guest_token) keys.add(`g:${conv.guest_token}`);
+  if (extraKey) keys.add(extraKey);
+  return [...keys];
+}
+
+/*
+ * POST /api/messages/:id/react {emoji}
+ * Participant-only (the conversation's fan/model, or an admin). Guests are
+ * read-only. One reaction per person per message: same emoji again removes
+ * it, a different emoji replaces it, none yet adds it.
+ */
+app.post('/api/messages/:id/react', identMiddleware, (req, res) => {
+  if (req.ident.kind !== 'user')
+    return res.status(403).json({ error: 'login_required' }); // guests: read-only
+  const emoji = canonicalReaction((req.body || {}).emoji);
+  if (!emoji) return res.status(400).json({ error: 'bad_emoji' });
+  const msg = db.prepare('SELECT * FROM messages WHERE id = ?').get(req.params.id);
+  if (!msg) return res.status(404).json({ error: 'not_found' });
+  const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(msg.conversation_id);
+  const uid = req.ident.user.id;
+  const participant = conv && (conv.fan_id === uid || conv.model_id === uid ||
+    req.ident.user.role === 'admin');
+  if (!participant) return res.status(403).json({ error: 'forbidden' });
+
+  const existing = db.prepare(
+    'SELECT * FROM message_reactions WHERE message_id = ? AND user_id = ?').get(msg.id, uid);
+  if (existing && existing.emoji === emoji) {
+    db.prepare('DELETE FROM message_reactions WHERE id = ?').run(existing.id);
+  } else if (existing) {
+    db.prepare(`UPDATE message_reactions SET emoji = ?, created_at = datetime('now') WHERE id = ?`)
+      .run(emoji, existing.id);
+  } else {
+    db.prepare('INSERT INTO message_reactions (message_id, user_id, emoji) VALUES (?,?,?)')
+      .run(msg.id, uid, emoji);
+  }
+  const reactions = reactionsFor(msg.id);
+  const evt = { type: 'message:reaction', conversation_id: conv.id,
+    message_id: msg.id, reactions };
+  convPushKeys(conv, `u:${uid}`).forEach((k) => pushToSubject(k, evt));
+  res.json({ ok: true,
+    reactions: reactions.map((r) => ({ ...r, mine: r.user_id === uid })) });
+});
+
+/*
+ * POST /api/messages/:id/edit {body}
+ * The sender can fix a typo for 5 minutes after sending. Plain text only
+ * (no media, no gift payload, no tip/system message, not safety-flagged).
+ * Editing never re-charges, never touches read state or cost_cents; the
+ * pre-edit body is preserved in message_edits as an audit trail.
+ */
+const EDIT_WINDOW_MS = 5 * 60 * 1000;
+app.post('/api/messages/:id/edit', identMiddleware, (req, res) => {
+  if (req.ident.kind !== 'user')
+    return res.status(403).json({ error: 'login_required' });
+  const msg = db.prepare('SELECT * FROM messages WHERE id = ?').get(req.params.id);
+  if (!msg) return res.status(404).json({ error: 'not_found' });
+  if (msg.sender_id !== req.ident.user.id)
+    return res.status(403).json({ error: 'not_sender' });
+  const isSystem = msg.is_flagged || (msg.body || '').startsWith('💸 Sent a ');
+  if (msg.media_id || msg.gift_json || isSystem)
+    return res.status(400).json({ error: 'not_editable' });
+  const createdMs = new Date(String(msg.created_at).replace(' ', 'T') + 'Z').getTime();
+  if (!Number.isFinite(createdMs) || Date.now() - createdMs > EDIT_WINDOW_MS)
+    return res.status(403).json({ error: 'edit_window_closed' });
+  const text = ((req.body || {}).body || '').trim().slice(0, 2000);
+  if (!text) return res.status(400).json({ error: 'empty_message' });
+
+  db.prepare('INSERT INTO message_edits (message_id, old_body) VALUES (?,?)')
+    .run(msg.id, msg.body);
+  db.prepare(`UPDATE messages SET body = ?, edited_at = datetime('now') WHERE id = ?`)
+    .run(text, msg.id);
+  const fresh = db.prepare('SELECT edited_at FROM messages WHERE id = ?').get(msg.id);
+
+  const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(msg.conversation_id);
+  if (conv) {
+    const evt = { type: 'message:edited', conversation_id: conv.id,
+      message_id: msg.id, body: text, edited_at: fresh.edited_at };
+    convPushKeys(conv, `u:${req.ident.user.id}`).forEach((k) => pushToSubject(k, evt));
+  }
+  res.json({ ok: true, body: text, edited: true, edited_at: fresh.edited_at });
 });
 
 /* ------------------------------------------------------------------ */
@@ -2596,7 +2741,8 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
       duration_sec: durationSec, unlocked: priceCents === 0 };
     const full = { ...msg, sender_name: msg.sender_name || 'Guest Fan',
                    sender_role: msg.sender_role || 'fan',
-                   media: { ...receiverMedia, unlocked: true } }; // sender always sees own
+                   media: { ...receiverMedia, unlocked: true },
+                   reactions: [], edited: false, edited_at: null }; // sender always sees own
 
     const otherKey = req.ident.kind === 'user'
       ? (isModelSender

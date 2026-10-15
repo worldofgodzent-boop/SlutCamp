@@ -117,15 +117,19 @@ html, body {
   transition: transform .28s ease, opacity .28s ease;
 }
 /* Sheet/modal open (chat Send flow, price sheet, voice UI, gift/tip…) →
-   the tab bar slides away so the sheet never stacks on top of it */
-body.sheet-open #tabbar {
+   the tab bar slides away so the sheet never stacks on top of it.
+   Inside a DM chat (body.in-chat) the bar stays gone for the whole visit.
+   The two states UNION: hidden when either holds — a sheet closing inside
+   a chat doesn't resurrect the bar, and exiting a chat with a sheet open
+   keeps it hidden only until the sheet closes too. */
+body.sheet-open #tabbar, body.in-chat #tabbar {
   transform: translateY(105%); opacity: 0; pointer-events: none;
 }
-/* While a sheet is open the tab bar is gone, so the layout must not keep
-   reserving space for it: the scroll view drops its tab-bar bottom padding
-   (no black slab behind the sheet) and sheets pin flush to the screen's
-   bottom edge — their own padding covers the safe-area inset. */
-body.sheet-open #app { padding-bottom: env(safe-area-inset-bottom); }
+/* While the tab bar is gone, the layout must not keep reserving space for
+   it: the scroll view drops its tab-bar bottom padding (no black slab
+   behind the sheet) and sheets pin flush to the screen's bottom edge —
+   their own padding covers the safe-area inset. */
+body.sheet-open #app, body.in-chat #app { padding-bottom: env(safe-area-inset-bottom); }
 body.sheet-open .sheet { bottom: 0; }
 #tabbar button {
   flex: 1; background: none; border: none; color: var(--muted);
@@ -588,7 +592,6 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 }
 .media-wrap.media-img { min-height: 110px; }
 .media-wrap.media-vid { min-height: 124px; }
-.media-wrap.media-aud { min-height: 48px; }
 .media-wrap .ppv-img, .media-wrap .ppv-vid, .media-wrap .ppv-audio {
   width: 100%; margin-top: 0; border-radius: 0;
 }
@@ -607,6 +610,114 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 .media-wrap.is-error .media-spin { display: none; }
 @keyframes media-spin { to { transform: rotate(360deg); } }
 .media-load-tx { font-size: 12px; font-weight: 600; color: var(--peach); padding: 0 10px; text-align: center; }
+
+/* ---------- Voice-note player (custom WhatsApp-style pill) ---------- */
+.voice-note {
+  position: relative; display: flex; align-items: center; gap: 10px;
+  width: min(260px, 68vw); max-width: 260px; height: 52px; box-sizing: border-box;
+  padding: 6px 12px 6px 6px; margin-top: 6px; border-radius: 999px;
+  background: rgba(0,0,0,.22); border: 1px solid rgba(139,92,246,.35);
+}
+.vn-audio { display: none; }
+.vn-play {
+  width: 40px; height: 40px; min-width: 40px; border-radius: 50%; border: none; padding: 0;
+  background: linear-gradient(135deg, #ff5c9e, #ff7eb3); color: #fff;
+  font-size: 14px; cursor: pointer; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(255,92,158,.4);
+}
+.vn-play:active { transform: scale(.93); }
+.vn-spin {
+  display: none; width: 18px; height: 18px; border-radius: 50%;
+  border: 2.5px solid rgba(255,255,255,.35); border-top-color: #fff;
+  animation: media-spin .8s linear infinite;
+}
+.voice-note.is-loading .vn-ico { display: none; }
+.voice-note.is-loading .vn-spin { display: block; }
+.voice-note.is-loading .vn-play { pointer-events: none; }
+.vn-wave {
+  flex: 1; min-width: 0; height: 34px; cursor: pointer;
+  display: flex; align-items: center; gap: 2px;
+}
+.vn-wave i {
+  flex: 1; min-width: 2px; border-radius: 2px;
+  background: rgba(255,255,255,.32); transition: background .1s linear;
+}
+.vn-wave i.on { background: #ff5c9e; }
+.voice-note.vn-wave-loading .vn-wave { animation: vn-wave-pulse 1.2s ease-in-out infinite; }
+@keyframes vn-wave-pulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+.vn-time {
+  font-size: 12px; font-weight: 700; color: rgba(255,255,255,.85);
+  font-variant-numeric: tabular-nums; min-width: 30px; text-align: right;
+}
+.vn-err { display: none; }
+.voice-note.is-error .vn-play, .voice-note.is-error .vn-wave, .voice-note.is-error .vn-time { display: none; }
+.voice-note.is-error .vn-err {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; font-size: 12.5px; font-weight: 700; color: #fca5a5; cursor: pointer;
+}
+
+/* ---------- Message reactions + inline edit ---------- */
+.msg { position: relative; }
+.msg.has-rx { margin-bottom: 9px; }
+.rx-chips {
+  position: absolute; bottom: -9px; z-index: 3;
+  background: #2a1350; border: 1px solid rgba(139,92,246,.5);
+  border-radius: 999px; padding: 1px 7px; font-size: 13px; line-height: 1.5;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35); letter-spacing: 1px; white-space: nowrap;
+}
+.msg.in .rx-chips { left: 10px; }
+.msg.out .rx-chips { right: 10px; }
+.rx-chips.mine { border-color: var(--pink); }
+.rx-chips .rx-n { font-size: 11px; font-weight: 800; margin-left: 1px; letter-spacing: 0; }
+.msg .meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.meta-acts { display: inline-flex; gap: 4px; flex-shrink: 0; }
+.meta-info { text-align: right; }
+.mini-act {
+  width: 30px; height: 30px; border-radius: 50%; padding: 0;
+  border: 1px solid rgba(139,92,246,.35); background: rgba(139,92,246,.12);
+  font-size: 13px; line-height: 1; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.mini-act:active { transform: scale(.9); }
+.edited-tag { font-style: italic; opacity: .75; }
+.rx-pop {
+  position: fixed; z-index: 130; display: flex; gap: 2px;
+  background: #241040; border: 1px solid rgba(139,92,246,.55);
+  border-radius: 999px; padding: 6px 8px; box-shadow: 0 8px 28px rgba(0,0,0,.5);
+}
+.rx-pop-btn {
+  background: transparent; border: none; font-size: 22px; line-height: 1;
+  cursor: pointer; padding: 4px 5px; border-radius: 50%;
+}
+.rx-pop-btn.on { background: rgba(255,92,158,.3); }
+.rx-pop-btn:active { transform: scale(1.25); }
+.msg.editing { max-width: 94%; width: 94%; }
+.msg-edit-in {
+  width: 100%; min-width: 180px; box-sizing: border-box; resize: none;
+  background: rgba(0,0,0,.25); border: 1px solid rgba(139,92,246,.5); border-radius: 10px;
+  color: var(--text); font-family: inherit; font-size: 16px; line-height: 1.4; padding: 8px;
+}
+.msg-edit-in:focus { outline: none; border-color: var(--purple); }
+.msg-edit-row { display: flex; gap: 8px; margin-top: 8px; justify-content: flex-end; }
+
+/* ---------- Composer emoji picker ---------- */
+.emoji-btn {
+  background: transparent; border: none; font-size: 21px; line-height: 1;
+  cursor: pointer; padding: 0 2px 7px 0; align-self: flex-end; flex-shrink: 0;
+}
+.emoji-btn:disabled { opacity: .45; }
+.emoji-panel {
+  display: flex; flex-wrap: wrap; gap: 2px;
+  padding: 10px 12px; background: rgba(18,8,31,.98);
+  border-top: 1px solid rgba(139,92,246,.2);
+}
+.emoji-cell {
+  width: 40px; height: 40px; background: transparent; border: none;
+  font-size: 24px; line-height: 1; cursor: pointer; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.emoji-cell:active { background: rgba(139,92,246,.25); transform: scale(1.1); }
 
 /* ---------- Bottom sheets (iPhone style) ---------- */
 .sheet-backdrop { position: absolute; inset: 0; background: rgba(16,6,12,.5); }

@@ -129,7 +129,7 @@ const I18N = {
     sharing_not_allowed: 'Sharing contact info is not allowed.',
     msgs_cost: 'Messages cost {price} each',
     free_msgs_left: '🎁 {n} FREE messages left — then sign up to continue',
-    msg_placeholder: 'Message…', chat_paused_ph: 'Chat paused', typing: 'typing…',
+    msg_placeholder: 'Message…', chat_paused_ph: 'Chat paused', typing: 'typing…', edited: 'edited',
     welcome_back: 'Welcome back 😈', create_account_h: 'Create your account',
     log_in: 'Log in', sign_up: 'Sign up', log_out: 'Log out',
     username: 'Username', password: 'Password', password_hint: 'Password (6+ characters)',
@@ -309,7 +309,7 @@ const I18N = {
     sharing_not_allowed: 'No está permitido compartir datos de contacto.',
     msgs_cost: 'Cada mensaje cuesta {price}',
     free_msgs_left: '🎁 Te quedan {n} mensajes GRATIS — luego regístrate para seguir',
-    msg_placeholder: 'Mensaje…', chat_paused_ph: 'Chat pausado', typing: 'escribiendo…',
+    msg_placeholder: 'Mensaje…', chat_paused_ph: 'Chat pausado', typing: 'escribiendo…', edited: 'editado',
     welcome_back: 'Bienvenido de nuevo 😈', create_account_h: 'Crea tu cuenta',
     log_in: 'Iniciar sesión', sign_up: 'Registrarse', log_out: 'Cerrar sesión',
     username: 'Usuario', password: 'Contraseña', password_hint: 'Contraseña (6+ caracteres)',
@@ -486,7 +486,7 @@ const I18N = {
     sharing_not_allowed: 'Não é permitido compartilhar informações de contato.',
     msgs_cost: 'Cada mensagem custa {price}',
     free_msgs_left: '🎁 Restam {n} mensagens GRÁTIS — depois cadastre-se para continuar',
-    msg_placeholder: 'Mensagem…', chat_paused_ph: 'Conversa pausada', typing: 'digitando…',
+    msg_placeholder: 'Mensagem…', chat_paused_ph: 'Conversa pausada', typing: 'digitando…', edited: 'editado',
     welcome_back: 'Bem-vindo de volta 😈', create_account_h: 'Crie sua conta',
     log_in: 'Entrar', sign_up: 'Cadastrar', log_out: 'Sair',
     username: 'Nome de usuário', password: 'Senha', password_hint: 'Senha (6+ caracteres)',
@@ -973,6 +973,23 @@ function handleWS(m) {
   } else if (m.type === 'chat:read' && S.view === 'chat' && S.conv && m.conversation_id === S.conv.id) {
     S.messages.forEach((x) => { x.is_read = 1; });
     renderMessages();
+  } else if (m.type === 'message:reaction' && S.view === 'chat' && S.conv && m.conversation_id === S.conv.id) {
+    // Targeted bubble update — never a full re-render, never a scroll yank.
+    const msg = S.messages.find((x) => x.id === m.message_id);
+    if (msg) {
+      msg.reactions = (m.reactions || []).map((r) => ({
+        emoji: r.emoji, user_id: r.user_id, mine: S.user ? r.user_id === S.user.id : false,
+      }));
+      updateMessageBubble(msg);
+    }
+  } else if (m.type === 'message:edited' && S.view === 'chat' && S.conv && m.conversation_id === S.conv.id) {
+    const msg = S.messages.find((x) => x.id === m.message_id);
+    if (msg) {
+      msg.body = m.body;
+      msg.edited = true;
+      msg.edited_at = m.edited_at;
+      if (editingMsgId !== msg.id) updateMessageBubble(msg);
+    }
   } else if (m.type === 'typing' && S.view === 'chat' && S.conv && m.conversation_id === S.conv.id) {
     const el = $('#typing-ind');
     if (el) el.classList.toggle('hidden', !m.is_typing);
@@ -1271,6 +1288,14 @@ function show(view, params) {
   }
   S.view = view;
   S.viewParams = params || {};
+  // Inside a DM conversation the bottom tab bar vanishes for the WHOLE
+  // visit (owner: "too crowded when I'm in the chat") — driven off the
+  // view itself, so every exit path (‹ back, tab switch, logout, any
+  // programmatic show()) restores it. CSS unions this with body.sheet-open:
+  // the bar is hidden when EITHER state holds, so a sheet closing inside
+  // a chat can never resurrect it, and leaving a chat with a sheet open
+  // keeps it hidden only until the sheet closes.
+  document.body.classList.toggle('in-chat', view === 'chat');
   renderTabbar();
   renderPreviewBanner();
   renderBell();
@@ -3904,10 +3929,12 @@ async function vChat(params) {
         : t('free_msgs_left', { n: conv.free_remaining })}</div>` : ''}
     <div id="messages"></div>
     <div id="typing-ind" class="rate-hint hidden"><i>${t('typing')}</i></div>
+    <div id="emoji-panel" class="emoji-panel hidden">${['😀','😂','😍','😘','😈','🔥','💦','🍑','❤️','💋','👏','🙏','😎','🤤','🥵','💯','🎉','💸','👀','🤪','😏','🫦','💕'].map((e) => `<button type="button" class="emoji-cell" data-emoji="${e}">${e}</button>`).join('')}</div>
     <div class="chat-input-bar">
       ${!conv.is_paused && S.user && S.user.role === 'fan' ? `<button class="icon-btn" id="c-gift" title="Send a gift">🎁</button>` : ''}
       ${!conv.is_paused && S.user && S.user.role === 'fan' ? `<button class="icon-btn" id="c-tipmenu" title="Tip menu">💰</button>` : ''}
       <div class="composer-pill" id="c-pill">
+        <button type="button" class="emoji-btn" id="c-emoji" aria-label="Emoji" ${conv.is_paused ? 'disabled' : ''}>😊</button>
         <textarea id="c-input" rows="1" placeholder="${conv.is_paused ? t('chat_paused_ph') : t('msg_placeholder')}" ${conv.is_paused ? 'disabled' : ''} autocomplete="off" enterkeyhint="send"></textarea>
       </div>
       ${isModel ? `<label class="icon-btn" id="c-cam" for="ppv-file-cam" title="Send a photo or video">📷</label>` : ''}
@@ -3965,6 +3992,8 @@ async function vChat(params) {
 
   const input = $('#c-input');
   const send = () => {
+    const ep = $('#emoji-panel');
+    if (ep) ep.classList.add('hidden');
     const r = sendMessage();
     syncChatComposer();
     if (r && r.then) r.then(syncChatComposer);
@@ -3984,6 +4013,28 @@ async function vChat(params) {
         S.ws.send(JSON.stringify({ type: 'typing', conversation_id: conv.id, is_typing: false }));
     }, 1500);
   };
+  // Emoji picker: 😊 inside the pill toggles the grid above the composer;
+  // tapping a cell inserts at the cursor and keeps focus in the input.
+  const emojiBtn = $('#c-emoji'), emojiPanel = $('#emoji-panel');
+  if (emojiBtn && emojiPanel) {
+    emojiBtn.onclick = () => emojiPanel.classList.toggle('hidden');
+    emojiPanel.querySelectorAll('[data-emoji]').forEach((b) => {
+      b.onclick = () => insertEmojiAtCursor(b.dataset.emoji);
+    });
+  }
+  syncChatComposer();
+}
+
+// Insert an emoji into the chat composer at the caret (composer emoji picker).
+function insertEmojiAtCursor(emoji) {
+  const input = $('#c-input');
+  if (!input) return;
+  const s = input.selectionStart != null ? input.selectionStart : input.value.length;
+  const e = input.selectionEnd != null ? input.selectionEnd : input.value.length;
+  input.value = input.value.slice(0, s) + emoji + input.value.slice(e);
+  const pos = s + emoji.length;
+  input.focus();
+  try { input.setSelectionRange(pos, pos); } catch (err) { /* older webviews */ }
   syncChatComposer();
 }
 
@@ -4012,7 +4063,18 @@ function mediaHTML(m) {
     if (md.kind === 'ppv_video')
       return `<span class="media-wrap media-vid is-loading"><video class="ppv-vid" data-media-src="${md.id}" controls playsinline preload="metadata"></video>${veil}</span>`;
     if (md.kind === 'voice')
-      return `<span class="media-wrap media-aud is-loading"><audio class="ppv-audio" data-media-src="${md.id}" controls preload="none"></audio>${veil}</span>`;
+      // Custom WhatsApp-style player (no native chrome — the native pill
+      // rendered inconsistently and "broke apart" under the veil): one
+      // compact pill — pink play button, real-peak waveform, time label.
+      // The <audio> lives hidden inside and is driven by the custom UI;
+      // its src still comes from hydrateMediaSrc's token URL.
+      return `<span class="voice-note is-loading" data-voice="${md.id}" data-dur="${md.duration_sec || 0}">
+        <audio class="vn-audio" data-media-src="${md.id}" preload="metadata"></audio>
+        <button type="button" class="vn-play" aria-label="Play voice note"><span class="vn-ico">▶</span><span class="vn-spin"></span></button>
+        <span class="vn-wave"></span>
+        <span class="vn-time">${vnFmtDur(md.duration_sec || 0)}</span>
+        <span class="vn-err">↻ Couldn't load — tap to retry</span>
+      </span>`;
     return '';
   }
   // Locked: pretty blurred tile, no bytes leak until paid
@@ -4059,6 +4121,8 @@ function mediaSetState(el, state) {
 function bindMediaState(el) {
   if (el.dataset.stateBound) return;
   el.dataset.stateBound = '1';
+  // Voice notes have their own self-contained player (no veil) — separate path
+  if (el.classList.contains('vn-audio')) { bindVoiceNote(el); return; }
   const tag = el.tagName;
   if (tag === 'IMG') {
     el.addEventListener('load', () => mediaSetState(el, 'ready'));
@@ -4085,21 +4149,33 @@ function bindMediaState(el) {
 
 async function hydrateOneMedia(el) {
   el.dataset.hydrated = '1';
-  mediaSetState(el, 'loading');
+  const isVn = el.classList.contains('vn-audio');
+  const vnPill = isVn ? el.closest('.voice-note') : null;
+  if (vnPill) vnSetState(vnPill, 'loading'); else mediaSetState(el, 'loading');
+  const fail = () => { if (vnPill) vnSetState(vnPill, 'error'); else mediaSetState(el, 'error'); };
   try {
     const { status, data } = await api(`/media/${el.dataset.mediaSrc}/file-token`, { method: 'POST' });
     if (status === 200 && data.url) {
       el.src = data.url;
-      if (el.tagName !== 'IMG') { try { el.load(); } catch (e) { /* fresh el */ } }
-      // Audio streams on demand once it has its URL — the native player
-      // takes over from here ('canplay' also clears the veil).
-      if (el.tagName === 'AUDIO') mediaSetState(el, 'ready');
-      if (el.tagName === 'IMG' && el.complete && el.naturalWidth > 0) mediaSetState(el, 'ready');
+      if (vnPill) {
+        // Voice: the pill leaves its loading state the moment the stream
+        // URL lands; waveform peaks decode in the background and never
+        // block playback.
+        try { el.load(); } catch (e) { /* fresh el */ }
+        vnSetState(vnPill, 'ready');
+        vnLoadPeaks(el.dataset.mediaSrc, data.url);
+      } else {
+        if (el.tagName !== 'IMG') { try { el.load(); } catch (e) { /* fresh el */ } }
+        // Audio streams on demand once it has its URL — the native player
+        // takes over from here ('canplay' also clears the veil).
+        if (el.tagName === 'AUDIO') mediaSetState(el, 'ready');
+        if (el.tagName === 'IMG' && el.complete && el.naturalWidth > 0) mediaSetState(el, 'ready');
+      }
     } else {
-      mediaSetState(el, 'error');
+      fail();
     }
   } catch (e) {
-    mediaSetState(el, 'error');
+    fail();
   }
 }
 
@@ -4113,28 +4189,410 @@ async function hydrateMediaSrc(scope) {
   }
 }
 
+/* ---------------- Custom voice-note player ----------------
+   One compact WhatsApp-style pill: pink round play/pause, a 40-bar
+   waveform from REAL decoded peaks (played fraction turns pink), and a
+   time label (total when idle, elapsed while playing). All states live
+   INSIDE the pill — spinner in the button while loading, a self-contained
+   retry line on error. Peaks are cached per media id so re-renders never
+   refetch; a decode failure falls back to seeded uniform bars and never
+   blocks playback. Only one note plays at a time. */
+const VN_BARS = 40;
+const vnPeaksCache = new Map(); // mediaId -> [VN_BARS normalized peaks]
+let vnAudioCtx = null;
+let vnCurrent = null; // { pill, audio } — the note currently playing
+
+function vnFmtDur(s) {
+  s = Math.max(0, Math.round(s || 0));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function vnSetState(pill, state) {
+  pill.classList.toggle('is-loading', state === 'loading');
+  pill.classList.toggle('is-error', state === 'error');
+}
+
+function vnSetPlayIcon(pill, playing) {
+  const ico = pill.querySelector('.vn-ico');
+  if (ico) ico.textContent = playing ? '❚❚' : '▶';
+}
+
+function bindVoiceNote(audio) {
+  const pill = audio.closest('.voice-note');
+  if (!pill) return;
+  renderVnWave(pill, vnPeaksCache.get(parseInt(pill.dataset.voice)) || null);
+  pill.querySelector('.vn-play').onclick = (ev) => { ev.stopPropagation(); vnToggle(pill, audio); };
+  pill.querySelector('.vn-wave').onclick = (ev) => vnSeek(ev, pill, audio);
+  pill.querySelector('.vn-err').onclick = () => vnRetry(pill, audio);
+  audio.addEventListener('timeupdate', () => vnProgress(pill, audio));
+  audio.addEventListener('loadedmetadata', () => vnProgress(pill, audio));
+  audio.addEventListener('pause', () => {
+    vnSetPlayIcon(pill, false);
+    if (vnCurrent && vnCurrent.audio === audio) vnCurrent = null;
+  });
+  audio.addEventListener('ended', () => {
+    vnSetPlayIcon(pill, false);
+    if (vnCurrent && vnCurrent.audio === audio) vnCurrent = null;
+    pill.querySelectorAll('.vn-wave i').forEach((b) => b.classList.remove('on'));
+    const label = pill.querySelector('.vn-time');
+    if (label) label.textContent = vnFmtDur(
+      parseFloat(pill.dataset.dur || '0') || audio.duration || 0);
+  });
+  audio.addEventListener('error', () => {
+    if (audio.dataset.hydrated) vnSetState(pill, 'error');
+  }, true);
+}
+
+function vnToggle(pill, audio) {
+  if (pill.classList.contains('is-error')) return vnRetry(pill, audio);
+  if (pill.classList.contains('is-loading')) return; // no stream URL yet
+  if (audio.paused) {
+    if (vnCurrent && vnCurrent.audio !== audio) {
+      vnCurrent.audio.pause();
+      vnSetPlayIcon(vnCurrent.pill, false);
+    }
+    const p = audio.play();
+    vnCurrent = { pill, audio };
+    vnSetPlayIcon(pill, true);
+    if (p && p.catch) p.catch(() => { vnSetState(pill, 'error'); vnSetPlayIcon(pill, false); });
+  } else {
+    audio.pause();
+  }
+}
+
+function vnRetry(pill, audio) {
+  vnSetState(pill, 'loading');
+  delete audio.dataset.hydrated;
+  hydrateOneMedia(audio);
+}
+
+function vnSeek(ev, pill, audio) {
+  const wave = ev.currentTarget;
+  const r = wave.getBoundingClientRect();
+  if (!r.width) return;
+  const frac = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
+  const dur = (audio.duration && isFinite(audio.duration)) ? audio.duration
+    : parseFloat(pill.dataset.dur || '0');
+  if (dur > 0) {
+    try { audio.currentTime = frac * dur; } catch (e) { /* metadata not ready */ }
+    vnProgress(pill, audio);
+  }
+}
+
+function vnProgress(pill, audio) {
+  const dur = (audio.duration && isFinite(audio.duration)) ? audio.duration
+    : parseFloat(pill.dataset.dur || '0');
+  const cur = audio.currentTime || 0;
+  const frac = dur > 0 ? Math.min(1, cur / dur) : 0;
+  const bars = pill.querySelectorAll('.vn-wave i');
+  const onN = Math.round(frac * bars.length);
+  bars.forEach((b, i) => b.classList.toggle('on', i < onN));
+  const label = pill.querySelector('.vn-time');
+  if (label) label.textContent = vnFmtDur(cur > 0.05 ? cur : dur);
+}
+
+function renderVnWave(pill, peaks) {
+  const wave = pill.querySelector('.vn-wave');
+  if (!wave) return;
+  const bars = peaks || Array.from({ length: VN_BARS }, () => 0.3);
+  pill.classList.toggle('vn-wave-loading', !peaks);
+  wave.innerHTML = bars.map((p) =>
+    `<i style="height:${Math.max(12, Math.round(p * 100))}%"></i>`).join('');
+  const audio = pill.querySelector('.vn-audio');
+  if (audio) vnProgress(pill, audio);
+}
+
+function vnLoadPeaks(mediaId, url) {
+  const id = parseInt(mediaId);
+  const pill = document.querySelector(`.voice-note[data-voice="${id}"]`);
+  if (vnPeaksCache.has(id)) { if (pill) renderVnWave(pill, vnPeaksCache.get(id)); return; }
+  if (pill) renderVnWave(pill, null); // uniform low bars + pulse while decoding
+  fetch(url)
+    .then((r) => { if (!r.ok) throw new Error('fetch_failed'); return r.arrayBuffer(); })
+    .then((buf) => decodeVnPeaks(buf))
+    .then((peaks) => {
+      vnPeaksCache.set(id, peaks);
+      const p = document.querySelector(`.voice-note[data-voice="${id}"]`);
+      if (p) renderVnWave(p, peaks);
+    })
+    .catch(() => {
+      // Exotic codec / decode unsupported: seeded bars keep the pill solid,
+      // and playback (the <audio> element) is completely unaffected.
+      const fb = vnFallbackPeaks(id);
+      vnPeaksCache.set(id, fb);
+      const p = document.querySelector(`.voice-note[data-voice="${id}"]`);
+      if (p) renderVnWave(p, fb);
+    });
+}
+
+function decodeVnPeaks(arrayBuffer) {
+  return new Promise((resolve, reject) => {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return reject(new Error('no_audio_context'));
+      vnAudioCtx = vnAudioCtx || new AC();
+      vnAudioCtx.decodeAudioData(arrayBuffer.slice(0), (decoded) => {
+        const ch = decoded.getChannelData(0);
+        const block = Math.max(1, Math.floor(ch.length / VN_BARS));
+        const step = Math.max(1, Math.floor(block / 32));
+        const peaks = [];
+        for (let i = 0; i < VN_BARS; i++) {
+          let max = 0;
+          const start = i * block;
+          for (let j = 0; j < block; j += step) {
+            const v = Math.abs(ch[start + j] || 0);
+            if (v > max) max = v;
+          }
+          peaks.push(Math.max(0.12, Math.min(1, max)));
+        }
+        resolve(peaks);
+      }, reject);
+    } catch (e) { reject(e); }
+  });
+}
+
+// Deterministic "waveform" for undecodable files — seeded by media id so
+// it looks the same on every render (and every device).
+function vnFallbackPeaks(mediaId) {
+  let seed = ((mediaId || 1) * 2654435761) >>> 0;
+  const rnd = () => {
+    seed = (seed * 1103515245 + 12345) >>> 0;
+    return (seed >>> 8) / 16777216;
+  };
+  return Array.from({ length: VN_BARS }, () => 0.25 + rnd() * 0.65);
+}
+
+/* ---------------- Message reactions + edit ----------------
+   🤍 on every bubble opens a 6-emoji popover (❤️ 😍 🔥 😈 💦 👏); one
+   reaction per person — same emoji toggles off, a different one replaces.
+   Reactions render as a chip overlapping the bubble's bottom corner.
+   ✏️ on my own plain-text bubbles inside the 5-minute window opens an
+   inline editor; the server holds the final say on the window. */
+const REACT_EMOJIS = ['❤️', '😍', '🔥', '😈', '💦', '👏'];
+const EDIT_WINDOW_MS = 5 * 60 * 1000;
+let editingMsgId = null;
+let reactPop = null; // { msgId, el }
+
+function msgTimeMs(m) {
+  return new Date(String(m.created_at || '').replace(' ', 'T') + 'Z').getTime();
+}
+
+function canEditMsg(m, mine) {
+  if (!mine || !S.user || !m.sender_id || m.sender_id !== S.user.id) return false;
+  if (m.media || m.media_id || m.gift_json || giftOf(m) || m.is_tip) return false;
+  if ((m.body || '').startsWith('💸 Sent a ')) return false;
+  return Date.now() - msgTimeMs(m) < EDIT_WINDOW_MS;
+}
+
+function reactionChipsHTML(m) {
+  const rx = m.reactions || [];
+  if (!rx.length) return '';
+  const byEmoji = new Map();
+  rx.forEach((r) => {
+    const e = byEmoji.get(r.emoji) || { emoji: r.emoji, n: 0, mine: false };
+    e.n += 1;
+    if (r.mine || (S.user && r.user_id === S.user.id)) e.mine = true;
+    byEmoji.set(r.emoji, e);
+  });
+  const groups = [...byEmoji.values()];
+  const parts = groups.map((e) => e.n > 1
+    ? `${e.emoji}<span class="rx-n">×${e.n}</span>` : e.emoji).join('');
+  return `<div class="rx-chips${groups.some((e) => e.mine) ? ' mine' : ''}">${parts}</div>`;
+}
+
+function bubbleHTML(m) {
+  const meId = S.user ? S.user.id : null;
+  const mine = meId ? m.sender_id === meId : m.guest_token === S.guestToken;
+  const ticks = mine && m.sender_id
+    ? (m.is_read ? ' <span style="color:#7dd3fc">✓✓</span>' : ' <span>✓</span>') : '';
+  const g = giftOf(m);
+  const editing = editingMsgId === m.id;
+  let bodyHTML;
+  if (editing) {
+    bodyHTML = `<div class="msg-edit">
+      <textarea class="msg-edit-in" data-edit-in="${m.id}" rows="2">${esc(m.body)}</textarea>
+      <div class="msg-edit-row">
+        <button type="button" class="btn ghost small" data-edit-cancel="${m.id}">Cancel</button>
+        <button type="button" class="btn small" data-edit-save="${m.id}">Save</button>
+      </div></div>`;
+  } else {
+    bodyHTML = g ? giftBubbleHTML(g) : `${m.is_tip ? '💸 ' : ''}${esc(m.body)}${mediaHTML(m)}`;
+  }
+  const hasRx = (m.reactions || []).length > 0;
+  return `<div class="msg ${mine ? 'out' : 'in'}${g ? ' gift-msg' : ''}${hasRx ? ' has-rx' : ''}${editing ? ' editing' : ''}" data-mid="${m.id}">${bodyHTML}
+    <div class="meta">
+      <span class="meta-acts">
+        <button type="button" class="mini-act" data-react="${m.id}" aria-label="React">🤍</button>
+        ${canEditMsg(m, mine) ? `<button type="button" class="mini-act" data-edit="${m.id}" aria-label="Edit">✏️</button>` : ''}
+      </span>
+      <span class="meta-info">${timeHM(m.created_at)}${m.cost_cents && !g ? ` · <span class="cost">-${fmt(m.cost_cents)}</span>` : ''}${m.edited ? ` · <span class="edited-tag">${t('edited')}</span>` : ''}${ticks}</span>
+    </div>
+    ${reactionChipsHTML(m)}
+  </div>`;
+}
+
+function bindMessageActions(scope) {
+  if (!scope) return;
+  scope.querySelectorAll('[data-unlock]').forEach((b) => {
+    if (!b.disabled) b.onclick = () => unlockMedia(parseInt(b.dataset.unlock));
+  });
+  scope.querySelectorAll('[data-react]').forEach((b) => {
+    b.onclick = (ev) => { ev.stopPropagation(); openReactPop(parseInt(b.dataset.react), b); };
+  });
+  scope.querySelectorAll('[data-edit]').forEach((b) => {
+    b.onclick = () => startEditMsg(parseInt(b.dataset.edit));
+  });
+  scope.querySelectorAll('[data-edit-save]').forEach((b) => {
+    b.onclick = () => saveEditMsg(parseInt(b.dataset.editSave));
+  });
+  scope.querySelectorAll('[data-edit-cancel]').forEach((b) => {
+    b.onclick = () => cancelEditMsg();
+  });
+  scope.querySelectorAll('[data-edit-in]').forEach((ta) => {
+    ta.oninput = () => autosizeEditIn(ta);
+    ta.onkeydown = (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        saveEditMsg(parseInt(ta.dataset.editIn));
+      }
+    };
+  });
+}
+
+function autosizeEditIn(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight, 148) + 'px';
+}
+
+function focusEditInput() {
+  if (!editingMsgId) return;
+  const ta = document.querySelector(`[data-edit-in="${editingMsgId}"]`);
+  if (ta) {
+    ta.focus();
+    try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (e) { /* noop */ }
+    autosizeEditIn(ta);
+  }
+}
+
+/* Re-render ONE bubble in place (reaction/edit pushes, my own actions) —
+   no scroll change, so reading history is never yanked to the bottom. */
+function updateMessageBubble(m) {
+  const box = $('#messages');
+  if (!box || !m) return;
+  const old = box.querySelector(`.msg[data-mid="${m.id}"]`);
+  if (!old) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = bubbleHTML(m);
+  const node = tmp.firstElementChild;
+  old.replaceWith(node);
+  bindMessageActions(box);
+  hydrateMediaSrc(node);
+  focusEditInput();
+}
+
+function closeReactPop() {
+  if (!reactPop) return;
+  reactPop.el.remove();
+  reactPop = null;
+  document.removeEventListener('pointerdown', reactPopOutside, true);
+  window.removeEventListener('resize', closeReactPop);
+  window.removeEventListener('scroll', closeReactPop, true);
+}
+function reactPopOutside(e) {
+  if (reactPop && !reactPop.el.contains(e.target)) closeReactPop();
+}
+
+/* Popover of the 6 reaction emojis, anchored above the 🤍 button (flips
+   below it when the bubble sits near the top of the viewport). */
+function openReactPop(msgId, anchor) {
+  if (reactPop && reactPop.msgId === msgId) { closeReactPop(); return; }
+  closeReactPop();
+  const m = S.messages.find((x) => x.id === msgId);
+  const myRx = m && (m.reactions || []).find((r) => r.mine || (S.user && r.user_id === S.user.id));
+  const el = document.createElement('div');
+  el.className = 'rx-pop';
+  el.innerHTML = REACT_EMOJIS.map((e) =>
+    `<button type="button" class="rx-pop-btn${myRx && myRx.emoji === e ? ' on' : ''}" data-rx-pick="${e}">${e}</button>`).join('');
+  document.body.appendChild(el);
+  const r = anchor.getBoundingClientRect();
+  el.style.visibility = 'hidden';
+  el.style.left = '0px'; el.style.top = '0px';
+  const pw = el.offsetWidth, ph = el.offsetHeight;
+  const left = Math.min(Math.max(8, r.left + r.width / 2 - pw / 2), window.innerWidth - pw - 8);
+  let top = r.top - ph - 8;
+  if (top < 8) top = r.bottom + 8; // flip below near the top of the screen
+  el.style.left = `${left}px`; el.style.top = `${top}px`;
+  el.style.visibility = '';
+  reactPop = { msgId, el };
+  el.querySelectorAll('[data-rx-pick]').forEach((b) => {
+    b.onclick = (ev) => { ev.stopPropagation(); pickReaction(msgId, b.dataset.rxPick); };
+  });
+  setTimeout(() => document.addEventListener('pointerdown', reactPopOutside, true), 0);
+  window.addEventListener('resize', closeReactPop);
+  window.addEventListener('scroll', closeReactPop, true);
+}
+
+async function pickReaction(msgId, emoji) {
+  closeReactPop();
+  const { status, data } = await api(`/messages/${msgId}/react`, {
+    method: 'POST', body: JSON.stringify({ emoji }),
+  });
+  if (status === 200) {
+    const m = S.messages.find((x) => x.id === msgId);
+    if (m) { m.reactions = data.reactions; updateMessageBubble(m); }
+  } else if (status === 403) {
+    toast('Only people in this chat can react.');
+  } else {
+    toast('Could not react.');
+  }
+}
+
+function startEditMsg(msgId) {
+  editingMsgId = msgId;
+  const m = S.messages.find((x) => x.id === msgId);
+  if (m) updateMessageBubble(m);
+}
+function cancelEditMsg() {
+  const id = editingMsgId;
+  editingMsgId = null;
+  const m = S.messages.find((x) => x.id === id);
+  if (m) updateMessageBubble(m);
+}
+async function saveEditMsg(msgId) {
+  const ta = document.querySelector(`[data-edit-in="${msgId}"]`);
+  const text = ta ? ta.value.trim() : '';
+  if (!text) return toast('Message cannot be empty.');
+  const { status, data } = await api(`/messages/${msgId}/edit`, {
+    method: 'POST', body: JSON.stringify({ body: text }),
+  });
+  const m = S.messages.find((x) => x.id === msgId);
+  if (status === 200) {
+    editingMsgId = null;
+    if (m) { m.body = data.body; m.edited = true; m.edited_at = data.edited_at; updateMessageBubble(m); }
+  } else if (status === 403 && data.error === 'edit_window_closed') {
+    editingMsgId = null;
+    if (m) updateMessageBubble(m);
+    toast('Too late to edit this one ⏰');
+  } else if (status === 400 && data.error === 'not_editable') {
+    editingMsgId = null;
+    if (m) updateMessageBubble(m);
+    toast('This message cannot be edited.');
+  } else {
+    toast('Could not edit.');
+  }
+}
+
 function renderMessages() {
   const box = $('#messages');
   if (!box) return;
-  const meId = S.user ? S.user.id : null;
-  const meGuest = S.guestToken;
-  box.innerHTML = S.messages.map((m) => {
-    const mine = meId ? m.sender_id === meId : m.guest_token === meGuest;
-    const ticks = mine && m.sender_id
-      ? (m.is_read ? ' <span style="color:#7dd3fc">✓✓</span>' : ' <span>✓</span>') : '';
-    const g = giftOf(m);
-    const bodyHTML = g ? giftBubbleHTML(g) : `${m.is_tip ? '💸 ' : ''}${esc(m.body)}${mediaHTML(m)}`;
-    return `<div class="msg ${mine ? 'out' : 'in'}${g ? ' gift-msg' : ''}">${bodyHTML}
-      <div class="meta">${timeHM(m.created_at)}${m.cost_cents && !g ? ` · <span class="cost">-${fmt(m.cost_cents)}</span>` : ''}${ticks}</div>
-    </div>`;
-  }).join('');
+  closeReactPop();
+  box.innerHTML = S.messages.map(bubbleHTML).join('');
   box.scrollTop = box.scrollHeight;
   // keep the input bar visible: scroll chat area to bottom
   app.scrollTop = app.scrollHeight;
   hydrateMediaSrc(box);
-  box.querySelectorAll('[data-unlock]').forEach((b) => {
-    if (!b.disabled) b.onclick = () => unlockMedia(parseInt(b.dataset.unlock));
-  });
+  bindMessageActions(box);
+  focusEditInput();
 }
 
 async function unlockMedia(mediaId) {
