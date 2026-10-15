@@ -115,6 +115,13 @@ html, body {
 body.sheet-open #tabbar {
   transform: translateY(105%); opacity: 0; pointer-events: none;
 }
+/* While a sheet is open the tab bar is gone, so the layout must not keep
+   reserving space for it: the scroll view drops its tab-bar bottom padding
+   (no black slab behind the sheet) and sheets pin flush to the screen's
+   bottom edge — their own padding covers the safe-area inset. */
+body.sheet-open #app { padding-bottom: env(safe-area-inset-bottom); }
+body.sheet-open #action-sheet { height: 100dvh; }
+body.sheet-open .sheet { bottom: 0; }
 #tabbar button {
   flex: 1; background: none; border: none; color: var(--muted);
   font-size: 11px; font-weight: 600;
@@ -555,11 +562,11 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 
 /* ---------- Action sheet (iPhone style) ---------- */
 #action-sheet { position: fixed; inset: 0; z-index: 140; }
-.sheet-backdrop { position: absolute; inset: 0; background: rgba(5,2,12,.6); }
+.sheet-backdrop { position: absolute; inset: 0; background: rgba(16,6,12,.5); }
 .sheet {
   position: absolute; left: 0; right: 0; bottom: 0; max-width: 480px; margin: 0 auto;
   background: var(--card2); border-radius: 20px 20px 0 0;
-  padding: 12px 16px calc(20px + env(safe-area-inset-bottom));
+  padding: 12px 16px calc(10px + env(safe-area-inset-bottom));
   border-top: 1px solid rgba(139,92,246,.4);
   animation: sheetup .22s ease-out;
 }
@@ -729,12 +736,15 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 
 /* ---------- Virtual gifts ---------- */
 .sheet-backdrop {
-  position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.65);
+  position: fixed; inset: 0; z-index: 50; background: rgba(16,6,12,.5);
   display: flex; align-items: flex-end; justify-content: center;
 }
+/* Inside #action-sheet the backdrop is a scrim over the sheet container,
+   not a root overlay — anchor it to the container, not the viewport */
+#action-sheet .sheet-backdrop { position: absolute; }
 .sheet {
   width: 100%; max-width: 480px; background: #1c1030;
-  border-radius: 20px 20px 0 0; padding: 18px 16px calc(20px + env(safe-area-inset-bottom));
+  border-radius: 20px 20px 0 0; padding: 18px 16px calc(10px + env(safe-area-inset-bottom));
   border-top: 1px solid rgba(139,92,246,.3);
   animation: sheetUp .25s ease; max-height: 70dvh; overflow-y: auto;
 }
@@ -1143,7 +1153,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 /* ---- PPV price picker ---- */
 #ppv-price-overlay {
   position: fixed; inset: 0; z-index: 1000;
-  background: rgba(5, 2, 12, .92);
+  background: rgba(16, 6, 12, .55);
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
 }

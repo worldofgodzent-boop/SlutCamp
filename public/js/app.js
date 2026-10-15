@@ -4324,7 +4324,7 @@ function startVoiceUI(stream) {
       <button class="btn" id="voice-stop">Send voice note</button>
       <button class="btn ghost" id="voice-cancel">Cancel</button>
     </div>`;
-  ov.style.cssText = 'position:fixed;inset:0;z-index:150;background:rgba(10,5,20,.92);display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:150;background:rgba(16,6,12,.55);display:flex;align-items:center;justify-content:center;padding:20px';
   document.body.appendChild(ov);
 
   try {
@@ -4392,7 +4392,7 @@ function startVoiceUI(stream) {
 function openTipModal() {
   const ov = document.createElement('div');
   ov.id = 'tip-ov';
-  ov.style.cssText = 'position:fixed;inset:0;z-index:150;background:rgba(10,5,20,.92);display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:150;background:rgba(16,6,12,.55);display:flex;align-items:center;justify-content:center;padding:20px';
   ov.innerHTML = `
     <div class="card" style="max-width:340px;text-align:center">
       <div style="font-size:44px">🎁</div>
