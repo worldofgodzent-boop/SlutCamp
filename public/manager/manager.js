@@ -446,6 +446,43 @@ async function adminPayoutsBody() {
   const { data: wdData } = await api('/admin/withdrawals');
   const { data: treasury } = await api('/admin/crypto-treasury');
   const { data: cInvData } = await api('/admin/crypto-invoices');
+  const { data: loadsData } = await api('/admin/loads?limit=100');
+  const loads = (loadsData && loadsData.loads) || [];
+  const lt = (loadsData && loadsData.totals) || { today: {}, all_time: {} };
+  const COIN_ORDER = ['USDT', 'BTC', 'ETH', 'SOL', 'XRP'];
+  const coinRows = [...new Set([...COIN_ORDER,
+    ...Object.keys(lt.today.crypto_by_coin || {}), ...Object.keys(lt.all_time.crypto_by_coin || {})])]
+    .filter((c) => (lt.today.crypto_by_coin || {})[c] || (lt.all_time.crypto_by_coin || {})[c]);
+  const totRow = (label, todayC, allC) => `
+    <tr><td>${label}</td><td>${fmt(todayC || 0)}</td><td>${fmt(allC || 0)}</td></tr>`;
+  const moneyInHTML = `
+    <h3>💰 Money in — wallet loads by source</h3>
+    <div class="card" style="padding:12px">
+      <div class="small muted" style="margin-bottom:8px">Every credit a fan bought or was given, labeled by the rail it arrived on.
+        Spends draw on one shared balance, so a spend can't be traced back to a single load — provenance lives here, at the load.</div>
+      <table class="src-totals">
+        <tr><th>Source</th><th>Today</th><th>All time</th></tr>
+        ${totRow('💳 CCBill (card)', lt.today.ccbill_cents, lt.all_time.ccbill_cents)}
+        ${coinRows.map((c) => totRow(`🪙 Crypto · ${c}`,
+          (lt.today.crypto_by_coin || {})[c], (lt.all_time.crypto_by_coin || {})[c])).join('')}
+        ${totRow('🛠️ Admin credits', lt.today.admin_cents, lt.all_time.admin_cents)}
+        ${totRow('↩️ Refunds (re-credited)', lt.today.refund_cents, lt.all_time.refund_cents)}
+        <tr class="src-grand"><td>Total in</td><td>${fmt(lt.today.total_cents || 0)}</td><td>${fmt(lt.all_time.total_cents || 0)}</td></tr>
+      </table>
+      ${loads.length ? `<h4 style="margin:14px 0 6px">Recent loads</h4>` : ''}
+      ${loads.map((l) => `
+        <div class="row small" style="padding:7px 0;border-top:1px solid rgba(255,255,255,.06);align-items:flex-start">
+          <span class="grow"><span class="src-badge src-${esc(l.source)}">${esc(l.label)}</span>
+            <b>${esc(l.fan_name || '')}</b> <span class="muted">@${esc(l.fan_username || '')}</span><br>
+            <span class="muted">${esc(String(l.ts || '').slice(0, 10))} · ${timeHM(l.ts)}</span>
+            ${l.source === 'crypto' ? `<br><span class="muted">recv ${esc(l.received_amount || '?')} ${esc(l.coin || '')}${l.partial ? ' · ⚠ partial load (underpaid)' : ''}${l.via === 'manual' ? ' · released by admin' : ' · auto-confirmed'}${l.txid_short ? ` · tx <span style="font-family:monospace;font-size:11px">${esc(l.txid_short)}</span>` : ''}</span>` : ''}
+            ${l.source === 'ccbill' ? `<br><span class="muted">order #${l.ref_id}${l.detail ? ' · ' + esc(l.detail) : ''}${l.txid_short ? ` · txn <span style="font-family:monospace;font-size:11px">${esc(l.txid_short)}</span>` : ''}</span>` : ''}
+            ${l.source === 'admin' ? `<br><span class="muted">${esc(l.detail || 'Admin credit grant')}</span>` : ''}
+            ${l.source === 'refund' ? `<br><span class="muted">${esc(l.detail || 'Refund')}</span>` : ''}
+          </span>
+          <span style="text-align:right"><b style="color:var(--green)">${fmt(l.amount_cents)}</b></span>
+        </div>`).join('') || '<div class="muted small">No wallet loads recorded yet.</div>'}
+    </div>`;
   const cInvs = (cInvData && cInvData.invoices) || [];
   const tCoins = (treasury && treasury.coins) || [];
   const tSet = (treasury && treasury.settings) || {};
@@ -520,6 +557,7 @@ async function adminPayoutsBody() {
   const done = wds.filter((w) => w.status !== 'pending');
   const wdBadge = (s) => s === 'pending' ? t('wd_pending') : s === 'paid' ? t('wd_paid') : t('wd_rejected');
   return `
+    ${moneyInHTML}
     ${treasuryHTML}
     ${pending.length ? `<h3>⏳ Withdrawal requests (${pending.length})</h3>` : ''}
     ${pending.map((w) => `
@@ -562,12 +600,28 @@ async function adminPayoutsBody() {
 
 async function adminFansBody() {
   const { data } = await api('/admin/fans');
+  const fanLoadsLine = (f) => {
+    const L = f.loads_by_source;
+    if (!L || !L.total_cents) return '<br><span class="small muted">Loaded $0.00 — no loads recorded</span>';
+    const parts = [];
+    if (L.ccbill_cents) parts.push(`💳 CCBill ${fmt(L.ccbill_cents)}`);
+    for (const c of ['USDT', 'BTC', 'ETH', 'SOL', 'XRP']) {
+      if ((L.crypto_by_coin || {})[c]) parts.push(`🪙 ${c} ${fmt(L.crypto_by_coin[c])}`);
+    }
+    for (const c of Object.keys(L.crypto_by_coin || {})) {
+      if (!['USDT', 'BTC', 'ETH', 'SOL', 'XRP'].includes(c)) parts.push(`🪙 ${c} ${fmt(L.crypto_by_coin[c])}`);
+    }
+    if (L.admin_cents) parts.push(`🛠️ Admin ${fmt(L.admin_cents)}`);
+    if (L.refund_cents) parts.push(`↩️ Refunds ${fmt(L.refund_cents)}`);
+    return `<br><span class="small">Loaded ${fmt(L.total_cents)} <span class="muted">(${parts.join(' · ')})</span></span>`;
+  };
   return `
     ${(data.fans || []).map((f) => `
       <div class="card" style="padding:12px">
         <div class="row"><span class="grow"><b>${esc(f.display_name)}</b>
           <span class="small muted">@${esc(f.username)}</span><br>
           <span class="small">Balance ${fmt(f.credits_cents)} · Spent ${fmt(f.spent_cents)} <span class="muted">(msgs, calls, gifts)</span></span>
+          ${fanLoadsLine(f)}
           ${f.banned ? ' <span class="small" style="color:var(--red)">⛔ banned</span>' : ''}</span></div>
         <div class="row" style="margin-top:8px">
           <input class="input" id="cr-${f.id}" type="number" step="0.01" placeholder="$ credits" style="margin-top:0;max-width:130px">

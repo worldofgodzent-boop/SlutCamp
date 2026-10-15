@@ -6612,6 +6612,185 @@ app.post('/api/admin/ccbill/orders/:id/credit', identMiddleware, requireUser, re
   res.json({ ok: true });
 });
 
+/* ------------------------------------------------------------------ */
+/* Payment-source visibility — Manager "Money in"                      */
+/*                                                                     */
+/* Every way a fan's credit balance can increase from OUTSIDE money:   */
+/*   1. crypto invoice credited (watcher, or admin mark-credited)      */
+/*      — crypto_invoices, credited_cents / coin / txid live there.    */
+/*   2. CCBill card load credited (webhook, or admin release of a      */
+/*      'review' hold) — ccbill_orders.                                */
+/*   3. admin manual credit (Fans screen "+ Credits")                  */
+/*      — transactions type 'credit_grant'.                            */
+/*   4. admin refund re-credit — the refunds table (one row per        */
+/*      issued refund; the endpoint deletes the row if money          */
+/*      movement fails, so a row here means credits really landed).    */
+/* Automatic spend reversals (refundFan: declined live joins,          */
+/* never-started FaceTime cancels) are NOT loads — they hand back      */
+/* money from a spend that already happened, recorded as negative      */
+/* ledger rows of the original spend type, so they never appear here. */
+/*                                                                     */
+/* Provenance stops at the load on purpose: balances are fungible, so  */
+/* an individual spend can NOT truthfully be traced to one load.       */
+/* Spend rows keep their type/split labels and are never re-badged     */
+/* with a rail.                                                        */
+/* ------------------------------------------------------------------ */
+
+// CCBill posts carry no standard card-brand field. If the stored webhook
+// payload happens to name one, surface it; otherwise the load stays
+// labeled plain "CCBill" — the brand is never guessed.
+function ccbillCardBrand(rawEvent) {
+  if (!rawEvent) return null;
+  let o;
+  try { o = JSON.parse(rawEvent); } catch (e) { return null; }
+  if (!o || typeof o !== 'object') return null;
+  const BRANDS = [['visa', 'VISA'], ['master', 'Mastercard'], ['amex', 'Amex'],
+    ['american express', 'Amex'], ['discover', 'Discover'], ['jcb', 'JCB'], ['diner', 'Diners']];
+  for (const [k, v] of Object.entries(o)) {
+    const key = k.toLowerCase();
+    if (!/(card|brand|payment).*(type|brand|method)?$/.test(key) && !key.includes('brand')) continue;
+    if (typeof v !== 'string') continue;
+    const val = v.toLowerCase();
+    for (const [needle, label] of BRANDS) if (val.includes(needle)) return label;
+  }
+  return null;
+}
+
+function loadSourceLabel(source, coin, brand) {
+  if (source === 'crypto') return `Crypto · ${coin}`;
+  if (source === 'ccbill') return brand ? `${brand} · CCBill` : 'CCBill';
+  if (source === 'admin') return 'Admin credit';
+  if (source === 'refund') return 'Refund · re-credit';
+  return source;
+}
+
+// By-source money-in totals for one window (sinceTs null = all time).
+// Windows compare against each rail's own credit timestamp, all stored
+// as UTC 'YYYY-MM-DD HH:MM:SS' — the same discipline as Overview.
+function loadTotalsBySource(sinceTs) {
+  const w = (col) => (sinceTs ? ` AND ${col} >= ?` : '');
+  const p = sinceTs ? [sinceTs] : [];
+  const cryptoRows = db.prepare(`SELECT coin, COALESCE(SUM(credited_cents),0) AS cents
+    FROM crypto_invoices
+    WHERE status IN ('credited','credited_partial') AND credited_cents > 0${w('credited_at')}
+    GROUP BY coin`).all(...p);
+  const crypto_by_coin = {};
+  let crypto_cents = 0;
+  for (const r of cryptoRows) { crypto_by_coin[r.coin] = r.cents; crypto_cents += r.cents; }
+  const ccbill_cents = db.prepare(`SELECT COALESCE(SUM(amount_cents),0) AS cents
+    FROM ccbill_orders WHERE status = 'credited'${w('credited_at')}`).get(...p).cents;
+  const admin_cents = db.prepare(`SELECT COALESCE(SUM(gross_cents),0) AS cents
+    FROM transactions WHERE type = 'credit_grant' AND is_test = 0${w('created_at')}`).get(...p).cents;
+  const refund_cents = db.prepare(`SELECT COALESCE(SUM(amount_cents),0) AS cents
+    FROM refunds WHERE 1 = 1${w('created_at')}`).get(...p).cents;
+  return {
+    ccbill_cents, crypto_by_coin, crypto_cents, admin_cents, refund_cents,
+    total_cents: ccbill_cents + crypto_cents + admin_cents + refund_cents,
+  };
+}
+
+// Per-fan lifetime loads grouped by source (whole fan base, merged onto
+// the Fans list). Same source rules as /api/admin/loads.
+function fanLoadsBySource() {
+  const byFan = new Map();
+  const entry = (uid) => {
+    if (!byFan.has(uid)) byFan.set(uid, {
+      ccbill_cents: 0, crypto_by_coin: {}, crypto_cents: 0,
+      admin_cents: 0, refund_cents: 0, total_cents: 0,
+    });
+    return byFan.get(uid);
+  };
+  const finish = (e) => {
+    e.total_cents = e.ccbill_cents + e.crypto_cents + e.admin_cents + e.refund_cents;
+  };
+  for (const r of db.prepare(`SELECT user_id, coin, SUM(credited_cents) AS cents
+      FROM crypto_invoices
+      WHERE status IN ('credited','credited_partial') AND credited_cents > 0
+      GROUP BY user_id, coin`).all()) {
+    const e = entry(r.user_id); e.crypto_by_coin[r.coin] = r.cents; e.crypto_cents += r.cents;
+  }
+  for (const r of db.prepare(`SELECT user_id, SUM(amount_cents) AS cents
+      FROM ccbill_orders WHERE status = 'credited' GROUP BY user_id`).all()) {
+    entry(r.user_id).ccbill_cents = r.cents;
+  }
+  for (const r of db.prepare(`SELECT fan_id, SUM(gross_cents) AS cents
+      FROM transactions WHERE type = 'credit_grant' AND is_test = 0 GROUP BY fan_id`).all()) {
+    entry(r.fan_id).admin_cents = r.cents;
+  }
+  for (const r of db.prepare(`SELECT user_id, SUM(amount_cents) AS cents
+      FROM refunds GROUP BY user_id`).all()) {
+    entry(r.user_id).refund_cents = r.cents;
+  }
+  for (const e of byFan.values()) finish(e);
+  return byFan;
+}
+
+app.get('/api/admin/loads', ...adminOnly, (req, res) => {
+  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 100));
+  const fanId = parseInt(req.query.fan_id, 10);
+  const fanParam = Number.isInteger(fanId) && fanId > 0 ? fanId : null;
+  const rows = db.prepare(`
+    SELECT source, coin, amount_cents, ts, fan_id, fan_username, fan_name,
+           ref_id, txid, received_amount, partial, via, detail, raw_event FROM (
+      SELECT 'crypto' AS source, ci.coin AS coin, ci.credited_cents AS amount_cents,
+             ci.credited_at AS ts, ci.user_id AS fan_id, u.username AS fan_username,
+             u.display_name AS fan_name, ci.id AS ref_id, ci.txid AS txid,
+             ci.received_amount AS received_amount,
+             CASE WHEN ci.status = 'credited_partial' THEN 1 ELSE 0 END AS partial,
+             ci.credited_via AS via, NULL AS detail, NULL AS raw_event
+      FROM crypto_invoices ci JOIN users u ON u.id = ci.user_id
+      WHERE ci.status IN ('credited','credited_partial') AND ci.credited_cents > 0
+        AND (? IS NULL OR ci.user_id = ?)
+      UNION ALL
+      SELECT 'ccbill', NULL, o.amount_cents, o.credited_at, o.user_id, u.username,
+             u.display_name, o.id, o.ccbill_transaction_id, NULL, 0, NULL,
+             CASE WHEN o.ccbill_subscription_id IS NOT NULL
+                  THEN 'sub ' || o.ccbill_subscription_id ELSE NULL END,
+             o.raw_event
+      FROM ccbill_orders o JOIN users u ON u.id = o.user_id
+      WHERE o.status = 'credited' AND (? IS NULL OR o.user_id = ?)
+      UNION ALL
+      SELECT 'admin', NULL, t.gross_cents, t.created_at, t.fan_id, u.username,
+             u.display_name, t.id, NULL, NULL, 0, NULL, t.note, NULL
+      FROM transactions t JOIN users u ON u.id = t.fan_id
+      WHERE t.type = 'credit_grant' AND t.is_test = 0 AND (? IS NULL OR t.fan_id = ?)
+      UNION ALL
+      SELECT 'refund', NULL, r.amount_cents, r.created_at, r.user_id, u.username,
+             u.display_name, r.id, NULL, NULL, 0, NULL, r.reason, NULL
+      FROM refunds r JOIN users u ON u.id = r.user_id
+      WHERE (? IS NULL OR r.user_id = ?)
+    ) ORDER BY ts DESC, ref_id DESC LIMIT ?`)
+    .all(fanParam, fanParam, fanParam, fanParam, fanParam, fanParam,
+         fanParam, fanParam, limit);
+  const loads = rows.map((r) => {
+    const brand = r.source === 'ccbill' ? ccbillCardBrand(r.raw_event) : null;
+    return {
+      key: `${r.source}:${r.ref_id}`,
+      source: r.source,
+      label: loadSourceLabel(r.source, r.coin, brand),
+      brand,
+      coin: r.coin || null,
+      amount_cents: r.amount_cents,
+      ts: r.ts,
+      fan_id: r.fan_id, fan_username: r.fan_username, fan_name: r.fan_name,
+      ref_id: r.ref_id,
+      txid: r.txid || null,
+      txid_short: r.txid ? (r.txid.length > 14 ? r.txid.slice(0, 10) + '…' : r.txid) : null,
+      received_amount: r.received_amount || null,
+      partial: !!r.partial,
+      via: r.via || null,
+      detail: r.detail || null,
+    };
+  });
+  res.json({
+    loads,
+    totals: {
+      today: loadTotalsBySource(chicagoStartOfDaySql()),
+      all_time: loadTotalsBySource(null),
+    },
+  });
+});
+
 
 app.get('/api/crypto/config', (req, res) => {
   // Fans only see coins with REAL receiving config — a coin still on a
@@ -6734,12 +6913,21 @@ app.get('/api/mod/presence', identMiddleware, modOnly, (req, res) => {
 presenceSvc.start();
 
 app.get('/api/admin/fans', ...adminOnly, (req, res) => {
-  res.json({ fans: db.prepare(`
+  const fans = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.banned, u.created_at, w.credits_cents,
            (SELECT COALESCE(SUM(gross_cents),0) FROM transactions t
              WHERE t.fan_id = u.id AND t.is_test = 0 AND t.type IN ('message','call','gift')) AS spent_cents
     FROM users u JOIN wallets w ON w.user_id = u.id
-    WHERE u.role = 'fan' ORDER BY spent_cents DESC LIMIT 200`).all() });
+    WHERE u.role = 'fan' ORDER BY spent_cents DESC LIMIT 200`).all();
+  // Lifetime money-in per fan, grouped by rail (payment-source visibility).
+  const loadsByFan = fanLoadsBySource();
+  for (const f of fans) {
+    f.loads_by_source = loadsByFan.get(f.id) || {
+      ccbill_cents: 0, crypto_by_coin: {}, crypto_cents: 0,
+      admin_cents: 0, refund_cents: 0, total_cents: 0,
+    };
+  }
+  res.json({ fans });
 });
 
 app.post('/api/admin/fans/:id/ban', ...adminOnly, (req, res) => {

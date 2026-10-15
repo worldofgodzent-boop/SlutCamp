@@ -288,6 +288,25 @@ label.field { display: block; margin-top: 14px; font-size: 14px; font-weight: 60
 .stream-msg.from-model { border: 1px solid rgba(255,92,158,.4); }
 .stream-msg.from-model b { color: #f0abfc; }
 
+/* ---------- Money in: payment-source badges + totals ---------- */
+.src-badge {
+  display: inline-block; padding: 2px 9px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 800; letter-spacing: .02em;
+  border: 1px solid var(--line); background: rgba(255,255,255,.07); color: var(--text);
+  white-space: nowrap;
+}
+.src-badge.src-ccbill { background: rgba(139,92,246,.20); border-color: rgba(139,92,246,.55); }
+.src-badge.src-crypto { background: rgba(245,198,107,.16); border-color: rgba(245,198,107,.5); }
+.src-badge.src-admin { background: rgba(52,211,153,.14); border-color: rgba(52,211,153,.45); }
+.src-badge.src-refund { background: rgba(248,113,113,.14); border-color: rgba(248,113,113,.45); }
+.src-totals { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.src-totals th, .src-totals td { padding: 6px 4px; border-bottom: 1px solid rgba(255,255,255,.06); }
+.src-totals th { text-align: right; color: var(--muted); font-weight: 700; font-size: 12px; }
+.src-totals th:first-child { text-align: left; }
+.src-totals td { text-align: right; font-weight: 700; }
+.src-totals td:first-child { text-align: left; font-weight: 600; }
+.src-totals tr.src-grand td { border-bottom: none; border-top: 1px solid var(--line); font-size: 15px; }
+
 /* ---------- Toast ---------- */
 #toast {
   position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
