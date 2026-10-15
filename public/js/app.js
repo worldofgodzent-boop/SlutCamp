@@ -3411,6 +3411,7 @@ async function vRecruiter() {
         <div style="font-size:42px;font-weight:800;color:var(--green);margin:4px 0">${fmt(data.available_cents)}</div>
         <div class="small muted">Available for payout · ${fmt(data.earnings_cents)} total earned (20%)</div>
       </div>
+      <div class="lang-row">${langPillsHTML()}</div>
       <div class="card" style="border-color:var(--gold)">
         <div style="font-weight:800;margin-bottom:6px;color:var(--gold)">🔗 Your recruiting link</div>
         <div class="muted small" style="word-break:break-all;margin-bottom:8px">${esc(link)}</div>
