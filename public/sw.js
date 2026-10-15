@@ -2,8 +2,11 @@
  * SlutCamp — service worker.
  * Network-first for the app shell (always fresh updates when online),
  * cache fallback when offline. API, realtime, and uploads never cached.
+ * /manager/* (Slut Manager) is fully bypassed: never cached, never
+ * answered from cache — the Manager must always load its own fresh
+ * assets straight from the network.
  */
-const CACHE = 'slutcamp-v2';
+const CACHE = 'slutcamp-v3';
 const SHELL = [
   '/',
   '/index.html',
@@ -37,6 +40,12 @@ self.addEventListener('fetch', (e) => {
   // Never cache API, realtime, or uploaded photos
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws') ||
       url.pathname.startsWith('/uploads/')) return;
+
+  // Slut Manager lives under /manager/ — hands off entirely. No
+  // respondWith, no cache reads or writes: the browser fetches it
+  // directly from the network so this worker can never serve the
+  // Manager a stale or wrong-typed asset.
+  if (url.pathname === '/manager' || url.pathname.startsWith('/manager/')) return;
 
   if (NETWORK_FIRST.includes(url.pathname)) {
     e.respondWith(

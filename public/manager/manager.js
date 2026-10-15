@@ -1634,6 +1634,17 @@ const NAV = [
   ['analytics', '📈 Analytics'], ['more', '⚙️ Settings'],
 ];
 
+/* Sidebar grouping for the same screens (NAV above stays the flat
+   source of labels/titles). '' heading = no heading row. */
+const NAV_GROUPS = [
+  ['', ['dash']],
+  ['People', ['models', 'idchecks', 'fans', 'partners']],
+  ['Money', ['payouts', 'tax', 'refunds', 'disputes']],
+  ['Safety & Content', ['chats', 'live', 'safety', 'dmca']],
+  ['Growth', ['invites', 'bookings', 'contracts', 'analytics']],
+  ['Settings', ['more']],
+];
+
 const PRESENCE_CARD = `
   <div class="card" id="presence-card" style="padding:14px;margin-bottom:12px;overflow:hidden;box-sizing:border-box;max-width:100%">
     <div class="row" style="align-items:flex-start;min-width:0">
@@ -1910,7 +1921,7 @@ function renderLogin(err) {
       <form class="mgr-login card" id="mgr-login-form">
         <img src="/img/lips-logo.png" alt="" class="mgr-login-logo">
         <div class="mgr-login-title">Slut Manager</div>
-        <div class="muted small" style="text-align:center">Management only — fans & models use the SlutCamp app.</div>
+        <div class="mgr-login-sub">Management only — fans &amp; models use the SlutCamp app</div>
         ${err ? `<div class="mgr-login-err">${esc(err)}</div>` : ''}
         <label class="field">Username<input class="input" id="ml-user" autocomplete="username"></label>
         <label class="field">Password<span id="ml-pass-slot"></span></label>
@@ -1950,19 +1961,37 @@ function renderLogin(err) {
 }
 
 function renderShell() {
+  const labelOf = (id) => (NAV.find((n) => n[0] === id) || [])[1] || id;
+  const navBtn = (id) => {
+    const label = labelOf(id);
+    const sp = label.indexOf(' ');
+    const ic = sp > 0 ? label.slice(0, sp) : '';
+    const tx = sp > 0 ? label.slice(sp + 1) : label;
+    const badge = id === 'safety' ? ' <span class="unread-badge hidden" id="badge-safety"></span>'
+      : id === 'dmca' ? ' <span class="unread-badge hidden" id="badge-dmca"></span>' : '';
+    return `<button data-screen="${id}"><span class="nav-ic">${ic}</span><span class="nav-tx">${tx}</span>${badge}</button>`;
+  };
   document.getElementById('mgr-root').innerHTML = `
+    <div class="mgr-topbar">
+      <div class="mgr-top-brand">
+        <img src="/img/lips-logo.png" alt="">
+        <b>Slut Manager</b>
+      </div>
+      <div class="mgr-top-actions">
+        <button class="mgr-top-btn" id="mgr-preview">👁 Preview</button>
+        <button class="mgr-top-btn ghost" id="mgr-logout2">Log out</button>
+      </div>
+    </div>
     <div class="mgr-shell">
       <aside class="mgr-side">
-        <div class="mgr-brand">
-          <img src="/img/lips-logo.png" alt="">
-          <div><b>Slut Manager</b><br><span class="small muted" id="mgr-user">${esc(M.user ? M.user.display_name : '')}</span></div>
-        </div>
+        <div class="mgr-side-user">Signed in as <b id="mgr-user">${esc(M.user ? M.user.display_name : '')}</b></div>
         <nav id="mgr-nav">
-          ${NAV.map(([id, label]) => `
-            <button data-screen="${id}">${label}${id === 'safety' ? ' <span class="unread-badge hidden" id="badge-safety"></span>' : ''}${id === 'dmca' ? ' <span class="unread-badge hidden" id="badge-dmca"></span>' : ''}</button>`).join('')}
+          ${NAV_GROUPS.map(([heading, ids]) => `
+            <div class="mgr-nav-group">
+              ${heading ? `<div class="mgr-nav-h">${heading}</div>` : ''}
+              ${ids.map(navBtn).join('')}
+            </div>`).join('')}
         </nav>
-        <button class="mgr-side-act" id="mgr-preview">👁 Preview the app (fan view)</button>
-        <button class="mgr-side-act ghost" id="mgr-logout2">Log out</button>
       </aside>
       <main class="mgr-main"><div id="mgr-content"></div></main>
     </div>`;

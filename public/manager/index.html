@@ -6,14 +6,193 @@
 <title>Slut Manager — SlutCamp Management</title>
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#1a0d18">
-<!-- PWA: own manifest + icons; the site service worker (scope /) already
-     covers this path, so no second worker is registered. -->
+<!-- PWA: own manifest + icons. No service worker of its own, and the
+     site worker (scope /) explicitly bypasses /manager/* — Manager
+     assets always come straight from the network, never from cache. -->
 <link rel="manifest" href="/manager/manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/manager/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/manager/icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Slut Manager">
+<style>
+/* Slut Manager — critical first-paint styles, inlined on purpose.
+   The login screen and the app frame (top bar, nav, cards, buttons,
+   inputs) must render correctly even if manager.css is delayed,
+   blocked, or served stale: this block is fully self-sufficient for
+   both. manager.css (linked below) carries the complete sheet. */
+:root{
+  --bg:#1a0d18; --bg2:#241019; --card:#2a1420; --card2:#331826;
+  --pink:#ff5c9e; --rose:#ff7eb3; --peach:#ffb3c7; --purple:#8b5cf6;
+  --text:#fff5f7; --muted:#c9a8b8; --green:#34d399; --red:#f87171;
+  --gold:#f5c66b; --yellow:#fbbf24; --line:rgba(255,179,199,.14); --topbar-h:62px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:var(--bg); color:var(--text);
+  background-image:radial-gradient(ellipse 90% 34% at 50% -5%, rgba(255,92,158,.10), transparent),
+                   radial-gradient(ellipse 60% 25% at 50% 110%, rgba(255,158,125,.05), transparent);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+  overscroll-behavior:none;
+}
+img,video{max-width:100%}
+.hidden{display:none!important}
+.small{font-size:13px}
+.muted{color:var(--muted)}
+.row{display:flex;align-items:center;gap:12px;min-width:0}
+.grow{flex:1;min-width:0}
+
+/* ---------- login ---------- */
+.mgr-login-wrap{
+  min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:20px;
+  background:radial-gradient(ellipse 90% 40% at 50% 0%, rgba(255,92,158,.14), transparent),
+             radial-gradient(ellipse 70% 30% at 50% 108%, rgba(139,92,246,.10), transparent);
+}
+.mgr-login{width:100%;max-width:392px;padding:30px 24px 26px;text-align:left}
+.mgr-login-logo{
+  width:84px;height:84px;border-radius:50%;display:block;margin:2px auto 14px;object-fit:cover;
+  border:2px solid var(--pink); box-shadow:0 0 0 5px rgba(255,92,158,.18), 0 0 26px rgba(255,92,158,.55);
+}
+.mgr-login-title{text-align:center;font-size:26px;font-weight:900;letter-spacing:.2px;margin-bottom:5px}
+.mgr-login-sub{text-align:center;color:var(--muted);font-size:13.5px;line-height:1.45;margin-bottom:6px}
+.mgr-login-err{
+  background:rgba(248,113,113,.14); border:1px solid rgba(248,113,113,.55); color:#fecaca;
+  border-radius:999px; padding:9px 14px; font-size:13.5px; font-weight:600;
+  margin:14px 0 2px; text-align:center;
+}
+
+/* ---------- forms ---------- */
+label.field{display:block;margin-top:14px;font-size:14px;font-weight:600;color:#e9d5de}
+.input,select.input,textarea.input{
+  width:100%; background:rgba(255,255,255,.05); color:var(--text);
+  border:1px solid rgba(255,255,255,.12); border-radius:16px;
+  padding:14px 16px; font-size:16px; font-family:inherit; margin-top:6px;
+  transition:border-color .2s ease, box-shadow .2s ease, background .2s ease;
+  -webkit-appearance:none; appearance:none;
+}
+.input:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px rgba(255,92,158,.18);background:rgba(255,255,255,.07)}
+.input::placeholder{color:rgba(255,255,255,.35)}
+.pw-wrap{position:relative;display:block}
+.pw-wrap .input{padding-right:48px}
+.pw-eye{
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  background:none;border:none;font-size:20px;cursor:pointer;padding:8px;opacity:.75;line-height:1;
+}
+
+/* ---------- buttons ---------- */
+.btn{
+  display:block;width:100%;min-height:48px;
+  background:linear-gradient(135deg,#ff5c9e,#e0447c); color:#fff; border:none; border-radius:100px;
+  font-size:16px;font-weight:700;padding:14px 28px;cursor:pointer;font-family:inherit;margin-top:12px;
+  box-shadow:0 4px 20px rgba(255,92,158,.3), inset 0 1px 0 rgba(255,255,255,.2);
+  transition:transform .12s ease, box-shadow .2s ease, opacity .2s ease;
+  user-select:none;-webkit-user-select:none;text-align:center;text-decoration:none;
+}
+.btn:active{transform:scale(.97);opacity:.94}
+.btn:disabled{opacity:.5;transform:none;box-shadow:none}
+.btn.small{width:auto;display:inline-block;min-height:40px;padding:9px 20px;font-size:14px;margin-top:0}
+.btn.ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);color:var(--text);box-shadow:none}
+.btn.danger{background:linear-gradient(135deg,#ef4444,#b91c1c);box-shadow:0 4px 20px rgba(239,68,68,.25)}
+.btn.success{background:linear-gradient(135deg,#10b981,#047857);box-shadow:0 4px 20px rgba(16,185,129,.25)}
+
+/* ---------- cards ---------- */
+.card{
+  background:var(--card); border:1px solid var(--line); border-radius:16px;
+  padding:16px; margin-bottom:12px; box-shadow:0 6px 24px rgba(0,0,0,.25);
+}
+
+/* ---------- app frame ---------- */
+.mgr-topbar{
+  position:sticky;top:0;z-index:50;
+  display:flex;align-items:center;gap:12px;
+  padding:calc(10px + env(safe-area-inset-top)) 16px 10px;
+  background:rgba(26,13,24,.9); backdrop-filter:blur(16px) saturate(1.4); -webkit-backdrop-filter:blur(16px) saturate(1.4);
+  border-bottom:1px solid var(--line);
+}
+.mgr-top-brand{display:flex;align-items:center;gap:10px;min-width:0}
+.mgr-top-brand img{width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid var(--pink);box-shadow:0 0 12px rgba(255,92,158,.45)}
+.mgr-top-brand b{font-size:17px;font-weight:900;white-space:nowrap}
+.mgr-top-actions{margin-left:auto;display:flex;gap:8px;flex-shrink:0}
+.mgr-top-btn{
+  min-height:42px;padding:9px 16px;border-radius:999px;border:none;cursor:pointer;
+  font:inherit;font-size:14px;font-weight:800;color:#fff;
+  background:linear-gradient(135deg,var(--pink),#ff8fab); box-shadow:0 4px 16px rgba(255,92,158,.3);
+}
+.mgr-top-btn.ghost{background:transparent;color:var(--muted);box-shadow:inset 0 0 0 1px var(--line);font-weight:600}
+.mgr-shell{display:grid;grid-template-columns:256px minmax(0,1fr);min-height:calc(100dvh - var(--topbar-h))}
+.mgr-side{
+  background:#150a12;border-right:1px solid var(--line);padding:14px 12px 18px;
+  position:sticky;top:calc(var(--topbar-h) + env(safe-area-inset-top));height:calc(100dvh - var(--topbar-h) - env(safe-area-inset-top));overflow-y:auto;
+  display:flex;flex-direction:column;gap:2px;
+}
+.mgr-side-user{font-size:13px;color:var(--muted);padding:2px 8px 12px;border-bottom:1px solid var(--line);margin-bottom:10px}
+.mgr-side-user b{color:var(--text)}
+#mgr-nav{display:flex;flex-direction:column;gap:2px}
+.mgr-nav-h{
+  font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);padding:14px 10px 5px;
+}
+.mgr-nav-group:first-child .mgr-nav-h{padding-top:2px}
+#mgr-nav button{
+  display:flex;align-items:center;gap:9px;width:100%;min-height:44px;
+  text-align:left;background:transparent;border:none;color:var(--text);
+  font:inherit;font-size:14.5px;font-weight:600;padding:9px 10px;border-radius:11px;cursor:pointer;
+}
+#mgr-nav button:hover{background:rgba(255,92,158,.12)}
+#mgr-nav button.active{
+  background:linear-gradient(135deg, rgba(255,92,158,.30), rgba(139,92,246,.24));
+  box-shadow:inset 0 0 0 1px rgba(255,92,158,.45);
+}
+#mgr-nav button .nav-ic{font-size:16px;width:22px;text-align:center;flex-shrink:0}
+#mgr-nav button .nav-tx{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.unread-badge{
+  background:var(--pink);color:#fff;font-size:11.5px;font-weight:800;
+  min-width:21px;height:21px;border-radius:11px;padding:0 6px;
+  display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.mgr-main{padding:22px 26px 60px;width:100%;max-width:1060px;margin:0 auto;min-width:0}
+.mgr-h{font-size:22px;font-weight:800;margin:2px 0 16px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--card);border:1px solid rgba(255,179,199,.16);border-radius:14px;padding:14px}
+.stat .n{font-size:24px;font-weight:800}
+.stat .l{font-size:12px;color:var(--muted);margin-top:2px}
+.empty{text-align:center;color:var(--muted);padding:40px 20px}
+.empty .big{font-size:44px;margin-bottom:10px}
+#toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:999;
+  background:#3a1a2c;color:var(--text);border:1px solid var(--pink);
+  padding:11px 18px;border-radius:999px;font-weight:700;font-size:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.5);max-width:92vw;text-align:center;
+}
+
+/* phones: rail becomes a thumb-friendly chip bar under the top bar */
+@media (max-width:860px){
+  .mgr-shell{grid-template-columns:1fr}
+  .mgr-side{
+    position:sticky;top:calc(var(--topbar-h) + env(safe-area-inset-top));height:auto;z-index:40;
+    padding:8px 10px;border-right:none;border-bottom:1px solid var(--line);
+    background:rgba(21,10,18,.96);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  }
+  .mgr-side-user{display:none}
+  #mgr-nav{flex-direction:row;overflow-x:auto;gap:6px;padding-bottom:2px;scrollbar-width:none}
+  #mgr-nav::-webkit-scrollbar{display:none}
+  .mgr-nav-group{display:contents}
+  .mgr-nav-h{display:none}
+  #mgr-nav button{
+    width:auto;flex:0 0 auto;min-height:40px;padding:8px 13px;border-radius:999px;
+    background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px var(--line);
+  }
+  #mgr-nav button.active{background:linear-gradient(135deg, rgba(255,92,158,.85), rgba(224,68,124,.85));box-shadow:0 4px 14px rgba(255,92,158,.35)}
+  .mgr-main{padding:16px 12px 50px}
+  .mgr-top-brand b{font-size:16px}
+}
+@media (min-width:900px){
+  .stat-grid{grid-template-columns:repeat(4,1fr);gap:14px}
+  .stat{padding:18px}
+  .stat .n{font-size:26px}
+}
+</style>
 <link rel="stylesheet" href="/manager/manager.css">
 </head>
 <body>
