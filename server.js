@@ -786,6 +786,31 @@ addColumnIfMissing('users', 'guide_video_sent_at', 'TEXT');
 // ships, the stamp stays NULL; once the file lands, the boot sweep
 // delivers it to every model missing the stamp.
 addColumnIfMissing('users', 'ath_video_sent_at', 'TEXT');
+
+// ID-verification step MESSAGE — lands in her admin thread behind the
+// ATH video DM, for genuinely NEW model signups only. Everyone who
+// already has an account when this ships is pre-stamped at migration
+// (same discipline as welcomed_at above): the boot sweep must never
+// retro-blast existing models with a "finish setting up" message.
+(function () {
+  const cols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
+  if (!cols.includes('id_verify_msg_sent_at')) {
+    db.exec('ALTER TABLE users ADD COLUMN id_verify_msg_sent_at TEXT');
+    db.exec("UPDATE users SET id_verify_msg_sent_at = datetime('now')");
+  }
+})();
+
+// Affiliate-program MESSAGE — same discipline as the ID-verification
+// stamp above: lands behind the ID DM in a NEW model's admin thread.
+// Pre-stamped for every account that exists when this ships, so the
+// boot sweep only ever reaches genuinely new signups.
+(function () {
+  const cols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
+  if (!cols.includes('affiliate_msg_sent_at')) {
+    db.exec('ALTER TABLE users ADD COLUMN affiliate_msg_sent_at TEXT');
+    db.exec("UPDATE users SET affiliate_msg_sent_at = datetime('now')");
+  }
+})();
 db.exec(`
 CREATE TABLE IF NOT EXISTS name_change_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1507,6 +1532,11 @@ function createUser(username, password, role, displayName, dob, language) {
     try { sendModelGuideVideo(Number(info.lastInsertRowid)); } catch (e) { /* boot sweep retries */ }
     // And the add-to-home-screen video — sent only once the video file exists.
     try { sendModelHomeScreenVideo(Number(info.lastInsertRowid)); } catch (e) { /* boot sweep retries */ }
+    // And the ID-verification step — the last setup gate (going live +
+    // payouts stay locked until her ID is approved).
+    try { sendModelIdVerify(Number(info.lastInsertRowid)); } catch (e) { /* boot sweep retries */ }
+    // And the affiliate program — earn 20% recruiting other models.
+    try { sendModelAffiliate(Number(info.lastInsertRowid)); } catch (e) { /* boot sweep retries */ }
   }
   return Number(info.lastInsertRowid);
 }
@@ -1779,6 +1809,129 @@ function sendPendingModelHomeScreenVideos() {
 }
 
 /* ------------------------------------------------------------------ */
+/* ID-verification step message — the last welcome DM, same admin     */
+/* thread. Signup does NOT require ID verification, but her approval  */
+/* gates going live (POST /api/live/start) and payouts — this DM      */
+/* tells her exactly that, with the real in-app path: the ⚙️ Settings */
+/* tab, where the "🪪 ID Verification" card sits right at the top of  */
+/* Model Settings (ID front / ID back / Selfie holding ID, Submit).   */
+/*                                                                    */
+/* NEW SIGNUPS ONLY: the id_verify_msg_sent_at column is pre-stamped  */
+/* for every account that exists when this ships (migration above),   */
+/* so the boot sweep below can only ever reach models created after   */
+/* the deploy — never a retro blast. Gated on the announcement print  */
+/* existing on disk (same discipline as the guide video): until the  */
+/* print ships, nothing is sent and the stamp stays NULL. The print   */
+/* URL rides on its own line at the end of the DM.                    */
+/* ------------------------------------------------------------------ */
+const ID_VERIFY_IMG_FILE = path.join(__dirname, 'public', 'img', 'id-verify-announce.png');
+const ID_VERIFY_IMG_URL = 'https://slutcamp.app/img/id-verify-announce.png';
+const MODEL_ID_VERIFY = {
+  en: `Welcome to SlutCamp 💋 One last step to finish setting up: verify your ID — it's what unlocks going live and getting paid. It takes 2 minutes right in the app: Settings → 🪪 ID Verification (the card right at the top). Snap your ID + a quick selfie and you're done — we approve fast. 👑
+${ID_VERIFY_IMG_URL}`,
+  es: `Bienvenida a SlutCamp 💋 Un último paso para terminar de configurarte: verifica tu ID — es lo que desbloquea salir en vivo y cobrar. Toma 2 minutos en la app: Ajustes → 🪪 ID Verification (la tarjeta que está arriba de todo). Toma una foto de tu ID + una selfie rápida y listo — aprobamos rápido. 👑
+${ID_VERIFY_IMG_URL}`,
+  pt: `Bem-vinda à SlutCamp 💋 Um último passo para terminar de configurar: verifique seu documento — é o que desbloqueia entrar ao vivo e receber. Leva 2 minutos no app: Configurações → 🪪 ID Verification (o cartão bem no topo). Tire uma foto do seu documento + uma selfie rápida e pronto — aprovamos rápido. 👑
+${ID_VERIFY_IMG_URL}`,
+};
+
+function sendModelIdVerify(modelUserId) {
+  const m = db.prepare("SELECT id, display_name, language, id_verify_msg_sent_at FROM users WHERE id = ? AND role = 'model'")
+    .get(modelUserId);
+  if (!m || m.id_verify_msg_sent_at) return false;
+  if (!fs.existsSync(ID_VERIFY_IMG_FILE)) return false; // print not shipped yet — stay unstamped
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin || admin.id === m.id) return false;
+  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
+  if (!conv) {
+    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
+    conv = { id: Number(info.lastInsertRowid) };
+  }
+  const text = MODEL_ID_VERIFY[m.language] || MODEL_ID_VERIFY.en;
+  db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+    .run(conv.id, admin.id, text);
+  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+  db.prepare("UPDATE users SET id_verify_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
+  try {
+    notifyUser(m.id, 'id_verify', '🪪 One last step: verify your ID',
+      'It unlocks going live and getting paid — 2 minutes in Settings 💋', '');
+  } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+  return true;
+}
+
+/* Boot sweep: only post-deploy signups can be unstamped (see the
+   migration pre-stamp), so this delivers the DM to genuinely new
+   models whose signup-time send failed — never to existing models. */
+function sendPendingModelIdVerifies() {
+  if (!fs.existsSync(ID_VERIFY_IMG_FILE)) return; // print not shipped yet
+  const rows = db.prepare("SELECT id FROM users WHERE role = 'model' AND id_verify_msg_sent_at IS NULL").all();
+  for (const r of rows) { try { sendModelIdVerify(r.id); } catch (e) { /* retry next boot */ } }
+}
+
+/* ------------------------------------------------------------------ */
+/* Affiliate-program message — the final welcome DM, lands right      */
+/* behind the ID-verification DM in the same admin thread.            */
+/*                                                                    */
+/* How the program really works (surveyed, not invented): recruiting  */
+/* runs on a separate 'recruiter' account. Admin issues her a         */
+/* one-time affiliate invite (Manager → Invites, role 'recruiter');   */
+/* she signs up at /#affiliate/<code>, accepts the recruiter          */
+/* agreement, and gets a recruiters row with a personal referral      */
+/* code — her recruiting link is /#join/<code>, shown on her          */
+/* recruiter dashboard. Models who join through it are attributed to  */
+/* her (models.recruiter_id) and she earns 20% — her cut comes out    */
+/* of the platform's share; the recruited model keeps her full cut    */
+/* (recruiter agreement §4; splitPayment pays recruiters half the     */
+/* platform slice). A MODEL account has NO self-serve path to a       */
+/* link — so this DM's call-to-action is the real one: reply in this  */
+/* thread and admin sets her up. Same newness gate as the ID DM: the  */
+/* affiliate_msg_sent_at column is pre-stamped for every account      */
+/* that exists when this ships — new signups only, never a blast.     */
+/* ------------------------------------------------------------------ */
+const AFFILIATE_IMG_FILE = path.join(__dirname, 'public', 'img', 'affiliate-program-announce.png');
+const AFFILIATE_IMG_URL = 'https://slutcamp.app/img/affiliate-program-announce.png';
+const MODEL_AFFILIATE = {
+  en: `💰 One more way to make money here: our affiliate program. Recruit other models onto SlutCamp with your personal link, and you'll make 20% of everything those models make. It's that simple: they earn, you earn. Interested? Reply right here and we'll send your affiliate signup link and set up your personal recruiting link. If you have any questions, let me know. 💋
+${AFFILIATE_IMG_URL}`,
+  es: `💰 Otra forma de ganar dinero aquí: nuestro programa de afiliadas. Recluta a otras modelos en SlutCamp con tu enlace personal y ganarás el 20% de todo lo que esas modelos ganen. Así de simple: ellas ganan, tú ganas. ¿Te interesa? Responde aquí mismo y te enviamos tu enlace de registro de afiliada y configuramos tu enlace personal de reclutamiento. Si tienes preguntas, avísame. 💋
+${AFFILIATE_IMG_URL}`,
+  pt: `💰 Outra forma de ganhar dinheiro aqui: nosso programa de afiliadas. Recrute outras modelos para a SlutCamp com seu link pessoal e você ganha 20% de tudo que essas modelos ganharem. É simples assim: elas ganham, você ganha. Quer participar? Responda aqui mesmo e enviamos seu link de cadastro de afiliada e configuramos seu link pessoal de recrutamento. Se tiver dúvidas, é só me chamar. 💋
+${AFFILIATE_IMG_URL}`,
+};
+
+function sendModelAffiliate(modelUserId) {
+  const m = db.prepare("SELECT id, display_name, language, affiliate_msg_sent_at FROM users WHERE id = ? AND role = 'model'")
+    .get(modelUserId);
+  if (!m || m.affiliate_msg_sent_at) return false;
+  if (!fs.existsSync(AFFILIATE_IMG_FILE)) return false; // print not shipped yet — stay unstamped
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin || admin.id === m.id) return false;
+  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
+  if (!conv) {
+    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
+    conv = { id: Number(info.lastInsertRowid) };
+  }
+  const text = MODEL_AFFILIATE[m.language] || MODEL_AFFILIATE.en;
+  db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+    .run(conv.id, admin.id, text);
+  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+  db.prepare("UPDATE users SET affiliate_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
+  try {
+    notifyUser(m.id, 'affiliate_program', '💰 Make money bringing models',
+      'Earn 20% of everything your recruited models make — reply here for your link 💋', '');
+  } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+  return true;
+}
+
+/* Boot sweep: only post-deploy signups can be unstamped (migration
+   pre-stamp), so this only ever retries genuinely new models. */
+function sendPendingModelAffiliates() {
+  if (!fs.existsSync(AFFILIATE_IMG_FILE)) return; // print not shipped yet
+  const rows = db.prepare("SELECT id FROM users WHERE role = 'model' AND affiliate_msg_sent_at IS NULL").all();
+  for (const r of rows) { try { sendModelAffiliate(r.id); } catch (e) { /* retry next boot */ } }
+}
+
+/* ------------------------------------------------------------------ */
 /* Game Category launch announcement — ONE-TIME broadcast to every    */
 /* model, same admin-thread DM pattern as the guide/ATH videos. The   */
 /* stamp lives on platform_stats (game_category_announced_at): once   */
@@ -1897,6 +2050,8 @@ sendPendingModelWelcomes();
 sendPendingModelGuides();
 sendPendingModelGuideVideos();
 sendPendingModelHomeScreenVideos();
+sendPendingModelIdVerifies();
+sendPendingModelAffiliates();
 try { const n = announceGameCategoryToModels(); if (n) console.log(`[game] Category announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceAgreement12ToModels(); if (n) console.log(`[contract] Agreement v1.2 announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 
