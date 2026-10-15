@@ -1410,8 +1410,9 @@ function wireAdminBody(tab) {
   document.querySelectorAll('[data-m-del]').forEach((b) => {
     b.onclick = async () => {
       if (!confirm('Remove this model permanently?')) return;
-      await api(`/admin/models/${b.dataset.mDel}`, { method: 'DELETE' });
-      M.reload();
+      const { status, data } = await api(`/admin/models/${b.dataset.mDel}`, { method: 'DELETE' });
+      if (status === 200 && data && data.ok) { toast('🗑 Model removed.'); M.reload(); }
+      else toast((data && data.message) || 'Remove failed — please try again.');
     };
   });
   document.querySelectorAll('[data-m-photo]').forEach((b) => {

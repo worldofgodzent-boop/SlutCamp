@@ -7564,8 +7564,93 @@ app.post('/api/admin/models/:id/reset-password', ...adminOnly, (req, res) => {
 app.delete('/api/admin/models/:id', ...adminOnly, (req, res) => {
   const u = db.prepare(`SELECT * FROM users WHERE id = ? AND role = 'model'`).get(req.params.id);
   if (!u) return res.status(404).json({ error: 'not_found' });
-  db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
-  res.json({ ok: true });
+  const uid = u.id;
+  const tableExists = (t) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?").get(t);
+  const countWhere = (t, c, val) => tableExists(t)
+    ? db.prepare(`SELECT COUNT(*) AS n FROM ${t} WHERE ${c} = ?`).get(val).n : 0;
+  try {
+    // ---- MONEY IS SACRED (owner rule: "Never delete the money") ----
+    // Any earnings/payment history refuses the removal WHOLE — the account
+    // stays fully intact and the Manager steers the admin to Deactivate.
+    const MONEY_REFS = [
+      ['transactions', ['model_id', 'fan_id']],
+      ['withdrawals', ['model_id']],
+      ['refunds', ['model_id', 'user_id']],
+      ['bookings', ['model_id', 'fan_id']],
+      ['calls', ['model_id', 'fan_id']],
+      ['facetime_requests', ['model_id', 'fan_id']],
+      ['game_requests', ['model_id', 'fan_id']],
+      ['gift_sends', ['model_id', 'fan_id']],
+      ['tip_sends', ['model_id', 'fan_id']],
+      ['purchase_attempts', ['user_id']],
+      ['crypto_invoices', ['user_id']],
+      ['ccbill_orders', ['user_id']],
+    ];
+    let moneyHits = 0;
+    for (const [t, cols] of MONEY_REFS) for (const c of cols) moneyHits += countWhere(t, c, uid);
+    // Her wallet's lifetime counters are money history too.
+    if (tableExists('wallets')) {
+      const w = db.prepare('SELECT credits_cents, earnings_cents, paid_out_cents FROM wallets WHERE user_id = ?').get(uid);
+      if (w && (w.credits_cents || w.earnings_cents || w.paid_out_cents)) moneyHits++;
+    }
+    // Money hanging off her live sessions (gifts / paid priority messages).
+    for (const t of ['gift_events', 'priority_messages']) {
+      if (tableExists(t) && tableExists('live_sessions')) {
+        moneyHits += db.prepare(
+          `SELECT COUNT(*) AS n FROM ${t} WHERE session_id IN (SELECT id FROM live_sessions WHERE model_id = ?)`).get(uid).n;
+      }
+    }
+    // Her recruiter commissions live on OTHER models' transactions.
+    const rec = tableExists('recruiters') ? db.prepare('SELECT id FROM recruiters WHERE user_id = ?').get(uid) : null;
+    if (rec) moneyHits += countWhere('transactions', 'recruiter_id', rec.id);
+    if (moneyHits > 0) {
+      return res.status(409).json({ error: 'has_money_history',
+        message: `${u.display_name} has earnings/payment history, so she can't be removed — Deactivate her instead. Money records are never deleted.` });
+    }
+
+    // ---- Enumerate every column in the LIVE schema that points at users ----
+    // Declared FKs (PRAGMA foreign_key_list) UNION legacy user columns that
+    // predate FK declarations (notifications.user_id, follows.*, …), so the
+    // list is drawn from the schema itself and can never rot. Money tables
+    // are excluded from the sweep as defense-in-depth (the guard above has
+    // already proven zero rows reference her there).
+    const moneyTables = new Set(MONEY_REFS.map(([t]) => t));
+    const pairs = new Map();
+    const allTables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> 'users'").all().map(r => r.name);
+    for (const t of allTables) {
+      if (moneyTables.has(t)) continue;
+      for (const fk of db.prepare(`PRAGMA foreign_key_list(${t})`).all())
+        if (fk.table === 'users') pairs.set(`${t}.${fk.from}`, { t, c: fk.from });
+      for (const col of db.prepare(`PRAGMA table_info(${t})`).all())
+        if (['user_id', 'model_id', 'fan_id', 'sender_id'].includes(col.name)) pairs.set(`${t}.${col.name}`, { t, c: col.name });
+    }
+
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      // Cross-references BETWEEN her child rows (messages in her threads,
+      // calls on her bookings, …) resolve at COMMIT, so sweep order is free.
+      db.exec('PRAGMA defer_foreign_keys = ON');
+      // Her conversation threads go entirely — including the OTHER side's
+      // messages/media in them (a thread belongs to her account).
+      const convIds = db.prepare('SELECT id FROM conversations WHERE fan_id = ? OR model_id = ?').all(uid, uid).map(r => r.id);
+      if (convIds.length) {
+        const ph = convIds.map(() => '?').join(',');
+        for (const t of ['messages', 'media_items', 'safety_incidents'])
+          if (tableExists(t)) db.prepare(`DELETE FROM ${t} WHERE conversation_id IN (${ph})`).run(...convIds);
+      }
+      for (const { t, c } of pairs.values())
+        db.prepare(`DELETE FROM ${t} WHERE ${c} = ?`).run(uid);
+      db.prepare('DELETE FROM users WHERE id = ?').run(uid);
+      db.exec('COMMIT');
+    } catch (e) {
+      try { db.exec('ROLLBACK'); } catch (_) { /* already rolled back */ }
+      throw e;
+    }
+    deleteUserSessions(uid);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'delete_failed', message: 'Remove failed: ' + e.message });
+  }
 });
 
 // Admin sets a model's profile photo
