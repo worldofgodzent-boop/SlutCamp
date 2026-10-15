@@ -4083,6 +4083,34 @@ function syncChatComposer() {
   pill.classList.toggle('grown', sh > 42);
 }
 
+/* Tab bar vanishes while any sheet/modal flow is open (chat "+" Send sheet,
+   PPV price sheet, voice recorder, gift/tip/FaceTime/booking sheets…) and
+   pops back the moment it closes. A MutationObserver catches EVERY open and
+   close path (send, cancel, backdrop tap, programmatic remove), so the state
+   can never desync; leaving a view removes the sheet node, which restores
+   the bar too. Sheets are: .sheet-backdrop modals, the chat #action-sheet,
+   and the fixed overlays #ppv-price-overlay / #voice-ov / #tip-ov / #paywall.
+   Note: the closed #action-sheet keeps a stale .sheet-backdrop child inside
+   it, so backdrop nodes nested in #action-sheet are only counted while the
+   action sheet itself is unhidden. */
+function syncSheetState() {
+  let open = !!document.querySelector(
+    '#ppv-price-overlay, #voice-ov, #tip-ov, #paywall');
+  if (!open) {
+    const as = $('#action-sheet');
+    open = !!as && !as.classList.contains('hidden');
+  }
+  if (!open) {
+    open = [...document.querySelectorAll('.sheet-backdrop')]
+      .some((el) => !el.closest('#action-sheet'));
+  }
+  document.body.classList.toggle('sheet-open', open);
+}
+if (window.MutationObserver) {
+  new MutationObserver(syncSheetState).observe(document.body,
+    { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+}
+
 async function sendMessage() {
   const input = $('#c-input');
   const text = input.value.trim();
