@@ -636,6 +636,19 @@ CREATE TABLE IF NOT EXISTS bookings (
 CREATE INDEX IF NOT EXISTS idx_bookings_model ON bookings(model_id, status, scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_bookings_fan ON bookings(fan_id, status, scheduled_at);
 
+-- Model's weekly 1-on-1 availability windows (America/Chicago wall clock;
+-- one window per weekday in v1) + per-day / per-week booking caps live on
+-- the models row (bookings_day_cap / bookings_week_cap, NULL = no limit).
+CREATE TABLE IF NOT EXISTS model_availability (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  model_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  weekday   INTEGER NOT NULL CHECK(weekday BETWEEN 0 AND 6),
+  start_min INTEGER NOT NULL,
+  end_min   INTEGER NOT NULL,
+  UNIQUE(model_id, weekday)
+);
+CREATE INDEX IF NOT EXISTS idx_avail_model ON model_availability(model_id);
+
 -- Model's recurring weekly PUBLIC live schedule (e.g. Fridays 8pm)
 CREATE TABLE IF NOT EXISTS live_schedule (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -699,6 +712,19 @@ addColumnIfMissing('models', 'explicit_mic_join_cents', 'INTEGER NOT NULL DEFAUL
 addColumnIfMissing('models', 'join_cents', 'INTEGER NOT NULL DEFAULT 1000');
 addColumnIfMissing('models', 'mic_join_cents', 'INTEGER NOT NULL DEFAULT 500');
 addColumnIfMissing('calls', 'booking_id', 'INTEGER REFERENCES bookings(id)');
+// 1-on-1 slot bookings (Oct 15, 2026): availability caps on the model row;
+// bookings.kind separates instant slot bookings ('slot', confirmed on pay)
+// from the legacy ask-and-approve flow ('request'). Presence stamps drive
+// no-show resolution; reminded_* stamps dedupe the T-3d / T-3h / T-15m
+// model reminder sweep structurally (one send per threshold, ever).
+addColumnIfMissing('models', 'bookings_day_cap', 'INTEGER');
+addColumnIfMissing('models', 'bookings_week_cap', 'INTEGER');
+addColumnIfMissing('bookings', 'kind', "TEXT NOT NULL DEFAULT 'request'");
+addColumnIfMissing('bookings', 'model_present', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('bookings', 'fan_present', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('bookings', 'reminded_3d', 'TEXT');
+addColumnIfMissing('bookings', 'reminded_3h', 'TEXT');
+addColumnIfMissing('bookings', 'reminded_15m', 'TEXT');
 addColumnIfMissing('platform_stats', 'explicit_entry_cents', 'INTEGER NOT NULL DEFAULT 499');
 addColumnIfMissing('platform_stats', 'admin_phone', 'TEXT');
 addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0');
@@ -4190,6 +4216,7 @@ function billCallMinute(callId) {
       balance_cents: getWallet(call.fan_id).credits_cents });
     pushToSubject(`u:${call.model_id}`, { type: 'call:tick', call_id: callId,
       minutes_billed: upd.minutes_billed, remaining_min: remaining, prepaid: true });
+    ftRefreshQueueEtas(call.model_id);
     if (remaining <= 0) endCall(callId, 'time_up');
     return;
   }
@@ -4316,11 +4343,27 @@ function ftPublic(reqRow) {
     position: pe.position, eta_min: pe.eta_min, created_at: reqRow.created_at };
 }
 function ftPushFan(reqRow, extra = {}) {
+  const pub = ftPublic(reqRow);
   pushToSubject(`u:${reqRow.fan_id}`, { type: 'facetime:update',
-    request: ftPublic(reqRow), ...extra });
+    request: pub, ...extra });
+  // Queue-shaped mirror event: the waiting card keys off this for
+  // position/ETA refreshes (same payload as facetime:update).
+  pushToSubject(`u:${reqRow.fan_id}`, { type: 'queue:update', request: pub });
+}
+/* Per-minute ETA refresh for everyone waiting on this model (called from
+   the call billing tick; a no-op unless somebody is actually queued). */
+function ftRefreshQueueEtas(modelId) {
+  const any = db.prepare(`SELECT id FROM facetime_requests
+    WHERE model_id = ? AND status = 'queued' LIMIT 1`).get(modelId);
+  if (any) ftPushQueue(modelId);
 }
 function ftPushQueue(modelId) {
-  for (const q of ftQueueState(modelId).queued) ftPushFan(q);
+  const st = ftQueueState(modelId);
+  for (const q of st.queued) ftPushFan(q);
+  // Her live view of the line: invited head + everyone queued, in order.
+  const line = [...(st.invited ? [st.invited] : []), ...st.queued];
+  pushToSubject(`u:${modelId}`, { type: 'facetime:queue',
+    requests: line.map(ftPublic) });
 }
 function ftFinish(reqRow, status, refundNote) {
   db.prepare(`UPDATE facetime_requests SET status = ?,
@@ -4330,6 +4373,7 @@ function ftFinish(reqRow, status, refundNote) {
   const fresh = ftGet(reqRow.id);
   ftPushFan(fresh);
   pushToSubject(`u:${reqRow.model_id}`, { type: 'facetime:update', request: ftPublic(fresh) });
+  ftPushQueue(reqRow.model_id);
   return fresh;
 }
 function ftPromote(modelId) {
@@ -4341,6 +4385,7 @@ function ftPromote(modelId) {
     .run(Date.now() + FT_INVITE_WINDOW_MS, next.id);
   const fresh = ftGet(next.id);
   ftPushFan(fresh);
+  pushToSubject(`u:${fresh.fan_id}`, { type: 'queue:your_turn', request: ftPublic(fresh) });
   notifyUser(fresh.fan_id, 'facetime', '📹 Your turn!',
     `${fresh.model_name} is ready for your FaceTime — join in the next 90 seconds or the spot passes on.`,
     '/#chat');
@@ -4394,6 +4439,15 @@ app.post('/api/facetime/request', identMiddleware, requireUser, requireRole('fan
   const dup = db.prepare(`SELECT id FROM facetime_requests WHERE fan_id = ? AND model_id = ?
     AND status IN ('pending','queued','invited','in_call')`).get(req.user.id, row.id);
   if (dup) return res.status(409).json({ error: 'already_requested', request_id: dup.id });
+  // One line at a time: a fan already waiting (or in a call) with another
+  // model can't join a second queue until he finishes or cancels that one.
+  const elsewhere = db.prepare(`SELECT fr.id, u.display_name AS mname
+    FROM facetime_requests fr JOIN users u ON u.id = fr.model_id
+    WHERE fr.fan_id = ? AND fr.model_id != ?
+    AND fr.status IN ('pending','queued','invited','in_call') LIMIT 1`)
+    .get(req.user.id, row.id);
+  if (elsewhere) return res.status(409).json({ error: 'already_in_line',
+    message: `You're already in line with ${elsewhere.mname} — finish or cancel that one first.` });
   const amount = duration * row.per_minute_cents;
   if (getWallet(req.user.id).credits_cents < amount)
     return res.status(402).json({ error: 'insufficient_credits', needed_cents: amount,
@@ -4418,6 +4472,27 @@ app.get('/api/facetime/mine', identMiddleware, requireUser, requireRole('fan'), 
   const r = db.prepare(`SELECT * FROM facetime_requests WHERE fan_id = ?
     AND status IN ('pending','queued','invited','in_call') ORDER BY id DESC LIMIT 1`).get(req.user.id);
   res.json({ request: r ? ftPublic(r) : null });
+});
+
+// The fan's waiting state, restorable after he browses away and returns:
+// his request (with position + ETA) plus how much humanity is ahead of him.
+app.get('/api/facetime/queue/me', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const r = db.prepare(`SELECT * FROM facetime_requests WHERE fan_id = ?
+    AND status IN ('pending','queued','invited','in_call') ORDER BY id DESC LIMIT 1`).get(req.user.id);
+  if (!r) return res.json({ request: null, ahead_count: 0, ahead_minutes: 0,
+    active_call_remaining_min: 0 });
+  const pub = ftPublic(r);
+  let aheadCount = 0, aheadMinutes = 0;
+  if (r.status === 'queued') {
+    const { queued, invited } = ftQueueState(r.model_id);
+    if (invited) { aheadCount += 1; aheadMinutes += invited.duration_min; }
+    for (const q of queued) {
+      if (q.id === r.id) break;
+      aheadCount += 1; aheadMinutes += q.duration_min;
+    }
+  }
+  res.json({ request: pub, ahead_count: aheadCount, ahead_minutes: aheadMinutes,
+    active_call_remaining_min: ftCallRemainingMin(ftActiveCall(r.model_id)) });
 });
 
 app.get('/api/facetime/incoming', identMiddleware, requireUser, requireRole('model'), (req, res) => {
@@ -6035,28 +6110,259 @@ function bookingFor(b, userId) {
     id: b.id, model_id: b.model_id, fan_id: b.fan_id,
     scheduled_at: b.scheduled_at, duration_min: b.duration_min,
     total_cents: b.total_cents, rate_cents: b.rate_cents,
-    status: b.status, created_at: b.created_at, decided_at: b.decided_at,
+    status: b.status, kind: b.kind || 'request',
+    created_at: b.created_at, decided_at: b.decided_at,
     other_name: u ? u.display_name : '?', other_photo_url: photo_url,
     is_fan_side: isFan,
   };
 }
 
-// No-show: approved booking, model never started within 15 min of scheduled time
-function checkNoShow(b) {
-  if (!b || b.status !== 'approved') return b;
-  if (Date.now() > b.scheduled_at + BOOKING_NOSHOW_MIN * 60 * 1000) {
-    db.prepare(`UPDATE bookings SET status = 'no_show', decided_at = datetime('now') WHERE id = ?`)
-      .run(b.id);
-    refundFan(b.fan_id, b.model_id, b.total_cents, 'booking_no_show',
-      `📅 Booking #${b.id} no-show — model never started, refunded`);
-    pushToUser(b.fan_id, { type: 'booking:no_show', booking_id: b.id,
-      refunded_cents: b.total_cents,
-      balance_cents: getWallet(b.fan_id).credits_cents });
-    pushToUser(b.model_id, { type: 'booking:no_show', booking_id: b.id });
-    return db.prepare('SELECT * FROM bookings WHERE id = ?').get(b.id);
-  }
-  return b;
+/* ------------------------------------------------------------------ */
+/* Slot bookings (Oct 15, 2026): the model publishes weekly 1-on-1     */
+/* windows (America/Chicago) + optional per-day / per-week caps. Fans  */
+/* see 30-min start slots for the next 14 days; first fan to pay owns  */
+/* the slot (status 'booked' — confirmed instantly, no approve step).  */
+/* Week convention: Sunday–Saturday (matches JS getDay() and the       */
+/* app's Sun-first day lists). Money flows through the same 'booking'   */
+/* charge / refundFan paths as the legacy request flow.                */
+/* ------------------------------------------------------------------ */
+const SLOT_DURATIONS = [10, 15, 30];
+const SLOT_MAX_DAYS = 14;
+const SLOT_LEAD_MIN = 60;
+const SLOT_FAN_CANCEL_HOURS = 2;
+const CONFIRMED_BOOKING = `('booked','approved','in_progress')`;
+
+function httpErr(status, error, message) {
+  const e = new Error(message || error);
+  e.httpStatus = status; e.errCode = error;
+  return e;
 }
+
+/* --- America/Chicago calendar helpers (DST-safe via Intl) --- */
+const CHI_TZ = 'America/Chicago';
+const _chiPartsFmt = new Intl.DateTimeFormat('en-US', { timeZone: CHI_TZ,
+  year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
+function chiParts(ms) {
+  const p = Object.fromEntries(_chiPartsFmt.formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+  return { year: +p.year, month: +p.month, day: +p.day,
+           hour: (+p.hour) % 24, minute: +p.minute, second: +p.second };
+}
+function chiDateStr(ms) {
+  const p = chiParts(ms);
+  return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+}
+function chiOffsetMs(ms) {
+  const p = chiParts(ms);
+  return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second)
+    - Math.floor(ms / 1000) * 1000;
+}
+function chiMidnightMs(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  let guess = Date.UTC(y, m - 1, d, 6, 0, 0);
+  for (let i = 0; i < 3; i++) guess = Date.UTC(y, m - 1, d) - chiOffsetMs(guess);
+  return guess;
+}
+function chiWeekdayOfDateStr(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+function dateStrAdd(dateStr, n) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+function chiWeekStartStr(dateStr) { // Sunday of this Chicago week
+  return dateStrAdd(dateStr, -chiWeekdayOfDateStr(dateStr));
+}
+function chiWhenLabel(ms) {
+  return new Intl.DateTimeFormat('en-US', { timeZone: CHI_TZ, weekday: 'long',
+    hour: 'numeric', minute: '2-digit' }).format(new Date(ms)) + ' CT';
+}
+
+function confirmedBookings(modelId) {
+  return db.prepare(`SELECT * FROM bookings WHERE model_id = ?
+    AND status IN ${CONFIRMED_BOOKING}`).all(modelId);
+}
+function bookingsOverlap(modelId, startMs, endMs, excludeId = 0) {
+  return db.prepare(`SELECT id FROM bookings WHERE model_id = ?
+    AND status IN ${CONFIRMED_BOOKING} AND id != ?
+    AND scheduled_at < ? AND (scheduled_at + duration_min * 60000) > ?
+    LIMIT 1`).get(modelId, excludeId, endMs, startMs);
+}
+function bookingCounts(modelId) {
+  const dayCounts = new Map(), weekCounts = new Map();
+  for (const b of confirmedBookings(modelId)) {
+    const ds = chiDateStr(b.scheduled_at);
+    dayCounts.set(ds, (dayCounts.get(ds) || 0) + 1);
+    const ws = chiWeekStartStr(ds);
+    weekCounts.set(ws, (weekCounts.get(ws) || 0) + 1);
+  }
+  return { dayCounts, weekCounts };
+}
+function modelCaps(modelId) {
+  const m = db.prepare('SELECT bookings_day_cap, bookings_week_cap FROM models WHERE user_id = ?')
+    .get(modelId);
+  return { day_cap: m && m.bookings_day_cap != null ? m.bookings_day_cap : null,
+           week_cap: m && m.bookings_week_cap != null ? m.bookings_week_cap : null };
+}
+
+/* The 14-day fan-facing grid: per Chicago day, her window + 30-min start
+   slots; a slot lists which durations still fit (window end + no overlap
+   + caps not reached). taken = nothing fits anymore. */
+function buildAvailability(modelId, days = SLOT_MAX_DAYS) {
+  const wins = db.prepare('SELECT * FROM model_availability WHERE model_id = ?').all(modelId);
+  const winByDay = new Map(wins.map((w) => [w.weekday, w]));
+  const confirmed = confirmedBookings(modelId);
+  const { dayCounts, weekCounts } = bookingCounts(modelId);
+  const caps = modelCaps(modelId);
+  const now = Date.now();
+  const todayStr = chiDateStr(now);
+  const out = [];
+  for (let i = 0; i < days; i++) {
+    const ds = dateStrAdd(todayStr, i);
+    const wd = chiWeekdayOfDateStr(ds);
+    const win = winByDay.get(wd) || null;
+    const dayFull = caps.day_cap != null && (dayCounts.get(ds) || 0) >= caps.day_cap;
+    const ws = chiWeekStartStr(ds);
+    const weekFull = caps.week_cap != null && (weekCounts.get(ws) || 0) >= caps.week_cap;
+    const slots = [];
+    if (win) {
+      const mid = chiMidnightMs(ds);
+      for (let s = win.start_min; s + SLOT_DURATIONS[0] <= win.end_min; s += 30) {
+        const startMs = mid + s * 60000;
+        if (startMs < now + SLOT_LEAD_MIN * 60000) continue;
+        const free_for = (dayFull || weekFull) ? [] : SLOT_DURATIONS.filter((d) =>
+          s + d <= win.end_min &&
+          !confirmed.some((b) => b.scheduled_at < startMs + d * 60000 &&
+            (b.scheduled_at + b.duration_min * 60000) > startMs));
+        slots.push({ starts_at: new Date(startMs).toISOString(), start_min: s,
+                     free_for, taken: free_for.length === 0 });
+      }
+    }
+    out.push({ date: ds, weekday: wd, has_window: !!win,
+      window: win ? { start_min: win.start_min, end_min: win.end_min } : null,
+      day_full: dayFull, week_full: weekFull,
+      booked_out: !!win && (dayFull || weekFull || slots.every((s) => s.taken)),
+      slots });
+  }
+  return { caps, days: out };
+}
+
+/* Apology DM to a fan from SlutCamp — the admin→fan thread (admin sits in
+   the model seat of a normal conversation; NEVER a fake message from the
+   model in her own thread). Same get-or-create shape as the admin→model
+   inbox pattern. */
+function sendAdminApologyDm(fanId, modelName, totalCents) {
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin || admin.id === fanId) return;
+  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?')
+    .get(fanId, admin.id);
+  if (!conv) {
+    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)')
+      .run(fanId, admin.id);
+    conv = { id: Number(info.lastInsertRowid) };
+  }
+  const amt = '$' + (totalCents / 100).toFixed(2);
+  const body = `We're so sorry 💔 ${modelName} couldn't make your 1-on-1 today — that's on us. ` +
+    `Your ${amt} has been refunded in full to your balance. She'd love to make it up to you — ` +
+    `her latest openings are on her booking calendar 💋`;
+  db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+    .run(conv.id, admin.id, body);
+  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+  try { notifyUser(fanId, 'message', '💬 SlutCamp', body.slice(0, 90), ''); } catch (e) { /* bell is a bonus */ }
+}
+
+function bookingCallStarted(b) {
+  return !!db.prepare(`SELECT id FROM calls WHERE booking_id = ?
+    AND started_at IS NOT NULL LIMIT 1`).get(b.id);
+}
+
+/* No-show resolution: start + 15 min, the call never started → full
+   refund (the standing never-started rule). If the model never showed
+   (never tapped Start / opened the session), the fan also gets the
+   SlutCamp apology DM and she gets the "you missed it" bell. If she
+   showed and he flaked, no apology — just a plain bell to her. */
+function settleBookingNoShow(b) {
+  db.prepare(`UPDATE bookings SET status = 'no_show', decided_at = datetime('now') WHERE id = ?`)
+    .run(b.id);
+  refundFan(b.fan_id, b.model_id, b.total_cents, 'booking_no_show',
+    `📅 Booking #${b.id} never started — refunded in full`);
+  pushToUser(b.fan_id, { type: 'booking:no_show', booking_id: b.id,
+    refunded_cents: b.total_cents,
+    balance_cents: getWallet(b.fan_id).credits_cents });
+  pushToUser(b.model_id, { type: 'booking:no_show', booking_id: b.id });
+  const fan = db.prepare('SELECT display_name FROM users WHERE id = ?').get(b.fan_id);
+  const model = db.prepare('SELECT display_name FROM users WHERE id = ?').get(b.model_id);
+  const fanName = fan ? fan.display_name : 'A fan';
+  const modelName = model ? model.display_name : 'Your model';
+  if (!b.model_present) {
+    sendAdminApologyDm(b.fan_id, modelName, b.total_cents);
+    try { notifyUser(b.model_id, 'booking', '📅 You missed a 1-on-1',
+      `You missed your 1-on-1 with ${fanName} — he was refunded in full.`, '/#bookings'); }
+    catch (e) { /* bell is a bonus */ }
+  } else {
+    try { notifyUser(b.model_id, 'booking', '📅 1-on-1 didn\'t start',
+      `Your 1-on-1 with ${fanName} didn't start — he was refunded in full.`, '/#bookings'); }
+    catch (e) { /* bell is a bonus */ }
+  }
+}
+
+function checkNoShow(b) {
+  if (!b || !['approved', 'booked', 'in_progress'].includes(b.status)) return b;
+  if (Date.now() <= b.scheduled_at + BOOKING_NOSHOW_MIN * 60 * 1000) return b;
+  if (bookingCallStarted(b)) return b;
+  settleBookingNoShow(b);
+  return db.prepare('SELECT * FROM bookings WHERE id = ?').get(b.id);
+}
+
+/* Model reminders at T-3 days / T-3 hours / T-15 minutes (status 'booked'
+   only). Dedupe is structural: the reminded_* stamp is written when the
+   threshold is evaluated, so each threshold can fire at most once per
+   booking, ever. A booking created after a window already opened gets
+   that threshold stamped-but-skipped (she booked late; a "3 days out"
+   ping for a same-day booking would be noise). */
+const BOOKING_REMINDERS = [
+  { col: 'reminded_3d', ms: 3 * 24 * 60 * 60 * 1000, label: 'in 3 days', tail: '' },
+  { col: 'reminded_3h', ms: 3 * 60 * 60 * 1000, label: 'in 3 hours', tail: '' },
+  { col: 'reminded_15m', ms: 15 * 60 * 1000, label: 'in 15 minutes', tail: ' — get ready!' },
+];
+function bookingRemindersSweep() {
+  const now = Date.now();
+  const rows = db.prepare(`SELECT * FROM bookings WHERE status = 'booked'
+    AND scheduled_at > ? ORDER BY scheduled_at`).all(now - 60 * 1000);
+  for (const b of rows) {
+    const createdMs = Date.parse(String(b.created_at).replace(' ', 'T') + 'Z');
+    const fan = db.prepare('SELECT display_name FROM users WHERE id = ?').get(b.fan_id);
+    const fanName = fan ? fan.display_name : 'A fan';
+    for (const r of BOOKING_REMINDERS) {
+      if (b[r.col]) continue;
+      const windowOpens = b.scheduled_at - r.ms;
+      if (now < windowOpens) continue;
+      db.prepare(`UPDATE bookings SET ${r.col} = datetime('now') WHERE id = ?`).run(b.id);
+      b[r.col] = 'sent';
+      if (Number.isFinite(createdMs) && createdMs > windowOpens) continue; // booked after this window opened
+      try {
+        notifyUser(b.model_id, 'booking', '📅 1-on-1 reminder',
+          `📅 Reminder: your 1-on-1 with ${fanName} is ${r.label} — ` +
+          `${chiWhenLabel(b.scheduled_at)}, ${b.duration_min} min${r.tail} 💋`, '/#bookings');
+      } catch (e) { /* bell is a bonus */ }
+    }
+  }
+}
+
+/* One sweep entry for bookings: reminders → no-shows → completions.
+   Runs on a 60s interval and lazily from GET /api/bookings. */
+function runBookingSweeps() {
+  try { bookingRemindersSweep(); } catch (e) { console.error('booking reminders', e); }
+  try {
+    const due = db.prepare(`SELECT * FROM bookings
+      WHERE status IN ('booked','approved','in_progress') AND scheduled_at < ?`)
+      .all(Date.now() - BOOKING_NOSHOW_MIN * 60 * 1000);
+    for (const b of due) checkNoShow(b);
+  } catch (e) { console.error('booking no-show sweep', e); }
+  try { settleFinishedBookings(); } catch (e) { console.error('booking settle', e); }
+}
+setInterval(runBookingSweeps, 60 * 1000);
 
 // Auto-complete in-progress bookings whose scheduled end has passed
 function settleFinishedBookings() {
@@ -6072,8 +6378,167 @@ function settleFinishedBookings() {
   }
 }
 
+/* --- Model availability for 1-on-1 slot bookings --- */
+
+// Model: read her weekly 1-on-1 windows + caps
+app.get('/api/model/availability', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const windows = db.prepare(`SELECT weekday, start_min, end_min FROM model_availability
+    WHERE model_id = ? ORDER BY weekday`).all(req.user.id);
+  const caps = modelCaps(req.user.id);
+  res.json({ windows, day_cap: caps.day_cap, week_cap: caps.week_cap });
+});
+
+// Model: replace her weekly 1-on-1 windows + caps (one window per weekday)
+app.put('/api/model/availability', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const windows = Array.isArray(req.body.windows) ? req.body.windows : [];
+  const seen = new Set();
+  const clean = [];
+  for (const w of windows) {
+    const weekday = parseInt(w.weekday);
+    const start_min = parseInt(w.start_min);
+    const end_min = parseInt(w.end_min);
+    if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6 || seen.has(weekday))
+      return res.status(400).json({ error: 'bad_window' });
+    if (!Number.isInteger(start_min) || !Number.isInteger(end_min) ||
+        start_min < 0 || end_min > 1440 || start_min >= end_min ||
+        start_min % 30 !== 0 || end_min % 30 !== 0)
+      return res.status(400).json({ error: 'bad_window',
+        message: 'Windows run on the half hour (e.g. 12:00–16:00).' });
+    seen.add(weekday);
+    clean.push({ weekday, start_min, end_min });
+  }
+  const capOrNull = (v) => {
+    if (v === null || v === undefined || v === '') return null;
+    const n = parseInt(v);
+    return Number.isInteger(n) && n >= 0 && n <= 100 ? n : undefined;
+  };
+  const dayCap = capOrNull(req.body.day_cap);
+  const weekCap = capOrNull(req.body.week_cap);
+  if (dayCap === undefined || weekCap === undefined)
+    return res.status(400).json({ error: 'bad_cap' });
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    db.prepare('DELETE FROM model_availability WHERE model_id = ?').run(req.user.id);
+    const ins = db.prepare(`INSERT INTO model_availability (model_id, weekday, start_min, end_min)
+      VALUES (?,?,?,?)`);
+    for (const w of clean) ins.run(req.user.id, w.weekday, w.start_min, w.end_min);
+    db.prepare('UPDATE models SET bookings_day_cap = ?, bookings_week_cap = ? WHERE user_id = ?')
+      .run(dayCap, weekCap, req.user.id);
+    db.exec('COMMIT');
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+  res.json({ ok: true, windows: clean, day_cap: dayCap, week_cap: weekCap });
+});
+
+// Fan: her bookable grid for the next N days (Chicago), taken vs free
+app.get('/api/models/:id/bookings-availability', identMiddleware, requireUser, (req, res) => {
+  const modelId = parseInt(req.params.id);
+  const model = db.prepare(`
+    SELECT u.id, u.display_name, m.per_minute_cents FROM users u
+    JOIN models m ON m.user_id = u.id
+    WHERE u.id = ? AND u.role = 'model' AND u.banned = 0`).get(modelId);
+  if (!model) return res.status(404).json({ error: 'model_not_found' });
+  if (modelRegionBlocked(modelId, geoOfReq(req))) return regionBlocked(res);
+  const days = Math.min(Math.max(parseInt(req.query.days) || SLOT_MAX_DAYS, 1), 14);
+  const grid = buildAvailability(modelId, days);
+  res.json({ model_id: modelId, model_name: model.display_name,
+    rate_cents: model.per_minute_cents, durations: SLOT_DURATIONS,
+    day_cap: grid.caps.day_cap, week_cap: grid.caps.week_cap, days: grid.days });
+});
+
+/* Slot booking create: first fan to pay owns the slot. The check-and-
+   insert runs inside BEGIN IMMEDIATE (and this handler is fully
+   synchronous, so no other request can interleave); the charge itself
+   goes through chargeFan — the one money path — right after commit,
+   and the just-created row is removed if the charge can't complete. */
+function slotBookingCreate(req, res) {
+  const modelId = parseInt(req.body.model_id);
+  const minutes = parseInt(req.body.minutes != null ? req.body.minutes : req.body.duration_min);
+  const startsAt = typeof req.body.starts_at === 'number'
+    ? req.body.starts_at : Date.parse(req.body.starts_at);
+  const model = db.prepare(`
+    SELECT u.id, u.display_name, u.banned, m.per_minute_cents FROM users u
+    JOIN models m ON m.user_id = u.id
+    WHERE u.id = ? AND u.role = 'model'`).get(modelId);
+  if (!model || model.banned) return res.status(404).json({ error: 'model_not_found' });
+  if (modelRegionBlocked(modelId, geoOfReq(req))) return regionBlocked(res);
+  if (!SLOT_DURATIONS.includes(minutes))
+    return res.status(400).json({ error: 'bad_duration', allowed: SLOT_DURATIONS });
+  const now = Date.now();
+  if (!Number.isFinite(startsAt))
+    return res.status(400).json({ error: 'bad_time' });
+  if (startsAt < now + SLOT_LEAD_MIN * 60 * 1000)
+    return res.status(400).json({ error: 'too_soon',
+      message: 'Book at least 1 hour ahead.' });
+  if (startsAt > now + SLOT_MAX_DAYS * 24 * 60 * 60 * 1000)
+    return res.status(400).json({ error: 'too_far',
+      message: 'Bookings open up to 14 days ahead.' });
+  const ds = chiDateStr(startsAt);
+  const startMin = Math.round((startsAt - chiMidnightMs(ds)) / 60000);
+  if (startMin % 30 !== 0)
+    return res.status(409).json({ error: 'slot_unavailable',
+      message: 'That start time is not on her schedule.' });
+  const win = db.prepare('SELECT * FROM model_availability WHERE model_id = ? AND weekday = ?')
+    .get(modelId, chiWeekdayOfDateStr(ds));
+  if (!win || startMin < win.start_min || startMin + minutes > win.end_min)
+    return res.status(409).json({ error: 'slot_unavailable',
+      message: 'She is not taking 1-on-1s then.' });
+  const total = model.per_minute_cents * minutes;
+  let bookingId = null;
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    if (bookingsOverlap(modelId, startsAt, startsAt + minutes * 60000, 0))
+      throw httpErr(409, 'slot_taken', 'That slot just got booked.');
+    const caps = modelCaps(modelId);
+    const { dayCounts, weekCounts } = bookingCounts(modelId);
+    if (caps.day_cap != null && (dayCounts.get(ds) || 0) >= caps.day_cap)
+      throw httpErr(409, 'day_full', 'She is booked out that day.');
+    const ws = chiWeekStartStr(ds);
+    if (caps.week_cap != null && (weekCounts.get(ws) || 0) >= caps.week_cap)
+      throw httpErr(409, 'week_full', 'She is booked out that week.');
+    if (getWallet(req.user.id).credits_cents < total)
+      throw httpErr(402, 'insufficient_credits');
+    const info = db.prepare(`INSERT INTO bookings
+      (model_id, fan_id, scheduled_at, duration_min, total_cents, rate_cents, status, kind)
+      VALUES (?,?,?,?,?,?,'booked','slot')`)
+      .run(modelId, req.user.id, startsAt, minutes, total, model.per_minute_cents);
+    bookingId = Number(info.lastInsertRowid);
+    db.exec('COMMIT');
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch (err) { /* already closed */ }
+    if (e.httpStatus) {
+      const out = { error: e.errCode };
+      if (e.message && e.message !== e.errCode) out.message = e.message;
+      if (e.errCode === 'insufficient_credits') {
+        out.needed_cents = total;
+        out.balance_cents = getWallet(req.user.id).credits_cents;
+      }
+      return res.status(e.httpStatus).json(out);
+    }
+    throw e;
+  }
+  try {
+    chargeFan(req.user.id, model.id, total, 'booking',
+      `📅 Private ${minutes}min 1-on-1 with ${model.display_name}`, clientIp(req));
+  } catch (e) {
+    db.prepare('DELETE FROM bookings WHERE id = ?').run(bookingId);
+    return res.status(402).json({ error: 'insufficient_credits',
+      needed_cents: total, balance_cents: getWallet(req.user.id).credits_cents });
+  }
+  pushToUser(model.id, { type: 'booking:booked', booking_id: bookingId,
+    fan_id: req.user.id, fan_name: req.user.display_name,
+    scheduled_at: startsAt, duration_min: minutes, total_cents: total });
+  try {
+    notifyUser(model.id, 'booking', '📅 New 1-on-1 booked',
+      `${req.user.display_name} booked a ${minutes}-min 1-on-1 — ${chiWhenLabel(startsAt)}.`,
+      '/#bookings');
+  } catch (e) { /* bell is a bonus */ }
+  res.json({ ok: true, booking_id: bookingId, status: 'booked', total_cents: total,
+    balance_cents: getWallet(req.user.id).credits_cents });
+}
+
 // Fan requests a private booked live — pays upfront
 app.post('/api/bookings', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  if (req.body && req.body.starts_at != null) return slotBookingCreate(req, res);
   const modelId = parseInt(req.body.model_id);
   const scheduledAt = parseInt(req.body.scheduled_at);
   const durationMin = parseInt(req.body.duration_min);
@@ -6120,6 +6585,10 @@ app.post('/api/bookings/:id/approve', identMiddleware, requireUser, requireRole(
   const b = db.prepare('SELECT * FROM bookings WHERE id = ?').get(req.params.id);
   if (!b || b.status !== 'pending') return res.status(404).json({ error: 'not_found' });
   if (b.model_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+  // Approving must never double-book her against a confirmed slot booking.
+  if (bookingsOverlap(b.model_id, b.scheduled_at, b.scheduled_at + b.duration_min * 60000, b.id))
+    return res.status(409).json({ error: 'slot_taken',
+      message: 'That time is already booked — decline this one instead.' });
   db.prepare(`UPDATE bookings SET status = 'approved', decided_at = datetime('now') WHERE id = ?`)
     .run(b.id);
   pushToUser(b.fan_id, { type: 'booking:approved', booking_id: b.id,
@@ -6141,17 +6610,19 @@ app.post('/api/bookings/:id/decline', identMiddleware, requireUser, requireRole(
   res.json({ ok: true, refunded_cents: b.total_cents });
 });
 
-// Cancel: fan ≥1h before → refund; fan <1h → no refund; model → always refund
+// Cancel: model → always full refund. Fan → full refund up to the cutoff
+// (slot bookings: 2h before start; legacy requests: 1h), no refund inside it.
 app.post('/api/bookings/:id/cancel', identMiddleware, requireUser, (req, res) => {
   const b = db.prepare('SELECT * FROM bookings WHERE id = ?').get(req.params.id);
   if (!b) return res.status(404).json({ error: 'not_found' });
-  if (!['pending', 'approved'].includes(b.status))
+  if (!['pending', 'approved', 'booked'].includes(b.status))
     return res.status(409).json({ error: 'not_cancellable' });
   const isModel = req.user.role === 'model' && b.model_id === req.user.id;
   const isFan = req.user.role === 'fan' && b.fan_id === req.user.id;
   if (!isModel && !isFan) return res.status(403).json({ error: 'forbidden' });
   let refunded = 0;
-  if (isModel || Date.now() < b.scheduled_at - BOOKING_FAN_CANCEL_HOURS * 60 * 60 * 1000) {
+  const fanCutoffH = b.kind === 'slot' ? SLOT_FAN_CANCEL_HOURS : BOOKING_FAN_CANCEL_HOURS;
+  if (isModel || Date.now() < b.scheduled_at - fanCutoffH * 60 * 60 * 1000) {
     refunded = b.total_cents;
     refundFan(b.fan_id, b.model_id, b.total_cents, 'booking_refund',
       `📅 Booking #${b.id} cancelled by ${isModel ? 'model' : 'fan'} — refunded`, clientIp(req));
@@ -6165,12 +6636,14 @@ app.post('/api/bookings/:id/cancel', identMiddleware, requireUser, (req, res) =>
   res.json({ ok: true, refunded_cents: refunded });
 });
 
-// Model starts the private session at (or near) the scheduled time
+// Model starts the private session at (or near) the scheduled time.
+// Tapping Start is her presence stamp for no-show resolution.
 app.post('/api/bookings/:id/start', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const b = db.prepare('SELECT * FROM bookings WHERE id = ?').get(req.params.id);
-  if (!b || b.status !== 'approved') return res.status(404).json({ error: 'not_found' });
+  if (!b || !['approved', 'booked'].includes(b.status)) return res.status(404).json({ error: 'not_found' });
   if (b.model_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
-  db.prepare(`UPDATE bookings SET status = 'in_progress', decided_at = datetime('now') WHERE id = ?`)
+  db.prepare(`UPDATE bookings SET status = 'in_progress', model_present = 1,
+              decided_at = datetime('now') WHERE id = ?`)
     .run(b.id);
   pushToUser(b.fan_id, { type: 'booking:live', booking_id: b.id,
     message: "🔴 She's live! Tap to join your private session." });
@@ -6183,9 +6656,14 @@ app.post('/api/bookings/:id/call', identMiddleware, requireUser, (req, res) => {
   if (!b) return res.status(404).json({ error: 'not_found' });
   if (b.fan_id !== req.user.id && b.model_id !== req.user.id)
     return res.status(403).json({ error: 'forbidden' });
-  if (!['approved', 'in_progress'].includes(b.status))
+  if (!['approved', 'booked', 'in_progress'].includes(b.status))
     return res.status(409).json({ error: 'not_ready' });
-  if (b.status === 'approved') {
+  // Opening the session stamps presence for no-show resolution.
+  if (req.user.id === b.model_id && !b.model_present)
+    db.prepare('UPDATE bookings SET model_present = 1 WHERE id = ?').run(b.id);
+  if (req.user.id === b.fan_id && !b.fan_present)
+    db.prepare('UPDATE bookings SET fan_present = 1 WHERE id = ?').run(b.id);
+  if (b.status === 'approved' || b.status === 'booked') {
     db.prepare(`UPDATE bookings SET status = 'in_progress', decided_at = datetime('now') WHERE id = ?`)
       .run(b.id);
   }
@@ -6195,18 +6673,21 @@ app.post('/api/bookings/:id/call', identMiddleware, requireUser, (req, res) => {
   const other = db.prepare('SELECT display_name FROM users WHERE id = ?').get(otherId);
   if (existing) return res.json({ ok: true, call_id: existing.id, resumed: true,
     other_id: otherId, other_name: other ? other.display_name : '?' });
-  const info = db.prepare('INSERT INTO calls (fan_id, model_id, rate_cents, booking_id) VALUES (?,?,0,?)')
-    .run(b.fan_id, b.model_id, b.id);
+  // Prepaid: the booked minutes ride the call as prepaid_min, so the call
+  // counts down and ends at the cap — no per-minute charges on top.
+  const info = db.prepare(`INSERT INTO calls (fan_id, model_id, rate_cents, booking_id, prepaid_min)
+    VALUES (?,?,0,?,?)`)
+    .run(b.fan_id, b.model_id, b.id, b.duration_min);
   res.json({ ok: true, call_id: Number(info.lastInsertRowid),
     other_id: otherId, other_name: other ? other.display_name : '?' });
 });
 
-// Upcoming bookings for the logged-in user (both roles), with no-show settling
+// Upcoming bookings for the logged-in user (both roles), with sweeps
 app.get('/api/bookings', identMiddleware, requireUser, (req, res) => {
-  settleFinishedBookings();
+  runBookingSweeps();
   const col = req.user.role === 'model' ? 'model_id' : 'fan_id';
   const rows = db.prepare(`SELECT * FROM bookings WHERE ${col} = ?
-    AND status IN ('pending','approved','in_progress')
+    AND status IN ('pending','approved','booked','in_progress')
     ORDER BY scheduled_at ASC`).all(req.user.id);
   const out = rows.map((b) => bookingFor(checkNoShow(b), req.user.id));
   res.json({ bookings: out });

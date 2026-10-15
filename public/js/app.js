@@ -256,6 +256,15 @@ const I18N = {
     no_earnings: 'No earnings yet — go online and chat! 💬',
     payouts_note: 'Payouts are sent by SlutCamp. Available balance updates after each message.',
     bookings_h: 'Bookings 📅', bookings_sub: 'Private 1-on-1 lives — paid upfront',
+    bk1_h: '📅 1-on-1 Bookings', bk1_sub: 'Your private 1-on-1 hours — fans book and pay upfront, first come first served. Times are Central (CT).',
+    bk_day_cap: 'Max 1-on-1s per day', bk_week_cap: 'Max per week', bk_no_limit: 'No limit',
+    bk_save_avail: 'Save availability', bk_avail_saved: '✅ Availability saved',
+    bk_upcoming: 'Upcoming 1-on-1s', bk_none_up: 'No upcoming 1-on-1s yet.',
+    bk_off: 'Off', bk_booked_out: '💔 Booked out', bk_slot_booked: 'Booked',
+    bk_youre_booked: "You're booked", bk_no_slots: 'No openings this day — try another.',
+    bk_start_now: 'Start now 📹', bk_remove: 'Remove',
+    bk_in_line: "You're in line for", bk_turn_in: 'Your turn in about', bk_min_wait: 'min',
+    bk_leave_line: 'Leave line & refund', bk_waiting_line: 'In line',
     approve: '✅ Approve', decline: '❌ Decline',
     req_waiting_1: '{n} request waiting', req_waiting_n: '{n} requests waiting',
     mic_on: '🎤 Mic on', muted: '🔇 Muted', cam_on: '📹 Cam on', cam_off: '📷 Cam off',
@@ -461,6 +470,15 @@ const I18N = {
     no_earnings: 'Aún no tienes ganancias — ¡ponte en línea y chatea! 💬',
     payouts_note: 'Los retiros los envía SlutCamp. Tu saldo disponible se actualiza tras cada mensaje.',
     bookings_h: 'Reservas 📅', bookings_sub: 'En vivos privados 1 a 1 — pagados por adelantado',
+    bk1_h: '📅 Reservas 1 a 1', bk1_sub: 'Tus horas privadas 1 a 1 — los fans reservan y pagan por adelantado, en orden de llegada. Horarios en hora central (CT).',
+    bk_day_cap: 'Máx. de 1 a 1 por día', bk_week_cap: 'Máx. por semana', bk_no_limit: 'Sin límite',
+    bk_save_avail: 'Guardar disponibilidad', bk_avail_saved: '✅ Disponibilidad guardada',
+    bk_upcoming: 'Próximos 1 a 1', bk_none_up: 'Aún no tienes 1 a 1 próximos.',
+    bk_off: 'Libre', bk_booked_out: '💔 Agotado', bk_slot_booked: 'Reservado',
+    bk_youre_booked: 'Tu reserva está lista', bk_no_slots: 'Sin espacios este día — prueba otro.',
+    bk_start_now: 'Empezar ahora 📹', bk_remove: 'Quitar',
+    bk_in_line: 'Estás en la fila para', bk_turn_in: 'Tu turno en unos', bk_min_wait: 'min',
+    bk_leave_line: 'Salir de la fila y reembolso', bk_waiting_line: 'En la fila',
     approve: '✅ Aprobar', decline: '❌ Rechazar',
     req_waiting_1: '{n} solicitud en espera', req_waiting_n: '{n} solicitudes en espera',
     mic_on: '🎤 Micrófono activado', muted: '🔇 Silenciado', cam_on: '📹 Cámara activada', cam_off: '📷 Cámara apagada',
@@ -663,6 +681,15 @@ const I18N = {
     no_earnings: 'Ainda sem ganhos — fique online e converse! 💬',
     payouts_note: 'Os saques são enviados pela SlutCamp. O saldo disponível atualiza a cada mensagem.',
     bookings_h: 'Reservas 📅', bookings_sub: 'Lives privadas 1 a 1 — pagas adiantado',
+    bk1_h: '📅 Reservas 1 a 1', bk1_sub: 'Seus horários privados 1 a 1 — os fãs reservam e pagam adiantado, por ordem de chegada. Horários no horário central (CT).',
+    bk_day_cap: 'Máx. de 1 a 1 por dia', bk_week_cap: 'Máx. por semana', bk_no_limit: 'Sem limite',
+    bk_save_avail: 'Salvar disponibilidade', bk_avail_saved: '✅ Disponibilidade salva',
+    bk_upcoming: 'Próximos 1 a 1', bk_none_up: 'Nenhum 1 a 1 próximo ainda.',
+    bk_off: 'Folga', bk_booked_out: '💔 Esgotado', bk_slot_booked: 'Reservado',
+    bk_youre_booked: 'Reserva confirmada', bk_no_slots: 'Sem vagas neste dia — tente outro.',
+    bk_start_now: 'Começar agora 📹', bk_remove: 'Remover',
+    bk_in_line: 'Você está na fila para', bk_turn_in: 'Sua vez em cerca de', bk_min_wait: 'min',
+    bk_leave_line: 'Sair da fila e reembolso', bk_waiting_line: 'Na fila',
     approve: '✅ Aprovar', decline: '❌ Recusar',
     req_waiting_1: '{n} solicitação aguardando', req_waiting_n: '{n} solicitações aguardando',
     mic_on: '🎤 Microfone ligado', muted: '🔇 Silenciado', cam_on: '📹 Câmera ligada', cam_off: '📷 Câmera desligada',
@@ -1103,6 +1130,15 @@ function handleWS(m) {
   } else if (m.type === 'facetime:update') {
     if (S.user && S.user.role === 'fan') updateFtPanel(m.request, m.reason);
     if (S.user && S.user.role === 'model') refreshFtCard();
+  } else if (m.type === 'queue:update') {
+    if (S.user && S.user.role === 'fan') updateFtPanel(m.request, m.reason);
+  } else if (m.type === 'queue:your_turn') {
+    if (S.user && S.user.role === 'fan') {
+      updateFtPanel(m.request, m.reason);
+      toast(`💚 Your turn! ${m.request.model_name} is ready — tap ${t('bk_start_now')}`, 5000);
+    }
+  } else if (m.type === 'facetime:queue') {
+    if (S.user && S.user.role === 'model') updateModelFtQueue(m.requests || []);
   } else if (m.type === 'call:explicit_offer' && S.call && m.call_id === S.call.id) {
     showExplicitOffer(m);
   } else if (m.type === 'call:explicit_on' && S.call && m.call_id === S.call.id) {
@@ -3316,12 +3352,30 @@ function bookingWhen(at) {
     ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
+/* Slot bookings live on Central time — always label them in CT so the
+   model and the fan are looking at the same clock. */
+function bookingWhenCT(at) {
+  const d = new Date(at);
+  return d.toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'short', month: 'short', day: 'numeric' }) +
+    ' ' + d.toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' }) + ' CT';
+}
+function chiTimeLabel(iso) {
+  return new Date(iso).toLocaleTimeString('en-US',
+    { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' });
+}
+function chiDayLabel(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d, 12));
+  return { dow: dt.toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'short' }),
+           md: dt.toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' }) };
+}
+
 async function vBookings() {
   const { data } = await api('/bookings');
   const bookings = data.bookings || [];
   const isModel = S.user.role === 'model';
   const pending = bookings.filter((b) => b.status === 'pending');
-  const upcoming = bookings.filter((b) => b.status === 'approved' || b.status === 'in_progress');
+  const upcoming = bookings.filter((b) => ['booked', 'approved', 'in_progress'].includes(b.status));
   app.innerHTML = `
     <div class="header"><h1>${t('bookings_h')}</h1>
       <div class="sub">${t('bookings_sub')}</div></div>
@@ -3340,23 +3394,27 @@ async function vBookings() {
           </div>`).join('')}
       </div>` : ''}
       ${upcoming.length ? upcoming.map((b) => {
-        const canGoLive = isModel && b.status === 'approved' &&
+        const confirmed = b.status === 'approved' || b.status === 'booked';
+        const canGoLive = isModel && confirmed &&
           Date.now() > b.scheduled_at - 15 * 60 * 1000;
         const canJoin = !isModel && b.status === 'in_progress';
-        const waitingLive = !isModel && b.status === 'approved';
+        const canFanOpen = !isModel && confirmed &&
+          Date.now() > b.scheduled_at - 5 * 60 * 1000;
+        const waitingLive = !isModel && confirmed && !canFanOpen;
         return `
         <div class="card">
           <div class="row" style="align-items:center">
             ${b.other_photo_url ? `<div class="avatar sm"><img src="${esc(b.other_photo_url)}" alt=""></div>` : ''}
-            <span class="grow"><b>${b.status === 'in_progress' ? '🔴 LIVE NOW' : '📅'} ${esc(b.other_name)}</b><br>
-              <span class="small muted">${bookingWhen(b.scheduled_at)} · ${b.duration_min}min · ${fmt(b.total_cents)}</span><br>
+            <span class="grow"><b>${b.status === 'in_progress' ? '🔴 LIVE NOW' : '📅'} ${esc(b.other_name)}</b>${b.status === 'booked' ? ' <span class="small" style="color:var(--green);font-weight:800">✅ Booked</span>' : ''}<br>
+              <span class="small muted">${b.kind === 'slot' ? bookingWhenCT(b.scheduled_at) : bookingWhen(b.scheduled_at)} · ${b.duration_min}min · ${fmt(b.total_cents)}</span><br>
               <span class="small" style="color:var(--gold);font-weight:700">${b.status === 'in_progress' ? 'In progress' : '⏱ ' + bookingCountdown(b.scheduled_at)}</span></span>
           </div>
           <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
             ${canGoLive ? `<button class="btn small" data-bk-start="${b.id}">🔴 Go Live Now</button>` : ''}
             ${canJoin ? `<button class="btn small" data-bk-join="${b.id}">📹 Join Private Session</button>` : ''}
+            ${canFanOpen ? `<button class="btn small" data-bk-join="${b.id}">💚 Your 1-on-1 is ready — Join 📹</button>` : ''}
             ${waitingLive ? `<span class="small muted">She'll go live at the scheduled time — you'll get a ping 📲</span>` : ''}
-            ${['pending', 'approved'].includes(b.status) ? `<button class="btn small ghost" data-bk-cancel="${b.id}">Cancel</button>` : ''}
+            ${['pending', 'approved', 'booked'].includes(b.status) ? `<button class="btn small ghost" data-bk-cancel="${b.id}">Cancel</button>` : ''}
           </div>
         </div>`;
       }).join('') : (!pending.length ? `
@@ -3435,7 +3493,10 @@ async function startBookingCall(bookingId, isModel) {
 // Handle booking WS pushes
 function handleBookingPush(m) {
   if (!S.user) return;
-  if (m.type === 'booking:request' && S.user.role === 'model') {
+  if (m.type === 'booking:booked' && S.user.role === 'model') {
+    toast(`📅 New 1-on-1 booked — ${bookingWhenCT(m.scheduled_at)} · ${m.duration_min}min · ${fmt(m.total_cents)}`, 4000);
+    if (S.view === 'bookings') show('bookings', {});
+  } else if (m.type === 'booking:request' && S.user.role === 'model') {
     toast(`📅 ${m.fan_name} booked you!`, 4000);
     if (S.view === 'bookings') show('bookings', {});
   } else if (m.type === 'booking:approved' && S.user.role === 'fan') {
@@ -3518,6 +3579,111 @@ function openBookingSheet(modelId, modelName, rateCents) {
   };
 }
 
+/* Slot booking sheet: her real calendar — days, 30-min start chips,
+   durations, price up front. First fan to pay owns the slot. Falls back
+   to the legacy request sheet when she hasn't set any 1-on-1 hours. */
+async function openSlotBookingSheet(modelId, modelName, rateCents) {
+  const first = await api(`/models/${modelId}/bookings-availability?days=14`);
+  if (first.status !== 200 || !first.data || !(first.data.days || []).some((d) => d.has_window)) {
+    openBookingSheet(modelId, modelName, rateCents);
+    return;
+  }
+  let grid = first.data;
+  const rate = grid.rate_cents || rateCents || 399;
+  let selDay = Math.max(0, grid.days.findIndex((d) => d.slots.some((s) => !s.taken)));
+  let selSlot = null;
+  let selDur = 15;
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet-backdrop';
+  document.body.appendChild(sheet);
+  const close = () => sheet.remove();
+  sheet.onclick = (e) => { if (e.target === sheet) close(); };
+
+  function render() {
+    const day = grid.days[selDay];
+    const price = selSlot ? rate * selDur : rate * selDur;
+    sheet.innerHTML = `
+    <div class="sheet">
+      <div style="font-weight:800;font-size:18px;margin-bottom:4px">📅 Book a 1-on-1 — ${esc(modelName)}</div>
+      <div class="muted small" style="margin-bottom:12px">Her openings, Central time · pay upfront, the slot is yours · full refund if it doesn't happen</div>
+      <div class="bk-day-strip">
+        ${grid.days.map((d, i) => { const L = chiDayLabel(d.date); return `
+          <button class="bk-day ${i === selDay ? 'on' : ''}" data-day="${i}">
+            <span class="bk-dow">${L.dow}</span><span class="bk-md">${L.md}</span>
+            ${d.booked_out ? `<span class="bk-out">${t('bk_booked_out')}</span>` : ''}
+          </button>`; }).join('')}
+      </div>
+      ${day && day.slots.length ? `
+      <div class="bk-slots">
+        ${day.slots.map((s) => `
+          <button class="bk-slot ${s.taken ? 'taken' : ''} ${selSlot && selSlot.starts_at === s.starts_at ? 'on' : ''}"
+            data-slot="${s.starts_at}" ${s.taken ? 'disabled' : ''}>
+            ${chiTimeLabel(s.starts_at)}${s.taken ? `<span class="bk-slot-sub">${t('bk_slot_booked')}</span>` : ''}
+          </button>`).join('')}
+      </div>` : `<div class="muted small" style="margin:10px 0">${day && day.booked_out ? t('bk_booked_out') : t('bk_no_slots')}</div>`}
+      <div class="field" style="margin-top:12px">Duration
+        <div class="row" style="gap:8px;margin-top:6px">
+          ${grid.durations.map((d) => {
+            const ok = !selSlot || selSlot.free_for.includes(d);
+            return `<button class="btn ${selDur === d ? '' : 'ghost'} small bk-dur" data-dur="${d}" ${ok ? '' : 'disabled'} style="flex:1${ok ? '' : ';opacity:.35'}">${d} min<br><span class="small">${fmt(rate * d)}</span></button>`;
+          }).join('')}
+        </div></div>
+      <div class="row" style="margin:12px 0;align-items:center">
+        <span class="grow" style="font-weight:800">${selSlot ? `${chiDayLabel(day.date).dow} ${chiTimeLabel(selSlot.starts_at)} CT · ${selDur} min` : 'Pick a time'}</span>
+        <b style="font-size:20px;color:var(--green)">${fmt(price)}</b>
+      </div>
+      <button class="btn" id="bk2-pay" ${selSlot ? '' : 'disabled style="opacity:.45"'}>Confirm &amp; pay ${fmt(price)}</button>
+      <button class="btn ghost" id="bk2-cancel" style="margin-top:8px">Cancel</button>
+    </div>`;
+    sheet.querySelectorAll('[data-day]').forEach((b) => b.onclick = () => {
+      selDay = parseInt(b.dataset.day); selSlot = null; render();
+    });
+    sheet.querySelectorAll('[data-slot]').forEach((b) => b.onclick = () => {
+      selSlot = day.slots.find((s) => s.starts_at === b.dataset.slot) || null;
+      if (selSlot && !selSlot.free_for.includes(selDur))
+        selDur = selSlot.free_for[selSlot.free_for.length - 1] || 10;
+      render();
+    });
+    sheet.querySelectorAll('.bk-dur').forEach((b) => b.onclick = () => {
+      selDur = parseInt(b.dataset.dur); render();
+    });
+    sheet.querySelector('#bk2-cancel').onclick = close;
+    const pay = sheet.querySelector('#bk2-pay');
+    if (pay) pay.onclick = async () => {
+      pay.disabled = true;
+      const { status, data } = await api('/bookings', { method: 'POST',
+        body: JSON.stringify({ model_id: modelId, starts_at: selSlot.starts_at, minutes: selDur }) });
+      if (status === 200) {
+        sheet.innerHTML = `
+        <div class="sheet" style="text-align:center">
+          <div style="font-size:40px">💋</div>
+          <div style="font-weight:800;font-size:19px;margin:6px 0">${t('bk_youre_booked')}!</div>
+          <div class="muted">${esc(modelName)} · ${bookingWhenCT(Date.parse(selSlot.starts_at))} · ${selDur} min</div>
+          <div class="small muted" style="margin:10px 0">She'll get a reminder before your time. Be here a couple minutes early — your session opens right from your Bookings tab.</div>
+          <button class="btn" id="bk2-view">View my bookings</button>
+          <button class="btn ghost" id="bk2-done" style="margin-top:8px">Done</button>
+        </div>`;
+        sheet.querySelector('#bk2-view').onclick = () => { close(); show('bookings', {}); };
+        sheet.querySelector('#bk2-done').onclick = close;
+        if (S.wallet) refreshMe();
+        return;
+      }
+      if (status === 402 || (data && data.error === 'insufficient_credits')) {
+        close();
+        return showBuyCredits(data.needed_cents);
+      }
+      toast(data.message || (data.error === 'slot_taken' ? 'That slot just got booked — pick another.'
+        : data.error === 'day_full' ? '💔 She\'s booked out that day.'
+        : data.error === 'week_full' ? '💔 She\'s booked out that week.'
+        : 'Could not book.'));
+      const again = await api(`/models/${modelId}/bookings-availability?days=14`);
+      if (again.status === 200 && again.data) { grid = again.data; selSlot = null; render(); }
+      else close();
+    };
+  }
+  render();
+}
+
 async function vModelSettings() {
   await refreshMe();
   const m = S.model;
@@ -3581,6 +3747,30 @@ async function vModelSettings() {
         </div>
         <input class="input" id="sched-title" placeholder="${t('slot_title_ph')}" maxlength="60" style="margin-top:8px">
         <button class="btn" id="sched-add" style="margin-top:8px">${t('add_slot')}</button>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:6px">${t('bk1_h')}</div>
+        <div class="muted small" style="margin-bottom:10px">${t('bk1_sub')}</div>
+        <div id="avail-rows">
+          ${t('days_short').split(',').map((d, wd) => `
+          <div class="row avail-row" data-avail-wd="${wd}" style="align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+            <label class="row" style="align-items:center;gap:6px;min-width:118px">
+              <input type="checkbox" class="avail-on" style="width:20px;height:20px;accent-color:var(--pink)">
+              <b>${d}</b></label>
+            <input class="input avail-start" type="time" value="12:00" step="1800" style="flex:1;min-width:104px">
+            <span class="muted">→</span>
+            <input class="input avail-end" type="time" value="16:00" step="1800" style="flex:1;min-width:104px">
+          </div>`).join('')}
+        </div>
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <label class="field" style="flex:1;min-width:130px">${t('bk_day_cap')}
+            <input class="input" id="avail-day-cap" type="number" min="0" max="100" placeholder="${t('bk_no_limit')}"></label>
+          <label class="field" style="flex:1;min-width:130px">${t('bk_week_cap')}
+            <input class="input" id="avail-week-cap" type="number" min="0" max="100" placeholder="${t('bk_no_limit')}"></label>
+        </div>
+        <button class="btn" id="avail-save" style="margin-top:6px">${t('bk_save_avail')}</button>
+        <div style="font-weight:800;margin:16px 0 8px">${t('bk_upcoming')}</div>
+        <div id="avail-upcoming"><span class="muted small">Loading…</span></div>
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:6px">${t('bio')}</div>
@@ -3705,6 +3895,54 @@ async function vModelSettings() {
         start_time: $('#sched-time').value, title: $('#sched-title').value }) });
     if (status === 200) { $('#sched-title').value = ''; loadSched(); toast('✅ Slot added!'); }
     else toast(data.error === 'duplicate' ? 'That slot already exists.' : 'Could not add slot.');
+  };
+  // 1-on-1 availability: weekly windows + caps, upcoming slot bookings
+  const minToTime = (mins) => `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+  const timeToMin = (v) => { const [h, m] = String(v || '').split(':').map(Number); return (h || 0) * 60 + (m || 0); };
+  async function loadAvail() {
+    const { data } = await api('/model/availability');
+    if (!data) return;
+    const byDay = new Map((data.windows || []).map((w) => [w.weekday, w]));
+    document.querySelectorAll('.avail-row').forEach((row) => {
+      const w = byDay.get(parseInt(row.dataset.availWd));
+      row.querySelector('.avail-on').checked = !!w;
+      if (w) {
+        row.querySelector('.avail-start').value = minToTime(w.start_min);
+        row.querySelector('.avail-end').value = minToTime(w.end_min);
+      }
+    });
+    $('#avail-day-cap').value = data.day_cap == null ? '' : data.day_cap;
+    $('#avail-week-cap').value = data.week_cap == null ? '' : data.week_cap;
+    const { data: bk } = await api('/bookings');
+    const mine = (bk.bookings || []).filter((b) => ['booked', 'approved', 'in_progress'].includes(b.status));
+    $('#avail-upcoming').innerHTML = mine.length ? mine.map((b) => `
+      <div class="row" style="align-items:center;margin-bottom:8px">
+        <span class="grow"><b>${esc(b.other_name)}</b><br>
+          <span class="small muted">${bookingWhenCT(b.scheduled_at)} · ${b.duration_min}min · <b style="color:var(--green)">${fmt(b.total_cents)}</b>${b.status === 'in_progress' ? ' · 🔴' : ''}</span></span>
+        ${b.status !== 'in_progress' ? `<button class="btn small ghost" data-avail-cancel="${b.id}">Cancel</button>` : ''}
+      </div>`).join('') : `<span class="muted small">${t('bk_none_up')}</span>`;
+    $('#avail-upcoming').querySelectorAll('[data-avail-cancel]').forEach((btn) => btn.onclick = async () => {
+      if (!confirm('Cancel this 1-on-1? He gets a full refund.')) return;
+      const { status, data } = await api(`/bookings/${btn.dataset.availCancel}/cancel`, { method: 'POST' });
+      toast(status === 200 ? `Cancelled — ${fmt(data.refunded_cents)} refunded to him.` : 'Could not cancel.');
+      loadAvail();
+    });
+  }
+  loadAvail();
+  $('#avail-save').onclick = async () => {
+    const windows = [];
+    document.querySelectorAll('.avail-row').forEach((row) => {
+      if (!row.querySelector('.avail-on').checked) return;
+      windows.push({ weekday: parseInt(row.dataset.availWd),
+        start_min: timeToMin(row.querySelector('.avail-start').value),
+        end_min: timeToMin(row.querySelector('.avail-end').value) });
+    });
+    const capVal = (id) => { const v = $(id).value.trim(); return v === '' ? null : parseInt(v); };
+    const { status, data } = await api('/model/availability', { method: 'PUT',
+      body: JSON.stringify({ windows, day_cap: capVal('#avail-day-cap'), week_cap: capVal('#avail-week-cap') }) });
+    toast(status === 200 ? t('bk_avail_saved')
+      : (data.message || 'Could not save — windows run on the half hour.'));
+    if (status === 200) loadAvail();
   };
   const promoCopy = $('#s-promo-copy');
   if (promoCopy) promoCopy.onclick = async () => {
@@ -4097,7 +4335,7 @@ async function vChat(params) {
   if (!isModel && S.user) refreshFtPanel();
   if (isModel) refreshFtCard();
   const bb = $('#c-book');
-  if (bb) bb.onclick = () => openBookingSheet(conv.other.id, conv.other.display_name,
+  if (bb) bb.onclick = () => openSlotBookingSheet(conv.other.id, conv.other.display_name,
     conv.other.per_minute_cents || 399);
   // WhatsApp-style composer shortcuts: the round 🎤 button beside the bubble
   // starts a voice note DIRECTLY on the tap (no sheet hop in between —
@@ -5446,6 +5684,10 @@ function openFaceTimeSheet() {
           toast('You already have a FaceTime request with her ⏳');
           return refreshFtPanel();
         }
+        if (data.error === 'already_in_line') {
+          toast(data.message || "You're already in line with another model ⏳", 4500);
+          return refreshFtPanel();
+        }
         if (data.error === 'chat_paused') return toast('Chat is paused by the safety monitor.');
         return toast('Could not send the FaceTime request.');
       }
@@ -5469,9 +5711,12 @@ function ftPanelEl() {
 function startFtPoll() { if (!ftPoll) ftPoll = setInterval(refreshFtPanel, 5000); }
 function stopFtPoll() { if (ftPoll) { clearInterval(ftPoll); ftPoll = null; } }
 
+let ftPanelMin = false;
+
 function updateFtPanel(req, reason) {
   const el = ftPanelEl();
   if (!req || ['done', 'declined', 'cancelled', 'expired'].includes(req.status)) {
+    ftPanelMin = false;
     const wasActive = !!(ftMine && req && ftMine.id === req.id && ftMine.status !== req.status);
     el.classList.add('hidden');
     stopFtPoll();
@@ -5491,18 +5736,31 @@ function updateFtPanel(req, reason) {
   ftMine = req;
   if (req.status === 'in_call') { el.classList.add('hidden'); stopFtPoll(); return; }
   el.classList.remove('hidden');
+  if (ftPanelMin && req.status === 'queued') {
+    // Minimized to a slim pill — he can browse; state restores on tap.
+    el.innerHTML = `<div class="ft-line" id="ft-expand" style="cursor:pointer">📹 <b>#${req.position}</b> ${t('bk_waiting_line')} · ~${req.eta_min} ${t('bk_min_wait')} — tap to view</div>`;
+    const x = $('#ft-expand');
+    if (x) x.onclick = () => { ftPanelMin = false; updateFtPanel(ftMine); };
+    startFtPoll();
+    return;
+  }
   if (req.status === 'pending') {
     el.innerHTML = `<div class="ft-line">⏳ <b>Waiting for ${esc(req.model_name)}</b> to accept your ${req.duration_min}-min FaceTime…</div>
       <div class="ft-sub">Paid ${fmt(req.amount_cents)} · full refund if she declines or doesn't answer</div>
       <button class="btn ghost small" id="ft-cancel">Cancel &amp; refund</button>`;
   } else if (req.status === 'queued') {
-    el.innerHTML = `<div class="ft-line">📹 <b>You're in line — #${req.position}</b> for ${esc(req.model_name)}</div>
-      <div class="ft-sub">About ${req.eta_min} min wait · your ${req.duration_min}-min FaceTime starts right after</div>
-      <button class="btn ghost small" id="ft-cancel">Leave line &amp; refund</button>`;
+    el.innerHTML = `<div class="row" style="width:100%;align-items:flex-start">
+        <div class="ft-line grow">📹 <b>${t('bk_in_line')} ${esc(req.model_name)}</b> 💋</div>
+        <button class="ft-min" id="ft-min" title="Minimize">–</button></div>
+      <div class="ft-line" style="font-size:17px"><b>#${req.position}</b> · ${t('bk_turn_in')} <b>${req.eta_min} ${t('bk_min_wait')}</b></div>
+      <div class="ft-sub">Your ${req.duration_min}-min FaceTime starts the moment hers ends · paid ${fmt(req.amount_cents)}</div>
+      <button class="btn ghost small" id="ft-cancel">${t('bk_leave_line')}</button>`;
+    const mn = $('#ft-min');
+    if (mn) mn.onclick = () => { ftPanelMin = true; updateFtPanel(ftMine); };
   } else if (req.status === 'invited') {
     el.innerHTML = `<div class="ft-line">💚 <b>${esc(req.model_name)} is ready for you!</b></div>
       <div class="ft-sub">Join now — the spot passes to the next fan in ~90 seconds</div>
-      <button class="btn" id="ft-join">Join FaceTime 📹</button>
+      <button class="btn" id="ft-join">${t('bk_start_now')}</button>
       <button class="btn ghost small" id="ft-cancel">Cancel &amp; refund</button>`;
     const j = $('#ft-join');
     if (j) j.onclick = joinFtCall;
@@ -5513,6 +5771,7 @@ function updateFtPanel(req, reason) {
     el.classList.add('hidden');
     stopFtPoll();
     ftMine = null;
+    ftPanelMin = false;
     toast('FaceTime cancelled — refunded.');
     refreshMe();
   };
@@ -5522,9 +5781,9 @@ function updateFtPanel(req, reason) {
 async function refreshFtPanel() {
   if (!S.user || S.user.role !== 'fan') return;
   try {
-    const { data } = await api('/facetime/mine');
+    const { data } = await api('/facetime/queue/me');
     if (data.request) updateFtPanel(data.request);
-    else { ftPanelEl().classList.add('hidden'); stopFtPoll(); ftMine = null; }
+    else { ftPanelEl().classList.add('hidden'); stopFtPoll(); ftMine = null; ftPanelMin = false; }
   } catch (e) { /* ignore */ }
 }
 
@@ -5580,7 +5839,44 @@ async function refreshFtCard() {
     const { data } = await api('/facetime/incoming');
     const pend = (data.requests || []).find((r) => r.status === 'pending');
     if (pend) showFtRequestCard(pend); else hideFtRequestCard();
+    updateModelFtQueue((data.requests || []).filter((r) => ['queued', 'invited'].includes(r.status)));
   } catch (e) { /* ignore */ }
+}
+
+/* Model side: her FaceTime line — who's waiting, in what order, with a
+   Remove (refunds him) per waiter. Visible during calls too, so she can
+   manage the line without leaving the call screen. */
+let ftQueuePoll = null;
+function ftQueuePanelEl() {
+  let el = $('#ft-queue-panel');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'ft-queue-panel';
+    el.className = 'ft-panel ft-queue-panel hidden';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function updateModelFtQueue(line) {
+  const el = ftQueuePanelEl();
+  if (!S.user || S.user.role !== 'model' || !line || !line.length) {
+    el.classList.add('hidden');
+    if (ftQueuePoll) { clearInterval(ftQueuePoll); ftQueuePoll = null; }
+    return;
+  }
+  el.classList.remove('hidden');
+  el.innerHTML = `<div class="ft-line">📹 <b>Your FaceTime line</b> (${line.length})</div>` +
+    line.map((r, i) => `
+      <div class="ft-q-row">
+        <span class="grow">${r.status === 'invited' ? '💚' : `<b>#${i + 1}</b>`} ${esc(r.fan_name)} · ${r.duration_min} min${r.status === 'invited' ? ' · invited — joining…' : ''}</span>
+        ${r.status === 'queued' ? `<button class="btn ghost small" data-qremove="${r.id}">${t('bk_remove')}</button>` : ''}
+      </div>`).join('');
+  el.querySelectorAll('[data-qremove]').forEach((b) => b.onclick = async () => {
+    await api(`/facetime/${b.dataset.qremove}/decline`, { method: 'POST' }).catch(() => {});
+    toast('Removed from your line — he was refunded.');
+    refreshFtCard();
+  });
+  if (!ftQueuePoll) ftQueuePoll = setInterval(refreshFtCard, 5000);
 }
 
 /* Mid-call explicit switch (model offers, fan pays the uplift) */
