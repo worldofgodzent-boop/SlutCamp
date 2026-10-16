@@ -51,6 +51,28 @@ test('promo injection exists and is gated to halloween only', () => {
   assert.match(themeJs, /\.sc-theme-banner, \.sc-theme-promo, \.sc-theme-particles/);
 });
 
+test('bell keeps its fixed band (the invariant the stack geometry derives from)', () => {
+  // Bell: top = inset+56, 44px tall → bottom edge at inset+100, right: 12.
+  // If this rule ever moves, the logout stack offsets below must be
+  // re-derived — this test failing is the reminder.
+  assert.match(styles, /\.notif-bell\s*\{[^}]*top:\s*calc\(env\(safe-area-inset-top, 0px\) \+ 56px\);[^}]*right:\s*12px/);
+  assert.match(styles, /\.notif-bell\s*\{[^}]*width:\s*44px;\s*height:\s*44px/);
+});
+
+test('log out stacks below the bell while the theme banner is up', () => {
+  // Banner up → header content top ≈ inset+62, inside the bell's band
+  // (inset+56 → inset+100). The pill is pushed one bell-height down its
+  // row (≈inset+106 → inset+142, fully below the bell, ~6px spare) and
+  // the wordmark stays at the top of the row.
+  assert.match(styles, /#phone:has\(> \.sc-theme-banner\) \.home-head-row\s*\{\s*align-items:\s*flex-start;\s*\}/);
+  assert.match(styles, /#phone:has\(> \.sc-theme-banner\) \.home-logout-btn\s*\{\s*margin-top:\s*44px;\s*\}/);
+  // Orphan state: banner dismissed but the promo strip still in the
+  // column → header starts ≈inset+39, so the push is deeper (66px →
+  // pill ≈inset+105 → inset+141). The :not() guard keeps it from ever
+  // stacking on top of the banner-state rule.
+  assert.match(styles, /#phone:has\(> \.sc-theme-promo\):not\(:has\(> \.sc-theme-banner\)\) \.home-logout-btn\s*\{\s*margin-top:\s*66px;\s*\}/);
+});
+
 test('promo strip is styled: structure in theme-base, skin in halloween pack', () => {
   assert.match(themeBase, /\.sc-theme-promo\s*\{/);
   assert.match(halloween, /\[data-theme='halloween'\] \.sc-theme-promo\s*\{/);
