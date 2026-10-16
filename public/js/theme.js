@@ -181,7 +181,7 @@
   var POPUP_MODELS = ['pink', 'purple', 'blonde', 'red', 'black', 'silver'];
   var POPUP_POSES = ['kiss', 'twerk'];
   var POPUP_SCHEDULE = {
-    firstDelayMs: 60000,      // first pop ~1 minute after login
+    firstDelayMs: 20000,      // first pop 20 seconds after login
     intervalMinMs: 210000,    // then every 3.5–5 minutes, randomized
     intervalMaxMs: 300000,
     showMs: 6000,             // ~6 seconds on screen per pop

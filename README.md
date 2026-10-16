@@ -115,7 +115,7 @@ and the computed feasts — Easter, Thanksgiving — win if one ever did):
 logged-in fans and models also get a little company: an anime witch
 (art in `public/img/popups/<model>-<pose>.webp` — six models with
 different hair colors × a kiss-blowing pose and a twerk pose) rises
-into a bottom corner ~1 minute after login and then every 3.5–5
+into a bottom corner ~20 seconds after login and then every 3.5–5
 minutes, stays ~6 seconds, and sinks away. The rotation is a
 shuffle-bag — every model/pose appears before anyone repeats, and
 kiss/twerk alternate. She is pure decoration: `pointer-events: none`
