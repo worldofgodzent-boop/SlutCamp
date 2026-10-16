@@ -220,6 +220,26 @@ const I18N = {
     wallet_h: 'Wallet 💰', balance: 'Balance: {amt}',
     credit_note: "1 credit = $1. Messages cost the model's rate.",
     credits_word: 'credits',
+    spend_h: '🧾 Your spending',
+    spend_month: 'Spent this month', spend_lifetime: 'Spent all time',
+    spend_by_category: 'By category', spend_top_models: 'Top models',
+    spend_none_yet: 'Nothing yet — your spending will show up here.',
+    spend_cat_messages: 'Messages', spend_cat_ppv: 'PPV unlocks',
+    spend_cat_voice: 'Voice notes', spend_cat_tips: 'Tips',
+    spend_cat_gifts: 'Gifts', spend_cat_calls: 'Calls',
+    spend_cat_lives: 'Live shows', spend_cat_bookings: 'Bookings',
+    spend_cat_games: 'Games', spend_cat_tts: 'Pay-to-speak',
+    spend_cat_refunds: 'Refunds',
+    spend_cap_h: 'Monthly spend cap',
+    spend_cap_none: 'No cap set — you can spend freely.',
+    spend_cap_progress: '{spent} of {cap} spent this month',
+    spend_cap_left: '{amt} left this month',
+    spend_cap_dollars_ph: 'Cap in $ (e.g. 200)',
+    spend_cap_set: 'Set cap', spend_cap_save: 'Save cap', spend_cap_remove: 'Remove',
+    spend_cap_saved: '✅ Spend cap saved', spend_cap_removed: 'Spend cap removed',
+    spend_cap_bad: 'Enter a cap between $10 and $100,000.',
+    spend_cap_reached: "🛑 Monthly spend cap reached — you've spent {spent} of your {cap} cap this month. Raise or remove it in your Wallet.",
+    spend_cap_ended: '🛑 Your monthly spend cap was reached — raise or remove it in your Wallet to keep going.',
     guest_wallet_title: 'Create your free account to add funds',
     guest_wallet_sub: "You're browsing as a guest. Sign up free to buy credits and unlock chats, live streams, gifts, and more.",
     create_free_account: '✨ Create free account',
@@ -493,6 +513,26 @@ const I18N = {
     wallet_h: 'Billetera 💰', balance: 'Saldo: {amt}',
     credit_note: '1 crédito = $1. Los mensajes cuestan la tarifa de la modelo.',
     credits_word: 'créditos',
+    spend_h: '🧾 Tu gasto',
+    spend_month: 'Gastado este mes', spend_lifetime: 'Gastado en total',
+    spend_by_category: 'Por categoría', spend_top_models: 'Modelos principales',
+    spend_none_yet: 'Nada todavía — tu gasto aparecerá aquí.',
+    spend_cat_messages: 'Mensajes', spend_cat_ppv: 'Desbloqueos PPV',
+    spend_cat_voice: 'Notas de voz', spend_cat_tips: 'Propinas',
+    spend_cat_gifts: 'Regalos', spend_cat_calls: 'Llamadas',
+    spend_cat_lives: 'Shows en vivo', spend_cat_bookings: 'Reservas',
+    spend_cat_games: 'Juegos', spend_cat_tts: 'Pagar por hablar',
+    spend_cat_refunds: 'Reembolsos',
+    spend_cap_h: 'Límite de gasto mensual',
+    spend_cap_none: 'Sin límite — puedes gastar libremente.',
+    spend_cap_progress: '{spent} de {cap} gastados este mes',
+    spend_cap_left: 'Te quedan {amt} este mes',
+    spend_cap_dollars_ph: 'Límite en $ (ej. 200)',
+    spend_cap_set: 'Fijar límite', spend_cap_save: 'Guardar límite', spend_cap_remove: 'Quitar',
+    spend_cap_saved: '✅ Límite de gasto guardado', spend_cap_removed: 'Límite de gasto eliminado',
+    spend_cap_bad: 'Ingresa un límite entre $10 y $100,000.',
+    spend_cap_reached: '🛑 Límite de gasto mensual alcanzado — has gastado {spent} de tu límite de {cap} este mes. Súbelo o quítalo en tu Billetera.',
+    spend_cap_ended: '🛑 Alcanzaste tu límite de gasto mensual — súbelo o quítalo en tu Billetera para seguir.',
     guest_wallet_title: 'Crea tu cuenta gratis para agregar fondos',
     guest_wallet_sub: 'Estás explorando como invitado. Regístrate gratis para comprar créditos y desbloquear chats, transmisiones en vivo, regalos y más.',
     create_free_account: '✨ Crear cuenta gratis',
@@ -763,6 +803,26 @@ const I18N = {
     wallet_h: 'Carteira 💰', balance: 'Saldo: {amt}',
     credit_note: '1 crédito = $1. As mensagens custam a tarifa da modelo.',
     credits_word: 'créditos',
+    spend_h: '🧾 Seus gastos',
+    spend_month: 'Gasto este mês', spend_lifetime: 'Gasto total',
+    spend_by_category: 'Por categoria', spend_top_models: 'Modelos principais',
+    spend_none_yet: 'Nada ainda — seus gastos aparecerão aqui.',
+    spend_cat_messages: 'Mensagens', spend_cat_ppv: 'Desbloqueios PPV',
+    spend_cat_voice: 'Notas de voz', spend_cat_tips: 'Gorjetas',
+    spend_cat_gifts: 'Presentes', spend_cat_calls: 'Chamadas',
+    spend_cat_lives: 'Shows ao vivo', spend_cat_bookings: 'Reservas',
+    spend_cat_games: 'Jogos', spend_cat_tts: 'Pagar para falar',
+    spend_cat_refunds: 'Reembolsos',
+    spend_cap_h: 'Limite de gastos mensal',
+    spend_cap_none: 'Sem limite — você pode gastar livremente.',
+    spend_cap_progress: '{spent} de {cap} gastos este mês',
+    spend_cap_left: 'Restam {amt} este mês',
+    spend_cap_dollars_ph: 'Limite em $ (ex. 200)',
+    spend_cap_set: 'Definir limite', spend_cap_save: 'Salvar limite', spend_cap_remove: 'Remover',
+    spend_cap_saved: '✅ Limite de gastos salvo', spend_cap_removed: 'Limite de gastos removido',
+    spend_cap_bad: 'Digite um limite entre $10 e $100.000.',
+    spend_cap_reached: '🛑 Limite de gastos mensal atingido — você gastou {spent} do seu limite de {cap} este mês. Aumente ou remova o limite na sua Carteira.',
+    spend_cap_ended: '🛑 Você atingiu seu limite de gastos mensal — aumente ou remova o limite na sua Carteira para continuar.',
     guest_wallet_title: 'Crie sua conta grátis para adicionar fundos',
     guest_wallet_sub: 'Você está navegando como visitante. Cadastre-se grátis para comprar créditos e liberar conversas, lives, presentes e muito mais.',
     create_free_account: '✨ Criar conta grátis',
@@ -1325,7 +1385,9 @@ function handleWS(m) {
     updateCallHUD();
     if (m.balance_cents != null && S.wallet) { S.wallet.credits_cents = m.balance_cents; }
   } else if (m.type === 'call:ended' && S.call && m.call_id === S.call.id) {
-    endCallUI(m.reason === 'insufficient_credits'
+    endCallUI(m.reason === 'spend_cap_reached'
+      ? t('spend_cap_ended')
+      : m.reason === 'insufficient_credits'
       ? 'Out of credits — call ended.'
       : m.reason === 'fan_no_show'
         ? (S.call.role === 'model'
@@ -1398,7 +1460,8 @@ function handleWS(m) {
     if (m.balance_cents != null && S.wallet) S.wallet.credits_cents = m.balance_cents;
     updateLivePayHUD();
     if (S.live.isExplicit && !isGiftClear(S.live)) {
-      toast('Out of credits — back to free preview.');
+      if (m.reason === 'spend_cap_reached') toast(t('spend_cap_ended'), 4500);
+      else toast('Out of credits — back to free preview.');
       applyLiveBlur(true, S.live.explicitRate, 'manual');
     } else if (!S.live.isExplicit) {
       applyLiveBlur(false);
@@ -3019,6 +3082,75 @@ async function doQuickSignup(payMethod) {
   toast(data.error === 'username_taken' ? 'That username is taken — try another' : 'Signup failed — try again');
 }
 
+/* "Your spending" panel (fan wallet): this-month + lifetime totals, the
+ * per-category breakdown, top models, and the OPTIONAL monthly spend cap
+ * controls. Data: GET /api/me/spending; cap writes: PUT /api/me/spending-cap.
+ * Enforcement is server-side in chargeFan — this panel only reports and
+ * configures. Categories with a zero lifetime net stay hidden. */
+async function renderSpendCard() {
+  const host = $('#spend-card');
+  if (!host) return;
+  const { status, data } = await api('/me/spending');
+  if (status !== 200 || !data) { host.innerHTML = ''; return; }
+  const cats = (data.by_category || []).filter((c) => c.lifetime_cents !== 0);
+  const tops = data.top_models || [];
+  const cap = data.cap_cents;
+  const monthSpent = Math.max(0, data.month_cents);
+  const pct = cap ? Math.min(100, Math.round((monthSpent / cap) * 100)) : 0;
+  host.innerHTML = `
+    <div class="card">
+      <div style="font-weight:800;font-size:17px">${t('spend_h')}</div>
+      <div class="row" style="justify-content:space-between;margin-top:10px">
+        <span class="muted">${t('spend_month')}</span><b>${fmt(data.month_cents)}</b>
+      </div>
+      <div class="row" style="justify-content:space-between">
+        <span class="muted">${t('spend_lifetime')}</span><b>${fmt(data.lifetime_cents)}</b>
+      </div>
+      ${cats.length ? `<div class="muted small" style="margin:12px 0 4px;font-weight:700">${t('spend_by_category')}</div>
+      ${cats.map((c) => `<div class="row" style="justify-content:space-between"><span>${t('spend_cat_' + c.category)}</span><span>${fmt(c.lifetime_cents)}</span></div>`).join('')}` : `<div class="muted small" style="margin-top:8px">${t('spend_none_yet')}</div>`}
+      ${tops.length ? `<div class="muted small" style="margin:12px 0 4px;font-weight:700">${t('spend_top_models')}</div>
+      ${tops.map((m) => `<div class="row" style="justify-content:space-between"><span>${esc(m.display_name)}</span><span>${fmt(m.cents)}</span></div>`).join('')}` : ''}
+      <div style="border-top:1px solid rgba(255,255,255,.08);margin-top:14px;padding-top:12px">
+        <div style="font-weight:800">${t('spend_cap_h')}</div>
+        ${cap != null ? `
+          <div class="muted small" style="margin:6px 0">${t('spend_cap_progress', { spent: fmt(data.month_cents), cap: fmt(cap) })} · ${t('spend_cap_left', { amt: fmt(Math.max(0, cap - monthSpent)) })}</div>
+          <div style="height:8px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden"><div style="height:100%;width:${pct}%;background:${pct >= 100 ? '#ff5470' : 'var(--pink)'}"></div></div>
+        ` : `<div class="muted small" style="margin:6px 0">${t('spend_cap_none')}</div>`}
+        <div class="row" style="gap:8px;margin-top:10px;align-items:stretch">
+          <input class="input" id="spend-cap-input" type="number" min="10" max="100000" step="1" inputmode="decimal"
+            placeholder="${t('spend_cap_dollars_ph')}" value="${cap != null ? cap / 100 : ''}" style="flex:1;min-width:0">
+          <button class="btn small" id="spend-cap-save">${cap != null ? t('spend_cap_save') : t('spend_cap_set')}</button>
+          ${cap != null ? `<button class="btn small ghost" id="spend-cap-remove">${t('spend_cap_remove')}</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+  const saveBtn = $('#spend-cap-save');
+  if (saveBtn) saveBtn.onclick = async () => {
+    const dollars = Number($('#spend-cap-input').value);
+    if (!Number.isFinite(dollars) || dollars < 10 || dollars > 100000) return toast(t('spend_cap_bad'));
+    const r = await api('/me/spending-cap', { method: 'PUT', body: JSON.stringify({ cap_cents: Math.round(dollars * 100) }) });
+    if (r.status === 200) { toast(t('spend_cap_saved')); renderSpendCard(); }
+    else toast((r.data && r.data.message) || t('spend_cap_bad'));
+  };
+  const rmBtn = $('#spend-cap-remove');
+  if (rmBtn) rmBtn.onclick = async () => {
+    const r = await api('/me/spending-cap', { method: 'PUT', body: JSON.stringify({ cap_cents: null }) });
+    if (r.status === 200) { toast(t('spend_cap_removed')); renderSpendCard(); }
+  };
+}
+
+/* Shared charge-refusal toast: when the server refuses a spend because
+ * the fan hit their own monthly cap (error 'spend_cap_reached'), say so
+ * in their language instead of the generic not-enough-credits line.
+ * Returns true when it handled the error. */
+function spendCapToast(data) {
+  if (data && data.error === 'spend_cap_reached') {
+    toast(t('spend_cap_reached', { spent: fmt(data.month_spent_cents || 0), cap: fmt(data.cap_cents || 0) }), 4500);
+    return true;
+  }
+  return false;
+}
+
 async function vWallet() {
   // Guests can browse but must create an account to add money
   if (!S.token || !S.user || S.user.role !== 'fan') {
@@ -3068,6 +3200,7 @@ async function vWallet() {
       <div class="card" style="text-align:center">
         <div class="muted small">${t('credit_note')}</div>
       </div>
+      <div id="spend-card"></div>
       ${pkgs.map((p) => `
         <button class="pkg" data-pkg="${p.id}">
           <span class="pkg-coin">🪙</span>
@@ -3111,6 +3244,7 @@ async function vWallet() {
       ${langCardHTML()}
       <button class="btn ghost" id="w-logout">${t('log_out')}</button>
     </div>`;
+  renderSpendCard();
   app.querySelectorAll('[data-pkg]').forEach((b) => {
     b.onclick = async () => {
       if (ccbCfg.configured) {
@@ -4259,7 +4393,7 @@ function openBookingSheet(modelId, modelName, rateCents) {
       show('bookings', {});
     } else {
       btn.disabled = false;
-      toast(data.error === 'insufficient_credits'
+      if (!spendCapToast(data)) toast(data.error === 'insufficient_credits'
         ? `Need ${fmt(data.needed_cents)} — top up first 💰`
         : (data.message || 'Could not book.'));
     }
@@ -4356,6 +4490,7 @@ async function openSlotBookingSheet(modelId, modelName, rateCents) {
         if (S.wallet) refreshMe();
         return;
       }
+      if (data && data.error === 'spend_cap_reached') { close(); return spendCapToast(data); }
       if (status === 402 || (data && data.error === 'insufficient_credits')) {
         close();
         return showBuyCredits(data.needed_cents);
@@ -5847,7 +5982,7 @@ async function unlockMedia(mediaId) {
     toast('🔓 Unlocked!');
   } else if (status === 402) {
     refreshMediaBubble(mediaId); // restore the tappable tile before routing away
-    toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`);
+    if (!spendCapToast(data)) toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`);
     if (S.user && S.user.role === 'fan') show('wallet', {});
   } else {
     refreshMediaBubble(mediaId); // restore the tappable tile
@@ -5919,6 +6054,10 @@ async function sendMessage() {
     return;
   }
   if (status === 402 && data.error === 'trial_over') return showPaywall();
+  if (status === 402 && data.error === 'spend_cap_reached') {
+    input.value = text;
+    return spendCapToast(data);
+  }
   if (status === 402 && data.error === 'insufficient_credits') {
     input.value = text;
     return showBuyCredits(data.needed_cents);
@@ -6034,7 +6173,7 @@ async function uploadMedia(file, kind, priceCents, durationSec) {
     } else if (r.status === 402) {
       const need = data.needed_cents != null ? fmt(data.needed_cents) : '';
       const bal = data.balance_cents != null ? fmt(data.balance_cents) : '';
-      toast(`💰 Not enough credits — need ${need} (you have ${bal}). Top up to send!`, 4000);
+      if (!spendCapToast(data)) toast(`💰 Not enough credits — need ${need} (you have ${bal}). Top up to send!`, 4000);
       if (S.user && S.user.role === 'fan') {
         setTimeout(() => show('wallet', {}), 800);
       }
@@ -6261,7 +6400,7 @@ async function sendTip(amountCents) {
     toast(`🎁 Tipped ${fmt(amountCents)}!`);
     if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
   } else if (status === 402) {
-    toast(`Need ${fmt(data.needed_cents)} — top up 💰`);
+    if (!spendCapToast(data)) toast(`Need ${fmt(data.needed_cents)} — top up 💰`);
     show('wallet', {});
   } else {
     toast(data.message || 'Tip failed.');
@@ -6514,6 +6653,7 @@ function openFaceTimeSheet() {
         if (data.error === 'model_live')
           return toast(data.message || "🔴 She's live — FaceTime is locked during lives. Join her stage or book a 1-on-1!", 5000);
         if (data.error === 'model_offline') return toast('She is offline right now.');
+        if (data.error === 'spend_cap_reached') return spendCapToast(data);
         if (data.error === 'insufficient_credits') return showBuyCredits(data.needed_cents);
         if (data.error === 'already_requested') {
           toast('You already have a FaceTime request with her ⏳');
@@ -6774,7 +6914,8 @@ function showExplicitOffer(m) {
     <button class="sheet-btn" id="exp-no">Stay normal</button>`);
   $('#exp-yes').onclick = async () => {
     ftCloseSheet();
-    const { status } = await api(`/calls/${m.call_id}/explicit-accept`, { method: 'POST' });
+    const { status, data } = await api(`/calls/${m.call_id}/explicit-accept`, { method: 'POST' });
+    if (data && data.error === 'spend_cap_reached') return spendCapToast(data);
     if (status === 402) { toast('Not enough credits for explicit 😕'); return showBuyCredits(m.extra_cents); }
     if (status !== 200) toast('Could not switch to explicit.');
     else refreshMe();
@@ -7985,6 +8126,7 @@ async function sendTipMenuPick(menuId, modelId, modelName, context) {
     body: JSON.stringify({ menu_id: menuId, context: context || 'profile' }),
   });
   if (status === 402) {
+    if (spendCapToast(data)) return;
     toast(`Not enough credits — you need ${fmt(data.needed_cents)}.`);
     if (typeof showBuyCredits === 'function') showBuyCredits(data.needed_cents);
     return;
@@ -8074,8 +8216,7 @@ async function sendGift(giftId, sheet) {
       toast('🎁 Gift sent — your view stays clear! 🔓');
     }
   } else if (status === 402) {
-    toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500);
-    showBuyCredits(data.needed_cents);
+    if (!spendCapToast(data)) { toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500); showBuyCredits(data.needed_cents); }
   } else {
     toast('Gift failed.');
   }
@@ -8217,8 +8358,7 @@ async function buyGameItem(itemId) {
     toast('🎲 Sent! Watch her screen 🔥', 3000);
     renderGameSheetBody(); // a bought special flips to Resting, balance repaints
   } else if (status === 402) {
-    toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500);
-    showBuyCredits(data.needed_cents);
+    if (!spendCapToast(data)) { toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500); showBuyCredits(data.needed_cents); }
   } else if (status === 403 && data.error === 'explicit_locked') {
     toast(`🔒 ${t('game_unlocks_explicit')}`, 3000);
     renderGameSheetBody();
@@ -8484,8 +8624,7 @@ async function sendChatGift(giftId) {
     toast(`🎁 Gift sent — she'll love it!`);
     // The gift message + fly animation arrive via the chat:new WS push.
   } else if (status === 402) {
-    toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500);
-    showBuyCredits(data.needed_cents);
+    if (!spendCapToast(data)) { toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500); showBuyCredits(data.needed_cents); }
   } else {
     toast('Gift failed.');
   }
@@ -8650,8 +8789,7 @@ async function sendPriority(tierIndex, message, voice) {
   } else if (status === 423) {
     toast(`⚠️ Priority blocked — not allowed. (${data.strikes || 0}/3 strikes)`, 3500);
   } else if (status === 402) {
-    toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500);
-    showBuyCredits(data.needed_cents);
+    if (!spendCapToast(data)) { toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500); showBuyCredits(data.needed_cents); }
   } else {
     toast('Priority message failed.');
   }
@@ -8795,8 +8933,7 @@ async function sendStageRequest(mode) {
     showStageBanner('pending', mode);
     toast(`${stageModeEmoji(mode)} Request sent (${fmt(data.fee_cents)})! Waiting for her… 👀`, 3000);
   } else if (status === 402) {
-    toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500);
-    showBuyCredits(data.needed_cents);
+    if (!spendCapToast(data)) { toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500); showBuyCredits(data.needed_cents); }
   } else if (status === 409 && data.error === 'stage_busy') {
     toast("She's with someone right now — try again soon! 👀", 3000);
   } else if (status === 409 && data.error === 'already_pending') {
@@ -9251,8 +9388,7 @@ async function payExplicitEntry() {
     startGiftCountdown();
     toast(`🔓 You're in! Keep sending gifts to stay clear 🎁`);
   } else if (status === 402) {
-    toast(`Need ${fmt(data.needed_cents)} — top up 💰`);
-    showBuyCredits(data.needed_cents);
+    if (!spendCapToast(data)) { toast(`Need ${fmt(data.needed_cents)} — top up 💰`); showBuyCredits(data.needed_cents); }
   } else if (status === 409) {
     // Server says already paid (e.g. paid on another device) — sync up
     L.entryPaid = true;
