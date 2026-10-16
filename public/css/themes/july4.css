@@ -1,0 +1,65 @@
+/* Seasonal pack: JULY 4TH — window Jun 27 – Jul 4 (see
+   public/js/theme.js). Midnight navy, firework red and bright
+   white-blue accents. */
+
+:root[data-theme='july4'] {
+  --bg: #080d1a;
+  --bg2: #0b1424;
+  --card: #101c33;
+  --card2: #14243f;
+  --purple: #4c6ef5;
+  --purple-dark: #364fc7;
+  --pink: #e63946;
+  --rose: #ff6b7a;
+  --peach: #ffc9c9;
+  --amber-glow: #ffd166;
+  --text: #f4f7ff;
+  --muted: #aebad6;
+  --bubble-in: #14243f;
+  --bubble-out: #c1272d;
+}
+
+:root[data-theme='july4'] body { background: #04060d; }
+:root[data-theme='july4'] #phone {
+  background-image:
+    radial-gradient(ellipse 80% 30% at 50% -5%, rgba(230, 57, 70, .1), transparent),
+    radial-gradient(ellipse 60% 25% at 50% 110%, rgba(76, 110, 245, .1), transparent);
+  box-shadow: 0 0 80px rgba(76, 110, 245, .13);
+}
+:root[data-theme='july4'] .header,
+:root[data-theme='july4'] #tabbar { background: rgba(8, 13, 26, .92); }
+
+:root[data-theme='july4'] .header h1 .logo {
+  background: linear-gradient(135deg, #ff6b7a, #e63946 50%, #4c6ef5);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 10px rgba(230, 57, 70, .35));
+}
+
+:root[data-theme='july4'] .btn {
+  background: linear-gradient(135deg, #e63946, #c1272d 55%, #364fc7);
+  box-shadow: 0 4px 20px rgba(230, 57, 70, .3), inset 0 1px 0 rgba(255, 255, 255, .2);
+}
+:root[data-theme='july4'] .btn:hover {
+  box-shadow: 0 6px 28px rgba(230, 57, 70, .45), inset 0 1px 0 rgba(255, 255, 255, .2);
+}
+:root[data-theme='july4'] .btn:active {
+  box-shadow: 0 2px 10px rgba(230, 57, 70, .2);
+}
+
+:root[data-theme='july4'] .card { border-color: rgba(174, 186, 214, .22); }
+:root[data-theme='july4'] .input:focus {
+  border-color: var(--pink);
+  box-shadow: 0 0 0 3px rgba(230, 57, 70, .16);
+}
+
+:root[data-theme='july4'] ::selection { background: #e63946; color: #fff5f5; }
+:root[data-theme='july4'] ::-webkit-scrollbar-thumb { background: #364fc7; border-radius: 8px; }
+:root[data-theme='july4'] ::-webkit-scrollbar-track { background: #0b1424; }
+
+:root[data-theme='july4'] .sc-theme-banner {
+  background: linear-gradient(135deg, #364fc7, #c1272d 65%, #ffd166 145%);
+}
+:root[data-theme='july4'] .sc-theme-particles span {
+  filter: drop-shadow(0 0 8px rgba(255, 209, 102, .5));
+}

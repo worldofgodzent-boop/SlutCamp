@@ -68,6 +68,63 @@ wogent-chat/
 └── AGE-VERIFICATION-GUIDE.md    # Jumio/Veriff + 2257 compliance
 ```
 
+## 🎉 Seasonal themes ("facelifts")
+
+The public app re-skins itself for the holidays — automatically, and
+only for the season. A small engine (`public/js/theme.js`, loaded from
+`index.html`) resolves today's theme from a calendar; when a theme is
+active it sets `data-theme` on the page, injects that holiday's CSS
+pack, shows a slim greeting banner, and floats a few themed emoji
+particles over the app. When the window ends, nothing resolves and the
+app is exactly back to normal. No server changes, no app-logic changes —
+the engine only ever adds decoration, and any failure inside it removes
+the decorations and leaves the app untouched.
+
+**Calendar windows** (local date, inclusive; the windows never overlap,
+and the computed feasts — Easter, Thanksgiving — win if one ever did):
+
+| Theme | Window |
+|---|---|
+| 🎃 Halloween | Oct 1 – Oct 31 |
+| 🦃 Thanksgiving | Nov 20 – 4th Thursday of November |
+| 🎄 Christmas | Dec 1 – Dec 25 |
+| 🥂 New Year | Dec 28 – Jan 2 |
+| 💘 Valentine's | Feb 7 – Feb 14 |
+| 🍀 St. Patrick's | Mar 10 – Mar 17 |
+| 🐣 Easter | Good Friday – Easter Sunday (computed) |
+| 🎆 July 4th | Jun 27 – Jul 4 |
+
+**Preview / override** — visit the app with a query flag:
+
+- `?theme=halloween` (or any pack name) forces that facelift and
+  remembers the choice in `localStorage` (`sc_theme_override`)
+- `?theme=off` forces the normal look, also remembered
+- `?theme=auto` clears the override and hands control back to the calendar
+
+**Files**
+
+- `public/js/theme.js` — the engine + pack metadata (`THEMES`:
+  greeting, particle emojis, `theme-color`). Pure resolver
+  `resolveTheme(date, override)` is unit-tested in `tests/theme.test.js`.
+- `public/css/themes/theme-base.css` — shared banner/particle structure.
+- `public/css/themes/<name>.css` — one pack per holiday: `:root`
+  variable overrides under `:root[data-theme='<name>']` plus accents
+  (button/logo gradients, card hairlines, selection, scrollbar, banner).
+
+**Adding a new pack** — tests enforce that metadata and CSS stay in
+sync, in both directions:
+
+1. Create `public/css/themes/<name>.css` with the variable overrides
+   scoped to `:root[data-theme='<name>']` (copy an existing pack).
+2. Add a `<name>` entry to `THEMES` in `public/js/theme.js`.
+3. Add the date window in `calendarTheme()` in the same file.
+4. Add resolver cases to `tests/theme.test.js` and run
+   `npm run test:triple`.
+
+**Planned follow-up:** a Manager-side global override (force a theme
+site-wide, or kill one early, from Slut Manager) is not built yet — for
+now the calendar and the `?theme=` flags are the only switches.
+
 ## What's stubbed for later (not fake — clearly marked)
 
 1. **Payments** — "Buy Credits" shows *"Payment processor coming soon."* Plug CCBill/Segpay API keys into `POST /api/credits/buy` + webhook. See `PAYMENT-PROCESSOR-GUIDE.md`.

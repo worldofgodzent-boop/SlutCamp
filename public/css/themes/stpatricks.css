@@ -1,0 +1,64 @@
+/* Seasonal pack: ST. PATRICK'S — window Mar 10–17 (see
+   public/js/theme.js). Deep emerald with a pot-of-gold shimmer. */
+
+:root[data-theme='stpatricks'] {
+  --bg: #07130a;
+  --bg2: #0a1d10;
+  --card: #0e2817;
+  --card2: #12331d;
+  --purple: #2f9e44;
+  --purple-dark: #1f7031;
+  --pink: #d4a017;
+  --rose: #e6c34a;
+  --peach: #ffe08a;
+  --amber-glow: #ffd43b;
+  --text: #f0f7ec;
+  --muted: #aec7ab;
+  --bubble-in: #12331d;
+  --bubble-out: #1f7031;
+}
+
+:root[data-theme='stpatricks'] body { background: #030805; }
+:root[data-theme='stpatricks'] #phone {
+  background-image:
+    radial-gradient(ellipse 80% 30% at 50% -5%, rgba(212, 160, 23, .11), transparent),
+    radial-gradient(ellipse 60% 25% at 50% 110%, rgba(47, 158, 68, .1), transparent);
+  box-shadow: 0 0 80px rgba(47, 158, 68, .13);
+}
+:root[data-theme='stpatricks'] .header,
+:root[data-theme='stpatricks'] #tabbar { background: rgba(7, 19, 10, .9); }
+
+:root[data-theme='stpatricks'] .header h1 .logo {
+  background: linear-gradient(135deg, #ffe08a, #d4a017 55%, #2f9e44);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 10px rgba(212, 160, 23, .35));
+}
+
+:root[data-theme='stpatricks'] .btn {
+  background: linear-gradient(135deg, #2f9e44, #1f7031 55%, #d4a017 140%);
+  box-shadow: 0 4px 20px rgba(47, 158, 68, .3), inset 0 1px 0 rgba(255, 255, 255, .2);
+}
+:root[data-theme='stpatricks'] .btn:hover {
+  box-shadow: 0 6px 28px rgba(47, 158, 68, .45), inset 0 1px 0 rgba(255, 255, 255, .2);
+}
+:root[data-theme='stpatricks'] .btn:active {
+  box-shadow: 0 2px 10px rgba(47, 158, 68, .2);
+}
+
+:root[data-theme='stpatricks'] .card { border-color: rgba(255, 212, 59, .2); }
+:root[data-theme='stpatricks'] .input:focus {
+  border-color: var(--pink);
+  box-shadow: 0 0 0 3px rgba(212, 160, 23, .16);
+}
+
+:root[data-theme='stpatricks'] ::selection { background: #2f9e44; color: #efffef; }
+:root[data-theme='stpatricks'] ::-webkit-scrollbar-thumb { background: #1f7031; border-radius: 8px; }
+:root[data-theme='stpatricks'] ::-webkit-scrollbar-track { background: #0a1d10; }
+
+:root[data-theme='stpatricks'] .sc-theme-banner {
+  background: linear-gradient(135deg, #1f7031, #2f9e44 55%, #d4a017 135%);
+}
+:root[data-theme='stpatricks'] .sc-theme-particles span {
+  filter: drop-shadow(0 0 8px rgba(255, 212, 59, .5));
+}

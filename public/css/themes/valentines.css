@@ -1,0 +1,65 @@
+/* Seasonal pack: VALENTINE'S — window Feb 7–14 (see
+   public/js/theme.js). The home turf of the brand, turned up: deep
+   rose, hot red and a velvet glow. */
+
+:root[data-theme='valentines'] {
+  --bg: #1c0812;
+  --bg2: #260a18;
+  --card: #300e1e;
+  --card2: #3a1224;
+  --purple: #d6336c;
+  --purple-dark: #a61e4d;
+  --pink: #ff4d6d;
+  --rose: #ff758f;
+  --peach: #ffb3c1;
+  --amber-glow: #ff8fa3;
+  --text: #fff0f3;
+  --muted: #d8a7b8;
+  --bubble-in: #3a1224;
+  --bubble-out: #c9184a;
+}
+
+:root[data-theme='valentines'] body { background: #0d0409; }
+:root[data-theme='valentines'] #phone {
+  background-image:
+    radial-gradient(ellipse 80% 30% at 50% -5%, rgba(255, 77, 109, .13), transparent),
+    radial-gradient(ellipse 60% 25% at 50% 110%, rgba(214, 51, 108, .1), transparent);
+  box-shadow: 0 0 80px rgba(255, 77, 109, .15);
+}
+:root[data-theme='valentines'] .header,
+:root[data-theme='valentines'] #tabbar { background: rgba(28, 8, 18, .9); }
+
+:root[data-theme='valentines'] .header h1 .logo {
+  background: linear-gradient(135deg, #ff758f, #ff4d6d 55%, #d6336c);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 10px rgba(255, 77, 109, .45));
+}
+
+:root[data-theme='valentines'] .btn {
+  background: linear-gradient(135deg, #ff4d6d, #c9184a);
+  box-shadow: 0 4px 22px rgba(255, 77, 109, .38), inset 0 1px 0 rgba(255, 255, 255, .2);
+}
+:root[data-theme='valentines'] .btn:hover {
+  box-shadow: 0 6px 30px rgba(255, 77, 109, .52), inset 0 1px 0 rgba(255, 255, 255, .2);
+}
+:root[data-theme='valentines'] .btn:active {
+  box-shadow: 0 2px 10px rgba(255, 77, 109, .25);
+}
+
+:root[data-theme='valentines'] .card { border-color: rgba(255, 117, 143, .24); }
+:root[data-theme='valentines'] .input:focus {
+  border-color: var(--pink);
+  box-shadow: 0 0 0 3px rgba(255, 77, 109, .17);
+}
+
+:root[data-theme='valentines'] ::selection { background: #ff4d6d; color: #fff5f7; }
+:root[data-theme='valentines'] ::-webkit-scrollbar-thumb { background: #a61e4d; border-radius: 8px; }
+:root[data-theme='valentines'] ::-webkit-scrollbar-track { background: #260a18; }
+
+:root[data-theme='valentines'] .sc-theme-banner {
+  background: linear-gradient(135deg, #a61e4d, #ff4d6d 65%, #ff8fa3 135%);
+}
+:root[data-theme='valentines'] .sc-theme-particles span {
+  filter: drop-shadow(0 0 8px rgba(255, 117, 143, .55));
+}
