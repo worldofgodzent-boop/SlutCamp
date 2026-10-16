@@ -26,6 +26,7 @@ const { DatabaseSync } = require('node:sqlite');
 const { WebSocketServer } = require('ws');
 const { transcribeAudio } = require('./lib/transcribe');
 const geoLib = require('./lib/geo');
+const shieldLib = require('./lib/shield');
 const {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -888,6 +889,13 @@ addColumnIfMissing('models', 'explicit_mic_join_cents', 'INTEGER NOT NULL DEFAUL
 addColumnIfMissing('models', 'join_cents', 'INTEGER NOT NULL DEFAULT 1000');
 addColumnIfMissing('models', 'mic_join_cents', 'INTEGER NOT NULL DEFAULT 500');
 addColumnIfMissing('calls', 'booking_id', 'INTEGER REFERENCES bookings(id)');
+// Pre-purchase explicit-media shield (Oct 16, 2026): proof-only AV
+// columns (the dormant purchase gate stamps av_verified_at and
+// fan_state; the shield only reads them — NO document/DOB data is
+// ever stored for AV) and the model-set explicit flag on chat media.
+addColumnIfMissing('users', 'av_verified_at', 'TEXT');
+addColumnIfMissing('users', 'fan_state', 'TEXT');
+addColumnIfMissing('media_items', 'is_explicit', 'INTEGER NOT NULL DEFAULT 0');
 // 1-on-1 slot bookings (Oct 15, 2026): availability caps on the model row;
 // bookings.kind separates instant slot bookings ('slot', confirmed on pay)
 // from the legacy ask-and-approve flow ('request'). Presence stamps drive
@@ -2041,6 +2049,33 @@ function blockedModelIds(geo) {
 }
 const regionBlocked = (res) => res.status(403).json({ error: 'region_blocked',
   message: 'This model is not available in your region.' });
+
+/* ---------------- Pre-purchase explicit-media shield ----------------
+   Decision layer lives in lib/shield.js (pure + unit-tested). ACTIVE
+   only when an AV provider is configured; while dormant every helper
+   below answers "not shielded" and behavior is byte-for-byte today's.
+   Explicit-flagged free chat media is then withheld (payload flag +
+   byte gates) from unverified fans in regulated/unknown locations,
+   explicit live/call entry refuses them, and public preview loops are
+   withheld from shielded viewers. Owners (the sender), other models,
+   and admins always see media clear. */
+function shieldLocForUser(req, user) {
+  return shieldLib.resolveAvLocation(user && user.fan_state, geoOfReq(req));
+}
+function shieldAppliesToIdent(req, ident) {
+  if (!ident) return shieldLib.guestShielded(shieldLib.resolveAvLocation(null, geoOfReq(req)));
+  if (ident.kind === 'guest') return shieldLib.guestShielded(shieldLib.resolveAvLocation(null, geoOfReq(req)));
+  if (ident.kind !== 'user') return false;
+  return shieldLib.fanShielded(ident.user, shieldLocForUser(req, ident.user));
+}
+/* Same rule from a bare users row (WS pushes, where the receiver is not
+   the requester: location resolves from the stored fan_state alone,
+   so unknown state fails closed exactly like the request path). */
+function shieldAppliesToUserRow(user) {
+  return shieldLib.fanShielded(user, shieldLib.resolveAvLocation(user && user.fan_state, null));
+}
+const avRequired = (res) => res.status(403).json({ error: 'av_required',
+  message: 'Age verification is required before this purchase in your state. Verify once at your first credit purchase.' });
 // Role of the Bearer-session viewer on public endpoints (null = guest/anon)
 function viewerRoleOf(req) {
   const h = req.headers.authorization || '';
@@ -3114,6 +3149,15 @@ app.get('/api/models', (req, res) => {
     const blocked = blockedModelIds(geoOfReq(req));
     if (blocked.size) visible = rows.filter((r) => !blocked.has(r.id));
   }
+  // Pre-purchase shield: a model's looping preview video is explicit-
+  // capable storefront media with no lock of its own, so for a shielded
+  // viewer (unverified fan or guest in a regulated/unknown location,
+  // AV configured) the payload withholds it and the tile falls back to
+  // her photo — the photo itself stays public (it IS the shop window).
+  const dirIdent = getIdentity(req);
+  const dirShielded = dirIdent && dirIdent.kind === 'user'
+    ? shieldLib.fanShielded(dirIdent.user, shieldLocForUser(req, dirIdent.user))
+    : shieldLib.guestShielded(shieldLib.resolveAvLocation(null, geoOfReq(req)));
   res.json({ models: visible.map((r) => {
     const sched = db.prepare(`SELECT day_of_week, start_time FROM live_schedule
       WHERE model_id = ? ORDER BY day_of_week, start_time`).all(r.id);
@@ -3122,6 +3166,7 @@ app.get('/api/models', (req, res) => {
       ? sched.map((s) => `${days[s.day_of_week]} ${s.start_time.replace(/^0/, '')}`).join(', ')
       : '';
     const { presence_override, tags: rawTags, ...pub } = r;
+    if (dirShielded) pub.preview_video_url = '';
     return { ...pub, tags: parseModelTags(rawTags),
       is_online: effectiveOnline(presence_override, r.is_online),
       is_live: !!r.live_session_id, is_featured: !!r.is_featured,
@@ -3964,7 +4009,8 @@ app.get('/api/conversations/:id/messages', identMiddleware, (req, res) => {
   const msgs = db.prepare(`
     SELECT m.*, u.display_name AS sender_name, u.role AS sender_role,
            mi.kind AS media_kind, mi.mime AS media_mime,
-           mi.price_cents AS media_price_cents, mi.duration_sec AS media_duration_sec
+           mi.price_cents AS media_price_cents, mi.duration_sec AS media_duration_sec,
+           mi.is_explicit AS media_is_explicit
     FROM messages m LEFT JOIN users u ON u.id = m.sender_id
     LEFT JOIN media_items mi ON mi.id = m.media_id
     WHERE m.conversation_id = ? ${before ? 'AND m.id < ?' : ''}
@@ -3984,6 +4030,7 @@ app.get('/api/conversations/:id/messages', identMiddleware, (req, res) => {
         .push({ emoji: r.emoji, user_id: r.user_id, mine: r.user_id === meUid });
     }
   }
+  const shieldViewer = shieldAppliesToIdent(req, req.ident);
   res.json({ messages: msgs.reverse().map((m) => {
     let media = null;
     if (m.media_id) {
@@ -4002,10 +4049,23 @@ app.get('/api/conversations/:id/messages', identMiddleware, (req, res) => {
             .get(m.media_id, meFanId);
         }
       }
+      // Pre-purchase shield: FREE media the model flagged explicit is
+      // the one chat surface reachable with no purchase at all — for a
+      // shielded viewer it renders as a shield tile and its bytes stay
+      // gated (file routes enforce the same rule). Priced media needs
+      // no shield flag: its locked tile already shows nothing, and an
+      // existing unlock record (bought before AV) stays honored.
+      let shielded = false;
+      if (unlocked && shieldViewer && m.media_price_cents === 0 && m.media_is_explicit &&
+          (m.media_kind === 'ppv_image' || m.media_kind === 'ppv_video')) {
+        unlocked = false;
+        shielded = true;
+      }
       media = { id: m.media_id, kind: m.media_kind, price_cents: m.media_price_cents,
-                duration_sec: m.media_duration_sec, unlocked };
+                duration_sec: m.media_duration_sec, unlocked,
+                is_explicit: !!m.media_is_explicit, shielded };
     }
-    const { media_kind, media_mime, media_price_cents, media_duration_sec, ...rest } = m;
+    const { media_kind, media_mime, media_price_cents, media_duration_sec, media_is_explicit, ...rest } = m;
     return { ...rest, media,
       reactions: reactionsByMsg[m.id] || [],
       edited: !!m.edited_at,
@@ -4428,6 +4488,12 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
       priceCents = 0;
     }
     const durationSec = Math.max(0, Math.min(3600, parseInt(req.body.duration_sec) || 0));
+    // Explicit flag (pre-purchase shield): model-set at upload, visual
+    // kinds only. Flagged FREE media is shielded for unverified fans in
+    // regulated states once AV is configured; unflagged media and all
+    // dormant behavior are untouched.
+    const isExplicit = isModelSender && kind !== 'voice' &&
+      ['1', 'true'].includes(String(req.body.is_explicit || '').toLowerCase()) ? 1 : 0;
 
     // Fan/guest billing for sending (models send free; a fan voice note bills
     // at the model's per-voice rate, auto-deducted exactly like a text charge)
@@ -4465,12 +4531,12 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
     }
 
     const mediaId = db.prepare(
-      `INSERT INTO media_items (conversation_id, sender_id, guest_token, kind, mime, file_path, price_cents, duration_sec)
-       VALUES (?,?,?,?,?,?,?,?)`
+      `INSERT INTO media_items (conversation_id, sender_id, guest_token, kind, mime, file_path, price_cents, duration_sec, is_explicit)
+       VALUES (?,?,?,?,?,?,?,?,?)`
     ).run(conv.id,
           req.ident.kind === 'user' ? req.ident.user.id : null,
           req.ident.kind === 'guest' ? req.ident.token : null,
-          kind, req.file.mimetype, req.file.path, priceCents, durationSec).lastInsertRowid;
+          kind, req.file.mimetype, req.file.path, priceCents, durationSec, isExplicit).lastInsertRowid;
 
     const body = priceCents > 0
       ? `${MEDIA_LABELS[kind]} · unlock ${fmt$(priceCents)}`
@@ -4487,11 +4553,23 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
       SELECT m.*, u.display_name AS sender_name, u.role AS sender_role
       FROM messages m LEFT JOIN users u ON u.id = m.sender_id WHERE m.id = ?`).get(msgId);
     // The receiver hasn't unlocked priced media — mark it locked for them.
+    // A shielded fan receiver (unverified, regulated/unknown state, AV
+    // configured) also gets free explicit-flagged media as a shield
+    // tile; her location resolves from her stored fan_state here (the
+    // request geo is the SENDER's). Guests keep the long-standing push
+    // shape — their bytes are login-gated regardless, and the messages
+    // GET renders them locked.
+    let receiverShielded = false;
+    if (priceCents === 0 && isExplicit && conv.fan_id) {
+      const fanRow = db.prepare('SELECT * FROM users WHERE id = ?').get(conv.fan_id);
+      receiverShielded = shieldAppliesToUserRow(fanRow);
+    }
     const receiverMedia = { id: mediaId, kind, price_cents: priceCents,
-      duration_sec: durationSec, unlocked: priceCents === 0 };
+      duration_sec: durationSec, unlocked: priceCents === 0 && !receiverShielded,
+      is_explicit: !!isExplicit, shielded: receiverShielded };
     const full = { ...msg, sender_name: msg.sender_name || 'Guest Fan',
                    sender_role: msg.sender_role || 'fan',
-                   media: { ...receiverMedia, unlocked: true },
+                   media: { ...receiverMedia, unlocked: true, shielded: false },
                    reactions: [], edited: false, edited_at: null }; // sender always sees own
 
     const otherKey = req.ident.kind === 'user'
@@ -4563,6 +4641,11 @@ app.post('/api/media/:id/file-token', identMiddleware, (req, res) => {
     if (conv && conv.model_id === uid) allowed = true;
   }
   if (!allowed) return res.status(403).json({ error: 'locked' });
+  // Shield byte-gate: free explicit-flagged media stays unservable to a
+  // shielded fan even though its price is $0 (mirrors the payload rule).
+  if (media.is_explicit && media.price_cents === 0 && media.sender_id !== uid &&
+      shieldLib.fanShielded(req.ident.user, shieldLocForUser(req, req.ident.user)))
+    return res.status(403).json({ error: 'av_required' });
   const token = crypto.randomBytes(24).toString('hex');
   // Media elements (esp. iOS AVFoundation) make MULTIPLE requests per playback
   // (probe + range fetches + play), so the token must stay valid until expiry —
@@ -4604,9 +4687,29 @@ app.get('/api/media/:id/file', (req, res) => {
   }
   if (!allowed) return res.status(403).json({ error: 'locked',
     message: '🔒 Unlock this to view.' });
+  // Shield byte-gate (same rule as the token route): free
+  // explicit-flagged media is not served to a shielded fan.
+  if (media.is_explicit && media.price_cents === 0 && media.sender_id !== uid &&
+      shieldLib.fanShielded(ident.user, shieldLocForUser(req, ident.user)))
+    return res.status(403).json({ error: 'av_required' });
   res.setHeader('Content-Type', media.mime);
   res.setHeader('Cache-Control', 'private, max-age=3600');
   return res.sendFile(path.resolve(media.file_path));
+});
+
+// POST /api/media/:id/explicit — the model's media-manager control for
+// the shield flag: she marks (or unmarks) her OWN sent photo/video as
+// explicit. Flagged free media is shielded for unverified fans in
+// regulated states once AV is configured.
+app.post('/api/media/:id/explicit', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const media = db.prepare('SELECT * FROM media_items WHERE id = ?').get(req.params.id);
+  if (!media) return res.status(404).json({ error: 'not_found' });
+  if (media.sender_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+  if (media.kind === 'voice') return res.status(400).json({ error: 'voice_not_visual' });
+  const on = req.body && (req.body.explicit === true || req.body.explicit === 1 ||
+    req.body.explicit === '1' || req.body.explicit === 'true') ? 1 : 0;
+  db.prepare('UPDATE media_items SET is_explicit = ? WHERE id = ?').run(on, media.id);
+  res.json({ ok: true, is_explicit: on });
 });
 
 /* ------------------------------------------------------------------ */
@@ -6213,6 +6316,10 @@ app.post('/api/calls/:id/explicit-accept', identMiddleware, requireUser, require
   if (!call || call.fan_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
   if (call.status !== 'active' || !call.explicit_pending)
     return res.status(409).json({ error: 'no_offer' });
+  // Shield: accepting explicit mode is an explicit-content purchase —
+  // refused for a shielded (unverified, regulated-state) fan, before
+  // any charge.
+  if (shieldAppliesToIdent(req, req.ident)) return avRequired(res);
   if (call.prepaid_min > 0) {
     const remaining = Math.max(0, call.prepaid_min - call.minutes_billed);
     const extra = remaining * call.rate_cents;
@@ -6658,6 +6765,9 @@ app.post('/api/live/:id/pay', identMiddleware, requireUser, requireRole('fan'), 
     .get(req.params.id);
   if (!sess) return res.status(404).json({ error: 'not_live' });
   if (modelRegionBlocked(sess.model_id, geoOfReq(req))) return regionBlocked(res);
+  // Shield: explicit unblur is an explicit-content purchase — a
+  // shielded (unverified, regulated-state) fan cannot start it.
+  if (shieldAppliesToIdent(req, req.ident)) return avRequired(res);
   const viewer = db.prepare('SELECT * FROM live_viewers WHERE session_id = ? AND fan_id = ?')
     .get(sess.id, req.user.id);
   if (!viewer) return res.status(403).json({ error: 'join_first' });
@@ -6683,6 +6793,8 @@ app.post('/api/live/:id/explicit-entry', identMiddleware, requireUser, requireRo
   if (!sess) return;
   if (modelRegionBlocked(sess.model_id, geoOfReq(req))) return regionBlocked(res);
   if (!sess.is_explicit) return res.status(400).json({ error: 'not_explicit' });
+  // Shield: same rule as /pay — no explicit entry while unverified.
+  if (shieldAppliesToIdent(req, req.ident)) return avRequired(res);
   const viewer = db.prepare('SELECT * FROM live_viewers WHERE session_id = ? AND fan_id = ?')
     .get(sess.id, req.user.id);
   if (!viewer) return res.status(403).json({ error: 'join_first' });
