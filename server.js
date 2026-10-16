@@ -5818,6 +5818,35 @@ app.post('/api/recruiter/contract/sign', identMiddleware, requireUser, requireRo
   res.json({ ok: true, version: RECRUITER_CONTRACT.version });
 });
 
+/* Shared recruiter-account creation — used by BOTH the Manager
+ * affiliate invite signup below and the self-serve affiliate signup
+ * (POST /api/affiliate/signup, the entry screen's Affiliate tab), so
+ * the two paths can never drift: user row (attested 18+ at the
+ * agreement — never a fake DOB), age attestation, wallet, recruiters
+ * row with a unique personal referral code, and the recruiter
+ * agreement auto-signed at the current version. */
+function createRecruiterAccount(uname, dname, pwd, req) {
+  const hash = bcrypt.hashSync(pwd, 10);
+  const info = db.prepare(
+    'INSERT INTO users (username, password_hash, role, display_name, dob) VALUES (?,?,?,?,?)'
+  ).run(uname, hash, 'recruiter', dname, null); // attested 18+ at agreement — no fake DOB
+  const userId = Number(info.lastInsertRowid);
+  recordAgeAttestation(userId, req);
+  db.prepare('INSERT INTO wallets (user_id) VALUES (?)').run(userId);
+  // Recruiter record with her personal referral (partner) code
+  let rcode;
+  do { rcode = crypto.randomBytes(4).toString('hex'); }
+  while (db.prepare('SELECT id FROM recruiters WHERE referral_code = ?').get(rcode));
+  db.prepare('INSERT INTO recruiters (user_id, name, referral_code) VALUES (?,?,?)')
+    .run(userId, dname, rcode);
+  // Auto-sign the recruiter agreement (she agreed on the signup screen)
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
+  db.prepare(`INSERT INTO contract_signatures (user_id, contract_version, display_name, ip)
+              VALUES (?, ?, ?, ?)`)
+    .run(userId, RECRUITER_CONTRACT.version, dname, ip.slice(0, 60));
+  return userId;
+}
+
 // Public: validate an affiliate invite code
 app.get('/api/affiliate-invite/:code', (req, res) => {
   const code = String(req.params.code || '').trim();
@@ -5841,27 +5870,29 @@ app.post('/api/affiliate-invite/:code/signup', (req, res) => {
   if (!agreed) return res.status(400).json({ error: 'must_agree' });
   if (db.prepare('SELECT id FROM users WHERE username = ?').get(uname))
     return res.status(409).json({ error: 'username_taken' });
-  const hash = bcrypt.hashSync(pwd, 10);
-  const info = db.prepare(
-    'INSERT INTO users (username, password_hash, role, display_name, dob) VALUES (?,?,?,?,?)'
-  ).run(uname, hash, 'recruiter', dname, null); // attested 18+ at agreement — no fake DOB
-  const userId = Number(info.lastInsertRowid);
-  recordAgeAttestation(userId, req);
-  db.prepare('INSERT INTO wallets (user_id) VALUES (?)').run(userId);
-  // Create recruiter record with referral code
-  let rcode;
-  do { rcode = crypto.randomBytes(4).toString('hex'); }
-  while (db.prepare('SELECT id FROM recruiters WHERE referral_code = ?').get(rcode));
-  db.prepare('INSERT INTO recruiters (user_id, name, referral_code) VALUES (?,?,?)')
-    .run(userId, dname, rcode);
+  const userId = createRecruiterAccount(uname, dname, pwd, req);
   // Mark invite used
   db.prepare(`UPDATE invite_links SET used_by = ?, used_at = datetime('now') WHERE id = ?`)
     .run(userId, inv.id);
-  // Auto-sign the recruiter agreement (they agreed on the signup screen)
-  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
-  db.prepare(`INSERT INTO contract_signatures (user_id, contract_version, display_name, ip)
-              VALUES (?, ?, ?, ?)`)
-    .run(userId, RECRUITER_CONTRACT.version, dname, ip.slice(0, 60));
+  const token = createSession(userId);
+  res.json({ ok: true, token, user: { id: userId, username: uname, display_name: dname, role: 'recruiter' } });
+});
+
+// Public: self-serve affiliate signup (entry screen → Sign up →
+// Affiliate tab). Same fields, validations and account creation as
+// the invite path above — minus the invite code: anyone may join the
+// affiliate program directly. Manager-issued one-time invite codes
+// keep working untouched alongside this.
+app.post('/api/affiliate/signup', (req, res) => {
+  const { username, password, display_name, agreed } = req.body || {};
+  const uname = String(username || '').trim();
+  const dname = String(display_name || '').trim().slice(0, 40);
+  const pwd = String(password || '');
+  if (!uname || !dname || pwd.length < 6) return res.status(400).json({ error: 'missing_fields' });
+  if (!agreed) return res.status(400).json({ error: 'must_agree' });
+  if (db.prepare('SELECT id FROM users WHERE username = ?').get(uname))
+    return res.status(409).json({ error: 'username_taken' });
+  const userId = createRecruiterAccount(uname, dname, pwd, req);
   const token = createSession(userId);
   res.json({ ok: true, token, user: { id: userId, username: uname, display_name: dname, role: 'recruiter' } });
 });
