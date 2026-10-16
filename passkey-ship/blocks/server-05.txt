@@ -1,0 +1,14 @@
+   guests) gets 403 — counts are staff information. */
+const modOnly = (req, res, next) => {
+  if (req.ident.kind !== 'user' || req.ident.user.role !== 'admin') {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  req.user = req.ident.user;
+  // Same Face ID step-up rule as /api/admin/* (no-op until a passkey exists).
+  return requirePasskeyStepUp(req, res, next);
+};
+
+app.get('/api/mod/presence', identMiddleware, modOnly, (req, res) => {
+  res.json(presenceSvc.snapshot());
+});
+

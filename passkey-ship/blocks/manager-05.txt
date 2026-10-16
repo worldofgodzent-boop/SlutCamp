@@ -1,0 +1,17 @@
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🔐 Face ID (Manager)</div>
+      <div class="muted small">Second step for this app: password, then Face ID. Once a passkey is on the account, every Manager session must confirm with Face ID before the admin screens unlock. Set it up on each device you manage from — the passkey never leaves that device.</div>
+      <div class="row" style="margin-top:8px;align-items:center;gap:8px">
+        <span class="small" style="font-weight:800;color:${pkEnrolled ? 'var(--green)' : 'var(--muted)'}">${pkEnrolled ? '✅ SET UP' : '⛔ NOT SET UP'}</span>
+        ${pkStatus && pkStatus.verified ? '<span class="small muted">This session: ✅ confirmed</span>' : ''}
+      </div>
+      ${pkCreds.map((c) => `
+      <div class="row" style="align-items:center;gap:8px;padding:5px 0">
+        <span class="small grow">📱 ${esc(c.device_label || 'Passkey')} <span class="muted">· added ${esc(String(c.created_at || '').slice(0, 10))}${c.last_used_at ? ` · last used ${esc(String(c.last_used_at).slice(0, 10))}` : ''}</span></span>
+        <button class="btn small ghost" data-pk-del="${c.id}">Remove</button>
+      </div>`).join('')}
+      <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">
+        <button class="btn small" id="pk-add">${pkEnrolled ? 'Add this device' : 'Set up Face ID'}</button>
+      </div>
+      <div class="muted small" id="pk-set-msg" style="margin-top:6px"></div>
+    </div>

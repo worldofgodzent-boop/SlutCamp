@@ -1,0 +1,13 @@
+    body.innerHTML = `
+      <label class="field">${t('username')}<input class="input" id="a-user" autocomplete="username"></label>
+      <label class="field">${t('password')}${pwField('a-pass', 'current-password')}</label>
+      <button class="btn" id="a-go">${t('log_in')}</button>
+      ${pkSupported() ? `
+      <button class="btn ghost" id="a-faceid" style="width:100%;margin-top:10px">🔐 Sign in with Face ID</button>
+      <div class="small muted" id="pk-login-msg" style="margin-top:8px;text-align:center"></div>` : ''}`;
+    $('#a-go').onclick = doLogin;
+    const fidBtn = $('#a-faceid');
+    if (fidBtn) fidBtn.onclick = doPasskeyLogin;
+  } else {
+    body.innerHTML = `
+      <div class="role-card ${role === 'fan' ? 'selected' : ''}" id="r-fan">

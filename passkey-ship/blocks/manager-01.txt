@@ -1,0 +1,10 @@
+/* If an admin call comes back 403 passkey_required (a passkey was enrolled
+   on another device, or this session predates enrollment), route to the
+   Face ID gate instead of surfacing a raw error. Defined below. */
+function noteApiResult(res) {
+  if (res && res.status === 403 && res.data && res.data.error === 'passkey_required') {
+    showPasskeyGate();
+  }
+  return res;
+}
+

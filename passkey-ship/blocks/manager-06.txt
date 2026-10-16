@@ -1,0 +1,28 @@
+  // 🔐 Face ID card (Settings)
+  go('#pk-add', async () => {
+    const msg = $('#pk-set-msg');
+    if (!pkSupported()) {
+      if (msg) msg.textContent = "Face ID isn't available in this browser — use Safari or Chrome over HTTPS on a device with Face ID / a fingerprint reader.";
+      return;
+    }
+    try {
+      await pkEnroll('This device');
+      // A first passkey turns enforcement ON for this session too —
+      // confirm once now so the screens keep working.
+      const { data: st } = await api('/manager/passkey/status');
+      if (st && st.enrolled && !st.verified) await pkVerifyStepUp();
+      toast('✅ Face ID set up on this device');
+      M.reload();
+    } catch (e) {
+      if (msg) msg.textContent = pkErrText(e); else toast(pkErrText(e));
+    }
+  });
+  document.querySelectorAll('[data-pk-del]').forEach((b) => {
+    b.onclick = async () => {
+      if (!confirm('Remove this Face ID passkey? That device will no longer unlock the Manager.')) return;
+      const { status } = await api(`/auth/passkey/${b.dataset.pkDel}`, { method: 'DELETE' });
+      if (status === 200) { toast('Passkey removed'); return M.reload(); }
+      toast('Remove failed');
+    };
+  });
+

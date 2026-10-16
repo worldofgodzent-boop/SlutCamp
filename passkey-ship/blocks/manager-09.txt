@@ -1,0 +1,7 @@
+    const { status, data } = await api('/me');
+    if (status === 200 && data.user && data.user.role === 'admin') {
+      M.user = data.user;
+      enterManager(); // existing session → Face ID gate / setup / straight in
+      return;
+    }
+    M.token = null;

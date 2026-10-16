@@ -1,0 +1,300 @@
+/* ------------------------------------------------------------------ */
+/* Passkeys (WebAuthn) — Face ID sign-in, an option for EVERYONE       */
+/* (final scope per Asce, Oct 16 2026):                                */
+/* - Fans/models/admins may enroll a passkey while signed in           */
+/*   (register-*) and later sign in with it (login-*) — password       */
+/*   sign-in stays fully intact as the backup.                         */
+/* - For the ADMIN the passkey is ALSO the enforced SECOND step of     */
+/*   Manager sign-in: password first, then a Face ID confirmation      */
+/*   (stepup-*) stamps sessions.passkey_verified_at, and only then do  */
+/*   /api/admin/* and /api/mod/* unlock (see requirePasskeyStepUp).    */
+/*   Bootstrap safety: while the admin has NO passkey enrolled, the    */
+/*   step-up is not enforced — he can never lock himself out.          */
+/*                                                                    */
+/* "Face ID" = the DEVICE's biometrics (Face ID, Android face unlock,  */
+/* Touch ID, Windows Hello) proving possession of a passkey. The       */
+/* biometric itself NEVER reaches this server — we only store the      */
+/* credential public key and verify signatures.                        */
+/*                                                                    */
+/* RP ID / origin: set WEBAUTHN_RP_ID + WEBAUTHN_ORIGIN on Render in   */
+/* production (slutcamp.app / https://slutcamp.app). When unset, the    */
+/* RP ID is derived from the request Host and the expected origin      */
+/* from the Origin header (local dev / tests).                         */
+/* ------------------------------------------------------------------ */
+
+const WEBAUTHN_RP_NAME = 'SlutCamp';
+const WEBAUTHN_CHALLENGE_TTL_MS = 5 * 60 * 1000;
+const webauthnChallenges = new Map(); // key -> { challenge, expiresAt }
+const passkeyLoginAttempts = new Map(); // ip -> { count, resetAt } (rate limit, mirrors adminLoginAttempts)
+
+function webauthnRp(req) {
+  const rpID = process.env.WEBAUTHN_RP_ID
+    || String(req.headers.host || 'localhost').split(':')[0];
+  let origin = process.env.WEBAUTHN_ORIGIN || req.headers.origin || '';
+  if (!origin) {
+    const proto = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
+    origin = `${proto}://${req.headers.host || 'localhost'}`;
+  }
+  return { rpID, origin };
+}
+
+function stashChallenge(key, challenge) {
+  webauthnChallenges.set(key, { challenge, expiresAt: Date.now() + WEBAUTHN_CHALLENGE_TTL_MS });
+}
+
+// Single-use: reading a challenge consumes it (replay protection).
+function takeChallenge(key) {
+  const rec = webauthnChallenges.get(key);
+  webauthnChallenges.delete(key);
+  if (!rec || Date.now() > rec.expiresAt) return null;
+  return rec.challenge;
+}
+
+// Same shape as adminRateLimited: >5 attempts per IP per minute, per scope.
+function passkeyRateLimited(scope, ip) {
+  const key = scope + ':' + ip;
+  const now = Date.now();
+  let rec = passkeyLoginAttempts.get(key);
+  if (!rec || now > rec.resetAt) {
+    rec = { count: 0, resetAt: now + 60000 };
+    passkeyLoginAttempts.set(key, rec);
+  }
+  rec.count++;
+  return rec.count > 5;
+}
+
+const credsOfUser = (userId) =>
+  db.prepare('SELECT * FROM webauthn_credentials WHERE user_id = ? ORDER BY id').all(userId);
+
+const adminHasPasskey = (userId) =>
+  !!db.prepare('SELECT 1 AS x FROM webauthn_credentials WHERE user_id = ? LIMIT 1').get(userId);
+
+// Has THIS session token passed the Face ID step-up?
+function sessionPasskeyVerified(token) {
+  if (!token) return false;
+  const r = db.prepare('SELECT passkey_verified_at FROM sessions WHERE token = ?').get(token);
+  return !!(r && r.passkey_verified_at);
+}
+
+/* Face ID enforcement for admin routes. Runs AFTER requireRole('admin')
+   (req.user is the admin). If the admin has a passkey enrolled, the
+   current session must have passed the step-up — otherwise 403
+   { error: 'passkey_required' } and the Manager client shows the
+   Face ID gate. No enrolled passkey → pass (bootstrap, no lockout). */
+const requirePasskeyStepUp = (req, res, next) => {
+  if (!req.user || !adminHasPasskey(req.user.id)) return next();
+  const token = (req.headers.authorization || '').slice(7);
+  if (sessionPasskeyVerified(token)) return next();
+  return res.status(403).json({ error: 'passkey_required' });
+};
+
+function parseTransports(t) {
+  try {
+    const v = JSON.parse(t || '[]');
+    return Array.isArray(v) && v.length ? v : undefined;
+  } catch (e) { return undefined; }
+}
+
+// Shared assertion verification for passkey sign-in + Manager step-up.
+// Returns { credRow, newCounter } on success, null on any failure.
+async function verifyPasskeyAssertion(req, user, challengeKey, response) {
+  if (!response || typeof response !== 'object' || !response.id) return null;
+  const challenge = takeChallenge(challengeKey);
+  if (!challenge) return null;
+  const credRow = db.prepare('SELECT * FROM webauthn_credentials WHERE user_id = ? AND credential_id = ?')
+    .get(user.id, String(response.id));
+  if (!credRow) return null;
+  const { rpID, origin } = webauthnRp(req);
+  try {
+    const verification = await verifyAuthenticationResponse({
+      response,
+      expectedChallenge: challenge,
+      expectedOrigin: origin,
+      expectedRPID: rpID,
+      credential: {
+        id: credRow.credential_id,
+        publicKey: new Uint8Array(Buffer.from(credRow.public_key, 'base64url')),
+        counter: credRow.counter,
+        transports: parseTransports(credRow.transports),
+      },
+    });
+    if (!verification.verified) return null;
+    return { credRow, newCounter: verification.authenticationInfo.newCounter };
+  } catch (e) {
+    return null;
+  }
+}
+
+function touchCredential(credRow, newCounter) {
+  db.prepare("UPDATE webauthn_credentials SET counter = ?, last_used_at = datetime('now') WHERE id = ?")
+    .run(newCounter, credRow.id);
+}
+
+// --- Enrollment (any logged-in user): step 1, ceremony options ---
+app.post('/api/auth/passkey/register-options', identMiddleware, requireUser, async (req, res) => {
+  try {
+    const { rpID } = webauthnRp(req);
+    const options = await generateRegistrationOptions({
+      rpName: WEBAUTHN_RP_NAME,
+      rpID,
+      userName: req.user.username,
+      userID: new TextEncoder().encode('u' + req.user.id),
+      userDisplayName: req.user.display_name || req.user.username,
+      attestationType: 'none',
+      excludeCredentials: credsOfUser(req.user.id).map((c) => ({
+        id: c.credential_id,
+        transports: parseTransports(c.transports),
+      })),
+      authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
+    });
+    stashChallenge('reg:' + req.user.id, options.challenge);
+    res.json(options);
+  } catch (e) {
+    console.log('[passkey] register-options failed:', e.message);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// --- Enrollment (any logged-in user): step 2, verify + store ---
+app.post('/api/auth/passkey/register-verify', identMiddleware, requireUser, async (req, res) => {
+  const response = (req.body && req.body.response) || req.body;
+  const challenge = takeChallenge('reg:' + req.user.id);
+  if (!challenge) return res.status(400).json({ error: 'challenge_expired' });
+  const { rpID, origin } = webauthnRp(req);
+  let verification;
+  try {
+    verification = await verifyRegistrationResponse({
+      response,
+      expectedChallenge: challenge,
+      expectedOrigin: origin,
+      expectedRPID: rpID,
+    });
+  } catch (e) {
+    return res.status(400).json({ error: 'verification_failed' });
+  }
+  if (!verification.verified || !verification.registrationInfo)
+    return res.status(400).json({ error: 'verification_failed' });
+  const cred = verification.registrationInfo.credential;
+  const existing = db.prepare('SELECT user_id FROM webauthn_credentials WHERE credential_id = ?').get(cred.id);
+  if (existing && existing.user_id !== req.user.id)
+    return res.status(409).json({ error: 'credential_in_use' });
+  const label = (req.body && typeof req.body.label === 'string' && req.body.label.trim())
+    ? req.body.label.trim().slice(0, 60) : 'Passkey';
+  db.prepare(`INSERT INTO webauthn_credentials (user_id, credential_id, public_key, counter, transports, device_label)
+              VALUES (?,?,?,?,?,?)
+              ON CONFLICT(credential_id) DO UPDATE SET
+                public_key = excluded.public_key,
+                counter = excluded.counter,
+                transports = excluded.transports`)
+    .run(req.user.id, cred.id,
+      Buffer.from(cred.publicKey).toString('base64url'),
+      cred.counter || 0,
+      JSON.stringify(cred.transports || []),
+      label);
+  res.json({ ok: true });
+});
+
+// --- Passwordless sign-in: step 1, ceremony options ---
+app.post('/api/auth/passkey/login-options', async (req, res) => {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  if (passkeyRateLimited('options', ip)) return res.status(429).json({ error: 'too_many_attempts' });
+  const username = String((req.body || {}).username || '').trim();
+  const user = db.prepare('SELECT * FROM users WHERE LOWER(username) = LOWER(?)').get(username);
+  const creds = user ? credsOfUser(user.id) : [];
+  if (!user || creds.length === 0) return res.status(400).json({ error: 'no_passkey' });
+  try {
+    const { rpID } = webauthnRp(req);
+    const options = await generateAuthenticationOptions({
+      rpID,
+      allowCredentials: creds.map((c) => ({
+        id: c.credential_id,
+        transports: parseTransports(c.transports),
+      })),
+      userVerification: 'preferred',
+    });
+    stashChallenge('auth:' + user.username.toLowerCase(), options.challenge);
+    res.json(options);
+  } catch (e) {
+    console.log('[passkey] login-options failed:', e.message);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// --- Passwordless sign-in: step 2, verify + issue a normal session ---
+app.post('/api/auth/passkey/login-verify', async (req, res) => {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  if (passkeyRateLimited('verify', ip)) return res.status(429).json({ error: 'too_many_attempts' });
+  const { username, response } = req.body || {};
+  const user = db.prepare('SELECT * FROM users WHERE LOWER(username) = LOWER(?)')
+    .get(String(username || '').trim());
+  if (!user) return res.status(400).json({ error: 'verification_failed' });
+  const result = await verifyPasskeyAssertion(req, user, 'auth:' + user.username.toLowerCase(), response);
+  if (!result) return res.status(401).json({ error: 'verification_failed' });
+  touchCredential(result.credRow, result.newCounter);
+  // Same account-state checks as password login, in the same order.
+  if (user.banned) return res.status(403).json({ error: 'banned' });
+  if (user.status === 'frozen') return res.status(403).json({ error: 'account_frozen',
+    message: 'Your account has been frozen due to a billing dispute. Contact support.' });
+  const token = createSession(user.id);
+  res.json({ token, user: getUserPublic(user), manager_account: user.role === 'admin' });
+});
+
+// --- Manager step-up: step 1 (admin session required) ---
+app.post('/api/manager/passkey/stepup-options', identMiddleware, requireUser, requireRole('admin'), async (req, res) => {
+  const creds = credsOfUser(req.user.id);
+  if (creds.length === 0) return res.status(400).json({ error: 'no_passkey' });
+  try {
+    const { rpID } = webauthnRp(req);
+    const options = await generateAuthenticationOptions({
+      rpID,
+      allowCredentials: creds.map((c) => ({
+        id: c.credential_id,
+        transports: parseTransports(c.transports),
+      })),
+      userVerification: 'preferred',
+    });
+    stashChallenge('stepup:' + req.user.id, options.challenge);
+    res.json(options);
+  } catch (e) {
+    console.log('[passkey] stepup-options failed:', e.message);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// --- Manager step-up: step 2 — stamps the CURRENT session as passkey-verified ---
+app.post('/api/manager/passkey/stepup-verify', identMiddleware, requireUser, requireRole('admin'), async (req, res) => {
+  const response = (req.body || {}).response || req.body;
+  const result = await verifyPasskeyAssertion(req, req.user, 'stepup:' + req.user.id, response);
+  if (!result) return res.status(401).json({ error: 'verification_failed' });
+  touchCredential(result.credRow, result.newCounter);
+  const token = (req.headers.authorization || '').slice(7);
+  db.prepare("UPDATE sessions SET passkey_verified_at = datetime('now') WHERE token = ?").run(token);
+  res.json({ ok: true });
+});
+
+// --- Manager Face ID status for the CURRENT admin session ---
+// enrolled: the admin has ≥1 passkey (so the step-up is enforced).
+// verified: this session has already passed the step-up.
+app.get('/api/manager/passkey/status', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+  const token = (req.headers.authorization || '').slice(7);
+  res.json({
+    enrolled: adminHasPasskey(req.user.id),
+    verified: sessionPasskeyVerified(token),
+  });
+});
+
+// --- List my passkeys (never returns public keys) ---
+app.get('/api/auth/passkey/list', identMiddleware, requireUser, (req, res) => {
+  const rows = db.prepare('SELECT id, device_label, created_at, last_used_at FROM webauthn_credentials WHERE user_id = ? ORDER BY id')
+    .all(req.user.id);
+  res.json({ credentials: rows });
+});
+
+// --- Remove one of my passkeys (row id or credential id; owner only) ---
+app.delete('/api/auth/passkey/:credId', identMiddleware, requireUser, (req, res) => {
+  const r = db.prepare('DELETE FROM webauthn_credentials WHERE user_id = ? AND (id = ? OR credential_id = ?)')
+    .run(req.user.id, req.params.credId, req.params.credId);
+  if (!r.changes) return res.status(404).json({ error: 'not_found' });
+  res.json({ ok: true });
+});
+

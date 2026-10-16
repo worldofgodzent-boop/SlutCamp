@@ -1,0 +1,7 @@
+      M.token = data.token;
+      M.user = data.user;
+      localStorage.setItem('wc_token', M.token);
+      enterManager(); // password done → Face ID gate / setup / straight in
+      return;
+    }
+    if (r.status === 429) return renderLogin('Too many tries — wait a minute ⏳');

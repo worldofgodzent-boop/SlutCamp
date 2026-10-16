@@ -1,0 +1,7 @@
+    const r = await fetch('/api' + path, { method: 'POST', headers, body: fd });
+    let data = {};
+    try { data = await r.json(); } catch (e) { /* non-JSON */ }
+    return noteApiResult({ status: r.status, data });
+  } catch (e) {
+    return { status: 0, data: { error: 'network_error' } };
+  }

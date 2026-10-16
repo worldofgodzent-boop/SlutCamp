@@ -1,0 +1,13 @@
+});
+
+/* ------------------------------------------------------------------ */
+/* Admin SMS 2FA settings (Twilio)                                     */
+/* ------------------------------------------------------------------ */
+
+const adminOnly = [identMiddleware, requireUser, requireRole('admin'), requirePasskeyStepUp];
+
+// --- Visitor analytics (Corry Oct 11, 2026): track visits + sources for growth ---
+db.exec(`
+CREATE TABLE IF NOT EXISTS visits (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ip_hash TEXT,

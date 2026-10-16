@@ -1,0 +1,4 @@
+  const { data: pkStatus } = await api('/manager/passkey/status').catch(() => ({ data: {} }));
+  const { data: pkList } = await api('/auth/passkey/list').catch(() => ({ data: { credentials: [] } }));
+  const pkEnrolled = !!(pkStatus && pkStatus.enrolled);
+  const pkCreds = (pkList && pkList.credentials) || [];
