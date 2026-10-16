@@ -43,6 +43,7 @@ dependency, is missing) and the server cannot boot from it alone —
 | `tests/change-password.test.js` | Change password (`POST /api/me/change-password`) against the real server (`SEED_DEMO=1` temp-copy boot): guest 403 `login_required`, wrong current 401 `wrong_current` (password untouched), seed-default new password 400 `default_password` (case-insensitive, checked before the length floor), too-short 400 `weak_password`, new == current 400 `weak_password`, and the success contract — old password can no longer log in, the new one can, every other session is revoked, the caller's session survives — plus source pins for the Settings cards in `app.js` and the Manager |
 | `tests/discovery.test.js` | Discovery 2.0 (directory search/filters/tags/similar): API tests against the real server (guest directory payload carries `tags[]` + `created_at`; tag persistence via `PUT /api/model/profile` with the 5-cap, unknown-tag drop, dedupe, non-array 400 `bad_tags`, fan 403), logic tests running the real extracted `applyDiscovery`/`discPriceBand`/`similarModels` from `app.js` (search, online/live/price/tag filters, all sorts, similar ranking), client↔server tag-catalogue parity, and source pins for the bar in both directory views, tile tag chips, the peek rail and the Settings picker |
 | `tests/new-models.test.js` | "New models you may like" front-page rail: logic tests running the real extracted `modelCreatedMs`/`newModelsRail` from `app.js` (14-day window boundary — 13d23h in / exactly 14d out / 14d01h out — future-dated and undated accounts excluded, 10-cap with interleaved veterans, rank order preserved over recency, empty cases), API shape tests against the real server (guest + fan payloads feed the rail identically, a same-day signup pops, she ages out at +15 days with no admin action), and source pins (rail rendered in both front-page views and hidden while Discovery is active or nobody qualifies, real `modelTileHTML` tiles with the NEW badge, EN/ES/PT strings, rail CSS) |
+| `tests/ranking.test.js` | Composite ranking (likes + money earned) + visible rank labels: API tests against the real server (formula cases — likes-only vs earnings-only vs mixed vs fractional 89¢; like→unlike returns the score; an admin refund claws earnings back; the featured float never changes anyone's true `rank_position`; a stopped-server DB seed + reboot proves the boot backfill with payout/test-row exclusions), client logic (default `Top ranked` preserves composite order, `Most liked` is purely like-ordered, `rankBadgeFor` labels 1–10 only, `discActive` gates badge suppression), and source pins for the migration, the three recompute call sites, badge markup and both directory call sites |
 | `scripts/run-triple.js` | The triple runner behind `npm run test:triple` |
 
 ## What the suite covers
@@ -294,7 +295,33 @@ no-tags rank fallback). A parity test pins the client's
 cover the wiring: discovery bar in both directory views, tag chips on
 tiles, tappable tags + the "More like her" rail in the peek, the
 Settings tag picker, and the 👑 crown appearing only in the default
-ordering.
+ordering. (Ranking change, Oct 16 2026: the default sort is now the
+composite "👑 Top ranked" and a pure "⭐ Most liked" sort is kept —
+the discovery sorts test pins both deliberately.)
+
+**Composite ranking + rank labels (`tests/ranking.test.js`)** — the
+owner's rule: rank = 1 point per fan like + 1 point per $1.00 of
+credited model earnings (lifetime, float, net of refunds). The suite
+proves the formula against the real server with real tips from the
+seeded fandemo (60/40 split): an earnings-only model ($6.00) outranks
+a likes-only model (5 likes), a mixed model ties the likes-only one
+at 5.00 and loses the directory tiebreak on like count, and an 89¢
+earning moves the score by exactly 0.89 — no floor. Like → unlike
+returns the score to the cent; an admin refund reverses the earnings
+and the score with them; setting a model featured floats her to the
+top of the payload while her `rank_position` stays her true composite
+position (4th), so labels never follow array index. The backfill
+case stops the server, seeds likes + ledger rows directly in SQLite
+(a real tip, a `payout` row and an `is_test` row, plus a stale
+rank_score of 999), reboots, and asserts the boot recompute heals it
+to exactly 3 likes + $6.00 = 9.00 — payouts and test money excluded.
+Client-side, extracted-function tests pin the default `Top ranked`
+sort preserving composite order, `Most liked` ordering by like count
+alone, `rankBadgeFor` labeling positions 1 and 10 but not 11, and
+`discActive` (the badge/crown suppression gate) being false only in
+the pure default view; source pins cover the badge markup, the
+suppression wiring at both directory call sites, and the localized
+peek rank line (EN/ES/PT).
 
 **"New models you may like" rail (`tests/new-models.test.js`)** —
 the owner's front-page spotlight: every model gets her first two
