@@ -230,6 +230,7 @@ const I18N = {
     spend_cat_lives: 'Live shows', spend_cat_bookings: 'Bookings',
     spend_cat_games: 'Games', spend_cat_tts: 'Pay-to-speak',
     spend_cat_refunds: 'Refunds',
+    ppv_watermark_note: 'Unlocked content is watermarked with your username.',
     spend_cap_h: 'Monthly spend cap',
     spend_cap_none: 'No cap set — you can spend freely.',
     spend_cap_progress: '{spent} of {cap} spent this month',
@@ -527,6 +528,7 @@ const I18N = {
     spend_cat_lives: 'Shows en vivo', spend_cat_bookings: 'Reservas',
     spend_cat_games: 'Juegos', spend_cat_tts: 'Pagar por hablar',
     spend_cat_refunds: 'Reembolsos',
+    ppv_watermark_note: 'El contenido desbloqueado lleva una marca de agua con tu nombre de usuario.',
     spend_cap_h: 'Límite de gasto mensual',
     spend_cap_none: 'Sin límite — puedes gastar libremente.',
     spend_cap_progress: '{spent} de {cap} gastados este mes',
@@ -821,6 +823,7 @@ const I18N = {
     spend_cat_lives: 'Shows ao vivo', spend_cat_bookings: 'Reservas',
     spend_cat_games: 'Jogos', spend_cat_tts: 'Pagar para falar',
     spend_cat_refunds: 'Reembolsos',
+    ppv_watermark_note: 'O conteúdo desbloqueado tem marca d’água com o seu nome de usuário.',
     spend_cap_h: 'Limite de gastos mensal',
     spend_cap_none: 'Sem limite — você pode gastar livremente.',
     spend_cap_progress: '{spent} de {cap} gastos este mês',
@@ -5305,6 +5308,38 @@ function explicitToggleHTML(m, md) {
   if (md.kind !== 'ppv_image' && md.kind !== 'ppv_video') return '';
   return `<button type="button" class="media-explicit-toggle${md.is_explicit ? ' on' : ''}" data-explicit-toggle="${md.id}">${md.is_explicit ? `🔞 ${t('ppv_explicit_label')}` : `${t('ppv_explicit_mark')} 🔞`}</button>`;
 }
+// The watermark note rides along with the FIRST successful unlock of a
+// session only — fans are told once, not nagged on every purchase.
+let wmNoteShown = false;
+
+/* Per-fan PPV watermark. Media a fan has unlocked wears a discreet overlay
+   naming the VIEWING fan ("@username · #A1B2") — a leaked screenshot or
+   screen recording names its source, which deters casual redistribution.
+   It is a client-side overlay on the shared file (the same bytes every
+   unlocker gets): it traces and deters, it does NOT stop a determined
+   extractor, and nothing in the UI claims otherwise. The identity is the
+   fan's username + a short scrambled fragment of his account id — never
+   his email, never the full numeric id. The model's own view of her media
+   and the pre-unlock (locked) view carry no watermark. */
+function fanTagFragment(id) {
+  // Deterministic 4-hex scramble of the account id (same fan, same tag on
+  // every tile; the raw id itself never prints).
+  let x = (Number(id) || 0) >>> 0;
+  x = Math.imul(x ^ 0x9e3779b9, 2654435761) >>> 0;
+  x = (x ^ (x >>> 13)) >>> 0;
+  return (x & 0xffff).toString(16).toUpperCase().padStart(4, '0');
+}
+
+function ppvWatermarkHTML(m) {
+  if (!S.user || S.user.role !== 'fan') return ''; // fans only — never staff/model views
+  if (m.sender_id === S.user.id) return ''; // never the sender/owner's own view
+  const md = m.media;
+  if (!md || !md.unlocked) return ''; // unlocked copies only (locked tiles stay clean)
+  if (md.kind !== 'ppv_image' && md.kind !== 'ppv_video') return '';
+  if (!(md.price_cents > 0)) return ''; // purchases only — $0 free previews aren't bought
+  const tag = `@${esc(S.user.username || 'fan')} · #${fanTagFragment(S.user.id)}`;
+  return `<span class="media-wm" aria-hidden="true">${tag}</span>`;
+}
 
 function mediaHTML(m) {
   if (!m.media) return '';
@@ -5329,9 +5364,9 @@ function mediaHTML(m) {
     // tap-to-retry card if the load fails.
     const veil = `<span class="media-load"><span class="media-spin"></span><span class="media-load-tx">Loading…</span></span>`;
     if (md.kind === 'ppv_image')
-      return `<span class="media-wrap media-img is-loading"><img class="ppv-img" data-media-src="${md.id}" alt="photo">${veil}</span>${explicitToggleHTML(m, md)}`;
+      return `<span class="media-wrap media-img is-loading"><img class="ppv-img" data-media-src="${md.id}" alt="photo">${veil}${ppvWatermarkHTML(m)}</span>${explicitToggleHTML(m, md)}`;
     if (md.kind === 'ppv_video')
-      return `<span class="media-wrap media-vid is-loading"><video class="ppv-vid" data-media-src="${md.id}" controls playsinline preload="metadata"></video>${veil}</span>${explicitToggleHTML(m, md)}`;
+      return `<span class="media-wrap media-vid is-loading"><video class="ppv-vid" data-media-src="${md.id}" controls playsinline preload="metadata"></video>${veil}${ppvWatermarkHTML(m)}</span>${explicitToggleHTML(m, md)}`;
     if (md.kind === 'voice')
       // Custom WhatsApp-style player (no native chrome — the native pill
       // rendered inconsistently and "broke apart" under the veil): one
@@ -6032,7 +6067,12 @@ async function unlockMedia(mediaId) {
     });
     refreshMediaBubble(mediaId);
     if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
-    toast('🔓 Unlocked!');
+    if (!wmNoteShown && S.user && S.user.role === 'fan') {
+      wmNoteShown = true; // first unlock of the session carries the note
+      toast(`🔓 Unlocked! ${t('ppv_watermark_note')}`, 4200);
+    } else {
+      toast('🔓 Unlocked!');
+    }
   } else if (status === 402) {
     refreshMediaBubble(mediaId); // restore the tappable tile before routing away
     if (!spendCapToast(data)) toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`);
