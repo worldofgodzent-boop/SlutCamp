@@ -545,7 +545,7 @@ test('B: already-withdrawn earnings — the shortfall becomes debt and future ea
 
 test('Terms pins: the contracts and fan Terms carry the payout-protection clauses', () => {
   const server = fs.readFileSync(path.join(REPO, 'server.js'), 'utf8');
-  assert.ok(server.includes("const CONTRACT_VERSION = '1.3';"), 'model contract bumped to 1.3 (forces re-sign)');
+  assert.ok(server.includes("const CONTRACT_VERSION = '1.4';"), 'model contract at 1.4 (1.3 added payout protection; 1.4 adds governing law — each text bump forces re-sign)');
   assert.ok(server.includes('13. Payout Holds, Chargeback Reversals & Fraud'), 'model contract §13 present');
   assert.ok(server.includes('become eligible for withdrawal 7 days after they are earned'), 'model contract states the 7-day hold');
   assert.ok(!server.includes('Earnings you have already properly withdrawn are NOT clawed back'),
@@ -560,11 +560,12 @@ test('Terms pins: the contracts and fan Terms carry the payout-protection clause
     '§13 promises AUTOMATIC recovery from future earnings — the system triggers it, no manual step');
   assert.ok(server.includes('You are never required to make a manual or out-of-pocket payment for a chargeback shortfall'),
     'no manual or out-of-pocket repayment is ever demanded for a chargeback shortfall');
-  assert.ok(server.includes('14. Plain-Language Disclaimer'), 'disclaimer renumbered to 14');
-  assert.ok(server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.1';"), 'recruiter contract bumped to R1.1');
+  assert.ok(server.includes('15. Plain-Language Disclaimer'), 'disclaimer renumbered to 15 (governing law took 14)');
+  assert.ok(server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.2';"), 'recruiter contract at R1.2 (R1.1 added the payout window; R1.2 adds governing law)');
   const app = fs.readFileSync(path.join(REPO, 'public/js/app.js'), 'utf8');
   assert.ok(app.includes('10. Chargebacks & Fraud'), 'fan Terms gained §10 Chargebacks & Fraud');
-  assert.ok(app.includes('11. Changes'), 'fan Terms Changes renumbered to 11');
+  const termsView = app.slice(app.indexOf('function vTerms()'), app.indexOf('function vModelContract()'));
+  assert.ok(termsView.includes('12. Changes'), 'fan Terms Changes renumbered to 12 (governing law took 11)');
   assert.ok(app.includes('Model earnings become eligible for withdrawal one week (7 days) after they are earned.'),
     'fan Terms §4 carries the 7-day eligibility sentence');
   assert.ok(app.includes('Last updated October 16, 2026'), 'fan Terms date updated');
