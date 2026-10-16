@@ -5518,7 +5518,7 @@ const MODEL_CONTRACT = {
 };
 
 /* Recruiter agreement — for models/partners who recruit other models */
-const RECRUITER_CONTRACT_VERSION = 'R1.2';
+const RECRUITER_CONTRACT_VERSION = 'R1.3';
 const RECRUITER_CONTRACT = {
   version: RECRUITER_CONTRACT_VERSION,
   updated: 'October 16, 2026',
@@ -5560,7 +5560,11 @@ const RECRUITER_CONTRACT = {
       body: 'This Agreement is governed by the laws of the State of Texas, without regard to its conflict-of-laws rules. Any dispute arising out of or relating to this Agreement must be brought in the state or federal courts located in Texas, and you and the Company consent to the personal jurisdiction and venue of those courts. Nothing in this section waives or limits any right your home state gives you that cannot legally be waived.',
     },
     {
-      title: '10. Plain-Language Disclaimer',
+      title: '10. First-Year Quota — 10 Models in Your First Year',
+      body: 'You have ONE YEAR from the date you sign up and accept this Agreement to onboard a minimum of 10 models. A model counts toward your quota only when she joins SlutCamp through your personal referral link and holds a model account. When your first year ends, the Company will review your account. If you have onboarded fewer than 10 models, the Company may revoke your recruiter status if deemed necessary, as described in Section 5. If the models you onboarded have made the Company a significant amount of money, the Company will extend your recruiter status until the quota is met, even if your first year has ended. This review is done by the Company — reaching the one-year mark does not by itself automatically end your status. Nothing in this section limits the Company\'s right under Section 5 to revoke your recruiter status and your referral link at any time, for any reason, without notice.',
+    },
+    {
+      title: '11. Plain-Language Disclaimer',
       body: 'This is a plain-language summary written for clarity — it is NOT legal advice, and it has not been reviewed by an attorney. The Company strongly recommends you have your own attorney review this Agreement before signing. If any part of this Agreement is found unenforceable, the rest still applies.',
     },
   ],
