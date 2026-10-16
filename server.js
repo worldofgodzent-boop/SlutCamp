@@ -876,6 +876,9 @@ addColumnIfMissing('transactions', 'is_test', 'INTEGER NOT NULL DEFAULT 0');
 // Admin visibility switch: hidden models vanish from the public listings
 // (home grid, Lives) without touching their account (Corry, Oct 12 2026).
 addColumnIfMissing('models', 'is_hidden', 'INTEGER NOT NULL DEFAULT 0');
+// Discovery 2.0 (Oct 16 2026): model-picked discovery tags as a JSON array
+// of catalogue strings. Additive only — existing models default to none.
+addColumnIfMissing('models', 'tags', "TEXT NOT NULL DEFAULT '[]'");
 // Fraud protection: account status ('active' | 'frozen') + ledger IP on every money row
 addColumnIfMissing('users', 'status', "TEXT NOT NULL DEFAULT 'active'");
 addColumnIfMissing('transactions', 'ip', 'TEXT');
@@ -2423,6 +2426,38 @@ app.post('/api/guest/token', (req, res) => {
   res.json({ guest_token: token });
 });
 
+/* ---- Discovery 2.0: model tags ---------------------------------------
+ * A small curated catalogue keeps tags browsable (fans filter the
+ * directory by them) instead of free-text chaos. Models pick up to
+ * MAX_MODEL_TAGS in Settings; stored on models.tags as a JSON array.
+ * public/js/app.js mirrors this list as DISCOVERY_TAGS — the test suite
+ * pins the two copies equal, so edit both or neither. */
+const MODEL_TAGS = [
+  'New here', 'Live daily', 'Video calls', 'Voice notes',
+  'Gaming', 'Gamer girl', 'Fitness', 'Cosplay',
+  'Tattoos', 'Piercings', 'Latina', 'Ebony',
+  'Blonde', 'Brunette', 'Redhead', 'Curvy', 'Petite', 'MILF',
+];
+const MODEL_TAG_SET = new Set(MODEL_TAGS);
+const MAX_MODEL_TAGS = 5;
+// Stored value → clean array (unknown/legacy entries dropped on read).
+function parseModelTags(raw) {
+  try {
+    const a = JSON.parse(raw || '[]');
+    return Array.isArray(a) ? a.filter((t) => MODEL_TAG_SET.has(t)) : [];
+  } catch (e) { return []; }
+}
+// PUT input → clean array capped at MAX_MODEL_TAGS, or null when the
+// input isn't an array at all (caller 400s).
+function cleanModelTags(input) {
+  if (!Array.isArray(input)) return null;
+  const out = [];
+  for (const t of input) {
+    if (typeof t === 'string' && MODEL_TAG_SET.has(t) && !out.includes(t)) out.push(t);
+  }
+  return out.slice(0, MAX_MODEL_TAGS);
+}
+
 // GET /api/models — PUBLIC so guests can browse before signing up.
 // Ranking: featured (SlutCamp Live) pinned first; regular models ordered by
 // rank_score = total_sales ($) + likes_count (1 like = $1 sold = 1 point).
@@ -2431,8 +2466,8 @@ app.post('/api/guest/token', (req, res) => {
 // refund rows are negative and net against sales automatically.
 app.get('/api/models', (req, res) => {
   const rows = db.prepare(`
-    SELECT u.id, u.username, u.display_name, u.presence_override, m.bio, m.per_message_cents,
-           m.per_minute_cents, m.per_voice_cents, m.is_online, m.photo_url,
+    SELECT u.id, u.username, u.display_name, u.presence_override, u.created_at, m.bio, m.per_message_cents,
+           m.per_minute_cents, m.per_voice_cents, m.is_online, m.photo_url, m.tags,
            m.preview_video_url, m.is_featured,
            ls.id AS live_session_id, ls.explicit_rate_cents AS live_explicit_rate_cents,
            (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS live_viewers,
@@ -2473,8 +2508,9 @@ app.get('/api/models', (req, res) => {
     const summary = sched.length
       ? sched.map((s) => `${days[s.day_of_week]} ${s.start_time.replace(/^0/, '')}`).join(', ')
       : '';
-    const { presence_override, ...pub } = r;
-    return { ...pub, is_online: effectiveOnline(presence_override, r.is_online),
+    const { presence_override, tags: rawTags, ...pub } = r;
+    return { ...pub, tags: parseModelTags(rawTags),
+      is_online: effectiveOnline(presence_override, r.is_online),
       is_live: !!r.live_session_id, is_featured: !!r.is_featured,
       live_viewers: r.live_viewers || 0, schedule_summary: summary, liked: likedSet.has(r.id),
       likes_count: r.like_count || 0,
@@ -4405,7 +4441,7 @@ app.post('/api/credits/buy', identMiddleware, requireUser, requireRole('fan'), (
 app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const { bio, per_message_cents, per_minute_cents, per_voice_cents, explicit_rate_cents,
           explicit_join_cents, explicit_mic_join_cents, join_cents, mic_join_cents,
-          is_online } = req.body || {};
+          is_online, tags } = req.body || {};
   const updates = [], params = [];
   // Model-settable 1-on-1 rates (tighter ranges than the admin override)
   const rateRange = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
@@ -4440,6 +4476,14 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
     updates.push('mic_join_cents = ?'); params.push(mic_join_cents);
   }
   if (is_online === 0 || is_online === 1) { updates.push('is_online = ?'); params.push(is_online); }
+  // Discovery tags: must be an array of catalogue strings; unknown tags
+  // are dropped, duplicates collapse, and the list caps at MAX_MODEL_TAGS.
+  if (tags !== undefined) {
+    const cleaned = cleanModelTags(tags);
+    if (!cleaned) return res.status(400).json({ error: 'bad_tags',
+      message: 'Tags must be a list of discovery tags.' });
+    updates.push('tags = ?'); params.push(JSON.stringify(cleaned));
+  }
   if (!updates.length) return res.status(400).json({ error: 'nothing_to_update' });
   params.push(req.user.id);
   db.prepare(`UPDATE models SET ${updates.join(', ')} WHERE user_id = ?`).run(...params);
