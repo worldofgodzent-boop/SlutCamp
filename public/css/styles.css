@@ -96,10 +96,37 @@ html, body {
 .balance-pill:active { transform: scale(.95); }
 
 /* Fan home header row: wordmark left, Log out pill right (rendered for
-   logged-in fans only). Sits in the h1 band (inset+10 → ~inset+46), clear
-   above the floating .notif-bell (top: inset+56). */
+   logged-in fans only). With NO seasonal banner the pill sits in the
+   h1 band (inset+10 → ~inset+46), clear above the floating .notif-bell
+   (top: inset+56, bottom: inset+100). */
 .home-head-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .home-logout-btn { min-height: 36px; flex-shrink: 0; }
+
+/* Bell/Log out stack (owner request 2026-10-16, screenshot-verified):
+   while the seasonal banner is up, #app starts one banner-height lower
+   (banner ≈ inset+52 — its greeting always wraps to 2 lines: #phone
+   caps at 480px and the text is ~536px wide at 13.5px), so the home
+   header's content top lands at ≈inset+62 — squarely inside the bell's
+   fixed band (inset+56 → inset+100), and the bell covered the Log out
+   pill's right end ("Log o🔔"). Owner's layout: bell top-right, Log out
+   stacked BELOW it. So in that state the pill is pushed one bell-height
+   down its row (align-items: flex-start keeps the wordmark at the top):
+   pill spans ≈inset+106 → inset+142, fully below the bell's bottom
+   edge with ~6px to spare, badge and pill both fully tappable. Every
+   variation moves the pill AWAY from the bell: the promo strip (when
+   it renders) adds ~29px above #app, a 3-line banner wrap adds more,
+   and the admin preview banner does the same. No banner → the rules
+   stop matching and the base row layout above applies untouched
+   (pill ends ≈inset+46, 10px clear of the bell). The one orphan state
+   — banner dismissed (node removed) but the promo strip still in the
+   column with no inset padding of its own — starts the header at
+   ≈inset+39, so the pill needs the deeper 66px push there
+   (≈inset+105 → inset+141). Browsers without :has() keep today's
+   layout: progressive enhancement, same contract as the de-dup rule. */
+#phone:has(> .sc-theme-banner) .home-head-row { align-items: flex-start; }
+#phone:has(> .sc-theme-banner) .home-logout-btn { margin-top: 44px; }
+#phone:has(> .sc-theme-promo):not(:has(> .sc-theme-banner)) .home-head-row { align-items: flex-start; }
+#phone:has(> .sc-theme-promo):not(:has(> .sc-theme-banner)) .home-logout-btn { margin-top: 66px; }
 
 /* ---------- Admin fan-preview banner (in-flow strip above #app) ---------- */
 .preview-banner {
