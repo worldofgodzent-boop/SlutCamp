@@ -205,6 +205,287 @@ app.get('/sw.js', (req, res) => {
   }
 });
 
+/* ------------------------------------------------------------------ */
+/* Public SEO pages (owner, Oct 16 2026). The app is a single-page    */
+/* shell, so Google used to see exactly ONE page — the homepage.      */
+/* Fans search model names; these server-rendered pages give every    */
+/* public model a real, crawlable page of her own, plus a models      */
+/* index, tag hubs, a model-recruiting page, and a DYNAMIC sitemap    */
+/* that grows/shrinks with the roster automatically.                  */
+/*                                                                    */
+/* Registered BEFORE express.static (same reason as /sw.js above):    */
+/* the dynamic /sitemap.xml must beat the static file, and these      */
+/* paths must beat the SPA fallback at the bottom of this file.       */
+/*                                                                    */
+/* Visibility mirrors GET /api/models exactly at the row level:       */
+/* role='model' AND banned=0 AND models.is_hidden=0. (The API also    */
+/* applies per-viewer region blocking; a public page has no viewer    */
+/* region, so the canonical roster is what crawlers get.) Nothing     */
+/* explicit lives here — her separate CLEAN public photo only (never   */
+/* the in-app storefront photo, which may be explicit by design), and  */
+/* no gallery/PPV/media.                                              */
+/* Every model-supplied string is HTML-escaped: names and bios are    */
+/* user input, and these pages are public.                            */
+/* ------------------------------------------------------------------ */
+const SEO_ORIGIN = 'https://slutcamp.app';
+const seoEsc = (s) => String(s == null ? '' : s)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+const seoMoney = (cents) => '$' + ((Number(cents) || 0) / 100).toFixed(2);
+const seoDesc = (bio, name) => {
+  const clean = String(bio || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return `${name} is a model on SlutCamp — chat, live shows and private video calls. Join free and meet her live.`;
+  if (clean.length <= 160) return clean;
+  const cut = clean.slice(0, 157);
+  const at = cut.lastIndexOf(' ');
+  return (at > 60 ? cut.slice(0, at) : cut) + '…';
+};
+// The public roster, shaped for the SEO pages. One query, same
+// ordering + rank positions as GET /api/models (minus the featured
+// float: rank_position is the TRUE composite position there too).
+function seoPublicModels() {
+  const rows = db.prepare(`
+    SELECT u.id, u.username, u.display_name, u.presence_override, u.created_at,
+           m.bio, m.per_message_cents, m.public_photo_url, m.tags, m.is_featured, m.is_online,
+           ls.id AS live_session_id
+    FROM users u JOIN models m ON m.user_id = u.id
+    LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live'
+    WHERE u.role = 'model' AND u.banned = 0 AND m.is_hidden = 0
+    ORDER BY m.is_featured DESC, m.rank_score DESC,
+             (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) DESC,
+             (CASE u.presence_override WHEN 'on' THEN 1 WHEN 'off' THEN 0 ELSE m.is_online END) DESC,
+             u.created_at DESC, u.display_name ASC
+  `).all();
+  const rankOrder = db.prepare(`
+    SELECT u.id FROM users u JOIN models m ON m.user_id = u.id
+    WHERE u.role = 'model' AND u.banned = 0 AND m.is_hidden = 0
+    ORDER BY m.rank_score DESC,
+             (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) DESC,
+             (CASE u.presence_override WHEN 'on' THEN 1 WHEN 'off' THEN 0 ELSE m.is_online END) DESC,
+             u.created_at DESC, u.display_name ASC
+  `).all();
+  const rankPos = new Map(rankOrder.map((r, i) => [r.id, i + 1]));
+  return rows.map((r) => ({
+    id: r.id,
+    username: r.username,
+    display_name: r.display_name,
+    bio: r.bio || '',
+    per_message_cents: r.per_message_cents,
+    public_photo_url: r.public_photo_url || '',
+    tags: parseModelTags(r.tags),
+    is_online: effectiveOnline(r.presence_override, r.is_online),
+    is_live: !!r.live_session_id,
+    rank_position: rankPos.get(r.id) || null,
+    url: '/models/' + encodeURIComponent(r.username),
+    photo_abs: r.public_photo_url ? SEO_ORIGIN + r.public_photo_url : SEO_ORIGIN + '/img/lips-logo.png',
+  }));
+}
+const seoTagSlug = (tag) => tag.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+function seoLiveTags(models) {
+  const used = new Set();
+  for (const m of models) for (const t of m.tags) used.add(t);
+  return MODEL_TAGS.filter((t) => used.has(t));
+}
+const SEO_CSS = `
+  * { box-sizing: border-box; }
+  body { margin:0; background:#1a0d18; color:#f5eef4; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
+  a { color:#ff5c9e; }
+  .wrap { max-width:860px; margin:0 auto; padding:20px 16px 56px; }
+  .brand { font-size:26px; font-weight:800; letter-spacing:.3px; }
+  .brand a { color:#f5eef4; text-decoration:none; }
+  .brand .camp { background:linear-gradient(135deg,#8b5cf6,#ff5c9e); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .age { display:inline-block; margin-left:8px; padding:2px 8px; border:1px solid #ff5c9e; border-radius:999px; color:#ff5c9e; font-size:12px; font-weight:700; vertical-align:middle; }
+  .hero { text-align:center; padding:28px 0 8px; }
+  .hero img.photo { width:220px; height:220px; object-fit:cover; border-radius:24px; border:3px solid #8b5cf6; }
+  h1 { font-size:30px; margin:16px 0 4px; }
+  .uname { color:#c9a8c4; margin:0 0 10px; }
+  .status { font-weight:700; margin:6px 0; }
+  .status .live { color:#ff5c6e; } .status .on { color:#4ade80; } .status .off { color:#9c8a99; }
+  .rank { display:inline-block; background:linear-gradient(135deg,#8b5cf6,#ff5c9e); color:#fff; font-weight:800; padding:4px 12px; border-radius:999px; font-size:14px; }
+  .bio { font-size:17px; line-height:1.55; color:#ead9e8; white-space:pre-wrap; max-width:640px; margin:14px auto; text-align:left; }
+  .tags { margin:12px 0; } .tags a { display:inline-block; margin:3px; padding:5px 12px; border:1px solid #8b5cf6; border-radius:999px; text-decoration:none; font-size:14px; }
+  .price { font-size:18px; margin:10px 0; }
+  .cta { display:inline-block; margin-top:16px; background:linear-gradient(135deg,#8b5cf6,#ff5c9e); color:#fff; font-weight:800; font-size:18px; padding:14px 34px; border-radius:999px; text-decoration:none; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px; margin-top:20px; }
+  .card { background:#241019; border-radius:16px; overflow:hidden; text-decoration:none; color:#f5eef4; display:block; }
+  .card img { width:100%; height:170px; object-fit:cover; display:block; background:#2c1522; }
+  .card .pad { padding:10px 12px; } .card .nm { font-weight:700; } .card .un { color:#c9a8c4; font-size:13px; }
+  .card .st { font-size:13px; font-weight:700; margin-top:4px; }
+  .pitch { font-size:17px; line-height:1.6; color:#ead9e8; }
+  .pitch li { margin:10px 0; }
+  footer { margin-top:44px; text-align:center; color:#9c8a99; font-size:13px; }
+`;
+function seoHead({ title, desc, url, image }) {
+  const ld = {
+    '@context': 'https://schema.org',
+    '@type': 'ProfilePage',
+    mainEntity: { '@type': 'Person', name: title, url, image },
+    url,
+  };
+  return `<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${seoEsc(title)}</title>
+<meta name="description" content="${seoEsc(desc)}">
+<meta name="robots" content="index, follow">
+<meta name="rating" content="adult">
+<meta name="rating" content="RTA-5042-1996-1400-1577-RTA">
+<link rel="canonical" href="${seoEsc(url)}">
+<link rel="icon" type="image/png" href="/img/lips-logo.png">
+<meta property="og:type" content="profile">
+<meta property="og:site_name" content="SlutCamp">
+<meta property="og:title" content="${seoEsc(title)}">
+<meta property="og:description" content="${seoEsc(desc)}">
+<meta property="og:url" content="${seoEsc(url)}">
+<meta property="og:image" content="${seoEsc(image || (SEO_ORIGIN + '/img/lips-logo.png'))}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${seoEsc(title)}">
+<meta name="twitter:description" content="${seoEsc(desc)}">
+<meta name="twitter:image" content="${seoEsc(image || (SEO_ORIGIN + '/img/lips-logo.png'))}">
+<meta name="theme-color" content="#150b26">
+<script type="application/ld+json">${JSON.stringify(ld).replace(/<\//g, '<\\/')}</script>
+<style>${SEO_CSS}</style>`;
+}
+function seoStatus(m) {
+  if (m.is_live) return '<span class="live">🔴 Live now</span>';
+  if (m.is_online) return '<span class="on">🟢 Online now</span>';
+  return '<span class="off">⚪ Offline</span>';
+}
+function seoModelCard(m) {
+  const img = m.public_photo_url
+    ? `<img src="${seoEsc(m.public_photo_url)}" alt="${seoEsc(m.display_name)}" loading="lazy">`
+    : `<img src="/img/lips-logo.png" alt="${seoEsc(m.display_name)}" loading="lazy">`;
+  return `<a class="card" href="${seoEsc(m.url)}">${img}<div class="pad">
+    <div class="nm">${seoEsc(m.display_name)}</div>
+    <div class="un">@${seoEsc(m.username)}</div>
+    <div class="st">${seoStatus(m)}</div>
+    <div class="un">${seoMoney(m.per_message_cents)} / message</div>
+  </div></a>`;
+}
+const seoBrand = `<div class="brand"><a href="/">Slut<span class="camp">Camp</span></a><span class="age">18+</span></div>`;
+const seoFooter = `<footer>SlutCamp is an 18+ platform. You must be of legal age in your location to use it.<br><a href="/models">All models</a> · <a href="/join">Become a model</a> · <a href="/">Open the app</a></footer>`;
+
+// GET /models/:username — her public, crawlable page.
+app.get('/models/:username', (req, res) => {
+  const models = seoPublicModels();
+  const want = String(req.params.username || '').toLowerCase();
+  const m = models.find((x) => x.username.toLowerCase() === want);
+  if (!m) {
+    return res.status(404).type('html').set('Cache-Control', 'public, max-age=300')
+      .send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Model not found — SlutCamp</title><meta name="robots" content="noindex"></head><body style="background:#1a0d18;color:#f5eef4;font-family:sans-serif;text-align:center;padding:60px 20px"><h1>Model not found</h1><p>That profile isn't public. <a href="/models" style="color:#ff5c9e">Browse all models</a></p></body></html>`);
+  }
+  const url = SEO_ORIGIN + m.url;
+  const title = `${m.display_name} (@${m.username}) on SlutCamp`;
+  const desc = seoDesc(m.bio, m.display_name);
+  const tagsHtml = m.tags.length
+    ? `<div class="tags">${m.tags.map((t) => `<a href="/tags/${seoTagSlug(t)}">${seoEsc(t)}</a>`).join('')}</div>` : '';
+  const rankHtml = m.rank_position && m.rank_position <= 10
+    ? `<div><span class="rank">🏆 Ranked #${m.rank_position} on SlutCamp</span></div>` : '';
+  const photoHtml = m.public_photo_url
+    ? `<img class="photo" src="${seoEsc(m.public_photo_url)}" alt="${seoEsc(m.display_name)} on SlutCamp">`
+    : `<img class="photo" src="/img/lips-logo.png" alt="${seoEsc(m.display_name)} on SlutCamp">`;
+  res.type('html').set('Cache-Control', 'public, max-age=300').send(`<!DOCTYPE html>
+<html lang="en">
+<head>${seoHead({ title, desc, url, image: m.photo_abs })}</head>
+<body><div class="wrap">
+${seoBrand}
+<div class="hero">
+  ${photoHtml}
+  <h1>${seoEsc(m.display_name)}</h1>
+  <p class="uname">@${seoEsc(m.username)}</p>
+  ${rankHtml}
+  <p class="status">${seoStatus(m)}</p>
+  <p class="price">💬 Messages from ${seoMoney(m.per_message_cents)}</p>
+  ${tagsHtml}
+  <div><a class="cta" href="/">💋 Chat with her on SlutCamp</a></div>
+</div>
+${m.bio ? `<p class="bio">${seoEsc(m.bio)}</p>` : ''}
+${seoFooter}
+</div></body></html>`);
+});
+
+// GET /models — the crawlable hub every other page points to.
+app.get('/models', (req, res) => {
+  const models = seoPublicModels();
+  const url = SEO_ORIGIN + '/models';
+  res.type('html').set('Cache-Control', 'public, max-age=300').send(`<!DOCTYPE html>
+<html lang="en">
+<head>${seoHead({ title: 'Models on SlutCamp — Live Chat & Private Video | 18+', desc: 'Browse every model on SlutCamp: live shows, private chat and one-on-one video calls. Join free and meet them live.', url })}</head>
+<body><div class="wrap">
+${seoBrand}
+<h1>Models on SlutCamp</h1>
+<p class="pitch">Live shows, private chat and one-on-one video calls with independent models. Join free — chat with her in the app.</p>
+<div class="grid">${models.map(seoModelCard).join('\n')}</div>
+${seoFooter}
+</div></body></html>`);
+});
+
+// GET /tags/:tag — hub for one Discovery tag (live tags only).
+app.get('/tags/:tag', (req, res) => {
+  const models = seoPublicModels();
+  const live = seoLiveTags(models);
+  const tag = live.find((t) => seoTagSlug(t) === String(req.params.tag || '').toLowerCase());
+  if (!tag) return res.status(404).type('html').set('Cache-Control', 'public, max-age=300')
+    .send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Tag not found — SlutCamp</title><meta name="robots" content="noindex"></head><body style="background:#1a0d18;color:#f5eef4;font-family:sans-serif;text-align:center;padding:60px 20px"><h1>Tag not found</h1><p><a href="/models" style="color:#ff5c9e">Browse all models</a></p></body></html>`);
+  const tagged = models.filter((m) => m.tags.includes(tag));
+  const url = SEO_ORIGIN + '/tags/' + seoTagSlug(tag);
+  res.type('html').set('Cache-Control', 'public, max-age=300').send(`<!DOCTYPE html>
+<html lang="en">
+<head>${seoHead({ title: `${tag} models on SlutCamp | 18+`, desc: `Models tagged ${tag} on SlutCamp — live shows, private chat and video calls. Join free and meet them live.`, url })}</head>
+<body><div class="wrap">
+${seoBrand}
+<h1>${seoEsc(tag)} models</h1>
+<div class="grid">${tagged.map(seoModelCard).join('\n')}</div>
+${seoFooter}
+</div></body></html>`);
+});
+
+// GET /join — model recruiting, server-rendered. (EN-only v1: these
+// public pages are EN, matching the homepage shell's SEO copy.)
+app.get('/join', (req, res) => {
+  const url = SEO_ORIGIN + '/join';
+  res.type('html').set('Cache-Control', 'public, max-age=300').send(`<!DOCTYPE html>
+<html lang="en">
+<head>${seoHead({ title: 'Become a Model on SlutCamp — Keep 60% of What You Earn | 18+', desc: 'Join SlutCamp as a model: keep 60% of everything you earn, get discovered by fans inside the app, set your own prices, and sign in with Face ID.', url })}</head>
+<body><div class="wrap">
+${seoBrand}
+<h1>Become a SlutCamp model 💋</h1>
+<div class="pitch">
+<p>SlutCamp is the creator platform built to be found. On the big platforms, nobody discovers you — you bring your own audience or you starve. Here, fans browse, search and filter the directory inside the app, and new models get their own spotlight rail. Your fans come to you.</p>
+<ul>
+  <li><strong>Keep 60% of everything you earn</strong> — chat, tips, gifts, calls, live shows, bookings. One split, no surprises.</li>
+  <li><strong>Built-in discovery</strong> — searchable directory, tags, rankings and a New Models spotlight. Fans find you without you posting anywhere else.</li>
+  <li><strong>Your earnings are protected</strong> — payouts run on a published weekly cycle, and chargeback handling is written into the Terms you sign, so a fan's bank dispute isn't handled on a whim.</li>
+  <li><strong>Face ID sign-in</strong> — your account unlocks with your face. No password to leak, nothing biometric ever leaves your phone.</li>
+  <li><strong>You set your prices</strong> — per-message, per-minute, live rates, games and bookings are yours to price and change anytime.</li>
+  <li><strong>ID-verified community</strong> — every model is ID-verified before she can earn, and fans pay through one wallet: no subscription stacking, no games.</li>
+</ul>
+<p style="text-align:center"><a class="cta" href="/">Apply in the app — it's free</a></p>
+<p>Applying takes a few minutes: create your model account, verify your ID, set your prices, and go live. You must be 18+ and able to work legally where you live.</p>
+</div>
+${seoFooter}
+</div></body></html>`);
+});
+
+// GET /sitemap.xml — DYNAMIC (replaces the old 1-URL static file):
+// roster changes flow in automatically, no manual step. No lastmod:
+// neither models nor users carries a real updated_at, and a faked
+// lastmod is worse than none.
+app.get('/sitemap.xml', (req, res) => {
+  const models = seoPublicModels();
+  const liveTags = seoLiveTags(models);
+  const entry = (loc, freq, pri) =>
+    `  <url>\n    <loc>${seoEsc(loc)}</loc>\n    <changefreq>${freq}</changefreq>\n    <priority>${pri}</priority>\n  </url>`;
+  const urls = [
+    entry(SEO_ORIGIN + '/', 'daily', '1.0'),
+    entry(SEO_ORIGIN + '/models', 'daily', '0.9'),
+    entry(SEO_ORIGIN + '/join', 'weekly', '0.8'),
+    ...models.map((m) => entry(SEO_ORIGIN + m.url, 'daily', '0.7')),
+    ...liveTags.map((t) => entry(SEO_ORIGIN + '/tags/' + seoTagSlug(t), 'weekly', '0.5')),
+  ];
+  res.type('application/xml').set('Cache-Control', 'public, max-age=3600')
+    .send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`);
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 /* ------------------------------------------------------------------ */
@@ -824,6 +1105,11 @@ addColumnIfMissing('calls', 'facetime_req_id', 'INTEGER');
 addColumnIfMissing('models', 'per_voice_cents', 'INTEGER NOT NULL DEFAULT 299');
 addColumnIfMissing('models', 'explicit_rate_cents', 'INTEGER NOT NULL DEFAULT 499');
 addColumnIfMissing('models', 'photo_url', "TEXT NOT NULL DEFAULT ''");
+// Clean PUBLIC photo for the Google-facing pages only (owner rule,
+// Oct 16 2026): her in-app storefront photo (photo_url) may be explicit
+// and must never reach the public pages, so the SEO surfaces read ONLY
+// this column. '' = unset → public pages show the branded logo instead.
+addColumnIfMissing('models', 'public_photo_url', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('live_sessions', 'title', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('live_sessions', 'brb', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_sessions', 'game_on', 'INTEGER NOT NULL DEFAULT 0'); // Game Category live this session
@@ -5261,6 +5547,46 @@ app.post('/api/model/photo', identMiddleware, requireUser, requireRole('model'),
     if (!req.file) return res.status(400).json({ error: 'no_photo' });
     res.json({ ok: true, photo_url: setModelPhoto(req.user.id, req.file) });
   });
+
+// Swap a model's PUBLIC photo — the clean one the Google-facing pages
+// show. Fully separate from photo_url (owner rule, Oct 16 2026): her
+// in-app storefront photo may be explicit and must never leak onto the
+// public pages, which read ONLY public_photo_url. Own-model-only: the
+// write always targets req.user.id. Deletes the old file like
+// setModelPhoto does so no orphans linger.
+function setModelPublicPhoto(userId, file) {
+  const old = db.prepare('SELECT public_photo_url FROM models WHERE user_id = ?').get(userId);
+  if (old && old.public_photo_url) {
+    const oldPath = path.join(UPLOAD_DIR, path.basename(old.public_photo_url));
+    if (oldPath.startsWith(UPLOAD_DIR + path.sep)) {
+      try { fs.unlinkSync(oldPath); } catch (e) { /* already gone */ }
+    }
+  }
+  const public_photo_url = '/uploads/' + path.basename(file.path);
+  db.prepare('UPDATE models SET public_photo_url = ? WHERE user_id = ?').run(public_photo_url, userId);
+  return public_photo_url;
+}
+
+// Model uploads her own public (clean) photo — the one Google shows
+app.post('/api/model/public-photo', identMiddleware, requireUser, requireRole('model'),
+  photoUpload.single('photo'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'no_photo' });
+    res.json({ ok: true, public_photo_url: setModelPublicPhoto(req.user.id, req.file) });
+  });
+
+// Model clears her public photo — public pages fall back to the logo,
+// never to her storefront photo
+app.delete('/api/model/public-photo', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const old = db.prepare('SELECT public_photo_url FROM models WHERE user_id = ?').get(req.user.id);
+  if (old && old.public_photo_url) {
+    const oldPath = path.join(UPLOAD_DIR, path.basename(old.public_photo_url));
+    if (oldPath.startsWith(UPLOAD_DIR + path.sep)) {
+      try { fs.unlinkSync(oldPath); } catch (e) { /* already gone */ }
+    }
+  }
+  db.prepare("UPDATE models SET public_photo_url = '' WHERE user_id = ?").run(req.user.id);
+  res.json({ ok: true, public_photo_url: '' });
+});
 
 // Model uploads her home-screen preview video loop (few seconds, autoplays muted)
 app.post('/api/model/preview-video', identMiddleware, requireUser, requireRole('model'),
@@ -10249,9 +10575,12 @@ function runBiweeklyCleanup() {
       }
     } catch (e) { /* already gone */ }
   }
-  // 2. Delete old model profile photos (photo-*.jpg in uploads, not current)
-  const currentPhotos = new Set(
-    db.prepare(`SELECT photo_url FROM models WHERE photo_url != ''`).all().map((r) => r.photo_url));
+  // 2. Delete old model profile photos (photo-*.jpg in uploads, not current).
+  // Public photos share the photo-* name space, so they count as current too.
+  const currentPhotos = new Set([
+    ...db.prepare(`SELECT photo_url FROM models WHERE photo_url != ''`).all().map((r) => r.photo_url),
+    ...db.prepare(`SELECT public_photo_url FROM models WHERE public_photo_url != ''`).all().map((r) => r.public_photo_url),
+  ]);
   try {
     for (const f of fs.readdirSync(UPLOAD_DIR)) {
       if (!/^photo-[a-f0-9]+\.(jpg|png|webp)$/.test(f)) continue;
