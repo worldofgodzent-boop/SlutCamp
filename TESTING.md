@@ -32,6 +32,8 @@ dependency, is missing) and the server cannot boot from it alone —
 | `tests/smoke.test.js` | Integration smoke test: boots the real `server.js` in a throwaway temp copy and checks key flows over HTTP |
 | `tests/passkey.test.js` | Face ID (WebAuthn) for everyone + enforced admin step-up: public enrollment/sign-in round trips with a built-in software authenticator, owner-scoped credential management, rate limiting, bootstrap + `passkey_required` enforcement on `/api/admin/*` and `/api/mod/*`, and the fan→Manager isolation regressions |
 | `tests/theme.test.js` | Unit tests for the seasonal theme engine (`public/js/theme.js`): every holiday window boundary, the computed Easter/Thanksgiving dates, override semantics, and THEMES-metadata ↔ CSS-pack sync |
+| `tests/popups.test.js` | Unit tests for the Halloween pop-up girls (`public/js/theme.js`): roster ↔ pop-up art sync in both directions, the shuffle-bag picker (full 12-combo rotation before repeats, kiss/twerk never back-to-back), schedule bounds (60s first pop, ~6s on screen, 3.5–5 min gaps), and source assertions for the halloween + login gating and the `pointer-events: none` hard rule in the engine and pack CSS |
+| `tests/header.test.js` | Source assertions for the header dead-space fix: compacted base header paddings in styles.css, the `:has()` rule that stops the header paying the safe-area inset twice under the theme banner, and the Halloween-only gating + styling of the theme.js promo strip |
 | `scripts/run-triple.js` | The triple runner behind `npm run test:triple` |
 
 ## What the suite covers
