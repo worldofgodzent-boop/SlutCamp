@@ -45,6 +45,31 @@
 }
 .sc-theme-banner-close:active { background: rgba(255, 255, 255, .3); }
 
+/* ---------- Seasonal promo strip (house ad) ---------- */
+/* A slim one-line strip the engine inserts under the greeting banner
+   for packs that define a promo (Halloween only today). In-flow in the
+   #phone column, above #app, so it survives in-app navigation exactly
+   like the banner. Kept deliberately short (~28px) — it dresses the top
+   of the screen, it does not push content down like the old dead space
+   did. Colors come from the pack; the base stays color-agnostic. */
+.sc-theme-promo {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 44;
+  padding: 5px 34px 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--peach);
+  background: rgba(0, 0, 0, .25);
+  border-bottom: 1px solid rgba(255, 255, 255, .06);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---------- Falling emoji particles ---------- */
 .sc-theme-particles {
   position: fixed;

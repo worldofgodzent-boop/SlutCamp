@@ -31,6 +31,48 @@
 :root[data-theme='halloween'] .header,
 :root[data-theme='halloween'] #tabbar { background: rgba(18, 6, 15, .9); }
 
+/* Compacted header, haunted finish (zero added height): a candlelit
+   ember wash glowing behind the wordmark, violet dusk at the right,
+   and an ember-lit hairline along the header's bottom edge. */
+:root[data-theme='halloween'] .header {
+  background:
+    radial-gradient(ellipse 55% 95% at 10% 0%, rgba(255, 117, 24, .20), transparent 70%),
+    radial-gradient(ellipse 45% 85% at 96% 0%, rgba(124, 58, 237, .16), transparent 70%),
+    rgba(18, 6, 15, .92);
+  border-bottom-color: rgba(255, 117, 24, .28);
+  box-shadow: 0 6px 24px rgba(255, 117, 24, .07);
+}
+
+/* Promo strip: midnight-violet melting into ember, like the banner in
+   miniature, with a cobweb and a spider keeping the corners. */
+:root[data-theme='halloween'] .sc-theme-promo {
+  background: linear-gradient(90deg, rgba(42, 10, 46, .95), rgba(124, 45, 18, .92) 55%, rgba(42, 10, 46, .95));
+  color: #ffc79a;
+  border-bottom-color: rgba(255, 117, 24, .3);
+  text-shadow: 0 1px 8px rgba(255, 117, 24, .35);
+}
+:root[data-theme='halloween'] .sc-theme-promo::before {
+  content: '🕸️';
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  opacity: .85;
+  pointer-events: none;
+}
+:root[data-theme='halloween'] .sc-theme-promo::after {
+  content: '🕷️';
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  opacity: .85;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .5));
+}
+
 /* Wordmark burns orange. */
 :root[data-theme='halloween'] .header h1 .logo {
   background: linear-gradient(135deg, #ffb347, #ff7518 55%, #a855f7);

@@ -65,9 +65,18 @@ html, body {
   background: rgba(26, 13, 24, .88);
   backdrop-filter: blur(16px) saturate(1.4);
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
-  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
   border-bottom: 1px solid rgba(255,255,255,.08);
 }
+/* While the seasonal banner is up (theme.js inserts it as a direct child
+   of #phone, above #app), the banner already carries the safe-area
+   inset — the sticky header sits below it and must not pay the inset a
+   second time. Without this, every themed screen grows ~one notch-height
+   of dead black between the banner and the header content (the "empty
+   stretch" above the wordmark). If the banner is dismissed the rule
+   stops matching and the inset returns. Browsers without :has() simply
+   keep the base padding — progressive enhancement, never a breakage. */
+#phone:has(> .sc-theme-banner) .header { padding-top: 10px; }
 .header h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.3px; }
 .header h1 .logo {
   background: linear-gradient(135deg, #ff5c9e, #ff9e7d);
@@ -81,16 +90,16 @@ html, body {
   border: 1px solid rgba(52, 211, 153, .3);
   color: #6ee7b7;
   font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums;
-  padding: 8px 16px; border-radius: 999px; margin-top: 8px;
+  padding: 7px 14px; border-radius: 999px; margin-top: 6px;
   transition: transform .12s ease;
 }
 .balance-pill:active { transform: scale(.95); }
 
 /* Fan home header row: wordmark left, Log out pill right (rendered for
-   logged-in fans only). Sits in the h1 band (inset+12 → ~inset+52), clear
+   logged-in fans only). Sits in the h1 band (inset+10 → ~inset+46), clear
    above the floating .notif-bell (top: inset+56). */
 .home-head-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.home-logout-btn { min-height: 40px; flex-shrink: 0; }
+.home-logout-btn { min-height: 36px; flex-shrink: 0; }
 
 /* ---------- Admin fan-preview banner (in-flow strip above #app) ---------- */
 .preview-banner {
