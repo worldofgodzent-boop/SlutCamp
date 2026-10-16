@@ -1321,6 +1321,25 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
   font-size: 13px; font-weight: 700; max-width: 100%;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+
+/* ---------- "New models you may like" front-page rail ---------- */
+.tile-new-pill {
+  position: absolute; top: 10px; right: 10px; z-index: 3;
+  background: linear-gradient(135deg, var(--pink), #a855f7); color: #fff;
+  box-shadow: 0 2px 10px rgba(255,92,158,.45);
+  font-size: 11px; font-weight: 800; letter-spacing: .6px;
+  padding: 5px 10px; border-radius: 999px;
+}
+/* Live tiles already wear the viewer count top-right — NEW drops below it,
+ * mirroring .tile-top-pill.below-live on the opposite corner. */
+.tile-new-pill.below-viewers { top: 42px; }
+.new-rail-wrap { margin-bottom: 14px; }
+.new-rail-title { font-weight: 800; margin: 2px 0 8px; }
+.new-rail {
+  display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px;
+  -webkit-overflow-scrolling: touch;
+}
+.new-rail .model-tile { flex: 0 0 auto; width: 148px; }
 @media (prefers-reduced-motion: reduce) {
   .tile-live-pill { animation: none; }
   .model-tile, .tile-heart { transition: none; }
