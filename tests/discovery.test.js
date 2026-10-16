@@ -311,14 +311,17 @@ test('tags: the client and server catalogues are the same list', () => {
     'catalogue stays a curated handful, not a free-for-all');
 });
 
+/* like_count values are deliberately MISALIGNED with rank_score (gia
+ * out-ranks zara on the composite but has fewer likes) so the pure
+ * 'Most liked' sort provably differs from the default 'Top ranked'. */
 const ROSTER = [
-  { id: 1, display_name: 'Zara Ink', username: 'zara', per_message_cents: 200, is_online: true, is_live: false, tags: ['Tattoos', 'Cosplay'], rank_score: 5, created_at: '2026-10-01 00:00:00' },
-  { id: 2, display_name: 'Mia Fit', username: 'mia', per_message_cents: 450, is_online: true, is_live: true, tags: ['Tattoos', 'Fitness'], rank_score: 9, created_at: '2026-10-03 00:00:00' },
-  { id: 3, display_name: 'Gia Gold', username: 'gia', per_message_cents: 900, is_online: false, is_live: false, tags: ['Cosplay'], rank_score: 7, created_at: '2026-10-02 00:00:00' },
-  { id: 4, display_name: 'Bunny', username: 'bunny', per_message_cents: 149, is_online: true, is_live: false, tags: [], rank_score: 20, created_at: '2026-09-01 00:00:00' },
+  { id: 1, display_name: 'Zara Ink', username: 'zara', per_message_cents: 200, is_online: true, is_live: false, tags: ['Tattoos', 'Cosplay'], rank_score: 5, like_count: 3, created_at: '2026-10-01 00:00:00' },
+  { id: 2, display_name: 'Mia Fit', username: 'mia', per_message_cents: 450, is_online: true, is_live: true, tags: ['Tattoos', 'Fitness'], rank_score: 9, like_count: 12, created_at: '2026-10-03 00:00:00' },
+  { id: 3, display_name: 'Gia Gold', username: 'gia', per_message_cents: 900, is_online: false, is_live: false, tags: ['Cosplay'], rank_score: 7, like_count: 1, created_at: '2026-10-02 00:00:00' },
+  { id: 4, display_name: 'Bunny', username: 'bunny', per_message_cents: 149, is_online: true, is_live: false, tags: [], rank_score: 20, like_count: 30, created_at: '2026-09-01 00:00:00' },
 ];
 const D = (over) => Object.assign(
-  { q: '', online: false, live: false, price: 'any', tag: '', sort: 'liked' }, over);
+  { q: '', online: false, live: false, price: 'any', tag: '', sort: 'top' }, over);
 const ids = (list) => list.map((m) => m.id);
 
 test('logic: price bands — $ ≤ $2, $$ ≤ $5, $$$ above', () => {
@@ -350,7 +353,9 @@ test('logic: online / live / price / tag filters, alone and combined', () => {
 
 test('logic: sorts — default preserves server rank order; others reorder with rank tiebreak', () => {
   assert.deepEqual(ids(logic.applyDiscovery([ROSTER[2], ROSTER[0], ROSTER[1]], D({}))), [3, 1, 2],
-    'default (most liked) must NOT reorder what the server ranked');
+    'default (top ranked) must NOT reorder what the server ranked');
+  assert.deepEqual(ids(logic.applyDiscovery(ROSTER, D({ sort: 'liked' }))), [4, 2, 1, 3],
+    'most liked sorts by like count alone (zara 3 likes passes gia 1 like despite the lower rank)');
   assert.deepEqual(ids(logic.applyDiscovery(ROSTER, D({ sort: 'price_low' }))), [4, 1, 2, 3]);
   assert.deepEqual(ids(logic.applyDiscovery(ROSTER, D({ sort: 'price_high' }))), [3, 2, 1, 4]);
   assert.deepEqual(ids(logic.applyDiscovery(ROSTER, D({ sort: 'online' }))), [4, 2, 1, 3]);

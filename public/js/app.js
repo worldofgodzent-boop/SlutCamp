@@ -109,12 +109,12 @@ const I18N = {
     search_models_ph: '🔍 Search models…',
     disc_online: '🟢 Online', disc_live: '🔴 Live',
     disc_band1: '$', disc_band2: '$$', disc_band3: '$$$',
-    sort_liked: '⭐ Most liked', sort_online: '🟢 Online first',
+    sort_top: '👑 Top ranked', sort_liked: '⭐ Most liked', sort_online: '🟢 Online first',
     sort_price_low: '💲 Price: low → high', sort_price_high: '💲 Price: high → low',
     sort_newest: '🆕 Newest',
     no_matches: 'No models match that — try clearing a filter.',
     clear_filters: '✖ Clear filters',
-    more_like_her: '💋 More like her',
+    more_like_her: '💋 More like her', ranked_n: '🏆 Ranked #{n}',
     new_models_title: '🆕 New models you may like', new_badge: 'NEW',
     tags_h: '🏷️ My discovery tags',
     tags_note: 'Pick up to 5 tags so fans can find you by vibe, look and what you offer. They show on your card and fans can tap them to filter the home screen.',
@@ -381,12 +381,12 @@ const I18N = {
     search_models_ph: '🔍 Buscar modelos…',
     disc_online: '🟢 En línea', disc_live: '🔴 En vivo',
     disc_band1: '$', disc_band2: '$$', disc_band3: '$$$',
-    sort_liked: '⭐ Más gustadas', sort_online: '🟢 En línea primero',
+    sort_top: '👑 Mejor clasificadas', sort_liked: '⭐ Más gustadas', sort_online: '🟢 En línea primero',
     sort_price_low: '💲 Precio: bajo → alto', sort_price_high: '💲 Precio: alto → bajo',
     sort_newest: '🆕 Más nuevas',
     no_matches: 'Ningún modelo coincide — prueba quitar un filtro.',
     clear_filters: '✖ Quitar filtros',
-    more_like_her: '💋 Más como ella',
+    more_like_her: '💋 Más como ella', ranked_n: '🏆 En el puesto #{n}',
     new_models_title: '🆕 Modelos nuevas que te pueden gustar', new_badge: 'NUEVA',
     tags_h: '🏷️ Mis etiquetas de descubrimiento',
     tags_note: 'Elige hasta 5 etiquetas para que los fans te encuentren por estilo, look y lo que ofreces. Se muestran en tu tarjeta y los fans pueden tocarlas para filtrar.',
@@ -650,12 +650,12 @@ const I18N = {
     search_models_ph: '🔍 Buscar modelos…',
     disc_online: '🟢 Online', disc_live: '🔴 Ao vivo',
     disc_band1: '$', disc_band2: '$$', disc_band3: '$$$',
-    sort_liked: '⭐ Mais curtidas', sort_online: '🟢 Online primeiro',
+    sort_top: '👑 Topo do ranking', sort_liked: '⭐ Mais curtidas', sort_online: '🟢 Online primeiro',
     sort_price_low: '💲 Preço: baixo → alto', sort_price_high: '💲 Preço: alto → baixo',
     sort_newest: '🆕 Mais novas',
     no_matches: 'Nenhuma modelo combina — tente limpar um filtro.',
     clear_filters: '✖ Limpar filtros',
-    more_like_her: '💋 Mais como ela',
+    more_like_her: '💋 Mais como ela', ranked_n: '🏆 Posição #{n}',
     new_models_title: '🆕 Modelos novas que você pode gostar', new_badge: 'NOVA',
     tags_h: '🏷️ Minhas tags de descoberta',
     tags_note: 'Escolha até 5 tags para os fãs te encontrarem pelo estilo, visual e o que você oferece. Elas aparecem no seu card e os fãs podem tocar para filtrar.',
@@ -1701,6 +1701,16 @@ function tileGradient(name) {
   return `linear-gradient(135deg,hsl(${h[0]},70%,55%),hsl(${h[1]},65%,50%))`;
 }
 
+/* Visible rank labels (owner, Oct 16 2026): a model's tile badge number
+ * is her TRUE position in the composite rank order (rank_position from
+ * /api/models — never her index in the payload, which floats the
+ * featured model to the top). Only positions 1–10 are labeled. Pure —
+ * unit-tested. */
+function rankBadgeFor(m) {
+  const n = m && m.rank_position;
+  return Number.isInteger(n) && n >= 1 && n <= 10 ? n : 0;
+}
+
 function modelTileHTML(m, opts) {
   opts = opts || {};
   const media = m.preview_video_url
@@ -1722,6 +1732,7 @@ function modelTileHTML(m, opts) {
         : m.is_featured ? `<span class="tile-featured-pill">${t('featured')}</span>` : ''}
       ${opts.crown ? `<span class="tile-top-pill${m.is_live ? ' below-live' : ''}">${t('top_model')}</span>` : ''}
       ${opts.isNew ? `<span class="tile-new-pill${m.is_live ? ' below-viewers' : ''}">${t('new_badge')}</span>` : ''}
+      ${opts.rankBadge ? `<span class="tile-rank-badge${opts.isNew ? ' below-new' : ''}${m.is_live ? ' below-viewers' : ''}">#${opts.rankBadge}</span>` : ''}
       ${opts.heartHTML || ''}
       <span class="tile-info">
         <span class="tile-name">${esc(m.display_name)}</span>
@@ -1735,7 +1746,7 @@ function modelTileHTML(m, opts) {
 }
 
 /* Featured model gets the big hero tile on top; everyone else fills the grid
-   in the ranked order /api/models returns (likes + sales). #1 regular wears
+   in the ranked order /api/models returns (likes + earnings). #1 regular wears
    the 👑 Top Model crown — the featured headliner doesn't compete. */
 /* Home grid pagination (Corry, Oct 12 2026): the ranked girls chart runs
    10 to a page — Top 10 on page 1, next 10 on page 2, and so on. The
@@ -1754,7 +1765,7 @@ const DISCOVERY_TAGS = [
   'Tattoos', 'Piercings', 'Latina', 'Ebony',
   'Blonde', 'Brunette', 'Redhead', 'Curvy', 'Petite', 'MILF',
 ];
-const disc = { q: '', online: false, live: false, price: 'any', tag: '', sort: 'liked' };
+const disc = { q: '', online: false, live: false, price: 'any', tag: '', sort: 'top' };
 
 /* Per-message price bands: $ = ≤$2, $$ = ≤$5, $$$ = above. */
 function discPriceBand(cents) {
@@ -1763,13 +1774,14 @@ function discPriceBand(cents) {
 }
 
 function discActive(d) {
-  return !!(d.q || d.online || d.live || d.price !== 'any' || d.tag || d.sort !== 'liked');
+  return !!(d.q || d.online || d.live || d.price !== 'any' || d.tag || d.sort !== 'top');
 }
 
 /* Pure filter + sort over the /api/models payload. The featured model is
  * NOT special-cased here — homeTilesHTML pins her hero from whatever list
  * it is handed, so she keeps the hero slot only while she matches. The
- * default sort ('liked') preserves the server's rank order untouched. */
+ * default sort ('top') preserves the server's composite rank order
+ * (likes + earnings) untouched; 'liked' re-sorts by like count alone. */
 function applyDiscovery(models, d) {
   const q = (d.q || '').trim().toLowerCase();
   const out = (models || []).filter((m) => {
@@ -1782,7 +1794,8 @@ function applyDiscovery(models, d) {
     return true;
   });
   const rank = (m) => m.rank_score || 0;
-  if (d.sort === 'online') out.sort((a, b) => (Number(b.is_online) - Number(a.is_online)) || (rank(b) - rank(a)));
+  if (d.sort === 'liked') out.sort((a, b) => ((b.like_count || 0) - (a.like_count || 0)) || (rank(b) - rank(a)));
+  else if (d.sort === 'online') out.sort((a, b) => (Number(b.is_online) - Number(a.is_online)) || (rank(b) - rank(a)));
   else if (d.sort === 'price_low') out.sort((a, b) => (a.per_message_cents - b.per_message_cents) || (rank(b) - rank(a)));
   else if (d.sort === 'price_high') out.sort((a, b) => (b.per_message_cents - a.per_message_cents) || (rank(b) - rank(a)));
   else if (d.sort === 'newest') out.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')) || (rank(b) - rank(a)));
@@ -1855,7 +1868,7 @@ function discoveryBarHTML(models) {
     <div class="disc-row">
       <input class="input disc-search" id="disc-q" type="search" placeholder="${t('search_models_ph')}" value="${esc(disc.q)}" autocomplete="off">
       <select class="input disc-sort" id="disc-sort">
-        ${['liked', 'online', 'price_low', 'price_high', 'newest'].map((s) => `<option value="${s}" ${disc.sort === s ? 'selected' : ''}>${t('sort_' + s)}</option>`).join('')}
+        ${['top', 'liked', 'online', 'price_low', 'price_high', 'newest'].map((s) => `<option value="${s}" ${disc.sort === s ? 'selected' : ''}>${t('sort_' + s)}</option>`).join('')}
       </select>
     </div>
     <div class="disc-row disc-chips">
@@ -1888,7 +1901,7 @@ function wireDiscovery(viewName) {
   const cl = $('#disc-clear');
   if (cl) cl.onclick = () => apply(() => {
     disc.q = ''; disc.online = false; disc.live = false;
-    disc.price = 'any'; disc.tag = ''; disc.sort = 'liked';
+    disc.price = 'any'; disc.tag = ''; disc.sort = 'top';
   });
 }
 
@@ -1902,12 +1915,16 @@ function homeTilesHTML(models, heartFor, opts) {
   const start = (homePage - 1) * HOME_PAGE_SIZE;
   const slice = rest.slice(start, start + HOME_PAGE_SIZE);
   // The 👑 marks the #1 RANKED model — only meaningful in the default
-  // (most-liked) ordering, so filtered/sorted views suppress it.
+  // (top-ranked) ordering, so filtered/sorted views suppress it. The
+  // #1–#10 rank badges follow the same rule: a re-sorted or filtered
+  // list must never label anyone by a position she doesn't hold.
   const crownOn = !opts || opts.crown !== false;
+  const badgesOn = !opts || opts.rankBadges !== false;
+  const badge = (m) => (badgesOn ? rankBadgeFor(m) : 0);
   return `
-    ${featured ? modelTileHTML(featured, { hero: true, heartHTML: heart(featured) }) : ''}
+    ${featured ? modelTileHTML(featured, { hero: true, rankBadge: badge(featured), heartHTML: heart(featured) }) : ''}
     <div class="tile-grid">
-      ${slice.map((m, i) => modelTileHTML(m, { crown: crownOn && start + i === 0, heartHTML: heart(m) })).join('')}
+      ${slice.map((m, i) => modelTileHTML(m, { crown: crownOn && start + i === 0, rankBadge: badge(m), heartHTML: heart(m) })).join('')}
     </div>
     ${pages > 1 ? `
     <div class="row" style="justify-content:center;align-items:center;gap:10px;margin-top:16px">
@@ -1959,7 +1976,7 @@ async function vLanding() {
       ${newModelsRailHTML(models, heartFor)}
       ${!models.length
         ? `<div class="empty"><div class="big">😴</div>${t('no_models')}</div>`
-        : shown.length ? homeTilesHTML(shown, heartFor, { crown: !discActive(disc) })
+        : shown.length ? homeTilesHTML(shown, heartFor, { crown: !discActive(disc), rankBadges: !discActive(disc) })
         : `<div class="empty"><div class="big">🔍</div>${t('no_matches')}</div>`}
       <div style="text-align:center;margin-top:14px">
         ${S.user ? '' : `<button class="btn ghost" id="go-login">${t('login_signup')}</button>`}
@@ -2638,14 +2655,14 @@ function logout(msg) {
 /* Model browsing the home screen: tap a sister's tile for her public card
    (status, home rank, rates) — look-only, no fan actions. */
 function openModelPeek(m, models) {
-  const featured = models.find((x) => x.is_featured);
-  const rest = featured ? models.filter((x) => x.id !== featured.id) : models;
-  const rankIdx = rest.findIndex((x) => x.id === m.id);
   const isMe = !!(S.user && S.user.id === m.id);
-  const rankLine = m.is_featured
-    ? '⭐ Featured — pinned at the top'
-    : rankIdx === 0 ? '👑 #1 on the home screen'
-    : rankIdx > 0 ? `#${rankIdx + 1} on the home screen` : '';
+  // Her rank line states her TRUE composite position (rank_position from
+  // the server) — never her index in this payload, which floats the
+  // featured model to the top. Top 10 only; a featured model outside
+  // the top 10 keeps the pinned note instead.
+  const rankLine = rankBadgeFor(m)
+    ? t('ranked_n', { n: m.rank_position })
+    : m.is_featured ? '⭐ Featured — pinned at the top' : '';
   const status = m.is_live
     ? `🔴 LIVE now — ${m.live_viewers || 0} watching`
     : m.is_online ? '🟢 Online now' : '⚫ Offline';
@@ -2724,7 +2741,7 @@ async function vFanModels() {
       ${newModelsRailHTML(models, heartFor)}
       ${!models.length
         ? `<div class="empty"><div class="big">😴</div>${t('no_models')}</div>`
-        : shown.length ? homeTilesHTML(shown, heartFor, { crown: !discActive(disc) })
+        : shown.length ? homeTilesHTML(shown, heartFor, { crown: !discActive(disc), rankBadges: !discActive(disc) })
         : `<div class="empty"><div class="big">🔍</div>${t('no_matches')}</div>`}
     </div>`;
   wireAthCard();
