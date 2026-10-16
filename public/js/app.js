@@ -235,6 +235,8 @@ const I18N = {
     crypto_tag_note: 'Enter this tag in your wallet app exactly as shown — without it, your payment cannot be matched to your account.',
     crypto_exact_note: 'Send this exact amount — the amount itself is how your payment gets matched to your account.',
     crypto_shared_note: 'This is our shared deposit address — every fan sends here; your payment is matched by the details on this screen.',
+    crypto_on_network: 'on the {network} network',
+    crypto_warn_network: '⚠ Send only {coin} on the {network} network to this address — crypto sent on another network can\'t be recovered and won\'t be credited.',
     splash_welcome: 'Welcome to SlutCamp,', splash_paradise: 'sluts paradise 😈',
     splash_nutt: 'We hope you enjoy your Nutt 💦', enter: 'Enter 🔥',
     settings_h: 'Settings ⚙️',
@@ -491,6 +493,8 @@ const I18N = {
     crypto_tag_note: 'Ingresa esta etiqueta en tu billetera exactamente como se muestra — sin ella, tu pago no puede vincularse a tu cuenta.',
     crypto_exact_note: 'Envía este monto exacto — el monto en sí es cómo tu pago se vincula a tu cuenta.',
     crypto_shared_note: 'Esta es nuestra dirección de depósito compartida — todos los fans envían aquí; tu pago se vincula por los datos de esta pantalla.',
+    crypto_on_network: 'en la red {network}',
+    crypto_warn_network: '⚠ Envía solo {coin} en la red {network} a esta dirección — las criptos enviadas por otra red no se pueden recuperar ni acreditar.',
     splash_welcome: 'Bienvenido a SlutCamp,', splash_paradise: 'el paraíso travieso 😈',
     splash_nutt: 'Esperamos que disfrutes tu Nutt 💦', enter: 'Entrar 🔥',
     settings_h: 'Ajustes ⚙️',
@@ -744,6 +748,8 @@ const I18N = {
     crypto_tag_note: 'Digite esta tag no seu app de carteira exatamente como mostrado — sem ela, seu pagamento não pode ser vinculado à sua conta.',
     crypto_exact_note: 'Envie este valor exato — o próprio valor é como seu pagamento é vinculado à sua conta.',
     crypto_shared_note: 'Este é nosso endereço de depósito compartilhado — todos os fãs enviam para cá; seu pagamento é vinculado pelos dados desta tela.',
+    crypto_on_network: 'na rede {network}',
+    crypto_warn_network: '⚠ Envie apenas {coin} na rede {network} para este endereço — criptos enviadas por outra rede não podem ser recuperadas nem creditadas.',
     splash_welcome: 'Bem-vindo ao SlutCamp,', splash_paradise: 'o paraíso das safadas 😈',
     splash_nutt: 'Esperamos que você aproveite seu Nutt 💦', enter: 'Entrar 🔥',
     settings_h: 'Configurações ⚙️',
@@ -3001,6 +3007,12 @@ function cryptoStatusText(inv) {
 
 const USDT_CONTRACT_CLIENT = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
 
+// Plain-words network name per coin, shown on the pay screen: a fan who
+// has never used crypto must be able to see WHICH network to send on
+// (USDT lives on Ethereum here — sending it via another chain's network
+// loses the payment for good).
+const CRYPTO_NETWORKS = { USDT: 'Ethereum (ERC-20)', BTC: 'Bitcoin', ETH: 'Ethereum', SOL: 'Solana', XRP: 'XRP Ledger' };
+
 // Named wallet-app buttons. Fans tap the wallet they actually have instead
 // of one generic link whose coin URI may have no handler on their device
 // (USDT's EIP-681 contract-call form and bitcoin: often claim nothing).
@@ -3276,11 +3288,13 @@ function renderCryptoInvoice(inv) {
       <div style="background:#fff;border-radius:14px;padding:10px;width:min(252px,100%);box-sizing:border-box;margin:10px auto;line-height:0">${inv.qr_svg || ''}</div>
       <div class="muted small">${t('crypto_send_exact')}</div>
       <div style="font-size:clamp(21px,6.4vw,30px);font-weight:900;letter-spacing:-.3px;padding:0 4px">${inv.amount_crypto} ${inv.coin}</div>
-      <div class="muted small" style="margin-bottom:8px">≈ ${fmt(inv.package_usd_cents)} USD</div>
+      <div class="muted small">≈ ${fmt(inv.package_usd_cents)} USD</div>
+      <div class="small" style="font-weight:800;margin:2px 0 8px">${inv.coin} · ${t('crypto_on_network', { network: CRYPTO_NETWORKS[inv.coin] || inv.coin })}</div>
       ${inv.coin === 'SOL' ? `<div class="small" style="color:var(--gold);margin:0 auto 8px;max-width:300px">${t('crypto_exact_note')}</div>` : ''}
       <div class="muted small">${t('crypto_to')}</div>
       <div style="font-family:monospace;font-size:12px;word-break:break-all;background:rgba(0,0,0,.25);border-radius:8px;padding:8px">${esc(inv.address)}</div>
       ${inv.shared_address ? `<div class="muted small" style="margin:6px auto 0;max-width:300px">${t('crypto_shared_note')}</div>` : ''}
+      <div class="small" style="color:var(--gold);margin:8px auto 0;max-width:320px;font-weight:700">${t('crypto_warn_network', { coin: inv.coin, network: CRYPTO_NETWORKS[inv.coin] || inv.coin })}</div>
       ${inv.dest_tag ? `
       <div style="margin-top:12px">
         <div class="small" style="color:var(--gold);font-weight:800">${t('crypto_dest_tag')}</div>
