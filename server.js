@@ -871,6 +871,7 @@ addColumnIfMissing('platform_stats', 'admin_phone', 'TEXT');
 addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'test_money_cleared_at', 'TEXT');
 addColumnIfMissing('platform_stats', 'commission_60_40_fixed_at', 'TEXT'); // one-time canonical 60/40 correction stamp
+addColumnIfMissing('platform_stats', 'demo_purge_at', 'TEXT'); // one-time demo-seed purge stamp
 addColumnIfMissing('transactions', 'is_test', 'INTEGER NOT NULL DEFAULT 0');
 // Admin visibility switch: hidden models vanish from the public listings
 // (home grid, Lives) without touching their account (Corry, Oct 12 2026).
@@ -2163,6 +2164,10 @@ function announceAgreement12ToModels() {
 }
 
 function seed() {
+  // Demo accounts are DEV-ONLY and strictly opt-in (SEED_DEMO=1). A seeded
+  // fan carries $100 of test credits and every seeded password is printed
+  // in the README, so a production boot must never create them by default.
+  if (process.env.SEED_DEMO !== '1') return;
   const count = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
   if (count > 0) return;
 
@@ -2239,6 +2244,173 @@ try { const n = announceAgreement12ToModels(); if (n) console.log(`[contract] Ag
     db.prepare("UPDATE platform_stats SET commission_60_40_fixed_at = datetime('now') WHERE id = 1").run();
     console.log('[commission] Canonical 60/40 split applied (platform commission set to 40%).');
   } catch (e) { console.log('[commission] 60/40 correction failed:', e.message); }
+})();
+
+/* One-time pre-launch purge (Asce, Oct 16 2026): delete the demo seed
+   MODEL accounts and every trace of their fake money. seed() only ever
+   created five accounts — admin + bunny/stacey/bella + fandemo — but
+   only the three models are purge targets. Two accounts are NEVER
+   purge targets: the admin (the owner's Manager login — deleting it
+   would lock him out; its password state is audited in the log below
+   instead) and fandemo (the owner's own test account — "that's how I
+   run tests on the app", owner decision Oct 16 2026 — so fandemo's
+   account and its $100 of test credits stay exactly as they are).
+   A target is purged ONLY on a THREE-PART key, all three required:
+   (1) username matches a seed name (the column is COLLATE NOCASE, so
+   'Bunny' matches 'bunny'), (2) role matches the seed role, and
+   (3) PASSWORD FINGERPRINT: the stored hash still verifies against
+   the seed's default password ('model123') via bcrypt.compareSync —
+   the same technique the admin audit below uses. The fingerprint is
+   the load-bearing check: name + role are NOT proof an account is a
+   seed — in the live DB the original seeds were removed long ago and
+   a REAL model has since registered the name "Bunny" (real photo,
+   real sales). Her password is not the seed default, so she is
+   skipped with a loud log line and left completely untouched; only
+   an account still running the README-public seed password can be a
+   seed (or indistinguishable from one). On top of the key sits a
+   hard PICTURES GUARD (owner rule): any candidate that owns uploaded
+   media (media_items.sender_id) or has a profile photo set
+   (models.photo_url) is skipped outright — a seed never uploaded
+   anything, so pictures mean a real person joined. And a hard
+   ID-VERIFICATION GUARD (owner rule): a candidate whose
+   id_verifications row is 'approved' is skipped outright — the
+   seeds were never ID-verified, and an approved check is conclusive
+   proof of a real person. ALL guards (role, pictures, ID-verified,
+   password fingerprint) are evaluated for every candidate and every
+   trip is logged, so a real account stays protected even when one
+   of the other checks would have passed it; the purge fires only
+   when NO guard trips. The purge never scans by balance and never
+   touches a non-seed user. Dependent rows are
+   swept by enumerating the LIVE schema (declared FKs UNION legacy
+   user columns — the technique the admin model-delete uses), money
+   tables INCLUDED this time: a seed account's ledger rows and wallet
+   are fake money and go with the account. Runs exactly once (marker:
+   platform_stats.demo_purge_at); skipped entirely while SEED_DEMO=1
+   (a dev box that opted into demos keeps them, marker unstamped). */
+(function purgeDemoSeedsOnce() {
+  try {
+    if (process.env.SEED_DEMO === '1') return;
+    const row = db.prepare('SELECT demo_purge_at FROM platform_stats WHERE id = 1').get();
+    if (!row || row.demo_purge_at) return;
+    const SEEDS = [
+      { username: 'bunny', role: 'model', seedPassword: 'model123' },
+      { username: 'stacey', role: 'model', seedPassword: 'model123' },
+      { username: 'bella', role: 'model', seedPassword: 'model123' },
+    ];
+    const tableExists = (t) => !!db.prepare(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?").get(t);
+    // Every (table, column) in the live schema that can point at a user.
+    const pairs = new Map();
+    const allTables = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> 'users'"
+    ).all().map((r) => r.name);
+    for (const t of allTables) {
+      for (const fk of db.prepare(`PRAGMA foreign_key_list(${t})`).all())
+        if (fk.table === 'users') pairs.set(`${t}.${fk.from}`, { t, c: fk.from });
+      for (const col of db.prepare(`PRAGMA table_info(${t})`).all())
+        if (['user_id', 'model_id', 'fan_id', 'sender_id'].includes(col.name))
+          pairs.set(`${t}.${col.name}`, { t, c: col.name });
+    }
+    const purgedNames = [];
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      // Cross-references between a seed's own rows resolve at COMMIT,
+      // so the sweep order inside the transaction is free.
+      db.exec('PRAGMA defer_foreign_keys = ON');
+      for (const s of SEEDS) {
+        const u = db.prepare('SELECT id, username, role, password_hash FROM users WHERE username = ?').get(s.username);
+        if (!u) continue;
+        if (u.role !== s.role) {
+          console.log(`[cleanup] SKIPPED ${s.username}: live role is '${u.role}', not the seed role '${s.role}' — not a seed account, left untouched.`);
+          continue;
+        }
+        // GUARDS — ALL of them are evaluated for every candidate and
+        // every trip is logged; the account is purged only when NO
+        // guard trips. Any single trip means "real person": untouched.
+        let guardTripped = false;
+        // Pictures guard (owner rule): a seed never uploaded anything
+        // — no media rows, no profile photo. Any account WITH pictures
+        // is a real model who joined, whatever her password state.
+        const mediaRows = tableExists('media_items')
+          ? db.prepare('SELECT COUNT(*) AS n FROM media_items WHERE sender_id = ?').get(u.id).n : 0;
+        const hasPhotoCol = db.prepare('PRAGMA table_info(models)').all()
+          .some((c) => c.name === 'photo_url');
+        const modelRow = hasPhotoCol
+          ? db.prepare('SELECT photo_url FROM models WHERE user_id = ?').get(u.id) : null;
+        if (mediaRows > 0 || (modelRow && modelRow.photo_url)) {
+          console.log(`[cleanup] SKIPPED ${u.username}: account has uploaded pictures — real account, left untouched.`);
+          guardTripped = true;
+        }
+        // ID-verification guard (owner rule): an approved ID check
+        // (id_verifications.status = 'approved', the isIdVerified
+        // test) is conclusive proof of a real person — the seed
+        // models were never ID-verified.
+        if (tableExists('id_verifications') && isIdVerified(u.id)) {
+          console.log(`[cleanup] SKIPPED ${u.username}: ID-verified model — real account, left untouched.`);
+          guardTripped = true;
+        }
+        // Password fingerprint: a real person who re-registered a seed
+        // name after the seeds were removed has her OWN password — the
+        // seed default will not verify against her hash. Only an
+        // account still running the seed default can be a seed.
+        let isSeedPassword = false;
+        try { isSeedPassword = bcrypt.compareSync(s.seedPassword, u.password_hash); } catch (e) { /* ignore */ }
+        if (!isSeedPassword) {
+          console.log(`[cleanup] SKIPPED ${u.username}: password is not the seed default — looks like a real account, left untouched.`);
+          guardTripped = true;
+        }
+        if (guardTripped) continue;
+        const w = db.prepare('SELECT credits_cents, earnings_cents FROM wallets WHERE user_id = ?').get(u.id)
+          || { credits_cents: 0, earnings_cents: 0 };
+        let rows = 0;
+        // The seed's conversation threads go entirely (both sides' rows).
+        const convIds = db.prepare('SELECT id FROM conversations WHERE fan_id = ? OR model_id = ?')
+          .all(u.id, u.id).map((r) => r.id);
+        if (convIds.length) {
+          const ph = convIds.map(() => '?').join(',');
+          for (const t of ['messages', 'media_items', 'safety_incidents'])
+            if (tableExists(t))
+              rows += db.prepare(`DELETE FROM ${t} WHERE conversation_id IN (${ph})`).run(...convIds).changes;
+        }
+        for (const { t, c } of pairs.values())
+          rows += db.prepare(`DELETE FROM ${t} WHERE ${c} = ?`).run(u.id).changes;
+        db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
+        purgedNames.push(u.username);
+        console.log(`[cleanup] purged seed account ${u.username} (${u.role}) balance ${w.credits_cents + w.earnings_cents} (credits ${w.credits_cents} + earnings ${w.earnings_cents}) — ${rows} dependent rows removed.`);
+      }
+      db.exec('COMMIT');
+    } catch (e) {
+      try { db.exec('ROLLBACK'); } catch (_) { /* already rolled back */ }
+      throw e;
+    }
+    db.prepare("UPDATE platform_stats SET demo_purge_at = datetime('now') WHERE id = 1").run();
+    if (purgedNames.length) {
+      console.log(`[cleanup] Demo seed purge complete: ${purgedNames.length} account(s) removed (${purgedNames.join(', ')}). No other users were touched.`);
+    } else {
+      console.log('[cleanup] Demo seed purge: no seed accounts found — nothing to purge.');
+    }
+    // The seeded admin is preserved on purpose (owner lockout). Audit its
+    // password state so the deploy log answers the launch question: is
+    // the Manager still protected by the README-public default password?
+    const admin = db.prepare("SELECT id, password_hash FROM users WHERE username = 'admin'").get();
+    if (admin) {
+      let isDefault = false;
+      try { isDefault = bcrypt.compareSync('admin123', admin.password_hash); } catch (e) { /* ignore */ }
+      if (isDefault) {
+        console.log('[cleanup] ⚠️ CRITICAL: user "admin" still signs in with the README-public default password admin123 — change it in Slut Manager before launch.');
+      } else {
+        console.log('[cleanup] Admin account "admin" preserved (never a purge target); its password is not the README default.');
+      }
+    }
+    // fandemo is preserved on purpose too: it is the owner's own test
+    // account (owner decision, Oct 16 2026), so it is never a purge
+    // target and its balance is never touched — audit the preservation
+    // so the deploy log shows the decision held.
+    const fandemo = db.prepare("SELECT id FROM users WHERE username = 'fandemo'").get();
+    if (fandemo) {
+      console.log('[cleanup] fandemo preserved — owner\'s test account, untouched.');
+    }
+  } catch (e) { console.log('[cleanup] demo seed purge failed:', e.message); }
 })();
 
 /* ------------------------------------------------------------------ */
@@ -9244,7 +9416,9 @@ app.get('/api/admin/cleanup', ...adminOnly, (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`SlutCamp running → http://localhost:${PORT}`);
-  console.log('Seeded logins: admin/admin123 · bunny|stacey|bella/model123 · fandemo/fan123');
+  console.log(process.env.SEED_DEMO === '1'
+    ? 'Seeded logins (SEED_DEMO=1, local dev only): admin/admin123 · bunny|stacey|bella/model123 · fandemo/fan123'
+    : 'Demo seeding OFF — no demo accounts created (set SEED_DEMO=1 for local dev).');
 });
 
 /* ------------------------------------------------------------------ */
