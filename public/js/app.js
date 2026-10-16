@@ -1853,8 +1853,13 @@ function renderAuthBody(mode, role) {
     body.innerHTML = `
       <label class="field">${t('username')}<input class="input" id="a-user" autocomplete="username"></label>
       <label class="field">${t('password')}${pwField('a-pass', 'current-password')}</label>
-      <button class="btn" id="a-go">${t('log_in')}</button>`;
+      <button class="btn" id="a-go">${t('log_in')}</button>
+      ${pkSupported() ? `
+      <button class="btn ghost" id="a-faceid" style="width:100%;margin-top:10px">🔐 Sign in with Face ID</button>
+      <div class="small muted" id="pk-login-msg" style="margin-top:8px;text-align:center"></div>` : ''}`;
     $('#a-go').onclick = doLogin;
+    const fidBtn = $('#a-faceid');
+    if (fidBtn) fidBtn.onclick = doPasskeyLogin;
   } else {
     body.innerHTML = `
       <div class="role-card ${role === 'fan' ? 'selected' : ''}" id="r-fan">
@@ -1906,6 +1911,175 @@ async function doSignup(role) {
   const msgs = { username_taken: t('err_username_taken'), must_be_18: t('err_must_be_18'),
     password_too_short: t('err_password_short') };
   toast(msgs[data.error] || t('err_signup_failed'));
+}
+
+/* ---------------- Face ID (passkey) sign-in — optional for everyone ---------
+ * Hand-rolled WebAuthn client (no dependencies): converts the server's
+ * JSON options into PublicKeyCredential options and the credential back
+ * into the standard JSON @simplewebauthn/server accepts. The biometric
+ * never leaves the device; the server only verifies a signature. */
+function pkSupported() {
+  return !!(window.PublicKeyCredential && navigator.credentials && window.isSecureContext);
+}
+function pkB64uToBuf(s) {
+  s = String(s).replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+}
+function pkBufToB64u(buf) {
+  const bytes = new Uint8Array(buf || new ArrayBuffer(0));
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function pkCreateOptions(o) {
+  const pk = Object.assign({}, o);
+  pk.challenge = pkB64uToBuf(o.challenge);
+  pk.user = Object.assign({}, o.user, { id: pkB64uToBuf(o.user.id) });
+  if (o.excludeCredentials) {
+    pk.excludeCredentials = o.excludeCredentials.map((c) =>
+      Object.assign({}, c, { id: pkB64uToBuf(c.id) }));
+  }
+  return pk;
+}
+function pkRequestOptions(o) {
+  const pk = Object.assign({}, o);
+  pk.challenge = pkB64uToBuf(o.challenge);
+  if (o.allowCredentials) {
+    pk.allowCredentials = o.allowCredentials.map((c) =>
+      Object.assign({}, c, { id: pkB64uToBuf(c.id) }));
+  }
+  return pk;
+}
+function pkCredJson(cred) {
+  const r = cred.response;
+  const json = {
+    id: cred.id,
+    rawId: pkBufToB64u(cred.rawId),
+    type: cred.type,
+    authenticatorAttachment: cred.authenticatorAttachment || null,
+    clientExtensionResults: cred.getClientExtensionResults ? cred.getClientExtensionResults() : {},
+    response: { clientDataJSON: pkBufToB64u(r.clientDataJSON) },
+  };
+  if (r.attestationObject !== undefined) {
+    json.response.attestationObject = pkBufToB64u(r.attestationObject);
+    if (r.getTransports) { try { json.response.transports = r.getTransports(); } catch (e) {} }
+    if (r.getPublicKeyAlgorithm) { try { json.response.publicKeyAlgorithm = r.getPublicKeyAlgorithm(); } catch (e) {} }
+    if (r.getAuthenticatorData) { try { json.response.authenticatorData = pkBufToB64u(r.getAuthenticatorData()); } catch (e) {} }
+  } else {
+    json.response.authenticatorData = pkBufToB64u(r.authenticatorData);
+    json.response.signature = pkBufToB64u(r.signature);
+    json.response.userHandle = r.userHandle ? pkBufToB64u(r.userHandle) : null;
+  }
+  return json;
+}
+function pkDeviceLabel() {
+  const ua = navigator.userAgent || '';
+  if (/iPhone/.test(ua)) return 'iPhone';
+  if (/iPad/.test(ua)) return 'iPad';
+  if (/Android/.test(ua)) return 'Android';
+  if (/Macintosh/.test(ua)) return 'Mac';
+  if (/Windows/.test(ua)) return 'Windows PC';
+  return 'This device';
+}
+function pkErrText(e) {
+  if (e && e.name === 'NotAllowedError') return 'Face ID was cancelled or timed out — try again, or use your password.';
+  if (e && e.name === 'InvalidStateError') return 'This device already has a passkey for your account.';
+  return "Face ID didn't work — try again, or use your password.";
+}
+
+/* Login screen: Face ID sign-in with the username typed in the form. */
+async function doPasskeyLogin() {
+  const msg = $('#pk-login-msg');
+  const say = (txt) => { if (msg) msg.textContent = txt; };
+  const userEl = $('#a-user');
+  const username = userEl ? userEl.value.trim() : '';
+  if (!username) {
+    say('Type your username above first, then tap Face ID.');
+    if (userEl) userEl.focus();
+    return;
+  }
+  say('');
+  try {
+    const { status, data } = await api('/auth/passkey/login-options', {
+      method: 'POST', body: JSON.stringify({ username }),
+    });
+    if (status !== 200) {
+      say(data.error === 'no_passkey'
+        ? 'No Face ID set up for that username yet — sign in with your password first, then turn it on in Settings.'
+        : data.error === 'too_many_attempts'
+          ? 'Too many tries — wait a minute and try again.'
+          : 'Face ID sign-in is not available right now — use your password.');
+      return;
+    }
+    const cred = await navigator.credentials.get({ publicKey: pkRequestOptions(data) });
+    if (!cred) { say('Face ID was cancelled.'); return; }
+    const v = await api('/auth/passkey/login-verify', {
+      method: 'POST', body: JSON.stringify({ username, response: pkCredJson(cred) }),
+    });
+    if (v.status === 200) return afterLogin(v.data); // same flow as password login
+    say(v.data.error === 'banned' ? 'This account is banned.'
+      : "Face ID didn't match — try again, or use your password.");
+  } catch (e) {
+    say(pkErrText(e));
+  }
+}
+
+/* Settings card (fan wallet + model settings): enroll / list / remove. */
+async function renderPkSettingsCard() {
+  const host = document.getElementById('pk-card');
+  if (!host) return;
+  if (!pkSupported()) {
+    host.innerHTML = `
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:6px">🔐 Face ID sign-in</div>
+        <div class="muted small">This device or browser doesn't support Face ID sign-in — it needs Safari or Chrome over HTTPS on a device with Face ID / a fingerprint reader. Your password works as always.</div>
+      </div>`;
+    return;
+  }
+  const { data } = await api('/auth/passkey/list').catch(() => ({ data: {} }));
+  const creds = (data && data.credentials) || [];
+  host.innerHTML = `
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🔐 Face ID sign-in</div>
+      <div class="muted small" style="margin-bottom:10px">Sign in with your face or fingerprint instead of typing your password. Your password still works as a backup.</div>
+      ${creds.map((c) => `
+      <div class="row" style="align-items:center;gap:8px;padding:5px 0">
+        <span class="small" style="flex:1">📱 ${esc(c.device_label || 'Passkey')} <span class="muted">· added ${esc(String(c.created_at || '').slice(0, 10))}</span></span>
+        <button class="btn small ghost" data-pk-del="${c.id}">Remove</button>
+      </div>`).join('')}
+      <button class="btn" id="pk-setup" style="width:100%;margin-top:6px">Set up Face ID on this device</button>
+      <div class="muted small" id="pk-msg" style="margin-top:6px"></div>
+    </div>`;
+  $('#pk-setup').onclick = async () => {
+    const m = $('#pk-msg');
+    try {
+      const { status, data } = await api('/auth/passkey/register-options', { method: 'POST', body: '{}' });
+      if (status !== 200) throw new Error(data.error || 'options_failed');
+      const cred = await navigator.credentials.create({ publicKey: pkCreateOptions(data) });
+      if (!cred) throw new Error('cancelled');
+      const v = await api('/auth/passkey/register-verify', {
+        method: 'POST',
+        body: JSON.stringify({ response: pkCredJson(cred), label: pkDeviceLabel() }),
+      });
+      if (v.status !== 200) throw new Error(v.data.error || 'verify_failed');
+      toast('✅ Face ID is on for this device');
+      renderPkSettingsCard();
+    } catch (e) {
+      if (m) m.textContent = pkErrText(e);
+    }
+  };
+  host.querySelectorAll('[data-pk-del]').forEach((b) => {
+    b.onclick = async () => {
+      if (!confirm('Remove Face ID for this device? You can set it up again anytime.')) return;
+      const { status } = await api(`/auth/passkey/${b.dataset.pkDel}`, { method: 'DELETE' });
+      if (status === 200) { toast('Face ID removed'); renderPkSettingsCard(); }
+      else toast('Remove failed');
+    };
+  });
 }
 
 /* ---------------- MODEL INVITE SIGNUP (?invite=CODE) ---------------- */
@@ -2624,6 +2798,7 @@ async function vWallet() {
         <div id="crypto-recent"></div>
       </div>
       <button class="btn ghost" id="w-ath" style="width:100%;margin-bottom:10px">${t('ath_wallet_row')}</button>
+      <div id="pk-card"></div>
       ${langCardHTML()}
       <button class="btn ghost" id="w-logout">${t('log_out')}</button>
     </div>`;
@@ -2750,6 +2925,7 @@ async function vWallet() {
   }
   const wth = $('#w-ath');
   if (wth) wth.onclick = openAthSheet;
+  renderPkSettingsCard();
   $('#w-logout').onclick = () => logout();
 }
 
@@ -3988,6 +4164,7 @@ async function vModelSettings() {
         </div>
       </div>
       <div class="card" id="tax-card"><div class="muted small">Loading tax info…</div></div>
+      <div id="pk-card"></div>
       <button class="btn ghost" id="s-ath" style="width:100%;margin-bottom:10px">${t('ath_wallet_row')}</button>
       <button class="btn ghost" id="s-logout">${t('log_out')}</button>
       <div class="card" id="tipmenu-card" style="margin-top:12px">
@@ -4166,6 +4343,7 @@ async function vModelSettings() {
     inp.click();
   };
   $('#s-logout').onclick = () => logout();
+  renderPkSettingsCard();
   const sAth = $('#s-ath');
   if (sAth) sAth.onclick = openAthSheet;
   // Preview video upload (offscreen input for iOS)
