@@ -115,6 +115,7 @@ const I18N = {
     no_matches: 'No models match that — try clearing a filter.',
     clear_filters: '✖ Clear filters',
     more_like_her: '💋 More like her',
+    new_models_title: '🆕 New models you may like', new_badge: 'NEW',
     tags_h: '🏷️ My discovery tags',
     tags_note: 'Pick up to 5 tags so fans can find you by vibe, look and what you offer. They show on your card and fans can tap them to filter the home screen.',
     save_tags: 'Save tags', tags_saved: 'Tags saved 🏷️',
@@ -386,6 +387,7 @@ const I18N = {
     no_matches: 'Ningún modelo coincide — prueba quitar un filtro.',
     clear_filters: '✖ Quitar filtros',
     more_like_her: '💋 Más como ella',
+    new_models_title: '🆕 Modelos nuevas que te pueden gustar', new_badge: 'NUEVA',
     tags_h: '🏷️ Mis etiquetas de descubrimiento',
     tags_note: 'Elige hasta 5 etiquetas para que los fans te encuentren por estilo, look y lo que ofreces. Se muestran en tu tarjeta y los fans pueden tocarlas para filtrar.',
     save_tags: 'Guardar etiquetas', tags_saved: 'Etiquetas guardadas 🏷️',
@@ -654,6 +656,7 @@ const I18N = {
     no_matches: 'Nenhuma modelo combina — tente limpar um filtro.',
     clear_filters: '✖ Limpar filtros',
     more_like_her: '💋 Mais como ela',
+    new_models_title: '🆕 Modelos novas que você pode gostar', new_badge: 'NOVA',
     tags_h: '🏷️ Minhas tags de descoberta',
     tags_note: 'Escolha até 5 tags para os fãs te encontrarem pelo estilo, visual e o que você oferece. Elas aparecem no seu card e os fãs podem tocar para filtrar.',
     save_tags: 'Salvar tags', tags_saved: 'Tags salvas 🏷️',
@@ -1718,6 +1721,7 @@ function modelTileHTML(m, opts) {
         ? `<span class="tile-live-pill">● LIVE</span><span class="tile-viewers">👁 ${t('watching', { n: m.live_viewers || 0 })}</span>`
         : m.is_featured ? `<span class="tile-featured-pill">${t('featured')}</span>` : ''}
       ${opts.crown ? `<span class="tile-top-pill${m.is_live ? ' below-live' : ''}">${t('top_model')}</span>` : ''}
+      ${opts.isNew ? `<span class="tile-new-pill${m.is_live ? ' below-viewers' : ''}">${t('new_badge')}</span>` : ''}
       ${opts.heartHTML || ''}
       <span class="tile-info">
         <span class="tile-name">${esc(m.display_name)}</span>
@@ -1795,6 +1799,53 @@ function similarModels(m, models, n) {
     .sort((a, b) => (b.shared - a.shared) || ((b.x.rank_score || 0) - (a.x.rank_score || 0)))
     .slice(0, n || 6)
     .map((s) => s.x);
+}
+
+/* ---------------- "New models you may like" front-page rail ----------------
+   Every new model gets her first two weeks on the front page: a rail at
+   the top of the directory (fan home + guest landing) carrying the top
+   NEW_MODELS_RAIL_MAX models whose accounts are younger than
+   NEW_MODEL_WINDOW_DAYS. Pure client-side windowing over the /api/models
+   payload's created_at (already in the payload for the Newest sort);
+   the payload's order IS the directory rank, so the rail never re-sorts.
+   She ages out on her own at render time — no cron, no admin toggle. */
+const NEW_MODEL_WINDOW_DAYS = 14;
+const NEW_MODELS_RAIL_MAX = 10;
+
+/* created_at arrives as SQLite UTC text ('YYYY-MM-DD HH:MM:SS') — parse
+ * it as UTC, not browser-local, so her two weeks end when they should.
+ * Unparseable / missing → NaN → she simply never counts as new. */
+function modelCreatedMs(m) {
+  const s = String((m && m.created_at) || '').trim();
+  if (!s) return NaN;
+  const iso = s.replace(' ', 'T');
+  return Date.parse(/(Z|[+-]\d{2}:?\d{2})$/i.test(iso) ? iso : iso + 'Z');
+}
+
+function newModelsRail(models, now) {
+  const t = typeof now === 'number' ? now : Date.now();
+  const windowMs = NEW_MODEL_WINDOW_DAYS * 24 * 3600 * 1000;
+  return (models || []).filter((m) => {
+    const age = t - modelCreatedMs(m);
+    return age >= 0 && age < windowMs;
+  }).slice(0, NEW_MODELS_RAIL_MAX);
+}
+
+/* The rail is front-page furniture only: it disappears the moment the
+ * fan is searching/filtering/sorting (same rule as the Top-Model crown)
+ * and renders nothing at all when nobody is inside her two weeks. */
+function newModelsRailHTML(models, heartFor) {
+  if (discActive(disc)) return '';
+  const fresh = newModelsRail(models, Date.now());
+  if (!fresh.length) return '';
+  const heart = (m) => (heartFor ? heartFor(m) : '');
+  return `
+  <div class="new-rail-wrap">
+    <div class="new-rail-title">${t('new_models_title')}</div>
+    <div class="new-rail">
+      ${fresh.map((m) => modelTileHTML(m, { isNew: true, heartHTML: heart(m) })).join('')}
+    </div>
+  </div>`;
 }
 
 function discoveryBarHTML(models) {
@@ -1888,6 +1939,11 @@ async function vLanding() {
   const { data } = await api('/models');
   const models = data.models || [];
   const shown = applyDiscovery(models, disc);
+  const heartFor = (m) => `
+            <span class="model-likes tile-heart" data-like="${m.id}">
+              <span class="like-heart">${m.liked ? '❤️' : '🤍'}</span>
+              <span class="like-count">${m.like_count || 0}</span>
+            </span>`;
   app.innerHTML = `
     <div class="header">
       <h1>Slut<span class="logo">Camp</span> 💬</h1>
@@ -1900,13 +1956,10 @@ async function vLanding() {
         <div class="muted small" style="margin-top:4px">${t('free3_sub')}</div>
       </div>
       ${discoveryBarHTML(models)}
+      ${newModelsRailHTML(models, heartFor)}
       ${!models.length
         ? `<div class="empty"><div class="big">😴</div>${t('no_models')}</div>`
-        : shown.length ? homeTilesHTML(shown, (m) => `
-            <span class="model-likes tile-heart" data-like="${m.id}">
-              <span class="like-heart">${m.liked ? '❤️' : '🤍'}</span>
-              <span class="like-count">${m.like_count || 0}</span>
-            </span>`, { crown: !discActive(disc) })
+        : shown.length ? homeTilesHTML(shown, heartFor, { crown: !discActive(disc) })
         : `<div class="empty"><div class="big">🔍</div>${t('no_matches')}</div>`}
       <div style="text-align:center;margin-top:14px">
         ${S.user ? '' : `<button class="btn ghost" id="go-login">${t('login_signup')}</button>`}
@@ -2654,6 +2707,8 @@ async function vFanModels() {
   }
   const isFanUser = !!(S.user && S.user.role === 'fan');
   const shown = applyDiscovery(models, disc);
+  const heartFor = isModelViewer ? null : (m) => `
+            <span class="follow-btn tile-heart ${following.includes(m.id) ? 'following' : ''}" data-follow="${m.id}" title="${t('follow_title')}">${following.includes(m.id) ? '❤️' : '🤍'}</span>`;
   app.innerHTML = `
     <div class="header"><div class="home-head-row"><h1>Slut<span class="logo">Camp</span></h1>
       ${isFanUser ? `<button class="btn small ghost home-logout-btn" id="home-logout">${t('log_out')}</button>` : ''}</div>
@@ -2666,10 +2721,10 @@ async function vFanModels() {
       ${athCardHTML()}
       ${livesBtnHTML(models)}
       ${discoveryBarHTML(models)}
+      ${newModelsRailHTML(models, heartFor)}
       ${!models.length
         ? `<div class="empty"><div class="big">😴</div>${t('no_models')}</div>`
-        : shown.length ? homeTilesHTML(shown, isModelViewer ? null : (m) => `
-            <span class="follow-btn tile-heart ${following.includes(m.id) ? 'following' : ''}" data-follow="${m.id}" title="${t('follow_title')}">${following.includes(m.id) ? '❤️' : '🤍'}</span>`, { crown: !discActive(disc) })
+        : shown.length ? homeTilesHTML(shown, heartFor, { crown: !discActive(disc) })
         : `<div class="empty"><div class="big">🔍</div>${t('no_matches')}</div>`}
     </div>`;
   wireAthCard();

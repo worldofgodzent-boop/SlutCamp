@@ -42,6 +42,7 @@ dependency, is missing) and the server cannot boot from it alone —
 | `tests/splash-resume.test.js` | Source pins for the welcome splash playing on EVERY open: the `index.html` `<link rel="preload">` for the animated lips + the early `Image()` preload at the top of `boot()`, the badge's one-shot `onerror` fallback to the static lips, and the resume splash — `visibilitychange` / persisted `pageshow` after ≥60s hidden re-show `vWelcomeSplash` in overlay mode (boot-completed + no-stacking + `updateBusy()` guards; removes only its overlay host; never routes) |
 | `tests/change-password.test.js` | Change password (`POST /api/me/change-password`) against the real server (`SEED_DEMO=1` temp-copy boot): guest 403 `login_required`, wrong current 401 `wrong_current` (password untouched), seed-default new password 400 `default_password` (case-insensitive, checked before the length floor), too-short 400 `weak_password`, new == current 400 `weak_password`, and the success contract — old password can no longer log in, the new one can, every other session is revoked, the caller's session survives — plus source pins for the Settings cards in `app.js` and the Manager |
 | `tests/discovery.test.js` | Discovery 2.0 (directory search/filters/tags/similar): API tests against the real server (guest directory payload carries `tags[]` + `created_at`; tag persistence via `PUT /api/model/profile` with the 5-cap, unknown-tag drop, dedupe, non-array 400 `bad_tags`, fan 403), logic tests running the real extracted `applyDiscovery`/`discPriceBand`/`similarModels` from `app.js` (search, online/live/price/tag filters, all sorts, similar ranking), client↔server tag-catalogue parity, and source pins for the bar in both directory views, tile tag chips, the peek rail and the Settings picker |
+| `tests/new-models.test.js` | "New models you may like" front-page rail: logic tests running the real extracted `modelCreatedMs`/`newModelsRail` from `app.js` (14-day window boundary — 13d23h in / exactly 14d out / 14d01h out — future-dated and undated accounts excluded, 10-cap with interleaved veterans, rank order preserved over recency, empty cases), API shape tests against the real server (guest + fan payloads feed the rail identically, a same-day signup pops, she ages out at +15 days with no admin action), and source pins (rail rendered in both front-page views and hidden while Discovery is active or nobody qualifies, real `modelTileHTML` tiles with the NEW badge, EN/ES/PT strings, rail CSS) |
 | `scripts/run-triple.js` | The triple runner behind `npm run test:triple` |
 
 ## What the suite covers
@@ -294,6 +295,23 @@ cover the wiring: discovery bar in both directory views, tag chips on
 tiles, tappable tags + the "More like her" rail in the peek, the
 Settings tag picker, and the 👑 crown appearing only in the default
 ordering.
+
+**"New models you may like" rail (`tests/new-models.test.js`)** —
+the owner's front-page spotlight: every model gets her first two
+weeks in a rail at the top of both directory views. The windowing is
+client-side over the payload's `created_at`, so the suite extracts
+the real `modelCreatedMs` / `newModelsRail` from `app.js` and pins
+the window edges against a fixed clock (13d23h in, exactly 14d out,
+14d01h out; future-dated and undated accounts never count), the
+top-10 cap with veteran models interleaved in rank (they never
+consume slots), rank order beating recency, and the empty cases that
+leave the section unrendered. Against the real server, the guest and
+fan payloads feed the selection identically, a model who signs up
+today appears, and at +15 days she is gone with no admin action.
+Source pins cover the rail in both views, the hide-while-Discovery-
+is-active rule (checked before selection, mirroring the 👑 crown),
+silence when nobody qualifies, the shared `modelTileHTML` tiles with
+their localized NEW badge, and the rail CSS.
 
 ## What the suite deliberately does NOT cover
 
