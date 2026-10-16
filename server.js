@@ -934,6 +934,12 @@ addColumnIfMissing('users', 'name_changed_at', 'TEXT');
 // picker, returned by /api/me so it follows the user across devices
 addColumnIfMissing('users', 'language', "TEXT NOT NULL DEFAULT 'en'");
 
+// Fan spend dashboard: the fan's OPTIONAL monthly spend cap, in cents.
+// NULL = no cap (the default for every existing fan — nobody's spending
+// changes until they set one). Enforced inside chargeFan(); read by
+// GET /api/me/spending. See the spending block above chargeFan.
+addColumnIfMissing('users', 'spend_cap_cents', 'INTEGER');
+
 // Admin presence override per model ('auto' | 'on' | 'off'): 'auto' = her own
 // is_online toggle decides; 'on'/'off' force what fans SEE. Display/discovery
 // only — never blocks her app, messages or going live (Asce, Oct 14 2026).
@@ -1449,11 +1455,148 @@ function splitPayment(grossCents, modelUserId) {
   return { modelCents, platformCents, recruiterCents, recruiterId, recruiterUserId, commission };
 }
 
+/* ---------------- fan spending + optional monthly cap ----------------
+ * Owner-authorized quick win (Oct 16 2026): a fan-facing "Your spending"
+ * dashboard plus an OPTIONAL fan-set monthly spend cap.
+ *
+ * WHAT COUNTS AS SPEND — exactly the rows chargeFan()/refundFan() write:
+ *   charges (positive gross): message, voice, ppv, tip, tip_menu, call,
+ *     call_explicit, live_explicit, live_explicit_entry, live_join_request,
+ *     game, gift, priority (pay-to-speak TTS), booking
+ *   refunds (negative gross, netting against spend via the signed sum):
+ *     call_refund → calls, live_join_refund → lives, game_refund → games,
+ *     booking_refund / booking_no_show → bookings, and refundFan's generic
+ *     'refund' → its own 'refunds' bucket.
+ * EXCLUDED, deliberately:
+ *   - is_test rows — the same exclusion every money display in this file
+ *     uses (pre-launch test money never counts);
+ *   - money IN: 'ccbill_load' / 'crypto_load' loads and admin
+ *     'credit_grant' rows are credits, not spend;
+ *   - 'chargeback' / 'chargeback_adjustment' rows — a chargeback revokes
+ *     unspent credits / reverses earnings; the original spend stays spent;
+ *   - POSITIVE 'refund' rows: refundFan writes NEGATIVE gross, but the
+ *     admin refund route's no-model branch writes a POSITIVE 'refund'
+ *     row for a direct credit return — that is money back with no spend
+ *     attached, so only negative 'refund' rows count.
+ *
+ * MONTH BASIS: transactions.created_at is SQLite datetime('now') — UTC —
+ * so "this month" is the current UTC calendar month, the same basis the
+ * whole ledger already runs on. A refund counts in the month the REFUND
+ * posts (the ledger is append-only; history is never rewritten), so a
+ * refund of last month's charge restores headroom THIS month.
+ *
+ * Aggregation is READ-ONLY: nothing here ever writes to the ledger.
+ */
+const SPEND_CATEGORY_TYPES = {
+  messages: ['message'],
+  ppv: ['ppv'],
+  voice: ['voice'],
+  tips: ['tip', 'tip_menu'],
+  gifts: ['gift'],
+  calls: ['call', 'call_explicit'],
+  lives: ['live_explicit', 'live_explicit_entry', 'live_join_request'],
+  bookings: ['booking'],
+  games: ['game'],
+  tts: ['priority'],
+};
+const SPEND_REFUND_TYPE_CATEGORY = {
+  call_refund: 'calls', live_join_refund: 'lives', game_refund: 'games',
+  booking_refund: 'bookings', booking_no_show: 'bookings', refund: 'refunds',
+};
+const SPEND_TYPE_CATEGORY = {};
+for (const [cat, types] of Object.entries(SPEND_CATEGORY_TYPES))
+  for (const t of types) SPEND_TYPE_CATEGORY[t] = cat;
+Object.assign(SPEND_TYPE_CATEGORY, SPEND_REFUND_TYPE_CATEGORY);
+const SPEND_TYPES_SQL = Object.keys(SPEND_TYPE_CATEGORY).map((t) => `'${t}'`).join(',');
+// The one spend-row predicate, shared by every aggregation below.
+const fanSpendWhere = (alias = '') =>
+  `${alias}fan_id = ? AND ${alias}is_test = 0 AND ${alias}type IN (${SPEND_TYPES_SQL})` +
+  ` AND NOT (${alias}type = 'refund' AND ${alias}gross_cents > 0)`;
+
+function fanSpendCents(fanId, monthOnly) {
+  const row = db.prepare(
+    `SELECT COALESCE(SUM(gross_cents), 0) AS cents FROM transactions
+     WHERE ${fanSpendWhere()}${monthOnly ? " AND created_at >= strftime('%Y-%m-01', 'now')" : ''}`
+  ).get(fanId);
+  return row.cents;
+}
+
+// The fan's cap in cents, or null when unset (the default — no cap).
+function getFanSpendCap(fanId) {
+  const u = db.prepare('SELECT spend_cap_cents FROM users WHERE id = ?').get(fanId);
+  return u && u.spend_cap_cents != null ? u.spend_cap_cents : null;
+}
+
+// Everything GET /api/me/spending returns. by_category carries every
+// category key (zeros included — the client hides empty rows), each with
+// this-month and lifetime nets; top_models is lifetime, top 5, net > 0.
+function getFanSpending(fanId) {
+  const byCategory = {};
+  for (const cat of [...Object.keys(SPEND_CATEGORY_TYPES), 'refunds'])
+    byCategory[cat] = { category: cat, month_cents: 0, lifetime_cents: 0 };
+  const rows = db.prepare(
+    `SELECT type,
+       SUM(gross_cents) AS lifetime_cents,
+       SUM(CASE WHEN created_at >= strftime('%Y-%m-01', 'now') THEN gross_cents ELSE 0 END) AS month_cents
+     FROM transactions WHERE ${fanSpendWhere()} GROUP BY type`).all(fanId);
+  for (const r of rows) {
+    const bucket = byCategory[SPEND_TYPE_CATEGORY[r.type]];
+    if (!bucket) continue;
+    bucket.lifetime_cents += r.lifetime_cents;
+    bucket.month_cents += r.month_cents;
+  }
+  const topModels = db.prepare(
+    `SELECT model_id, u.display_name AS display_name, SUM(gross_cents) AS cents
+     FROM transactions t JOIN users u ON u.id = t.model_id
+     WHERE ${fanSpendWhere('t.')} AND t.model_id IS NOT NULL
+     GROUP BY t.model_id HAVING cents > 0 ORDER BY cents DESC LIMIT 5`).all(fanId)
+    .map((r) => ({ model_id: r.model_id, display_name: r.display_name, cents: r.cents }));
+  return {
+    month_cents: fanSpendCents(fanId, true),
+    lifetime_cents: fanSpendCents(fanId, false),
+    by_category: Object.values(byCategory),
+    top_models: topModels,
+    cap_cents: getFanSpendCap(fanId),
+  };
+}
+
+/* Response body for a refused charge. Spend-cap refusals get their own
+ * code plus the cap and the month-to-date spend, so the client can say
+ * exactly which limit stopped the charge; everything else keeps the
+ * long-standing insufficient_credits shape. */
+function chargeErrorBody(e, neededCents, fanId) {
+  if (e && e.message === 'spend_cap_reached')
+    return { error: 'spend_cap_reached', cap_cents: e.cap_cents ?? null,
+      month_spent_cents: e.month_spent_cents ?? null, needed_cents: neededCents };
+  const wallet = fanId ? getWallet(fanId) : null;
+  return { error: 'insufficient_credits', needed_cents: neededCents,
+    balance_cents: wallet ? wallet.credits_cents : 0 };
+}
+
 // Move money: fan pays grossCents. Throws Error('insufficient_credits') if short.
 // ip is recorded on the ledger row for fraud/chargeback evidence.
 function chargeFan(fanId, modelId, grossCents, type, note, ip = null) {
   const wallet = getWallet(fanId);
   if (!wallet || wallet.credits_cents < grossCents) throw new Error('insufficient_credits');
+  /* Optional monthly spend cap (fan-set; NULL = no cap). Checked HERE, in
+   * the single funnel every spend type flows through, so messages, PPV,
+   * tips, gifts, calls, lives, bookings, games and TTS are all covered.
+   * Semantics: spending UP TO the cap is allowed; a charge that would
+   * CROSS it is refused whole — never partial-charged. The month's spend
+   * is the net ledger sum (refunds restore headroom). Free actions never
+   * reach chargeFan, so they are unaffected. */
+  if (grossCents > 0) {
+    const capCents = getFanSpendCap(fanId);
+    if (capCents != null) {
+      const monthSpent = Math.max(0, fanSpendCents(fanId, true));
+      if (monthSpent + grossCents > capCents) {
+        const err = new Error('spend_cap_reached');
+        err.cap_cents = capCents;
+        err.month_spent_cents = monthSpent;
+        throw err;
+      }
+    }
+  }
   const { modelCents, platformCents, recruiterCents, recruiterId, recruiterUserId } = splitPayment(grossCents, modelId);
   txn(() => {
     db.prepare('UPDATE wallets SET credits_cents = credits_cents - ? WHERE user_id = ?')
@@ -3662,6 +3805,30 @@ app.patch('/api/me/language', identMiddleware, requireUser, (req, res) => {
   res.json({ ok: true, language: lang });
 });
 
+/* --- Fan spending dashboard + optional monthly cap ---
+ * GET returns the fan's net spend (this UTC month + lifetime), the
+ * per-category breakdown, top models, and the current cap — all computed
+ * read-only from the transactions ledger (see the spending block above
+ * chargeFan for exactly what counts). PUT sets/clears the cap: null
+ * clears it; otherwise $10–$100,000 in whole cents. Enforcement lives in
+ * chargeFan, not here — this route only stores the fan's choice. */
+app.get('/api/me/spending', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  res.json(getFanSpending(req.user.id));
+});
+
+app.put('/api/me/spending-cap', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const raw = req.body ? req.body.cap_cents : undefined;
+  if (raw === null) {
+    db.prepare('UPDATE users SET spend_cap_cents = NULL WHERE id = ?').run(req.user.id);
+    return res.json({ ok: true, cap_cents: null });
+  }
+  if (!Number.isInteger(raw) || raw < 1000 || raw > 10000000)
+    return res.status(400).json({ error: 'bad_cap',
+      message: 'Cap must be a whole-cent amount between $10 and $100,000, or null for no cap.' });
+  db.prepare('UPDATE users SET spend_cap_cents = ? WHERE id = ?').run(raw, req.user.id);
+  res.json({ ok: true, cap_cents: raw });
+});
+
 // Model welcome celebration — mark it seen so it shows exactly once.
 app.post('/api/me/welcomed', identMiddleware, requireUser, (req, res) => {
   db.prepare("UPDATE users SET welcomed_at = datetime('now') WHERE id = ? AND welcomed_at IS NULL")
@@ -4022,8 +4189,7 @@ app.post('/api/messages', identMiddleware, (req, res) => {
       try {
         chargeFan(req.ident.user.id, conv.model_id, costCents, 'message', 'Chat message', clientIp(req));
       } catch (e) {
-        return res.status(402).json({ error: 'insufficient_credits', needed_cents: costCents,
-          balance_cents: getWallet(req.ident.user.id).credits_cents });
+        return res.status(402).json(chargeErrorBody(e, costCents, req.ident.user.id));
       }
     }
   }
@@ -4293,8 +4459,7 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
           chargeFan(req.ident.user.id, conv.model_id, costCents, 'voice', 'Voice note', clientIp(req));
         } catch (e) {
           fs.unlink(req.file.path, () => {});
-          return res.status(402).json({ error: 'insufficient_credits', needed_cents: costCents,
-            balance_cents: getWallet(req.ident.user.id).credits_cents });
+          return res.status(402).json(chargeErrorBody(e, costCents, req.ident.user.id));
         }
       }
     }
@@ -4362,8 +4527,7 @@ app.post('/api/media/:id/unlock', identMiddleware, requireUser, requireRole('fan
     chargeFan(req.user.id, conv.model_id, media.price_cents, type,
       `${MEDIA_LABELS[media.kind]} unlock`, clientIp(req));
   } catch (e) {
-    return res.status(402).json({ error: 'insufficient_credits', needed_cents: media.price_cents,
-      balance_cents: getWallet(req.user.id).credits_cents });
+    return res.status(402).json(chargeErrorBody(e, media.price_cents, req.user.id));
   }
   db.prepare('INSERT OR IGNORE INTO media_unlocks (media_id, fan_id) VALUES (?,?)')
     .run(media.id, req.user.id);
@@ -4461,8 +4625,7 @@ app.post('/api/tips', identMiddleware, requireUser, requireRole('fan'), (req, re
   try {
     chargeFan(req.user.id, conv.model_id, amountCents, 'tip', 'Fan tip', clientIp(req));
   } catch (e) {
-    return res.status(402).json({ error: 'insufficient_credits', needed_cents: amountCents,
-      balance_cents: getWallet(req.user.id).credits_cents });
+    return res.status(402).json(chargeErrorBody(e, amountCents, req.user.id));
   }
 
   // Drop a system message in the chat so both sides see it
@@ -4704,9 +4867,8 @@ app.post('/api/models/:id/tip', identMiddleware, requireUser, requireRole('fan')
     chargeFan(req.user.id, modelId, item.price_cents, 'tip_menu',
       `💰 ${item.emoji} ${item.label}`, clientIp(req));
   } catch (e) {
-    if (e.message === 'insufficient_credits')
-      return res.status(402).json({ error: 'insufficient_credits', needed_cents: item.price_cents,
-        balance_cents: getWallet(req.user.id).credits_cents });
+    if (e.message === 'insufficient_credits' || e.message === 'spend_cap_reached')
+      return res.status(402).json(chargeErrorBody(e, item.price_cents, req.user.id));
     throw e;
   }
   db.prepare(`INSERT INTO tip_sends (fan_id, model_id, menu_id, price_cents, context)
@@ -5693,7 +5855,7 @@ function billCallMinute(callId) {
     pushToSubject(`u:${call.model_id}`, { type: 'call:tick', call_id: callId,
       minutes_billed: upd.minutes_billed });
   } catch (e) {
-    endCall(callId, 'insufficient_credits');
+    endCall(callId, e.message === 'spend_cap_reached' ? 'spend_cap_reached' : 'insufficient_credits');
   }
 }
 
@@ -5919,7 +6081,7 @@ app.post('/api/facetime/request', identMiddleware, requireUser, requireRole('fan
     chargeFan(req.user.id, row.id, amount, 'call',
       `FaceTime ${duration} min with ${row.display_name}`, clientIp(req));
   } catch (e) {
-    return res.status(402).json({ error: 'insufficient_credits', needed_cents: amount });
+    return res.status(402).json(chargeErrorBody(e, amount, req.user.id));
   }
   const info = db.prepare(`INSERT INTO facetime_requests (fan_id, model_id, duration_min, amount_cents)
     VALUES (?,?,?,?)`).run(req.user.id, row.id, duration, amount);
@@ -6062,7 +6224,7 @@ app.post('/api/calls/:id/explicit-accept', identMiddleware, requireUser, require
         chargeFan(req.user.id, call.model_id, extra, 'call_explicit',
           `Explicit FaceTime — ${remaining} min`, clientIp(req));
       } catch (e) {
-        return res.status(402).json({ error: 'insufficient_credits', needed_cents: extra });
+        return res.status(402).json(chargeErrorBody(e, extra, req.user.id));
       }
     }
   }
@@ -6240,12 +6402,13 @@ function billLiveMinute(sessionId, fanId) {
     pushToSubject(`u:${fanId}`, { type: 'live:tick', session_id: sessionId,
       balance_cents: getWallet(fanId).credits_cents });
   } catch (e) {
-    // Out of credits → back to blurred free preview
+    // Out of credits (or the fan's own spend cap) → back to blurred free preview
+    const reason = e.message === 'spend_cap_reached' ? 'spend_cap_reached' : 'insufficient_credits';
     stopLivePayTimer(sessionId, fanId);
     db.prepare(`INSERT INTO blur_events (session_id, fan_id, event, detail)
-                VALUES (?,?,'pay_stopped','insufficient_credits')`).run(sessionId, fanId);
+                VALUES (?,?,'pay_stopped',?)`).run(sessionId, fanId, reason);
     pushToSubject(`u:${fanId}`, { type: 'live:pay_stopped', session_id: sessionId,
-      reason: 'insufficient_credits',
+      reason,
       balance_cents: getWallet(fanId).credits_cents });
   }
 }
@@ -6538,9 +6701,8 @@ app.post('/api/live/:id/explicit-entry', identMiddleware, requireUser, requireRo
       explicit_grace_sec: getGiftGraceSec(),
       balance_cents: getWallet(req.user.id).credits_cents });
   } catch (e) {
-    if (e.message === 'insufficient_credits')
-      return res.status(402).json({ error: 'insufficient_credits',
-        needed_cents: entryCents, balance_cents: getWallet(req.user.id).credits_cents });
+    if (e.message === 'insufficient_credits' || e.message === 'spend_cap_reached')
+      return res.status(402).json(chargeErrorBody(e, entryCents, req.user.id));
     throw e;
   }
 });
@@ -6779,9 +6941,8 @@ app.post('/api/live/:id/game-buy', identMiddleware, requireUser, requireRole('fa
     charged = chargeFan(req.user.id, sess.model_id, item.price_cents, 'game',
       `🎲 Game Category: ${item.label} on stream #${sess.id}`, clientIp(req));
   } catch (e) {
-    if (e.message === 'insufficient_credits')
-      return res.status(402).json({ error: 'insufficient_credits',
-        needed_cents: item.price_cents, balance_cents: getWallet(req.user.id).credits_cents });
+    if (e.message === 'insufficient_credits' || e.message === 'spend_cap_reached')
+      return res.status(402).json(chargeErrorBody(e, item.price_cents, req.user.id));
     throw e;
   }
   const info = db.prepare(`INSERT INTO game_requests
@@ -7152,9 +7313,8 @@ app.post('/api/live/:id/gift', identMiddleware, requireUser, requireRole('fan'),
     res.json({ ok: true, balance_cents: balanceCents,
       explicit_until: explicitUntil, explicit_grace_sec: getGiftGraceSec() });
   } catch (e) {
-    if (e.message === 'insufficient_credits')
-      return res.status(402).json({ error: 'insufficient_credits',
-        needed_cents: gift.price_cents, balance_cents: getWallet(req.user.id).credits_cents });
+    if (e.message === 'insufficient_credits' || e.message === 'spend_cap_reached')
+      return res.status(402).json(chargeErrorBody(e, gift.price_cents, req.user.id));
     throw e;
   }
 });
@@ -7187,9 +7347,8 @@ app.post('/api/gifts/send', identMiddleware, requireUser, requireRole('fan'), (r
       res.json({ ok: true, context: 'live', balance_cents: balanceCents,
         explicit_until: explicitUntil, explicit_grace_sec: getGiftGraceSec() });
     } catch (e) {
-      if (e.message === 'insufficient_credits')
-        return res.status(402).json({ error: 'insufficient_credits',
-          needed_cents: gift.price_cents, balance_cents: getWallet(req.user.id).credits_cents });
+      if (e.message === 'insufficient_credits' || e.message === 'spend_cap_reached')
+        return res.status(402).json(chargeErrorBody(e, gift.price_cents, req.user.id));
       throw e;
     }
     return;
@@ -7204,9 +7363,8 @@ app.post('/api/gifts/send', identMiddleware, requireUser, requireRole('fan'), (r
     chargeFan(req.user.id, modelId, gift.price_cents, 'gift',
       `🎁 ${gift.emoji} ${gift.name} in chat`, clientIp(req));
   } catch (e) {
-    if (e.message === 'insufficient_credits')
-      return res.status(402).json({ error: 'insufficient_credits',
-        needed_cents: gift.price_cents, balance_cents: getWallet(req.user.id).credits_cents });
+    if (e.message === 'insufficient_credits' || e.message === 'spend_cap_reached')
+      return res.status(402).json(chargeErrorBody(e, gift.price_cents, req.user.id));
     throw e;
   }
   db.prepare(`INSERT INTO gift_sends (fan_id, model_id, gift_id, price_cents, context, conversation_id)
@@ -7370,9 +7528,8 @@ app.post('/api/live/:id/priority', identMiddleware, requireUser, requireRole('fa
       balance_cents: getWallet(req.user.id).credits_cents,
       showing_now: showingNow, position_in_queue: showingNow ? 1 : ahead + 1 });
   } catch (e) {
-    if (e.message === 'insufficient_credits')
-      return res.status(402).json({ error: 'insufficient_credits',
-        needed_cents: totalCents, balance_cents: getWallet(req.user.id).credits_cents });
+    if (e.message === 'insufficient_credits' || e.message === 'spend_cap_reached')
+      return res.status(402).json(chargeErrorBody(e, totalCents, req.user.id));
     throw e;
   }
 });
@@ -7449,9 +7606,8 @@ app.post('/api/live/:id/join-request', identMiddleware, requireUser, requireRole
     chargeFan(req.user.id, sess.model_id, fee, 'live_join_request',
       `${mode === 'mic' ? '🎙️' : '🎥'} Join-live request (${modeLabel}, ${isExplicitJoin ? 'explicit' : 'regular'}) on stream #${sess.id}`, clientIp(req));
   } catch (e) {
-    if (e.message === 'insufficient_credits')
-      return res.status(402).json({ error: 'insufficient_credits',
-        needed_cents: fee, balance_cents: getWallet(req.user.id).credits_cents });
+    if (e.message === 'insufficient_credits' || e.message === 'spend_cap_reached')
+      return res.status(402).json(chargeErrorBody(e, fee, req.user.id));
     throw e;
   }
   const info = db.prepare(`INSERT INTO live_join_requests (session_id, fan_id, is_explicit, mode) VALUES (?,?,?,?)`)
@@ -8084,8 +8240,7 @@ function slotBookingCreate(req, res) {
       `📅 Private ${minutes}min 1-on-1 with ${model.display_name}`, clientIp(req));
   } catch (e) {
     db.prepare('DELETE FROM bookings WHERE id = ?').run(bookingId);
-    return res.status(402).json({ error: 'insufficient_credits',
-      needed_cents: total, balance_cents: getWallet(req.user.id).credits_cents });
+    return res.status(402).json(chargeErrorBody(e, total, req.user.id));
   }
   pushToUser(model.id, { type: 'booking:booked', booking_id: bookingId,
     fan_id: req.user.id, fan_name: req.user.display_name,
@@ -8125,9 +8280,8 @@ app.post('/api/bookings', identMiddleware, requireUser, requireRole('fan'), (req
     chargeFan(req.user.id, model.id, total, 'booking',
       `📅 Private ${durationMin}min live with ${model.display_name}`, clientIp(req));
   } catch (e) {
-    if (e.message === 'insufficient_credits')
-      return res.status(402).json({ error: 'insufficient_credits',
-        needed_cents: total, balance_cents: getWallet(req.user.id).credits_cents });
+    if (e.message === 'insufficient_credits' || e.message === 'spend_cap_reached')
+      return res.status(402).json(chargeErrorBody(e, total, req.user.id));
     throw e;
   }
   const info = db.prepare(`INSERT INTO bookings
