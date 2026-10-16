@@ -175,8 +175,12 @@
   /* kiss-blower (winking, hearts) or a twerker, rotating through six  */
   /* models. She is strictly decorative — pointer-events:none, a few  */
   /* seconds on screen, never in the way. Art: public/img/popups/     */
-  /* <model>-<pose>.webp — the roster below MUST mirror those files   */
-  /* (tests enforce the match both ways).                             */
+  /* <model>-<pose>.webp — ANIMATED WebPs (she moves on her own; the  */
+  /* pack CSS deliberately adds no figure animation on top), except   */
+  /* purple-twerk, which has no source video and stays a still. The   */
+  /* roster below MUST mirror those files (tests enforce the match    */
+  /* both ways). Animated files run 1–2 MB, so the whole roster is    */
+  /* preloaded in the background once a login is seen.                */
   /* ---------------------------------------------------------------- */
   var POPUP_MODELS = ['pink', 'purple', 'blonde', 'red', 'black', 'silver'];
   var POPUP_POSES = ['kiss', 'twerk'];
@@ -403,6 +407,7 @@
     hideTimer: null,
     outTimer: null,
     node: null,
+    preloaded: false,
   };
 
   function popupToken() {
@@ -449,11 +454,37 @@
     popup.timer = window.setTimeout(popupShow, delayMs);
   }
 
+  /* The animated WebPs run 1–2 MB apiece: once a login is seen, warm
+     the browser cache with the whole roster in the background
+     (staggered, low priority) so her entrance never waits on the
+     network. popupShow's own load guard still covers a cold cache,
+     and a failed preload image is ignored exactly like a failed pop. */
+  function popupPreload() {
+    if (popup.preloaded) return;
+    popup.preloaded = true;
+    try {
+      var combos = popupCombos();
+      for (var i = 0; i < combos.length; i++) {
+        (function (combo, delay) {
+          window.setTimeout(function () {
+            try {
+              var pre = new Image();
+              pre.decoding = 'async';
+              if ('fetchPriority' in pre) pre.fetchPriority = 'low';
+              pre.src = popupImagePath(combo);
+            } catch (e) { /* best-effort only */ }
+          }, delay);
+        })(combos[i], i * 400);
+      }
+    } catch (e) { /* best-effort only */ }
+  }
+
   function popupStart() {
     if (popup.running) return;
     popup.running = true;
     if (!popup.picker) popup.picker = createPopupPicker(Math.random);
     popupSchedule(POPUP_SCHEDULE.firstDelayMs);
+    popupPreload();
   }
 
   function popupStop() {
