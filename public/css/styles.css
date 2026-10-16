@@ -1262,6 +1262,20 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
   padding: 5px 10px; border-radius: 999px;
 }
 .tile-top-pill.below-live { top: 42px; }
+/* Visible rank label (#1–#10, composite rank): top-right corner, clear
+   of the left-side live/crown stack; drops below the viewers pill when
+   she is live. Distinct from the gold crown pill on purpose. */
+.tile-rank-badge {
+  position: absolute; top: 10px; right: 10px; z-index: 3;
+  background: rgba(0,0,0,.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  border: 1px solid var(--pink, #ff4d8d); color: #fff;
+  font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums;
+  padding: 4px 9px; border-radius: 999px;
+}
+.tile-rank-badge.below-viewers { top: 42px; }
+/* Both NEW pill and rank badge on one tile: the badge steps down past her. */
+.tile-rank-badge.below-new { top: 42px; }
+.tile-rank-badge.below-new.below-viewers { top: 74px; }
 .tile-info { position: absolute; left: 12px; right: 64px; bottom: 10px; z-index: 2; pointer-events: none; }
 .tile-name {
   display: block; font-size: 17px; font-weight: 800; line-height: 1.2;
