@@ -60,8 +60,8 @@ test('image paths follow /img/popups/<model>-<pose>.webp', () => {
   assert.equal(popupImagePath({ model: 'silver', pose: 'twerk' }), '/img/popups/silver-twerk.webp');
 });
 
-test('schedule: first pop at 60s, ~6s on screen, 3.5–5 min apart', () => {
-  assert.equal(POPUP_SCHEDULE.firstDelayMs, 60000);
+test('schedule: first pop at 20s, ~6s on screen, 3.5–5 min apart', () => {
+  assert.equal(POPUP_SCHEDULE.firstDelayMs, 20000);
   assert.equal(POPUP_SCHEDULE.showMs, 6000);
   assert.equal(POPUP_SCHEDULE.intervalMinMs, 3.5 * 60 * 1000);
   assert.equal(POPUP_SCHEDULE.intervalMaxMs, 5 * 60 * 1000);
