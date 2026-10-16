@@ -9472,7 +9472,7 @@ function vWelcomeSplash(onDone) {
       <img src="/img/lips-logo.png" alt="" aria-hidden="true" style="position:absolute;top:46%;left:50%;transform:translate(-50%,-50%);width:min(135vw,680px);max-width:none;opacity:.10;filter:blur(3px);pointer-events:none">
       <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center">
       <div style="animation:logoPop 1s cubic-bezier(.34,1.56,.64,1) both">
-        <img src="/img/lips-logo.png" alt="SlutCamp" style="display:block;margin:0 auto 14px;width:108px;height:108px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,92,158,.65);box-shadow:0 0 28px rgba(255,45,120,.55),0 0 64px rgba(184,41,221,.35)">
+        <img src="/img/logo-lips-anim.webp" alt="SlutCamp" style="display:block;margin:0 auto 14px;width:108px;height:108px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,92,158,.65);box-shadow:0 0 28px rgba(255,45,120,.55),0 0 64px rgba(184,41,221,.35)">
         <div style="font-size:64px;font-weight:900;letter-spacing:2px">
           <span style="color:#fff">SLUT</span><span style="background:linear-gradient(135deg,#ff2d78,#b829dd);-webkit-background-clip:text;background-clip:text;color:transparent">CAMP</span>
         </div>
