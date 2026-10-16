@@ -1284,6 +1284,43 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 }
 .tile-heart .like-count { font-size: 13px; font-variant-numeric: tabular-nums; }
 .tile-heart:active { transform: scale(1.12); }
+
+/* ---------- Discovery 2.0: directory search / filters / tags ---------- */
+.disc-bar { margin-bottom: 14px; }
+.disc-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.disc-search { flex: 1; min-width: 0; }
+.disc-sort { flex: 0 0 auto; width: auto; max-width: 46%; }
+.disc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.disc-chip {
+  padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 700;
+  background: rgba(255,255,255,.06); color: var(--text, #fff);
+  border: 1px solid rgba(255,255,255,.16); cursor: pointer;
+  transition: transform .12s ease, background .12s ease;
+}
+.disc-chip:active { transform: scale(.95); }
+.disc-chip.on { background: var(--pink); border-color: var(--pink); color: #fff; }
+.disc-chip.clear { border-color: rgba(248,113,113,.6); color: #fca5a5; }
+.tile-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.tag-chip {
+  font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.25); color: #fff;
+  white-space: nowrap;
+}
+.peek-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.sim-rail {
+  display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px;
+  -webkit-overflow-scrolling: touch;
+}
+.sim-card {
+  flex: 0 0 auto; width: 108px; display: flex; flex-direction: column; align-items: center;
+  gap: 3px; padding: 10px 6px; border-radius: 14px; text-align: center;
+  background: var(--card); border: 1px solid rgba(255,255,255,.12); color: var(--text, #fff);
+  cursor: pointer;
+}
+.sim-card .sim-name {
+  font-size: 13px; font-weight: 700; max-width: 100%;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 @media (prefers-reduced-motion: reduce) {
   .tile-live-pill { animation: none; }
   .model-tile, .tile-heart { transition: none; }
