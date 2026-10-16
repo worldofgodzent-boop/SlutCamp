@@ -561,7 +561,7 @@ test('Terms pins: the contracts and fan Terms carry the payout-protection clause
   assert.ok(server.includes('You are never required to make a manual or out-of-pocket payment for a chargeback shortfall'),
     'no manual or out-of-pocket repayment is ever demanded for a chargeback shortfall');
   assert.ok(server.includes('15. Plain-Language Disclaimer'), 'disclaimer renumbered to 15 (governing law took 14)');
-  assert.ok(server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.2';"), 'recruiter contract at R1.2 (R1.1 added the payout window; R1.2 adds governing law)');
+  assert.ok(server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.3';"), 'recruiter contract at R1.3 (R1.1 added the payout window; R1.2 adds governing law; R1.3 adds the first-year quota)');
   const app = fs.readFileSync(path.join(REPO, 'public/js/app.js'), 'utf8');
   assert.ok(app.includes('10. Chargebacks & Fraud'), 'fan Terms gained §10 Chargebacks & Fraud');
   const termsView = app.slice(app.indexOf('function vTerms()'), app.indexOf('function vModelContract()'));

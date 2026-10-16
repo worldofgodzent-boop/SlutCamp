@@ -158,9 +158,9 @@ test('self-serve affiliate signup: recruiter created, agreement signed, partner 
       // --- agreement already signed at the current version ---
       r = await req(h.base, 'GET', '/api/recruiter/contract', { token: affToken });
       assert.equal(r.status, 200);
-      assert.equal(r.data.version, 'R1.2');
+      assert.equal(r.data.version, 'R1.3');
       assert.equal(r.data.signed, true);
-      assert.equal(r.data.signed_version, 'R1.2');
+      assert.equal(r.data.signed_version, 'R1.3');
 
       // --- partner code provisioned + visible on the dashboard ---
       r = await req(h.base, 'GET', '/api/recruiter/dashboard', { token: affToken });
@@ -215,7 +215,7 @@ test('self-serve affiliate signup: recruiter created, agreement signed, partner 
     const rec = db.prepare('SELECT * FROM recruiters WHERE user_id = ?').get(u.id);
     assert.ok(rec && /^[a-f0-9]{8}$/.test(rec.referral_code), 'recruiters row with partner code');
     const sig = db.prepare('SELECT * FROM contract_signatures WHERE user_id = ?').get(u.id);
-    assert.ok(sig && sig.contract_version === 'R1.2', 'agreement signature at current version');
+    assert.ok(sig && sig.contract_version === 'R1.3', 'agreement signature at current version');
     const m = db.prepare("SELECT * FROM models WHERE user_id = (SELECT id FROM users WHERE username = 'modelgal')").get();
     assert.equal(m.recruiter_id, rec.id, 'model attributed to the self-serve affiliate');
     db.close();
