@@ -799,7 +799,6 @@ addColumnIfMissing('platform_stats', 'admin_phone', 'TEXT');
 addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'test_money_cleared_at', 'TEXT');
 addColumnIfMissing('platform_stats', 'commission_60_40_fixed_at', 'TEXT'); // one-time canonical 60/40 correction stamp
-
 addColumnIfMissing('transactions', 'is_test', 'INTEGER NOT NULL DEFAULT 0');
 // Admin visibility switch: hidden models vanish from the public listings
 // (home grid, Lives) without touching their account (Corry, Oct 12 2026).
