@@ -6,7 +6,8 @@
  *   - Picks a holiday theme from the calendar (see CALENDAR below), or
  *     from an explicit override, and dresses the public app in it:
  *     a CSS variable pack (public/css/themes/<name>.css), a slim greeting
- *     banner, and a gentle falling-emoji particle layer.
+ *     banner, a gentle falling-emoji particle layer, and — Halloween
+ *     only — a slim house-promo strip under the banner.
  *   - When the season ends, the calendar simply stops resolving a theme
  *     and the app is back to normal. Zero server involvement, zero app
  *     logic: this file only ever ADDS decoration. If anything in here
@@ -40,6 +41,7 @@
       greeting: '🎃 Wicked season is here — tricks, treats & after-dark delights, all October long 🦇',
       emojis: ['🎃', '👻', '🦇', '🕷️', '🌕', '🔮'],
       themeColor: '#12060f',
+      promo: '🎃 Wicked deals all October — spooky specials waiting in Lives 🦇',
     },
     thanksgiving: {
       greeting: '🦃 Grateful for you — pull up a chair, the feast runs all week 🍂',
@@ -251,6 +253,26 @@
     host.insertBefore(banner, host.firstChild);
   }
 
+  /* Slim house-promo strip under the greeting banner. Halloween ONLY:
+     the explicit name gate is the contract (tests pin it), and no other
+     pack carries a promo field. In-flow in the #phone column like the
+     banner, so app.js navigation (which only rewrites #app) can never
+     wipe it. */
+  function renderPromo(name, meta) {
+    if (name !== 'halloween' || !meta.promo) return;
+    var promo = document.createElement('div');
+    promo.className = 'sc-theme-promo';
+    promo.setAttribute('role', 'note');
+    promo.textContent = meta.promo;
+    var host = document.getElementById('phone') || document.body;
+    var banner = host.querySelector('.sc-theme-banner');
+    if (banner && banner.parentNode === host) {
+      host.insertBefore(promo, banner.nextSibling);
+    } else {
+      host.insertBefore(promo, host.firstChild);
+    }
+  }
+
   function renderParticles(meta) {
     var reduced = false;
     try {
@@ -274,7 +296,7 @@
   }
 
   function stripDecorations() {
-    var nodes = document.querySelectorAll('.sc-theme-banner, .sc-theme-particles');
+    var nodes = document.querySelectorAll('.sc-theme-banner, .sc-theme-promo, .sc-theme-particles');
     for (var i = 0; i < nodes.length; i++) {
       if (nodes[i].parentNode) nodes[i].parentNode.removeChild(nodes[i]);
     }
@@ -292,6 +314,7 @@
       var themeColor = document.querySelector('meta[name="theme-color"]');
       if (themeColor && meta.themeColor) themeColor.setAttribute('content', meta.themeColor);
       renderBanner(name, meta);
+      renderPromo(name, meta);
       renderParticles(meta);
     } catch (e) {
       // A theme must never break the app: remove what we added, move on.
