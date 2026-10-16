@@ -101,7 +101,11 @@ test.before(async () => {
   fs.symlinkSync(path.join(REPO, 'node_modules'), path.join(tmpDir, 'node_modules'), 'dir');
 
   const port = await freePort();
-  const env = { ...process.env, PORT: String(port), CRYPTO_POLL_MS: '3600000' };
+  // SEED_DEMO=1: this suite's fixtures ARE the demo accounts (admin /
+  // fandemo). Seeding is opt-in since the pre-launch fake-money cleanup,
+  // so the harness opts in explicitly (the demo-seed purge also stays
+  // out of the way while the flag is set).
+  const env = { ...process.env, PORT: String(port), CRYPTO_POLL_MS: '3600000', SEED_DEMO: '1' };
   for (const k of Object.keys(env)) {
     if (/^(CCBILL_|CRYPTO_|OPENAI_|TWILIO_|VAPID_|WEBAUTHN_)/.test(k)) delete env[k];
   }

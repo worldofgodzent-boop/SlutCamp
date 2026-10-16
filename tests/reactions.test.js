@@ -105,7 +105,11 @@ test.before(async () => {
   let lastErr = null;
   for (let attempt = 1; attempt <= 3 && !base; attempt++) {
     const port = await freePort();
-    const env = { ...process.env, PORT: String(port), CRYPTO_POLL_MS: '3600000' };
+    // SEED_DEMO=1: this suite's fixtures ARE the demo accounts (bunny /
+    // fandemo). Seeding is opt-in since the pre-launch fake-money
+    // cleanup, so the harness opts in explicitly — and the demo-seed
+    // purge stays out of the way while the flag is set.
+    const env = { ...process.env, PORT: String(port), CRYPTO_POLL_MS: '3600000', SEED_DEMO: '1' };
     for (const k of Object.keys(env)) {
       if (/^(CCBILL_|CRYPTO_|OPENAI_|TWILIO_|VAPID_)/.test(k)) delete env[k];
     }
