@@ -39,6 +39,7 @@ dependency, is missing) and the server cannot boot from it alone —
 | `tests/update.test.js` | Source assertions + a stamping logic check for forced refresh: `GET /api/build-id` wiring and boot-guarded build-id resolution in `server.js`; the idle-only auto-reload watcher in `public/js/app.js` (60s poll, controllerchange, live/call/sheet/typing busy signals, 30s defer-retry, boot hookup) |
 | `tests/reactions.test.js` | Message reactions, end to end: API tests against the real server (participant fan/model react, same-emoji toggle off, different-emoji replace, non-participant 403, guest 403 `login_required`, off-list emoji 400, reactions in the thread payload) plus source pins for the iMessage-style long-press in `app.js` (~500ms timer on the bubble itself, move/up/cancel/scroll cancels, capture-phase click suppression so a pressed locked PPV tile never unlocks, contextmenu prevention, editing/mini-act/popover guards, once-only delegated binding, 🤍 button untouched) and the scoped `.pressing` CSS |
 | `tests/splash-resume.test.js` | Source pins for the welcome splash playing on EVERY open: the `index.html` `<link rel="preload">` for the animated lips + the early `Image()` preload at the top of `boot()`, the badge's one-shot `onerror` fallback to the static lips, and the resume splash — `visibilitychange` / persisted `pageshow` after ≥60s hidden re-show `vWelcomeSplash` in overlay mode (boot-completed + no-stacking + `updateBusy()` guards; removes only its overlay host; never routes) |
+| `tests/change-password.test.js` | Change password (`POST /api/me/change-password`) against the real server (`SEED_DEMO=1` temp-copy boot): guest 403 `login_required`, wrong current 401 `wrong_current` (password untouched), seed-default new password 400 `default_password` (case-insensitive, checked before the length floor), too-short 400 `weak_password`, new == current 400 `weak_password`, and the success contract — old password can no longer log in, the new one can, every other session is revoked, the caller's session survives — plus source pins for the Settings cards in `app.js` and the Manager |
 | `scripts/run-triple.js` | The triple runner behind `npm run test:triple` |
 
 ## What the suite covers
@@ -236,6 +237,25 @@ The welcome-voice pins in `tests/logo-anim.test.js` still hold in full
 (the resume path reuses the same splash code — exactly one
 `Audio('/audio/welcome.mp3')` construction and two `playGreeting()`
 call sites app-wide, pinned in both files).
+
+**Change password (`tests/change-password.test.js`)** — the
+self-service rotation the owner needs to retire the seed-default
+admin password, tested against the real server (`SEED_DEMO=1`
+temp-copy boot, fixtures are the demo accounts): guests get 403
+`login_required`; a wrong current password gets 401 `wrong_current`
+and changes nothing; a seed-default candidate (`admin123` and case
+variants) gets 400 `default_password` — the defaults are checked
+before the 10-char floor on purpose, since every default is shorter
+than the floor and a length-first check would make the distinct error
+unreachable; too-short and same-as-current candidates get 400
+`weak_password`. The success case logs fandemo in twice, changes via
+the first session, and proves the second session is revoked (401 on
+`/api/me`), the caller's session still works, the old password can no
+longer log in (`bad_login`), and the new one can. Source pins cover
+the clients: `renderPwSettingsCard` + `pw-card` hosts + the endpoint
+call in `app.js` (fan wallet + model settings, beside the Face ID
+card), and the `cpw-*` card + `pwField` form + endpoint call in the
+Manager's Settings screen.
 
 ## What the suite deliberately does NOT cover
 

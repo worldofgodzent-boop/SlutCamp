@@ -869,6 +869,14 @@ async function adminMoreBody(s) {
       <div class="muted small" id="pk-set-msg" style="margin-top:6px"></div>
     </div>
     <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🔑 Change password</div>
+      <div class="muted small">Rotate the manager account's password. This session stays signed in; every other session for the account is signed out.</div>
+      <div id="cpw-body" style="margin-top:8px"></div>
+      <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">
+        <button class="btn small" id="cpw-open">Change password</button>
+      </div>
+    </div>
+    <div class="card">
       <div style="font-weight:800;margin-bottom:6px">Platform commission</div>
       <div class="muted small">Base split on fan charges — your cut before any partner share (partners take half of your cut on their models). The real blended rate varies by type; the Overview shows it from the ledger.</div>
       <div class="row" style="margin-top:8px">
@@ -1181,6 +1189,38 @@ function wireAdminBody(tab) {
       const { status } = await api(`/auth/passkey/${b.dataset.pkDel}`, { method: 'DELETE' });
       if (status === 200) { toast('Passkey removed'); return M.reload(); }
       toast('Remove failed');
+    };
+  });
+
+  // 🔑 Change password card (Settings) — same endpoint as the public app;
+  // the server re-verifies the current password and revokes other sessions.
+  go('#cpw-open', () => {
+    const box = $('#cpw-body');
+    if (!box) return;
+    box.innerHTML = `
+      <label class="field">Current password${pwField('cpw-cur', 'current-password')}</label>
+      <label class="field">New password${pwField('cpw-new', 'new-password')}</label>
+      <label class="field">Confirm new password${pwField('cpw-confirm', 'new-password')}</label>
+      <button class="btn small" id="cpw-save">Save new password</button>
+      <div class="muted small" id="cpw-msg" style="margin-top:6px"></div>`;
+    $('#cpw-save').onclick = async () => {
+      const cur = $('#cpw-cur').value, nw = $('#cpw-new').value, cf = $('#cpw-confirm').value;
+      if (!cur || !nw || !cf) return toast('Fill in all three password fields');
+      if (nw !== cf) return toast("New passwords don't match");
+      if (nw.length < 10) return toast('New password needs at least 10 characters');
+      if (nw === cur) return toast('New password must be different from your current one');
+      const { status, data } = await api('/me/change-password', {
+        method: 'POST', body: JSON.stringify({ current_password: cur, new_password: nw }),
+      });
+      if (status === 200) {
+        box.innerHTML = '';
+        toast('✅ Password changed — other sessions signed out');
+        return;
+      }
+      if (status === 401) return toast('Current password is wrong');
+      if (data && data.error === 'default_password') return toast("That's a well-known default password — pick something only you know");
+      if (data && data.error === 'weak_password') return toast('New password is too weak — at least 10 characters, and different from your current one');
+      toast('Could not change password — try again');
     };
   });
 

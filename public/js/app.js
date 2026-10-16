@@ -2082,6 +2082,48 @@ async function renderPkSettingsCard() {
   });
 }
 
+/* Settings card (fan wallet + model settings): change your password.
+   The server verifies the current password, enforces the policy and
+   revokes every other session; this card mirrors the checks so the
+   feedback is instant. */
+function renderPwSettingsCard() {
+  const host = document.getElementById('pw-card');
+  if (!host) return;
+  host.innerHTML = `
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🔑 Change password</div>
+      <div class="muted small" style="margin-bottom:10px">Pick a new password — at least 10 characters, and different from your current one. You stay signed in on this device; every other device is signed out.</div>
+      <label class="field">Current password${pwField('pw-cur', 'current-password')}</label>
+      <label class="field">New password${pwField('pw-new', 'new-password')}</label>
+      <label class="field">Confirm new password${pwField('pw-confirm', 'new-password')}</label>
+      <button class="btn" id="pw-go" style="width:100%;margin-top:6px">Change password</button>
+      <div class="muted small" id="pw-msg" style="margin-top:6px"></div>
+    </div>`;
+  $('#pw-go').onclick = async () => {
+    const cur = $('#pw-cur').value, nw = $('#pw-new').value, cf = $('#pw-confirm').value;
+    if (!cur || !nw || !cf) return toast('Fill in all three password fields');
+    if (nw !== cf) return toast("New passwords don't match");
+    if (nw.length < 10) return toast('New password needs at least 10 characters');
+    if (nw === cur) return toast('New password must be different from your current one');
+    const { status, data } = await api('/me/change-password', {
+      method: 'POST', body: JSON.stringify({ current_password: cur, new_password: nw }),
+    });
+    if (status === 200) {
+      $('#pw-cur').value = ''; $('#pw-new').value = ''; $('#pw-confirm').value = '';
+      const m = $('#pw-msg'); if (m) m.textContent = '✅ Password changed — other devices were signed out.';
+      toast('✅ Password changed');
+    } else if (status === 401) {
+      toast('Current password is wrong');
+    } else if (data && data.error === 'default_password') {
+      toast("That's a well-known default password — pick something only you know");
+    } else if (data && data.error === 'weak_password') {
+      toast('New password is too weak — at least 10 characters, and different from your current one');
+    } else {
+      toast('Could not change password — try again');
+    }
+  };
+}
+
 /* ---------------- MODEL INVITE SIGNUP (?invite=CODE) ---------------- */
 
 async function vInviteSignup(code) {
@@ -2799,6 +2841,7 @@ async function vWallet() {
       </div>
       <button class="btn ghost" id="w-ath" style="width:100%;margin-bottom:10px">${t('ath_wallet_row')}</button>
       <div id="pk-card"></div>
+      <div id="pw-card"></div>
       ${langCardHTML()}
       <button class="btn ghost" id="w-logout">${t('log_out')}</button>
     </div>`;
@@ -2926,6 +2969,7 @@ async function vWallet() {
   const wth = $('#w-ath');
   if (wth) wth.onclick = openAthSheet;
   renderPkSettingsCard();
+  renderPwSettingsCard();
   $('#w-logout').onclick = () => logout();
 }
 
@@ -4165,6 +4209,7 @@ async function vModelSettings() {
       </div>
       <div class="card" id="tax-card"><div class="muted small">Loading tax info…</div></div>
       <div id="pk-card"></div>
+      <div id="pw-card"></div>
       <button class="btn ghost" id="s-ath" style="width:100%;margin-bottom:10px">${t('ath_wallet_row')}</button>
       <button class="btn ghost" id="s-logout">${t('log_out')}</button>
       <div class="card" id="tipmenu-card" style="margin-top:12px">
@@ -4344,6 +4389,7 @@ async function vModelSettings() {
   };
   $('#s-logout').onclick = () => logout();
   renderPkSettingsCard();
+  renderPwSettingsCard();
   const sAth = $('#s-ath');
   if (sAth) sAth.onclick = openAthSheet;
   // Preview video upload (offscreen input for iOS)

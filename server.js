@@ -3161,6 +3161,37 @@ app.post('/api/me/welcomed', identMiddleware, requireUser, (req, res) => {
   res.json({ ok: true });
 });
 
+/* --- Change password (self-service, every role) ---
+ * The signed-in user rotates their OWN password: proof of the current
+ * password (bcrypt), a policy-checked new one, and every OTHER session
+ * for the account is revoked — a login left open anywhere else dies
+ * the moment the owner rotates. The caller's own session survives, so
+ * nobody is surprise-logged-out of the device in their hand. Guests
+ * have no password to change (403 login_required, like reactions). */
+const SEED_DEFAULT_PASSWORDS = ['admin123', 'model123', 'fan123', 'password', '12345678'];
+app.post('/api/me/change-password', identMiddleware, (req, res) => {
+  if (req.ident.kind !== 'user')
+    return res.status(403).json({ error: 'login_required' });
+  const user = req.ident.user;
+  const { current_password, new_password } = req.body || {};
+  if (!bcrypt.compareSync(current_password || '', user.password_hash))
+    return res.status(401).json({ error: 'wrong_current' });
+  const next = typeof new_password === 'string' ? new_password : '';
+  // Seed defaults first: they are all shorter than the length floor, so
+  // checking length first would make this distinct error unreachable.
+  if (SEED_DEFAULT_PASSWORDS.includes(next.toLowerCase()))
+    return res.status(400).json({ error: 'default_password' });
+  if (next.length < 10 || next.length > 128)
+    return res.status(400).json({ error: 'weak_password' });
+  if (bcrypt.compareSync(next, user.password_hash))
+    return res.status(400).json({ error: 'weak_password' }); // must differ from current
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+    .run(bcrypt.hashSync(next, 10), user.id);
+  const myToken = (req.headers.authorization || '').slice(7);
+  db.prepare('DELETE FROM sessions WHERE user_id = ? AND token <> ?').run(user.id, myToken);
+  res.json({ ok: true });
+});
+
 // Model submits a name change request for admin approval
 app.post('/api/model/name-change-request', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const name = String(req.body?.requested_name || '').trim().slice(0, 40);
