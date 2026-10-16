@@ -10081,7 +10081,11 @@ function vTerms() {
         <div class="small muted">If you dispute a credit purchase with your bank or card issuer (a chargeback) instead of contacting us first, we may revoke the credits from that purchase, reverse any earnings it generated, and close your account. Chargebacks on purchases you received and spent are treated as fraud. If a charge is ever genuinely wrong, contact us first — real billing errors are refunded under our Billing & Refunds policy.</div>
       </div>
       <div class="card">
-        <div style="font-weight:800;margin-bottom:8px">11. Changes</div>
+        <div style="font-weight:800;margin-bottom:8px">11. Governing Law</div>
+        <div class="small muted">These terms are governed by the laws of the State of Texas, without regard to its conflict-of-laws rules. Any dispute relating to these terms or your use of SlutCamp must be brought in the state or federal courts located in Texas, and you and SlutCamp consent to the personal jurisdiction and venue of those courts. Nothing in this section waives or limits any right your home state gives you that cannot legally be waived.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">12. Changes</div>
         <div class="small muted">Features, prices, rates, and these terms may change at any time. Continued use means you accept the current terms.</div>
       </div>
       <p class="muted small" style="text-align:center;margin:16px 0">These terms are a plain-language summary, not legal advice.<br>Operated by World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Privacy Policy</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Billing & Refunds</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">2257 Statement</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Copyright takedown →</a></p>

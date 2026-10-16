@@ -4777,7 +4777,7 @@ function logPurchaseAttempt(userId, pkg, amountCents, cardFingerprint, ip, statu
 }
 
 // Model independent-contractor agreement (served to models for signing)
-const CONTRACT_VERSION = '1.3';
+const CONTRACT_VERSION = '1.4';
 const MODEL_CONTRACT = {
   version: CONTRACT_VERSION,
   updated: 'October 16, 2026',
@@ -4835,14 +4835,18 @@ const MODEL_CONTRACT = {
       body: 'PAYOUT HOLD: Your earnings become eligible for withdrawal 7 days after they are earned — your money runs one week behind what you make. The app shows your available balance separately from earnings still inside their window. The Company publishes the current window in the app and may change it with notice in the app; earnings already inside their window keep the window they started with. CHARGEBACK REVERSALS: Fans pay with prepaid credits. If a fan\'s credit purchase is charged back, refunded, or otherwise reversed by their bank or card issuer, the Company may reverse the money in this order: (1) the fan\'s unspent credits from that purchase; (2) your unpaid earnings from that fan — earnings still inside their payout window first, then earnings that already cleared it; and (3) any amount left over becomes a negative adjustment on your account, which is taken out of your future earnings before anything new becomes withdrawable. Earnings you have already properly withdrawn are never collected back from you out of pocket. If a chargeback exceeds the unpaid earnings that can be reversed under (1) and (2) — including because you already withdrew the earnings it relates to — the difference becomes a balance you owe the Company. That balance is recovered automatically: the system deducts it from your future earnings before anything new becomes withdrawable, until it is repaid in full. You are never required to make a manual or out-of-pocket payment for a chargeback shortfall. This paragraph does not protect fraud — fraudulently obtained earnings are forfeited under the FRAUD rules that follow. FRAUD: Coordinated purchasing, self-dealing (buying from yourself or through accounts you control), chargeback schemes, or any other scheme to manufacture earnings or payouts is fraud, in addition to the conduct rules in section 7. For fraud, the Company may place payouts on hold or under review, reverse earnings, and terminate accounts; fraudulently obtained earnings are forfeited.',
     },
     {
-      title: '14. Plain-Language Disclaimer',
+      title: '14. Governing Law & Venue',
+      body: 'This Agreement is governed by the laws of the State of Texas, without regard to its conflict-of-laws rules. Any dispute arising out of or relating to this Agreement must be brought in the state or federal courts located in Texas, and you and the Company consent to the personal jurisdiction and venue of those courts. Nothing in this section waives or limits any right your home state gives you that cannot legally be waived.',
+    },
+    {
+      title: '15. Plain-Language Disclaimer',
       body: 'This is a plain-language summary written for clarity — it is NOT legal advice, and it has not been reviewed by an attorney. The Company strongly recommends you have your own attorney review this Agreement before signing. If any part of this Agreement is found unenforceable, the rest still applies.',
     },
   ],
 };
 
 /* Recruiter agreement — for models/partners who recruit other models */
-const RECRUITER_CONTRACT_VERSION = 'R1.1';
+const RECRUITER_CONTRACT_VERSION = 'R1.2';
 const RECRUITER_CONTRACT = {
   version: RECRUITER_CONTRACT_VERSION,
   updated: 'October 16, 2026',
@@ -4880,7 +4884,11 @@ const RECRUITER_CONTRACT = {
       body: 'You agree not to disclose the Company\'s business methods, commission structures, or internal operations to anyone outside the Company.',
     },
     {
-      title: '9. Plain-Language Disclaimer',
+      title: '9. Governing Law & Venue',
+      body: 'This Agreement is governed by the laws of the State of Texas, without regard to its conflict-of-laws rules. Any dispute arising out of or relating to this Agreement must be brought in the state or federal courts located in Texas, and you and the Company consent to the personal jurisdiction and venue of those courts. Nothing in this section waives or limits any right your home state gives you that cannot legally be waived.',
+    },
+    {
+      title: '10. Plain-Language Disclaimer',
       body: 'This is a plain-language summary written for clarity — it is NOT legal advice, and it has not been reviewed by an attorney. The Company strongly recommends you have your own attorney review this Agreement before signing. If any part of this Agreement is found unenforceable, the rest still applies.',
     },
   ],
