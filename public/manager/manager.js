@@ -64,6 +64,16 @@ const M = {
   presenceTimer: null,
 };
 
+/* If an admin call comes back 403 passkey_required (a passkey was enrolled
+   on another device, or this session predates enrollment), route to the
+   Face ID gate instead of surfacing a raw error. Defined below. */
+function noteApiResult(res) {
+  if (res && res.status === 403 && res.data && res.data.error === 'passkey_required') {
+    showPasskeyGate();
+  }
+  return res;
+}
+
 async function api(path, opts) {
   opts = opts || {};
   const headers = Object.assign(
@@ -76,7 +86,7 @@ async function api(path, opts) {
     clearTimeout(timeout);
     let data = {};
     try { data = await r.json(); } catch (e) { /* non-JSON */ }
-    return { status: r.status, data };
+    return noteApiResult({ status: r.status, data });
   } catch (e) {
     clearTimeout(timeout);
     return { status: 0, data: { error: 'network_error' } };
@@ -93,7 +103,7 @@ async function apiUpload(path, file, field) {
     const r = await fetch('/api' + path, { method: 'POST', headers, body: fd });
     let data = {};
     try { data = await r.json(); } catch (e) { /* non-JSON */ }
-    return { status: r.status, data };
+    return noteApiResult({ status: r.status, data });
   } catch (e) {
     return { status: 0, data: { error: 'network_error' } };
   }
@@ -823,6 +833,10 @@ async function adminTaxBody() {
 async function adminMoreBody(s) {
   const { data: tfa } = await api('/admin/2fa').catch(() => ({ data: {} }));
   const tfaOn = !!(tfa && tfa.on);
+  const { data: pkStatus } = await api('/manager/passkey/status').catch(() => ({ data: {} }));
+  const { data: pkList } = await api('/auth/passkey/list').catch(() => ({ data: { credentials: [] } }));
+  const pkEnrolled = !!(pkStatus && pkStatus.enrolled);
+  const pkCreds = (pkList && pkList.credentials) || [];
   return `
     <div class="card">
       <div style="font-weight:800;margin-bottom:6px">🔐 Two-Step Auth</div>
@@ -836,6 +850,23 @@ async function adminMoreBody(s) {
         <button class="btn small" id="tfa-change">${tfaOn ? 'Change number' : 'Set up'}</button>
         ${tfaOn ? '<button class="btn small ghost" id="tfa-off">Turn off</button>' : ''}
       </div>
+    </div>
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🔐 Face ID (Manager)</div>
+      <div class="muted small">Second step for this app: password, then Face ID. Once a passkey is on the account, every Manager session must confirm with Face ID before the admin screens unlock. Set it up on each device you manage from — the passkey never leaves that device.</div>
+      <div class="row" style="margin-top:8px;align-items:center;gap:8px">
+        <span class="small" style="font-weight:800;color:${pkEnrolled ? 'var(--green)' : 'var(--muted)'}">${pkEnrolled ? '✅ SET UP' : '⛔ NOT SET UP'}</span>
+        ${pkStatus && pkStatus.verified ? '<span class="small muted">This session: ✅ confirmed</span>' : ''}
+      </div>
+      ${pkCreds.map((c) => `
+      <div class="row" style="align-items:center;gap:8px;padding:5px 0">
+        <span class="small grow">📱 ${esc(c.device_label || 'Passkey')} <span class="muted">· added ${esc(String(c.created_at || '').slice(0, 10))}${c.last_used_at ? ` · last used ${esc(String(c.last_used_at).slice(0, 10))}` : ''}</span></span>
+        <button class="btn small ghost" data-pk-del="${c.id}">Remove</button>
+      </div>`).join('')}
+      <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">
+        <button class="btn small" id="pk-add">${pkEnrolled ? 'Add this device' : 'Set up Face ID'}</button>
+      </div>
+      <div class="muted small" id="pk-set-msg" style="margin-top:6px"></div>
     </div>
     <div class="card">
       <div style="font-weight:800;margin-bottom:6px">Platform commission</div>
@@ -1123,6 +1154,34 @@ function wireAdminBody(tab) {
     });
     if (status === 200) { toast('⛔ Two-step auth is OFF'); return M.reload(); }
     toast('Wrong password.');
+  });
+
+  // 🔐 Face ID card (Settings)
+  go('#pk-add', async () => {
+    const msg = $('#pk-set-msg');
+    if (!pkSupported()) {
+      if (msg) msg.textContent = "Face ID isn't available in this browser — use Safari or Chrome over HTTPS on a device with Face ID / a fingerprint reader.";
+      return;
+    }
+    try {
+      await pkEnroll('This device');
+      // A first passkey turns enforcement ON for this session too —
+      // confirm once now so the screens keep working.
+      const { data: st } = await api('/manager/passkey/status');
+      if (st && st.enrolled && !st.verified) await pkVerifyStepUp();
+      toast('✅ Face ID set up on this device');
+      M.reload();
+    } catch (e) {
+      if (msg) msg.textContent = pkErrText(e); else toast(pkErrText(e));
+    }
+  });
+  document.querySelectorAll('[data-pk-del]').forEach((b) => {
+    b.onclick = async () => {
+      if (!confirm('Remove this Face ID passkey? That device will no longer unlock the Manager.')) return;
+      const { status } = await api(`/auth/passkey/${b.dataset.pkDel}`, { method: 'DELETE' });
+      if (status === 200) { toast('Passkey removed'); return M.reload(); }
+      toast('Remove failed');
+    };
   });
 
   document.querySelectorAll('[data-viewchat]').forEach((b) => {
@@ -2049,6 +2108,217 @@ M.wsConnect = () => {
   ws.onclose = () => { setTimeout(() => { if (M.token) M.wsConnect(); }, 4000); };
 };
 
+/* ---------------- Face ID (passkey) — Manager second step ----------------
+ * Hand-rolled WebAuthn client (no dependencies): converts the server's
+ * JSON options into PublicKeyCredential options and the resulting
+ * credential back into the standard JSON @simplewebauthn/server accepts.
+ * The biometric never leaves the device; the server only verifies a
+ * signature against the stored public key. */
+function pkSupported() {
+  return !!(window.PublicKeyCredential && navigator.credentials && window.isSecureContext);
+}
+
+function b64uToBuf(s) {
+  s = String(s).replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+}
+
+function bufToB64u(buf) {
+  const bytes = new Uint8Array(buf || new ArrayBuffer(0));
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function pkCreateOptions(o) {
+  const pk = Object.assign({}, o);
+  pk.challenge = b64uToBuf(o.challenge);
+  pk.user = Object.assign({}, o.user, { id: b64uToBuf(o.user.id) });
+  if (o.excludeCredentials) {
+    pk.excludeCredentials = o.excludeCredentials.map((c) =>
+      Object.assign({}, c, { id: b64uToBuf(c.id) }));
+  }
+  return pk;
+}
+
+function pkRequestOptions(o) {
+  const pk = Object.assign({}, o);
+  pk.challenge = b64uToBuf(o.challenge);
+  if (o.allowCredentials) {
+    pk.allowCredentials = o.allowCredentials.map((c) =>
+      Object.assign({}, c, { id: b64uToBuf(c.id) }));
+  }
+  return pk;
+}
+
+function pkCredJson(cred) {
+  const r = cred.response;
+  const json = {
+    id: cred.id,
+    rawId: bufToB64u(cred.rawId),
+    type: cred.type,
+    authenticatorAttachment: cred.authenticatorAttachment || null,
+    clientExtensionResults: cred.getClientExtensionResults ? cred.getClientExtensionResults() : {},
+    response: { clientDataJSON: bufToB64u(r.clientDataJSON) },
+  };
+  if (r.attestationObject !== undefined) {
+    json.response.attestationObject = bufToB64u(r.attestationObject);
+    if (r.getTransports) { try { json.response.transports = r.getTransports(); } catch (e) {} }
+    if (r.getPublicKeyAlgorithm) { try { json.response.publicKeyAlgorithm = r.getPublicKeyAlgorithm(); } catch (e) {} }
+    if (r.getAuthenticatorData) { try { json.response.authenticatorData = bufToB64u(r.getAuthenticatorData()); } catch (e) {} }
+  } else {
+    json.response.authenticatorData = bufToB64u(r.authenticatorData);
+    json.response.signature = bufToB64u(r.signature);
+    json.response.userHandle = r.userHandle ? bufToB64u(r.userHandle) : null;
+  }
+  return json;
+}
+
+function pkErrText(e) {
+  if (e && e.name === 'NotAllowedError') return 'Face ID was cancelled or timed out — try again.';
+  if (e && e.name === 'InvalidStateError') return 'This device already has a passkey for the account.';
+  if (e && e.message === 'no_passkey') return 'No Face ID passkey is set up for this account yet.';
+  if (e && e.message === 'verification_failed') return "Face ID didn't match — try again.";
+  return "Face ID didn't work — try again.";
+}
+
+/* Enroll a passkey for the admin account on THIS device. */
+async function pkEnroll(label) {
+  const { status, data } = await api('/auth/passkey/register-options', { method: 'POST', body: '{}' });
+  if (status !== 200) throw new Error(data.error || 'options_failed');
+  const cred = await navigator.credentials.create({ publicKey: pkCreateOptions(data) });
+  if (!cred) throw new Error('cancelled');
+  const v = await api('/auth/passkey/register-verify', {
+    method: 'POST',
+    body: JSON.stringify({ response: pkCredJson(cred), label: label || 'This device' }),
+  });
+  if (v.status !== 200) throw new Error(v.data.error || 'verify_failed');
+  return true;
+}
+
+/* Run the Face ID ceremony that stamps THIS session as verified. */
+async function pkVerifyStepUp() {
+  const { status, data } = await api('/manager/passkey/stepup-options', { method: 'POST', body: '{}' });
+  if (status !== 200) throw new Error(data.error || 'options_failed');
+  const cred = await navigator.credentials.get({ publicKey: pkRequestOptions(data) });
+  if (!cred) throw new Error('cancelled');
+  const v = await api('/manager/passkey/stepup-verify', {
+    method: 'POST', body: JSON.stringify({ response: pkCredJson(cred) }),
+  });
+  if (v.status !== 200) throw new Error(v.data.error || 'verify_failed');
+  return true;
+}
+
+let pkGateShown = false;
+
+/* Post-password routing: ask the server whether this admin session may
+   proceed (verified, or nothing enrolled yet) or must pass a gate first. */
+async function passkeyGate(onPass) {
+  let st = null;
+  try {
+    const { status, data } = await api('/manager/passkey/status');
+    if (status === 200) st = data;
+  } catch (e) { /* fall through — odd states must not lock the admin out */ }
+  if (!st || st.verified) { onPass(); return; }
+  if (st.enrolled) renderPasskeyGate(onPass);
+  else renderPasskeySetup(onPass);
+}
+
+function enterManager() {
+  passkeyGate(() => { M.wsConnect(); renderShell(); M.render(); });
+}
+
+/* Mid-session entry (called by noteApiResult on 403 passkey_required). */
+function showPasskeyGate() {
+  if (pkGateShown || !M.token) return;
+  renderPasskeyGate(() => { pkGateShown = false; renderShell(); M.render(); });
+}
+
+function renderPasskeyGate(onPass) {
+  pkGateShown = true;
+  stopPresence();
+  const supported = pkSupported();
+  document.getElementById('mgr-root').innerHTML = `
+    <div class="mgr-login-wrap">
+      <div class="mgr-login card">
+        <img src="/img/lips-logo.png" alt="" class="mgr-login-logo">
+        <div class="mgr-login-title">🔐 Manager locked</div>
+        <div class="mgr-login-sub">Confirm it's you with Face ID to unlock the Manager.</div>
+        <div class="mgr-login-err hidden" id="pk-gate-err"></div>
+        ${supported
+          ? '<button class="btn" id="pk-gate-go" type="button" style="width:100%">Use Face ID</button>'
+          : '<div class="mgr-login-sub" style="margin-top:10px">Face ID isn\'t available in this browser — it needs Safari or Chrome over HTTPS on a device with Face ID / a fingerprint reader. Sign out and open the Manager there to unlock.</div>'}
+        <button class="btn ghost" id="pk-gate-out" type="button" style="width:100%;margin-top:10px">Sign out</button>
+      </div>
+    </div>`;
+  document.getElementById('pk-gate-out').onclick = () => { pkGateShown = false; M.logout(); };
+  const goBtn = document.getElementById('pk-gate-go');
+  if (goBtn) goBtn.onclick = async () => {
+    const errBox = document.getElementById('pk-gate-err');
+    errBox.classList.add('hidden');
+    goBtn.disabled = true; goBtn.textContent = 'Waiting for Face ID…';
+    try {
+      await pkVerifyStepUp();
+      pkGateShown = false;
+      onPass();
+    } catch (e) {
+      errBox.textContent = pkErrText(e);
+      errBox.classList.remove('hidden');
+      goBtn.disabled = false; goBtn.textContent = 'Use Face ID';
+    }
+  };
+}
+
+function renderPasskeySetup(onPass) {
+  pkGateShown = true;
+  stopPresence();
+  const supported = pkSupported();
+  document.getElementById('mgr-root').innerHTML = `
+    <div class="mgr-login-wrap">
+      <div class="mgr-login card">
+        <img src="/img/lips-logo.png" alt="" class="mgr-login-logo">
+        <div class="mgr-login-title">Set up Face ID</div>
+        <div class="mgr-login-sub">Faster, safer Manager sign-ins: password first, then Face ID confirms it's you. Once it's set up, Face ID is required on this account — on every device.</div>
+        <div class="mgr-login-err hidden" id="pk-setup-err"></div>
+        ${supported
+          ? '<button class="btn" id="pk-setup-go" type="button" style="width:100%">Set up Face ID</button>'
+          : '<div class="mgr-login-sub" style="margin-top:10px">Face ID isn\'t available in this browser — it needs Safari or Chrome over HTTPS on a device with Face ID / a fingerprint reader. Skip for now and set it up there, or later in ⚙️ Settings.</div>'}
+        <button class="btn ghost" id="pk-setup-skip" type="button" style="width:100%;margin-top:10px">Skip for now</button>
+      </div>
+    </div>`;
+  document.getElementById('pk-setup-skip').onclick = () => { pkGateShown = false; onPass(); };
+  const goBtn = document.getElementById('pk-setup-go');
+  if (goBtn) goBtn.onclick = async () => {
+    const errBox = document.getElementById('pk-setup-err');
+    errBox.classList.add('hidden');
+    goBtn.disabled = true; goBtn.textContent = 'Waiting for Face ID…';
+    let enrolledNow = false;
+    try {
+      await pkEnroll('This device');
+      enrolledNow = true;
+      // The account is enrolled now, so this session must confirm once.
+      await pkVerifyStepUp();
+      pkGateShown = false;
+      toast('✅ Face ID is on');
+      onPass();
+    } catch (e) {
+      if (enrolledNow) {
+        // Setup worked; hand off to the unlock gate for the confirmation.
+        renderPasskeyGate(onPass);
+        toast('✅ Face ID set up — confirm once to unlock');
+        return;
+      }
+      errBox.textContent = pkErrText(e);
+      errBox.classList.remove('hidden');
+      goBtn.disabled = false; goBtn.textContent = 'Set up Face ID';
+    }
+  };
+}
+
 /* ---------------- login / shell / boot ---------------- */
 M.logout = async () => {
   if (M.token) { try { await api('/auth/logout', { method: 'POST' }); } catch (e) {} }
@@ -2092,9 +2362,7 @@ function renderLogin(err) {
       M.token = data.token;
       M.user = data.user;
       localStorage.setItem('wc_token', M.token);
-      M.wsConnect();
-      renderShell();
-      M.render();
+      enterManager(); // password done → Face ID gate / setup / straight in
       return;
     }
     if (r.status === 429) return renderLogin('Too many tries — wait a minute ⏳');
@@ -2159,9 +2427,7 @@ function renderShell() {
     const { status, data } = await api('/me');
     if (status === 200 && data.user && data.user.role === 'admin') {
       M.user = data.user;
-      M.wsConnect();
-      renderShell();
-      M.render();
+      enterManager(); // existing session → Face ID gate / setup / straight in
       return;
     }
     M.token = null;
