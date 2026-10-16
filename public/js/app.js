@@ -299,6 +299,10 @@ const I18N = {
     my_photo: 'My Photo',
     photo_note: 'Fans see this next to your name in chats and on the model grid.',
     change_photo: '📷 Change my photo',
+    public_photo_h: 'Public photo (clean — the one Google shows)',
+    public_photo_note: 'This photo goes on your public page and in Google results. Keep it clothed — your profile photo above is only inside the app and can be anything.',
+    public_photo_btn: '📷 Choose public photo',
+    public_photo_remove: 'Remove',
     tip_menu: '💰 Tip Menu', add_tip_item: '➕ Add tip item',
     rb_h: '🚫 Region Blocker',
     rb_note: 'Hide yourself from the places you pick. Fans there will not see you anywhere on SlutCamp — no profile, no chat, no lives, no calls. Perfect for keeping your hometown, your state, or a whole country from finding you.',
@@ -597,6 +601,10 @@ const I18N = {
     my_photo: 'Mi foto',
     photo_note: 'Los fans ven esto junto a tu nombre en los chats y en la lista de modelos.',
     change_photo: '📷 Cambiar mi foto',
+    public_photo_h: 'Foto pública (limpia — la que muestra Google)',
+    public_photo_note: 'Esta foto va en tu página pública y en los resultados de Google. Mantenla con ropa — tu foto de perfil de arriba solo se ve dentro de la app y puede ser lo que quieras.',
+    public_photo_btn: '📷 Elegir foto pública',
+    public_photo_remove: 'Quitar',
     tip_menu: '💰 Menú de propinas', add_tip_item: '➕ Agregar propina',
     rb_h: '🚫 Bloqueo por región',
     rb_note: 'Escóndete de los lugares que elijas. Los fans allí no te verán en ningún lugar de SlutCamp: ni perfil, ni chat, ni en vivo, ni llamadas. Perfecto para que tu ciudad, tu estado o un país entero no te encuentre.',
@@ -892,6 +900,10 @@ const I18N = {
     my_photo: 'Minha foto',
     photo_note: 'Os fãs veem isso ao lado do seu nome nas conversas e na lista de modelos.',
     change_photo: '📷 Trocar minha foto',
+    public_photo_h: 'Foto pública (limpa — a que o Google mostra)',
+    public_photo_note: 'Esta foto vai para a sua página pública e para os resultados do Google. Mantenha-a vestida — sua foto de perfil acima só aparece dentro do app e pode ser qualquer uma.',
+    public_photo_btn: '📷 Escolher foto pública',
+    public_photo_remove: 'Remover',
     tip_menu: '💰 Menu de gorjetas', add_tip_item: '➕ Adicionar item',
     rb_h: '🚫 Bloqueio por região',
     rb_note: 'Esconda-se dos lugares que você escolher. Os fãs de lá não vão te ver em nenhum lugar do SlutCamp: sem perfil, sem chat, sem lives, sem chamadas. Perfeito para a sua cidade, seu estado ou um país inteiro não te encontrar.',
@@ -4649,6 +4661,12 @@ async function vModelSettings() {
           <button class="btn ghost small" id="s-preview-video" style="margin-top:6px">🎬 ${m.preview_video_url ? 'Change' : 'Upload'} preview video</button>
           ${m.preview_video_url ? `<button class="btn ghost small danger" id="s-preview-remove" style="margin-top:6px;margin-left:6px">Remove</button>` : ''}
         </div>
+        <div style="margin-top:12px">
+          <div class="muted small" style="margin-bottom:6px">🌐 <b>${t('public_photo_h')}</b><br>${t('public_photo_note')}</div>
+          ${m.public_photo_url ? `<img src="${esc(m.public_photo_url)}" alt="" style="width:120px;height:120px;border-radius:16px;object-fit:cover;border:2px solid var(--purple)"><br>` : ''}
+          <button class="btn ghost small" id="s-public-photo" style="margin-top:6px">${t('public_photo_btn')}</button>
+          ${m.public_photo_url ? `<button class="btn ghost small danger" id="s-public-remove" style="margin-top:6px;margin-left:6px">${t('public_photo_remove')}</button>` : ''}
+        </div>
       </div>
       <div class="card" id="tax-card"><div class="muted small">Loading tax info…</div></div>
       <div id="pk-card"></div>
@@ -4846,6 +4864,35 @@ async function vModelSettings() {
       });
     };
     inp.click();
+  };
+  const pubBtn = $('#s-public-photo');
+  if (pubBtn) pubBtn.onclick = () => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*';
+    inp.style.display = 'none';
+    document.body.appendChild(inp);
+    inp.onchange = async () => {
+      const file = inp.files[0];
+      inp.remove();
+      if (!file) return;
+      openPhotoCropper(file, async (cropped) => {
+        toast('Uploading photo…');
+        const { status, data } = await apiUpload('/model/public-photo', cropped);
+        if (status === 200 && data.ok) {
+          toast('📷 Public photo updated!');
+          await refreshMe();
+          show('modelSettings', {});
+        } else toast('Upload failed — use a JPG/PNG under 5MB.');
+      });
+    };
+    inp.click();
+  };
+  const pubRem = $('#s-public-remove');
+  if (pubRem) pubRem.onclick = async () => {
+    const headers = {};
+    if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
+    const r = await fetch('/api/model/public-photo', { method: 'DELETE', headers });
+    if (r.status === 200) { toast('Public photo removed — your public page shows the SlutCamp logo instead.'); await refreshMe(); show('modelSettings', {}); }
   };
   $('#s-logout').onclick = () => logout();
   renderPkSettingsCard();
