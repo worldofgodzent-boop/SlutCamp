@@ -36,6 +36,8 @@ dependency, is missing) and the server cannot boot from it alone —
 | `tests/header.test.js` | Source assertions for the header dead-space fix: compacted base header paddings in styles.css, the `:has()` rule that stops the header paying the safe-area inset twice under the theme banner, and the Halloween-only gating + styling of the theme.js promo strip |
 | `tests/sw.test.js` | Source assertions for the service worker: theme freshness (`/js/theme.js` + `/css/themes/` network-first, original shell entries intact) and forced refresh — the cache name carries the `__BUILD__` deploy token that `server.js` stamps per deploy, new workers `skipWaiting()`/`clients.claim()`, and activate deletes every non-current cache |
 | `tests/update.test.js` | Source assertions + a stamping logic check for forced refresh: `GET /api/build-id` wiring and boot-guarded build-id resolution in `server.js`; the idle-only auto-reload watcher in `public/js/app.js` (60s poll, controllerchange, live/call/sheet/typing busy signals, 30s defer-retry, boot hookup) |
+| `tests/reactions.test.js` | Message reactions, end to end: API tests against the real server (participant fan/model react, same-emoji toggle off, different-emoji replace, non-participant 403, guest 403 `login_required`, off-list emoji 400, reactions in the thread payload) plus source pins for the iMessage-style long-press in `app.js` (~500ms timer on the bubble itself, move/up/cancel/scroll cancels, capture-phase click suppression so a pressed locked PPV tile never unlocks, contextmenu prevention, editing/mini-act/popover guards, once-only delegated binding, 🤍 button untouched) and the scoped `.pressing` CSS |
+| `tests/splash-resume.test.js` | Source pins for the welcome splash playing on EVERY open: the `index.html` `<link rel="preload">` for the animated lips + the early `Image()` preload at the top of `boot()`, the badge's one-shot `onerror` fallback to the static lips, and the resume splash — `visibilitychange` / persisted `pageshow` after ≥60s hidden re-show `vWelcomeSplash` in overlay mode (boot-completed + no-stacking + `updateBusy()` guards; removes only its overlay host; never routes) |
 | `scripts/run-triple.js` | The triple runner behind `npm run test:triple` |
 
 ## What the suite covers
@@ -149,6 +151,48 @@ and Easter (2025–2027, incl. Good Fridays) dates, override semantics
 (`?theme=` flag, stored override, `off`/`auto`, unknown names falling
 back to the calendar), the `index.html` wiring for `/js/theme.js`, and
 THEMES-metadata ↔ CSS-pack sync in both directions.
+
+**Message reactions (`tests/reactions.test.js`)** — the reaction
+contract, tested against the real server (temp-copy boot like the
+smoke test): a participant fan reacts ❤️ and gets the updated
+reactions payload; the same emoji again toggles it off; a different
+emoji replaces (one reaction per person, never two); the model in the
+conversation can react too, and both reactions ride along in the
+`GET /api/conversations/:id/messages` payload with correct `mine`
+flags; a fan outside the conversation gets 403 `forbidden`, a guest
+gets 403 `login_required`, and an emoji outside the six gets 400
+`bad_emoji`. The client half is source pins for the iMessage-style
+long-press: delegation on `#messages` guarded by a dataset flag so
+`bindMessageActions` re-runs never double-bind, the 500ms timer
+opening the EXISTING popover anchored on the pressed bubble, cancel on
+>10px move / pointerup / pointercancel / scroll, capture-phase click
+suppression for 400ms after a fired press (so pressing a locked PPV
+tile can never trigger its unlock click), `contextmenu` prevention,
+the guards (message being edited, presses inside the inline editor,
+the 🤍/✏️ mini-act buttons, presses inside the open popover), the
+untouched 🤍 button, and the CSS split — `-webkit-touch-callout: none`
+on bubbles, selection suppressed ONLY under `.msg.pressing` so normal
+text copy keeps working.
+
+**Welcome splash on every open (`tests/splash-resume.test.js`)** —
+source pins for the two root causes of "I opened the app and the logo
+didn't pop up": (a) bfcache/WebView resume without a page load — after
+≥60s hidden, `visibilitychange` (visible) or a persisted `pageshow`
+re-shows the splash via `vWelcomeSplash(..., { overlay: true })`, but
+only once the boot splash has completed, never stacked, and never
+while `updateBusy()` says the user is busy (the same idle test as the
+forced-refresh watcher; busy means skip, never queue); Enter or the
+same unconditional 6s auto-enter removes ONLY the overlay host — the
+resume path contains no `routeInitial` and no app-DOM writes; (b) the
+916KB badge animation not being downloaded in time — `index.html`
+carries a `<link rel="preload" as="image" type="image/webp">` for it,
+`boot()` kicks off an `Image()` preload before its first await, and
+the badge `<img>` carries a one-shot `onerror` fallback
+(`this.onerror=null` first, so it can never loop) to the static lips.
+The welcome-voice pins in `tests/logo-anim.test.js` still hold in full
+(the resume path reuses the same splash code — exactly one
+`Audio('/audio/welcome.mp3')` construction and two `playGreeting()`
+call sites app-wide, pinned in both files).
 
 ## What the suite deliberately does NOT cover
 

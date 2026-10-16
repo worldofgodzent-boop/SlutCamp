@@ -45,21 +45,27 @@ function splashBody() {
 
 test('splash badge: the circular 108px logo IS the animated lips', () => {
   const splash = splashBody();
-  // The badge <img> (alt="SlutCamp", 108px, round, glow) now points at
-  // the animated WebP, keeping its exact inline styling from before.
-  assert.match(splash, /<img src="\/img\/logo-lips-anim\.webp" alt="SlutCamp" style="display:block;margin:0 auto 14px;width:108px;height:108px;border-radius:50%;object-fit:cover;border:2px solid rgba\(255,92,158,\.65\);box-shadow:0 0 28px rgba\(255,45,120,\.55\),0 0 64px rgba\(184,41,221,\.35\)">/);
+  // The badge <img> (alt="SlutCamp", 108px, round, glow) points at the
+  // animated WebP, keeping its exact inline styling from before. It now
+  // also carries the onerror fallback (added 2026-10-16 with the resume
+  // splash: if the animation has not arrived, swap ONCE to the static
+  // lips — the badge must never render as an empty circle).
+  assert.match(splash, /<img src="\/img\/logo-lips-anim\.webp" alt="SlutCamp" onerror="this\.onerror=null;this\.src='\/img\/lips-logo\.png'" style="display:block;margin:0 auto 14px;width:108px;height:108px;border-radius:50%;object-fit:cover;border:2px solid rgba\(255,92,158,\.65\);box-shadow:0 0 28px rgba\(255,45,120,\.55\),0 0 64px rgba\(184,41,221,\.35\)">/);
 });
 
-test('splash badge: static lips-logo.png is gone from the badge', () => {
+test('splash badge: static lips-logo.png is not the badge src (watermark + fallback only)', () => {
   const splash = splashBody();
   assert.doesNotMatch(splash, /<img src="\/img\/lips-logo\.png" alt="SlutCamp"/);
-  // Inside the splash, lips-logo.png survives ONLY as the blurred,
-  // aria-hidden full-screen watermark backdrop (unchanged by design).
+  // Inside the splash, lips-logo.png appears EXACTLY twice: the
+  // blurred, aria-hidden full-screen watermark backdrop (unchanged),
+  // and the badge's one-shot onerror fallback (this.onerror=null makes
+  // a second error a no-op, so it can never loop).
   const refs = splash.match(/lips-logo\.png/g) || [];
-  assert.equal(refs.length, 1, 'only the watermark may still reference lips-logo.png in the splash');
-  const wm = splash.split('\n').find((l) => l.includes('lips-logo.png'));
-  assert.match(wm, /aria-hidden="true"/);
-  assert.match(wm, /blur\(3px\)/);
+  assert.equal(refs.length, 2, 'watermark + badge onerror fallback are the only lips-logo.png references in the splash');
+  const lines = splash.split('\n').filter((l) => l.includes('lips-logo.png'));
+  assert.match(lines[0], /aria-hidden="true"/);
+  assert.match(lines[0], /blur\(3px\)/);
+  assert.match(lines[1], /onerror="this\.onerror=null;this\.src='\/img\/lips-logo\.png'"/);
 });
 
 test('overlay fully removed: no remnants in app.js or styles.css', () => {
