@@ -879,6 +879,10 @@ addColumnIfMissing('models', 'is_hidden', 'INTEGER NOT NULL DEFAULT 0');
 // Discovery 2.0 (Oct 16 2026): model-picked discovery tags as a JSON array
 // of catalogue strings. Additive only — existing models default to none.
 addColumnIfMissing('models', 'tags', "TEXT NOT NULL DEFAULT '[]'");
+// Composite ranking (owner, Oct 16 2026): stored rank_score = fan likes +
+// lifetime credited model earnings in dollars (see recomputeModelRank).
+// Additive only — the boot backfill fills real values before serving.
+addColumnIfMissing('models', 'rank_score', 'REAL NOT NULL DEFAULT 0');
 // Fraud protection: account status ('active' | 'frozen') + ledger IP on every money row
 addColumnIfMissing('users', 'status', "TEXT NOT NULL DEFAULT 'active'");
 addColumnIfMissing('transactions', 'ip', 'TEXT');
@@ -1301,6 +1305,7 @@ function chargeFan(fanId, modelId, grossCents, type, note, ip = null) {
       VALUES (?,?,?,?,?,?,?,?,?,?)`)
       .run(fanId, modelId, type, grossCents, modelCents, platformCents, recruiterId, recruiterCents, note || null, ip);
   });
+  if (modelId) recomputeModelRank(modelId);
   return { modelCents, platformCents, recruiterCents };
 }
 
@@ -1324,7 +1329,49 @@ function refundFan(fanId, modelId, grossCents, type, note, ip = null) {
       VALUES (?,?,?,?,?,?,?,?,?,?)`)
       .run(fanId, modelId, type, -grossCents, -modelCents, -platformCents, recruiterId, -recruiterCents, note || null, ip);
   });
+  if (modelId) recomputeModelRank(modelId);
   return { modelCents, platformCents, recruiterCents };
+}
+
+/* ---------------- composite model ranking ----------------
+ * rank_score = like_count + (lifetime model earnings / $1).
+ * Owner directive (Oct 16 2026): "Not just by fan likes, I want it by
+ * likes and money earned." 1 fan like = 1 point; $1.00 of credited model
+ * earnings = 1 point (float, no floor — every cent counts
+ * proportionally). Lifetime totals for v1.
+ *
+ * Earnings = SUM(transactions.model_cents) for the model: her actual
+ * credited share out of splitPayment, with refundFan's negative
+ * reversal rows netting against it automatically. EXCLUDED:
+ *  - 'payout' rows — money OUT to the model is recorded with a positive
+ *    model_cents but it is a withdrawal, not earnings;
+ *  - is_test rows — pre-launch test money never counts (the same
+ *    exclusion every money display uses);
+ *  - fan-side admin credit grants carry model_id NULL, so they can
+ *    never enter this sum.
+ * The sum equals wallets.earnings_cents + paid_out_cents for the model,
+ * i.e. exactly what her own earnings views are built on.
+ *
+ * recomputeModelRank() is the SINGLE derivation: it re-reads both
+ * sources of truth and rewrites the stored column, so it is idempotent
+ * and safe to call after any mutation. Every earnings credit/reversal
+ * in the codebase flows through chargeFan()/refundFan(), which call it;
+ * the like endpoint calls it; a boot backfill (below) recomputes all. */
+function modelEarningsCents(modelUserId) {
+  return db.prepare(`SELECT COALESCE(SUM(model_cents), 0) AS cents FROM transactions
+                     WHERE model_id = ? AND type <> 'payout' AND is_test = 0`).get(modelUserId).cents;
+}
+function recomputeModelRank(modelUserId) {
+  if (!modelUserId) return 0;
+  const likes = db.prepare('SELECT COUNT(*) AS n FROM model_likes WHERE model_id = ?').get(modelUserId).n;
+  const score = Math.round((likes + modelEarningsCents(modelUserId) / 100) * 100) / 100;
+  db.prepare('UPDATE models SET rank_score = ? WHERE user_id = ?').run(score, modelUserId);
+  return score;
+}
+function recomputeAllModelRanks() {
+  const ids = db.prepare('SELECT user_id FROM models').all();
+  for (const r of ids) recomputeModelRank(r.user_id);
+  return ids.length;
 }
 
 /* ---------------- identity: logged-in user OR guest ---------------- */
@@ -2416,6 +2463,20 @@ try { const n = announceAgreement12ToModels(); if (n) console.log(`[contract] Ag
   } catch (e) { console.log('[cleanup] demo seed purge failed:', e.message); }
 })();
 
+/* Composite ranking backfill (owner, Oct 16 2026): stored rank_score
+ * must be correct the moment a deploy lands, with zero manual steps —
+ * recompute EVERY model on every boot from the two sources of truth
+ * (model_likes + the earnings ledger). Deliberately NOT a one-time
+ * marker: the derivation is a couple of indexed queries per model, it
+ * is idempotent, and running it unconditionally self-heals any mutation
+ * path that ever misses its recomputeModelRank() hook. Placed after
+ * seed() and every one-time cleanup above so it sees their final
+ * state (test-money rows already flagged, seed models already purged). */
+try {
+  const rankN = recomputeAllModelRanks();
+  console.log(`[ranking] Composite ranks recomputed for ${rankN} models (likes + lifetime earnings $).`);
+} catch (e) { console.log('[ranking] backfill failed:', e.message); }
+
 /* ------------------------------------------------------------------ */
 /* Public: guest tokens + model browsing (no login needed)              */
 /* ------------------------------------------------------------------ */
@@ -2459,16 +2520,25 @@ function cleanModelTags(input) {
 }
 
 // GET /api/models — PUBLIC so guests can browse before signing up.
-// Ranking: featured (SlutCamp Live) pinned first; regular models ordered by
-// rank_score = total_sales ($) + likes_count (1 like = $1 sold = 1 point).
-// total_sales = lifetime gross fan spend from transactions attributed to the
-// model, excluding 'payout' rows (money OUT to the model, not sales);
-// refund rows are negative and net against sales automatically.
+// Ordering: featured (SlutCamp Live) pinned first; regular models by
+// composite rank_score = fan likes + lifetime credited model earnings
+// in dollars (owner, Oct 16 2026: "Not just by fan likes — likes and
+// money earned"). rank_score is a stored column maintained by
+// recomputeModelRank() and backfilled on every boot.
+// rank_position in the payload is her TRUE 1-based position in that
+// composite order — the array order is NOT her rank, because the
+// featured model floats above it. Positions are computed over the full
+// eligible roster BEFORE region filtering, so a rank means the same
+// thing to every viewer.
+// total_sales = lifetime gross fan spend from transactions attributed
+// to the model, excluding 'payout' rows (money OUT to the model, not
+// sales); refund rows are negative and net against sales automatically.
+// (Payload field kept for compatibility; it no longer drives ranking.)
 app.get('/api/models', (req, res) => {
   const rows = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.presence_override, u.created_at, m.bio, m.per_message_cents,
            m.per_minute_cents, m.per_voice_cents, m.is_online, m.photo_url, m.tags,
-           m.preview_video_url, m.is_featured,
+           m.preview_video_url, m.is_featured, m.rank_score,
            ls.id AS live_session_id, ls.explicit_rate_cents AS live_explicit_rate_cents,
            (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS live_viewers,
            (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) AS like_count,
@@ -2478,11 +2548,25 @@ app.get('/api/models', (req, res) => {
     LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live'
     WHERE u.role = 'model' AND u.banned = 0 AND m.is_hidden = 0
     ORDER BY m.is_featured DESC,
-             (total_sales_cents / 100.0 + like_count) DESC,
+             m.rank_score DESC,
              like_count DESC,
              (CASE u.presence_override WHEN 'on' THEN 1 WHEN 'off' THEN 0 ELSE m.is_online END) DESC,
              u.created_at DESC, u.display_name ASC
   `).all();
+  // True composite rank positions: the directory's own ordering chain
+  // (rank, then likes / online / newest / name as tiebreaks) WITHOUT
+  // the featured float.
+  const rankOrder = db.prepare(`
+    SELECT u.id,
+           (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) AS like_count
+    FROM users u JOIN models m ON m.user_id = u.id
+    WHERE u.role = 'model' AND u.banned = 0 AND m.is_hidden = 0
+    ORDER BY m.rank_score DESC,
+             like_count DESC,
+             (CASE u.presence_override WHEN 'on' THEN 1 WHEN 'off' THEN 0 ELSE m.is_online END) DESC,
+             u.created_at DESC, u.display_name ASC
+  `).all();
+  const rankPos = new Map(rankOrder.map((r, i) => [r.id, i + 1]));
   // Check which models the current fan has liked (if logged in)
   let likedSet = new Set();
   const h = req.headers.authorization || '';
@@ -2515,7 +2599,8 @@ app.get('/api/models', (req, res) => {
       live_viewers: r.live_viewers || 0, schedule_summary: summary, liked: likedSet.has(r.id),
       likes_count: r.like_count || 0,
       total_sales: Math.round(r.total_sales_cents || 0) / 100,
-      rank_score: Math.round(((r.total_sales_cents || 0) / 100 + (r.like_count || 0)) * 100) / 100 };
+      rank_score: r.rank_score || 0,
+      rank_position: rankPos.get(r.id) || null };
   }) });
 });
 
@@ -2533,6 +2618,7 @@ app.post('/api/models/:id/like', identMiddleware, requireUser, requireRole('fan'
     db.prepare('INSERT INTO model_likes (fan_id, model_id) VALUES (?,?)').run(req.user.id, modelId);
   }
   const count = db.prepare('SELECT COUNT(*) AS n FROM model_likes WHERE model_id = ?').get(modelId).n;
+  recomputeModelRank(modelId);
   res.json({ ok: true, liked: !existing, like_count: count });
 });
 
