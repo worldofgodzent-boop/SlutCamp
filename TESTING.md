@@ -391,3 +391,4 @@ their localized NEW badge, and the rail CSS.
 - A test that fails because it found a real app bug is a *good* test:
   keep the app behavior visible, report the bug, don't weaken the
   assertion to make it pass.
+| `tests/public-photo-announce.test.js` | One-time public-photo announcement (Oct 16 2026): a seeded boot DMs every seed model exactly once from the admin thread with her personal slutcamp.app/models/<username> URL + the Settings → My Photo → Public photo path + the logo-fallback warning, sets platform_stats.public_photo_announced_at, sends nothing to fans, and a second boot re-sends nothing. |
