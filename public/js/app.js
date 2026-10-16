@@ -106,6 +106,19 @@ const I18N = {
     ath_astep3: "3. Tap 'Install' — done, she's on your home screen",
     ath_wallet_row: '📲 Add to Home Screen',
     no_models: 'No models yet.',
+    search_models_ph: '🔍 Search models…',
+    disc_online: '🟢 Online', disc_live: '🔴 Live',
+    disc_band1: '$', disc_band2: '$$', disc_band3: '$$$',
+    sort_liked: '⭐ Most liked', sort_online: '🟢 Online first',
+    sort_price_low: '💲 Price: low → high', sort_price_high: '💲 Price: high → low',
+    sort_newest: '🆕 Newest',
+    no_matches: 'No models match that — try clearing a filter.',
+    clear_filters: '✖ Clear filters',
+    more_like_her: '💋 More like her',
+    tags_h: '🏷️ My discovery tags',
+    tags_note: 'Pick up to 5 tags so fans can find you by vibe, look and what you offer. They show on your card and fans can tap them to filter the home screen.',
+    save_tags: 'Save tags', tags_saved: 'Tags saved 🏷️',
+    tags_max: 'Max 5 tags — unpick one first.',
     pager_prev: '← Prev', pager_next: 'Next →', pager_page: 'Page {x} of {y}',
     terms_line: '18+ only. By chatting you agree to the', terms: 'Terms',
     like_need_fan: 'Log in as a fan to like models 💜',
@@ -364,6 +377,19 @@ const I18N = {
     ath_astep3: "3. Toca 'Instalar' — listo, ya está en tu pantalla de inicio",
     ath_wallet_row: '📲 Añadir a pantalla de inicio',
     no_models: 'Aún no hay modelos.',
+    search_models_ph: '🔍 Buscar modelos…',
+    disc_online: '🟢 En línea', disc_live: '🔴 En vivo',
+    disc_band1: '$', disc_band2: '$$', disc_band3: '$$$',
+    sort_liked: '⭐ Más gustadas', sort_online: '🟢 En línea primero',
+    sort_price_low: '💲 Precio: bajo → alto', sort_price_high: '💲 Precio: alto → bajo',
+    sort_newest: '🆕 Más nuevas',
+    no_matches: 'Ningún modelo coincide — prueba quitar un filtro.',
+    clear_filters: '✖ Quitar filtros',
+    more_like_her: '💋 Más como ella',
+    tags_h: '🏷️ Mis etiquetas de descubrimiento',
+    tags_note: 'Elige hasta 5 etiquetas para que los fans te encuentren por estilo, look y lo que ofreces. Se muestran en tu tarjeta y los fans pueden tocarlas para filtrar.',
+    save_tags: 'Guardar etiquetas', tags_saved: 'Etiquetas guardadas 🏷️',
+    tags_max: 'Máx. 5 etiquetas — quita una primero.',
     pager_prev: '← Anterior', pager_next: 'Siguiente →', pager_page: 'Página {x} de {y}',
     terms_line: 'Solo 18+. Al chatear aceptas los', terms: 'Términos',
     like_need_fan: 'Inicia sesión como fan para dar me gusta 💜',
@@ -619,6 +645,19 @@ const I18N = {
     ath_astep3: "3. Toque em 'Instalar' — pronto, já está na sua tela inicial",
     ath_wallet_row: '📲 Adicionar à tela inicial',
     no_models: 'Ainda não há modelos.',
+    search_models_ph: '🔍 Buscar modelos…',
+    disc_online: '🟢 Online', disc_live: '🔴 Ao vivo',
+    disc_band1: '$', disc_band2: '$$', disc_band3: '$$$',
+    sort_liked: '⭐ Mais curtidas', sort_online: '🟢 Online primeiro',
+    sort_price_low: '💲 Preço: baixo → alto', sort_price_high: '💲 Preço: alto → baixo',
+    sort_newest: '🆕 Mais novas',
+    no_matches: 'Nenhuma modelo combina — tente limpar um filtro.',
+    clear_filters: '✖ Limpar filtros',
+    more_like_her: '💋 Mais como ela',
+    tags_h: '🏷️ Minhas tags de descoberta',
+    tags_note: 'Escolha até 5 tags para os fãs te encontrarem pelo estilo, visual e o que você oferece. Elas aparecem no seu card e os fãs podem tocar para filtrar.',
+    save_tags: 'Salvar tags', tags_saved: 'Tags salvas 🏷️',
+    tags_max: 'Máx. 5 tags — remova uma primeiro.',
     pager_prev: '← Anterior', pager_next: 'Próxima →', pager_page: 'Página {x} de {y}',
     terms_line: 'Somente 18+. Ao conversar, você concorda com os', terms: 'Termos',
     like_need_fan: 'Entre como fã para curtir as modelos 💜',
@@ -1685,6 +1724,7 @@ function modelTileHTML(m, opts) {
         <span class="tile-sub">@${esc(m.username)} · ${status}</span>
         ${opts.hero && m.bio ? `<span class="tile-sub">${esc(m.bio).slice(0, 80)}</span>` : ''}
         <span class="tile-sub" style="color:var(--peach);font-weight:700">${t('per_msg_rate', { price: fmt(m.per_message_cents) })} · ${t('per_min_rate', { price: fmt(m.per_minute_cents) })}</span>
+        ${(m.tags && m.tags.length) ? `<span class="tile-tags">${m.tags.slice(0, 3).map((tg) => `<span class="tag-chip">${esc(tg)}</span>`).join('')}</span>` : ''}
         ${opts.hero && m.schedule_summary ? `<span class="tile-sub">${t('usually_live', { s: esc(m.schedule_summary) })}</span>` : ''}
       </span>
     </button>`;
@@ -1699,7 +1739,109 @@ function modelTileHTML(m, opts) {
 let homePage = 1;
 const HOME_PAGE_SIZE = 10;
 
-function homeTilesHTML(models, heartFor) {
+/* ---------------- Discovery 2.0 — search / filters / tags ----------------
+   The directory endpoint returns the FULL roster in one call (no server
+   pagination), so search + filters + sort all run client-side over that
+   payload. DISCOVERY_TAGS mirrors MODEL_TAGS in server.js — the test
+   suite pins the two copies equal, so edit both or neither. */
+const DISCOVERY_TAGS = [
+  'New here', 'Live daily', 'Video calls', 'Voice notes',
+  'Gaming', 'Gamer girl', 'Fitness', 'Cosplay',
+  'Tattoos', 'Piercings', 'Latina', 'Ebony',
+  'Blonde', 'Brunette', 'Redhead', 'Curvy', 'Petite', 'MILF',
+];
+const disc = { q: '', online: false, live: false, price: 'any', tag: '', sort: 'liked' };
+
+/* Per-message price bands: $ = ≤$2, $$ = ≤$5, $$$ = above. */
+function discPriceBand(cents) {
+  const c = Number(cents) || 0;
+  return c <= 200 ? 1 : c <= 500 ? 2 : 3;
+}
+
+function discActive(d) {
+  return !!(d.q || d.online || d.live || d.price !== 'any' || d.tag || d.sort !== 'liked');
+}
+
+/* Pure filter + sort over the /api/models payload. The featured model is
+ * NOT special-cased here — homeTilesHTML pins her hero from whatever list
+ * it is handed, so she keeps the hero slot only while she matches. The
+ * default sort ('liked') preserves the server's rank order untouched. */
+function applyDiscovery(models, d) {
+  const q = (d.q || '').trim().toLowerCase();
+  const out = (models || []).filter((m) => {
+    if (q && !((m.display_name || '').toLowerCase().includes(q)
+      || (m.username || '').toLowerCase().includes(q))) return false;
+    if (d.online && !m.is_online) return false;
+    if (d.live && !m.is_live) return false;
+    if (d.price !== 'any' && discPriceBand(m.per_message_cents) !== Number(d.price)) return false;
+    if (d.tag && !(m.tags || []).includes(d.tag)) return false;
+    return true;
+  });
+  const rank = (m) => m.rank_score || 0;
+  if (d.sort === 'online') out.sort((a, b) => (Number(b.is_online) - Number(a.is_online)) || (rank(b) - rank(a)));
+  else if (d.sort === 'price_low') out.sort((a, b) => (a.per_message_cents - b.per_message_cents) || (rank(b) - rank(a)));
+  else if (d.sort === 'price_high') out.sort((a, b) => (b.per_message_cents - a.per_message_cents) || (rank(b) - rank(a)));
+  else if (d.sort === 'newest') out.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')) || (rank(b) - rank(a)));
+  return out;
+}
+
+/* "More like her": shared discovery tags first, then directory rank.
+ * With no tags anywhere it degrades to the top-ranked others. */
+function similarModels(m, models, n) {
+  const mine = new Set(m.tags || []);
+  return (models || [])
+    .filter((x) => x.id !== m.id)
+    .map((x) => ({ x, shared: (x.tags || []).filter((tg) => mine.has(tg)).length }))
+    .sort((a, b) => (b.shared - a.shared) || ((b.x.rank_score || 0) - (a.x.rank_score || 0)))
+    .slice(0, n || 6)
+    .map((s) => s.x);
+}
+
+function discoveryBarHTML(models) {
+  const usedTags = DISCOVERY_TAGS.filter((tg) => (models || []).some((m) => (m.tags || []).includes(tg)));
+  return `
+  <div class="disc-bar">
+    <div class="disc-row">
+      <input class="input disc-search" id="disc-q" type="search" placeholder="${t('search_models_ph')}" value="${esc(disc.q)}" autocomplete="off">
+      <select class="input disc-sort" id="disc-sort">
+        ${['liked', 'online', 'price_low', 'price_high', 'newest'].map((s) => `<option value="${s}" ${disc.sort === s ? 'selected' : ''}>${t('sort_' + s)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="disc-row disc-chips">
+      <button class="disc-chip ${disc.online ? 'on' : ''}" data-disc-toggle="online">${t('disc_online')}</button>
+      <button class="disc-chip ${disc.live ? 'on' : ''}" data-disc-toggle="live">${t('disc_live')}</button>
+      ${[1, 2, 3].map((b) => `<button class="disc-chip ${String(disc.price) === String(b) ? 'on' : ''}" data-disc-price="${b}">${t('disc_band' + b)}</button>`).join('')}
+      ${discActive(disc) ? `<button class="disc-chip clear" id="disc-clear">${t('clear_filters')}</button>` : ''}
+    </div>
+    ${usedTags.length ? `<div class="disc-row disc-chips">${usedTags.map((tg) => `<button class="disc-chip ${disc.tag === tg ? 'on' : ''}" data-disc-tag="${esc(tg)}">${esc(tg)}</button>`).join('')}</div>` : ''}
+  </div>`;
+}
+
+/* Every control re-renders the directory view with the new state and
+ * resets pagination — a filtered list always starts on page 1. */
+function wireDiscovery(viewName) {
+  const apply = (fn) => { fn(); homePage = 1; show(viewName, {}); };
+  const q = $('#disc-q');
+  if (q) q.addEventListener('change', () => apply(() => { disc.q = q.value; }));
+  const so = $('#disc-sort');
+  if (so) so.addEventListener('change', () => apply(() => { disc.sort = so.value; }));
+  app.querySelectorAll('[data-disc-toggle]').forEach((b) => {
+    b.onclick = () => apply(() => { disc[b.dataset.discToggle] = !disc[b.dataset.discToggle]; });
+  });
+  app.querySelectorAll('[data-disc-price]').forEach((b) => {
+    b.onclick = () => apply(() => { disc.price = String(disc.price) === b.dataset.discPrice ? 'any' : b.dataset.discPrice; });
+  });
+  app.querySelectorAll('[data-disc-tag]').forEach((b) => {
+    b.onclick = () => apply(() => { disc.tag = disc.tag === b.dataset.discTag ? '' : b.dataset.discTag; });
+  });
+  const cl = $('#disc-clear');
+  if (cl) cl.onclick = () => apply(() => {
+    disc.q = ''; disc.online = false; disc.live = false;
+    disc.price = 'any'; disc.tag = ''; disc.sort = 'liked';
+  });
+}
+
+function homeTilesHTML(models, heartFor, opts) {
   const featured = models.find((m) => m.is_featured);
   const rest = featured ? models.filter((m) => m.id !== featured.id) : models;
   const heart = (m) => (heartFor ? heartFor(m) : '');
@@ -1708,10 +1850,13 @@ function homeTilesHTML(models, heartFor) {
   if (homePage < 1) homePage = 1;
   const start = (homePage - 1) * HOME_PAGE_SIZE;
   const slice = rest.slice(start, start + HOME_PAGE_SIZE);
+  // The 👑 marks the #1 RANKED model — only meaningful in the default
+  // (most-liked) ordering, so filtered/sorted views suppress it.
+  const crownOn = !opts || opts.crown !== false;
   return `
     ${featured ? modelTileHTML(featured, { hero: true, heartHTML: heart(featured) }) : ''}
     <div class="tile-grid">
-      ${slice.map((m, i) => modelTileHTML(m, { crown: start + i === 0, heartHTML: heart(m) })).join('')}
+      ${slice.map((m, i) => modelTileHTML(m, { crown: crownOn && start + i === 0, heartHTML: heart(m) })).join('')}
     </div>
     ${pages > 1 ? `
     <div class="row" style="justify-content:center;align-items:center;gap:10px;margin-top:16px">
@@ -1742,6 +1887,7 @@ function livesBtnHTML(models) {
 async function vLanding() {
   const { data } = await api('/models');
   const models = data.models || [];
+  const shown = applyDiscovery(models, disc);
   app.innerHTML = `
     <div class="header">
       <h1>Slut<span class="logo">Camp</span> 💬</h1>
@@ -1753,11 +1899,15 @@ async function vLanding() {
         <div style="font-size:20px;font-weight:800">${t('free3_title')}</div>
         <div class="muted small" style="margin-top:4px">${t('free3_sub')}</div>
       </div>
-      ${models.length ? homeTilesHTML(models, (m) => `
+      ${discoveryBarHTML(models)}
+      ${!models.length
+        ? `<div class="empty"><div class="big">😴</div>${t('no_models')}</div>`
+        : shown.length ? homeTilesHTML(shown, (m) => `
             <span class="model-likes tile-heart" data-like="${m.id}">
               <span class="like-heart">${m.liked ? '❤️' : '🤍'}</span>
               <span class="like-count">${m.like_count || 0}</span>
-            </span>`) : `<div class="empty"><div class="big">😴</div>${t('no_models')}</div>`}
+            </span>`, { crown: !discActive(disc) })
+        : `<div class="empty"><div class="big">🔍</div>${t('no_matches')}</div>`}
       <div style="text-align:center;margin-top:14px">
         ${S.user ? '' : `<button class="btn ghost" id="go-login">${t('login_signup')}</button>`}
       </div>
@@ -1787,6 +1937,7 @@ async function vLanding() {
       }
     };
   });
+  wireDiscovery('landing');
   const gl = $('#go-login');
   if (gl) gl.onclick = () => show('auth', {});
   const lv = $('#go-lives');
@@ -2459,7 +2610,36 @@ function openModelPeek(m, models) {
       ${m.schedule_summary ? `<div class="peek-row"><span>Usually live</span><b>${esc(m.schedule_summary)}</b></div>` : ''}
     </div>
     ${m.bio ? `<div class="muted small" style="margin-top:10px">${esc(m.bio)}</div>` : ''}
+    ${(m.tags && m.tags.length) ? `<div class="peek-tags">${m.tags.map((tg) => `<button class="disc-chip" data-peek-tag="${esc(tg)}">${esc(tg)}</button>`).join('')}</div>` : ''}
+    ${similarModels(m, models).length ? `
+    <div style="font-weight:800;margin:14px 0 8px;text-align:left">${t('more_like_her')}</div>
+    <div class="sim-rail">
+      ${similarModels(m, models).map((s) => `
+      <button class="sim-card" data-sim="${s.id}">
+        ${avatarHTML(s.display_name, 'sm', s.photo_url)}
+        <span class="sim-name">${esc(s.display_name)}</span>
+        <span class="small muted">${s.is_live ? '🔴 LIVE' : s.is_online ? '🟢' : '⚫'} ${fmt(s.per_message_cents)}/msg</span>
+      </button>`).join('')}
+    </div>` : ''}
     <button class="sheet-btn" style="margin-top:12px" onclick="document.getElementById('ft-sheet').remove()">Close</button>`);
+  const sheet = document.getElementById('ft-sheet');
+  if (sheet) {
+    sheet.querySelectorAll('[data-sim]').forEach((b) => {
+      b.onclick = () => {
+        const s = (models || []).find((x) => x.id === parseInt(b.dataset.sim));
+        if (s) openModelPeek(s, models);
+      };
+    });
+    // Tapping one of her tags jumps to the directory filtered by it.
+    sheet.querySelectorAll('[data-peek-tag]').forEach((b) => {
+      b.onclick = () => {
+        disc.tag = b.dataset.peekTag;
+        homePage = 1;
+        sheet.remove();
+        show(S.user ? 'fanModels' : 'landing', {});
+      };
+    });
+  }
 }
 
 async function vFanModels() {
@@ -2473,6 +2653,7 @@ async function vFanModels() {
     try { const f = await api('/follows'); following = f.data.following || []; } catch (e) {}
   }
   const isFanUser = !!(S.user && S.user.role === 'fan');
+  const shown = applyDiscovery(models, disc);
   app.innerHTML = `
     <div class="header"><div class="home-head-row"><h1>Slut<span class="logo">Camp</span></h1>
       ${isFanUser ? `<button class="btn small ghost home-logout-btn" id="home-logout">${t('log_out')}</button>` : ''}</div>
@@ -2484,11 +2665,15 @@ async function vFanModels() {
     <div class="screen">
       ${athCardHTML()}
       ${livesBtnHTML(models)}
-      ${models.length ? homeTilesHTML(models, isModelViewer ? null : (m) => `
-            <span class="follow-btn tile-heart ${following.includes(m.id) ? 'following' : ''}" data-follow="${m.id}" title="${t('follow_title')}">${following.includes(m.id) ? '❤️' : '🤍'}</span>`)
-        : `<div class="empty"><div class="big">😴</div>${t('no_models')}</div>`}
+      ${discoveryBarHTML(models)}
+      ${!models.length
+        ? `<div class="empty"><div class="big">😴</div>${t('no_models')}</div>`
+        : shown.length ? homeTilesHTML(shown, isModelViewer ? null : (m) => `
+            <span class="follow-btn tile-heart ${following.includes(m.id) ? 'following' : ''}" data-follow="${m.id}" title="${t('follow_title')}">${following.includes(m.id) ? '❤️' : '🤍'}</span>`, { crown: !discActive(disc) })
+        : `<div class="empty"><div class="big">🔍</div>${t('no_matches')}</div>`}
     </div>`;
   wireAthCard();
+  wireDiscovery('fanModels');
   const lv = $('#go-lives');
   if (lv) lv.onclick = () => show('lives', {});
   const hlo = $('#home-logout');
@@ -4109,6 +4294,11 @@ async function openSlotBookingSheet(modelId, modelName, rateCents) {
 async function vModelSettings() {
   await refreshMe();
   const m = S.model;
+  // Her current discovery tags (stored as a JSON array on the model row).
+  let myTags = [];
+  try { myTags = JSON.parse(m.tags || '[]'); } catch (e) { myTags = []; }
+  if (!Array.isArray(myTags)) myTags = [];
+  myTags = myTags.filter((tg) => DISCOVERY_TAGS.includes(tg));
   const { data: idvData } = await api('/model/id-verification');
   const idv = (idvData && idvData.verification) || null;
   const idvStatus = idv ? idv.status : 'none';
@@ -4200,6 +4390,14 @@ async function vModelSettings() {
         <button class="btn" id="s-bio-save">${t('save_bio')}</button>
       </div>
       <div class="card">
+        <div style="font-weight:800;margin-bottom:6px">${t('tags_h')}</div>
+        <div class="muted small" style="margin-bottom:10px">${t('tags_note')}</div>
+        <div class="disc-chips" id="s-tags">
+          ${DISCOVERY_TAGS.map((tg) => `<button class="disc-chip ${myTags.includes(tg) ? 'on' : ''}" data-tag-pick="${esc(tg)}">${esc(tg)}</button>`).join('')}
+        </div>
+        <button class="btn" id="s-tags-save" style="margin-top:10px">${t('save_tags')}</button>
+      </div>
+      <div class="card">
         <div style="font-weight:800;margin-bottom:6px">${t('my_photo')}</div>
         <div class="row" style="align-items:center">
           ${avatarHTML(m.display_name || (S.user && S.user.display_name) || '?', 'sm', m.photo_url)}
@@ -4278,6 +4476,23 @@ async function vModelSettings() {
     const { status } = await api('/model/profile', {
       method: 'PUT', body: JSON.stringify({ bio: $('#s-bio').value }) });
     toast(status === 200 ? t('bio_saved') : t('couldnt_save'));
+  };
+  // Discovery tags picker — tap to toggle, max 5, saved via the profile PUT
+  let selTags = myTags.slice();
+  app.querySelectorAll('[data-tag-pick]').forEach((b) => {
+    b.onclick = () => {
+      const tg = b.dataset.tagPick;
+      if (selTags.includes(tg)) { selTags = selTags.filter((x) => x !== tg); b.classList.remove('on'); }
+      else if (selTags.length >= 5) { toast(t('tags_max')); }
+      else { selTags.push(tg); b.classList.add('on'); }
+    };
+  });
+  const tagsSaveBtn = $('#s-tags-save');
+  if (tagsSaveBtn) tagsSaveBtn.onclick = async () => {
+    const { status } = await api('/model/profile', {
+      method: 'PUT', body: JSON.stringify({ tags: selTags }) });
+    toast(status === 200 ? t('tags_saved') : t('couldnt_save'));
+    if (status === 200) refreshMe();
   };
   // Explicit stage rate sliders — live label updates
   const ejv = $('#s-ejv'), ejm = $('#s-ejm'), rjv = $('#s-rjv'), rjm = $('#s-rjm');
