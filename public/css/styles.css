@@ -683,6 +683,18 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
   border-radius: 999px; font-weight: 800; font-size: 14px; color: #fff;
 }
 .ppv-unlock-price { display: block; color: var(--muted); font-size: 13px; padding: 4px 8px 12px; }
+/* Pre-purchase shield tile: same shell as a locked tile, but inert
+   (a <div>, never a button) and more heavily blurred — age-verified
+   members only, no unlock affordance of any kind. */
+.ppv-shield { cursor: default; }
+.ppv-shield .ppv-lock-bg { filter: blur(10px) saturate(1.5); transform: scale(1.25); }
+.media-explicit-toggle {
+  display: inline-block; margin-top: 6px; padding: 4px 10px;
+  background: transparent; border: 1px solid rgba(139,92,246,.45);
+  border-radius: 999px; color: var(--muted); font-family: inherit;
+  font-size: 11.5px; cursor: pointer;
+}
+.media-explicit-toggle.on { color: #fda4af; border-color: rgba(244,114,182,.65); font-weight: 700; }
 .ppv-img { width: 220px; max-width: 100%; border-radius: 12px; margin-top: 6px; display: block; }
 .ppv-vid { width: 220px; max-width: 100%; border-radius: 12px; margin-top: 6px; display: block; background: #000; }
 .ppv-audio { width: 220px; max-width: 100%; margin-top: 6px; }
