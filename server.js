@@ -1115,6 +1115,7 @@ addColumnIfMissing('live_sessions', 'brb', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_sessions', 'game_on', 'INTEGER NOT NULL DEFAULT 0'); // Game Category live this session
 addColumnIfMissing('platform_stats', 'game_category_announced_at', 'TEXT'); // one-time model broadcast stamp
 addColumnIfMissing('platform_stats', 'agreement_12_announced_at', 'TEXT'); // one-time v1.2 agreement broadcast stamp
+addColumnIfMissing('platform_stats', 'public_photo_announced_at', 'TEXT'); // one-time public-photo (Google pages) broadcast stamp
 addColumnIfMissing('live_viewers', 'explicit_until', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_viewers', 'explicit_paid', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'explicit_gift_grace_sec', 'INTEGER NOT NULL DEFAULT 180');
@@ -3048,6 +3049,52 @@ function announceAgreement12ToModels() {
   return sent;
 }
 
+/* ------------------------------------------------------------------ */
+/* Public model pages on Google — ONE-TIME broadcast to every model,  */
+/* same admin-thread DM pattern + flag discipline as the Game         */
+/* Category announcement (public_photo_announced_at on platform_      */
+/* stats). The SEO pages (PR #25) put every public model on Google    */
+/* with a CLEAN public photo (models.public_photo_url) — her in-app   */
+/* storefront pic is never used there; until she sets a public photo  */
+/* her page shows the SlutCamp logo. The link is personalised with    */
+/* her username. Models who sign up later don't get this one (their   */
+/* Settings carry the same label/explainer).                          */
+/* ------------------------------------------------------------------ */
+function publicPhotoAnnounceText(username) {
+  return `📸 NEW UPDATE: You're live on Google! Your public SlutCamp page is up — fans who search your name can now find you at https://slutcamp.app/models/${username}. That page shows the world a CLEAN photo of you — it never uses your in-app profile pic, so that one can stay exactly as wild as you like. To set yours: open the app → Settings → My Photo → Public photo, and upload a clean photo (clothes on). Until you do, your page will show the SlutCamp logo instead of your face — and a face is what gets clicked 💋`;
+}
+
+function announcePublicPhotoToModels() {
+  const st = db.prepare('SELECT public_photo_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.public_photo_announced_at) return 0;
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin) return 0;
+  const models = db.prepare("SELECT id, username FROM users WHERE role = 'model' AND banned = 0").all();
+  let sent = 0;
+  for (const m of models) {
+    if (m.id === admin.id) continue;
+    try {
+      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
+      if (!conv) {
+        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
+        conv = { id: Number(info.lastInsertRowid) };
+      }
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, admin.id, publicPhotoAnnounceText(m.username));
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(m.id, 'public_photo', "📸 NEW UPDATE: You're live on Google!",
+          'Set your clean public photo — Settings → My Photo → Public photo 💋', '');
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest */ }
+  }
+  if (sent > 0 || models.length === 0) {
+    db.prepare("UPDATE platform_stats SET public_photo_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
 function seed() {
   // Demo accounts are DEV-ONLY and strictly opt-in (SEED_DEMO=1). A seeded
   // fan carries $100 of test credits and every seeded password is printed
@@ -3094,6 +3141,7 @@ sendPendingModelIdVerifies();
 sendPendingModelAffiliates();
 try { const n = announceGameCategoryToModels(); if (n) console.log(`[game] Category announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceAgreement12ToModels(); if (n) console.log(`[contract] Agreement v1.2 announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
+try { const n = announcePublicPhotoToModels(); if (n) console.log(`[seo] Public-photo announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 
 // One-time grandfathering for payout protection (Oct 16, 2026): every
 // earning recorded BEFORE this feature existed counts as fully matured —
