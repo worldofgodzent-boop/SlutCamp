@@ -28,6 +28,7 @@ dependency, is missing) and the server cannot boot from it alone —
 | `tests/geo.test.js` | Unit tests for `lib/geo.js` region-block decisions |
 | `tests/ccbill.test.js` | Unit tests for `lib/ccbill.js` checkout signing + webhook crediting (in-memory DB, fake env) |
 | `tests/crypto.test.js` | Unit tests for `lib/crypto.js` amount formatting + placeholder-coin safety (no network) |
+| `tests/crypto-e2e.test.js` | Crypto end-to-end on throwaway keys (published test vectors) + stub price/chain APIs: per-coin invoice creation (address format/freshness, quote math, 30-min expiry, SOL amount-offset + XRP tag keying, fixed-address mode), watcher crediting for BTC/USDT/SOL/XRP with exactly-once proof (re-poll + admin mark + direct re-credit all no-ops), the fixed-address window-scoping regression (pre-invoice transfers never credit), an HTTP run of the real server (config offers only configured coins, fan invoices + QR, admin mark-credited exactly once), and fan-UX source pins (plain-words network name + wrong-network warning on the pay screen, EN/ES/PT) |
 | `tests/presence.test.js` | Unit tests for `lib/presence.js` counts/sampling (in-memory DB) |
 | `tests/smoke.test.js` | Integration smoke test: boots the real `server.js` in a throwaway temp copy and checks key flows over HTTP |
 | `tests/passkey.test.js` | Face ID (WebAuthn) for everyone + enforced admin step-up: public enrollment/sign-in round trips with a built-in software authenticator, owner-scoped credential management, rate limiting, bootstrap + `passkey_required` enforcement on `/api/admin/*` and `/api/mod/*`, and the fan→Manager isolation regressions |
@@ -65,6 +66,11 @@ coin's decimals; the coin table; and the placeholder safety rule: with
 no real receiving config, every coin is a test coin and invoice
 creation is refused before any network call (fans must never be sent
 to a test address). Payment-URI shapes for BTC/ETH/SOL/XRP invoices.
+End-to-end (stub chains, test-vector keys): per-coin invoice creation,
+watcher crediting with exactly-once proof for BTC/USDT/SOL/XRP, admin
+mark-credited over HTTP (second call 409s), and the regression pin for
+invoice-window receipt scoping on the shared ETH/USDT address —
+transfers older than an invoice never count toward it.
 
 **Presence (`lib/presence.js`)** — online counts for guests/fans/models,
 staff roles never counted, re-pings don't double count, stale entries
