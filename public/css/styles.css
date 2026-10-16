@@ -761,6 +761,14 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 
 /* ---------- Message reactions + inline edit ---------- */
 .msg { position: relative; }
+/* iMessage-style long-press: no OS callout menu on bubbles, and a
+   brief pressed look while a hold is arming. Selection is suppressed
+   ONLY while pressing — normal text copy stays possible otherwise. */
+.msg { -webkit-touch-callout: none; }
+.msg.pressing {
+  transform: scale(.97); filter: brightness(1.22);
+  user-select: none; -webkit-user-select: none;
+}
 .msg.has-rx { margin-bottom: 9px; }
 .rx-chips {
   position: absolute; bottom: -9px; z-index: 3;
