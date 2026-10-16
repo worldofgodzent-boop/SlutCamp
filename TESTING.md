@@ -31,6 +31,7 @@ dependency, is missing) and the server cannot boot from it alone —
 | `tests/presence.test.js` | Unit tests for `lib/presence.js` counts/sampling (in-memory DB) |
 | `tests/smoke.test.js` | Integration smoke test: boots the real `server.js` in a throwaway temp copy and checks key flows over HTTP |
 | `tests/passkey.test.js` | Face ID (WebAuthn) for everyone + enforced admin step-up: public enrollment/sign-in round trips with a built-in software authenticator, owner-scoped credential management, rate limiting, bootstrap + `passkey_required` enforcement on `/api/admin/*` and `/api/mod/*`, and the fan→Manager isolation regressions |
+| `tests/fake-money-cleanup.test.js` | Pre-launch fake-money cleanup: the `SEED_DEMO` gate in both directions (default fresh boot creates no demo accounts and no test credits; `SEED_DEMO=1` creates them, incl. fandemo's $100) and the one-time demo-seed purge — only the three seed MODELS are targets, keyed on username + role and protected by password-fingerprint, pictures and ID-verification guards; a seeded DB with a real user boots clean, the real balance/ledger, the admin and fandemo (the owner's test account, excluded by owner decision 2026-10-16) survive, real models who re-registered seed names are guard-skipped, and the marker prevents a second run |
 | `tests/theme.test.js` | Unit tests for the seasonal theme engine (`public/js/theme.js`): every holiday window boundary, the computed Easter/Thanksgiving dates, override semantics, and THEMES-metadata ↔ CSS-pack sync |
 | `tests/popups.test.js` | Unit tests for the Halloween pop-up girls (`public/js/theme.js`): roster ↔ pop-up art sync in both directions, the shuffle-bag picker (full 12-combo rotation before repeats, kiss/twerk never back-to-back), schedule bounds (20s first pop, ~6s on screen, 3.5–5 min gaps), the animated art itself (byte-level VP8X animation-flag check: the 11 video-sourced files must be animated WebPs, purple-twerk — no source video — must stay a still, 2.5 MB per-file ceiling), background preloading of the roster after login, and source assertions for the halloween + login gating and the `pointer-events: none` hard rule in the engine and pack CSS |
 | `tests/header.test.js` | Source assertions for the header dead-space fix: compacted base header paddings in styles.css, the `:has()` rule that stops the header paying the safe-area inset twice under the theme banner, and the Halloween-only gating + styling of the theme.js promo strip |
@@ -140,6 +141,48 @@ requirement, pinned so it can never silently break:
 - positive control: the seeded admin logs in through the Manager door
   and reaches `/api/admin/stats` with the header (200, bootstrap —
   before any passkey exists)
+
+**Fake-money cleanup (`tests/fake-money-cleanup.test.js`)** — the
+pre-launch purge of the demo seed accounts. Boots the real server in
+temp copies like the smoke test, but test 3 re-boots the SAME copy
+three times because the purge is a boot-time migration:
+- default fresh boot (no `SEED_DEMO`): the public model directory is
+  empty and neither fandemo nor admin can sign in — demos are opt-in
+  only now, and a production boot can never (re)create them
+- `SEED_DEMO=1` fresh boot: bunny/stacey/bella are listed, fandemo
+  signs in holding exactly 10000¢, and the purge stays out of the way.
+  (The smoke and passkey harnesses opt in with `SEED_DEMO=1` for the
+  same reason — their fixtures ARE the demo accounts.)
+- purge run: a seeded DB that also gained a real signup plus a real
+  admin credit grant (5000¢ on the ledger) boots without the flag —
+  the boot log carries the per-account `[cleanup] purged seed account`
+  audit lines for the three seed models, the seed models can no
+  longer sign in, the real fan's balance survives to the cent, the
+  admin account is preserved, and DB-level checks show the marker
+  stamped, the real `credit_grant` row as the only surviving
+  transaction, and zero orphaned transactions / conversations /
+  messages / wallets. fandemo is NOT a purge target: he is the
+  owner's own test account (owner decision, Oct 16 2026), so he
+  survives with his $100 (10000¢) untouched and the boot log carries
+  the `[cleanup] fandemo preserved` audit line
+- exactly once: a third boot shows no purge activity and the real
+  balance (and fandemo's $100) is still intact
+- guards (purge fires only when NO guard trips; every trip logs):
+  password fingerprint — the stored hash must still verify against
+  the seed default (`model123`, via `bcrypt.compareSync`); pictures —
+  any `media_items` row uploaded by the candidate or a
+  `models.photo_url` set means a real model joined; ID verification —
+  an `id_verifications` row with status `approved` is conclusive
+  proof of a real person (seeds were never verified). The guard test
+  deletes seed bunny + bella, registers REAL models under those
+  names with different passwords, gives Bunny real earnings (a fan's
+  paid message: 149¢ gross / 89¢ hers, on the ledger) plus an
+  uploaded-picture row, and marks otherwise-pristine seed stacey
+  ID-verified: Bunny trips pictures + password, Bella password
+  alone, stacey ID verification alone (her password IS the seed
+  default) — nothing is purged and every account, balance and
+  ledger row survives. (This mirrors the live DB, where a real
+  model now holds the name "Bunny".)
 
 **Seasonal themes (`public/js/theme.js`)** — pure-function unit tests
 for the theme engine's `resolveTheme(date, override)`: every holiday

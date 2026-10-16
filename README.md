@@ -24,7 +24,9 @@ npm start
 
 Then open **http://localhost:3000** (use your phone on the same Wi-Fi via `http://<your-computer-ip>:3000`).
 
-### Demo logins (seeded)
+### Demo logins (seeded — local dev only, opt-in)
+
+Demo accounts are created **only** when the server starts with `SEED_DEMO=1`. A default boot creates none of them, and a one-time migration (`demo_purge_at` on `platform_stats`) deletes the seeded accounts — including the fan's $100 of test credits — from any database that already has them. The `admin` account is the one exception: it is never purged, because it is the owner's Manager login.
 
 | Who | Username | Password | Notes |
 |---|---|---|---|
@@ -214,5 +216,5 @@ Group streams are the existing one-to-many broadcast (`live_sessions`) plus:
 ## Notes
 
 - Database is SQLite (`wogent-chat.db`) — zero-config. Delete it to reset demo data.
-- Change the seeded passwords before any real use.
+- Never run production with `SEED_DEMO=1`: the seeded passwords above are public by design (they exist for local dev), and the seeded fan carries $100 of test credits.
 - This is an 18+ adult platform: age gate is in-app, but real ID verification + 2257 + payment processor are required before launch (guides included).
