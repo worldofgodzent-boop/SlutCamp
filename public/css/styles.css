@@ -725,6 +725,17 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 @keyframes media-spin { to { transform: rotate(360deg); } }
 .media-load-tx { font-size: 12px; font-weight: 600; color: var(--peach); padding: 0 10px; text-align: center; }
 
+/* Per-fan PPV watermark: discreet viewer tag over unlocked media (rendered
+   only for the fan who unlocked it — see ppvWatermarkHTML in app.js).
+   pointer-events:none so it never blocks playback controls or taps; static
+   text, so reduced-motion is a non-issue. */
+.media-wm {
+  position: absolute; right: 8px; bottom: 6px; z-index: 3;
+  font-size: 10px; font-weight: 600; letter-spacing: .02em; white-space: nowrap;
+  color: rgba(255,255,255,.55); text-shadow: 0 1px 3px rgba(0,0,0,.65);
+  pointer-events: none; user-select: none;
+}
+
 /* ---------- Voice-note player (custom WhatsApp-style pill) ---------- */
 .voice-note {
   position: relative; display: flex; align-items: center; gap: 10px;
