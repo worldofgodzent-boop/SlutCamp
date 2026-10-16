@@ -38,6 +38,49 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 const PORT = process.env.PORT || 3000;
 
+/* ------------------------------------------------------------------ */
+/* Forced refresh on every deploy (Asce's rule, 2026-10-16): nobody    */
+/* sits on a stale build — users are lazy and will not refresh         */
+/* themselves, not even for a login-gated update. Two halves:          */
+/*                                                                     */
+/*  1. The service worker's cache name is stamped PER DEPLOY. sw.js    */
+/*     carries a '__BUILD__' placeholder; the /sw.js route below        */
+/*     replaces it with BUILD_ID, so every deploy serves a             */
+/*     byte-different worker under a brand-new cache name. The new     */
+/*     worker skipWaiting()s, and its activate handler deletes every   */
+/*     cache that is not its own — a full flush on every phone,        */
+/*     with zero manual cache-bump edits.                              */
+/*  2. GET /api/build-id lets an already-open app notice the deploy:   */
+/*     app.js polls it and reloads itself the moment it is idle        */
+/*     (never mid-call, mid-live, mid-purchase, or mid-typing).        */
+/*                                                                     */
+/* BUILD_ID resolution, first hit wins: RENDER_GIT_COMMIT (Render      */
+/* injects it into build AND runtime), else `git rev-parse` against    */
+/* this checkout, else null. Every step is guarded: a failure here     */
+/* must NEVER break boot — it only ever degrades the cache name to     */
+/* the static 'slutcamp-v4' fallback (the pre-automation behavior).    */
+/* ------------------------------------------------------------------ */
+function resolveBuildId() {
+  try {
+    const fromEnv = String(process.env.RENDER_GIT_COMMIT || '').trim();
+    if (fromEnv) return fromEnv.slice(0, 12);
+  } catch (e) { /* fall through to git */ }
+  try {
+    const { execFileSync } = require('child_process');
+    const out = execFileSync('git', ['rev-parse', '--short=12', 'HEAD'],
+      { cwd: __dirname, timeout: 3000, stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString().trim();
+    if (out) return out;
+  } catch (e) { /* no git / no checkout — fall through to null */ }
+  return null;
+}
+let BUILD_ID = null;
+try { BUILD_ID = resolveBuildId(); } catch (e) { BUILD_ID = null; }
+const BUILD_TIME = new Date().toISOString();
+const SW_CACHE_NAME = BUILD_ID ? `slutcamp-${BUILD_ID}` : 'slutcamp-v4';
+if (BUILD_ID) console.log(`[build] deploy build id: ${BUILD_ID} (sw cache: ${SW_CACHE_NAME})`);
+else console.warn('[build] ⚠️  no build id available (no RENDER_GIT_COMMIT, no git) — sw cache stays ' + SW_CACHE_NAME);
+
 /* ---- W-9 tax-ID encryption (AES-256-GCM) ---- */
 // TAX_ENC_KEY is hashed to 32 bytes. If unset, we generate an EPHEMERAL key and
 // warn loudly: encrypted rows can't be decrypted after a restart without the key.
@@ -136,6 +179,29 @@ app.use((req, res, next) => {
     return res.type('html').set('Cache-Control', 'public, max-age=0').send(html);
   }
   return next();
+});
+
+/* /sw.js is the ONE file the static middleware must not serve verbatim:
+   stamp the '__BUILD__' placeholder in the cache name with this deploy's
+   build id, so the worker (and its cache) is new on every deploy — the
+   forced-refresh mechanism described at resolveBuildId() above.
+   Registered BEFORE express.static so it wins for /sw.js. 'no-cache'
+   makes browsers revalidate the worker script promptly instead of
+   sitting on the HTTP cache. Any failure falls back to sendFile of the
+   raw worker (token unstamped) — degraded, never broken. */
+let _swSource = null;
+app.get('/sw.js', (req, res) => {
+  const swPath = path.join(__dirname, 'public', 'sw.js');
+  try {
+    if (_swSource === null) _swSource = fs.readFileSync(swPath, 'utf8');
+    return res.type('application/javascript')
+      .set('Cache-Control', 'no-cache')
+      .send(_swSource.split('__BUILD__').join(BUILD_ID || 'v4'));
+  } catch (err) {
+    console.error('[sw] dynamic /sw.js failed, serving raw file:', err.message);
+    _swSource = null;
+    return res.sendFile(swPath);
+  }
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -9039,6 +9105,12 @@ wss.on('connection', (ws, req) => {
 /* ------------------------------------------------------------------ */
 
 app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
+
+/* Which build is deployed right now. The public app polls this (see
+   startUpdateWatcher in public/js/app.js): when the answer differs from
+   the build the page loaded under, the app reloads itself at the first
+   idle moment — the client half of forced refresh on every deploy. */
+app.get('/api/build-id', (req, res) => res.json({ build: BUILD_ID, cache: SW_CACHE_NAME, time: BUILD_TIME }));
 
 app.get('/boss', (req, res) => {
   res.send(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Slut Manager</title></head><body><script>location.replace('/manager');</script></body></html>`);
