@@ -242,6 +242,10 @@ const I18N = {
     spend_cap_ended: '🛑 Your monthly spend cap was reached — raise or remove it in your Wallet to keep going.',
     guest_wallet_title: 'Create your free account to add funds',
     guest_wallet_sub: "You're browsing as a guest. Sign up free to buy credits and unlock chats, live streams, gifts, and more.",
+    av_shield_hint: '18+ verified members only',
+    ppv_explicit_label: 'Explicit',
+    ppv_explicit_mark: 'Mark as explicit',
+    ppv_explicit_note: 'Explicit content — shielded for fans who have not verified their age',
     create_free_account: '✨ Create free account',
     have_account_login: 'Already have an account? Log in',
     crypto_h: 'Load with Crypto',
@@ -535,6 +539,10 @@ const I18N = {
     spend_cap_ended: '🛑 Alcanzaste tu límite de gasto mensual — súbelo o quítalo en tu Billetera para seguir.',
     guest_wallet_title: 'Crea tu cuenta gratis para agregar fondos',
     guest_wallet_sub: 'Estás explorando como invitado. Regístrate gratis para comprar créditos y desbloquear chats, transmisiones en vivo, regalos y más.',
+    av_shield_hint: 'Solo miembros verificados mayores de 18',
+    ppv_explicit_label: 'Explícito',
+    ppv_explicit_mark: 'Marcar como explícito',
+    ppv_explicit_note: 'Contenido explícito — oculto para fans que no han verificado su edad',
     create_free_account: '✨ Crear cuenta gratis',
     have_account_login: '¿Ya tienes cuenta? Inicia sesión',
     crypto_h: 'Cargar con cripto',
@@ -825,6 +833,10 @@ const I18N = {
     spend_cap_ended: '🛑 Você atingiu seu limite de gastos mensal — aumente ou remova o limite na sua Carteira para continuar.',
     guest_wallet_title: 'Crie sua conta grátis para adicionar fundos',
     guest_wallet_sub: 'Você está navegando como visitante. Cadastre-se grátis para comprar créditos e liberar conversas, lives, presentes e muito mais.',
+    av_shield_hint: 'Apenas membros verificados maiores de 18',
+    ppv_explicit_label: 'Explícito',
+    ppv_explicit_mark: 'Marcar como explícito',
+    ppv_explicit_note: 'Conteúdo explícito — oculto para fãs que não verificaram a idade',
     create_free_account: '✨ Criar conta grátis',
     have_account_login: 'Já tem conta? Entrar',
     crypto_h: 'Carregar com cripto',
@@ -5285,9 +5297,31 @@ async function loadMessages() {
 // never fires a second request while one is out.
 const unlockingIds = new Set();
 
+/* Owner control for the pre-purchase shield flag: a model marks her
+ * own sent photo/video explicit (or unmarks it). Rendered under her
+ * own media in her chat thread — her media manager for PPV items. */
+function explicitToggleHTML(m, md) {
+  if (!(S.user && S.user.role === 'model' && m.sender_id === S.user.id)) return '';
+  if (md.kind !== 'ppv_image' && md.kind !== 'ppv_video') return '';
+  return `<button type="button" class="media-explicit-toggle${md.is_explicit ? ' on' : ''}" data-explicit-toggle="${md.id}">${md.is_explicit ? `🔞 ${t('ppv_explicit_label')}` : `${t('ppv_explicit_mark')} 🔞`}</button>`;
+}
+
 function mediaHTML(m) {
   if (!m.media) return '';
   const md = m.media;
+  if (md.shielded) {
+    // Pre-purchase shield (server-decided): explicit-flagged free media
+    // for a fan who has not age-verified. NOT a button — a press must
+    // never start an unlock or purchase flow; verification at his first
+    // credit purchase is the only key.
+    const icon = md.kind === 'ppv_video' ? '🎥' : '📸';
+    const label = md.kind === 'ppv_video' ? 'Private video' : 'Private photo';
+    return `<div class="ppv-lock ppv-shield">
+    <span class="ppv-lock-bg">${icon}</span>
+    <span class="ppv-lock-label">🔞 ${label}</span>
+    <span class="ppv-unlock-price">${t('av_shield_hint')}</span>
+  </div>`;
+  }
   if (md.unlocked) {
     // Every unlocked tile wears a loading veil (spinner + "Loading…") until
     // its bytes are actually ready — no more black/dead tiles while media
@@ -5295,9 +5329,9 @@ function mediaHTML(m) {
     // tap-to-retry card if the load fails.
     const veil = `<span class="media-load"><span class="media-spin"></span><span class="media-load-tx">Loading…</span></span>`;
     if (md.kind === 'ppv_image')
-      return `<span class="media-wrap media-img is-loading"><img class="ppv-img" data-media-src="${md.id}" alt="photo">${veil}</span>`;
+      return `<span class="media-wrap media-img is-loading"><img class="ppv-img" data-media-src="${md.id}" alt="photo">${veil}</span>${explicitToggleHTML(m, md)}`;
     if (md.kind === 'ppv_video')
-      return `<span class="media-wrap media-vid is-loading"><video class="ppv-vid" data-media-src="${md.id}" controls playsinline preload="metadata"></video>${veil}</span>`;
+      return `<span class="media-wrap media-vid is-loading"><video class="ppv-vid" data-media-src="${md.id}" controls playsinline preload="metadata"></video>${veil}</span>${explicitToggleHTML(m, md)}`;
     if (md.kind === 'voice')
       // Custom WhatsApp-style player (no native chrome — the native pill
       // rendered inconsistently and "broke apart" under the veil): one
@@ -5673,6 +5707,9 @@ function bindMessageActions(scope) {
   scope.querySelectorAll('[data-unlock]').forEach((b) => {
     if (!b.disabled) b.onclick = () => unlockMedia(parseInt(b.dataset.unlock));
   });
+  scope.querySelectorAll('[data-explicit-toggle]').forEach((b) => {
+    b.onclick = () => toggleMediaExplicit(parseInt(b.dataset.explicitToggle));
+  });
   scope.querySelectorAll('[data-react]').forEach((b) => {
     b.onclick = (ev) => { ev.stopPropagation(); openReactPop(parseInt(b.dataset.react), b); };
   });
@@ -5963,6 +6000,22 @@ function refreshMediaBubble(mediaId) {
   if (m) updateMessageBubble(m);
 }
 
+/* Flip the explicit flag on the model's own sent media (shield). */
+async function toggleMediaExplicit(mediaId) {
+  const m = S.messages.find((x) => x.media && x.media.id === mediaId);
+  if (!m) return;
+  const next = !m.media.is_explicit;
+  const { status } = await api(`/media/${mediaId}/explicit`, {
+    method: 'POST', body: JSON.stringify({ explicit: next }),
+  });
+  if (status === 200) {
+    m.media.is_explicit = next;
+    refreshMediaBubble(mediaId);
+  } else {
+    toast('Could not update that setting.');
+  }
+}
+
 async function unlockMedia(mediaId) {
   if (unlockingIds.has(mediaId)) return; // double-tap guard: one tap, one charge attempt
   unlockingIds.add(mediaId);
@@ -6117,6 +6170,10 @@ function openPpvPriceSheet(file, kind) {
       <label class="field" style="text-align:left">Custom price ($1–$100, or 0 for free)
         <input class="input" id="ppv-custom-price" type="number" min="0" max="100" step="0.01" placeholder="4.99">
       </label>
+      <label class="field" style="text-align:left;display:flex;gap:8px;align-items:center">
+        <input type="checkbox" id="ppv-explicit" style="width:18px;height:18px;flex:none">
+        <span class="small">${t('ppv_explicit_note')}</span>
+      </label>
       <div class="crop-actions">
         <button class="btn ghost" id="ppv-price-cancel">Cancel</button>
         <button class="btn" id="ppv-price-send">Send 🔒</button>
@@ -6143,12 +6200,13 @@ function openPpvPriceSheet(file, kind) {
       toast('Enter 0 for free, or $1–$100');
       return;
     }
+    const isExplicit = !!overlay.querySelector('#ppv-explicit').checked;
     overlay.remove();
-    uploadMedia(file, kind, cents, 0);
+    uploadMedia(file, kind, cents, 0, isExplicit);
   };
 }
 
-async function uploadMedia(file, kind, priceCents, durationSec) {
+async function uploadMedia(file, kind, priceCents, durationSec, isExplicit) {
   toast('Uploading… ⏳');
   const fd = new FormData();
   fd.append('file', file);
@@ -6156,6 +6214,7 @@ async function uploadMedia(file, kind, priceCents, durationSec) {
   fd.append('kind', kind);
   fd.append('price_cents', priceCents);
   fd.append('duration_sec', durationSec || 0);
+  if (isExplicit) fd.append('is_explicit', '1');
   const headers = {};
   if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
   else if (S.guestToken) headers['X-Guest-Token'] = S.guestToken;
