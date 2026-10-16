@@ -198,6 +198,7 @@ const I18N = {
     your_name: 'Your name',
     aff_agreement_h: '📋 Affiliate Agreement (vR1.0)',
     aff_agree: 'I have read the Affiliate Agreement above and I <b>agree</b> to all terms.',
+    aff_quota_notice: '⚠️ Please read: SlutCamp can end your affiliate status and link at any time, for any reason, without notice. You have one year to bring in at least 10 models. If you are under 10 after a year, SlutCamp will review your account and may end your status — unless your models have earned SlutCamp significant money, in which case your status is extended until you reach 10. The full Agreement governs.',
     aff_accept_btn: 'Accept & Create Affiliate Account',
     aff_must_agree: 'You must accept the Affiliate Agreement to continue.',
     aff_invalid_h: 'This invite link is invalid or expired.',
@@ -502,6 +503,7 @@ const I18N = {
     your_name: 'Tu nombre',
     aff_agreement_h: '📋 Acuerdo de Afiliado (vR1.0)',
     aff_agree: 'He leído el Acuerdo de Afiliado anterior y <b>acepto</b> todos sus términos.',
+    aff_quota_notice: '⚠️ Ten en cuenta: SlutCamp puede cancelar tu estatus y tu enlace de afiliado en cualquier momento, por cualquier motivo, sin previo aviso. Tienes un año para traer al menos 10 modelos. Si después de un año tienes menos de 10, SlutCamp revisará tu cuenta y puede cancelar tu estatus — a menos que tus modelos le hayan generado a SlutCamp una cantidad significativa de dinero, en cuyo caso tu estatus se extenderá hasta que llegues a 10. Rige el Acuerdo completo.',
     aff_accept_btn: 'Aceptar y crear cuenta de afiliado',
     aff_must_agree: 'Debes aceptar el Acuerdo de Afiliado para continuar.',
     aff_invalid_h: 'Este enlace de invitación no es válido o ya expiró.',
@@ -803,6 +805,7 @@ const I18N = {
     your_name: 'Seu nome',
     aff_agreement_h: '📋 Acordo de Afiliado (vR1.0)',
     aff_agree: 'Li o Acordo de Afiliado acima e <b>concordo</b> com todos os termos.',
+    aff_quota_notice: '⚠️ Atenção: a SlutCamp pode encerrar seu status e seu link de afiliado a qualquer momento, por qualquer motivo, sem aviso. Você tem um ano para trazer pelo menos 10 modelos. Se depois de um ano você tiver menos de 10, a SlutCamp revisará sua conta e poderá encerrar seu status — a menos que suas modelos tenham gerado uma quantia significativa para a SlutCamp, caso em que seu status será estendido até você chegar a 10. Vale o Acordo completo.',
     aff_accept_btn: 'Aceitar e criar conta de afiliado',
     aff_must_agree: 'Você deve aceitar o Acordo de Afiliado para continuar.',
     aff_invalid_h: 'Este link de convite é inválido ou expirou.',
@@ -2232,6 +2235,7 @@ function renderSignupFields(role) {
         <div style="font-weight:800;margin-bottom:8px">${t('aff_agreement_h')}</div>
         ${AFFILIATE_AGREEMENT_SECTIONS.map(([h, b]) => `<div style="margin-bottom:10px"><div style="font-weight:700">${esc(h)}</div><div class="small muted">${esc(b)}</div></div>`).join('')}
       </div>
+      <div class="card" style="margin-top:12px;text-align:left"><div class="small">${t('aff_quota_notice')}</div></div>
       <label class="checkbox-row" style="margin-top:12px"><input type="checkbox" id="af-agree">
         <span>${t('aff_agree')}</span></label>
       <div class="lang-row">${langPillsHTML()}</div>
@@ -2657,7 +2661,8 @@ const AFFILIATE_AGREEMENT_SECTIONS = [
   ['6. Conduct Rules', 'You must NOT: share contact info or payment handles; try to take models or fans off-platform; use hate speech. Breaking these rules can get you deactivated immediately.'],
   ['7. Non-Solicitation — Permanent', 'If your recruiter status ends for any reason, you may NEVER recruit or solicit any model you met through SlutCamp to a competing platform. No time limit.'],
   ['8. Confidentiality', 'Do not disclose SlutCamp\'s business methods, commission structures, or internal operations to anyone outside the Company.'],
-  ['9. Disclaimer', 'This is a plain-language summary — NOT legal advice and NOT attorney-reviewed. You are encouraged to have your own attorney review before signing.'],
+  ['9. First-Year Quota — 10 Models in Your First Year', 'You have ONE YEAR from signup to onboard at least 10 models through your link. At the one-year mark SlutCamp reviews your account and may revoke your status if you are below 10 — unless your models have made SlutCamp significant money, in which case your status is extended until you reach 10.'],
+  ['10. Disclaimer', 'This is a plain-language summary — NOT legal advice and NOT attorney-reviewed. You are encouraged to have your own attorney review before signing.'],
 ];
 
 /* Affiliate signup via Corry's invite link — agreement popup required */
@@ -2703,6 +2708,7 @@ async function vAffiliateSignup(code) {
         <div style="font-weight:800;margin-bottom:8px">${t('aff_agreement_h')}</div>
         ${AGREEMENT.map(([t, b]) => `<div style="margin-bottom:10px"><div style="font-weight:700">${esc(t)}</div><div class="small muted">${esc(b)}</div></div>`).join('')}
       </div>
+      <div class="card" style="margin-top:12px;text-align:left"><div class="small">${t('aff_quota_notice')}</div></div>
       <label class="checkbox-row" style="margin-top:12px"><input type="checkbox" id="a-agree">
         <span>${t('aff_agree')}</span></label>
       <div class="lang-row">${langPillsHTML()}</div>
