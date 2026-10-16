@@ -313,6 +313,8 @@ const SEO_CSS = `
   .card .st { font-size:13px; font-weight:700; margin-top:4px; }
   .pitch { font-size:17px; line-height:1.6; color:#ead9e8; }
   .pitch li { margin:10px 0; }
+  .pitch h2 { font-size:22px; margin:28px 0 8px; color:#f5eef4; }
+  .pitch ol li { margin:10px 0; }
   footer { margin-top:44px; text-align:center; color:#9c8a99; font-size:13px; }
 `;
 function seoHead({ title, desc, url, image }) {
@@ -454,13 +456,57 @@ ${seoBrand}
 <ul>
   <li><strong>Keep 60% of everything you earn</strong> — chat, tips, gifts, calls, live shows, bookings. One split, no surprises.</li>
   <li><strong>Built-in discovery</strong> — searchable directory, tags, rankings and a New Models spotlight. Fans find you without you posting anywhere else.</li>
-  <li><strong>Your earnings are protected</strong> — payouts run on a published weekly cycle, and chargeback handling is written into the Terms you sign, so a fan's bank dispute isn't handled on a whim.</li>
+  <li><strong>Your earnings are protected</strong> — payouts run on a published weekly cycle, and chargeback handling is written into the Terms you sign, so a fan's bank dispute isn't handled on a whim. <a href="/payouts">Read our payout promise</a></li>
   <li><strong>Face ID sign-in</strong> — your account unlocks with your face. No password to leak, nothing biometric ever leaves your phone.</li>
   <li><strong>You set your prices</strong> — per-message, per-minute, live rates, games and bookings are yours to price and change anytime.</li>
   <li><strong>ID-verified community</strong> — every model is ID-verified before she can earn, and fans pay through one wallet: no subscription stacking, no games.</li>
 </ul>
 <p style="text-align:center"><a class="cta" href="/">Apply in the app — it's free</a></p>
 <p>Applying takes a few minutes: create your model account, verify your ID, set your prices, and go live. You must be 18+ and able to work legally where you live.</p>
+</div>
+${seoFooter}
+</div></body></html>`);
+});
+
+// GET /payouts — the published payout promise (owner, Oct 16 2026).
+// A plain-language, PUBLIC summary of how models get paid, readable
+// BEFORE signup. Every mechanic stated here is drawn from the shipped
+// Model Agreement (v1.4: section 4 split, section 5 payouts, section
+// 13 hold / chargeback order / fraud) — this page publishes the
+// mechanics, nothing more: it deliberately does NOT promise that the
+// platform absorbs chargebacks. The Agreement governs; the version
+// below is pinned to MODEL_CONTRACT.version by tests so the page can
+// never silently drift from the legal text it summarises.
+app.get('/payouts', (req, res) => {
+  const url = SEO_ORIGIN + '/payouts';
+  res.type('html').set('Cache-Control', 'public, max-age=300').send(`<!DOCTYPE html>
+<html lang="en">
+<head>${seoHead({ title: 'How SlutCamp Pays Models — The Payout Promise | 18+', desc: 'How getting paid works on SlutCamp, in plain language: keep 60% of everything you earn, a 7-day (one-week) payout window, human-reviewed withdrawals, and exactly how chargebacks are handled — all written into the Model Agreement.', url })}</head>
+<body><div class="wrap">
+${seoBrand}
+<h1>The SlutCamp payout promise 💋</h1>
+<div class="pitch">
+<p>Thinking about modelling here? Read this before you sign up. This is exactly how getting paid works on SlutCamp, in plain language — and it isn't marketing copy: every rule below is written into the Model Agreement (version ${MODEL_CONTRACT.version}) that every model reads and signs in the app before she can earn. This page is a summary of those rules; the Agreement itself is the legal text, and the Agreement governs.</p>
+<h2>You keep 60% of everything</h2>
+<p>You keep 60% of everything fans spend on you — chats, calls, gifts, live access, private content, bookings. SlutCamp keeps 40%. One split, on everything, no tiers and no fine-print percentages. You set your own prices inside the app.</p>
+<h2>Your money runs one week behind (the 7-day window)</h2>
+<p>New earnings become withdrawable 7 days after they're earned — your money runs one week behind what you make. The app always shows your available balance separately from earnings still inside their window, so you can see exactly what is payable and what is still clearing.</p>
+<p>Why the wait? Chargeback fraud. When a fan pays by card, his bank can pull the payment back days later. The one-week window means a reversed purchase is usually caught while the money is still on the platform — before it has been paid out — instead of becoming a problem after the fact. The window protects models' payouts and the platform at the same time. If the window ever changes, it is announced in the app, and earnings already inside their window keep the window they started with.</p>
+<h2>Withdrawals are reviewed and paid by a human</h2>
+<p>Request a withdrawal of your available balance in the app, any time. Every payout is then reviewed and paid manually by a person on the SlutCamp team — there are no silent automatic payouts, which is one more check against fraud. Pending requests may take several business days; there is no guaranteed payout date.</p>
+<h2>If a fan charges back</h2>
+<p>Fans pay with prepaid credits. If a fan's credit purchase is charged back, refunded, or otherwise reversed by his bank or card issuer, the reversed money is recovered in this order:</p>
+<ol>
+  <li>The fan's unspent credits from that purchase come back first.</li>
+  <li>Then your unpaid earnings from that fan — earnings still inside their one-week window first, then earnings that already cleared it.</li>
+  <li>If anything is still left over — including because you already withdrew the earnings it relates to — the shortfall becomes a balance you owe, and it is recovered AUTOMATICALLY from your future earnings before anything new becomes withdrawable, until it is repaid in full.</li>
+</ol>
+<p>Read that last step again, because it matters: earnings you have already properly withdrawn are never collected back from you out of pocket. You are never required to make a manual or out-of-pocket payment for a chargeback shortfall. A shortfall is recovered from future earnings only.</p>
+<h2>The fraud exception</h2>
+<p>None of the above protects fraud. Coordinated purchasing, self-dealing (buying from yourself or through accounts you control), chargeback schemes, or any other scheme to manufacture earnings or payouts is fraud. For fraud, SlutCamp may place payouts on hold or under review, reverse earnings, and terminate accounts — and fraudulently obtained earnings are forfeited.</p>
+<p>The legal text is the Model Agreement itself (currently version ${MODEL_CONTRACT.version}) — you will read and sign the full Agreement in the app, including section 5 (Payouts) and section 13 (Payout Holds, Chargeback Reversals &amp; Fraud). If this page and the Agreement ever differ, the Agreement governs.</p>
+<p style="text-align:center"><a class="cta" href="/">Apply in the app — it's free</a></p>
+<p>New here? <a href="/join">See what modelling on SlutCamp looks like</a>.</p>
 </div>
 ${seoFooter}
 </div></body></html>`);
@@ -479,6 +525,7 @@ app.get('/sitemap.xml', (req, res) => {
     entry(SEO_ORIGIN + '/', 'daily', '1.0'),
     entry(SEO_ORIGIN + '/models', 'daily', '0.9'),
     entry(SEO_ORIGIN + '/join', 'weekly', '0.8'),
+    entry(SEO_ORIGIN + '/payouts', 'weekly', '0.8'),
     ...models.map((m) => entry(SEO_ORIGIN + m.url, 'daily', '0.7')),
     ...liveTags.map((t) => entry(SEO_ORIGIN + '/tags/' + seoTagSlug(t), 'weekly', '0.5')),
   ];
