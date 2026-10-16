@@ -30,11 +30,11 @@ Demo accounts are created **only** when the server starts with `SEED_DEMO=1`. A 
 
 | Who | Username | Password | Notes |
 |---|---|---|---|
-| Admin | `admin` | `admin123` | Full moderator dashboard |
-| Model | `bunny` | `model123` | Online, $1.49/msg, $3.99/min |
-| Model | `stacey` | `model123` | Online, $1.49/msg, $3.99/min |
-| Model | `bella` | `model123` | Offline, $1.49/msg, $3.99/min |
-| Fan | `fandemo` | `fan123` | $100 credits |
+| Admin | `admin` | (dev only — see seed()) | Full moderator dashboard |
+| Model | `bunny` | (dev only — see seed()) | Online, $1.49/msg, $3.99/min |
+| Model | `stacey` | (dev only — see seed()) | Online, $1.49/msg, $3.99/min |
+| Model | `bella` | (dev only — see seed()) | Offline, $1.49/msg, $3.99/min |
+| Fan | `fandemo` | (dev only — see seed()) | $100 credits |
 
 Or skip login entirely — guests browse models and get 3 free messages each.
 
