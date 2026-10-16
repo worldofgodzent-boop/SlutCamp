@@ -838,6 +838,46 @@ addColumnIfMissing('invite_links', 'expires_at', "TEXT NOT NULL DEFAULT (datetim
 addColumnIfMissing('invite_links', 'role', "TEXT NOT NULL DEFAULT 'model'");
 addColumnIfMissing('tax_profiles', 'electronic_1099_consent', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('tax_profiles', 'electronic_1099_consent_at', 'TEXT');
+// Payout protection (Oct 16, 2026): earnings maturity + chargeback engine.
+// available_at stamps when a ledger earning becomes withdrawable
+// (NULL = grandfathered/matured; see grandfatherEarningsOnce below).
+addColumnIfMissing('transactions', 'available_at', 'TEXT');
+addColumnIfMissing('platform_stats', 'earnings_hold_days', 'INTEGER NOT NULL DEFAULT 7');
+addColumnIfMissing('platform_stats', 'flag_concentration_pct', 'INTEGER NOT NULL DEFAULT 80');
+addColumnIfMissing('platform_stats', 'flag_concentration_min_cents', 'INTEGER NOT NULL DEFAULT 10000');
+addColumnIfMissing('platform_stats', 'flag_concentration_days', 'INTEGER NOT NULL DEFAULT 30');
+addColumnIfMissing('platform_stats', 'flag_cb_escalate_count', 'INTEGER NOT NULL DEFAULT 2');
+addColumnIfMissing('platform_stats', 'flag_cb_escalate_rate_pct', 'INTEGER NOT NULL DEFAULT 20');
+addColumnIfMissing('platform_stats', 'payout_protection_at', 'TEXT'); // one-time grandfathering marker
+db.exec(`CREATE TABLE IF NOT EXISTS chargebacks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source TEXT NOT NULL,
+  external_id TEXT NOT NULL,
+  fan_id INTEGER NOT NULL REFERENCES users(id),
+  load_ref TEXT,
+  load_txn_id INTEGER REFERENCES transactions(id),
+  amount_cents INTEGER NOT NULL,
+  reason TEXT,
+  recorded_by INTEGER REFERENCES users(id),
+  reversed_fan_cents INTEGER NOT NULL DEFAULT 0,
+  reversed_model_cents INTEGER NOT NULL DEFAULT 0,
+  negative_cents INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'processed',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(source, external_id)
+)`);
+db.exec(`CREATE TABLE IF NOT EXISTS chargeback_allocations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  chargeback_id INTEGER NOT NULL REFERENCES chargebacks(id),
+  model_id INTEGER REFERENCES users(id),
+  step INTEGER NOT NULL,
+  bucket TEXT NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  transaction_id INTEGER REFERENCES transactions(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+)`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_cb_alloc_model ON chargeback_allocations(model_id)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_cb_alloc_cb ON chargeback_allocations(chargeback_id)');
 // Backfill: existing invites without expiry get 6h from creation
 db.exec(`UPDATE invite_links SET expires_at = datetime(created_at, '+6 hours') WHERE expires_at IS NULL OR expires_at = ''`);
 addColumnIfMissing('priority_messages', 'voice', 'INTEGER NOT NULL DEFAULT 0');
@@ -1245,15 +1285,141 @@ const getEntryCents = () => {
 const getWallet = (userId) =>
   db.prepare('SELECT * FROM wallets WHERE user_id = ?').get(userId);
 
-// Model's withdrawable balance: earnings minus paid out minus pending requests
-const getModelAvailable = (userId) => {
+/* ---------------- Payout protection (Oct 16, 2026) ----------------
+   Earnings maturity: every NEW earning is stamped available_at =
+   earned + earnings_hold_days (Manager setting, DEFAULT 7 — the
+   owner's "one week behind" rule). Withdrawable = matured earnings
+   only. The lot walk is the single source of truth: it replays the
+   earner's ledger rows (models via model_cents, recruiters via
+   recruiter_cents — recruiters ride the same wallet + withdrawal
+   path, so the same maturity applies to them) in ledger order.
+   Positive rows open lots; negative rows (refunds, chargeback
+   reversals) consume lots HELD-first, then matured, FIFO inside each
+   bucket; a step-3 'chargeback_adjustment' row skips lots entirely
+   and lands directly in `debt` — a negative adjustment future
+   earnings offset before anything becomes withdrawable. Invariant
+   (pinned by tests): wallet.earnings_cents == matured + holding − debt. */
+
+const getPayoutSettings = () => {
+  const r = db.prepare(`SELECT earnings_hold_days, flag_concentration_pct,
+    flag_concentration_min_cents, flag_concentration_days,
+    flag_cb_escalate_count, flag_cb_escalate_rate_pct
+    FROM platform_stats WHERE id = 1`).get() || {};
+  const pick = (v, d, lo, hi) => (Number.isInteger(v) && v >= lo && v <= hi ? v : d);
+  return {
+    holdDays: pick(r.earnings_hold_days, 7, 0, 60),
+    concentrationPct: pick(r.flag_concentration_pct, 80, 1, 100),
+    concentrationMinCents: pick(r.flag_concentration_min_cents, 10000, 0, 10000000),
+    concentrationDays: pick(r.flag_concentration_days, 30, 1, 365),
+    cbEscalateCount: pick(r.flag_cb_escalate_count, 2, 1, 100),
+    cbEscalateRatePct: pick(r.flag_cb_escalate_rate_pct, 20, 1, 100),
+  };
+};
+const getHoldDays = () => getPayoutSettings().holdDays;
+
+const nowSql = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
+// When an earning made right now becomes withdrawable (same
+// 'YYYY-MM-DD HH:MM:SS' UTC shape as datetime('now')).
+const earningsAvailableAt = () =>
+  new Date(Date.now() + getHoldDays() * 86400000).toISOString().slice(0, 19).replace('T', ' ');
+
+// Replay an earner's ledger into { matured, holding, debt, lots }.
+// opts.fanId restricts the replay to one fan's rows. Lots keep their
+// fan attribution so the chargeback engine can tell one fan's unpaid
+// earnings from another's (see pairUnpaid).
+function replayEarnings(userId, fanId = null) {
+  const rec = db.prepare('SELECT id FROM recruiters WHERE user_id = ?').get(userId);
+  const recId = rec ? rec.id : -1;
+  const rows = db.prepare(`SELECT fan_id, model_id, model_cents, recruiter_cents, available_at, type
+    FROM transactions
+    WHERE is_test = 0 AND type != 'payout'
+      AND ((model_id = ? AND model_cents != 0) OR (recruiter_id = ? AND recruiter_cents != 0))
+      ${fanId ? 'AND fan_id = ?' : ''}
+    ORDER BY id ASC`).all(...(fanId ? [userId, recId, fanId] : [userId, recId]));
+  const now = nowSql();
+  const lots = [];
+  let debt = 0;
+  const consume = (amt) => { // held lots first, then matured; FIFO per bucket
+    let left = amt;
+    for (const heldPass of [true, false]) {
+      for (const lot of lots) {
+        if (!left) break;
+        if ((lot.available_at > now) !== heldPass || lot.amount <= 0) continue;
+        const take = Math.min(lot.amount, left);
+        lot.amount -= take; left -= take;
+      }
+      if (!left) break;
+    }
+    return left;
+  };
+  for (const r of rows) {
+    const amt = r.model_id === userId ? r.model_cents : r.recruiter_cents;
+    if (amt > 0) {
+      let a = amt;
+      if (debt > 0) { const off = Math.min(debt, a); debt -= off; a -= off; }
+      if (a > 0) lots.push({ amount: a, available_at: r.available_at || '1970-01-01 00:00:00', fan_id: r.fan_id });
+    } else if (amt < 0) {
+      // A chargeback step-3 row is a negative ADJUSTMENT, not a reversal
+      // of lots the model still has: it goes straight to debt (future
+      // earnings offset it first) and never eats existing lots — the
+      // wallet decrement and the debt are the same cents, counted once.
+      if (r.type === 'chargeback_adjustment') debt += -amt;
+      else debt += consume(-amt);
+    }
+  }
+  let matured = 0, holding = 0;
+  for (const lot of lots) {
+    if (lot.available_at > now) holding += lot.amount; else matured += lot.amount;
+  }
+  return { matured, holding, debt, lots };
+}
+const walkLots = (userId, fanId = null) => {
+  const { matured, holding, debt } = replayEarnings(userId, fanId);
+  return { matured, holding, debt };
+};
+const getEarningsBreakdown = (userId) => walkLots(userId);
+
+/* What step 2 of a chargeback may still reverse from one (fan, model)
+   pair: the pair's lots that are actually UNPAID. A payout is cash that
+   already left the platform — wallet.paid_out_cents — so lots it paid
+   for are NOT reversible from the balance; booking them as reversed
+   would double-count money that is gone, and the true shortfall would
+   never reach step 3 as debt. Attribution convention: payouts consumed
+   the earner's lots FIFO in ledger order (the order the replay walks),
+   whichever fan they came from. Pending withdrawal REQUESTS are not
+   subtracted — a request reserves nothing the pay path doesn't re-check
+   (it refuses once a chargeback has eaten the balance). */
+function pairUnpaid(userId, fanId) {
+  const { lots } = replayEarnings(userId);
+  const w = getWallet(userId);
+  let paidLeft = w ? w.paid_out_cents : 0;
+  const now = nowSql();
+  let holding = 0, matured = 0;
+  for (const lot of lots) {
+    if (paidLeft > 0) {
+      const gone = Math.min(lot.amount, paidLeft);
+      lot.amount -= gone; paidLeft -= gone;
+    }
+    if (lot.amount <= 0 || lot.fan_id !== fanId) continue;
+    if (lot.available_at > now) holding += lot.amount; else matured += lot.amount;
+  }
+  return { holding, matured };
+}
+
+// Model's withdrawable balance: MATURED earnings only, minus paid out,
+// minus pending requests, minus any negative adjustment (debt).
+// Server-enforced: the withdrawal request flow and both Manager payout
+// paths all go through this one function.
+const getModelAvailableRaw = (userId) => {
   const w = getWallet(userId);
   if (!w) return 0;
   const pending = db.prepare(
     `SELECT COALESCE(SUM(amount_cents), 0) AS s FROM withdrawals WHERE model_id = ? AND status = 'pending'`
   ).get(userId).s;
-  return w.earnings_cents - w.paid_out_cents - pending;
+  const b = getEarningsBreakdown(userId);
+  return b.matured - b.debt - w.paid_out_cents - pending;
 };
+const getModelAvailable = (userId) => Math.max(0, getModelAvailableRaw(userId));
 
 const getUserPublic = (u) => ({
   id: u.id, username: u.username, role: u.role,
@@ -1301,9 +1467,9 @@ function chargeFan(fanId, modelId, grossCents, type, note, ip = null) {
         .run(recruiterCents, recruiterUserId);
     }
     db.prepare(`INSERT INTO transactions
-      (fan_id, model_id, type, gross_cents, model_cents, platform_cents, recruiter_id, recruiter_cents, note, ip)
-      VALUES (?,?,?,?,?,?,?,?,?,?)`)
-      .run(fanId, modelId, type, grossCents, modelCents, platformCents, recruiterId, recruiterCents, note || null, ip);
+      (fan_id, model_id, type, gross_cents, model_cents, platform_cents, recruiter_id, recruiter_cents, note, ip, available_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+      .run(fanId, modelId, type, grossCents, modelCents, platformCents, recruiterId, recruiterCents, note || null, ip, earningsAvailableAt());
   });
   if (modelId) recomputeModelRank(modelId);
   return { modelCents, platformCents, recruiterCents };
@@ -1372,6 +1538,211 @@ function recomputeAllModelRanks() {
   const ids = db.prepare('SELECT user_id FROM models').all();
   for (const r of ids) recomputeModelRank(r.user_id);
   return ids.length;
+}
+/* ---------------- Chargeback engine (Payout Protection) ----------------
+   applyChargeback reverses a disputed credit load in a STRICT order,
+   each step capped at what is actually there, every reversal its own
+   append-only ledger row + a chargeback_allocations row (history is
+   never edited):
+     1. the fan's UNSPENT credits from that load (wallet down),
+     2. the models' UNPAID earnings from that fan — held lots first,
+        then matured lots (recruiter cents are NOT clawed back; the
+        platform absorbs the recruiter share of a charged-back load).
+        UNPAID means still on the platform: earnings the model already
+        withdrew are cash gone, so pairUnpaid nets payouts out of the
+        pair's lots (FIFO) and step 2 can never "reverse" money that
+        already left — that shortfall belongs to step 3,
+     3. any remainder becomes a negative adjustment (a debt) against
+        the model with the largest lifetime earnings from that fan —
+        INCLUDING the case where the earnings were already withdrawn
+        before the chargeback landed. The debt is repaid AUTOMATICALLY:
+        the lot walk offsets every future earning against it before
+        anything becomes withdrawable, with no manual step and no
+        out-of-pocket payment ever demanded for a chargeback shortfall.
+        If no model ever earned from this fan, the platform absorbs it.
+   Exactly-once: idempotent on (source, external_id); a replay is a
+   no-op, and a second DISTINCT chargeback on the same load processes
+   only its own amount (per-load reversals never exceed the load).
+   Crypto loads can never be charged back — refused with a clear error.
+   Attribution convention (wallets are fungible): step 1 uses the fan's
+   live credit balance, capped by the disputed load's unreversed
+   remainder when a load is referenced; step 2 walks each (fan, model)
+   pair's own ledger rows in order, so a pair can never be reversed
+   below zero net. A chargeback NEVER auto-bans or freezes the fan —
+   it only leaves the record the fraud flags count; the owner decides. */
+function applyChargeback({ source, external_id, fan_id, load_ref = null, amount_cents, reason = null, recorded_by = null }) {
+  source = String(source || 'manual');
+  external_id = String(external_id || '').trim();
+  const amount = parseInt(amount_cents);
+  if (!external_id) return { error: 'missing_external_id' };
+  if (!Number.isInteger(amount) || amount <= 0) return { error: 'bad_amount' };
+  if (source === 'crypto') return { error: 'crypto_not_chargebackable' };
+  const fan = db.prepare('SELECT * FROM users WHERE id = ?').get(parseInt(fan_id));
+  if (!fan) return { error: 'fan_not_found' };
+
+  // Resolve the disputed load when a reference is given. load_ref may be
+  // a CCBill order id, a CCBill order token, or a crypto invoice id
+  // (crypto → refused: it can never be charged back).
+  let loadTxn = null, loadCap = null, loadRefStored = null;
+  if (load_ref !== null && load_ref !== undefined && String(load_ref) !== '') {
+    const rawRef = String(load_ref);
+    const forceCrypto = rawRef.startsWith('crypto_invoice:');
+    const ref = rawRef.replace(/^(ccbill_order|crypto_invoice):/, '');
+    const order = forceCrypto ? null : db.prepare('SELECT * FROM ccbill_orders WHERE id = ? OR token = ?')
+      .get(/^\d+$/.test(ref) ? parseInt(ref) : -1, ref);
+    if (order) {
+      if (order.user_id !== fan.id) return { error: 'load_fan_mismatch' };
+      loadTxn = db.prepare("SELECT * FROM transactions WHERE type = 'ccbill_load' AND note LIKE ?")
+        .get(`%order #${order.id}%`) || null;
+      loadCap = order.amount_cents;
+      loadRefStored = `ccbill_order:${order.id}`;
+    } else if (/^\d+$/.test(ref)
+               && db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='crypto_invoices'").get()) {
+      const inv = db.prepare('SELECT * FROM crypto_invoices WHERE id = ?').get(parseInt(ref));
+      if (inv) return { error: 'crypto_not_chargebackable' };
+    }
+    if (!loadRefStored) return { error: 'load_not_found' };
+  }
+
+  // Per-load cap: total reversals against one load never exceed the load.
+  let remaining = amount;
+  if (loadCap !== null) {
+    const prior = db.prepare('SELECT COALESCE(SUM(amount_cents),0) AS s FROM chargebacks WHERE load_ref = ?')
+      .get(loadRefStored).s;
+    remaining = Math.min(remaining, Math.max(0, loadCap - prior));
+  }
+
+  let cbId = null;
+  const reversed = { fan_cents: 0, model_cents: 0, negative_cents: 0, platform_absorbed_cents: 0 };
+  try {
+    txn(() => {
+      const info = db.prepare(`INSERT INTO chargebacks
+        (source, external_id, fan_id, load_ref, load_txn_id, amount_cents, reason, recorded_by)
+        VALUES (?,?,?,?,?,?,?,?)`).run(source, external_id, fan.id, loadRefStored,
+        loadTxn ? loadTxn.id : null, amount, reason ? String(reason).slice(0, 300) : null, recorded_by);
+      cbId = Number(info.lastInsertRowid);
+      const noteFor = (step) => `Chargeback ${source}:${external_id} (step ${step})`;
+      const alloc = (modelId, step, bucket, cents, txnId) => db.prepare(
+        `INSERT INTO chargeback_allocations (chargeback_id, model_id, step, bucket, amount_cents, transaction_id)
+         VALUES (?,?,?,?,?,?)`).run(cbId, modelId, step, bucket, cents, txnId || null);
+
+      /* Step 1 — the fan's unspent credits from the load. */
+      if (remaining > 0) {
+        const w = getWallet(fan.id);
+        const take = Math.min(remaining, w ? w.credits_cents : 0);
+        if (take > 0) {
+          db.prepare('UPDATE wallets SET credits_cents = credits_cents - ? WHERE user_id = ?').run(take, fan.id);
+          const t = db.prepare(`INSERT INTO transactions (fan_id, model_id, type, gross_cents, model_cents, note)
+            VALUES (?, NULL, 'chargeback', ?, 0, ?)`).run(fan.id, -take, noteFor(1));
+          alloc(null, 1, 'fan_credits', take, Number(t.lastInsertRowid));
+          reversed.fan_cents = take; remaining -= take;
+        }
+      }
+
+      /* Step 2 — models' unpaid earnings from this fan, held first.
+         pairUnpaid nets out lots already paid out in cash; what she
+         already withdrew is not reversible here and falls to step 3. */
+      if (remaining > 0) {
+        const pairs = db.prepare(`SELECT model_id FROM transactions
+          WHERE fan_id = ? AND model_id IS NOT NULL AND is_test = 0 AND type != 'payout'
+          GROUP BY model_id HAVING SUM(model_cents) > 0
+          ORDER BY SUM(model_cents) DESC`).all(fan.id);
+        for (const p of pairs) {
+          if (remaining <= 0) break;
+          const bd = pairUnpaid(p.model_id, fan.id);
+          for (const bucket of ['holding', 'matured']) {
+            if (remaining <= 0) break;
+            const take = Math.min(remaining, bd[bucket]);
+            if (take <= 0) continue;
+            db.prepare('UPDATE wallets SET earnings_cents = earnings_cents - ? WHERE user_id = ?').run(take, p.model_id);
+            const t = db.prepare(`INSERT INTO transactions (fan_id, model_id, type, gross_cents, model_cents, note)
+              VALUES (?, ?, 'chargeback', 0, ?, ?)`).run(fan.id, p.model_id, -take, noteFor(2));
+            alloc(p.model_id, 2, bucket === 'holding' ? 'held' : 'matured', take, Number(t.lastInsertRowid));
+            reversed.model_cents += take; remaining -= take;
+          }
+        }
+      }
+
+      /* Step 3 — remainder: negative adjustment vs the model with the
+         largest lifetime earnings from this fan; else platform absorbs. */
+      if (remaining > 0) {
+        const top = db.prepare(`SELECT model_id FROM transactions
+          WHERE fan_id = ? AND model_id IS NOT NULL AND is_test = 0 AND type != 'payout' AND model_cents > 0
+          GROUP BY model_id ORDER BY SUM(model_cents) DESC LIMIT 1`).get(fan.id);
+        if (top) {
+          db.prepare('UPDATE wallets SET earnings_cents = earnings_cents - ? WHERE user_id = ?').run(remaining, top.model_id);
+          const t = db.prepare(`INSERT INTO transactions (fan_id, model_id, type, gross_cents, model_cents, note)
+            VALUES (?, ?, 'chargeback_adjustment', 0, ?, ?)`).run(fan.id, top.model_id, -remaining, noteFor(3));
+          alloc(top.model_id, 3, 'negative', remaining, Number(t.lastInsertRowid));
+          reversed.negative_cents = remaining; remaining = 0;
+        } else {
+          alloc(null, 3, 'platform_absorbed', remaining, null);
+          reversed.platform_absorbed_cents = remaining; remaining = 0;
+        }
+      }
+
+      db.prepare(`UPDATE chargebacks SET reversed_fan_cents = ?, reversed_model_cents = ?,
+        negative_cents = ? WHERE id = ?`).run(reversed.fan_cents, reversed.model_cents,
+        reversed.negative_cents + reversed.platform_absorbed_cents, cbId);
+    });
+  } catch (e) {
+    if (String(e.message || '').includes('UNIQUE constraint failed: chargebacks'))
+      return { ok: true, duplicate: true };
+    throw e;
+  }
+  console.log(`[chargeback] ${source}:${external_id} fan #${fan.id} $${(amount / 100).toFixed(2)} → fan ${reversed.fan_cents}¢, models ${reversed.model_cents}¢, negative ${reversed.negative_cents}¢, absorbed ${reversed.platform_absorbed_cents}¢ (recorded_by ${recorded_by || 'system'})`);
+  return { ok: true, chargeback_id: cbId, reversed };
+}
+
+/* Fraud flags — ADVISORY ONLY. They never block, hold, or reject a
+   payout by themselves; the owner sees them in the Manager before
+   approving. Thresholds are the Manager-editable flag_* settings. */
+function getModelFraudFlags(modelId) {
+  const s = getPayoutSettings();
+  const flags = [];
+  // (a) Concentration: one fan's spend on this model is ≥ pct of that
+  // fan's lifetime spend, the fan account is younger than the window,
+  // and the fan's lifetime spend clears the floor.
+  const conc = db.prepare(`SELECT t.fan_id, u.display_name AS fan_name, u.created_at,
+      SUM(t.gross_cents) AS pair_spend,
+      (SELECT COALESCE(SUM(gross_cents),0) FROM transactions
+        WHERE fan_id = t.fan_id AND is_test = 0 AND gross_cents > 0 AND model_id IS NOT NULL) AS life_spend
+    FROM transactions t JOIN users u ON u.id = t.fan_id
+    WHERE t.model_id = ? AND t.is_test = 0 AND t.gross_cents > 0
+    GROUP BY t.fan_id`).all(modelId);
+  for (const r of conc) {
+    if (r.life_spend < s.concentrationMinCents) continue;
+    if (r.pair_spend * 100 < r.life_spend * s.concentrationPct) continue;
+    const ageDays = (Date.now() - new Date(String(r.created_at).replace(' ', 'T') + 'Z').getTime()) / 86400000;
+    if (!(ageDays < s.concentrationDays)) continue;
+    flags.push({ kind: 'concentration', level: 'info', fan_id: r.fan_id, fan_name: r.fan_name,
+      label: `New fan, concentrated spend — ${r.fan_name || 'a fan'} put ${Math.round(r.pair_spend * 100 / r.life_spend)}% of their ${fmt$(r.life_spend)} lifetime spend on this model within their first ${s.concentrationDays} days` });
+  }
+  // (b) Chargeback rate: model-attributed chargebacks ÷ attributed
+  // loads (loads by fans who have spent with this model).
+  const cbCount = db.prepare(`SELECT COUNT(DISTINCT chargeback_id) AS n FROM chargeback_allocations
+    WHERE model_id = ? AND step IN (2,3)`).get(modelId).n;
+  if (cbCount > 0) {
+    const loadCount = db.prepare(`SELECT COUNT(*) AS n FROM transactions
+      WHERE type IN ('ccbill_load','crypto_load') AND fan_id IN
+        (SELECT DISTINCT fan_id FROM transactions WHERE model_id = ? AND is_test = 0 AND fan_id IS NOT NULL)`)
+      .get(modelId).n;
+    const rate = loadCount > 0 ? cbCount / loadCount : 1;
+    const escalated = cbCount >= s.cbEscalateCount || rate >= s.cbEscalateRatePct / 100;
+    flags.push({ kind: 'chargeback_rate', level: escalated ? 'escalated' : 'info',
+      label: `${cbCount} chargeback${cbCount === 1 ? '' : 's'} across ${loadCount} attributed load${loadCount === 1 ? '' : 's'} (${Math.round(rate * 100)}%)` });
+  }
+  // (c) Shared payment signal: ≥2 fans who spent with this model used
+  // the same card fingerprint at checkout (purchase_attempts). No
+  // signup/login IP exists in the schema, so IP matching is NOT done.
+  const shared = db.prepare(`SELECT pa.card_fingerprint AS fp, COUNT(DISTINCT pa.user_id) AS fans
+    FROM purchase_attempts pa
+    WHERE pa.card_fingerprint IS NOT NULL AND pa.user_id IN
+      (SELECT DISTINCT fan_id FROM transactions WHERE model_id = ? AND is_test = 0 AND fan_id IS NOT NULL)
+    GROUP BY pa.card_fingerprint HAVING COUNT(DISTINCT pa.user_id) >= 2`).all(modelId);
+  for (const r of shared) flags.push({ kind: 'shared_card', level: 'info',
+    label: `${r.fans} fans who spent with this model share a payment card fingerprint` });
+  return flags;
 }
 
 /* ---------------- identity: logged-in user OR guest ---------------- */
@@ -2259,6 +2630,21 @@ sendPendingModelIdVerifies();
 sendPendingModelAffiliates();
 try { const n = announceGameCategoryToModels(); if (n) console.log(`[game] Category announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceAgreement12ToModels(); if (n) console.log(`[contract] Agreement v1.2 announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
+
+// One-time grandfathering for payout protection (Oct 16, 2026): every
+// earning recorded BEFORE this feature existed counts as fully matured —
+// its available_at becomes its own earn date, so no existing balance is
+// ever trapped by the new hold window. Runs exactly once (marker on
+// platform_stats.payout_protection_at).
+(function grandfatherEarningsOnce() {
+  try {
+    const row = db.prepare('SELECT payout_protection_at FROM platform_stats WHERE id = 1').get();
+    if (!row || row.payout_protection_at) return;
+    db.prepare('UPDATE transactions SET available_at = created_at WHERE available_at IS NULL').run();
+    db.prepare("UPDATE platform_stats SET payout_protection_at = datetime('now') WHERE id = 1").run();
+    console.log('[payout] Existing earnings grandfathered as matured (payout protection live).');
+  } catch (e) { console.log('[payout] grandfathering failed:', e.message); }
+})();
 
 // One-time pre-launch cleanup (Corry, Oct 12 2026): every cent on the
 // platform so far is TEST money — demo credits only, no real payment has
@@ -4391,10 +4777,10 @@ function logPurchaseAttempt(userId, pkg, amountCents, cardFingerprint, ip, statu
 }
 
 // Model independent-contractor agreement (served to models for signing)
-const CONTRACT_VERSION = '1.2';
+const CONTRACT_VERSION = '1.3';
 const MODEL_CONTRACT = {
   version: CONTRACT_VERSION,
-  updated: 'October 15, 2026',
+  updated: 'October 16, 2026',
   sections: [
     {
       title: '1. Parties',
@@ -4414,7 +4800,7 @@ const MODEL_CONTRACT = {
     },
     {
       title: '5. Payouts',
-      body: 'You add your bank details in the app and request withdrawals of your available balance at any time. Payouts are processed manually by SlutCamp on the Company\'s own schedule — there is no guaranteed payout date. Pending withdrawal requests may take several business days.',
+      body: 'You add your bank details in the app and request withdrawals of your available balance at any time. Payouts are processed manually by SlutCamp on the Company\'s own schedule — there is no guaranteed payout date. Pending withdrawal requests may take several business days. Your available balance only includes earnings that have cleared the payout window described in section 13.',
     },
     {
       title: '6. Content Rights',
@@ -4445,17 +4831,21 @@ const MODEL_CONTRACT = {
       body: 'You control your own 1-on-1 schedule: you set the days and hours when you take private 1-on-1 bookings, and how many you accept per day and per week. A confirmed booking reserves your time for that fan. The platform will send you reminder notices before each booking — 3 days before, 3 hours before, and 15 minutes before. You must start a booked 1-on-1 within 5 minutes of its scheduled start time. If you do not start in time, the fan is automatically refunded in full and receives an apology from the platform, and that booking pays you nothing. If you start on time and the fan does not join within 3 minutes, that is a fan no-show: the fan receives no refund, and the booking is paid to you as earned. You may also get FaceTime requests while you are busy: when you accept a request during another call, the fan joins your waiting list and can see his place in line and his estimated wait. When your call ends, the next fan in line gets a 90-second window to join. By accepting a request, you commit to taking that fan\'s call when his turn comes.',
     },
     {
-      title: '13. Plain-Language Disclaimer',
+      title: '13. Payout Holds, Chargeback Reversals & Fraud',
+      body: 'PAYOUT HOLD: Your earnings become eligible for withdrawal 7 days after they are earned — your money runs one week behind what you make. The app shows your available balance separately from earnings still inside their window. The Company publishes the current window in the app and may change it with notice in the app; earnings already inside their window keep the window they started with. CHARGEBACK REVERSALS: Fans pay with prepaid credits. If a fan\'s credit purchase is charged back, refunded, or otherwise reversed by their bank or card issuer, the Company may reverse the money in this order: (1) the fan\'s unspent credits from that purchase; (2) your unpaid earnings from that fan — earnings still inside their payout window first, then earnings that already cleared it; and (3) any amount left over becomes a negative adjustment on your account, which is taken out of your future earnings before anything new becomes withdrawable. Earnings you have already properly withdrawn are never collected back from you out of pocket. If a chargeback exceeds the unpaid earnings that can be reversed under (1) and (2) — including because you already withdrew the earnings it relates to — the difference becomes a balance you owe the Company. That balance is recovered automatically: the system deducts it from your future earnings before anything new becomes withdrawable, until it is repaid in full. You are never required to make a manual or out-of-pocket payment for a chargeback shortfall. This paragraph does not protect fraud — fraudulently obtained earnings are forfeited under the FRAUD rules that follow. FRAUD: Coordinated purchasing, self-dealing (buying from yourself or through accounts you control), chargeback schemes, or any other scheme to manufacture earnings or payouts is fraud, in addition to the conduct rules in section 7. For fraud, the Company may place payouts on hold or under review, reverse earnings, and terminate accounts; fraudulently obtained earnings are forfeited.',
+    },
+    {
+      title: '14. Plain-Language Disclaimer',
       body: 'This is a plain-language summary written for clarity — it is NOT legal advice, and it has not been reviewed by an attorney. The Company strongly recommends you have your own attorney review this Agreement before signing. If any part of this Agreement is found unenforceable, the rest still applies.',
     },
   ],
 };
 
 /* Recruiter agreement — for models/partners who recruit other models */
-const RECRUITER_CONTRACT_VERSION = 'R1.0';
+const RECRUITER_CONTRACT_VERSION = 'R1.1';
 const RECRUITER_CONTRACT = {
   version: RECRUITER_CONTRACT_VERSION,
-  updated: 'October 12, 2026',
+  updated: 'October 16, 2026',
   sections: [
     {
       title: '1. Parties',
@@ -4471,7 +4861,7 @@ const RECRUITER_CONTRACT = {
     },
     {
       title: '4. Your Cut',
-      body: 'You earn 20% of everything each model you recruit earns on the platform (their 60% share — your cut comes from the Company\'s portion, not from the model). The model keeps her full 60%. Payments are processed on the Company\'s payout schedule.',
+      body: 'You earn 20% of everything each model you recruit earns on the platform (their 60% share — your cut comes from the Company\'s portion, not from the model). The model keeps her full 60%. Payments are processed on the Company\'s payout schedule. Your earnings become eligible for payout 7 days after they are earned, under the same payout window the models see in the app.',
     },
     {
       title: '5. Termination — At Will',
@@ -5062,7 +5452,9 @@ app.get('/api/model/payout-account', identMiddleware, requireUser, requireRole('
 app.get('/api/model/withdrawals', identMiddleware, requireUser, requireRole('model', 'recruiter'), (req, res) => {
   const rows = db.prepare(`SELECT id, amount_cents, status, requested_at, decided_at, note
                            FROM withdrawals WHERE model_id = ? ORDER BY id DESC`).all(req.user.id);
-  res.json({ withdrawals: rows, available_cents: getModelAvailable(req.user.id) });
+  const bd = getEarningsBreakdown(req.user.id);
+  res.json({ withdrawals: rows, available_cents: getModelAvailable(req.user.id),
+    holding_cents: bd.holding, negative_adjustment_cents: bd.debt, hold_days: getHoldDays() });
 });
 
 // Request a withdrawal (pending until Asce marks it paid)
@@ -8675,7 +9067,7 @@ app.get('/api/recruiter/dashboard', identMiddleware, requireUser, requireRole('r
     model_count: models.length,
     earnings_cents: wallet.earnings_cents,
     paid_out_cents: wallet.paid_out_cents,
-    available_cents: wallet.earnings_cents - wallet.paid_out_cents - pending,
+    available_cents: getModelAvailable(req.user.id),
   });
 });
 
@@ -8690,7 +9082,23 @@ const cryptoSvc = createCryptoService({ db, txn, notifyUser, packages: CREDIT_PA
 
 /* ---------------- CCBill card loads (FlexForms Dynamic Pricing) ---------------- */
 const { createCcbillService } = require('./lib/ccbill');
-const ccbillSvc = createCcbillService({ db, txn, notifyUser });
+const ccbillSvc = createCcbillService({ db, txn, notifyUser,
+  // Payout protection hook: CCBill reversal events (chargeback / refund /
+  // void) route into the clawback engine, idempotent on
+  // (source, external_id). DORMANT until CCBill is integrated — the exact
+  // live event names/fields must be confirmed against the real CCBill
+  // account at integration time; until then the Manager's "Record
+  // chargeback" action is the working entry point.
+  onReversalEvent: ({ order, payload }) => applyChargeback({
+    source: 'ccbill',
+    external_id: payload.transactionId || payload.transaction_id
+      || payload.subscriptionId || payload.subscription_id || `ccbill-order-${order.id}`,
+    fan_id: order.user_id, load_ref: String(order.id),
+    amount_cents: order.amount_cents,
+    reason: `CCBill ${payload.eventType || payload.event_type || 'reversal'}`,
+    recorded_by: null,
+  }),
+});
 
 app.get('/api/ccbill/config', (req, res) => {
   res.json({ configured: ccbillSvc.configured(), max_cents: ccbillSvc.maxCents() });
@@ -9106,12 +9514,18 @@ app.post('/api/admin/fans/:id/credits', ...adminOnly, (req, res) => {
 });
 
 app.get('/api/admin/payouts', ...adminOnly, (req, res) => {
-  res.json({
-    payouts: db.prepare(`
+  const payouts = db.prepare(`
       SELECT u.id, u.display_name, w.earnings_cents, w.paid_out_cents,
              (w.earnings_cents - w.paid_out_cents) AS pending_cents
       FROM users u JOIN wallets w ON w.user_id = u.id
-      WHERE u.role = 'model' ORDER BY pending_cents DESC`).all(),
+      WHERE u.role = 'model' ORDER BY pending_cents DESC`).all()
+    .map((p) => {
+      const bd = getEarningsBreakdown(p.id);
+      return { ...p, withdrawable_cents: getModelAvailable(p.id), holding_cents: bd.holding,
+        negative_adjustment_cents: bd.debt, flags: getModelFraudFlags(p.id) };
+    });
+  res.json({
+    payouts,
     history: db.prepare(`
       SELECT t.*, u.display_name AS model_name FROM transactions t
       JOIN users u ON u.id = t.model_id
@@ -9123,25 +9537,43 @@ app.post('/api/admin/payouts/:id', ...adminOnly, (req, res) => {
   const amount = parseInt(req.body.amount_cents);
   const u = db.prepare(`SELECT * FROM users WHERE id = ? AND role = 'model'`).get(req.params.id);
   if (!u) return res.status(404).json({ error: 'not_found' });
-  const wallet = getWallet(u.id);
-  const pending = wallet.earnings_cents - wallet.paid_out_cents;
-  if (!Number.isInteger(amount) || amount <= 0 || amount > pending)
-    return res.status(400).json({ error: 'bad_amount', pending_cents: pending });
+  // Payout protection: a direct payout can never exceed the model's
+  // WITHDRAWABLE balance (matured earnings − paid out − pending
+  // withdrawals − negative adjustments) — same rule as withdrawal requests.
+  const withdrawable = getModelAvailable(u.id);
+  if (!Number.isInteger(amount) || amount <= 0)
+    return res.status(400).json({ error: 'bad_amount', withdrawable_cents: withdrawable });
+  if (amount > withdrawable)
+    return res.status(400).json({ error: 'exceeds_withdrawable', withdrawable_cents: withdrawable });
   db.prepare('UPDATE wallets SET paid_out_cents = paid_out_cents + ? WHERE user_id = ?').run(amount, u.id);
   db.prepare(`INSERT INTO transactions (model_id, type, gross_cents, model_cents, note, ip)
               VALUES (?, 'payout', ?, ?, 'Paid out to model', ?)`).run(u.id, amount, amount, clientIp(req));
-  res.json({ ok: true, pending_cents: pending - amount });
+  res.json({ ok: true, pending_cents: withdrawable - amount });
 });
 
-// Admin: all withdrawal requests with full bank details (to send the money)
+// Admin: all withdrawal requests with full bank details (to send the money).
+// Each row also carries the model's payout-protection state (withdrawable
+// vs still-holding vs negative adjustment) and advisory fraud flags, so
+// the owner sees them BEFORE approving. Flags never block approval.
 app.get('/api/admin/withdrawals', ...adminOnly, (req, res) => {
-  res.json({ withdrawals: db.prepare(`
+  const rows = db.prepare(`
     SELECT w.id, w.model_id, w.amount_cents, w.status, w.requested_at, w.decided_at, w.note,
            u.display_name AS model_name, u.username AS model_username, u.role AS user_role,
            pa.holder_name, pa.routing_number, pa.account_number
     FROM withdrawals w JOIN users u ON u.id = w.model_id
     LEFT JOIN payout_accounts pa ON pa.model_id = w.model_id
-    ORDER BY CASE w.status WHEN 'pending' THEN 0 WHEN 'paid' THEN 1 ELSE 2 END, w.id DESC`).all() });
+    ORDER BY CASE w.status WHEN 'pending' THEN 0 WHEN 'paid' THEN 1 ELSE 2 END, w.id DESC`).all();
+  const cache = new Map();
+  const enrich = (modelId) => {
+    if (!cache.has(modelId)) {
+      const bd = getEarningsBreakdown(modelId);
+      cache.set(modelId, { withdrawable_cents: getModelAvailable(modelId),
+        holding_cents: bd.holding, negative_adjustment_cents: bd.debt,
+        flags: getModelFraudFlags(modelId) });
+    }
+    return cache.get(modelId);
+  };
+  res.json({ withdrawals: rows.map((w) => ({ ...w, ...enrich(w.model_id) })) });
 });
 
 // Admin: mark a withdrawal paid (money sent manually outside the app)
@@ -9149,6 +9581,13 @@ app.post('/api/admin/withdrawals/:id/pay', ...adminOnly, (req, res) => {
   const w = db.prepare('SELECT * FROM withdrawals WHERE id = ?').get(req.params.id);
   if (!w) return res.status(404).json({ error: 'not_found' });
   if (w.status !== 'pending') return res.status(409).json({ error: 'not_pending' });
+  // Payout protection: never pay out more than the model's withdrawable
+  // balance (this request itself added back, since it is part of it —
+  // computed on the UNCLAMPED balance so a clawback-created negative
+  // adjustment correctly eats into the request first).
+  const cap = Math.max(0, getModelAvailableRaw(w.model_id) + w.amount_cents);
+  if (w.amount_cents > cap)
+    return res.status(400).json({ error: 'exceeds_withdrawable', withdrawable_cents: cap });
   db.prepare(`UPDATE withdrawals SET status = 'paid', decided_at = datetime('now') WHERE id = ?`).run(w.id);
   db.prepare('UPDATE wallets SET paid_out_cents = paid_out_cents + ? WHERE user_id = ?').run(w.amount_cents, w.model_id);
   db.prepare(`INSERT INTO transactions (model_id, type, gross_cents, model_cents, note, ip)
@@ -9314,6 +9753,42 @@ app.get('/api/admin/purchase-attempts', ...adminOnly, (req, res) => {
   res.json({ attempts: rows });
 });
 
+/* ------------------------------------------------------------------ */
+/* Payout protection: chargebacks (Manager)                             */
+/* "Record chargeback" is the working entry point for the clawback      */
+/* engine until CCBill is integrated; the CCBill webhook hook in        */
+/* lib/ccbill.js calls the same engine when reversal events arrive.     */
+/* ------------------------------------------------------------------ */
+
+app.get('/api/admin/chargebacks', ...adminOnly, (req, res) => {
+  const rows = db.prepare(`SELECT c.*, uf.display_name AS fan_name, uf.username AS fan_username,
+      ur.display_name AS recorded_by_name
+    FROM chargebacks c JOIN users uf ON uf.id = c.fan_id
+    LEFT JOIN users ur ON ur.id = c.recorded_by
+    ORDER BY c.id DESC LIMIT 100`).all();
+  res.json({ chargebacks: rows.map((c) => ({ ...c,
+    allocations: db.prepare(`SELECT a.*, u.display_name AS model_name
+      FROM chargeback_allocations a LEFT JOIN users u ON u.id = a.model_id
+      WHERE a.chargeback_id = ? ORDER BY a.id`).all(c.id) })) });
+});
+
+// Record a chargeback: reverses in the engine's strict order
+// (fan's unspent credits → models' held-then-matured earnings →
+// negative adjustment). Idempotent on (source, external_id).
+app.post('/api/admin/chargebacks', ...adminOnly, (req, res) => {
+  const fanId = parseInt(req.body.user_id || req.body.fan_id);
+  const amount = parseInt(req.body.amount_cents);
+  const externalId = String(req.body.external_id || '').trim();
+  if (!Number.isInteger(fanId)) return res.status(400).json({ error: 'bad_fan' });
+  if (!Number.isInteger(amount) || amount <= 0) return res.status(400).json({ error: 'bad_amount' });
+  if (!externalId) return res.status(400).json({ error: 'missing_external_id' });
+  const r = applyChargeback({ source: String(req.body.source || 'manual'), external_id: externalId,
+    fan_id: fanId, load_ref: req.body.load_ref ?? null, amount_cents: amount,
+    reason: req.body.reason || null, recorded_by: req.user.id });
+  if (r.error) return res.status(400).json({ error: r.error });
+  res.json(r);
+});
+
 app.put('/api/admin/settings', ...adminOnly, (req, res) => {
   const out = { ok: true };
   if (req.body.commission_pct !== undefined) {
@@ -9336,6 +9811,24 @@ app.put('/api/admin/settings', ...adminOnly, (req, res) => {
       return res.status(400).json({ error: 'bad_entry' });
     db.prepare('UPDATE platform_stats SET explicit_entry_cents = ? WHERE id = 1').run(e);
     out.explicit_entry_cents = e;
+  }
+  // Payout protection: earnings hold window + fraud-flag thresholds.
+  const ppFields = [
+    ['earnings_hold_days', 0, 60, 'bad_hold_days'],
+    ['flag_concentration_pct', 1, 100, 'bad_flag_pct'],
+    ['flag_concentration_min_cents', 0, 10000000, 'bad_flag_min'],
+    ['flag_concentration_days', 1, 365, 'bad_flag_days'],
+    ['flag_cb_escalate_count', 1, 100, 'bad_flag_cb_count'],
+    ['flag_cb_escalate_rate_pct', 1, 100, 'bad_flag_cb_rate'],
+  ];
+  for (const [field, lo, hi, err] of ppFields) {
+    if (req.body[field] !== undefined) {
+      const v = parseInt(req.body[field]);
+      if (!Number.isInteger(v) || v < lo || v > hi)
+        return res.status(400).json({ error: err });
+      db.prepare(`UPDATE platform_stats SET ${field} = ? WHERE id = 1`).run(v);
+      out[field] = v;
+    }
   }
   res.json(out);
 });
