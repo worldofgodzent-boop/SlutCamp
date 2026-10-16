@@ -44,9 +44,9 @@ Or skip login entirely — guests browse models and get 3 free messages each.
 - Live explicit: **$4.99/minute** (models can change their own)
 - PPV photo/video: **model sets any price**
 - Tips: **any amount $1+**
-- Platform commission: **30%** (admin can change 0–90%)
+- Platform commission: **40%** (admin can change 0–90%)
 
-Money math: fan pays $1.49 → model gets $1.04, platform keeps $0.45 (at 30%). Same 70/30 split applies to PPV unlocks, voice notes, tips, and live explicit minutes.
+Money math: fan pays $1.49 → model gets $0.89, platform keeps $0.60 (at 40%). Same 60/40 split applies to PPV unlocks, voice notes, tips, and live explicit minutes.
 
 ## Project layout
 
@@ -96,7 +96,7 @@ wogent-chat/
 - `GET /api/live/:id/chat` — recent group stream chat (free)
 - `POST /api/live/:id/chat` — send group chat message (FREE, safety-scanned)
 - `GET /api/gifts` — virtual gift catalog (public, enabled only)
-- `POST /api/live/:id/gift` — fan sends a virtual gift (70/30 split, realtime animation)
+- `POST /api/live/:id/gift` — fan sends a virtual gift (60/40 split, realtime animation)
 - `GET /api/live/:id/leaderboard` — top-3 gifters + gift totals for a stream
 - `GET /api/admin/gifts` / `POST /api/admin/gifts` / `PUT /api/admin/gifts/:id` / `DELETE /api/admin/gifts/:id` — gift catalog management
 - `GET /api/admin/safety/stream-flags` — safety hits on group stream chat
@@ -111,7 +111,7 @@ Group streams are the existing one-to-many broadcast (`live_sessions`) plus:
 
 1. **Stream titles** — model sets a title when going live ("Late night hangout 😈"); shown on the fan Live tab and in-stream.
 2. **Free group chat** — fans and model chat free during the stream (the funnel). Every message runs through the AI safety monitor; hits are blocked + strike-counted without pausing everyone else's chat.
-3. **Virtual gifts** — fan taps 🎁 → gift panel (🌹 $1 → 🚀 $100, admin-editable catalog) → credits deducted → animated emoji burst shows for EVERYONE watching + "John sent 🚀 Rocket!" in chat. Same 70/30 split.
+3. **Virtual gifts** — fan taps 🎁 → gift panel (🌹 $1 → 🚀 $100, admin-editable catalog) → credits deducted → animated emoji burst shows for EVERYONE watching + "John sent 🚀 Rocket!" in chat. Same 60/40 split.
 4. **Top gifters leaderboard** — top 3 fans by gift spending shown live on stream (drives competition).
 5. **Per-viewer explicit blur** — when the model goes explicit (AI or manual), EACH fan's screen blurs individually and each pays their own per-minute rate to unblur. 50 viewers × $4.99/min = the money mechanic. Non-paying fans still hear audio + see chat (stays hooked).
 6. **Admin** sees gift revenue per stream and manages the gift catalog (add/remove/reprice/enable-disable) from the 🔴 Live tab.
@@ -121,7 +121,7 @@ Group streams are the existing one-to-many broadcast (`live_sessions`) plus:
 1. Model taps **🔴 Go Live** — her camera broadcasts to all joined fans (WebRTC mesh, free Google STUN).
 2. Fans see a **🔴 LIVE** badge on her card and watch the SFW preview **free**.
 3. On the fan's phone, **NSFWJS** (TensorFlow.js, loaded lazily from `esm.sh`) samples a video frame every 2 seconds. If it classifies the frame as **Porn/Hentai with >0.7 confidence** → heavy CSS blur + paywall overlay: *"🔞 Pay $X/min to keep watching"*.
-4. Fan pays → blur removed, per-minute billing starts (same 70/30 split). 30-second countdown otherwise → kicked back to chat.
+4. Fan pays → blur removed, per-minute billing starts (same 60/40 split). 30-second countdown otherwise → kicked back to chat.
 5. **Model's own preview is never blurred.** She also has a manual **"Go Explicit"** button — if NSFWJS fails to load (offline, blocked CDN), the manual toggle is the fallback and fans get the same paywall via server push.
 6. Every blur/pay/timeout event is logged to `blur_events` and visible in the admin **🔴 Live** tab.
 

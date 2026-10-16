@@ -292,7 +292,7 @@ CREATE TABLE IF NOT EXISTS wallets (
 CREATE TABLE IF NOT EXISTS platform_stats (
   id              INTEGER PRIMARY KEY CHECK(id = 1),
   earnings_cents  INTEGER NOT NULL DEFAULT 0,
-  commission_pct  INTEGER NOT NULL DEFAULT 30
+  commission_pct  INTEGER NOT NULL DEFAULT 40
 );
 
 -- Model bank accounts for manual payouts (one per model; updating replaces)
@@ -735,7 +735,7 @@ CREATE TABLE IF NOT EXISTS stream_flags (
 `);
 
 db.prepare(`INSERT OR IGNORE INTO platform_stats (id, earnings_cents, commission_pct)
-            VALUES (1, 0, 30)`).run();
+            VALUES (1, 0, 40)`).run();
 
 // --- Lightweight migrations for DBs created before these features ---
 function addColumnIfMissing(table, col, def) {
@@ -798,6 +798,7 @@ addColumnIfMissing('platform_stats', 'explicit_entry_cents', 'INTEGER NOT NULL D
 addColumnIfMissing('platform_stats', 'admin_phone', 'TEXT');
 addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'test_money_cleared_at', 'TEXT');
+addColumnIfMissing('platform_stats', 'commission_60_40_fixed_at', 'TEXT'); // one-time canonical 60/40 correction stamp
 addColumnIfMissing('transactions', 'is_test', 'INTEGER NOT NULL DEFAULT 0');
 // Admin visibility switch: hidden models vanish from the public listings
 // (home grid, Lives) without touching their account (Corry, Oct 12 2026).
@@ -2137,6 +2138,21 @@ try { const n = announceAgreement12ToModels(); if (n) console.log(`[contract] Ag
     db.prepare("UPDATE platform_stats SET test_money_cleared_at = datetime('now') WHERE id = 1").run();
     console.log('[cleanup] Pre-launch test money cleared (transactions flagged is_test, balances zeroed).');
   } catch (e) { console.log('[cleanup] test money clear failed:', e.message); }
+})();
+
+// One-time correction (Asce, Oct 16 2026): the canonical split has always
+// been 60/40 — model keeps 60%, platform keeps 40%. Early defaults shipped
+// the wrong platform cut, and a schema default never updates existing DBs
+// (INSERT OR IGNORE). Force existing rows to 40 exactly once (marker on
+// platform_stats); afterwards the Manager setting stays admin-adjustable.
+(function fixCommission6040Once() {
+  try {
+    const row = db.prepare('SELECT commission_60_40_fixed_at FROM platform_stats WHERE id = 1').get();
+    if (!row || row.commission_60_40_fixed_at) return;
+    db.prepare('UPDATE platform_stats SET commission_pct = 40 WHERE id = 1').run();
+    db.prepare("UPDATE platform_stats SET commission_60_40_fixed_at = datetime('now') WHERE id = 1").run();
+    console.log('[commission] Canonical 60/40 split applied (platform commission set to 40%).');
+  } catch (e) { console.log('[commission] 60/40 correction failed:', e.message); }
 })();
 
 /* ------------------------------------------------------------------ */
@@ -8774,7 +8790,7 @@ function runBiweeklyCleanup() {
     files_deleted: filesDeleted,
     mb_freed: Math.round(bytesFreed / 1024 / 1024 * 10) / 10,
   };
-  db.prepare(`INSERT INTO platform_stats (id, earnings_cents, commission_pct) VALUES (1, 0, 30)
+  db.prepare(`INSERT INTO platform_stats (id, earnings_cents, commission_pct) VALUES (1, 0, 40)
     ON CONFLICT(id) DO NOTHING`).run();
   // Store last cleanup result in a simple key-value spot
   try {

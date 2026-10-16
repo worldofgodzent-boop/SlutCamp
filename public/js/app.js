@@ -5612,7 +5612,7 @@ function openTipModal() {
     <div class="card" style="max-width:340px;text-align:center">
       <div style="font-size:44px">🎁</div>
       <h3 style="margin:8px 0">Tip ${esc(S.conv.other.display_name)}</h3>
-      <p class="muted small">She gets 70% instantly.</p>
+      <p class="muted small">She gets 60% instantly.</p>
       <div class="tip-grid">
         ${[5, 10, 25, 50].map((a) => `<button class="btn small" data-tip="${a * 100}">$${a}</button>`).join('')}
       </div>
