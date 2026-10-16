@@ -577,11 +577,14 @@ async function adminPayoutsBody() {
   const wds = (wdData && wdData.withdrawals) || [];
   const pending = wds.filter((w) => w.status === 'pending');
   const done = wds.filter((w) => w.status !== 'pending');
+  const flaggedCount = pending.filter((w) => (w.flags || []).length).length;
+  const flagLines = (flags) => (flags || []).map((f) => `
+        <div class="small" style="margin-top:4px;color:${f.level === 'escalated' ? 'var(--red)' : 'var(--gold)'}">⚠️ ${esc(f.label)} <span class="muted">(advisory — never blocks a payout)</span></div>`).join('');
   const wdBadge = (s) => s === 'pending' ? t('wd_pending') : s === 'paid' ? t('wd_paid') : t('wd_rejected');
   return `
     ${moneyInHTML}
     ${treasuryHTML}
-    ${pending.length ? `<h3>⏳ Withdrawal requests (${pending.length})</h3>` : ''}
+    ${pending.length ? `<h3>⏳ Withdrawal requests (${pending.length})${flaggedCount ? ` · ⚠️ ${flaggedCount} flagged` : ''}</h3>` : ''}
     ${pending.map((w) => `
       <div class="card" style="padding:12px;border-color:var(--pink)">
         <div class="row"><span class="grow"><b>${esc(w.model_name)}</b> <span class="small muted">@${esc(w.model_username)}</span>
@@ -593,6 +596,7 @@ async function adminPayoutsBody() {
           Routing: <b>${esc(w.routing_number || '—')}</b><br>
           Account: <b>${esc(w.account_number || '—')}</b>
         </div>
+        <div class="small" style="margin-top:6px"><span class="muted">Withdrawable now:</span> <b>${fmt(w.withdrawable_cents || 0)}</b>${w.holding_cents > 0 ? ` · <span class="muted">still in its first week:</span> <b>${fmt(w.holding_cents)}</b>` : ''}${w.negative_adjustment_cents > 0 ? ` · <span style="color:var(--red)">negative adjustment: −${fmt(w.negative_adjustment_cents)}</span>` : ''}</div>${flagLines(w.flags)}
         <div class="row" style="margin-top:8px;gap:6px">
           <button class="btn small success" data-wd-pay="${w.id}">✅ Mark paid</button>
           <button class="btn small danger" data-wd-reject="${w.id}">Reject</button>
@@ -604,6 +608,7 @@ async function adminPayoutsBody() {
         <div class="row"><span class="grow"><b>${esc(p.display_name)}</b><br>
           <span class="small muted">Earned ${fmt(p.earnings_cents)} · Paid ${fmt(p.paid_out_cents)}</span></span>
           <b style="color:var(--green)">${fmt(p.pending_cents)}</b></div>
+        <div class="small" style="margin-top:6px"><span class="muted">Withdrawable:</span> <b>${fmt(p.withdrawable_cents || 0)}</b>${p.holding_cents > 0 ? ` · <span class="muted">in first week:</span> ${fmt(p.holding_cents)}` : ''}${p.negative_adjustment_cents > 0 ? ` · <span style="color:var(--red)">negative adj: −${fmt(p.negative_adjustment_cents)}</span>` : ''}</div>${flagLines(p.flags)}
         ${p.pending_cents > 0 ? `
           <div class="row" style="margin-top:8px">
             <input class="input" id="pay-${p.id}" type="number" step="0.01" placeholder="Amount $" style="margin-top:0">
@@ -886,6 +891,19 @@ async function adminMoreBody(s) {
       </div>
     </div>
     <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🛡️ Payout protection</div>
+      <div class="muted small">New earnings become withdrawable after the hold window — the owner rule is one week behind. The flag thresholds only raise advisory warnings on the Payouts screen; they never block or delay a payout by themselves.</div>
+      <div class="row" style="margin-top:8px;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <label class="small muted">Hold (days)<br><input class="input" id="set-hold" type="number" min="0" max="60" value="${s.earnings_hold_days ?? 7}" style="margin-top:2px;max-width:90px"></label>
+        <label class="small muted">Concentration %<br><input class="input" id="set-fc-pct" type="number" min="1" max="100" value="${s.flag_concentration_pct ?? 80}" style="margin-top:2px;max-width:90px"></label>
+        <label class="small muted">Concentration min $<br><input class="input" id="set-fc-min" type="number" min="0" step="1" value="${Math.round((s.flag_concentration_min_cents ?? 10000) / 100)}" style="margin-top:2px;max-width:100px"></label>
+        <label class="small muted">Fan age (days)<br><input class="input" id="set-fc-days" type="number" min="1" max="365" value="${s.flag_concentration_days ?? 30}" style="margin-top:2px;max-width:90px"></label>
+        <label class="small muted">CB escalate at #<br><input class="input" id="set-fcb-n" type="number" min="1" max="100" value="${s.flag_cb_escalate_count ?? 2}" style="margin-top:2px;max-width:90px"></label>
+        <label class="small muted">CB rate %<br><input class="input" id="set-fcb-r" type="number" min="1" max="100" value="${s.flag_cb_escalate_rate_pct ?? 20}" style="margin-top:2px;max-width:90px"></label>
+        <button class="btn small" id="set-pp-go">Save</button>
+      </div>
+    </div>
+    <div class="card">
       <div style="font-weight:800;margin-bottom:6px">🎁 Gift grace period (explicit streams)</div>
       <div class="muted small">When she's explicit, ANY gift keeps a fan's view clear for this long. No gift in time → blurry again.</div>
       <div class="row" style="margin-top:8px">
@@ -945,7 +963,9 @@ async function adminRefundsBody() {
 async function adminDisputesBody() {
   const { data } = await api('/admin/disputes');
   const { data: attData } = await api('/admin/purchase-attempts');
+  const { data: cbData } = await api('/admin/chargebacks');
   const disputes = data.disputes || [];
+  const chargebacks = (cbData && cbData.chargebacks) || [];
   const attempts = (attData.attempts || []).slice(0, 50);
   const badge = (s) => s === 'open'
     ? '<span class="small" style="color:var(--red)">🔴 open</span>'
@@ -961,6 +981,29 @@ async function adminDisputesBody() {
       <label class="field">Purchase attempt ID (optional)<input class="input" id="dp-purchase" type="number" min="1"></label>
       <label class="field">Reason<input class="input" id="dp-reason" maxlength="300"></label>
       <button class="btn" id="dp-go">File dispute</button>
+    </div>
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">↩️ Record chargeback (payout protection)</div>
+      <div class="muted small" style="margin-bottom:8px">Runs the clawback engine in order: the fan's unspent credits from the load → the models' unpaid earnings from that fan (held first) → any remainder as a negative adjustment against the model. Recording the same processor reference twice is a safe no-op. This does NOT ban or freeze anyone — that's your call, above.</div>
+      <label class="field">Fan user ID<input class="input" id="cb-user" type="number" min="1"></label>
+      <label class="field">Amount $<input class="input" id="cb-amount" type="number" step="0.01" min="0.01"></label>
+      <label class="field">Processor reference (required — idempotency key)<input class="input" id="cb-ref" maxlength="120" placeholder="e.g. CCBill chargeback / txn id"></label>
+      <label class="field">CCBill order ID (optional)<input class="input" id="cb-load" type="number" min="1" placeholder="Ties the reversal to one load"></label>
+      <label class="field">Reason<input class="input" id="cb-reason" maxlength="300"></label>
+      <button class="btn danger" id="cb-go">Record chargeback</button>
+      <div class="muted small" id="cb-msg" style="margin-top:6px"></div>
+    </div>
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:8px">Chargebacks recorded</div>
+      ${chargebacks.length ? chargebacks.map((c) => `
+        <div class="row" style="padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:flex-start">
+          <span class="grow"><b>${esc(c.fan_name || c.fan_username || ('#' + c.fan_id))}</b>
+            <span class="small" style="color:var(--red)">${fmt(c.amount_cents)}</span>
+            <span class="small muted"> · ${esc(c.source)}:${esc(c.external_id)}${c.load_ref ? ' · ' + esc(c.load_ref) : ''} · ${esc(c.created_at || '')}</span><br>
+            <span class="small muted">Reversed — fan credits ${fmt(c.reversed_fan_cents)} · model earnings ${fmt(c.reversed_model_cents)} · negative/absorbed ${fmt(c.negative_cents)}${c.recorded_by_name ? ' · by ' + esc(c.recorded_by_name) : ''}${c.reason ? '<br>' + esc(c.reason) : ''}</span>
+            ${(c.allocations || []).map((a) => `<br><span class="small muted">↳ step ${a.step} · ${esc(a.bucket)} · ${fmt(a.amount_cents)}${a.model_name ? ' · ' + esc(a.model_name) : ''}</span>`).join('')}
+          </span>
+        </div>`).join('') : '<div class="muted small">No chargebacks recorded yet.</div>'}
     </div>
     <div class="card">
       <div style="font-weight:800;margin-bottom:8px">Disputes</div>
@@ -1744,6 +1787,20 @@ function wireAdminBody(tab) {
     toast(status === 200 ? `✅ Commission set to ${commission_pct}%` : 'Use 0–90');
     if (status === 200) M.reload();
   });
+  go('#set-pp-go', async () => {
+    const body = {
+      earnings_hold_days: parseInt($('#set-hold').value),
+      flag_concentration_pct: parseInt($('#set-fc-pct').value),
+      flag_concentration_min_cents: Math.round(parseFloat($('#set-fc-min').value) * 100),
+      flag_concentration_days: parseInt($('#set-fc-days').value),
+      flag_cb_escalate_count: parseInt($('#set-fcb-n').value),
+      flag_cb_escalate_rate_pct: parseInt($('#set-fcb-r').value),
+    };
+    const { status, data } = await api('/admin/settings', {
+      method: 'PUT', body: JSON.stringify(body) });
+    toast(status === 200 ? '✅ Payout protection settings saved' : `Could not save (${(data && data.error) || status})`);
+    if (status === 200) M.reload();
+  });
   go('#set-grace-go', async () => {
     const mins = parseInt($('#set-grace').value);
     const explicit_gift_grace_sec = mins * 60;
@@ -1843,6 +1900,23 @@ function wireAdminBody(tab) {
       toast(data.auto_frozen ? '🧊 Dispute filed — account FROZEN (refund + dispute double-dip)' : '⚠️ Dispute filed');
       M.reload();
     } else toast('Could not file dispute.');
+  });
+  go('#cb-go', async () => {
+    const userId = parseInt($('#cb-user').value);
+    const amount = parseFloat($('#cb-amount').value);
+    const externalId = $('#cb-ref').value.trim();
+    if (!userId || !(amount > 0) || !externalId) return toast('Fill in fan, amount, and the processor reference.');
+    const body = { user_id: userId, amount_cents: Math.round(amount * 100),
+      external_id: externalId, source: 'manual', reason: $('#cb-reason').value.trim() };
+    const loadVal = $('#cb-load').value.trim();
+    if (loadVal) body.load_ref = loadVal;
+    const { status, data } = await api('/admin/chargebacks', { method: 'POST', body: JSON.stringify(body) });
+    if (status === 200 && data.duplicate) { toast('Already recorded — no-op (idempotent).'); M.reload(); }
+    else if (status === 200) {
+      const r = data.reversed || {};
+      toast(`↩️ Chargeback recorded — fan ${fmt(r.fan_cents || 0)} · models ${fmt(r.model_cents || 0)} · negative ${fmt(r.negative_cents || 0)}`);
+      M.reload();
+    } else toast(`Could not record chargeback (${(data && data.error) || status})`);
   });
   app.querySelectorAll('[data-dp-win]').forEach((b) => b.onclick = async () => {
     const { status } = await api(`/admin/disputes/${b.dataset.dpWin}`,

@@ -302,6 +302,7 @@ const I18N = {
     payments_1: '{n} payment', payments_n: '{n} payments',
     payouts_h: '💸 Payouts', bank_account: 'Bank account', not_set: 'Not set',
     withdraw: 'Withdraw', avail_withdraw: 'Available to withdraw:',
+    hold_note: 'New earnings become withdrawable one week (7 days) after they\'re earned.', holding_now: 'Still in its first week:', neg_adj: 'Negative adjustment to clear:',
     add_bank: 'Add bank account', update_bank: 'Update bank account',
     update_bank_btn: '✏️ Update bank account',
     holder_name: 'Account holder name', routing: 'Routing number (9 digits)',
@@ -574,6 +575,7 @@ const I18N = {
     payments_1: '{n} pago', payments_n: '{n} pagos',
     payouts_h: '💸 Retiros', bank_account: 'Cuenta bancaria', not_set: 'Sin configurar',
     withdraw: 'Retirar', avail_withdraw: 'Disponible para retirar:',
+    hold_note: 'Las ganancias nuevas se pueden retirar una semana (7 días) después de generarse.', holding_now: 'Aún en su primera semana:', neg_adj: 'Ajuste negativo por cubrir:',
     add_bank: 'Agregar cuenta bancaria', update_bank: 'Actualizar cuenta bancaria',
     update_bank_btn: '✏️ Actualizar cuenta bancaria',
     holder_name: 'Nombre del titular', routing: 'Número de ruta (9 dígitos)',
@@ -843,6 +845,7 @@ const I18N = {
     payments_1: '{n} pagamento', payments_n: '{n} pagamentos',
     payouts_h: '💸 Saques', bank_account: 'Conta bancária', not_set: 'Não configurada',
     withdraw: 'Sacar', avail_withdraw: 'Disponível para sacar:',
+    hold_note: 'Os ganhos novos ficam disponíveis para saque uma semana (7 dias) depois de gerados.', holding_now: 'Ainda na primeira semana:', neg_adj: 'Ajuste negativo a compensar:',
     add_bank: 'Adicionar conta bancária', update_bank: 'Atualizar conta bancária',
     update_bank_btn: '✏️ Atualizar conta bancária',
     holder_name: 'Nome do titular', routing: 'Número de roteamento (9 dígitos)',
@@ -3776,6 +3779,9 @@ async function vModelEarnings() {
             <button class="btn small success" id="wd-go">${t('withdraw')}</button>
           </div>
           <div class="muted small" style="margin-top:6px">${t('avail_withdraw')} <b style="color:var(--green)">${fmt(wdData.available_cents)}</b></div>
+          <div class="muted small" style="margin-top:2px">${t('hold_note')}</div>${wdData.holding_cents > 0 ? `
+          <div class="muted small" style="margin-top:2px">${t('holding_now')} <b>${fmt(wdData.holding_cents)}</b></div>` : ''}${wdData.negative_adjustment_cents > 0 ? `
+          <div class="muted small" style="margin-top:2px">${t('neg_adj')} <b style="color:var(--red)">${fmt(wdData.negative_adjustment_cents)}</b></div>` : ''}
         ` : ''}
         <div id="bank-form" class="${acct ? 'hidden' : ''}" style="margin-top:8px">
           <div style="font-weight:700;margin-bottom:6px">${acct ? t('update_bank') : t('add_bank')}</div>
@@ -3935,6 +3941,9 @@ async function vRecruiter() {
             <button class="btn small success" id="wd-go">${t('withdraw')}</button>
           </div>
           <div class="muted small" style="margin-top:6px">${t('avail_withdraw')} <b style="color:var(--green)">${fmt(wdData.available_cents)}</b></div>
+          <div class="muted small" style="margin-top:2px">${t('hold_note')}</div>${wdData.holding_cents > 0 ? `
+          <div class="muted small" style="margin-top:2px">${t('holding_now')} <b>${fmt(wdData.holding_cents)}</b></div>` : ''}${wdData.negative_adjustment_cents > 0 ? `
+          <div class="muted small" style="margin-top:2px">${t('neg_adj')} <b style="color:var(--red)">${fmt(wdData.negative_adjustment_cents)}</b></div>` : ''}
         ` : ''}
         <div id="bank-form" class="${acct ? 'hidden' : ''}" style="margin-top:8px">
           <div style="font-weight:700;margin-bottom:6px">${acct ? t('update_bank') : t('add_bank')}</div>
@@ -10028,7 +10037,7 @@ function vTerms() {
   app.innerHTML = `
     <div class="header">
       <h1>Slut<span class="logo">Camp</span> 📜</h1>
-      <div class="sub">Terms of Service · Last updated October 15, 2026</div>
+      <div class="sub">Terms of Service · Last updated October 16, 2026</div>
     </div>
     <div class="screen">
       <div class="card">
@@ -10045,7 +10054,7 @@ function vTerms() {
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">4. Revenue Split & Payouts</div>
-        <div class="small muted">Models keep <b>60%</b> of everything fans spend on them; the platform keeps 40%. Payouts are sent by SlutCamp (currently processed manually). Models add their bank details in the app and request withdrawals anytime; pending requests are paid out on SlutCamp's schedule.</div>
+        <div class="small muted">Models keep <b>60%</b> of everything fans spend on them; the platform keeps 40%. Payouts are sent by SlutCamp (currently processed manually). Models add their bank details in the app and request withdrawals anytime; pending requests are paid out on SlutCamp's schedule. Model earnings become eligible for withdrawal one week (7 days) after they are earned.</div>
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">5. Live Streams & Explicit Content</div>
@@ -10068,7 +10077,11 @@ function vTerms() {
         <div class="small muted">Once credits are spent on messages, calls, gifts, entries, priorities, joins, or bookings, they are gone — no refunds, no chargebacks through the app. Unused wallet credits are not redeemable for cash (fans).</div>
       </div>
       <div class="card">
-        <div style="font-weight:800;margin-bottom:8px">10. Changes</div>
+        <div style="font-weight:800;margin-bottom:8px">10. Chargebacks & Fraud</div>
+        <div class="small muted">If you dispute a credit purchase with your bank or card issuer (a chargeback) instead of contacting us first, we may revoke the credits from that purchase, reverse any earnings it generated, and close your account. Chargebacks on purchases you received and spent are treated as fraud. If a charge is ever genuinely wrong, contact us first — real billing errors are refunded under our Billing & Refunds policy.</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:8px">11. Changes</div>
         <div class="small muted">Features, prices, rates, and these terms may change at any time. Continued use means you accept the current terms.</div>
       </div>
       <p class="muted small" style="text-align:center;margin:16px 0">These terms are a plain-language summary, not legal advice.<br>Operated by World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Privacy Policy</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Billing & Refunds</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">2257 Statement</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Copyright takedown →</a></p>
