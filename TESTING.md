@@ -41,6 +41,7 @@ dependency, is missing) and the server cannot boot from it alone —
 | `tests/reactions.test.js` | Message reactions, end to end: API tests against the real server (participant fan/model react, same-emoji toggle off, different-emoji replace, non-participant 403, guest 403 `login_required`, off-list emoji 400, reactions in the thread payload) plus source pins for the iMessage-style long-press in `app.js` (~500ms timer on the bubble itself, move/up/cancel/scroll cancels, capture-phase click suppression so a pressed locked PPV tile never unlocks, contextmenu prevention, editing/mini-act/popover guards, once-only delegated binding, 🤍 button untouched) and the scoped `.pressing` CSS |
 | `tests/splash-resume.test.js` | Source pins for the welcome splash playing on EVERY open: the `index.html` `<link rel="preload">` for the animated lips + the early `Image()` preload at the top of `boot()`, the badge's one-shot `onerror` fallback to the static lips, and the resume splash — `visibilitychange` / persisted `pageshow` after ≥60s hidden re-show `vWelcomeSplash` in overlay mode (boot-completed + no-stacking + `updateBusy()` guards; removes only its overlay host; never routes) |
 | `tests/change-password.test.js` | Change password (`POST /api/me/change-password`) against the real server (`SEED_DEMO=1` temp-copy boot): guest 403 `login_required`, wrong current 401 `wrong_current` (password untouched), seed-default new password 400 `default_password` (case-insensitive, checked before the length floor), too-short 400 `weak_password`, new == current 400 `weak_password`, and the success contract — old password can no longer log in, the new one can, every other session is revoked, the caller's session survives — plus source pins for the Settings cards in `app.js` and the Manager |
+| `tests/discovery.test.js` | Discovery 2.0 (directory search/filters/tags/similar): API tests against the real server (guest directory payload carries `tags[]` + `created_at`; tag persistence via `PUT /api/model/profile` with the 5-cap, unknown-tag drop, dedupe, non-array 400 `bad_tags`, fan 403), logic tests running the real extracted `applyDiscovery`/`discPriceBand`/`similarModels` from `app.js` (search, online/live/price/tag filters, all sorts, similar ranking), client↔server tag-catalogue parity, and source pins for the bar in both directory views, tile tag chips, the peek rail and the Settings picker |
 | `scripts/run-triple.js` | The triple runner behind `npm run test:triple` |
 
 ## What the suite covers
@@ -262,6 +263,28 @@ the clients: `renderPwSettingsCard` + `pw-card` hosts + the endpoint
 call in `app.js` (fan wallet + model settings, beside the Face ID
 card), and the `cpw-*` card + `pwField` form + endpoint call in the
 Manager's Settings screen.
+
+**Discovery 2.0 (`tests/discovery.test.js`)** — the directory
+search/filters/tags build. The API layer is tested against the real
+server (seeded + signup-created models on a throwaway DB):
+`GET /api/models` returns a clean `tags` array and `created_at` for
+every model to guests and fans alike (existing models default to no
+tags), and `PUT /api/model/profile` enforces the tag rules
+server-side — catalogue-only (unknown tags dropped), duplicates
+collapse, the list caps at 5, a non-array value is 400 `bad_tags`,
+and fans get 403. Because the endpoint returns the full roster in one
+call, filtering itself is client-side: the suite extracts the real
+`applyDiscovery` / `discPriceBand` / `similarModels` functions out of
+`app.js` and runs them against fabricated rosters (search by
+name/username, online/live/price-band/tag filters alone and combined,
+all five sorts with the default preserving server rank order, similar
+ranking by shared tags then rank, self-exclusion, the 6-cap, and the
+no-tags rank fallback). A parity test pins the client's
+`DISCOVERY_TAGS` equal to the server's `MODEL_TAGS`, and source pins
+cover the wiring: discovery bar in both directory views, tag chips on
+tiles, tappable tags + the "More like her" rail in the peek, the
+Settings tag picker, and the 👑 crown appearing only in the default
+ordering.
 
 ## What the suite deliberately does NOT cover
 
