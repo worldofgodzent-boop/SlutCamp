@@ -123,7 +123,12 @@
    while a fan/model is logged in. STRICTLY decorative: pointer-events
    are killed on the container and everything inside it, so she can
    never be clicked and never blocks the app. Art lives in
-   public/img/popups/<model>-<pose>.webp. */
+   public/img/popups/<model>-<pose>.webp and is ANIMATED — she moves
+   on her own, so the figure deliberately gets NO CSS animation here
+   (no sway/jiggle/bounce on top of the art). CSS only handles the
+   entrance, the exit, and the floating glyphs. (purple-twerk is the
+   one still image — no source video — and rides the entrance/exit
+   motion only.) */
 
 :root[data-theme='halloween'] .sc-popup,
 :root[data-theme='halloween'] .sc-popup * {
@@ -156,18 +161,10 @@
   filter: drop-shadow(0 10px 22px rgba(0, 0, 0, .5));
 }
 
-/* Kiss: a gentle sway on the figure, plus a quick double jiggle
-   (whole-figure squash-and-bounce, origin at her feet). */
-:root[data-theme='halloween'] .sc-popup--kiss .sc-popup-img {
-  animation: sc-popup-sway 2.6s ease-in-out infinite alternate;
-}
-:root[data-theme='halloween'] .sc-popup--kiss .sc-popup-bounce {
-  animation: sc-popup-jiggle 2.8s ease-in-out infinite;
-}
-/* Twerk: fast rhythmic bounce + tilt for the whole visit. */
-:root[data-theme='halloween'] .sc-popup--twerk .sc-popup-bounce {
-  animation: sc-popup-twerk .48s ease-in-out infinite alternate;
-}
+/* No figure animation: the WebP art is animated (kiss-blow / twerk
+   motion baked in), so any CSS sway or bounce here would double up
+   on top of her own movement. .sc-popup-bounce stays as a plain
+   full-height wrapper for the entrance transform origin. */
 
 /* Floating kiss/heart glyphs (kiss variant only). */
 :root[data-theme='halloween'] .sc-popup-fx {
@@ -188,21 +185,6 @@
 @keyframes sc-pop-out {
   from { transform: translateY(0) scale(1); opacity: 1; }
   to   { transform: translateY(60%) scale(.9); opacity: 0; }
-}
-@keyframes sc-popup-sway {
-  from { transform: rotate(-2deg) translateX(-3px); }
-  to   { transform: rotate(2deg) translateX(3px); }
-}
-@keyframes sc-popup-jiggle {
-  0%, 34%, 100% { transform: scale(1, 1) translateY(0); }
-  6%  { transform: scale(1.045, .955) translateY(1.2%); }
-  13% { transform: scale(.975, 1.03) translateY(-1.6%); }
-  20% { transform: scale(1.035, .965) translateY(.8%); }
-  27% { transform: scale(1, 1) translateY(0); }
-}
-@keyframes sc-popup-twerk {
-  from { transform: rotate(-2.5deg) translateY(0); }
-  to   { transform: rotate(2.5deg) translateY(-7px); }
 }
 @keyframes sc-popup-float {
   0%   { transform: translate(0, 0) scale(.55); opacity: 0; }

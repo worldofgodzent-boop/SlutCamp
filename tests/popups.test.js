@@ -7,10 +7,13 @@
  * a seeded RNG — no DOM. The file-level tests pin the wiring both
  * ways: every roster combo must have its WebP on disk, and every WebP
  * in public/img/popups must be in the roster, so art can never ship
- * half-added. The browser glue (timers, DOM) is covered by source
- * assertions, consistent with the theme tests: the halloween + login
- * gating and the pointer-events hard rule must be present in the
- * engine, and the non-interactive CSS must be in the pack.
+ * half-added. The art is animated WebP (VP8X animation flag checked
+ * at the byte level) for the eleven combos that have a source video;
+ * purple-twerk has none and must stay a still. The browser glue
+ * (timers, DOM) is covered by source assertions, consistent with the
+ * theme tests: the halloween + login gating and the pointer-events
+ * hard rule must be present in the engine, and the non-interactive
+ * CSS must be in the pack.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -51,7 +54,36 @@ test('every roster combo has a WebP on disk, and vice versa', () => {
   assert.deepEqual(onDisk, expected);
   for (const name of expected) {
     const file = path.join(POPUP_DIR, name);
-    assert.ok(fs.statSync(file).size > 0, `${name} must not be empty`);
+    const size = fs.statSync(file).size;
+    assert.ok(size > 0, `${name} must not be empty`);
+    // Animated pop-up art runs 1–2 MB per file (the stills were ~50
+    // KB). 2.5 MB is the shipping ceiling: big enough for the baked-in
+    // motion, small enough that the background preload stays cheap.
+    assert.ok(size <= 2.5 * 1024 * 1024,
+      `${name} is ${size} bytes — over the 2.5 MB animated-art ceiling`);
+  }
+});
+
+test('video-sourced pop-ups are animated WebPs; purple-twerk stays a still', () => {
+  // Byte-level and deterministic: an animated WebP carries a VP8X
+  // chunk whose feature-flags byte (offset 20) has the animation bit
+  // (0x02) set, and an ANIM chunk in the stream. No decoder needed.
+  const isAnimated = (file) => {
+    const b = fs.readFileSync(file);
+    if (b.toString('ascii', 0, 4) !== 'RIFF') return false;
+    if (b.toString('ascii', 8, 12) !== 'WEBP') return false;
+    const vp8xAnim = b.toString('ascii', 12, 16) === 'VP8X' && (b[20] & 0x02) !== 0;
+    return vp8xAnim && b.includes(Buffer.from('ANIM'));
+  };
+  for (const c of popupCombos()) {
+    const name = path.basename(popupImagePath(c));
+    const file = path.join(POPUP_DIR, name);
+    if (`${c.model}-${c.pose}` === 'purple-twerk') {
+      assert.ok(!isAnimated(file),
+        'purple-twerk has no source video and must stay a still WebP');
+    } else {
+      assert.ok(isAnimated(file), `${name} must be an animated WebP`);
+    }
   }
 });
 
@@ -113,12 +145,29 @@ test('engine gates pop-ups on halloween + wc_token and never intercepts clicks',
     'pop-ups must respect prefers-reduced-motion');
 });
 
+test('engine preloads the roster in the background once a login is seen', () => {
+  const src = fs.readFileSync(path.join(REPO, 'public', 'js', 'theme.js'), 'utf8');
+  assert.ok(src.includes('function popupPreload()'),
+    'engine must define the roster preload');
+  assert.ok(src.includes('popupPreload();'),
+    'popupStart must kick off the preload when a login starts the engine');
+  assert.ok(src.includes("pre.fetchPriority = 'low'"),
+    'preload images must be low priority so they never fight the app');
+});
+
 test('halloween pack CSS makes pop-ups strictly non-interactive', () => {
   const css = fs.readFileSync(path.join(REPO, 'public', 'css', 'themes', 'halloween.css'), 'utf8');
   assert.ok(css.includes('.sc-popup'), 'pack must style .sc-popup');
   assert.ok(css.includes('pointer-events: none !important'),
     'pack must enforce pointer-events: none !important');
-  for (const kf of ['sc-pop-in', 'sc-pop-out', 'sc-popup-twerk', 'sc-popup-jiggle', 'sc-popup-float']) {
+  // Entrance, exit and the floating glyphs are CSS; her figure motion
+  // is baked into the animated WebP art, so the old figure keyframes
+  // (sway/jiggle/twerk) must NOT come back — they would double-animate.
+  for (const kf of ['sc-pop-in', 'sc-pop-out', 'sc-popup-float']) {
     assert.ok(css.includes(`@keyframes ${kf}`), `pack must define @keyframes ${kf}`);
+  }
+  for (const kf of ['sc-popup-sway', 'sc-popup-jiggle', 'sc-popup-twerk']) {
+    assert.ok(!css.includes(`@keyframes ${kf}`),
+      `@keyframes ${kf} must stay removed — the art animates itself`);
   }
 });
