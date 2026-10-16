@@ -255,7 +255,7 @@ const I18N = {
     crypto_send_exact: 'Send exactly',
     crypto_to: 'to',
     crypto_copy: 'Copy', crypto_copied: 'Copied!',
-    crypto_open_wallet: 'Open in wallet app', crypto_add_more: 'Add more', ccbill_redirect: 'Taking you to the secure checkout…', ccbill_secure_note: 'Secure checkout by CCBill — you finish on their payment page, then your credits land right here.', ccbill_success: '💳 Payment approved! Your credits land as soon as CCBill confirms — usually just a few seconds.', ccbill_fail: 'That card payment didn\'t go through — no charge was made. Try again, or load with crypto instead.', crypto_load: 'Load', crypto_pay_with: 'Pay with your wallet', crypto_connect_pay: 'Connect wallet & pay', crypto_sent: 'Payment sent — your credits are on the way', crypto_in_wallet: 'You are in your wallet\'s browser — Connect pays right from this wallet.', crypto_phantom_fail: 'Phantom payment didn\'t complete — nothing was sent.', crypto_no_wallet: 'No wallet found in this browser — scan the QR or use Open in wallet app',
+    crypto_open_wallet: 'Open in wallet app', crypto_add_more: 'Add more', ccbill_redirect: 'Taking you to the secure checkout…', av_gate_title: '🪪 One quick age check', av_gate_body: "One quick age check before your first purchase — required by your state's law. You only do this once.", av_gate_continue: 'Continue to verification', av_gate_failed: "That age check didn't pass — please try again before buying.", av_gate_done: '✅ Age verified — you can buy now', ccbill_secure_note: 'Secure checkout by CCBill — you finish on their payment page, then your credits land right here.', ccbill_success: '💳 Payment approved! Your credits land as soon as CCBill confirms — usually just a few seconds.', ccbill_fail: 'That card payment didn\'t go through — no charge was made. Try again, or load with crypto instead.', crypto_load: 'Load', crypto_pay_with: 'Pay with your wallet', crypto_connect_pay: 'Connect wallet & pay', crypto_sent: 'Payment sent — your credits are on the way', crypto_in_wallet: 'You are in your wallet\'s browser — Connect pays right from this wallet.', crypto_phantom_fail: 'Phantom payment didn\'t complete — nothing was sent.', crypto_no_wallet: 'No wallet found in this browser — scan the QR or use Open in wallet app',
     crypto_scan: 'Scan with your wallet app',
     crypto_waiting: 'Waiting for payment…',
     crypto_detected: 'Payment detected — confirming ({n}/{m})…',
@@ -557,7 +557,7 @@ const I18N = {
     crypto_send_exact: 'Envía exactamente',
     crypto_to: 'a',
     crypto_copy: 'Copiar', crypto_copied: '¡Copiado!',
-    crypto_open_wallet: 'Abrir en la billetera', crypto_add_more: 'Agregar más', ccbill_redirect: 'Llevándote al pago seguro…', ccbill_secure_note: 'Pago seguro con CCBill — terminas en su página de pago y tus créditos llegan aquí.', ccbill_success: '💳 ¡Pago aprobado! Tus créditos llegan en cuanto CCBill confirma — normalmente unos segundos.', ccbill_fail: 'Ese pago con tarjeta no pasó — no se hizo ningún cargo. Inténtalo de nuevo o carga con cripto.', crypto_load: 'Cargar', crypto_pay_with: 'Paga con tu billetera', crypto_connect_pay: 'Conectar billetera y pagar', crypto_sent: 'Pago enviado — tus créditos van en camino', crypto_in_wallet: 'Estás en el navegador de tu billetera — Conectar paga desde esta billetera.', crypto_phantom_fail: 'El pago con Phantom no se completó — no se envió nada.', crypto_no_wallet: 'No se encontró billetera en este navegador — escanea el QR o usa Abrir en la billetera',
+    crypto_open_wallet: 'Abrir en la billetera', crypto_add_more: 'Agregar más', ccbill_redirect: 'Llevándote al pago seguro…', av_gate_title: '🪪 Una comprobación rápida de edad', av_gate_body: 'Una comprobación rápida de edad antes de tu primera compra — lo exige la ley de tu estado. Solo la haces una vez.', av_gate_continue: 'Continuar a la verificación', av_gate_failed: 'Esa comprobación de edad no pasó — inténtalo de nuevo antes de comprar.', av_gate_done: '✅ Edad verificada — ya puedes comprar', ccbill_secure_note: 'Pago seguro con CCBill — terminas en su página de pago y tus créditos llegan aquí.', ccbill_success: '💳 ¡Pago aprobado! Tus créditos llegan en cuanto CCBill confirma — normalmente unos segundos.', ccbill_fail: 'Ese pago con tarjeta no pasó — no se hizo ningún cargo. Inténtalo de nuevo o carga con cripto.', crypto_load: 'Cargar', crypto_pay_with: 'Paga con tu billetera', crypto_connect_pay: 'Conectar billetera y pagar', crypto_sent: 'Pago enviado — tus créditos van en camino', crypto_in_wallet: 'Estás en el navegador de tu billetera — Conectar paga desde esta billetera.', crypto_phantom_fail: 'El pago con Phantom no se completó — no se envió nada.', crypto_no_wallet: 'No se encontró billetera en este navegador — escanea el QR o usa Abrir en la billetera',
     crypto_scan: 'Escanea con tu billetera',
     crypto_waiting: 'Esperando el pago…',
     crypto_detected: 'Pago detectado — confirmando ({n}/{m})…',
@@ -856,7 +856,7 @@ const I18N = {
     crypto_send_exact: 'Envie exatamente',
     crypto_to: 'para',
     crypto_copy: 'Copiar', crypto_copied: 'Copiado!',
-    crypto_open_wallet: 'Abrir na carteira', crypto_add_more: 'Adicionar mais', ccbill_redirect: 'Levando você ao pagamento seguro…', ccbill_secure_note: 'Pagamento seguro pela CCBill — você finaliza na página de pagamento deles e seus créditos chegam aqui.', ccbill_success: '💳 Pagamento aprovado! Seus créditos chegam assim que a CCBill confirmar — normalmente alguns segundos.', ccbill_fail: 'Esse pagamento no cartão não passou — nenhuma cobrança foi feita. Tente de novo ou carregue com cripto.', crypto_load: 'Carregar', crypto_pay_with: 'Pague com sua carteira', crypto_connect_pay: 'Conectar carteira e pagar', crypto_sent: 'Pagamento enviado — seus créditos estão a caminho', crypto_in_wallet: 'Você está no navegador da sua carteira — Conectar paga direto desta carteira.', crypto_phantom_fail: 'O pagamento com Phantom não foi concluído — nada foi enviado.', crypto_no_wallet: 'Nenhuma carteira encontrada neste navegador — escaneie o QR ou use Abrir na carteira',
+    crypto_open_wallet: 'Abrir na carteira', crypto_add_more: 'Adicionar mais', ccbill_redirect: 'Levando você ao pagamento seguro…', av_gate_title: '🪪 Uma verificação rápida de idade', av_gate_body: 'Uma verificação rápida de idade antes da sua primeira compra — exigida pela lei do seu estado. Você só faz isso uma vez.', av_gate_continue: 'Continuar para a verificação', av_gate_failed: 'Essa verificação de idade não passou — tente de novo antes de comprar.', av_gate_done: '✅ Idade verificada — já pode comprar', ccbill_secure_note: 'Pagamento seguro pela CCBill — você finaliza na página de pagamento deles e seus créditos chegam aqui.', ccbill_success: '💳 Pagamento aprovado! Seus créditos chegam assim que a CCBill confirmar — normalmente alguns segundos.', ccbill_fail: 'Esse pagamento no cartão não passou — nenhuma cobrança foi feita. Tente de novo ou carregue com cripto.', crypto_load: 'Carregar', crypto_pay_with: 'Pague com sua carteira', crypto_connect_pay: 'Conectar carteira e pagar', crypto_sent: 'Pagamento enviado — seus créditos estão a caminho', crypto_in_wallet: 'Você está no navegador da sua carteira — Conectar paga direto desta carteira.', crypto_phantom_fail: 'O pagamento com Phantom não foi concluído — nada foi enviado.', crypto_no_wallet: 'Nenhuma carteira encontrada neste navegador — escaneie o QR ou use Abrir na carteira',
     crypto_scan: 'Escaneie com sua carteira',
     crypto_waiting: 'Aguardando pagamento…',
     crypto_detected: 'Pagamento detectado — confirmando ({n}/{m})…',
@@ -3266,6 +3266,7 @@ async function vWallet() {
         <div id="crypto-recent"></div>
       </div>
       <button class="btn ghost" id="w-ath" style="width:100%;margin-bottom:10px">${t('ath_wallet_row')}</button>
+      <div id="av-box"></div>
       <div id="pk-card"></div>
       <div id="pw-card"></div>
       ${langCardHTML()}
@@ -3278,6 +3279,7 @@ async function vWallet() {
         const { status, data: d } = await api('/ccbill/checkout', {
           method: 'POST', body: JSON.stringify({ package_id: b.dataset.pkg }) });
         if (status === 200 && d.url) { toast(t('ccbill_redirect')); window.location.href = d.url; return; }
+        if (status === 403 && d && d.error === 'av_required') { showAvGate(d, () => b.click()); return; }
         toast((d && d.message) || t('crypto_failed'));
         return;
       }
@@ -3309,6 +3311,7 @@ async function vWallet() {
       const { status, data: d } = await api('/ccbill/checkout', {
         method: 'POST', body: JSON.stringify({ amount_cents: Number(range.value) * 100 }) });
       if (status === 200 && d.url) { toast(t('ccbill_redirect')); window.location.href = d.url; return; }
+      if (status === 403 && d && d.error === 'av_required') { showAvGate(d, () => go.click()); return; }
       toast((d && d.message) || t('crypto_failed'));
     };
     sync();
@@ -3787,6 +3790,40 @@ function watchCryptoInvoice(id) {
   }, 1000));
 }
 
+/* Age-verification gate — SERVER-DRIVEN. This renders only when a
+   purchase answers 403 { error: 'av_required' }, which the server sends
+   only when AV is enabled and the fan is an unverified regulated-state
+   fan. While AV is dormant the response never occurs and nothing here
+   ever renders. On success the gated purchase is retried via `retry`. */
+async function showAvGate(d, retry) {
+  const box = document.getElementById('av-box');
+  if (!box) { toast(t('av_gate_body')); return; }
+  box.innerHTML = `
+    <div class="card" style="border:1px solid var(--pink);margin-bottom:12px">
+      <div style="font-weight:800;margin-bottom:6px">${t('av_gate_title')}</div>
+      <div class="muted small" style="margin-bottom:10px">${t('av_gate_body')}</div>
+      <button class="btn" id="av-go" style="width:100%">${t('av_gate_continue')}</button>
+    </div>`;
+  const go = document.getElementById('av-go');
+  if (go) go.onclick = async () => {
+    const { status, data: s } = await api('/av/start', {
+      method: 'POST', body: JSON.stringify({ method: (d && d.method) || 'transactional' }) });
+    if (status !== 200 || !s || !s.session_ref) { toast(t('av_gate_failed')); return; }
+    if (s.redirect_url) { window.location.href = s.redirect_url; return; }
+    // Stub provider (test/local): completion is an in-app call. Real
+    // providers return via redirect_url + webhook instead.
+    const { data: c } = await api('/av/complete', {
+      method: 'POST', body: JSON.stringify({ session_ref: s.session_ref }) });
+    if (c && c.passed) {
+      box.innerHTML = '';
+      toast(t('av_gate_done'));
+      if (typeof retry === 'function') retry();
+    } else {
+      toast(t('av_gate_failed'));
+    }
+  };
+}
+
 async function startCryptoInvoice(packageId) {
   const box = $('#crypto-invoice');
   if (!box) return;
@@ -3794,6 +3831,7 @@ async function startCryptoInvoice(packageId) {
   box.innerHTML = `<div class="muted small" style="text-align:center;padding:12px">…</div>`;
   const { status, data } = await api('/crypto/invoices', {
     method: 'POST', body: JSON.stringify({ package_id: packageId, coin: cryptoCoinSel }) });
+  if (status === 403 && data && data.error === 'av_required') { box.innerHTML = ''; showAvGate(data, () => startCryptoInvoice(packageId)); return; }
   if (status !== 201 || !data.invoice) { toast(t('crypto_failed')); box.innerHTML = ''; return; }
   renderCryptoInvoice(data.invoice);
   watchCryptoInvoice(data.invoice.id);
@@ -3807,6 +3845,7 @@ async function startCryptoInvoiceCustom(amountCents) {
   box.innerHTML = `<div class="muted small" style="text-align:center;padding:12px">…</div>`;
   const { status, data } = await api('/crypto/invoices', {
     method: 'POST', body: JSON.stringify({ amount_cents: amountCents, coin: cryptoCoinSel }) });
+  if (status === 403 && data && data.error === 'av_required') { box.innerHTML = ''; showAvGate(data, () => startCryptoInvoiceCustom(amountCents)); return; }
   if (status !== 201 || !data.invoice) { toast(t('crypto_failed')); box.innerHTML = ''; return; }
   renderCryptoInvoice(data.invoice);
   watchCryptoInvoice(data.invoice.id);
