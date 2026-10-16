@@ -28,7 +28,7 @@ dependency, is missing) and the server cannot boot from it alone —
 | `tests/geo.test.js` | Unit tests for `lib/geo.js` region-block decisions |
 | `tests/ccbill.test.js` | Unit tests for `lib/ccbill.js` checkout signing + webhook crediting (in-memory DB, fake env) |
 | `tests/crypto.test.js` | Unit tests for `lib/crypto.js` amount formatting + placeholder-coin safety (no network) |
-| `tests/crypto-e2e.test.js` | Crypto end-to-end on throwaway keys (published test vectors) + stub price/chain APIs: per-coin invoice creation (address format/freshness, quote math, 30-min expiry, SOL amount-offset + XRP tag keying, fixed-address mode), watcher crediting for BTC/USDT/SOL/XRP with exactly-once proof (re-poll + admin mark + direct re-credit all no-ops), the fixed-address window-scoping regression (pre-invoice transfers never credit), an HTTP run of the real server (config offers only configured coins, fan invoices + QR, admin mark-credited exactly once), and fan-UX source pins (plain-words network name + wrong-network warning on the pay screen, EN/ES/PT) |
+| `tests/crypto-e2e.test.js` | Crypto end-to-end on throwaway keys (published test vectors) + stub price/chain APIs: per-coin invoice creation (address format/freshness, quote math, 30-min expiry, SOL amount-offset + XRP tag keying, fixed-address mode), watcher crediting for BTC/USDT/SOL/XRP with exactly-once proof (re-poll + admin mark + direct re-credit all no-ops), the fixed-address window-scoping regression (pre-invoice transfers never credit), an HTTP run of the real server (config offers only configured coins, fan invoices + QR, admin mark-credited exactly once), fan-UX source pins (plain-words network name + wrong-network warning on the pay screen, EN/ES/PT), and the per-invoice USDT (xpub) suite: BIP44 derivation against the published Hardhat test vector, family-wide index allocation (concurrent creation + restart survival), per-invoice watcher scoping, xpub-over-fixed precedence, and config-error safety (malformed/private xpub disables the coin, never falls back) |
 | `tests/presence.test.js` | Unit tests for `lib/presence.js` counts/sampling (in-memory DB) |
 | `tests/smoke.test.js` | Integration smoke test: boots the real `server.js` in a throwaway temp copy and checks key flows over HTTP |
 | `tests/passkey.test.js` | Face ID (WebAuthn) for everyone + enforced admin step-up: public enrollment/sign-in round trips with a built-in software authenticator, owner-scoped credential management, rate limiting, bootstrap + `passkey_required` enforcement on `/api/admin/*` and `/api/mod/*`, and the fan→Manager isolation regressions |
@@ -72,6 +72,15 @@ watcher crediting with exactly-once proof for BTC/USDT/SOL/XRP, admin
 mark-credited over HTTP (second call 409s), and the regression pin for
 invoice-window receipt scoping on the shared ETH/USDT address —
 transfers older than an invoice never count toward it.
+Per-invoice mode (setting `CRYPTO_USDT_XPUB`): derivation is pinned
+to the published Hardhat test-mnemonic BIP44 vector; USDT and ETH
+share ONE persisted derivation-index sequence per key family, so two
+open invoices can never share a derived address (per-coin sequences
+previously handed both coins index 0); the watcher credits only the
+invoice whose own derived address was paid. A valid xpub beats the
+fixed address; a set-but-unusable xpub (malformed, or carrying
+private key material) disables the coin — hidden from fans, refused
+at creation — instead of silently falling back to the fixed address.
 
 **Presence (`lib/presence.js`)** — online counts for guests/fans/models,
 staff roles never counted, re-pings don't double count, stale entries
