@@ -3507,6 +3507,25 @@ function recordAgeAttestation(userId, req) {
     .run(String(clientIp(req) || '').slice(0, 60), userId);
 }
 
+/* Age verification (lib/av.js) — PROOF-ONLY columns. fan_state is the
+ * fan's US state (2-letter code) resolved from IP at signup and
+ * refreshed at purchase time; av_verified_at / av_method /
+ * av_provider_ref are the entire verification record (when, how, and
+ * the provider's opaque reference). No document, image, DOB or provider
+ * payload is EVER stored for AV — the evidence stays with the provider.
+ * av_last_attested_at is the Tennessee re-attestation stamp (login). */
+addColumnIfMissing('users', 'fan_state', 'TEXT');
+addColumnIfMissing('users', 'av_verified_at', 'TEXT');
+addColumnIfMissing('users', 'av_method', 'TEXT');
+addColumnIfMissing('users', 'av_provider_ref', 'TEXT');
+addColumnIfMissing('users', 'av_last_attested_at', 'TEXT');
+function recordFanState(userId, req) {
+  const geo = geoOfReq(req);
+  if (geo && geo.country === 'US' && geo.state) {
+    db.prepare('UPDATE users SET fan_state = ? WHERE id = ?').run(geo.state, userId);
+  }
+}
+
 // POST /api/auth/signup — optional guest_token migrates guest chats/trials
 // Optional invite_code: model invite link — forces role='model', tags the invite as used.
 app.post('/api/auth/signup', (req, res) => {
@@ -3544,6 +3563,7 @@ app.post('/api/auth/signup', (req, res) => {
 
   const id = createUser(username.trim(), password, finalRole, display_name.trim().slice(0, 40), dob, signupLanguage(req));
   recordAgeAttestation(id, req);
+  if (finalRole === 'fan') recordFanState(id, req);
 
   // Mark the invite as used by this model
   if (invite) {
@@ -3585,6 +3605,7 @@ app.post('/api/auth/quick-signup', (req, res) => {
   // no ID upload for fans. ID verification is for models only (2257).
   const id = createUser(username.trim(), password, 'fan', username.trim().slice(0, 40), null, signupLanguage(req));
   recordAgeAttestation(id, req);
+  recordFanState(id, req);
   db.prepare('UPDATE users SET pay_full_name = ?, pay_method = ?, pay_card_last4 = ?, pay_cashtag = ? WHERE id = ?')
     .run(full_name.trim().slice(0, 80), pay_method, card_last4 || null, cashtag || null, id);
 
@@ -3656,6 +3677,9 @@ app.post('/api/auth/login', (req, res) => {
   if (guest_token) mergeGuestIntoUser(user.id, guest_token);
 
   const token = createSession(user.id);
+  // TN periodic re-verification: a verified fan re-attests by signing in
+  // (timestamp only, no provider call). No-op while AV is dormant.
+  try { avSvc.stampReattestation(user.id); } catch (e) { /* never block a login */ }
   // Slut Manager split: the manager account CAN sign in here now, but the
   // response flags it (manager_account) so the public client shows the
   // "you're on the manager account" interstitial instead of dropping him
@@ -3907,6 +3931,8 @@ app.post('/api/auth/passkey/login-verify', async (req, res) => {
   if (user.status === 'frozen') return res.status(403).json({ error: 'account_frozen',
     message: 'Your account has been frozen due to a billing dispute. Contact support.' });
   const token = createSession(user.id);
+  // TN periodic re-verification stamp (see password login). Dormant-safe.
+  try { avSvc.stampReattestation(user.id); } catch (e) { /* never block a login */ }
   res.json({ token, user: getUserPublic(user), manager_account: user.role === 'admin' });
 });
 
@@ -9700,6 +9726,108 @@ const ccbillSvc = createCcbillService({ db, txn, notifyUser,
   }),
 });
 
+/* ---------------- Age verification (lib/av.js) ----------------
+   Owner's design (Oct 16 2026): fans attest 18+ at the door as always;
+   REAL verification fires exactly once, at the FIRST credit purchase,
+   for fans in a regulated state (lib/av.js AV_STATES). Card buyers
+   verify via the provider's transactional-data check; crypto buyers
+   via its ID check. DORMANT unless AV_PROVIDER + AV_API_KEY are set —
+   while dormant every purchase path behaves exactly as before (pinned
+   by tests/av-gate.test.js) and the /api/av/* routes refuse. */
+const avLib = require('./lib/av');
+const avSvc = avLib.createAvService({ db });
+
+/* The purchase gate. Returns a { status, body } to send when the
+ * purchase must pause for verification, or null when it may proceed.
+ * Runs BEFORE any order/invoice is created and before the fraud
+ * velocity check (a verification pause is not a purchase attempt). */
+function avPurchaseGate(req, method) {
+  if (!avLib.enabled()) return null;
+  const u = db.prepare('SELECT role, fan_state, av_verified_at FROM users WHERE id = ?')
+    .get(req.user.id);
+  if (!u) return null;
+  const geo = geoOfReq(req);
+  // Purchase-time state refresh: a US state resolved from THIS request
+  // is the freshest fact we have — persist it over the signup value.
+  if (geo && geo.country === 'US' && geo.state && geo.state !== u.fan_state) {
+    db.prepare('UPDATE users SET fan_state = ? WHERE id = ?').run(geo.state, req.user.id);
+    u.fan_state = geo.state;
+  }
+  const d = avLib.gateDecision({
+    role: u.role, avVerifiedAt: u.av_verified_at,
+    geoCountry: geo ? geo.country : null, geoState: geo ? geo.state : null,
+    storedState: u.fan_state,
+  });
+  if (!d.gate) return null;
+  return { status: 403, body: { error: 'av_required', method, state: d.state,
+    message: "One quick age check before your first purchase — required by your state's law." } };
+}
+
+app.get('/api/av/status', identMiddleware, requireUser, (req, res) => {
+  const u = db.prepare(`SELECT fan_state, av_verified_at, av_method, av_last_attested_at
+                        FROM users WHERE id = ?`).get(req.user.id);
+  res.json({
+    enabled: avLib.enabled(),
+    provider: avLib.providerName(),
+    verified: !!(u && u.av_verified_at),
+    verified_at: u ? u.av_verified_at : null,
+    method: u ? u.av_method : null,
+    state: u ? u.fan_state : null,
+    last_attested_at: u ? u.av_last_attested_at : null,
+  });
+});
+
+app.post('/api/av/start', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  if (!avLib.enabled()) return res.status(503).json({ error: 'av_not_configured' });
+  const method = req.body && req.body.method === 'id' ? 'id' : 'transactional';
+  try {
+    const s = avSvc.createVerification({ userId: req.user.id, username: req.user.username, method });
+    res.json(s);
+  } catch (e) {
+    if (e.code === 'av_not_configured') return res.status(503).json({ error: 'av_not_configured' });
+    console.error('av: start failed —', e.message);
+    res.status(500).json({ error: 'av_start_failed' });
+  }
+});
+
+/* In-app completion step. The stub resolves here; a real provider's
+ * result is resolved server-side by the adapter — a client's claim of
+ * success is never trusted on its own. On a pass, the fan retries the
+ * purchase that was gated. */
+app.post('/api/av/complete', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  if (!avLib.enabled()) return res.status(503).json({ error: 'av_not_configured' });
+  try {
+    const r = avSvc.completeVerification({
+      userId: req.user.id, username: req.user.username,
+      sessionRef: req.body && req.body.session_ref,
+    });
+    if (!r.ok) return res.status(404).json({ error: r.error });
+    res.json({ ok: true, passed: r.passed, verified: r.passed });
+  } catch (e) {
+    if (e.code === 'av_not_configured') return res.status(503).json({ error: 'av_not_configured' });
+    console.error('av: complete failed —', e.message);
+    res.status(500).json({ error: 'av_complete_failed' });
+  }
+});
+
+/* Provider server-to-server result delivery (webhook). INERT until a
+ * real provider is configured — see lib/av.js
+ * verifyWebhookSignature, which must gain real HMAC verification at
+ * activation time. Always 200 for well-formed posts so a provider
+ * stops retrying; decisions are recorded on the session row. */
+app.post('/api/av/webhook', (req, res) => {
+  try {
+    if (!avSvc.verifyWebhookSignature(req.body || {}, req.headers['x-av-signature'])) {
+      return res.status(401).json({ error: 'bad_signature' });
+    }
+    const r = avSvc.handleWebhook(req.body || {});
+    res.json({ ok: true, handled: r.handled });
+  } catch (e) {
+    console.error('av: webhook error —', e.message);
+    res.json({ ok: true, handled: 'error' });
+  }
+});
+
 app.get('/api/ccbill/config', (req, res) => {
   res.json({ configured: ccbillSvc.configured(), max_cents: ccbillSvc.maxCents() });
 });
@@ -9721,6 +9849,11 @@ app.post('/api/ccbill/checkout', identMiddleware, requireUser, requireRole('fan'
     return res.status(400).json({ error: 'over_limit',
       message: `Card loads are capped at $${ccbillSvc.maxCents() / 100} per transaction right now — crypto loads go up to $1,000.` });
   }
+  // Age-verification gate (dormant unless AV is configured): a
+  // regulated-state fan verifies ONCE, before her first card purchase,
+  // via the provider's transactional-data check on this card.
+  const avGate = avPurchaseGate(req, 'transactional');
+  if (avGate) return res.status(avGate.status).json(avGate.body);
   // Same fraud velocity gate as every other purchase path.
   const v = checkPurchaseVelocity(req.user.id, amount, null);
   if (!v.ok) {
@@ -9979,6 +10112,10 @@ app.post('/api/crypto/invoices', identMiddleware, requireUser, requireRole('fan'
     }
   }
   if (!pkg) return res.status(400).json({ error: 'bad_package' });
+  // Age-verification gate (dormant unless AV is configured): crypto has
+  // no card to lean on, so the provider's ID check is the method here.
+  const avGate = avPurchaseGate(req, 'id');
+  if (avGate) return res.status(avGate.status).json(avGate.body);
   try {
     const invoice = await cryptoSvc.createInvoice(req.user.id, pkg, String((req.body && req.body.coin) || 'USDT').toUpperCase());
     res.status(201).json({ invoice });
