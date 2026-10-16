@@ -27,8 +27,10 @@
  * Structural banner/particle CSS is shared: css/themes/theme-base.css.
  *
  * Node (tests) gets { THEMES, resolveTheme, calendarTheme, easterSunday,
- * fourthThursdayOfNovember } via module.exports; browsers get the same
- * object as window.SeasonalTheme.
+ * fourthThursdayOfNovember, POPUP_MODELS, POPUP_POSES, POPUP_SCHEDULE,
+ * popupCombos, popupImagePath, nextPopupInterval, createPopupPicker }
+ * via module.exports; browsers get the same object as
+ * window.SeasonalTheme.
  */
 (function () {
   /* ---------------------------------------------------------------- */
@@ -165,12 +167,99 @@
     return calendarTheme(date);
   }
 
+  /* ---------------------------------------------------------------- */
+  /* Halloween pop-up girls (pure logic; DOM glue is browser-side).   */
+  /*                                                                   */
+  /* While the halloween pack is active AND a fan/model is logged in, */
+  /* an anime witch pops into a bottom corner every few minutes: a    */
+  /* kiss-blower (winking, hearts) or a twerker, rotating through six  */
+  /* models. She is strictly decorative — pointer-events:none, a few  */
+  /* seconds on screen, never in the way. Art: public/img/popups/     */
+  /* <model>-<pose>.webp — the roster below MUST mirror those files   */
+  /* (tests enforce the match both ways).                             */
+  /* ---------------------------------------------------------------- */
+  var POPUP_MODELS = ['pink', 'purple', 'blonde', 'red', 'black', 'silver'];
+  var POPUP_POSES = ['kiss', 'twerk'];
+  var POPUP_SCHEDULE = {
+    firstDelayMs: 60000,      // first pop ~1 minute after login
+    intervalMinMs: 210000,    // then every 3.5–5 minutes, randomized
+    intervalMaxMs: 300000,
+    showMs: 6000,             // ~6 seconds on screen per pop
+  };
+
+  /* All model × pose combinations, in roster order. */
+  function popupCombos() {
+    var out = [];
+    for (var i = 0; i < POPUP_MODELS.length; i++) {
+      for (var j = 0; j < POPUP_POSES.length; j++) {
+        out.push({ model: POPUP_MODELS[i], pose: POPUP_POSES[j] });
+      }
+    }
+    return out;
+  }
+
+  function popupImagePath(combo) {
+    return '/img/popups/' + combo.model + '-' + combo.pose + '.webp';
+  }
+
+  /* Randomized gap until the next pop, within the schedule bounds. */
+  function nextPopupInterval(random) {
+    var rand = typeof random === 'function' ? random : Math.random;
+    var span = POPUP_SCHEDULE.intervalMaxMs - POPUP_SCHEDULE.intervalMinMs;
+    return POPUP_SCHEDULE.intervalMinMs + Math.floor(rand() * (span + 1));
+  }
+
+  /*
+   * Shuffle-bag picker: draws model × pose combos without replacement
+   * until every combo has appeared, then refills and reshuffles. On top
+   * of that, whenever the bag still holds the other pose, the same pose
+   * type never plays twice in a row (no twerk-twerk / kiss-kiss runs).
+   * `random` is injectable so tests can drive it deterministically.
+   */
+  function createPopupPicker(random) {
+    var rand = typeof random === 'function' ? random : Math.random;
+    var bag = [];
+    var lastPose = null;
+    function refill() {
+      bag = popupCombos();
+      for (var i = bag.length - 1; i > 0; i--) {
+        var j = Math.floor(rand() * (i + 1));
+        var t = bag[i]; bag[i] = bag[j]; bag[j] = t;
+      }
+    }
+    refill();
+    return {
+      next: function () {
+        if (!bag.length) refill();
+        var pick = 0;
+        if (lastPose) {
+          var others = [];
+          for (var i = 0; i < bag.length; i++) {
+            if (bag[i].pose !== lastPose) others.push(i);
+          }
+          if (others.length) pick = others[Math.floor(rand() * others.length)];
+        }
+        var combo = bag.splice(pick, 1)[0];
+        lastPose = combo.pose;
+        return combo;
+      },
+      remaining: function () { return bag.length; },
+    };
+  }
+
   var api = {
     THEMES: THEMES,
     resolveTheme: resolveTheme,
     calendarTheme: calendarTheme,
     easterSunday: easterSunday,
     fourthThursdayOfNovember: fourthThursdayOfNovember,
+    POPUP_MODELS: POPUP_MODELS,
+    POPUP_POSES: POPUP_POSES,
+    POPUP_SCHEDULE: POPUP_SCHEDULE,
+    popupCombos: popupCombos,
+    popupImagePath: popupImagePath,
+    nextPopupInterval: nextPopupInterval,
+    createPopupPicker: createPopupPicker,
   };
 
   if (typeof module !== 'undefined' && module.exports) {
@@ -295,6 +384,182 @@
     document.body.appendChild(layer);
   }
 
+  /* ---------------------------------------------------------------- */
+  /* Halloween pop-up girls — browser glue.                            */
+  /*                                                                   */
+  /* Runs ONLY when the resolved theme is 'halloween' and a login      */
+  /* token ('wc_token') is present. The public app serves fans and     */
+  /* models from the same screens, so both see her; the Manager never  */
+  /* loads theme.js, so she never appears there. Login state is        */
+  /* checked at start, on 'storage' events (other tabs) and on a slow  */
+  /* poll (same-tab SPA login/logout): she starts when you log in and  */
+  /* stops when you log out. Every step is best-effort — any error     */
+  /* quietly disables the pop-ups, never the app.                      */
+  /* ---------------------------------------------------------------- */
+  var popup = {
+    running: false,
+    picker: null,
+    timer: null,
+    hideTimer: null,
+    outTimer: null,
+    node: null,
+  };
+
+  function popupToken() {
+    return storageGet(window.localStorage, 'wc_token');
+  }
+
+  function popupReducedMotion() {
+    try {
+      return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch (e) { return false; }
+  }
+
+  /* True while the user is in a 1:1 call or a live room — she never
+     interrupts those. Signals maintained by app.js itself: the call
+     overlays (#call-overlay / #active-call / #call-error) lose their
+     .hidden class while up, and <body> carries .in-live exactly for
+     the liveBroadcast / liveWatch views. */
+  function popupBlockedByCallOrLive() {
+    try {
+      if (document.body && document.body.classList.contains('in-live')) return true;
+      var ids = ['call-overlay', 'active-call', 'call-error'];
+      for (var i = 0; i < ids.length; i++) {
+        var el = document.getElementById(ids[i]);
+        if (el && !el.classList.contains('hidden')) return true;
+      }
+    } catch (e) { /* if we cannot tell, do not block */ }
+    return false;
+  }
+
+  function popupClearTimers() {
+    if (popup.timer) { window.clearTimeout(popup.timer); popup.timer = null; }
+    if (popup.hideTimer) { window.clearTimeout(popup.hideTimer); popup.hideTimer = null; }
+    if (popup.outTimer) { window.clearTimeout(popup.outTimer); popup.outTimer = null; }
+  }
+
+  function popupRemoveNode() {
+    if (popup.node && popup.node.parentNode) popup.node.parentNode.removeChild(popup.node);
+    popup.node = null;
+  }
+
+  function popupSchedule(delayMs) {
+    if (!popup.running) return;
+    if (popup.timer) window.clearTimeout(popup.timer);
+    popup.timer = window.setTimeout(popupShow, delayMs);
+  }
+
+  function popupStart() {
+    if (popup.running) return;
+    popup.running = true;
+    if (!popup.picker) popup.picker = createPopupPicker(Math.random);
+    popupSchedule(POPUP_SCHEDULE.firstDelayMs);
+  }
+
+  function popupStop() {
+    popup.running = false;
+    popupClearTimers();
+    popupRemoveNode();
+  }
+
+  function popupCheckLogin() {
+    try {
+      if (popupToken()) popupStart();
+      else if (popup.running) popupStop();
+    } catch (e) { /* best-effort only */ }
+  }
+
+  function popupShow() {
+    popup.timer = null;
+    try {
+      if (!popup.running) return;
+      if (!popupToken()) { popupStop(); return; }
+      // Skip this cycle (retry after a normal interval) when the
+      // moment is wrong: tab hidden, a pop already on screen, or the
+      // user is in a call / live room.
+      if (document.hidden || popup.node || popupBlockedByCallOrLive()) {
+        popupSchedule(nextPopupInterval(Math.random));
+        return;
+      }
+      var combo = popup.picker.next();
+      var img = new Image();
+      img.onload = function () {
+        try { popupRender(combo, img); }
+        catch (e) { popupSchedule(nextPopupInterval(Math.random)); }
+      };
+      img.onerror = function () {
+        // Missing art must never break the rhythm — skip silently.
+        try { popupSchedule(nextPopupInterval(Math.random)); } catch (e) { /* ignore */ }
+      };
+      img.src = popupImagePath(combo);
+    } catch (e) {
+      try { popupSchedule(nextPopupInterval(Math.random)); } catch (e2) { /* give up quietly */ }
+    }
+  }
+
+  function popupRender(combo, img) {
+    if (!popup.running || popup.node) {
+      popupSchedule(nextPopupInterval(Math.random));
+      return;
+    }
+    var box = document.createElement('div');
+    box.className = 'sc-popup sc-popup--' + combo.pose +
+      (Math.random() < 0.5 ? ' sc-popup--left' : ' sc-popup--right');
+    box.setAttribute('aria-hidden', 'true');
+    // Hard rule, enforced inline as well as in the pack CSS: she can
+    // never be clicked and can never block what the user is doing.
+    box.style.pointerEvents = 'none';
+
+    var bounce = document.createElement('div');
+    bounce.className = 'sc-popup-bounce';
+    img.className = 'sc-popup-img';
+    img.alt = '';
+    img.draggable = false;
+    img.style.pointerEvents = 'none';
+    bounce.appendChild(img);
+    box.appendChild(bounce);
+
+    if (combo.pose === 'kiss') {
+      var glyphs = ['💋', '💜', '🧡', '💋', '💜'];
+      for (var i = 0; i < glyphs.length; i++) {
+        var fx = document.createElement('span');
+        fx.className = 'sc-popup-fx';
+        fx.textContent = glyphs[i];
+        fx.style.left = (18 + Math.random() * 60).toFixed(0) + '%';
+        fx.style.setProperty('--fx-x', (Math.random() * 56 - 28).toFixed(0) + 'px');
+        fx.style.animationDelay = (i * 0.45).toFixed(2) + 's';
+        fx.style.pointerEvents = 'none';
+        box.appendChild(fx);
+      }
+    }
+
+    document.body.appendChild(box);
+    popup.node = box;
+
+    var OUT_MS = 450; // matches the sc-pop-out animation duration
+    popup.hideTimer = window.setTimeout(function () {
+      popup.hideTimer = null;
+      if (popup.node === box) box.classList.add('sc-popup--out');
+      popup.outTimer = window.setTimeout(function () {
+        popup.outTimer = null;
+        if (popup.node === box) popupRemoveNode();
+        popupSchedule(nextPopupInterval(Math.random));
+      }, OUT_MS);
+    }, POPUP_SCHEDULE.showMs - OUT_MS);
+  }
+
+  function initPopups(themeName) {
+    try {
+      if (themeName !== 'halloween') return;
+      if (popupReducedMotion()) return;
+      popupCheckLogin();
+      window.addEventListener('storage', function (e) {
+        if (!e || e.key === 'wc_token' || e.key === null) popupCheckLogin();
+      });
+      window.setInterval(popupCheckLogin, 15000);
+    } catch (e) { /* pop-ups are decoration; never break the app */ }
+  }
+
   function stripDecorations() {
     var nodes = document.querySelectorAll('.sc-theme-banner, .sc-theme-promo, .sc-theme-particles');
     for (var i = 0; i < nodes.length; i++) {
@@ -316,6 +581,7 @@
       renderBanner(name, meta);
       renderPromo(name, meta);
       renderParticles(meta);
+      initPopups(name);
     } catch (e) {
       // A theme must never break the app: remove what we added, move on.
       try { stripDecorations(); } catch (e2) { /* nothing more to do */ }

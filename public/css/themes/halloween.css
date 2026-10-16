@@ -117,3 +117,101 @@
 :root[data-theme='halloween'] .sc-theme-particles span {
   filter: drop-shadow(0 0 8px rgba(255, 154, 60, .55));
 }
+
+/* ---------- Halloween pop-up girls (theme.js pop-up module) ----------
+   She rises into a bottom corner for a few seconds every few minutes
+   while a fan/model is logged in. STRICTLY decorative: pointer-events
+   are killed on the container and everything inside it, so she can
+   never be clicked and never blocks the app. Art lives in
+   public/img/popups/<model>-<pose>.webp. */
+
+:root[data-theme='halloween'] .sc-popup,
+:root[data-theme='halloween'] .sc-popup * {
+  pointer-events: none !important;
+}
+:root[data-theme='halloween'] .sc-popup {
+  position: fixed;
+  bottom: 16px;
+  z-index: 9990;
+  height: min(34vh, 320px);
+  animation: sc-pop-in .55s cubic-bezier(.22, 1.4, .36, 1) both;
+}
+:root[data-theme='halloween'] .sc-popup--left { left: 10px; }
+:root[data-theme='halloween'] .sc-popup--right { right: 10px; }
+/* Clear the mobile bottom tab bar. */
+@media (max-width: 640px) {
+  :root[data-theme='halloween'] .sc-popup { bottom: 84px; }
+}
+:root[data-theme='halloween'] .sc-popup--out {
+  animation: sc-pop-out .45s ease-in both;
+}
+:root[data-theme='halloween'] .sc-popup-bounce {
+  height: 100%;
+  transform-origin: 50% 100%;
+}
+:root[data-theme='halloween'] .sc-popup-img {
+  display: block;
+  height: 100%;
+  width: auto;
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, .5));
+}
+
+/* Kiss: a gentle sway on the figure, plus a quick double jiggle
+   (whole-figure squash-and-bounce, origin at her feet). */
+:root[data-theme='halloween'] .sc-popup--kiss .sc-popup-img {
+  animation: sc-popup-sway 2.6s ease-in-out infinite alternate;
+}
+:root[data-theme='halloween'] .sc-popup--kiss .sc-popup-bounce {
+  animation: sc-popup-jiggle 2.8s ease-in-out infinite;
+}
+/* Twerk: fast rhythmic bounce + tilt for the whole visit. */
+:root[data-theme='halloween'] .sc-popup--twerk .sc-popup-bounce {
+  animation: sc-popup-twerk .48s ease-in-out infinite alternate;
+}
+
+/* Floating kiss/heart glyphs (kiss variant only). */
+:root[data-theme='halloween'] .sc-popup-fx {
+  position: absolute;
+  top: 6%;
+  font-size: 22px;
+  opacity: 0;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .45));
+  animation: sc-popup-float 2.4s ease-out infinite;
+}
+
+@keyframes sc-pop-in {
+  0%   { transform: translateY(55%) scale(.82); opacity: 0; }
+  55%  { transform: translateY(-3.5%) scale(1.02); opacity: 1; }
+  75%  { transform: translateY(1.2%) scale(.995); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes sc-pop-out {
+  from { transform: translateY(0) scale(1); opacity: 1; }
+  to   { transform: translateY(60%) scale(.9); opacity: 0; }
+}
+@keyframes sc-popup-sway {
+  from { transform: rotate(-2deg) translateX(-3px); }
+  to   { transform: rotate(2deg) translateX(3px); }
+}
+@keyframes sc-popup-jiggle {
+  0%, 34%, 100% { transform: scale(1, 1) translateY(0); }
+  6%  { transform: scale(1.045, .955) translateY(1.2%); }
+  13% { transform: scale(.975, 1.03) translateY(-1.6%); }
+  20% { transform: scale(1.035, .965) translateY(.8%); }
+  27% { transform: scale(1, 1) translateY(0); }
+}
+@keyframes sc-popup-twerk {
+  from { transform: rotate(-2.5deg) translateY(0); }
+  to   { transform: rotate(2.5deg) translateY(-7px); }
+}
+@keyframes sc-popup-float {
+  0%   { transform: translate(0, 0) scale(.55); opacity: 0; }
+  14%  { opacity: 1; }
+  100% { transform: translate(var(--fx-x, 12px), -118px) scale(1.15); opacity: 0; }
+}
+
+/* The engine already refuses to start pop-ups under reduced motion;
+   this is the CSS backstop, same as the particles above. */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme='halloween'] .sc-popup { display: none !important; }
+}

@@ -111,6 +111,19 @@ and the computed feasts — Easter, Thanksgiving — win if one ever did):
   variable overrides under `:root[data-theme='<name>']` plus accents
   (button/logo gradients, card hairlines, selection, scrollbar, banner).
 
+**Halloween pop-up girls** — while the Halloween pack is active,
+logged-in fans and models also get a little company: an anime witch
+(art in `public/img/popups/<model>-<pose>.webp` — six models with
+different hair colors × a kiss-blowing pose and a twerk pose) rises
+into a bottom corner ~1 minute after login and then every 3.5–5
+minutes, stays ~6 seconds, and sinks away. The rotation is a
+shuffle-bag — every model/pose appears before anyone repeats, and
+kiss/twerk alternate. She is pure decoration: `pointer-events: none`
+(never clickable, never in the way), skipped while the tab is hidden,
+during 1:1 calls and live rooms, and under `prefers-reduced-motion`.
+The module lives in `theme.js` with the engine, and the animations in
+the Halloween pack — so she vanishes with the season on Nov 1.
+
 **Adding a new pack** — tests enforce that metadata and CSS stay in
 sync, in both directions:
 
