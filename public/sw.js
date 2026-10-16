@@ -6,7 +6,7 @@
  * answered from cache — the Manager must always load its own fresh
  * assets straight from the network.
  */
-const CACHE = 'slutcamp-v3';
+const CACHE = 'slutcamp-v4';
 const SHELL = [
   '/',
   '/index.html',
@@ -33,7 +33,14 @@ self.addEventListener('activate', (e) => {
 
 // App shell files: network first (fresh updates), cache fallback offline.
 // Icons/manifest: cache first (rarely change).
-const NETWORK_FIRST = ['/', '/index.html', '/css/styles.css', '/js/app.js'];
+// The theme engine (/js/theme.js) is network-first too: it carries the
+// seasonal banner, promo strip and pop-up schedule, so a stale cached
+// copy would freeze a device on an old season forever.
+const NETWORK_FIRST = ['/', '/index.html', '/css/styles.css', '/js/app.js', '/js/theme.js'];
+// Seasonal theme CSS (theme-base.css + per-holiday packs) lives under
+// /css/themes/ and changes with the seasons — network-first by prefix so
+// new packs are covered automatically and never sit stale in cache.
+const NETWORK_FIRST_PREFIXES = ['/css/themes/'];
 
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
@@ -47,7 +54,8 @@ self.addEventListener('fetch', (e) => {
   // Manager a stale or wrong-typed asset.
   if (url.pathname === '/manager' || url.pathname.startsWith('/manager/')) return;
 
-  if (NETWORK_FIRST.includes(url.pathname)) {
+  if (NETWORK_FIRST.includes(url.pathname) ||
+      NETWORK_FIRST_PREFIXES.some((p) => url.pathname.startsWith(p))) {
     e.respondWith(
       fetch(e.request).then((res) => {
         const copy = res.clone();
