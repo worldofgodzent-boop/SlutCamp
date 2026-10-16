@@ -160,6 +160,7 @@ const I18N = {
     display_name: 'Display name', dob: 'Date of birth',
     im_fan: "I'm a Fan", fan_desc: 'Chat & video call the models',
     im_model: "I'm a Model", model_desc: 'Get paid to chat (SlutCamp verifies you)',
+    im_affiliate: "I'm an Affiliate", affiliate_desc: 'Recruit models · earn 20¢ of every $1 fans spend with them',
     age18_only: '18+ only.', age18_line: 'You must be 18 or older to use SlutCamp.',
     fan_age_line: "Fans confirm 18+ here — that's all we ask. Simple.",
     confirm18: 'I confirm I am <b>18 years or older</b>.',
@@ -193,6 +194,7 @@ const I18N = {
     aff_invite_sub: 'Affiliate invite',
     aff_become_h: '🤝 Become a SlutCamp Affiliate',
     aff_become_sub: 'Recruit models · Earn 20% of everything they make<br>Your own referral link · Recruiter dashboard',
+    aff_join_sub: 'Recruit models with your own link · Earn 20¢ of every $1 fans spend with your models — paid from SlutCamp\'s cut, never from hers<br>Your own referral link · Affiliate dashboard',
     your_name: 'Your name',
     aff_agreement_h: '📋 Affiliate Agreement (vR1.0)',
     aff_agree: 'I have read the Affiliate Agreement above and I <b>agree</b> to all terms.',
@@ -462,6 +464,7 @@ const I18N = {
     display_name: 'Nombre visible', dob: 'Fecha de nacimiento',
     im_fan: 'Soy Fan', fan_desc: 'Chatea y haz videollamadas con las modelos',
     im_model: 'Soy Modelo', model_desc: 'Gana dinero chateando (SlutCamp te verifica)',
+    im_affiliate: 'Soy Afiliado', affiliate_desc: 'Recluta modelos · gana 20¢ de cada $1 que los fans gasten con ellas',
     age18_only: 'Solo 18+.', age18_line: 'Debes tener 18 años o más para usar SlutCamp.',
     fan_age_line: 'Los fans confirman aquí que tienen 18+ — es todo lo que pedimos. Simple.',
     confirm18: 'Confirmo que tengo <b>18 años o más</b>.',
@@ -495,6 +498,7 @@ const I18N = {
     aff_invite_sub: 'Invitación de afiliado',
     aff_become_h: '🤝 Conviértete en afiliado de SlutCamp',
     aff_become_sub: 'Recluta modelos · Gana el 20% de todo lo que ellas ganen<br>Tu propio enlace de referido · Panel de reclutador',
+    aff_join_sub: 'Recluta modelos con tu propio enlace · Gana 20¢ de cada $1 que los fans gasten con tus modelos — pagado de la parte de SlutCamp, nunca de la de ella<br>Tu propio enlace de referido · Panel de afiliado',
     your_name: 'Tu nombre',
     aff_agreement_h: '📋 Acuerdo de Afiliado (vR1.0)',
     aff_agree: 'He leído el Acuerdo de Afiliado anterior y <b>acepto</b> todos sus términos.',
@@ -761,6 +765,7 @@ const I18N = {
     display_name: 'Nome de exibição', dob: 'Data de nascimento',
     im_fan: 'Sou Fã', fan_desc: 'Converse e faça videochamadas com as modelos',
     im_model: 'Sou Modelo', model_desc: 'Ganhe dinheiro conversando (a SlutCamp verifica você)',
+    im_affiliate: 'Sou Afiliado', affiliate_desc: 'Recrute modelos · ganhe 20¢ de cada $1 que os fãs gastarem com elas',
     age18_only: 'Somente 18+.', age18_line: 'Você deve ter 18 anos ou mais para usar o SlutCamp.',
     fan_age_line: 'Fãs confirmam aqui que têm 18+ — é tudo o que pedimos. Simples.',
     confirm18: 'Confirmo que tenho <b>18 anos ou mais</b>.',
@@ -794,6 +799,7 @@ const I18N = {
     aff_invite_sub: 'Convite de afiliado',
     aff_become_h: '🤝 Torne-se um afiliado SlutCamp',
     aff_become_sub: 'Recrute modelos · Ganhe 20% de tudo o que elas ganharem<br>Seu próprio link de indicação · Painel de recrutador',
+    aff_join_sub: 'Recrute modelos com seu próprio link · Ganhe 20¢ de cada $1 que os fãs gastarem com suas modelos — pago da parte da SlutCamp, nunca da dela<br>Seu próprio link de indicação · Painel de afiliado',
     your_name: 'Seu nome',
     aff_agreement_h: '📋 Acordo de Afiliado (vR1.0)',
     aff_agree: 'Li o Acordo de Afiliado acima e <b>concordo</b> com todos os termos.',
@@ -2188,6 +2194,52 @@ function renderAuthBody(mode, role) {
       <div class="role-card ${role === 'model' ? 'selected' : ''}" id="r-model">
         <div class="emoji">💃</div><div class="t">${t('im_model')}</div>
         <div class="d">${t('model_desc')}</div></div>
+      <div class="role-card ${role === 'affiliate' ? 'selected' : ''}" id="r-aff">
+        <div class="emoji">🤝</div><div class="t">${t('im_affiliate')}</div>
+        <div class="d">${t('affiliate_desc')}</div></div>
+      <div id="auth-fields"></div>`;
+    let r = ['fan', 'model', 'affiliate'].includes(role) ? role : 'fan';
+    const paint = () => {
+      $('#r-fan').classList.toggle('selected', r === 'fan');
+      $('#r-model').classList.toggle('selected', r === 'model');
+      $('#r-aff').classList.toggle('selected', r === 'affiliate');
+      renderSignupFields(r);
+    };
+    $('#r-fan').onclick = () => { r = 'fan'; paint(); };
+    $('#r-model').onclick = () => { r = 'model'; paint(); };
+    $('#r-aff').onclick = () => { r = 'affiliate'; paint(); };
+    paint();
+  }
+}
+
+/* Signup fields under the role cards. Fan/model share the standard
+ * form; Affiliate gets the recruiter form — same fields, validations
+ * and agreement step as the Manager affiliate-invite signup, minus
+ * the invite code (existing affiliates just use the Log in tab). */
+function renderSignupFields(role) {
+  const host = $('#auth-fields');
+  if (!host) return;
+  if (role === 'affiliate') {
+    host.innerHTML = `
+      <div class="card" style="background:linear-gradient(135deg,#3b1d6e,#1a0f2e);text-align:center">
+        <div style="font-size:18px;font-weight:800">${t('aff_become_h')}</div>
+        <div class="muted small" style="margin-top:4px">${t('aff_join_sub')}</div>
+      </div>
+      <label class="field">${t('your_name')}<input class="input" id="af-name" maxlength="40"></label>
+      <label class="field">${t('username')}<input class="input" id="af-user" autocomplete="username"></label>
+      <label class="field">${t('password_hint')}${pwField('af-pass', 'new-password')}</label>
+      <div class="card" style="margin-top:12px;max-height:280px;overflow-y:auto;text-align:left">
+        <div style="font-weight:800;margin-bottom:8px">${t('aff_agreement_h')}</div>
+        ${AFFILIATE_AGREEMENT_SECTIONS.map(([h, b]) => `<div style="margin-bottom:10px"><div style="font-weight:700">${esc(h)}</div><div class="small muted">${esc(b)}</div></div>`).join('')}
+      </div>
+      <label class="checkbox-row" style="margin-top:12px"><input type="checkbox" id="af-agree">
+        <span>${t('aff_agree')}</span></label>
+      <div class="lang-row">${langPillsHTML()}</div>
+      <button class="btn" id="af-go">${t('aff_accept_btn')}</button>`;
+    $('#af-go').onclick = doAffiliateSignup;
+    return;
+  }
+  host.innerHTML = `
       <label class="field">${t('display_name')}<input class="input" id="a-name" maxlength="40"></label>
       <label class="field">${t('username')}<input class="input" id="a-user" autocomplete="username"></label>
       <label class="field">${t('password_hint')}${pwField('a-pass', 'new-password')}</label>
@@ -2198,11 +2250,25 @@ function renderAuthBody(mode, role) {
         <span>${t('confirm18')}</span></label>
       <div class="lang-row">${langPillsHTML()}</div>
       <button class="btn" id="a-go">${t('create_account_btn')}</button>`;
-    let r = role;
-    $('#r-fan').onclick = () => { r = 'fan'; $('#r-fan').classList.add('selected'); $('#r-model').classList.remove('selected'); };
-    $('#r-model').onclick = () => { r = 'model'; $('#r-model').classList.add('selected'); $('#r-fan').classList.remove('selected'); };
-    $('#a-go').onclick = () => doSignup(r);
-  }
+  $('#a-go').onclick = () => doSignup(role);
+}
+
+async function doAffiliateSignup() {
+  const display_name = $('#af-name').value.trim();
+  const username = $('#af-user').value.trim();
+  const password = $('#af-pass').value;
+  const agreed = $('#af-agree').checked;
+  if (!display_name || !username || !password) return toast(t('fill_all_fields'));
+  if (password.length < 6) return toast(t('err_password_short'));
+  if (!agreed) return toast(t('aff_must_agree'));
+  const { status, data } = await api('/affiliate/signup', {
+    method: 'POST',
+    body: JSON.stringify({ username, password, display_name, agreed: true }),
+  });
+  if (status === 200) return afterLogin(data);
+  const msgs = { username_taken: t('err_username_taken'),
+    must_agree: t('aff_must_agree'), missing_fields: t('fill_all_fields') };
+  toast(msgs[data.error] || t('err_signup_failed'));
 }
 
 async function doLogin() {
@@ -2578,6 +2644,22 @@ async function vRecruiterSignup(code) {
   };
 }
 
+/* Recruiter agreement summary shown on BOTH affiliate signup forms
+ * (Manager invite link + the entry screen's Affiliate tab). The
+ * text stays English — legal copy, like the rest of the app's
+ * long-tail legal strings; only the form chrome translates. */
+const AFFILIATE_AGREEMENT_SECTIONS = [
+  ['1. Parties', 'This Recruiter Agreement is between you ("Recruiter") and World of Godz Entertainment LLC, doing business as SlutCamp. By signing, you agree to everything below.'],
+  ['2. Independent Contractor — Not a Partner', 'You are an INDEPENDENT CONTRACTOR, not an employee. Nothing here creates an employment relationship, a legal business partnership, or agency — "partner" is just what we call the role in the app. You handle your own taxes.'],
+  ['3. What You Do', 'You recruit models to join SlutCamp using your personal referral link. Be honest about the platform — no false promises about earnings.'],
+  ['4. Your Cut', 'You earn 20% of everything each model you recruit earns. The model keeps her full 60% — your cut comes from the Company\'s portion.'],
+  ['5. Termination — At Will', 'SlutCamp may revoke your recruiter status AT ANY TIME, for any reason or no reason, with NO NOTICE. When revoked, you stop earning on all future revenue immediately.'],
+  ['6. Conduct Rules', 'You must NOT: share contact info or payment handles; try to take models or fans off-platform; use hate speech. Breaking these rules can get you deactivated immediately.'],
+  ['7. Non-Solicitation — Permanent', 'If your recruiter status ends for any reason, you may NEVER recruit or solicit any model you met through SlutCamp to a competing platform. No time limit.'],
+  ['8. Confidentiality', 'Do not disclose SlutCamp\'s business methods, commission structures, or internal operations to anyone outside the Company.'],
+  ['9. Disclaimer', 'This is a plain-language summary — NOT legal advice and NOT attorney-reviewed. You are encouraged to have your own attorney review before signing.'],
+];
+
 /* Affiliate signup via Corry's invite link — agreement popup required */
 async function vAffiliateSignup(code) {
   // Language switches redraw this form (it isn't a show() view). The
@@ -2604,18 +2686,7 @@ async function vAffiliateSignup(code) {
     return;
   }
 
-  // Recruiter agreement text (matches server RECRUITER_CONTRACT vR1.0)
-  const AGREEMENT = [
-    ['1. Parties', 'This Recruiter Agreement is between you ("Recruiter") and World of Godz Entertainment LLC, doing business as SlutCamp. By signing, you agree to everything below.'],
-    ['2. Independent Contractor — Not a Partner', 'You are an INDEPENDENT CONTRACTOR, not an employee. Nothing here creates an employment relationship, a legal business partnership, or agency — "partner" is just what we call the role in the app. You handle your own taxes.'],
-    ['3. What You Do', 'You recruit models to join SlutCamp using your personal referral link. Be honest about the platform — no false promises about earnings.'],
-    ['4. Your Cut', 'You earn 20% of everything each model you recruit earns. The model keeps her full 60% — your cut comes from the Company\'s portion.'],
-    ['5. Termination — At Will', 'SlutCamp may revoke your recruiter status AT ANY TIME, for any reason or no reason, with NO NOTICE. When revoked, you stop earning on all future revenue immediately.'],
-    ['6. Conduct Rules', 'You must NOT: share contact info or payment handles; try to take models or fans off-platform; use hate speech. Breaking these rules can get you deactivated immediately.'],
-    ['7. Non-Solicitation — Permanent', 'If your recruiter status ends for any reason, you may NEVER recruit or solicit any model you met through SlutCamp to a competing platform. No time limit.'],
-    ['8. Confidentiality', 'Do not disclose SlutCamp\'s business methods, commission structures, or internal operations to anyone outside the Company.'],
-    ['9. Disclaimer', 'This is a plain-language summary — NOT legal advice and NOT attorney-reviewed. You are encouraged to have your own attorney review before signing.'],
-  ];
+  const AGREEMENT = AFFILIATE_AGREEMENT_SECTIONS;
 
   app.innerHTML = `
     <div class="header"><h1>Slut<span class="logo">Camp</span> 🤝</h1>
