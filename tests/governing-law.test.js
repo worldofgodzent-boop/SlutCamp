@@ -21,7 +21,9 @@
  * fan Terms "Changes" 11 → 12. Version handling follows the agreements'
  * exact-version signing gate: a text change bumps the version (Model
  * 1.3 → 1.4, Recruiter R1.1 → R1.2), so every existing signer reads
- * signed:false until they re-sign the new text.
+ * signed:false until they re-sign the new text. (The Recruiter version
+ * has since moved to R1.3 for the first-year quota — the pin in the
+ * recruiter test below tracks the current version.)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -55,18 +57,22 @@ test('governing law: Model Agreement §14 carries the Texas clause; version bump
   assert.ok(!server.includes('14. Plain-Language Disclaimer'), 'model disclaimer no longer numbered 14');
 });
 
-test('governing law: Recruiter Agreement §9 carries the Texas clause; version bumped to R1.2', () => {
-  assert.ok(server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.2';"), 'recruiter contract version is R1.2 (forces re-sign of the new text)');
-  assert.ok(!server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.1';"), 'old recruiter version R1.1 is gone');
+test('governing law: Recruiter Agreement §9 carries the Texas clause; version pin tracks the R1.3 quota bump', () => {
+  // R1.2 was the governing-law bump; R1.3 (affiliate first-year quota,
+  // tests/affiliate-terms.test.js) superseded it — the version pin
+  // tracks the current version, per the payout-protection precedent.
+  assert.ok(server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.3';"), 'recruiter contract version is R1.3 (R1.2 added governing law; R1.3 adds the quota)');
+  assert.ok(!server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.2';"), 'old recruiter version R1.2 is gone');
   const rec = server.slice(server.indexOf('const RECRUITER_CONTRACT = {'));
   assert.ok(rec.includes("title: '9. Governing Law & Venue'"), 'recruiter §9 is Governing Law & Venue');
   assert.ok(rec.includes(AGREEMENT_LAW_SENTENCE), 'recruiter clause: Texas governing law, no conflict-of-laws rules');
   assert.ok(rec.includes(AGREEMENT_VENUE_SENTENCE), 'recruiter clause: Texas courts + consent to personal jurisdiction and venue');
   assert.ok(rec.includes(CARVE_OUT), 'recruiter clause: non-waivable home-state rights carve-out present');
   const i9 = rec.indexOf('9. Governing Law & Venue');
-  const i10 = rec.indexOf('10. Plain-Language Disclaimer');
-  assert.ok(i9 !== -1 && i10 > i9, 'recruiter clause sits before the disclaimer');
+  const i11 = rec.indexOf('11. Plain-Language Disclaimer');
+  assert.ok(i9 !== -1 && i11 > i9, 'recruiter clause sits before the disclaimer (renumbered to §11 by the quota section at §10)');
   assert.ok(!server.includes('9. Plain-Language Disclaimer'), 'recruiter disclaimer no longer numbered 9');
+  assert.ok(!server.includes('10. Plain-Language Disclaimer'), 'recruiter disclaimer no longer numbered 10 (quota took §10)');
 });
 
 test('governing law: fan Terms §11 carries the Texas clause; Changes renumbered to §12', () => {
