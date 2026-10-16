@@ -5178,6 +5178,7 @@ function bubbleHTML(m) {
 
 function bindMessageActions(scope) {
   if (!scope) return;
+  bindLongPressReact(scope);
   scope.querySelectorAll('[data-unlock]').forEach((b) => {
     if (!b.disabled) b.onclick = () => unlockMedia(parseInt(b.dataset.unlock));
   });
@@ -5323,6 +5324,88 @@ async function pickReaction(msgId, emoji) {
   } else {
     toast('Could not react.');
   }
+}
+
+/* ------------- iMessage-style long-press on the bubble itself -------------
+   The 🤍 mini-act button stays, but the owner's ask (2026-10-16) is the
+   phone-messages gesture: press-and-hold the MESSAGE ITSELF — text, photo,
+   video (incl. a locked PPV tile), voice note, gift — and the same emoji
+   popover pops up. Delegated on the #messages container, attached exactly
+   once per container element (bindMessageActions re-runs after every
+   render; the dataset flag keeps it single). ~500ms hold arms on
+   pointerdown; moving >10px, lifting the finger, pointercancel, or a
+   scroll cancels. When a hold fires, the click the browser dispatches
+   right behind it is swallowed in the capture phase, so pressing a
+   locked tile NEVER unlocks/charges, a video never plays, a voice note
+   never starts — the press was a reaction gesture, nothing else. */
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_PX = 10;
+const LP_CLICK_SWALLOW_MS = 400;
+let lpState = null; // { timer, bubble } while a hold is arming
+let lpLastFiredAt = 0; // Date.now() of the last fired long-press
+
+function lpCancel() {
+  if (!lpState) return;
+  clearTimeout(lpState.timer);
+  if (lpState.bubble) lpState.bubble.classList.remove('pressing');
+  lpState = null;
+}
+
+function bindLongPressReact(box) {
+  if (!box || box.dataset.lpBound === '1') return;
+  box.dataset.lpBound = '1';
+
+  box.addEventListener('pointerdown', (e) => {
+    if (e.button !== undefined && e.button !== 0) return; // primary finger/button only
+    if (!e.target || !e.target.closest) return;
+    // Presses starting inside the open reaction popover are the
+    // popover's own business, never a new press.
+    if (reactPop && reactPop.el.contains(e.target)) return;
+    const bubble = e.target.closest('.msg');
+    if (!bubble || !box.contains(bubble)) return;
+    // The mini-act buttons keep their own click behavior — arming on
+    // them would double-open the popover (🤍) or fight the editor (✏️).
+    if (e.target.closest('.mini-act')) return;
+    // A message being edited never arms, and presses inside its inline
+    // editor (textarea, Save/Cancel) are text work, not a gesture.
+    const mid = parseInt(bubble.dataset.mid, 10);
+    if (editingMsgId !== null && editingMsgId === mid) return;
+    if (e.target.closest('.msg-edit')) return;
+    lpCancel();
+    bubble.classList.add('pressing');
+    const timer = setTimeout(() => {
+      const b = lpState && lpState.bubble;
+      lpState = null;
+      if (!b) return;
+      b.classList.remove('pressing');
+      lpLastFiredAt = Date.now();
+      try { if (navigator.vibrate) navigator.vibrate(10); } catch (err) { /* no haptics — fine */ }
+      openReactPop(parseInt(b.dataset.mid, 10), b);
+    }, LONG_PRESS_MS);
+    lpState = { timer, bubble, x: e.clientX, y: e.clientY };
+  });
+
+  box.addEventListener('pointermove', (e) => {
+    if (!lpState) return;
+    if (Math.abs(e.clientX - lpState.x) > LONG_PRESS_MOVE_PX ||
+        Math.abs(e.clientY - lpState.y) > LONG_PRESS_MOVE_PX) lpCancel();
+  });
+  box.addEventListener('pointerup', lpCancel);
+  box.addEventListener('pointercancel', lpCancel);
+  box.addEventListener('scroll', lpCancel);
+
+  // Capture-phase click suppression: a click that follows a fired
+  // long-press (within LP_CLICK_SWALLOW_MS) dies here, before it can
+  // reach the bubble's own handlers (PPV unlock, media play, links).
+  box.addEventListener('click', (e) => {
+    if (lpLastFiredAt && Date.now() - lpLastFiredAt < LP_CLICK_SWALLOW_MS) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+
+  // No iOS/Android long-press callout menu inside the chat.
+  box.addEventListener('contextmenu', (e) => { e.preventDefault(); });
 }
 
 function startEditMsg(msgId) {
@@ -9296,6 +9379,11 @@ function startUpdateWatcher() {
 /* ---------------- boot ---------------- */
 
 (async function boot() {
+  // Start the animated splash badge downloading IMMEDIATELY — boot
+  // awaits the age gate before the splash renders, and the 916KB lips
+  // animation must already be warm (index.html preloads it too) so it
+  // is moving the moment the badge appears, on every open.
+  try { const pre = new Image(); pre.src = '/img/logo-lips-anim.webp'; } catch (e) {}
   // CCBill browser return (?ccbill=success|fail): stash + clean the URL now;
   // routeInitial lands the fan back in the wallet with the right message.
   // (Credits themselves only ever come from CCBill's server webhook.)
@@ -9329,6 +9417,7 @@ function startUpdateWatcher() {
   await checkAgeGate();
   startPresenceHeartbeat();
   startUpdateWatcher();
+  setupResumeSplash();
   // Visitor analytics: log one visit per session (powers Corry's growth dashboard)
   try {
     if (!sessionStorage.getItem('sc_visit')) {
@@ -9343,7 +9432,7 @@ function startUpdateWatcher() {
   // fresh page load (Corry: nobody bypasses the welcome page). No session
   // gate. After Enter (or the ~6s auto-enter) we route to wherever the
   // link actually pointed: promo profile, join flow, admin, or home.
-  vWelcomeSplash(() => { routeInitial(); });
+  vWelcomeSplash(() => { bootSplashDone = true; routeInitial(); });
 })();
 
 async function routeInitial() {
@@ -9449,30 +9538,86 @@ window.addEventListener('hashchange', () => {
   if (window.location.hash === '#boss') location.replace('/manager');
 });
 
+/* ---------------- resume splash (installed-PWA reopen) ----------------
+   boot()'s splash only runs on a real page load. An installed PWA
+   reopened from the home screen often just resumes the frozen WebView
+   — no load, no boot, no lips (the owner's "I opened the app and the
+   logo didn't pop up", 2026-10-16). So: when the app comes back to
+   the foreground after being hidden for a real while (>= 60s), show
+   the splash again as an OVERLAY on top of exactly where the user
+   was. Enter (or the same ~6s auto-enter) removes ONLY the overlay —
+   no routing, no re-render, the user lands back on their screen.
+   Guards: the boot splash must have completed once (never compete
+   with it), no splash may already be up (no stacking), and the user
+   must not be busy — the exact idle test the update watcher uses
+   (updateBusy: live/call/sheets/typing/voice overlay). Busy = skip
+   entirely, never queue a splash for later. */
+const RESUME_SPLASH_HIDDEN_MS = 60000;
+let bootSplashDone = false;
+let resumeSplashOpen = false;
+let appHiddenAt = 0;
+
+function setupResumeSplash() {
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { appHiddenAt = Date.now(); return; }
+    const awayMs = appHiddenAt ? Date.now() - appHiddenAt : 0;
+    appHiddenAt = 0;
+    if (awayMs >= RESUME_SPLASH_HIDDEN_MS) maybeShowResumeSplash();
+  });
+  // bfcache freeze/restore (iOS Safari/PWA): pagehide stamps the same
+  // hidden-since clock, and a persisted pageshow is a resume — judged
+  // by the same guards, and maybeShowResumeSplash's own flags make a
+  // double fire (visibilitychange AND pageshow) a no-op.
+  window.addEventListener('pagehide', () => { appHiddenAt = Date.now(); });
+  window.addEventListener('pageshow', (e) => {
+    if (!e.persisted) return;
+    const awayMs = appHiddenAt ? Date.now() - appHiddenAt : 0;
+    appHiddenAt = 0;
+    if (awayMs >= RESUME_SPLASH_HIDDEN_MS) maybeShowResumeSplash();
+  });
+}
+
+function maybeShowResumeSplash() {
+  if (!bootSplashDone || resumeSplashOpen) return;
+  if (document.getElementById('splash-enter')) return; // a splash is already up
+  if (updateBusy()) return; // busy — skip entirely, do not queue
+  resumeSplashOpen = true;
+  vWelcomeSplash(() => { resumeSplashOpen = false; }, { overlay: true });
+}
+
 /* Welcome splash — shown on EVERY fresh page load, for every entry point.
    After Enter (or ~6s auto-enter) it hands off to routeInitial(), which
    lands the visitor wherever their link pointed. Audio is best-effort:
    a blocked/failed voice greeting never delays or blocks entering. */
-function vWelcomeSplash(onDone) {
+function vWelcomeSplash(onDone, opts) {
+  // Overlay mode (the resume splash): the SAME splash floated over the
+  // live app inside a throwaway host element — app DOM, tabbar and the
+  // language hook are NOT touched, and Enter removes only the host
+  // (see enter() below), returning the user to exactly their screen.
+  const overlayMode = !!(opts && opts.overlay);
+  let host = null;
   // While the splash is up, a language switch just re-labels the splash
   // in place (see setLang) — the destination routing still waits for
   // Enter. The hook dies the moment routeInitial takes over.
-  splashLangRefresh = () => {
-    const t1 = document.getElementById('splash-t1');
-    if (!t1) return;
-    t1.textContent = t('splash_welcome');
-    document.getElementById('splash-t2').textContent = t('splash_paradise');
-    document.getElementById('splash-t3').textContent = t('splash_nutt');
-    document.getElementById('splash-enter').textContent = t('enter');
-    document.getElementById('splash-lang').innerHTML = langPillsHTML();
-  };
-  tabbar.classList.add('hidden'); tabbar.innerHTML = '';
-  app.innerHTML = `
+  // (Boot mode only — the hook stays boot-mode only.)
+  if (!overlayMode) {
+    splashLangRefresh = () => {
+      const t1 = document.getElementById('splash-t1');
+      if (!t1) return;
+      t1.textContent = t('splash_welcome');
+      document.getElementById('splash-t2').textContent = t('splash_paradise');
+      document.getElementById('splash-t3').textContent = t('splash_nutt');
+      document.getElementById('splash-enter').textContent = t('enter');
+      document.getElementById('splash-lang').innerHTML = langPillsHTML();
+    };
+    tabbar.classList.add('hidden'); tabbar.innerHTML = '';
+  }
+  const splashMarkup = `
     <div style="position:fixed;inset:0;overflow:hidden;background:radial-gradient(ellipse at center,#2a1040 0%,#0a0510 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;animation:fadeIn .5s ease">
       <img src="/img/lips-logo.png" alt="" aria-hidden="true" style="position:absolute;top:46%;left:50%;transform:translate(-50%,-50%);width:min(135vw,680px);max-width:none;opacity:.10;filter:blur(3px);pointer-events:none">
       <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center">
       <div style="animation:logoPop 1s cubic-bezier(.34,1.56,.64,1) both">
-        <img src="/img/logo-lips-anim.webp" alt="SlutCamp" style="display:block;margin:0 auto 14px;width:108px;height:108px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,92,158,.65);box-shadow:0 0 28px rgba(255,45,120,.55),0 0 64px rgba(184,41,221,.35)">
+        <img src="/img/logo-lips-anim.webp" alt="SlutCamp" onerror="this.onerror=null;this.src='/img/lips-logo.png'" style="display:block;margin:0 auto 14px;width:108px;height:108px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,92,158,.65);box-shadow:0 0 28px rgba(255,45,120,.55),0 0 64px rgba(184,41,221,.35)">
         <div style="font-size:64px;font-weight:900;letter-spacing:2px">
           <span style="color:#fff">SLUT</span><span style="background:linear-gradient(135deg,#ff2d78,#b829dd);-webkit-background-clip:text;background-clip:text;color:transparent">CAMP</span>
         </div>
@@ -9493,6 +9638,13 @@ function vWelcomeSplash(onDone) {
         @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
       </style>
     </div>`;
+  if (overlayMode) {
+    host = document.createElement('div');
+    host.innerHTML = splashMarkup;
+    document.body.appendChild(host);
+  } else {
+    app.innerHTML = splashMarkup;
+  }
   // Play the sexy voice greeting (best-effort — browsers may block autoplay
   // until the visitor taps; the tap retries it, failure never blocks entry)
   let audio = null;
@@ -9512,6 +9664,9 @@ function vWelcomeSplash(onDone) {
     handedOff = true;
     closeLangSheet();
     playGreeting();
+    // Overlay mode: remove ONLY the overlay host — the app underneath
+    // (view, tabbar, scroll, chat state) is exactly as the user left it.
+    if (host) { host.remove(); host = null; }
     if (typeof onDone === 'function') onDone();
   };
   $('#splash-enter').onclick = enter;
