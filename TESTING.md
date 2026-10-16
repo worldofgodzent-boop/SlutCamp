@@ -34,6 +34,8 @@ dependency, is missing) and the server cannot boot from it alone —
 | `tests/theme.test.js` | Unit tests for the seasonal theme engine (`public/js/theme.js`): every holiday window boundary, the computed Easter/Thanksgiving dates, override semantics, and THEMES-metadata ↔ CSS-pack sync |
 | `tests/popups.test.js` | Unit tests for the Halloween pop-up girls (`public/js/theme.js`): roster ↔ pop-up art sync in both directions, the shuffle-bag picker (full 12-combo rotation before repeats, kiss/twerk never back-to-back), schedule bounds (20s first pop, ~6s on screen, 3.5–5 min gaps), and source assertions for the halloween + login gating and the `pointer-events: none` hard rule in the engine and pack CSS |
 | `tests/header.test.js` | Source assertions for the header dead-space fix: compacted base header paddings in styles.css, the `:has()` rule that stops the header paying the safe-area inset twice under the theme banner, and the Halloween-only gating + styling of the theme.js promo strip |
+| `tests/sw.test.js` | Source assertions for the service worker: theme freshness (`/js/theme.js` + `/css/themes/` network-first, original shell entries intact) and forced refresh — the cache name carries the `__BUILD__` deploy token that `server.js` stamps per deploy, new workers `skipWaiting()`/`clients.claim()`, and activate deletes every non-current cache |
+| `tests/update.test.js` | Source assertions + a stamping logic check for forced refresh: `GET /api/build-id` wiring and boot-guarded build-id resolution in `server.js`; the idle-only auto-reload watcher in `public/js/app.js` (60s poll, controllerchange, live/call/sheet/typing busy signals, 30s defer-retry, boot hookup) |
 | `scripts/run-triple.js` | The triple runner behind `npm run test:triple` |
 
 ## What the suite covers
@@ -176,6 +178,12 @@ THEMES-metadata ↔ CSS-pack sync in both directions.
   Production RP configuration (`WEBAUTHN_RP_ID` / `WEBAUTHN_ORIGIN`
   for slutcamp.app) is likewise untested until a staging deploy
   exists.
+- **Forced-refresh behavior on real devices** — the service-worker
+  takeover (per-deploy cache name, skipWaiting, activate flush) and
+  the in-app idle auto-reload are pinned by source assertions and a
+  stamping logic check, but an open PWA on an actual phone noticing a
+  deploy and refreshing itself can only be verified against a real
+  deploy on a real device.
 - **Load/performance** and multi-instance behavior (the app is a
   single-process, single-SQLite design).
 

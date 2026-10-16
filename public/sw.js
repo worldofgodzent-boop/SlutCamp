@@ -5,8 +5,19 @@
  * /manager/* (Slut Manager) is fully bypassed: never cached, never
  * answered from cache — the Manager must always load its own fresh
  * assets straight from the network.
+ *
+ * FORCED REFRESH (Asce's rule, 2026-10-16): nobody sits on a stale build.
+ * The '__BUILD__' token in the cache name below is a placeholder —
+ * server.js stamps it with the deploy's build id every time it serves
+ * this file (see the /sw.js route + /api/build-id in server.js). Every
+ * deploy therefore serves a byte-different worker whose cache name is
+ * new: the new worker installs, skipWaiting()s past the old one, and on
+ * activate deletes EVERY cache that is not its own — a full flush on
+ * every phone, no manual cache bump ever. If the server cannot identify
+ * its build, it stamps 'v4' and this file behaves exactly like the old
+ * static slutcamp-v4 worker.
  */
-const CACHE = 'slutcamp-v4';
+const CACHE = 'slutcamp-__BUILD__';
 const SHELL = [
   '/',
   '/index.html',

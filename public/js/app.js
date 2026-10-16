@@ -9206,6 +9206,93 @@ function startPresenceHeartbeat() {
   setInterval(presencePing, 30000);
 }
 
+/* ---------------- forced refresh on every deploy ----------------
+   Asce's rule (2026-10-16): NOBODY sits on a stale build — users are
+   lazy and will not refresh themselves, even when they're logged in
+   with the app just sitting open. The server stamps every deploy with
+   a build id (GET /api/build-id); this watcher polls it, and the
+   moment the deployed build no longer matches the build this page
+   loaded under, it reloads the page — but ONLY once the app is idle,
+   so an update never cuts off a call, a live, a purchase, or a
+   half-typed message. While busy it re-checks every 30s and reloads
+   at the first quiet moment.
+   Login survives the reload untouched: the session token lives in
+   localStorage ('wc_token'), which a page reload does not clear.
+   The companion half is the service worker: a new deploy serves a
+   byte-different /sw.js (deploy-scoped cache name) whose worker
+   skipWaiting()s, deletes every old cache on activate, and claims
+   this page — so the reload below always lands on fully fresh
+   assets, cache-first files (pop-up art, icons) included. */
+let _updatePending = false;
+let _updateReloading = false;
+
+function updateBusy() {
+  try {
+    // Broadcasting or watching a live — app.js maintains this body flag
+    // exactly for the live views (liveBroadcast / liveWatch).
+    if (document.body && document.body.classList.contains('in-live')) return true;
+    // In a 1-on-1 call, dialing one, or staring at a call error — the
+    // same overlay signals the Halloween pop-up engine checks before
+    // it dares appear (#call-overlay / #active-call / #call-error,
+    // visible exactly while they lack the .hidden class).
+    const callIds = ['call-overlay', 'active-call', 'call-error'];
+    for (const id of callIds) {
+      const el = document.getElementById(id);
+      if (el && !el.classList.contains('hidden')) return true;
+    }
+    // Any sheet / modal flow open — PPV price sheet, tip/gift/FaceTime/
+    // booking sheets, the paywall: a purchase may be mid-flight. The
+    // body flag is maintained by syncSheetState(); the selector is the
+    // same one it watches.
+    if (document.body && document.body.classList.contains('sheet-open')) return true;
+    if (document.querySelector('#ppv-price-overlay, #voice-ov, #tip-ov, #paywall, .sheet-backdrop')) return true;
+    // Typing (chat box, any form field) — never eat someone's text.
+    const a = document.activeElement;
+    if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable)) return true;
+  } catch (e) { return true; } // if we cannot tell, we are busy — never force it
+  return false;
+}
+
+function tryApplyUpdate() {
+  if (!_updatePending || _updateReloading) return;
+  if (updateBusy()) return; // the 30s defer loop below keeps retrying
+  _updateReloading = true;
+  try { location.reload(); } catch (e) { _updateReloading = false; }
+}
+
+function startUpdateWatcher() {
+  let baseline = null;
+  let baselineSet = false;
+  const check = async () => {
+    try {
+      const r = await fetch('/api/build-id', { cache: 'no-store' });
+      if (!r.ok) return;
+      const d = await r.json();
+      if (!d || !d.build) return; // server can't identify its build — stay put
+      if (!baselineSet) { baseline = d.build; baselineSet = true; return; }
+      if (d.build !== baseline) { _updatePending = true; tryApplyUpdate(); }
+    } catch (e) { /* offline or a mid-deploy blip — the next poll retries */ }
+  };
+  check();
+  setInterval(check, 60000);          // poll the deployed build every 60s
+  setInterval(tryApplyUpdate, 30000); // while busy, retry the reload every 30s
+  // The service worker swapping under us (the new deploy's worker
+  // claimed this page) is the same signal from the other side — funnel
+  // it into the same idle-only reload path. The hadController guard
+  // keeps the very first claim (fresh install) from counting as an
+  // update.
+  try {
+    if ('serviceWorker' in navigator) {
+      let hadController = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!hadController) { hadController = true; return; }
+        _updatePending = true;
+        tryApplyUpdate();
+      });
+    }
+  } catch (e) {}
+}
+
 /* ---------------- boot ---------------- */
 
 (async function boot() {
@@ -9241,6 +9328,7 @@ function startPresenceHeartbeat() {
   // Age gate first — nothing else renders until confirmed 18+
   await checkAgeGate();
   startPresenceHeartbeat();
+  startUpdateWatcher();
   // Visitor analytics: log one visit per session (powers Corry's growth dashboard)
   try {
     if (!sessionStorage.getItem('sc_visit')) {
