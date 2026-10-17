@@ -1080,6 +1080,30 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 }
 .peek-row span { color: rgba(255,255,255,.65); }
 .peek-row b { color: #fff; text-align: right; }
+/* Profile page layout (owner, Oct 17 2026): the peek sheet becomes a
+   flex column — her page scrolls inside .peek-scroll while the fan's
+   Message bar stays pinned to the bottom of the sheet, visible at
+   all times while he scrolls her pictures and videos. */
+.sheet.peek-sheet { display: flex; flex-direction: column; overflow: hidden; }
+.peek-scroll { overflow-y: auto; min-height: 0; }
+.peek-gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.peek-gallery-img {
+  width: 100%; aspect-ratio: 1; object-fit: cover; display: block;
+  border-radius: 12px; border: 1px solid rgba(139,92,246,.3); background: #000;
+}
+.peek-gallery-img:only-child { grid-column: 1 / -1; aspect-ratio: 16/10; }
+.peek-msgbar {
+  flex: 0 0 auto; margin-top: 10px; padding-top: 10px;
+  border-top: 1px solid rgba(139,92,246,.3);
+}
+.peek-msg-btn {
+  display: block; width: 100%; border: none; border-radius: 100px;
+  background: linear-gradient(135deg, #ff5c9e, #e0447c);
+  color: #fff; font-size: 16px; font-weight: 800; padding: 14px 20px;
+  cursor: pointer; font-family: inherit;
+  box-shadow: 0 4px 20px rgba(255,92,158,.3), inset 0 1px 0 rgba(255,255,255,.2);
+  -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
+}
 
 /* ---------- Virtual gifts ---------- */
 .sheet-backdrop {
