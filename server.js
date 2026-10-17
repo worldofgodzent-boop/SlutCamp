@@ -4202,7 +4202,7 @@ function cleanModelTags(input) {
 app.get('/api/models', (req, res) => {
   const rows = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.presence_override, u.created_at, m.bio, m.per_message_cents,
-           m.per_minute_cents, m.per_voice_cents, m.is_online, m.photo_url, m.tags,
+           m.per_minute_cents, m.per_voice_cents, m.is_online, m.photo_url, m.public_photo_url, m.tags,
            m.preview_video_url, m.is_featured, m.rank_score,
            ls.id AS live_session_id, ls.explicit_rate_cents AS live_explicit_rate_cents,
            (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS live_viewers,
