@@ -1062,6 +1062,16 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 }
 .ft-req-title { font-size: 18px; font-weight: 800; color: #fff; }
 .ft-req-actions { display: flex; gap: 10px; margin-top: 8px; }
+.peek-hero { position: relative; margin-bottom: 12px; }
+.peek-hero-video {
+  width: 100%; aspect-ratio: 4/3; max-height: 50dvh; object-fit: cover; display: block;
+  border-radius: 16px; border: 1px solid rgba(139,92,246,.35); background: #000; cursor: pointer;
+}
+.peek-sound-pill {
+  position: absolute; right: 10px; bottom: 10px; z-index: 2;
+  background: rgba(16,6,12,.75); color: #fff; font-size: 12px; font-weight: 700;
+  padding: 5px 10px; border-radius: 999px; cursor: pointer; user-select: none;
+}
 .peek-rows { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
 .peek-row {
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
