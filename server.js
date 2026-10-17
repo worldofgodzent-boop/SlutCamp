@@ -4271,6 +4271,30 @@ function profilePicsList(modelRow) {
   return pics.slice(0, MAX_PROFILE_PICS);
 }
 
+/* ------------------------------------------------------------------ */
+/* The OFFICIAL house account (owner, Oct 17 2026): the in-app        */
+/* "SlutCamp" account is the APP ITSELF, not a model. It never        */
+/* appears in model listings/rankings, fans can never message it,     */
+/* and it lives as a permanent pinned card at the top of the fan      */
+/* home instead. When it goes live, EVERY fan is notified (not just   */
+/* followers) and joining/tipping works exactly like a regular live.  */
+/* Identity = the model-role user with this username. Usernames are   */
+/* immutable here (name changes touch display_name only), and the      */
+/* username column is UNIQUE + NOCASE, so this match is exact and     */
+/* can never collide with a numeric id.                               */
+/* ------------------------------------------------------------------ */
+const HOUSE_USERNAME = 'asceaaspade';
+function houseAccountId() {
+  const r = db.prepare("SELECT id FROM users WHERE username = ? AND role = 'model'")
+    .get(HOUSE_USERNAME);
+  return r ? r.id : null;
+}
+function isHouseAccountId(userId) {
+  if (!userId) return false;
+  const hid = houseAccountId();
+  return hid !== null && hid === userId;
+}
+
 // GET /api/models — PUBLIC so guests can browse before signing up.
 // Ordering: featured (SlutCamp Live) pinned first; regular models by
 // composite rank_score = fan likes + lifetime credited model earnings
@@ -4287,6 +4311,7 @@ function profilePicsList(modelRow) {
 // sales); refund rows are negative and net against sales automatically.
 // (Payload field kept for compatibility; it no longer drives ranking.)
 app.get('/api/models', (req, res) => {
+  const houseId = houseAccountId();
   const rows = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.presence_override, u.created_at, m.bio, m.per_message_cents,
            m.per_minute_cents, m.per_voice_cents, m.is_online, m.photo_url, m.public_photo_url, m.tags,
@@ -4318,7 +4343,10 @@ app.get('/api/models', (req, res) => {
              (CASE u.presence_override WHEN 'on' THEN 1 WHEN 'off' THEN 0 ELSE m.is_online END) DESC,
              u.created_at DESC, u.display_name ASC
   `).all();
-  const rankPos = new Map(rankOrder.map((r, i) => [r.id, i + 1]));
+  // The house account holds no rank position — it is not a model, so
+  // it is removed from the position map before positions are assigned
+  // (a model ranked below it must not be shifted by its presence).
+  const rankPos = new Map(rankOrder.filter((r) => r.id !== houseId).map((r, i) => [r.id, i + 1]));
   // Check which models the current fan has liked (if logged in)
   let likedSet = new Set();
   const h = req.headers.authorization || '';
@@ -4337,6 +4365,15 @@ app.get('/api/models', (req, res) => {
     const blocked = blockedModelIds(geoOfReq(req));
     if (blocked.size) visible = rows.filter((r) => !blocked.has(r.id));
   }
+  // The official house account leaves the model roster here (owner,
+  // Oct 17 2026): no home grid, no Discovery, no New Models rail, no
+  // ranked view, no landing tile — for ANY viewer. It travels separately
+  // as `official` (below) to power the pinned card on the fan home. It
+  // is pulled from the UNfiltered rows on purpose: region blocking is a
+  // per-model fan control, and the app itself is never blocked off its
+  // own home screen.
+  const houseRow = houseId ? (rows.find((r) => r.id === houseId) || null) : null;
+  if (houseId) visible = visible.filter((r) => r.id !== houseId);
   // Pre-purchase shield: a model's looping preview video is explicit-
   // capable storefront media with no lock of its own, so for a shielded
   // viewer (unverified fan or guest in a regulated/unknown location,
@@ -4346,7 +4383,7 @@ app.get('/api/models', (req, res) => {
   const dirShielded = dirIdent && dirIdent.kind === 'user'
     ? shieldLib.fanShielded(dirIdent.user, shieldLocForUser(req, dirIdent.user))
     : shieldLib.guestShielded(shieldLib.resolveAvLocation(null, geoOfReq(req)));
-  res.json({ models: visible.map((r) => {
+  const shapeRow = (r) => {
     const sched = db.prepare(`SELECT day_of_week, start_time FROM live_schedule
       WHERE model_id = ? ORDER BY day_of_week, start_time`).all(r.id);
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -4367,7 +4404,14 @@ app.get('/api/models', (req, res) => {
       total_sales: Math.round(r.total_sales_cents || 0) / 100,
       rank_score: r.rank_score || 0,
       rank_position: rankPos.get(r.id) || null };
-  }) });
+  };
+  // The official object: same public shape as a model row (the pinned
+  // card and its look-only profile page render from it), flagged, and
+  // never ranked or featured — those concepts belong to models.
+  const official = houseRow
+    ? { ...shapeRow(houseRow), is_official: true, is_featured: false, rank_position: null }
+    : null;
+  res.json({ models: visible.map(shapeRow), official });
 });
 
 // Fan likes/unlikes a model (heart on model cards)
@@ -5270,8 +5314,17 @@ function freeRemaining(ident, modelId) {
 // GET /api/conversations — my chats
 app.get('/api/conversations', identMiddleware, (req, res) => {
   const { sql, params } = convWhere(req.ident);
-  const convs = db.prepare(
+  let convs = db.prepare(
     `SELECT c.* FROM conversations c WHERE ${sql} ORDER BY c.updated_at DESC`).all(...params);
+  // Fan-side lists never offer the official house account (owner, Oct
+  // 17 2026): it is the app itself, not a model you can message. The
+  // filter applies only when the requester sits on the FAN side (a fan
+  // account or a guest) — the house account's own model inbox and the
+  // admin's announcement threads keep it.
+  if (req.ident.kind === 'guest' || (req.ident.kind === 'user' && req.ident.user.role === 'fan')) {
+    const hid = houseAccountId();
+    if (hid) convs = convs.filter((c) => c.model_id !== hid);
+  }
   const meId = req.ident.kind === 'user' ? req.ident.user.id : null;
   const out = convs.map((c) => {
     const last = db.prepare(
@@ -5396,6 +5449,15 @@ app.post('/api/conversations/start', identMiddleware, (req, res) => {
     SELECT u.id FROM users u JOIN models m ON m.user_id = u.id
     WHERE u.id = ? AND u.role = 'model' AND u.banned = 0`).get(req.body.model_id);
   if (!model) return res.status(404).json({ error: 'model_not_found' });
+  // The official house account is the app itself, not a model (owner,
+  // Oct 17 2026): fans and guests can never open a chat with it. This
+  // endpoint only ever serves the fan side of a thread (fans_only gate
+  // above), so the block cannot touch admin announcement threads —
+  // those are built directly by the broadcast code with the ADMIN as
+  // the fan side and a real model as the model side.
+  if (isHouseAccountId(model.id))
+    return res.status(403).json({ error: 'cannot_message_official',
+      message: 'SlutCamp is the app itself — you can\'t message it. Catch us on a live instead! 💋' });
   // Owner rule (Oct 15): a fan can ALWAYS open a chat with a model —
   // her online presence and ID-verification state never gate fan→model
   // texting (verification still gates HER going live + payouts). Region
@@ -5472,6 +5534,17 @@ app.post('/api/messages', identMiddleware, (req, res) => {
   // safety scan and billing still apply exactly as before).
 
   const isModelSender = req.ident.kind === 'user' && req.ident.user.role === 'model';
+
+  // Official house account (owner, Oct 17 2026): the fan/guest side of
+  // a thread with the app itself can never write — the account is not a
+  // model. Scoped to non-model senders only: the house account's own
+  // replies in a thread still work (its logged-in experience is
+  // unchanged), and admin announcement threads never have the house
+  // account on the fan side writing through this endpoint (admins are
+  // rejected above with admins_cannot_chat; broadcasts insert directly).
+  if (!isModelSender && isHouseAccountId(conv.model_id))
+    return res.status(403).json({ error: 'cannot_message_official',
+      message: 'SlutCamp is the app itself — you can\'t message it. Catch us on a live instead! 💋' });
 
   // Region block: a fan/guest in a region the model blocked cannot write to her.
   // (The model herself is never blocked from her own threads.)
@@ -9449,9 +9522,14 @@ app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), 
     'INSERT INTO live_sessions (model_id, explicit_rate_cents, title) VALUES (?,?,?)')
     .run(req.user.id, explicit_rate_cents, title);
   db.prepare('UPDATE models SET is_online = 1 WHERE user_id = ?').run(req.user.id);
-  // Notify followers: "she's live!"
+  // Notify followers: "she's live!" — EXCEPT the official house account
+  // (owner, Oct 17 2026): when the app itself goes live, EVERY fan is
+  // notified, follower or not. Joining, tipping and in-live spending
+  // are the regular live machinery, unchanged for everyone.
   const me = db.prepare('SELECT display_name FROM users WHERE id = ?').get(req.user.id);
-  const followers = db.prepare('SELECT fan_id FROM follows WHERE model_id = ?').all(req.user.id);
+  const followers = isHouseAccountId(req.user.id)
+    ? db.prepare("SELECT id AS fan_id FROM users WHERE role = 'fan' AND banned = 0").all()
+    : db.prepare('SELECT fan_id FROM follows WHERE model_id = ?').all(req.user.id);
   for (const f of followers) {
     const fanLang = userLang(f.fan_id);
     notifyUser(f.fan_id, 'live',

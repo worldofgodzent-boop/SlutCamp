@@ -185,6 +185,8 @@ const I18N = {
     offline: '● Offline',
     watching: '{n} watching',
     featured: '⭐ Featured',
+    official_label: 'Official',
+    official_tagline: 'The app itself — lives, news & specials 💋',
     top_model: '👑 Top Model',
     per_msg_rate: '{price}/msg',
     per_min_rate: '{price}/min video',
@@ -799,6 +801,8 @@ const I18N = {
     offline: '● Desconectada',
     watching: '{n} mirando',
     featured: '⭐ Destacada',
+    official_label: 'Oficial',
+    official_tagline: 'La propia app — directos, novedades y especiales 💋',
     top_model: '👑 Modelo Top',
     per_msg_rate: '{price}/msj',
     per_min_rate: '{price}/min de video',
@@ -1413,6 +1417,8 @@ const I18N = {
     offline: '● Offline',
     watching: '{n} assistindo',
     featured: '⭐ Destaque',
+    official_label: 'Oficial',
+    official_tagline: 'O próprio app — lives, novidades e especiais 💋',
     top_model: '👑 Modelo Top',
     per_msg_rate: '{price}/msg',
     per_min_rate: '{price}/min de vídeo',
@@ -2027,6 +2033,8 @@ const I18N = {
     offline: '● Hors ligne',
     watching: '{n} regardent',
     featured: '⭐ À la une',
+    official_label: 'Officiel',
+    official_tagline: 'L’application elle-même — directs, infos et offres spéciales 💋',
     top_model: '👑 Top Modèle',
     per_msg_rate: '{price}/message',
     per_min_rate: '{price}/min vidéo',
@@ -2641,6 +2649,8 @@ const I18N = {
     offline: '● Offline',
     watching: '{n} schauen zu',
     featured: '⭐ Empfohlen',
+    official_label: 'Offiziell',
+    official_tagline: 'Die App selbst — Lives, News & Specials 💋',
     top_model: '👑 Top-Model',
     per_msg_rate: '{price}/Nachr.',
     per_min_rate: '{price}/Min. Video',
@@ -3255,6 +3265,8 @@ const I18N = {
     offline: '● Не в сети',
     watching: '{n} смотрят',
     featured: '⭐ Избранное',
+    official_label: 'Официальный',
+    official_tagline: 'Само приложение — эфиры, новости и акции 💋',
     top_model: '👑 Топ-модель',
     per_msg_rate: '{price}/сообщ.',
     per_min_rate: '{price}/мин видео',
@@ -3869,6 +3881,8 @@ const I18N = {
     offline: '● オフライン',
     watching: '{n}人が視聴中',
     featured: '⭐ 注目',
+    official_label: '公式',
+    official_tagline: 'アプリ公式 — ライブ・ニュース・特集 💋',
     top_model: '👑 トップモデル',
     per_msg_rate: '{price}/通',
     per_min_rate: '{price}/分 ビデオ',
@@ -4483,6 +4497,8 @@ const I18N = {
     offline: '● 离线',
     watching: '{n} 人在看',
     featured: '⭐ 精选',
+    official_label: '官方',
+    official_tagline: '应用官方 — 直播、资讯与特别活动 💋',
     top_model: '👑 顶级模特',
     per_msg_rate: '{price}/条消息',
     per_min_rate: '{price}/分钟视频',
@@ -5097,6 +5113,8 @@ const I18N = {
     offline: '● 오프라인',
     watching: '{n}명 시청 중',
     featured: '⭐ 추천',
+    official_label: '공식',
+    official_tagline: '앱 공식 — 라이브, 소식 & 특집 💋',
     top_model: '👑 톱 모델',
     per_msg_rate: '{price}/메시지',
     per_min_rate: '{price}/분 영상',
@@ -5711,6 +5729,8 @@ const I18N = {
     offline: '● Offline',
     watching: '{n} stanno guardando',
     featured: '⭐ In evidenza',
+    official_label: 'Ufficiale',
+    official_tagline: 'L’app stessa — live, novità e speciali 💋',
     top_model: '👑 Top Model',
     per_msg_rate: '{price}/msg',
     per_min_rate: '{price}/min video',
@@ -6325,6 +6345,8 @@ const I18N = {
     offline: '● Offline',
     watching: '{n} ogląda',
     featured: '⭐ Wyróżniona',
+    official_label: 'Oficjalny',
+    official_tagline: 'Sama aplikacja — transmisje, nowości i promocje 💋',
     top_model: '👑 Top Modelka',
     per_msg_rate: '{price}/wiad.',
     per_min_rate: '{price}/min wideo',
@@ -6939,6 +6961,8 @@ const I18N = {
     offline: '● Offline',
     watching: '{n} kijken',
     featured: '⭐ Uitgelicht',
+    official_label: 'Officieel',
+    official_tagline: 'De app zelf — lives, nieuws & specials 💋',
     top_model: '👑 Topmodel',
     per_msg_rate: '{price}/bericht',
     per_min_rate: '{price}/min video',
@@ -7553,6 +7577,8 @@ const I18N = {
     offline: '● Çevrimdışı',
     watching: '{n} izliyor',
     featured: '⭐ Öne Çıkan',
+    official_label: 'Resmi',
+    official_tagline: 'Uygulamanın ta kendisi — canlı yayınlar, haberler ve özel içerikler 💋',
     top_model: '👑 En İyi Model',
     per_msg_rate: '{price}/msj',
     per_min_rate: '{price}/dk video',
@@ -9138,6 +9164,30 @@ function livesBtnHTML(models) {
   return `<button class="btn-lives${n ? ' has-live' : ''}" id="go-lives">${t('lives_btn')}${n ? `<span class="lives-count">${t('lives_count', { n })}</span>` : ''}</button>`;
 }
 
+/* The OFFICIAL house account's pinned card (owner, Oct 17 2026): the
+   SlutCamp account is the app itself, not a model — it never renders
+   as a model tile anywhere. Instead it stays pinned at the TOP of the
+   fan home in both states: LIVE (tap joins the stream exactly like a
+   live model tile; tipping/spending inside are the regular live
+   machinery) and quiet (tap opens its look-only profile page — no
+   Message bar, ever). Data = the `official` object on the /api/models
+   payload; null (no house account) renders nothing, and because the
+   server keeps the account OUT of the models array, the card can
+   never duplicate as a tile. */
+function officialCardHTML(official) {
+  if (!official) return '';
+  return `
+    <button class="official-card" data-official="${official.id}">
+      <span class="avatar-wrap">${avatarHTML(official.display_name, '', official.photo_url)}</span>
+      <span class="grow">
+        <span class="official-name">${esc(official.display_name)} <span class="official-pill">${t('official_label')}</span></span><br>
+        ${official.is_live
+          ? `<span class="live-badge">🔴 LIVE</span> <span class="small muted">👁 ${t('watching', { n: official.live_viewers || 0 })}</span>`
+          : `<span class="small muted">${t('official_tagline')}</span>`}
+      </span><span style="font-size:22px">›</span>
+    </button>`;
+}
+
 /* ---------------- LANDING (public model grid) ---------------- */
 
 async function vLanding() {
@@ -10184,6 +10234,12 @@ function openModelPeek(m, models) {
   // this gallery. She also has TWO main videos now: the preview hero
   // above and her second video, rendered in the scroll region below.
   const galleryPics = [...new Set([m.photo_url, ...(Array.isArray(m.gallery_photos) ? m.gallery_photos : [])].filter(Boolean))].slice(0, 10);
+  // The official house account is the app itself (owner, Oct 17 2026):
+  // its page is look-only for EVERYONE — no Message bar ever, and the
+  // Official label stands where the bar would be. It is also never
+  // ranked: the server keeps it out of the roster + rank positions.
+  const isOfficial = !!m.is_official;
+  const officialBarHTML = `<div class="peek-official-bar"><span class="official-pill">${t('official_label')}</span><span class="small muted">${t('official_tagline')}</span></div>`;
   // The sticky Message bar is a FAN action: real fans get it, and the
   // admin's fan-preview stands in for a fan so he sees her page as
   // fans do. Models browsing a sister stay look-only (no fan actions),
@@ -10203,7 +10259,7 @@ function openModelPeek(m, models) {
     </div>` : ''}
     <div style="text-align:center">
       ${avatarHTML(m.display_name, 'xl', m.photo_url)}
-      <div class="sheet-title" style="margin-top:8px">${esc(m.display_name)}${isMe ? ' (that\'s you! 💅)' : ''}</div>
+      <div class="sheet-title" style="margin-top:8px">${esc(m.display_name)}${isMe ? ' (that\'s you! 💅)' : ''}${isOfficial ? ` <span class="official-pill">${t('official_label')}</span>` : ''}</div>
       <div class="muted small">@${esc(m.username)}</div>
     </div>
     ${galleryPics.length ? `
@@ -10218,7 +10274,7 @@ function openModelPeek(m, models) {
     <div class="peek-rows">
       <div class="peek-row"><span>Status</span><b>${status}</b></div>
       ${rankLine ? `<div class="peek-row"><span>Home rank</span><b>${rankLine}</b></div>` : ''}
-      <div class="peek-row"><span>Messages</span><b>${fmt(m.per_message_cents)} / msg</b></div>
+      ${isOfficial ? '' : `<div class="peek-row"><span>Messages</span><b>${fmt(m.per_message_cents)} / msg</b></div>`}
       <div class="peek-row"><span>Video calls</span><b>${fmt(m.per_minute_cents)} / min</b></div>
       ${m.schedule_summary ? `<div class="peek-row"><span>Usually live</span><b>${esc(m.schedule_summary)}</b></div>` : ''}
     </div>
@@ -10238,11 +10294,15 @@ function openModelPeek(m, models) {
     </div>
     ${showMsgBar ? `
     <div class="peek-msgbar">
-      <button class="peek-msg-btn" data-peek-msg="${m.id}">${t('msg_her_btn')} · ${t('per_msg_rate', { price: fmt(m.per_message_cents) })}</button>
+      ${isOfficial
+        ? officialBarHTML
+        : `<button class="peek-msg-btn" data-peek-msg="${m.id}">${t('msg_her_btn')} · ${t('per_msg_rate', { price: fmt(m.per_message_cents) })}</button>`}
     </div>` : ''}
     ${showGuestBar ? `
     <div class="peek-msgbar">
-      <button class="peek-msg-btn" data-peek-join>${t('msg_her_join_btn')}</button>
+      ${isOfficial
+        ? officialBarHTML
+        : `<button class="peek-msg-btn" data-peek-join>${t('msg_her_join_btn')}</button>`}
     </div>` : ''}`);
   const sheet = document.getElementById('ft-sheet');
   if (sheet) {
@@ -10329,6 +10389,7 @@ function openModelPeek(m, models) {
 async function vFanModels() {
   const { data } = await api('/models');
   const models = data.models || [];
+  const official = data.official || null;
   await refreshMe();
   const inPreview = isFanPreview();
   const isModelViewer = !!(S.user && (S.user.role === 'model' || inPreview));
@@ -10349,6 +10410,7 @@ async function vFanModels() {
         ? '<span class="balance-pill">👀 Browsing the home screen</span>'
         : `<span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span>`}</div></div>
     <div class="screen">
+      ${officialCardHTML(official)}
       ${athCardHTML()}
       ${livesBtnHTML(models)}
       ${discoveryBarHTML(models)}
@@ -10360,6 +10422,18 @@ async function vFanModels() {
     </div>`;
   wireAthCard();
   wireDiscovery('fanModels');
+  // Pinned official card: LIVE → join the stream exactly like a live
+  // model tile; quiet → its look-only profile page. Model viewers and
+  // the admin fan-preview stay look-only in both states (the grid rule).
+  app.querySelectorAll('[data-official]').forEach((b) => {
+    b.onclick = () => {
+      if (!official) return;
+      if (official.is_live && official.live_session_id && !isModelViewer) {
+        return watchLive(parseInt(official.live_session_id));
+      }
+      openModelPeek(official, models);
+    };
+  });
   const lv = $('#go-lives');
   if (lv) lv.onclick = () => show('lives', {});
   const hlo = $('#home-logout');
