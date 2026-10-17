@@ -155,9 +155,9 @@ test('pins: overlay CSS never intercepts taps and stays discreet', () => {
   assert.ok(rule[1].includes('user-select: none'));
 });
 
-test('pins: the watermark note exists in EN, ES and PT', () => {
+test('pins: the watermark note exists in all 13 languages', () => {
   const keys = app.match(/ppv_watermark_note:/g) || [];
-  assert.equal(keys.length, 3, 'one ppv_watermark_note per locale');
+  assert.equal(keys.length, 13, 'one ppv_watermark_note per locale');
   assert.ok(app.includes("ppv_watermark_note: 'Unlocked content is watermarked with your username.'"));
   assert.ok(app.includes("ppv_watermark_note: 'El contenido desbloqueado lleva una marca de agua con tu nombre de usuario.'"));
   assert.ok(app.includes('ppv_watermark_note: \'O conteúdo desbloqueado tem marca d’água com o seu nome de usuário.\''));

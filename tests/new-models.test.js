@@ -319,8 +319,8 @@ test('pins: rail tiles are real directory tiles wearing a NEW badge', () => {
     'the NEW badge renders only when the tile is flagged new');
   assert.ok(tile.includes("t('new_badge')"), 'badge text is localized');
   assert.ok(app.includes("t('new_models_title')"), 'section heading is localized');
-  assert.equal(app.split('new_models_title:').length - 1, 3, 'title exists in EN + ES + PT');
-  assert.equal(app.split('new_badge:').length - 1, 3, 'badge exists in EN + ES + PT');
+  assert.equal(app.split('new_models_title:').length - 1, 13, 'title exists in all 13 languages');
+  assert.equal(app.split('new_badge:').length - 1, 13, 'badge exists in all 13 languages');
   assert.ok(app.includes("new_models_title: '🆕 New models you may like'"),
     'the owner’s exact section name ships in English');
 });

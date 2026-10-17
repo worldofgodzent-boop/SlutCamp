@@ -509,7 +509,7 @@ test('B2: AV DORMANT — purchases behave exactly as today and /api/av/* refuses
 
 /* ---------------- Part C: source pins ---------------- */
 
-test('source pins — both purchase routes carry the gate; the client handles av_required in all 3 languages', () => {
+test('source pins — both purchase routes carry the gate; the client handles av_required in all 13 languages', () => {
   const server = fs.readFileSync(path.join(REPO, 'server.js'), 'utf8');
   assert.ok(server.includes("avPurchaseGate(req, 'transactional')"), 'card checkout is gated (transactional)');
   assert.ok(server.includes("avPurchaseGate(req, 'id')"), 'crypto invoice creation is gated (id)');
@@ -519,7 +519,7 @@ test('source pins — both purchase routes carry the gate; the client handles av
   assert.ok(app.includes('function showAvGate'), 'client gate renderer exists');
   assert.equal((app.match(/error === 'av_required'/g) || []).length, 4,
     'all four purchase call sites handle av_required (2 card + 2 crypto)');
-  assert.equal((app.match(/av_gate_body:/g) || []).length, 3, 'gate copy exists in en + es + pt');
-  assert.ok(app.includes("One quick age check before your first purchase — required by your state's law."),
+  assert.equal((app.match(/av_gate_body:/g) || []).length, 13, 'gate copy exists in all 13 languages');
+  assert.ok(app.includes("One quick age check before your first purchase — required by your state\\'s law."),
     'the owner-approved gate sentence is the EN copy');
 });

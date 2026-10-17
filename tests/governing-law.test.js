@@ -76,7 +76,9 @@ test('governing law: Recruiter Agreement §9 carries the Texas clause; version p
 });
 
 test('governing law: fan Terms §11 carries the Texas clause; Changes renumbered to §12', () => {
-  const terms = app.slice(app.indexOf('function vTerms()'), app.indexOf('function vModelContract()'));
+  // Fan Terms live in the EN legal_terms_html i18n entry since the 13-language build.
+  const tStart = app.indexOf('legal_terms_html:');
+  const terms = app.slice(tStart, app.indexOf('legal_terms_html:', tStart + 1));
   assert.ok(terms.includes('11. Governing Law'), 'fan Terms §11 is Governing Law');
   assert.ok(terms.includes('These terms are governed by the laws of the State of Texas, without regard to its conflict-of-laws rules.'),
     'fan clause: Texas governing law, no conflict-of-laws rules');
