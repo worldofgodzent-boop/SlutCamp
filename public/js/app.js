@@ -8255,12 +8255,46 @@ async function vNotifications() {
       body: JSON.stringify({ ids: [parseInt(btn.dataset.notif)] }) });
     refreshNotifBadge();
   };
+  // Bell-tap routing: a tap must OPEN the thing the bell is about.
+  // The old handler marked the bell read and re-rendered THIS list for
+  // every link except a fan's '/#live' — the "tap glitches and nothing
+  // opens" bug. Route by the bell's link, then its type. Returns true
+  // when the tap navigated somewhere.
+  function routeNotifTap(n, ftReqs) {
+    const role = S.user && S.user.role;
+    const link = (n && n.link) || '';
+    const ftm = /^\/?#ft\/(\d+)$/.exec(link);
+    if (ftm && ftReqs && ftReqs[parseInt(ftm[1])]) {
+      showFtRequestCard(ftReqs[parseInt(ftm[1])]);
+      return true;
+    }
+    if (link === '/#bookings') { show('bookings', {}); return true; }
+    if (link === '/#live') { show(role === 'model' ? 'lives' : 'fanLive', {}); return true; }
+    const lm = /^\/live\/(\d+)$/.exec(link);
+    if (lm && role === 'model' && typeof rejoinLiveBroadcast === 'function') {
+      // stage_request bells carry the id of the model's OWN live
+      // session — rejoinLiveBroadcast resumes exactly that broadcast.
+      rejoinLiveBroadcast(parseInt(lm[1]));
+      return true;
+    }
+    if (n && n.type === 'tip' && role === 'model') { show('modelEarnings', {}); return true; }
+    // Everything else — admin announcements (link ''), 'message' bells,
+    // '/#chat', tips for fans, unknown links — lands on the role's chats.
+    show(role === 'model' ? 'modelChats' : 'fanChats', {});
+    return true;
+  }
   app.querySelectorAll('[data-notif]').forEach((b) => {
     b.onclick = async () => {
       await markRead(b);
-      const link = b.dataset.link;
-      if (link === '/#live' && S.user && S.user.role === 'fan') show('fanLive', {});
-      else show('notifications', {});
+      const n = notifs.find((x) => x.id === parseInt(b.dataset.notif));
+      const routed = n ? routeNotifTap(n, ftById) : false;
+      if (!routed) {
+        // Defensive fallback (no navigation resolved): settle this
+        // row's read state in place — never re-render the whole list.
+        b.classList.remove('unread');
+        const dot = b.querySelector('.unread-dot');
+        if (dot) dot.remove();
+      }
     };
   });
   // Box actions: real Accept/Decline against the live request.
