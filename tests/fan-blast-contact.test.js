@@ -265,7 +265,7 @@ test('pins: broadcasts, schema, routes and UI wiring exist with the optional wor
   assert.ok(serverSrc.includes("notifyUser(f.id, 'fan_news'"), 'blast delivers via notifyUser (bell + push)');
   // The fan blast is bell+push ONLY — no admin DM thread is created for fans.
   const blastBody = serverSrc.slice(serverSrc.indexOf('function announceFanPreviewToFans()'),
-    serverSrc.indexOf('function seed()'));
+    serverSrc.indexOf('function announceLanguagesToModels()'));
   assert.ok(!blastBody.includes('INSERT INTO messages'), 'fan blast creates no DM');
   assert.ok(!blastBody.includes('INSERT INTO conversations'), 'fan blast creates no conversation');
 

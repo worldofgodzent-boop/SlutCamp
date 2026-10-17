@@ -106,10 +106,10 @@ test('affiliate terms: quota placement + numbering are coherent (after §9, disc
     'recruiter agreement has exactly 11 sections');
 });
 
-test('affiliate terms: signup notice exists in EN/ES/PT and renders at the acceptance point of both forms', () => {
+test('affiliate terms: signup notice exists in all 13 languages and renders at the acceptance point of both forms', () => {
   // i18n: the notice key is defined once per locale
   const defs = app.split('aff_quota_notice:').length - 1;
-  assert.equal(defs, 3, `aff_quota_notice defined for en/es/pt (found ${defs})`);
+  assert.equal(defs, 13, `aff_quota_notice defined for all 13 languages (found ${defs})`);
   // EN notice states all four points briefly and defers to the Agreement
   const en = app.slice(app.indexOf('aff_quota_notice:'), app.indexOf('aff_quota_notice:') + 600);
   assert.ok(en.includes('can end your affiliate status and link at any time, for any reason, without notice'),

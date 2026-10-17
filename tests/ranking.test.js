@@ -402,8 +402,8 @@ test('pins: client — badge markup, both call sites suppress with discovery, pe
   assert.equal(app.split('rankBadges: !discActive(disc)').length - 1, 2,
     'guest landing + fan home both hide badges whenever discovery is active');
   assert.ok(app.includes("t('ranked_n'"), 'peek states her rank via the localized string');
-  assert.equal(app.split('ranked_n:').length - 1, 3, 'ranked_n exists in EN + ES + PT');
-  assert.equal(app.split('sort_top:').length - 1, 3, 'sort_top (Top ranked) exists in EN + ES + PT');
+  assert.equal(app.split('ranked_n:').length - 1, 13, 'ranked_n exists in all 13 languages');
+  assert.equal(app.split('sort_top:').length - 1, 13, 'sort_top (Top ranked) exists in all 13 languages');
   assert.ok(app.includes("'top', 'liked', 'online'"), 'Top ranked is the first sort option, Most liked kept');
   assert.ok(app.includes("sort: 'top'"), 'discovery state defaults to Top ranked');
   assert.ok(css.includes('.tile-rank-badge'), 'badge styles exist');

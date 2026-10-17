@@ -37,7 +37,7 @@
  *     extracted from app.js and run in a vm against stubbed
  *     show/api/S. The router fires the helper without awaiting it,
  *     so tests settle a macrotask before asserting the final show.
- *  2. Source pins: all 14 server call sites carry the thread link
+ *  2. Source pins: all 15 server call sites carry the thread link
  *     (per-function statement extraction + an exact global count),
  *     and the client's /#chat/ rule sits before the generic
  *     chats-list fallback.
@@ -214,7 +214,7 @@ const ADMIN_DM_FNS = [
   'announceGameCategoryToModels', 'announceAgreement12ToModels',
   'announcePublicPhotoToModels', 'announceNotifFixToModels',
   'announcePreviewVideoToModels', 'announceThreadTapToModels',
-  'sendAdminApologyDm',
+  'announceLanguagesToModels', 'sendAdminApologyDm',
 ];
 
 test('pin: every admin-DM sender/broadcast bell carries its thread link', () => {
@@ -233,18 +233,19 @@ test('pin: the Manager admin→model message bell carries its thread link', () =
   assert.ok(stmt.includes('`/#chat/${conv.id}`'), 'route bell must link to its thread');
 });
 
-test('pin: exactly 14 thread links exist server-side — no more, no fewer', () => {
-  // 13 named functions + the Manager route. (The thread-tap broadcast
+test('pin: exactly 15 thread links exist server-side — no more, no fewer', () => {
+  // 14 named functions + the Manager route. (The thread-tap broadcast
   // joined the list when it shipped — its bell demonstrates the
-  // feature.) Any other bell gaining a '/#chat/' link (or one of the
-  // 14 losing it) trips this count.
-  assert.equal(server.split('/#chat/${conv.id}').length - 1, 14);
+  // feature; the 13-languages broadcast joined later the same day.)
+  // Any other bell gaining a '/#chat/' link (or one of the 15 losing
+  // it) trips this count.
+  assert.equal(server.split('/#chat/${conv.id}').length - 1, 15);
 });
 
 test('pin: non-DM bells keep their links (tip/facetime/live/booking untouched)', () => {
   assert.ok(server.includes("notifyUser(modelId, 'tip'"), 'tip bell present');
-  assert.ok(server.includes("'facetime', '📹 Your turn!'"), 'facetime bells present');
-  assert.ok(server.includes("'booking', '📹 Your 1-on-1 is now active', copy, '/#bookings'"),
+  assert.ok(server.includes("'facetime', srv('bell_ft_turn_title'"), 'facetime bells present (copy via SRV since the 13-language expansion)');
+  assert.ok(server.includes("'booking', srv('bell_booking_fan_active_title', userLang(b.fan_id)), copy, '/#bookings'"),
     'booking bell keeps its /#bookings link');
 });
 

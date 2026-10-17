@@ -398,8 +398,8 @@ test('pins: routes, funnel guard, migration, client panel + i18n', () => {
   assert.ok(app.includes("api('/me/spending')"), 'panel reads GET /api/me/spending');
   assert.ok(app.includes("api('/me/spending-cap'"), 'panel writes the cap');
   assert.ok(app.includes('function spendCapToast(data)'), 'shared cap-refusal toast');
-  assert.equal((app.match(/spend_cap_reached:/g) || []).length, 3,
-    'spend_cap_reached message exists in EN + ES + PT');
-  assert.equal((app.match(/spend_h:/g) || []).length, 3, 'spend_h exists in EN + ES + PT');
-  assert.equal((app.match(/spend_cat_tts:/g) || []).length, 3, 'category labels exist in EN + ES + PT');
+  assert.equal((app.match(/spend_cap_reached:/g) || []).length, 13,
+    'spend_cap_reached message exists in all 13 languages');
+  assert.equal((app.match(/spend_h:/g) || []).length, 13, 'spend_h exists in all 13 languages');
+  assert.equal((app.match(/spend_cat_tts:/g) || []).length, 13, 'category labels exist in all 13 languages');
 });

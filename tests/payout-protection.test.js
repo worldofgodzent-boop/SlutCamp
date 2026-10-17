@@ -564,7 +564,9 @@ test('Terms pins: the contracts and fan Terms carry the payout-protection clause
   assert.ok(server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.3';"), 'recruiter contract at R1.3 (R1.1 added the payout window; R1.2 adds governing law; R1.3 adds the first-year quota)');
   const app = fs.readFileSync(path.join(REPO, 'public/js/app.js'), 'utf8');
   assert.ok(app.includes('10. Chargebacks & Fraud'), 'fan Terms gained §10 Chargebacks & Fraud');
-  const termsView = app.slice(app.indexOf('function vTerms()'), app.indexOf('function vModelContract()'));
+  // Fan Terms live in the EN legal_terms_html i18n entry since the 13-language build.
+  const tvStart = app.indexOf('legal_terms_html:');
+  const termsView = app.slice(tvStart, app.indexOf('legal_terms_html:', tvStart + 1));
   assert.ok(termsView.includes('12. Changes'), 'fan Terms Changes renumbered to 12 (governing law took 11)');
   assert.ok(app.includes('Model earnings become eligible for withdrawal one week (7 days) after they are earned.'),
     'fan Terms §4 carries the 7-day eligibility sentence');
