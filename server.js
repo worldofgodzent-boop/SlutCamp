@@ -1187,6 +1187,14 @@ addColumnIfMissing('platform_stats', 'explicit_gift_grace_sec', 'INTEGER NOT NUL
 addColumnIfMissing('conversations', 'paused_at', 'TEXT');
 addColumnIfMissing('messages', 'gift_json', 'TEXT'); // TikTok-style gift payload on chat gift messages
 addColumnIfMissing('models', 'preview_video_url', "TEXT NOT NULL DEFAULT ''"); // Loop preview on home screen
+// Profile media expansion (owner, Oct 17 2026): a SECOND main profile
+// video (preview_video_url stays Video 1) + a gallery of extra profile
+// pictures. gallery_photos is a JSON array of /uploads/photo-* URLs,
+// same storage pattern as models.tags; the profile page shows her main
+// photo_url first, then these, capped at MAX_PROFILE_PICS total.
+addColumnIfMissing('models', 'preview_video_url_2', "TEXT NOT NULL DEFAULT ''"); // Second main profile video
+addColumnIfMissing('models', 'gallery_photos', "TEXT NOT NULL DEFAULT '[]'"); // Extra profile pictures (JSON array)
+addColumnIfMissing('platform_stats', 'profile_media_announced_at', 'TEXT'); // one-time profile-media broadcast stamp
 addColumnIfMissing('invite_links', 'expires_at', "TEXT NOT NULL DEFAULT (datetime('now', '+6 hours'))");
 addColumnIfMissing('invite_links', 'role', "TEXT NOT NULL DEFAULT 'model'");
 addColumnIfMissing('tax_profiles', 'electronic_1099_consent', 'INTEGER NOT NULL DEFAULT 0');
@@ -2725,6 +2733,9 @@ const SRV = {
   ann_lang_bell_body: { en: 'Switch the whole app to your language in Settings — your fans too! 💋', es: 'Cambia toda la app a tu idioma en Ajustes — ¡tus fans también! 💋', pt: 'Troque o app inteiro para seu idioma em Configurações — seus fãs também! 💋', fr: 'Basculez toute l\'appli dans votre langue dans Paramètres — vos fans aussi ! 💋', de: 'Stelle die ganze App in den Einstellungen auf deine Sprache um — deine Fans auch! 💋', ru: 'Переключите всё приложение на ваш язык в Настройках — ваши фанаты тоже! 💋', ja: '設定でアプリ全体をあなたの言語に切り替えてね — あなたのファンも！ 💋', zh: '在设置中将整个应用切换到你的语言 — 你的粉丝也可以！💋', ko: '설정에서 앱 전체를 본인의 언어로 바꾸세요 — 팬들도 마찬가지입니다! 💋', it: 'Cambia l\'intera app nella tua lingua in Impostazioni — anche i tuoi fan! 💋', pl: 'Przełącz całą aplikację na swój język w Ustawieniach — Twoi fani też! 💋', nl: 'Schakel de hele app in Instellingen naar jouw taal — je fans ook! 💋', tr: 'Tüm uygulamayı Ayarlar\'dan diline çevir — hayranların da! 💋' },
   ann_suggest_title: { en: '💡 NEW: The Suggestion Box is open!', es: '💡 NUEVO: ¡El buzón de sugerencias está abierto!', pt: '💡 NOVIDADE: A caixa de sugestões está aberta!', fr: '💡 NOUVEAU : La boîte à suggestions est ouverte !', de: '💡 NEU: Die Vorschlagsbox ist geöffnet!', ru: '💡 НОВОЕ: Ящик предложений открыт!', ja: '💡 新機能：ご意見ボックスがオープン！', zh: '💡 新功能：意见箱已开启！', ko: '💡 새 소식: 건의함이 열렸어요!', it: '💡 NOVITÀ: La cassetta dei suggerimenti è aperta!', pl: '💡 NOWOŚĆ: Skrzynka sugestii jest otwarta!', nl: '💡 NIEUW: De ideeënbus is geopend!', tr: '💡 YENİ: Öneri kutusu açıldı!' },
   ann_suggest_body: { en: 'Want something on the app we haven\'t added yet? Tell us! Open your Wallet and drop your idea in the 💡 Suggestion Box — we read every single one 💋', es: '¿Quieres algo en la app que aún no agregamos? ¡Cuéntanos! Abre tu billetera y deja tu idea en el 💡 Buzón de sugerencias — leemos cada una 💋', pt: 'Quer algo no app que ainda não adicionamos? Conta pra gente! Abra sua carteira e deixe sua ideia na 💡 Caixa de sugestões — lemos todas 💋', fr: 'Vous voulez quelque chose dans l\'app que nous n\'avons pas encore ajouté ? Dites-le-nous ! Ouvrez votre portefeuille et déposez votre idée dans la 💡 Boîte à suggestions — nous lisons chacune d\'elles 💋', de: 'Wünschst du dir etwas in der App, das wir noch nicht hinzugefügt haben? Sag es uns! Öffne deine Wallet und hinterlasse deine Idee in der 💡 Vorschlagsbox — wir lesen jede einzelne 💋', ru: 'Хотите что-то в приложении, чего мы ещё не добавили? Расскажите нам! Откройте кошелёк и оставьте свою идею в 💡 Ящике предложений — мы читаем каждое 💋', ja: 'アプリにまだない機能がほしい？教えて！ウォレットを開いて💡ご意見ボックスにアイデアを入れてね — 全部読んでます💋', zh: '想要应用里还没有的功能？告诉我们！打开你的钱包，把想法投进 💡 意见箱 — 每一条我们都会看 💋', ko: '앱에 아직 없는 기능이 있었으면 하나요? 알려주세요! 지갑을 열고 💡 건의함에 아이디어를 남겨주세요 — 하나하나 다 읽어요 💋', it: 'Vuoi qualcosa nell\'app che non abbiamo ancora aggiunto? Diccelo! Apri il tuo portafoglio e lascia la tua idea nella 💡 Cassetta dei suggerimenti — le leggiamo tutte 💋', pl: 'Chcesz czegoś w aplikacji, czego jeszcze nie dodaliśmy? Powiedz nam! Otwórz portfel i zostaw swój pomysł w 💡 Skrzynce sugestii — czytamy każdą 💋', nl: 'Wil je iets in de app dat we nog niet hebben toegevoegd? Vertel het ons! Open je wallet en laat je idee achter in de 💡 Ideeënbus — we lezen ze allemaal 💋', tr: 'Uygulamada henüz eklemediğimiz bir şey mi istiyorsun? Bize söyle! Cüzdanını aç ve fikrini 💡 Öneri kutusuna bırak — hepsini tek tek okuyoruz 💋' },
+  ann_profile_media_dm: { en: '📸🎬 NEW UPDATE: Your profile just got bigger! Fans who open your profile now see up to 10 of your pictures AND two profile videos — your preview video plus a second main video you add yourself. Twerk, introduce yourself, tease — whatever you want, it\'s your page and your hook. Add yours: Settings → My photo 💋', es: '📸🎬 NUEVA ACTUALIZACIÓN: ¡Tu perfil creció! Los fans que abren tu perfil ahora ven hasta 10 de tus fotos Y dos videos de perfil: tu video de vista previa más un segundo video principal que agregas tú. Twerk, preséntate, provoca — lo que quieras, es tu página y tu gancho. Agrega los tuyos: Ajustes → Mi foto 💋', pt: '📸🎬 NOVA ATUALIZAÇÃO: Seu perfil ficou maior! Os fãs que abrem seu perfil agora veem até 10 das suas fotos E dois vídeos de perfil — seu vídeo de prévia mais um segundo vídeo principal que você mesma adiciona. Twerk, se apresente, provoque — o que quiser, é a sua página e o seu gancho. Adicione os seus: Configurações → Minha foto 💋', fr: '📸🎬 NOUVELLE MISE À JOUR : Ton profil s\'agrandit ! Les fans qui ouvrent ton profil voient maintenant jusqu\'à 10 de tes photos ET deux vidéos de profil — ta vidéo d\'aperçu plus une deuxième vidéo principale que tu ajoutes toi-même. Twerk, présente-toi, provoque — ce que tu veux, c\'est ta page et ton accroche. Ajoute les tiennes : Paramètres → Ma photo 💋', de: '📸🎬 NEUES UPDATE: Dein Profil ist gewachsen! Fans, die dein Profil öffnen, sehen jetzt bis zu 10 deiner Bilder UND zwei Profilvideos — dein Vorschauvideo plus ein zweites Hauptvideo, das du selbst hinzufügst. Twerk, stell dich vor, tease — was du willst, es ist deine Seite und dein Hook. Füge deine hinzu: Einstellungen → Mein Foto 💋', ru: '📸🎬 НОВОЕ ОБНОВЛЕНИЕ: Твой профиль стал больше! Фанаты, которые открывают твой профиль, теперь видят до 10 твоих фото И два видео профиля — твоё превью-видео плюс второе главное видео, которое ты добавляешь сама. Тверк, представься, дразни — что хочешь, это твоя страница и твой крючок. Добавь свои: Настройки → Моё фото 💋', ja: '📸🎬 新しいアップデート：あなたのプロフィールが大きくなりました！プロフィールを開いたファンには、あなたの写真が最大10枚、そしてプロフィール動画が2本 — プレビュー動画と、あなた自身が追加する2本目のメイン動画 — が表示されます。トゥワーク、自己紹介、ティーズ — 何でもOK、あなたのページであなたのフックです。追加はこちら：設定 → マイ写真 💋', zh: '📸🎬 新更新：你的主页变大了！打开你主页的粉丝现在能看到你多达 10 张照片，还有两段主页视频 — 你的预览视频加上你自己添加的第二段主视频。电臀舞、自我介绍、撩人 — 随你喜欢，这是你的页面、你的招牌。在这里添加：设置 → 我的照片 💋', ko: '📸🎬 새 업데이트: 프로필이 더 커졌어요! 프로필을 여는 팬들은 이제 당신의 사진을 최대 10장, 그리고 프로필 영상 두 개 — 미리보기 영상과 직접 추가하는 두 번째 메인 영상 — 를 볼 수 있어요. 트월킹, 자기소개, 티징 — 원하는 대로, 당신의 페이지이자 당신의 훅이에요. 추가하기: 설정 → 내 사진 💋', it: '📸🎬 NUOVO AGGIORNAMENTO: Il tuo profilo è cresciuto! I fan che aprono il tuo profilo ora vedono fino a 10 delle tue foto E due video profilo — il tuo video di anteprima più un secondo video principale che aggiungi tu. Twerk, presentati, provoca — quello che vuoi, è la tua pagina e il tuo gancio. Aggiungi i tuoi: Impostazioni → La mia foto 💋', pl: '📸🎬 NOWA AKTUALIZACJA: Twój profil się powiększył! Fani, którzy otwierają Twój profil, widzą teraz do 10 Twoich zdjęć ORAZ dwa filmy profilowe — Twój film poglądowy plus drugi główny film, który dodajesz sama. Twerk, przedstaw się, drażnij — co chcesz, to Twoja strona i Twój haczyk. Dodaj swoje: Ustawienia → Moje zdjęcie 💋', nl: '📸🎬 NIEUWE UPDATE: Je profiel is groter geworden! Fans die je profiel openen, zien nu tot 10 van je foto\'s EN twee profielvideo\'s — je previewvideo plus een tweede hoofdvideo die je zelf toevoegt. Twerk, stel jezelf voor, tease — wat je wilt, het is jouw pagina en jouw hook. Voeg de jouwe toe: Instellingen → Mijn foto 💋', tr: '📸🎬 YENİ GÜNCELLEME: Profilin büyüdü! Profilini açan hayranlar artık 10 fotoğrafını VE iki profil videonu görüyor — önizleme videon artı kendin eklediğin ikinci bir ana video. Twerk yap, kendini tanıt, kışkırt — ne istersen, bu senin sayfan ve senin kancan. Seninkileri ekle: Ayarlar → Fotoğrafım 💋' },
+  ann_profile_media_bell_title: { en: '📸 NEW UPDATE: 10 pictures + 2 videos on your profile!', es: '📸 NUEVA ACTUALIZACIÓN: ¡10 fotos + 2 videos en tu perfil!', pt: '📸 NOVA ATUALIZAÇÃO: 10 fotos + 2 vídeos no seu perfil!', fr: '📸 NOUVELLE MISE À JOUR : 10 photos + 2 vidéos sur ton profil !', de: '📸 NEUES UPDATE: 10 Bilder + 2 Videos auf deinem Profil!', ru: '📸 НОВОЕ ОБНОВЛЕНИЕ: 10 фото + 2 видео в твоём профиле!', ja: '📸 新しいアップデート：プロフィールに写真10枚＋動画2本！', zh: '📸 新更新：你的主页有 10 张照片 + 2 段视频！', ko: '📸 새 업데이트: 프로필에 사진 10장 + 영상 2개!', it: '📸 NUOVO AGGIORNAMENTO: 10 foto + 2 video sul tuo profilo!', pl: '📸 NOWA AKTUALIZACJA: 10 zdjęć + 2 filmy na Twoim profilu!', nl: '📸 NIEUWE UPDATE: 10 foto\'s + 2 video\'s op je profiel!', tr: '📸 YENİ GÜNCELLEME: Profilinde 10 fotoğraf + 2 video!' },
+  ann_profile_media_bell_body: { en: 'Fans see up to 10 pictures and both your profile videos. Add yours in Settings 💋', es: 'Los fans ven hasta 10 fotos y tus dos videos de perfil. Agrega los tuyos en Ajustes 💋', pt: 'Os fãs veem até 10 fotos e os seus dois vídeos de perfil. Adicione os seus em Configurações 💋', fr: 'Les fans voient jusqu\'à 10 photos et tes deux vidéos de profil. Ajoute les tiennes dans Paramètres 💋', de: 'Fans sehen bis zu 10 Bilder und beide deiner Profilvideos. Füge deine in den Einstellungen hinzu 💋', ru: 'Фанаты видят до 10 фото и оба твоих видео профиля. Добавь свои в Настройках 💋', ja: 'ファンには写真が最大10枚とプロフィール動画2本の両方が表示されます。設定で追加してね 💋', zh: '粉丝能看到多达 10 张照片和你的两段主页视频。在设置中添加 💋', ko: '팬들은 사진 최대 10장과 프로필 영상 두 개를 모두 봐요. 설정에서 추가하세요 💋', it: 'I fan vedono fino a 10 foto ed entrambi i tuoi video profilo. Aggiungi i tuoi in Impostazioni 💋', pl: 'Fani widzą do 10 zdjęć i oba Twoje filmy profilowe. Dodaj swoje w Ustawieniach 💋', nl: 'Fans zien tot 10 foto\'s en allebei je profielvideo\'s. Voeg de jouwe toe in Instellingen 💋', tr: 'Hayranlar 10 fotoğrafını ve iki profil videonu da görüyor. Seninkileri Ayarlar\'dan ekle 💋' },
   suggest_admin_title: { en: '💡 New suggestion from {username}', es: '💡 Nueva sugerencia de {username}', pt: '💡 Nova sugestão de {username}', fr: '💡 Nouvelle suggestion de {username}', de: '💡 Neuer Vorschlag von {username}', ru: '💡 Новое предложение от {username}', ja: '💡 {username} さんからの新しい提案', zh: '💡 来自 {username} 的新建议', ko: '💡 {username}님의 새 건의', it: '💡 Nuovo suggerimento da {username}', pl: '💡 Nowa sugestia od {username}', nl: '💡 Nieuwe suggestie van {username}', tr: '💡 {username} kullanıcısından yeni öneri' },
   ann_lang_fan_title: { en: '🌍 NEW: SlutCamp speaks YOUR language!', es: '🌍 NUEVO: ¡SlutCamp habla TU idioma!', pt: '🌍 NOVIDADE: a SlutCamp fala SEU idioma!', fr: '🌍 NOUVEAU : SlutCamp parle VOTRE langue !', de: '🌍 NEU: SlutCamp spricht DEINE Sprache!', ru: '🌍 НОВОЕ: SlutCamp говорит на ВАШЕМ языке!', ja: '🌍 新機能：SlutCampはあなたの言語に対応！', zh: '🌍 新功能：SlutCamp 说你的语言！', ko: '🌍 새 소식: SlutCamp가 당신의 언어를 지원합니다!', it: '🌍 NOVITÀ: SlutCamp parla la TUA lingua!', pl: '🌍 NOWOŚĆ: SlutCamp mówi w TWOIM języku!', nl: '🌍 NIEUW: SlutCamp spreekt JOUW taal!', tr: '🌍 YENİ: SlutCamp SENİN dilini konuşuyor!' },
   ann_lang_fan_body: { en: 'The whole app now speaks 13 languages — switch anytime in Settings: buttons, messages and agreements included 💋', es: 'Toda la app ahora habla 13 idiomas — cámbialo cuando quieras en Ajustes: botones, mensajes y acuerdos incluidos 💋', pt: 'O app inteiro agora fala 13 idiomas — troque quando quiser em Configurações: botões, mensagens e contratos incluídos 💋', fr: 'Toute l\'appli parle maintenant 13 langues — changez à tout moment dans Paramètres : boutons, messages et contrats inclus 💋', de: 'Die ganze App spricht jetzt 13 Sprachen — stelle jederzeit in den Einstellungen um: Schaltflächen, Nachrichten und Vereinbarungen inklusive 💋', ru: 'Всё приложение теперь говорит на 13 языках — переключайте в любое время в Настройках: кнопки, сообщения и соглашения включены 💋', ja: 'アプリ全体が13言語に対応しました — 設定でいつでも切り替え可能：ボタン、メッセージ、契約も含まれます 💋', zh: '整个应用现在支持 13 种语言 — 随时在设置中切换：包括按钮、消息和协议 💋', ko: '이제 앱 전체가 13개 언어를 지원합니다 — 설정에서 언제든지 바꾸세요: 버튼, 메시지, 계약까지 포함됩니다 💋', it: 'L\'intera app ora parla 13 lingue — cambia in qualsiasi momento in Impostazioni: pulsanti, messaggi e contratti inclusi 💋', pl: 'Cała aplikacja mówi teraz w 13 językach — przełącz w każdej chwili w Ustawieniach: przyciski, wiadomości i umowy w zestawie 💋', nl: 'De hele app spreekt nu 13 talen — schakel op elk moment in Instellingen: knoppen, berichten en overeenkomsten inbegrepen 💋', tr: 'Tüm uygulama artık 13 dil konuşuyor — Ayarlar\'dan istediğin zaman değiştir: düğmeler, mesajlar ve sözleşmeler dahil 💋' },
@@ -3712,6 +3723,46 @@ function announcePreviewVideoToModels() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Profile media expansion — ONE-TIME broadcast to every model,      */
+/* same admin-thread DM + stamp pattern as the broadcasts above       */
+/* (profile_media_announced_at on platform_stats), copy localized    */
+/* per model via the SRV table (the languages-broadcast pattern).     */
+/* Her profile page now holds up to 10 pictures and TWO main videos;  */
+/* the owner's standing rule: every update gets a message to the      */
+/* girls.                                                             */
+/* ------------------------------------------------------------------ */
+function announceProfileMediaToModels() {
+  const st = db.prepare('SELECT profile_media_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.profile_media_announced_at) return 0;
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin) return 0;
+  const models = db.prepare("SELECT id, username, language FROM users WHERE role = 'model' AND banned = 0").all();
+  let sent = 0;
+  for (const m of models) {
+    if (m.id === admin.id) continue;
+    try {
+      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
+      if (!conv) {
+        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
+        conv = { id: Number(info.lastInsertRowid) };
+      }
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, admin.id, srv('ann_profile_media_dm', m.language));
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(m.id, 'profile_media', srv('ann_profile_media_bell_title', m.language),
+          srv('ann_profile_media_bell_body', m.language), `/#chat/${conv.id}`);
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest */ }
+  }
+  if (sent > 0 || models.length === 0) {
+    db.prepare("UPDATE platform_stats SET profile_media_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
+/* ------------------------------------------------------------------ */
 /* One-tap thread routing — ONE-TIME broadcast to every model, same   */
 /* admin-thread DM + stamp pattern as the broadcasts above            */
 /* (thread_tap_announced_at on platform_stats). PR #33 made bell taps */
@@ -3904,6 +3955,7 @@ try { const n = announceAgreement12ToModels(); if (n) console.log(`[contract] Ag
 try { const n = announcePublicPhotoToModels(); if (n) console.log(`[seo] Public-photo announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceNotifFixToModels(); if (n) console.log(`[notif] Notification-fix announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announcePreviewVideoToModels(); if (n) console.log(`[preview] Preview-video announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
+try { const n = announceProfileMediaToModels(); if (n) console.log(`[profilemedia] Profile-media announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceThreadTapToModels(); if (n) console.log(`[threadtap] Thread-tap announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceFanPreviewToFans(); if (n) console.log(`[fanblast] Fan preview blast sent to ${n} fans.`); } catch (e) { /* retry next boot */ }
 try { const n = announceLanguagesToModels(); if (n) console.log(`[lang] Languages announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
@@ -4184,6 +4236,41 @@ function cleanModelTags(input) {
   return out.slice(0, MAX_MODEL_TAGS);
 }
 
+/* ------------------------------------------------------------------ */
+/* Profile picture gallery (owner, Oct 17 2026): her profile page is  */
+/* NOT a feed — it shows her main photo plus up to MAX_PROFILE_PICS-1 */
+/* gallery uploads, and exactly two main videos. The gallery list is  */
+/* stored as a JSON array on the model row (same pattern as tags);    */
+/* only /uploads/photo-* URLs the photo pipeline itself produced are  */
+/* ever valid entries, so a stored value can never point elsewhere.   */
+/* public_photo_url stays separate: it is the clean Google pic and    */
+/* never joins the in-app profile gallery.                            */
+/* ------------------------------------------------------------------ */
+const MAX_PROFILE_PICS = 10;
+const GALLERY_PHOTO_RE = /^\/uploads\/photo-[a-f0-9]+\.(jpg|png|webp)$/;
+// Stored value → clean array of gallery URLs (junk/dupe entries dropped).
+function parseGalleryPhotos(raw) {
+  try {
+    const a = JSON.parse(raw || '[]');
+    if (!Array.isArray(a)) return [];
+    const out = [];
+    for (const u of a) {
+      if (typeof u === 'string' && GALLERY_PHOTO_RE.test(u) && !out.includes(u)) out.push(u);
+    }
+    return out;
+  } catch (e) { return []; }
+}
+// The profile page's picture list: main photo first, then her gallery
+// uploads, deduped, capped at MAX_PROFILE_PICS total.
+function profilePicsList(modelRow) {
+  const pics = [];
+  if (modelRow.photo_url) pics.push(modelRow.photo_url);
+  for (const u of parseGalleryPhotos(modelRow.gallery_photos)) {
+    if (!pics.includes(u)) pics.push(u);
+  }
+  return pics.slice(0, MAX_PROFILE_PICS);
+}
+
 // GET /api/models — PUBLIC so guests can browse before signing up.
 // Ordering: featured (SlutCamp Live) pinned first; regular models by
 // composite rank_score = fan likes + lifetime credited model earnings
@@ -4203,7 +4290,7 @@ app.get('/api/models', (req, res) => {
   const rows = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.presence_override, u.created_at, m.bio, m.per_message_cents,
            m.per_minute_cents, m.per_voice_cents, m.is_online, m.photo_url, m.public_photo_url, m.tags,
-           m.preview_video_url, m.is_featured, m.rank_score,
+           m.preview_video_url, m.preview_video_url_2, m.gallery_photos, m.is_featured, m.rank_score,
            ls.id AS live_session_id, ls.explicit_rate_cents AS live_explicit_rate_cents,
            (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS live_viewers,
            (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) AS like_count,
@@ -4266,9 +4353,13 @@ app.get('/api/models', (req, res) => {
     const summary = sched.length
       ? sched.map((s) => `${days[s.day_of_week]} ${s.start_time.replace(/^0/, '')}`).join(', ')
       : '';
-    const { presence_override, tags: rawTags, ...pub } = r;
-    if (dirShielded) pub.preview_video_url = '';
+    const { presence_override, tags: rawTags, gallery_photos: rawGallery, ...pub } = r;
+    // Her second profile video is storefront media exactly like the
+    // first — the shield withholds both, never the pictures (they ARE
+    // the shop window, same rule as photo_url).
+    if (dirShielded) { pub.preview_video_url = ''; pub.preview_video_url_2 = ''; }
     return { ...pub, tags: parseModelTags(rawTags),
+      gallery_photos: parseGalleryPhotos(rawGallery),
       is_online: effectiveOnline(presence_override, r.is_online),
       is_live: !!r.live_session_id, is_featured: !!r.is_featured,
       live_viewers: r.live_viewers || 0, schedule_summary: summary, liked: likedSet.has(r.id),
@@ -7923,6 +8014,90 @@ app.delete('/api/model/preview-video', identMiddleware, requireUser, requireRole
   }
   db.prepare('UPDATE models SET preview_video_url = ? WHERE user_id = ?').run('', req.user.id);
   res.json({ ok: true });
+});
+
+/* ------------------------------------------------------------------ */
+/* Profile media expansion (owner, Oct 17 2026): Video 2 + gallery.   */
+/* Exactly TWO main profile videos exist — Video 1 (preview_video_    */
+/* url) and Video 2 below; there is deliberately no third slot. The  */
+/* gallery holds the profile pictures beyond her main photo, and     */
+/* the composed profile list (main + gallery) is capped at            */
+/* MAX_PROFILE_PICS, enforced here on the server: the upload that     */
+/* would make an 11th picture is rejected and its file removed.      */
+/* ------------------------------------------------------------------ */
+
+// Model uploads/replaces her SECOND main profile video (same 15MB flow)
+app.post('/api/model/preview-video-2', identMiddleware, requireUser, requireRole('model'),
+  previewVideoUpload.single('video'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'no_video' });
+    // Delete old second video if any
+    const old = db.prepare('SELECT preview_video_url_2 FROM models WHERE user_id = ?').get(req.user.id);
+    if (old && old.preview_video_url_2) {
+      const oldPath = path.join(UPLOAD_DIR, path.basename(old.preview_video_url_2));
+      if (oldPath.startsWith(UPLOAD_DIR + path.sep)) {
+        try { fs.unlinkSync(oldPath); } catch (e) { /* already gone */ }
+      }
+    }
+    const preview_video_url_2 = '/uploads/' + path.basename(req.file.path);
+    db.prepare('UPDATE models SET preview_video_url_2 = ? WHERE user_id = ?').run(preview_video_url_2, req.user.id);
+    res.json({ ok: true, preview_video_url_2 });
+  });
+
+// Model removes her second profile video
+app.delete('/api/model/preview-video-2', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const old = db.prepare('SELECT preview_video_url_2 FROM models WHERE user_id = ?').get(req.user.id);
+  if (old && old.preview_video_url_2) {
+    const oldPath = path.join(UPLOAD_DIR, path.basename(old.preview_video_url_2));
+    if (oldPath.startsWith(UPLOAD_DIR + path.sep)) {
+      try { fs.unlinkSync(oldPath); } catch (e) { /* already gone */ }
+    }
+  }
+  db.prepare('UPDATE models SET preview_video_url_2 = ? WHERE user_id = ?').run('', req.user.id);
+  res.json({ ok: true });
+});
+
+// Model adds ONE picture to her profile gallery. The composed profile
+// list (her main photo + gallery) may never exceed MAX_PROFILE_PICS —
+// the 11th picture is rejected with gallery_full and its file deleted,
+// so no orphan is left behind.
+app.post('/api/model/gallery-photo', identMiddleware, requireUser, requireRole('model'),
+  photoUpload.single('photo'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'no_photo' });
+    const row = db.prepare('SELECT photo_url, gallery_photos FROM models WHERE user_id = ?').get(req.user.id);
+    const gallery = parseGalleryPhotos(row.gallery_photos);
+    const composed = (row.photo_url ? 1 : 0) + gallery.length;
+    if (composed >= MAX_PROFILE_PICS) {
+      try { fs.unlinkSync(req.file.path); } catch (e) { /* already gone */ }
+      return res.status(400).json({ error: 'gallery_full',
+        message: `Your profile holds ${MAX_PROFILE_PICS} pictures max — remove one to add another.` });
+    }
+    const url = '/uploads/' + path.basename(req.file.path);
+    gallery.push(url);
+    db.prepare('UPDATE models SET gallery_photos = ? WHERE user_id = ?')
+      .run(JSON.stringify(gallery), req.user.id);
+    const updated = db.prepare('SELECT photo_url, gallery_photos FROM models WHERE user_id = ?').get(req.user.id);
+    res.json({ ok: true, gallery_photos: parseGalleryPhotos(updated.gallery_photos),
+      profile_pics: profilePicsList(updated), count: profilePicsList(updated).length });
+  });
+
+// Model removes ONE picture from her profile gallery (her main photo
+// is managed by the main-photo control, never through here). The file
+// is deleted like every other replaced profile asset.
+app.delete('/api/model/gallery-photo', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const url = String((req.body && req.body.url) || '');
+  const row = db.prepare('SELECT photo_url, gallery_photos FROM models WHERE user_id = ?').get(req.user.id);
+  const gallery = parseGalleryPhotos(row.gallery_photos);
+  if (!gallery.includes(url)) return res.status(404).json({ error: 'not_in_gallery' });
+  const next = gallery.filter((u) => u !== url);
+  db.prepare('UPDATE models SET gallery_photos = ? WHERE user_id = ?')
+    .run(JSON.stringify(next), req.user.id);
+  const filePath = path.join(UPLOAD_DIR, path.basename(url));
+  if (filePath.startsWith(UPLOAD_DIR + path.sep)) {
+    try { fs.unlinkSync(filePath); } catch (e) { /* already gone */ }
+  }
+  const updated = db.prepare('SELECT photo_url, gallery_photos FROM models WHERE user_id = ?').get(req.user.id);
+  res.json({ ok: true, gallery_photos: parseGalleryPhotos(updated.gallery_photos),
+    profile_pics: profilePicsList(updated), count: profilePicsList(updated).length });
 });
 
 /* ------------------------------------------------------------------ */
@@ -13053,9 +13228,13 @@ function runBiweeklyCleanup() {
   }
   // 2. Delete old model profile photos (photo-*.jpg in uploads, not current).
   // Public photos share the photo-* name space, so they count as current too.
+  // Gallery pictures live in the same name space — every URL in a model's
+  // gallery_photos list is current and must never be swept as an orphan.
   const currentPhotos = new Set([
     ...db.prepare(`SELECT photo_url FROM models WHERE photo_url != ''`).all().map((r) => r.photo_url),
     ...db.prepare(`SELECT public_photo_url FROM models WHERE public_photo_url != ''`).all().map((r) => r.public_photo_url),
+    ...db.prepare(`SELECT gallery_photos FROM models WHERE gallery_photos != '' AND gallery_photos != '[]'`)
+      .all().flatMap((r) => parseGalleryPhotos(r.gallery_photos)),
   ]);
   try {
     for (const f of fs.readdirSync(UPLOAD_DIR)) {

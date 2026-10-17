@@ -154,6 +154,14 @@ const I18N = {
     ranked_n: '🏆 Ranked #{n}',
     tap_for_sound: 'Tap for sound',
     msg_her_btn: '💬 Message her',
+    pv2_blurb: '🎬 <b>Second profile video</b> — one more main video on your profile, under your pictures. Twerk, introduce yourself, tease — whatever you want, it\'s your hook. It only ever plays inside the app. Under 15MB.',
+    gallery_h: '🖼️ Profile pictures',
+    gallery_note: 'Fans see these on your profile page — your main photo first, then these. 10 pictures max, no feed, just your page.',
+    gallery_add: '➕ Add a picture',
+    gallery_count: '{n} of {max} pictures',
+    gallery_main: 'Main',
+    gallery_full: 'That\'s 10 — your profile is full! Remove one to add another.',
+    gallery_removed: 'Picture removed 🖼️',
     tap_to_mute: 'Tap to mute',
     new_models_title: '🆕 New models you may like',
     new_badge: 'NEW',
@@ -757,6 +765,14 @@ const I18N = {
     ranked_n: '🏆 En el puesto #{n}',
     tap_for_sound: 'Toca para escuchar',
     msg_her_btn: '💬 Escríbele',
+    pv2_blurb: '🎬 <b>Segundo video de perfil</b> — un video principal más en tu perfil, debajo de tus fotos. Twerk, preséntate, provoca — lo que quieras, es tu gancho. Solo se reproduce dentro de la app. Menos de 15MB.',
+    gallery_h: '🖼️ Fotos de perfil',
+    gallery_note: 'Los fans las ven en tu página de perfil: primero tu foto principal, luego estas. Máximo 10 fotos, sin feed, solo tu página.',
+    gallery_add: '➕ Agregar una foto',
+    gallery_count: '{n} de {max} fotos',
+    gallery_main: 'Principal',
+    gallery_full: 'Ya son 10 — ¡tu perfil está lleno! Elimina una para agregar otra.',
+    gallery_removed: 'Foto eliminada 🖼️',
     tap_to_mute: 'Toca para silenciar',
     new_models_title: '🆕 Modelos nuevas que te pueden gustar',
     new_badge: 'NUEVA',
@@ -1360,6 +1376,14 @@ const I18N = {
     ranked_n: '🏆 Posição #{n}',
     tap_for_sound: 'Toque para ouvir',
     msg_her_btn: '💬 Fale com ela',
+    pv2_blurb: '🎬 <b>Segundo vídeo de perfil</b> — mais um vídeo principal no seu perfil, abaixo das suas fotos. Twerk, se apresente, provoque — o que quiser, é o seu gancho. Só toca dentro do app. Menos de 15MB.',
+    gallery_h: '🖼️ Fotos de perfil',
+    gallery_note: 'Os fãs veem estas na sua página de perfil — sua foto principal primeiro, depois estas. Máximo de 10 fotos, sem feed, só a sua página.',
+    gallery_add: '➕ Adicionar uma foto',
+    gallery_count: '{n} de {max} fotos',
+    gallery_main: 'Principal',
+    gallery_full: 'Já são 10 — seu perfil está cheio! Remova uma para adicionar outra.',
+    gallery_removed: 'Foto removida 🖼️',
     tap_to_mute: 'Toque para silenciar',
     new_models_title: '🆕 Modelos novas que você pode gostar',
     new_badge: 'NOVA',
@@ -1963,6 +1987,14 @@ const I18N = {
     ranked_n: '🏆 Classée #{n}',
     tap_for_sound: 'Touchez pour le son',
     msg_her_btn: '💬 Lui écrire',
+    pv2_blurb: '🎬 <b>Deuxième vidéo de profil</b> — une vidéo principale de plus sur ton profil, sous tes photos. Twerk, présente-toi, provoque — ce que tu veux, c\'est ton accroche. Ne joue que dans l\'app. Moins de 15 Mo.',
+    gallery_h: '🖼️ Photos de profil',
+    gallery_note: 'Les fans les voient sur ta page de profil — ta photo principale d\'abord, puis celles-ci. 10 photos max, pas de fil, juste ta page.',
+    gallery_add: '➕ Ajouter une photo',
+    gallery_count: '{n} photo(s) sur {max}',
+    gallery_main: 'Principale',
+    gallery_full: 'Ça fait 10 — ton profil est plein ! Retire-en une pour en ajouter une autre.',
+    gallery_removed: 'Photo retirée 🖼️',
     tap_to_mute: 'Touchez pour couper le son',
     new_models_title: '🆕 Nouveaux modèles qui pourraient vous plaire',
     new_badge: 'NOUVEAU',
@@ -2566,6 +2598,14 @@ const I18N = {
     ranked_n: '🏆 Platz #{n}',
     tap_for_sound: 'Für Ton tippen',
     msg_her_btn: '💬 Schreib ihr',
+    pv2_blurb: '🎬 <b>Zweites Profilvideo</b> — ein weiteres Hauptvideo auf deinem Profil, unter deinen Bildern. Twerk, stell dich vor, tease — was du willst, es ist dein Hook. Läuft nur in der App. Unter 15MB.',
+    gallery_h: '🖼️ Profilbilder',
+    gallery_note: 'Fans sehen diese auf deiner Profilseite — zuerst dein Hauptbild, dann diese. Max. 10 Bilder, kein Feed, nur deine Seite.',
+    gallery_add: '➕ Bild hinzufügen',
+    gallery_count: '{n} von {max} Bildern',
+    gallery_main: 'Haupt',
+    gallery_full: 'Das sind 10 — dein Profil ist voll! Entferne eins, um ein neues hinzuzufügen.',
+    gallery_removed: 'Bild entfernt 🖼️',
     tap_to_mute: 'Zum Stummschalten tippen',
     new_models_title: '🆕 Neue Modelle, die dir gefallen könnten',
     new_badge: 'NEU',
@@ -3169,6 +3209,14 @@ const I18N = {
     ranked_n: '🏆 Место #{n} в рейтинге',
     tap_for_sound: 'Нажмите для звука',
     msg_her_btn: '💬 Написать ей',
+    pv2_blurb: '🎬 <b>Второе видео профиля</b> — ещё одно главное видео в твоём профиле, под твоими фото. Тверк, представься, дразни — что хочешь, это твой крючок. Играет только в приложении. До 15МБ.',
+    gallery_h: '🖼️ Фотографии профиля',
+    gallery_note: 'Фанаты видят их на странице твоего профиля — сначала главное фото, потом эти. Максимум 10 фото, никакой ленты, только твоя страница.',
+    gallery_add: '➕ Добавить фото',
+    gallery_count: '{n} из {max} фото',
+    gallery_main: 'Главное',
+    gallery_full: 'Уже 10 — твой профиль полон! Удали одно, чтобы добавить другое.',
+    gallery_removed: 'Фото удалено 🖼️',
     tap_to_mute: 'Нажмите, чтобы выключить звук',
     new_models_title: '🆕 Новые модели, которые могут вам понравиться',
     new_badge: 'НОВАЯ',
@@ -3772,6 +3820,14 @@ const I18N = {
     ranked_n: '🏆 ランキング #{n}位',
     tap_for_sound: 'タップで音声オン',
     msg_her_btn: '💬 彼女にメッセージ',
+    pv2_blurb: '🎬 <b>2本目のプロフィール動画</b> — 写真の下に、もう1本のメイン動画をプロフィールに。トゥワーク、自己紹介、ティーズ — 何でもOK、あなたのフックです。アプリ内でのみ再生。15MB未満。',
+    gallery_h: '🖼️ プロフィール写真',
+    gallery_note: 'ファンはあなたのプロフィールページでこれらを見ます — メイン写真が最初、その後にこれら。最大10枚、フィードなし、あなたのページだけ。',
+    gallery_add: '➕ 写真を追加',
+    gallery_count: '{max}枚中{n}枚',
+    gallery_main: 'メイン',
+    gallery_full: '10枚になりました — プロフィールがいっぱいです！追加するには1枚削除してください。',
+    gallery_removed: '写真を削除しました 🖼️',
     tap_to_mute: 'タップでミュート',
     new_models_title: '🆕 おすすめの新人モデル',
     new_badge: 'NEW',
@@ -4375,6 +4431,14 @@ const I18N = {
     ranked_n: '🏆 排名 #{n}',
     tap_for_sound: '点击开启声音',
     msg_her_btn: '💬 给她发消息',
+    pv2_blurb: '🎬 <b>第二段主页视频</b> — 在你的主页照片下方再加一段主视频。电臀舞、自我介绍、撩人 — 随你喜欢，这是你的招牌。只在应用内播放。小于 15MB。',
+    gallery_h: '🖼️ 主页照片',
+    gallery_note: '粉丝在你的主页上看到这些 — 先是你的主照片，然后是这些。最多 10 张，没有动态流，只有你的页面。',
+    gallery_add: '➕ 添加照片',
+    gallery_count: '{n} / {max} 张照片',
+    gallery_main: '主图',
+    gallery_full: '已经 10 张了 — 你的主页满了！删掉一张才能再加。',
+    gallery_removed: '照片已删除 🖼️',
     tap_to_mute: '点击静音',
     new_models_title: '🆕 你可能喜欢的新模特',
     new_badge: 'NEW',
@@ -4978,6 +5042,14 @@ const I18N = {
     ranked_n: '🏆 순위 #{n}위',
     tap_for_sound: '탭하면 소리가 켜집니다',
     msg_her_btn: '💬 그녀에게 메시지',
+    pv2_blurb: '🎬 <b>두 번째 프로필 영상</b> — 사진 아래, 프로필에 메인 영상을 하나 더. 트월킹, 자기소개, 티징 — 원하는 대로, 당신의 훅이에요. 앱 안에서만 재생돼요. 15MB 미만.',
+    gallery_h: '🖼️ 프로필 사진',
+    gallery_note: '팬들은 당신의 프로필 페이지에서 이것들을 봐요 — 대표 사진이 먼저, 그 다음 이것들이에요. 최대 10장, 피드 없이, 당신의 페이지만.',
+    gallery_add: '➕ 사진 추가',
+    gallery_count: '{max}장 중 {n}장',
+    gallery_main: '대표',
+    gallery_full: '10장이 됐어요 — 프로필이 가득 찼어요! 추가하려면 하나를 삭제하세요.',
+    gallery_removed: '사진이 삭제됐어요 🖼️',
     tap_to_mute: '탭하면 음소거됩니다',
     new_models_title: '🆕 마음에 들 수 있는 새 모델',
     new_badge: '신규',
@@ -5581,6 +5653,14 @@ const I18N = {
     ranked_n: '🏆 Posizione #{n}',
     tap_for_sound: 'Tocca per l\'audio',
     msg_her_btn: '💬 Scrivile',
+    pv2_blurb: '🎬 <b>Secondo video profilo</b> — un altro video principale sul tuo profilo, sotto le tue foto. Twerk, presentati, provoca — quello che vuoi, è il tuo gancio. Si riproduce solo nell\'app. Sotto i 15MB.',
+    gallery_h: '🖼️ Foto profilo',
+    gallery_note: 'I fan le vedono sulla pagina del tuo profilo — prima la tua foto principale, poi queste. Massimo 10 foto, nessun feed, solo la tua pagina.',
+    gallery_add: '➕ Aggiungi una foto',
+    gallery_count: '{n} di {max} foto',
+    gallery_main: 'Principale',
+    gallery_full: 'Sono 10 — il tuo profilo è pieno! Rimuovine una per aggiungerne un\'altra.',
+    gallery_removed: 'Foto rimossa 🖼️',
     tap_to_mute: 'Tocca per silenziare',
     new_models_title: '🆕 Nuove modelle che potrebbero piacerti',
     new_badge: 'NUOVA',
@@ -6184,6 +6264,14 @@ const I18N = {
     ranked_n: '🏆 Miejsce #{n} w rankingu',
     tap_for_sound: 'Dotknij, aby włączyć dźwięk',
     msg_her_btn: '💬 Napisz do niej',
+    pv2_blurb: '🎬 <b>Drugi film profilowy</b> — jeszcze jeden główny film na Twoim profilu, pod Twoimi zdjęciami. Twerk, przedstaw się, drażnij — co chcesz, to Twój haczyk. Odtwarza się tylko w aplikacji. Poniżej 15MB.',
+    gallery_h: '🖼️ Zdjęcia profilowe',
+    gallery_note: 'Fani widzą je na stronie Twojego profilu — najpierw Twoje główne zdjęcie, potem te. Maks. 10 zdjęć, żadnego feedu, tylko Twoja strona.',
+    gallery_add: '➕ Dodaj zdjęcie',
+    gallery_count: '{n} z {max} zdjęć',
+    gallery_main: 'Główne',
+    gallery_full: 'To już 10 — Twój profil jest pełny! Usuń jedno, aby dodać kolejne.',
+    gallery_removed: 'Zdjęcie usunięte 🖼️',
     tap_to_mute: 'Dotknij, aby wyciszyć',
     new_models_title: '🆕 Nowe modelki, które mogą Ci się spodobać',
     new_badge: 'NOWA',
@@ -6787,6 +6875,14 @@ const I18N = {
     ranked_n: '🏆 Gerangschikt #{n}',
     tap_for_sound: 'Tik voor geluid',
     msg_her_btn: '💬 Stuur haar een bericht',
+    pv2_blurb: '🎬 <b>Tweede profielvideo</b> — nog een hoofdvideo op je profiel, onder je foto\'s. Twerk, stel jezelf voor, tease — wat je wilt, het is jouw hook. Speelt alleen in de app. Onder 15MB.',
+    gallery_h: '🖼️ Profielfoto\'s',
+    gallery_note: 'Fans zien deze op je profielpagina — eerst je hoofdfoto, daarna deze. Max. 10 foto\'s, geen feed, alleen jouw pagina.',
+    gallery_add: '➕ Foto toevoegen',
+    gallery_count: '{n} van {max} foto\'s',
+    gallery_main: 'Hoofd',
+    gallery_full: 'Dat zijn er 10 — je profiel is vol! Verwijder er een om een nieuwe toe te voegen.',
+    gallery_removed: 'Foto verwijderd 🖼️',
     tap_to_mute: 'Tik om te dempen',
     new_models_title: '🆕 Nieuwe modellen die je misschien leuk vindt',
     new_badge: 'NIEUW',
@@ -7390,6 +7486,14 @@ const I18N = {
     ranked_n: '🏆 Sıralama #{n}',
     tap_for_sound: 'Ses için dokun',
     msg_her_btn: '💬 Ona mesaj at',
+    pv2_blurb: '🎬 <b>İkinci profil videosu</b> — fotoğraflarının altında, profiline bir ana video daha. Twerk yap, kendini tanıt, kışkırt — ne istersen, bu senin kancan. Yalnızca uygulamada oynar. 15MB altı.',
+    gallery_h: '🖼️ Profil fotoğrafları',
+    gallery_note: 'Hayranlar bunları profil sayfanda görür — önce ana fotoğrafın, sonra bunlar. En fazla 10 fotoğraf, akış yok, sadece senin sayfan.',
+    gallery_add: '➕ Fotoğraf ekle',
+    gallery_count: '{max} fotoğraftan {n} tanesi',
+    gallery_main: 'Ana',
+    gallery_full: '10 oldu — profilin doldu! Bir tane daha eklemek için birini kaldır.',
+    gallery_removed: 'Fotoğraf kaldırıldı 🖼️',
     tap_to_mute: 'Sessize almak için dokun',
     new_models_title: '🆕 Beğenebileceğin yeni modeller',
     new_badge: 'YENİ',
@@ -10026,12 +10130,13 @@ function openModelPeek(m, models) {
   const status = m.is_live
     ? `🔴 LIVE now — ${m.live_viewers || 0} watching`
     : m.is_online ? '🟢 Online now' : '⚫ Offline';
-  // Her profile pictures beyond the hero video: the photos she already
-  // has — her storefront photo plus her clean public photo when it is
-  // a different file (up to two; show what exists). Exactly ONE
-  // profile video field exists today — the preview hero above; there
-  // is no second profile video to gallery.
-  const galleryPics = [...new Set([m.photo_url, m.public_photo_url].filter(Boolean))].slice(0, 2);
+  // Her profile pictures beyond the hero video: her main photo first,
+  // then her gallery uploads — up to 10 total, deduped, show what
+  // exists (owner spec, Oct 17 2026: 5-10 pictures, NOT a feed). Her
+  // clean public photo stays on the Google pages only and never joins
+  // this gallery. She also has TWO main videos now: the preview hero
+  // above and her second video, rendered in the scroll region below.
+  const galleryPics = [...new Set([m.photo_url, ...(Array.isArray(m.gallery_photos) ? m.gallery_photos : [])].filter(Boolean))].slice(0, 10);
   // The sticky Message bar is a FAN action: real fans get it, and the
   // admin's fan-preview stands in for a fan so he sees her page as
   // fans do. Models browsing a sister stay look-only (no fan actions),
@@ -10052,6 +10157,11 @@ function openModelPeek(m, models) {
     ${galleryPics.length ? `
     <div class="peek-gallery">
       ${galleryPics.map((p) => `<img class="peek-gallery-img" src="${esc(p)}" alt="${esc(m.display_name)}" loading="lazy">`).join('')}
+    </div>` : ''}
+    ${m.preview_video_url_2 ? `
+    <div class="peek-hero peek-hero-second">
+      <video class="peek-hero-video" data-peek-video2 src="${esc(m.preview_video_url_2)}" autoplay muted loop playsinline></video>
+      <span class="peek-sound-pill" data-peek-sound2>🔇 ${t('tap_for_sound')}</span>
     </div>` : ''}
     <div class="peek-rows">
       <div class="peek-row"><span>Status</span><b>${status}</b></div>
@@ -10112,6 +10222,25 @@ function openModelPeek(m, models) {
       };
       pv.onclick = togglePeekSound;
       if (pill) pill.onclick = togglePeekSound;
+    }
+    // Second profile video: same treatment as the hero — tap toggles
+    // the sound, unmuting restarts from 0 so her intro is heard from
+    // the top; its pill mirrors the state.
+    const pv2 = sheet.querySelector('[data-peek-video2]');
+    if (pv2) {
+      const pill2 = sheet.querySelector('[data-peek-sound2]');
+      const togglePeekSound2 = () => {
+        if (pv2.muted) {
+          pv2.muted = false;
+          try { pv2.currentTime = 0; } catch (e) { /* not seekable yet */ }
+          const p = pv2.play(); if (p && p.catch) p.catch(() => {});
+        } else {
+          pv2.muted = true;
+        }
+        if (pill2) pill2.innerHTML = pv2.muted ? `🔇 ${t('tap_for_sound')}` : `🔊 ${t('tap_to_mute')}`;
+      };
+      pv2.onclick = togglePeekSound2;
+      if (pill2) pill2.onclick = togglePeekSound2;
     }
     sheet.querySelectorAll('[data-sim]').forEach((b) => {
       b.onclick = () => {
@@ -11926,6 +12055,14 @@ async function vModelSettings() {
   try { myTags = JSON.parse(m.tags || '[]'); } catch (e) { myTags = []; }
   if (!Array.isArray(myTags)) myTags = [];
   myTags = myTags.filter((tg) => DISCOVERY_TAGS.includes(tg));
+  // Her profile gallery uploads (JSON array on the model row, like
+  // tags). The composed profile list is her main photo first, then
+  // these — capped at 10 total, enforced server-side.
+  let myGallery = [];
+  try { myGallery = JSON.parse(m.gallery_photos || '[]'); } catch (e) { myGallery = []; }
+  if (!Array.isArray(myGallery)) myGallery = [];
+  myGallery = myGallery.filter((u) => typeof u === 'string' && u);
+  const profilePicCount = (m.photo_url ? 1 : 0) + myGallery.length;
   const { data: idvData } = await api('/model/id-verification');
   const idv = (idvData && idvData.verification) || null;
   const idvStatus = idv ? idv.status : 'none';
@@ -12044,6 +12181,22 @@ async function vModelSettings() {
           ${m.preview_video_url ? `<video src="${esc(m.preview_video_url)}" autoplay muted loop playsinline style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:2px solid var(--purple)"></video><br>` : ''}
           <button class="btn ghost small" id="s-preview-video" style="margin-top:6px">${m.preview_video_url ? t('pv_change') : t('pv_upload')}</button>
           ${m.preview_video_url ? `<button class="btn ghost small danger" id="s-preview-remove" style="margin-top:6px;margin-left:6px">${t('remove_btn')}</button>` : ''}
+        </div>
+        <div style="margin-top:12px">
+          <div class="muted small" style="margin-bottom:6px">${t('pv2_blurb')}</div>
+          ${m.preview_video_url_2 ? `<video src="${esc(m.preview_video_url_2)}" autoplay muted loop playsinline style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:2px solid var(--purple)"></video><br>` : ''}
+          <button class="btn ghost small" id="s-preview-video2" style="margin-top:6px">${m.preview_video_url_2 ? t('pv_change') : t('pv_upload')}</button>
+          ${m.preview_video_url_2 ? `<button class="btn ghost small danger" id="s-preview-remove2" style="margin-top:6px;margin-left:6px">${t('remove_btn')}</button>` : ''}
+        </div>
+        <div style="margin-top:12px">
+          <div style="font-weight:800;margin-bottom:4px">${t('gallery_h')}</div>
+          <div class="muted small" style="margin-bottom:6px">${t('gallery_note')}</div>
+          <div class="muted small" style="margin-bottom:8px">${t('gallery_count', { n: profilePicCount, max: 10 })}</div>
+          <div class="set-gallery-grid">
+            ${m.photo_url ? `<div class="set-gallery-item"><img src="${esc(m.photo_url)}" alt=""><span class="set-gallery-badge">${t('gallery_main')}</span></div>` : ''}
+            ${myGallery.map((u) => `<div class="set-gallery-item"><img src="${esc(u)}" alt=""><button class="set-gallery-del" data-gallery-del="${esc(u)}">✕</button></div>`).join('')}
+          </div>
+          ${profilePicCount < 10 ? `<button class="btn ghost small" id="s-gallery-add" style="margin-top:8px">${t('gallery_add')}</button>` : `<div class="muted small" style="margin-top:8px">${t('gallery_full')}</div>`}
         </div>
         <div style="margin-top:12px">
           <div class="muted small" style="margin-bottom:6px">🌐 <b>${t('public_photo_h')}</b><br>${t('public_photo_note')}</div>
@@ -12317,6 +12470,76 @@ async function vModelSettings() {
     const r = await fetch('/api/model/preview-video', { method: 'DELETE', headers });
     if (r.status === 200) { toast(t('pv_removed')); await refreshMe(); show('modelSettings', {}); }
   };
+  // Second profile video upload (same flow as Video 1, second slot)
+  const pv2Btn = $('#s-preview-video2');
+  if (pv2Btn) pv2Btn.onclick = () => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'video/*';
+    inp.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.01;z-index:9999;';
+    inp.onchange = async () => {
+      const f = inp.files[0]; inp.remove();
+      if (!f) return;
+      if (f.size > 15 * 1024 * 1024) return toast(t('pv_too_big'));
+      toast(t('pv_uploading'));
+      const fd = new FormData(); fd.append('video', f);
+      const headers = {};
+      if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
+      try {
+        const r = await fetch('/api/model/preview-video-2', { method: 'POST', headers, body: fd });
+        const data = await r.json();
+        if (r.status === 200 && data.ok) {
+          toast(t('pv_live_toast'));
+          await refreshMe();
+          show('modelSettings', {});
+        } else toast(t('pv_failed'));
+      } catch (e) { toast(t('pv_conn_failed')); }
+    };
+    document.body.appendChild(inp);
+    inp.click();
+  };
+  const pv2Rem = $('#s-preview-remove2');
+  if (pv2Rem) pv2Rem.onclick = async () => {
+    const headers = {};
+    if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
+    const r = await fetch('/api/model/preview-video-2', { method: 'DELETE', headers });
+    if (r.status === 200) { toast(t('pv_removed')); await refreshMe(); show('modelSettings', {}); }
+  };
+  // Profile gallery: add a picture (same cropper flow as her photos;
+  // the server enforces the 10-picture cap and answers gallery_full)
+  const galAdd = $('#s-gallery-add');
+  if (galAdd) galAdd.onclick = () => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*';
+    inp.style.display = 'none';
+    document.body.appendChild(inp);
+    inp.onchange = async () => {
+      const file = inp.files[0];
+      inp.remove();
+      if (!file) return;
+      openPhotoCropper(file, async (cropped) => {
+        toast('Uploading photo…');
+        const { status, data } = await apiUpload('/model/gallery-photo', cropped);
+        if (status === 200 && data.ok) {
+          toast('📷 Photo added!');
+          await refreshMe();
+          show('modelSettings', {});
+        } else if (data && data.error === 'gallery_full') toast(t('gallery_full'));
+        else toast('Upload failed — use a JPG/PNG under 5MB.');
+      });
+    };
+    inp.click();
+  };
+  // Profile gallery: remove one picture (her main photo is not here —
+  // it is managed by the main-photo control above)
+  app.querySelectorAll('[data-gallery-del]').forEach((b) => {
+    b.onclick = async () => {
+      const headers = { 'Content-Type': 'application/json' };
+      if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
+      const r = await fetch('/api/model/gallery-photo', {
+        method: 'DELETE', headers, body: JSON.stringify({ url: b.dataset.galleryDel }) });
+      if (r.status === 200) { toast(t('gallery_removed')); await refreshMe(); show('modelSettings', {}); }
+    };
+  });
   renderTaxCard('tax-card');
   // 💰 Tip menu CRUD
   async function loadTipMenu() {

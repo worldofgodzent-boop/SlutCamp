@@ -1092,6 +1092,26 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
   border-radius: 12px; border: 1px solid rgba(139,92,246,.3); background: #000;
 }
 .peek-gallery-img:only-child { grid-column: 1 / -1; aspect-ratio: 16/10; }
+/* Her second main profile video sits in the scroll region under the
+   gallery, same frame treatment as the hero. */
+.peek-hero-second { margin-top: 12px; margin-bottom: 0; }
+/* Settings → profile gallery manager: thumbnails of the composed
+   profile list (main photo badged, gallery uploads removable). */
+.set-gallery-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.set-gallery-item { position: relative; }
+.set-gallery-item img {
+  width: 100%; aspect-ratio: 1; object-fit: cover; display: block;
+  border-radius: 10px; border: 1px solid rgba(139,92,246,.3); background: #000;
+}
+.set-gallery-badge {
+  position: absolute; left: 4px; bottom: 4px; background: rgba(16,6,12,.8); color: #fff;
+  font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 999px;
+}
+.set-gallery-del {
+  position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border: none;
+  border-radius: 50%; background: rgba(16,6,12,.85); color: #fff; font-size: 11px;
+  line-height: 1; cursor: pointer; font-family: inherit;
+}
 .peek-msgbar {
   flex: 0 0 auto; margin-top: 10px; padding-top: 10px;
   border-top: 1px solid rgba(139,92,246,.3);

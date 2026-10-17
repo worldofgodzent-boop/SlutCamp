@@ -12,13 +12,18 @@
  * viewers / fan-preview. Now a fan's tile tap (home grid + lives
  * list; live tiles still join the stream) opens her profile page:
  * the preview-video hero she already had, a gallery of her profile
- * pictures (storefront photo + clean public photo when they differ —
- * the only profile pictures that exist; exactly ONE profile video
- * field exists, the preview, so the gallery is 2 pics + the hero
- * video), and a Message bar pinned to the bottom of the sheet that
+ * pictures, and a Message bar pinned to the bottom of the sheet that
  * stays visible while the page scrolls and opens her chat via the
  * existing openChatWithModel path (3-free-texts + per-message price
  * rules live there and in the chat screen).
+ *
+ * Gallery composition was refined by the follow-up build (owner,
+ * same day: "I don't want this to be Instagram" — up to 10 pictures
+ * and exactly two main videos): the gallery is her main photo plus
+ * her gallery uploads (the clean public photo stays on the Google
+ * pages only), and her second video renders in the scroll region.
+ * Those pins live in tests/profile-media-gallery.test.js; the two
+ * gallery pins below were updated to the refined composition.
  *
  * The bar is a fan action only: models browsing a sister stay
  * look-only, the model herself never gets one (isMe), and the admin's
@@ -42,7 +47,7 @@ const pEnd = app.indexOf('async function vFanModels()', pStart);
 assert.ok(pStart !== -1 && pEnd > pStart, 'openModelPeek located in app.js');
 const peek = app.slice(pStart, pEnd);
 
-test('directory payload carries her clean public photo (the second gallery picture)', () => {
+test('directory payload carries her photos and preview video fields', () => {
   const at = server.indexOf("app.get('/api/models'");
   assert.ok(at !== -1, '/api/models route located');
   const route = server.slice(at, at + 1600);
@@ -51,9 +56,9 @@ test('directory payload carries her clean public photo (the second gallery pictu
   assert.ok(route.includes('m.preview_video_url'), 'SELECT still includes preview_video_url');
 });
 
-test('peek gallery: up to two of her existing pictures, deduped, only when she has any', () => {
-  assert.ok(peek.includes('const galleryPics = [...new Set([m.photo_url, m.public_photo_url].filter(Boolean))].slice(0, 2);'),
-    'gallery built from photo_url + public_photo_url, deduped, capped at 2');
+test('peek gallery: her main photo + gallery uploads, deduped, capped at 10', () => {
+  assert.ok(peek.includes('const galleryPics = [...new Set([m.photo_url, ...(Array.isArray(m.gallery_photos) ? m.gallery_photos : [])].filter(Boolean))].slice(0, 10);'),
+    'gallery built from photo_url + gallery_photos, deduped, capped at 10');
   assert.ok(peek.includes('${galleryPics.length ?'), 'gallery renders only when she has pictures');
   assert.ok(peek.includes('class="peek-gallery"'), 'gallery wrapper rendered');
   assert.ok(peek.includes('class="peek-gallery-img"'), 'gallery images rendered');
