@@ -1098,10 +1098,22 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 /* Settings → profile gallery manager: thumbnails of the composed
    profile list (main photo badged, gallery uploads removable). */
 .set-gallery-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-.set-gallery-item { position: relative; }
+/* Hold-and-drag reorder: touch-action none so an armed drag is never
+   stolen by page scroll; plain taps are untouched (the drag arms
+   only after a 300ms hold in JS). */
+.set-gallery-item {
+  position: relative; touch-action: none; cursor: grab;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
 .set-gallery-item img {
   width: 100%; aspect-ratio: 1; object-fit: cover; display: block;
   border-radius: 10px; border: 1px solid rgba(139,92,246,.3); background: #000;
+  -webkit-user-drag: none; pointer-events: none;
+}
+.set-gallery-item.dragging { z-index: 6; transform: scale(1.07); cursor: grabbing; }
+.set-gallery-item.dragging img {
+  border-color: var(--pink); box-shadow: 0 12px 30px rgba(0,0,0,.55);
 }
 .set-gallery-badge {
   position: absolute; left: 4px; bottom: 4px; background: rgba(16,6,12,.8); color: #fff;

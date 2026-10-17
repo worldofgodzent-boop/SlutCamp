@@ -162,6 +162,8 @@ const I18N = {
     gallery_main: 'Main',
     gallery_full: 'That\'s 10 — your profile is full! Remove one to add another.',
     gallery_removed: 'Picture removed 🖼️',
+    gallery_reordered: 'Picture order saved ✨',
+    gallery_drag_hint: 'Hold a picture and drag it where you want — the first picture tops your profile.',
     tap_to_mute: 'Tap to mute',
     new_models_title: '🆕 New models you may like',
     new_badge: 'NEW',
@@ -773,6 +775,8 @@ const I18N = {
     gallery_main: 'Principal',
     gallery_full: 'Ya son 10 — ¡tu perfil está lleno! Elimina una para agregar otra.',
     gallery_removed: 'Foto eliminada 🖼️',
+    gallery_reordered: 'Orden de fotos guardado ✨',
+    gallery_drag_hint: 'Mantén presionada una foto y arrástrala donde quieras: la primera foto encabeza tu perfil.',
     tap_to_mute: 'Toca para silenciar',
     new_models_title: '🆕 Modelos nuevas que te pueden gustar',
     new_badge: 'NUEVA',
@@ -1384,6 +1388,8 @@ const I18N = {
     gallery_main: 'Principal',
     gallery_full: 'Já são 10 — seu perfil está cheio! Remova uma para adicionar outra.',
     gallery_removed: 'Foto removida 🖼️',
+    gallery_reordered: 'Ordem das fotos salva ✨',
+    gallery_drag_hint: 'Segure uma foto e arraste para onde quiser — a primeira foto fica no topo do seu perfil.',
     tap_to_mute: 'Toque para silenciar',
     new_models_title: '🆕 Modelos novas que você pode gostar',
     new_badge: 'NOVA',
@@ -1995,6 +2001,8 @@ const I18N = {
     gallery_main: 'Principale',
     gallery_full: 'Ça fait 10 — ton profil est plein ! Retire-en une pour en ajouter une autre.',
     gallery_removed: 'Photo retirée 🖼️',
+    gallery_reordered: 'Ordre des photos enregistré ✨',
+    gallery_drag_hint: 'Maintiens une photo et fais-la glisser où tu veux — la première photo est en haut de ton profil.',
     tap_to_mute: 'Touchez pour couper le son',
     new_models_title: '🆕 Nouveaux modèles qui pourraient vous plaire',
     new_badge: 'NOUVEAU',
@@ -2606,6 +2614,8 @@ const I18N = {
     gallery_main: 'Haupt',
     gallery_full: 'Das sind 10 — dein Profil ist voll! Entferne eins, um ein neues hinzuzufügen.',
     gallery_removed: 'Bild entfernt 🖼️',
+    gallery_reordered: 'Bildreihenfolge gespeichert ✨',
+    gallery_drag_hint: 'Halte ein Bild gedrückt und ziehe es an die gewünschte Stelle — das erste Bild steht oben auf deinem Profil.',
     tap_to_mute: 'Zum Stummschalten tippen',
     new_models_title: '🆕 Neue Modelle, die dir gefallen könnten',
     new_badge: 'NEU',
@@ -3217,6 +3227,8 @@ const I18N = {
     gallery_main: 'Главное',
     gallery_full: 'Уже 10 — твой профиль полон! Удали одно, чтобы добавить другое.',
     gallery_removed: 'Фото удалено 🖼️',
+    gallery_reordered: 'Порядок фото сохранён ✨',
+    gallery_drag_hint: 'Удерживай фото и перетаскивай его куда хочешь — первое фото будет наверху твоего профиля.',
     tap_to_mute: 'Нажмите, чтобы выключить звук',
     new_models_title: '🆕 Новые модели, которые могут вам понравиться',
     new_badge: 'НОВАЯ',
@@ -3828,6 +3840,8 @@ const I18N = {
     gallery_main: 'メイン',
     gallery_full: '10枚になりました — プロフィールがいっぱいです！追加するには1枚削除してください。',
     gallery_removed: '写真を削除しました 🖼️',
+    gallery_reordered: '写真の順番を保存しました ✨',
+    gallery_drag_hint: '写真を長押しして好きな場所にドラッグ — 最初の写真がプロフィールのトップになります。',
     tap_to_mute: 'タップでミュート',
     new_models_title: '🆕 おすすめの新人モデル',
     new_badge: 'NEW',
@@ -4439,6 +4453,8 @@ const I18N = {
     gallery_main: '主图',
     gallery_full: '已经 10 张了 — 你的主页满了！删掉一张才能再加。',
     gallery_removed: '照片已删除 🖼️',
+    gallery_reordered: '照片顺序已保存 ✨',
+    gallery_drag_hint: '按住照片并拖动到想要的位置 — 第一张照片会显示在主页顶部。',
     tap_to_mute: '点击静音',
     new_models_title: '🆕 你可能喜欢的新模特',
     new_badge: 'NEW',
@@ -5050,6 +5066,8 @@ const I18N = {
     gallery_main: '대표',
     gallery_full: '10장이 됐어요 — 프로필이 가득 찼어요! 추가하려면 하나를 삭제하세요.',
     gallery_removed: '사진이 삭제됐어요 🖼️',
+    gallery_reordered: '사진 순서가 저장됐어요 ✨',
+    gallery_drag_hint: '사진을 길게 눌러 원하는 위치로 드래그하세요 — 첫 번째 사진이 프로필 맨 위에 표시돼요.',
     tap_to_mute: '탭하면 음소거됩니다',
     new_models_title: '🆕 마음에 들 수 있는 새 모델',
     new_badge: '신규',
@@ -5661,6 +5679,8 @@ const I18N = {
     gallery_main: 'Principale',
     gallery_full: 'Sono 10 — il tuo profilo è pieno! Rimuovine una per aggiungerne un\'altra.',
     gallery_removed: 'Foto rimossa 🖼️',
+    gallery_reordered: 'Ordine delle foto salvato ✨',
+    gallery_drag_hint: 'Tieni premuta una foto e trascinala dove vuoi: la prima foto va in cima al tuo profilo.',
     tap_to_mute: 'Tocca per silenziare',
     new_models_title: '🆕 Nuove modelle che potrebbero piacerti',
     new_badge: 'NUOVA',
@@ -6272,6 +6292,8 @@ const I18N = {
     gallery_main: 'Główne',
     gallery_full: 'To już 10 — Twój profil jest pełny! Usuń jedno, aby dodać kolejne.',
     gallery_removed: 'Zdjęcie usunięte 🖼️',
+    gallery_reordered: 'Kolejność zdjęć zapisana ✨',
+    gallery_drag_hint: 'Przytrzymaj zdjęcie i przeciągnij je w wybrane miejsce — pierwsze zdjęcie znajdzie się na górze profilu.',
     tap_to_mute: 'Dotknij, aby wyciszyć',
     new_models_title: '🆕 Nowe modelki, które mogą Ci się spodobać',
     new_badge: 'NOWA',
@@ -6883,6 +6905,8 @@ const I18N = {
     gallery_main: 'Hoofd',
     gallery_full: 'Dat zijn er 10 — je profiel is vol! Verwijder er een om een nieuwe toe te voegen.',
     gallery_removed: 'Foto verwijderd 🖼️',
+    gallery_reordered: 'Foto-volgorde opgeslagen ✨',
+    gallery_drag_hint: 'Houd een foto ingedrukt en sleep hem waar je wilt — de eerste foto staat bovenaan je profiel.',
     tap_to_mute: 'Tik om te dempen',
     new_models_title: '🆕 Nieuwe modellen die je misschien leuk vindt',
     new_badge: 'NIEUW',
@@ -7494,6 +7518,8 @@ const I18N = {
     gallery_main: 'Ana',
     gallery_full: '10 oldu — profilin doldu! Bir tane daha eklemek için birini kaldır.',
     gallery_removed: 'Fotoğraf kaldırıldı 🖼️',
+    gallery_reordered: 'Fotoğraf sırası kaydedildi ✨',
+    gallery_drag_hint: 'Bir fotoğrafı basılı tutup istediğin yere sürükle — ilk fotoğraf profilinin en üstünde yer alır.',
     tap_to_mute: 'Sessize almak için dokun',
     new_models_title: '🆕 Beğenebileceğin yeni modeller',
     new_badge: 'YENİ',
@@ -12192,9 +12218,10 @@ async function vModelSettings() {
           <div style="font-weight:800;margin-bottom:4px">${t('gallery_h')}</div>
           <div class="muted small" style="margin-bottom:6px">${t('gallery_note')}</div>
           <div class="muted small" style="margin-bottom:8px">${t('gallery_count', { n: profilePicCount, max: 10 })}</div>
+          ${profilePicCount > 1 ? `<div class="muted small" style="margin-bottom:8px">${t('gallery_drag_hint')}</div>` : ''}
           <div class="set-gallery-grid">
-            ${m.photo_url ? `<div class="set-gallery-item"><img src="${esc(m.photo_url)}" alt=""><span class="set-gallery-badge">${t('gallery_main')}</span></div>` : ''}
-            ${myGallery.map((u) => `<div class="set-gallery-item"><img src="${esc(u)}" alt=""><button class="set-gallery-del" data-gallery-del="${esc(u)}">✕</button></div>`).join('')}
+            ${m.photo_url ? `<div class="set-gallery-item" data-pic="${esc(m.photo_url)}"><img src="${esc(m.photo_url)}" alt="" draggable="false"><span class="set-gallery-badge">${t('gallery_main')}</span></div>` : ''}
+            ${myGallery.map((u) => `<div class="set-gallery-item" data-pic="${esc(u)}"><img src="${esc(u)}" alt="" draggable="false"><button class="set-gallery-del" data-gallery-del="${esc(u)}">✕</button></div>`).join('')}
           </div>
           ${profilePicCount < 10 ? `<button class="btn ghost small" id="s-gallery-add" style="margin-top:8px">${t('gallery_add')}</button>` : `<div class="muted small" style="margin-top:8px">${t('gallery_full')}</div>`}
         </div>
@@ -12529,10 +12556,81 @@ async function vModelSettings() {
     };
     inp.click();
   };
+  // Profile gallery: hold-and-drag reorder over the COMPOSED list —
+  // her main photo included, any picture can be dragged to position 1
+  // and become the top of her profile. The drag arms only after a
+  // ~300ms hold (a plain tap never reorders, and a swipe before the
+  // hold cancels it so page scroll still wins). On drop the new order
+  // auto-saves via /api/model/gallery-reorder; the server accepts
+  // only her exact current picture set, in the submitted order.
+  const galGrid = app.querySelector('.set-gallery-grid');
+  let galDragSuppressUntil = 0;
+  if (galGrid) {
+    const picNodes = () => [...galGrid.querySelectorAll('[data-pic]')];
+    if (picNodes().length > 1) {
+      const originalOrder = picNodes().map((n) => n.dataset.pic);
+      let dragEl = null, holdTimer = null, downX = 0, downY = 0;
+      const clearHold = () => { if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; } };
+      const endDrag = async (commit) => {
+        const el = dragEl;
+        dragEl = null;
+        if (el) el.classList.remove('dragging');
+        if (!commit || !el) return;
+        // Swallow the click this gesture ends with, wherever it lands.
+        galDragSuppressUntil = Date.now() + 400;
+        const order = picNodes().map((n) => n.dataset.pic);
+        if (order.join('|') === originalOrder.join('|')) return;
+        const { status, data } = await api('/model/gallery-reorder', {
+          method: 'POST', body: JSON.stringify({ order }) });
+        if (status === 200 && data && data.ok) {
+          toast(t('gallery_reordered'));
+          await refreshMe();
+          show('modelSettings', {});
+        } else {
+          toast(t('couldnt_save'));
+          show('modelSettings', {});
+        }
+      };
+      picNodes().forEach((item) => {
+        item.addEventListener('contextmenu', (e) => e.preventDefault());
+        item.addEventListener('pointerdown', (e) => {
+          if (e.target.closest('[data-gallery-del]')) return; // ✕ stays a plain tap
+          if (e.button !== undefined && e.button > 0) return;
+          downX = e.clientX; downY = e.clientY;
+          clearHold();
+          holdTimer = setTimeout(() => {
+            holdTimer = null;
+            dragEl = item;
+            item.classList.add('dragging');
+            try { item.setPointerCapture(e.pointerId); } catch (err) { /* older engines */ }
+            if (navigator.vibrate) { try { navigator.vibrate(12); } catch (err) { /* no haptics */ } }
+          }, 300);
+        });
+        item.addEventListener('pointermove', (e) => {
+          if (!dragEl) {
+            // Moving before the hold arms it = a scroll swipe, not a drag.
+            if (holdTimer && (Math.abs(e.clientX - downX) > 10 || Math.abs(e.clientY - downY) > 10)) clearHold();
+            return;
+          }
+          if (dragEl !== item) return;
+          e.preventDefault();
+          const over = document.elementFromPoint(e.clientX, e.clientY);
+          const overItem = over && over.closest ? over.closest('[data-pic]') : null;
+          if (!overItem || overItem === dragEl || overItem.parentElement !== galGrid) return;
+          const r = overItem.getBoundingClientRect();
+          if (e.clientX > r.left + r.width / 2) galGrid.insertBefore(dragEl, overItem.nextSibling);
+          else galGrid.insertBefore(dragEl, overItem);
+        });
+        item.addEventListener('pointerup', () => { clearHold(); if (dragEl === item) endDrag(true); });
+        item.addEventListener('pointercancel', () => { clearHold(); if (dragEl === item) endDrag(false); });
+      });
+    }
+  }
   // Profile gallery: remove one picture (her main photo is not here —
   // it is managed by the main-photo control above)
   app.querySelectorAll('[data-gallery-del]').forEach((b) => {
     b.onclick = async () => {
+      if (Date.now() < galDragSuppressUntil) return; // the tail of a drag, not a tap
       const headers = { 'Content-Type': 'application/json' };
       if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
       const r = await fetch('/api/model/gallery-photo', {
