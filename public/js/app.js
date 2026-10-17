@@ -154,6 +154,7 @@ const I18N = {
     ranked_n: '🏆 Ranked #{n}',
     tap_for_sound: 'Tap for sound',
     msg_her_btn: '💬 Message her',
+    msg_her_join_btn: '💬 Join free to message her',
     pv2_blurb: '🎬 <b>Second profile video</b> — one more main video on your profile, under your pictures. Twerk, introduce yourself, tease — whatever you want, it\'s your hook. It only ever plays inside the app. Under 15MB.',
     gallery_h: '🖼️ Profile pictures',
     gallery_note: 'Fans see these on your profile page — your main photo first, then these. 10 pictures max, no feed, just your page.',
@@ -765,6 +766,7 @@ const I18N = {
     ranked_n: '🏆 En el puesto #{n}',
     tap_for_sound: 'Toca para escuchar',
     msg_her_btn: '💬 Escríbele',
+    msg_her_join_btn: '💬 Únete gratis para escribirle',
     pv2_blurb: '🎬 <b>Segundo video de perfil</b> — un video principal más en tu perfil, debajo de tus fotos. Twerk, preséntate, provoca — lo que quieras, es tu gancho. Solo se reproduce dentro de la app. Menos de 15MB.',
     gallery_h: '🖼️ Fotos de perfil',
     gallery_note: 'Los fans las ven en tu página de perfil: primero tu foto principal, luego estas. Máximo 10 fotos, sin feed, solo tu página.',
@@ -1376,6 +1378,7 @@ const I18N = {
     ranked_n: '🏆 Posição #{n}',
     tap_for_sound: 'Toque para ouvir',
     msg_her_btn: '💬 Fale com ela',
+    msg_her_join_btn: '💬 Entre grátis para falar com ela',
     pv2_blurb: '🎬 <b>Segundo vídeo de perfil</b> — mais um vídeo principal no seu perfil, abaixo das suas fotos. Twerk, se apresente, provoque — o que quiser, é o seu gancho. Só toca dentro do app. Menos de 15MB.',
     gallery_h: '🖼️ Fotos de perfil',
     gallery_note: 'Os fãs veem estas na sua página de perfil — sua foto principal primeiro, depois estas. Máximo de 10 fotos, sem feed, só a sua página.',
@@ -1987,6 +1990,7 @@ const I18N = {
     ranked_n: '🏆 Classée #{n}',
     tap_for_sound: 'Touchez pour le son',
     msg_her_btn: '💬 Lui écrire',
+    msg_her_join_btn: '💬 Inscris-toi gratuitement pour lui écrire',
     pv2_blurb: '🎬 <b>Deuxième vidéo de profil</b> — une vidéo principale de plus sur ton profil, sous tes photos. Twerk, présente-toi, provoque — ce que tu veux, c\'est ton accroche. Ne joue que dans l\'app. Moins de 15 Mo.',
     gallery_h: '🖼️ Photos de profil',
     gallery_note: 'Les fans les voient sur ta page de profil — ta photo principale d\'abord, puis celles-ci. 10 photos max, pas de fil, juste ta page.',
@@ -2598,6 +2602,7 @@ const I18N = {
     ranked_n: '🏆 Platz #{n}',
     tap_for_sound: 'Für Ton tippen',
     msg_her_btn: '💬 Schreib ihr',
+    msg_her_join_btn: '💬 Gratis anmelden, um ihr zu schreiben',
     pv2_blurb: '🎬 <b>Zweites Profilvideo</b> — ein weiteres Hauptvideo auf deinem Profil, unter deinen Bildern. Twerk, stell dich vor, tease — was du willst, es ist dein Hook. Läuft nur in der App. Unter 15MB.',
     gallery_h: '🖼️ Profilbilder',
     gallery_note: 'Fans sehen diese auf deiner Profilseite — zuerst dein Hauptbild, dann diese. Max. 10 Bilder, kein Feed, nur deine Seite.',
@@ -3209,6 +3214,7 @@ const I18N = {
     ranked_n: '🏆 Место #{n} в рейтинге',
     tap_for_sound: 'Нажмите для звука',
     msg_her_btn: '💬 Написать ей',
+    msg_her_join_btn: '💬 Зарегистрируйся бесплатно, чтобы написать ей',
     pv2_blurb: '🎬 <b>Второе видео профиля</b> — ещё одно главное видео в твоём профиле, под твоими фото. Тверк, представься, дразни — что хочешь, это твой крючок. Играет только в приложении. До 15МБ.',
     gallery_h: '🖼️ Фотографии профиля',
     gallery_note: 'Фанаты видят их на странице твоего профиля — сначала главное фото, потом эти. Максимум 10 фото, никакой ленты, только твоя страница.',
@@ -3820,6 +3826,7 @@ const I18N = {
     ranked_n: '🏆 ランキング #{n}位',
     tap_for_sound: 'タップで音声オン',
     msg_her_btn: '💬 彼女にメッセージ',
+    msg_her_join_btn: '💬 無料登録して彼女にメッセージ',
     pv2_blurb: '🎬 <b>2本目のプロフィール動画</b> — 写真の下に、もう1本のメイン動画をプロフィールに。トゥワーク、自己紹介、ティーズ — 何でもOK、あなたのフックです。アプリ内でのみ再生。15MB未満。',
     gallery_h: '🖼️ プロフィール写真',
     gallery_note: 'ファンはあなたのプロフィールページでこれらを見ます — メイン写真が最初、その後にこれら。最大10枚、フィードなし、あなたのページだけ。',
@@ -4431,6 +4438,7 @@ const I18N = {
     ranked_n: '🏆 排名 #{n}',
     tap_for_sound: '点击开启声音',
     msg_her_btn: '💬 给她发消息',
+    msg_her_join_btn: '💬 免费加入，给她发消息',
     pv2_blurb: '🎬 <b>第二段主页视频</b> — 在你的主页照片下方再加一段主视频。电臀舞、自我介绍、撩人 — 随你喜欢，这是你的招牌。只在应用内播放。小于 15MB。',
     gallery_h: '🖼️ 主页照片',
     gallery_note: '粉丝在你的主页上看到这些 — 先是你的主照片，然后是这些。最多 10 张，没有动态流，只有你的页面。',
@@ -5042,6 +5050,7 @@ const I18N = {
     ranked_n: '🏆 순위 #{n}위',
     tap_for_sound: '탭하면 소리가 켜집니다',
     msg_her_btn: '💬 그녀에게 메시지',
+    msg_her_join_btn: '💬 무료로 가입하고 그녀에게 메시지 보내기',
     pv2_blurb: '🎬 <b>두 번째 프로필 영상</b> — 사진 아래, 프로필에 메인 영상을 하나 더. 트월킹, 자기소개, 티징 — 원하는 대로, 당신의 훅이에요. 앱 안에서만 재생돼요. 15MB 미만.',
     gallery_h: '🖼️ 프로필 사진',
     gallery_note: '팬들은 당신의 프로필 페이지에서 이것들을 봐요 — 대표 사진이 먼저, 그 다음 이것들이에요. 최대 10장, 피드 없이, 당신의 페이지만.',
@@ -5653,6 +5662,7 @@ const I18N = {
     ranked_n: '🏆 Posizione #{n}',
     tap_for_sound: 'Tocca per l\'audio',
     msg_her_btn: '💬 Scrivile',
+    msg_her_join_btn: '💬 Iscriviti gratis per scriverle',
     pv2_blurb: '🎬 <b>Secondo video profilo</b> — un altro video principale sul tuo profilo, sotto le tue foto. Twerk, presentati, provoca — quello che vuoi, è il tuo gancio. Si riproduce solo nell\'app. Sotto i 15MB.',
     gallery_h: '🖼️ Foto profilo',
     gallery_note: 'I fan le vedono sulla pagina del tuo profilo — prima la tua foto principale, poi queste. Massimo 10 foto, nessun feed, solo la tua pagina.',
@@ -6264,6 +6274,7 @@ const I18N = {
     ranked_n: '🏆 Miejsce #{n} w rankingu',
     tap_for_sound: 'Dotknij, aby włączyć dźwięk',
     msg_her_btn: '💬 Napisz do niej',
+    msg_her_join_btn: '💬 Dołącz za darmo i napisz do niej',
     pv2_blurb: '🎬 <b>Drugi film profilowy</b> — jeszcze jeden główny film na Twoim profilu, pod Twoimi zdjęciami. Twerk, przedstaw się, drażnij — co chcesz, to Twój haczyk. Odtwarza się tylko w aplikacji. Poniżej 15MB.',
     gallery_h: '🖼️ Zdjęcia profilowe',
     gallery_note: 'Fani widzą je na stronie Twojego profilu — najpierw Twoje główne zdjęcie, potem te. Maks. 10 zdjęć, żadnego feedu, tylko Twoja strona.',
@@ -6875,6 +6886,7 @@ const I18N = {
     ranked_n: '🏆 Gerangschikt #{n}',
     tap_for_sound: 'Tik voor geluid',
     msg_her_btn: '💬 Stuur haar een bericht',
+    msg_her_join_btn: '💬 Meld je gratis aan om haar een bericht te sturen',
     pv2_blurb: '🎬 <b>Tweede profielvideo</b> — nog een hoofdvideo op je profiel, onder je foto\'s. Twerk, stel jezelf voor, tease — wat je wilt, het is jouw hook. Speelt alleen in de app. Onder 15MB.',
     gallery_h: '🖼️ Profielfoto\'s',
     gallery_note: 'Fans zien deze op je profielpagina — eerst je hoofdfoto, daarna deze. Max. 10 foto\'s, geen feed, alleen jouw pagina.',
@@ -7486,6 +7498,7 @@ const I18N = {
     ranked_n: '🏆 Sıralama #{n}',
     tap_for_sound: 'Ses için dokun',
     msg_her_btn: '💬 Ona mesaj at',
+    msg_her_join_btn: '💬 Ona mesaj atmak için ücretsiz katıl',
     pv2_blurb: '🎬 <b>İkinci profil videosu</b> — fotoğraflarının altında, profiline bir ana video daha. Twerk yap, kendini tanıt, kışkırt — ne istersen, bu senin kancan. Yalnızca uygulamada oynar. 15MB altı.',
     gallery_h: '🖼️ Profil fotoğrafları',
     gallery_note: 'Hayranlar bunları profil sayfanda görür — önce ana fotoğrafın, sonra bunlar. En fazla 10 fotoğraf, akış yok, sadece senin sayfan.',
@@ -9140,6 +9153,14 @@ async function vLanding() {
     b.onclick = () => {
       const liveId = b.dataset.live;
       if (liveId) return watchLive(parseInt(liveId));
+      // Her profile comes first on the front door too (owner,
+      // Oct 17 2026) — the same profile-first rule as the fan home
+      // grid: a tile tap opens her profile page, and the peek's
+      // pinned bar carries the next step (Message for fans, join /
+      // log in for guests). Straight-to-chat was the old behaviour
+      // and skipped her page entirely.
+      const m = models.find((x) => x.id === parseInt(b.dataset.model));
+      if (m) { openModelPeek(m, models); return; }
       openChatWithModel(parseInt(b.dataset.model));
     };
   });
@@ -10142,6 +10163,11 @@ function openModelPeek(m, models) {
   // fans do. Models browsing a sister stay look-only (no fan actions),
   // and nobody ever gets a message-themselves button.
   const showMsgBar = !isMe && !!S.user && (S.user.role === 'fan' || isFanPreview());
+  // A logged-out guest gets a bar in the same pinned spot — never a
+  // working chat (guests can't message), but the way forward: join /
+  // log in, routed to the auth view. Signed-in users never see this
+  // one; fan / model / preview behaviour above is untouched.
+  const showGuestBar = !S.user;
   ftSheet(`
     <div class="peek-scroll">
     ${m.preview_video_url ? `
@@ -10187,6 +10213,10 @@ function openModelPeek(m, models) {
     ${showMsgBar ? `
     <div class="peek-msgbar">
       <button class="peek-msg-btn" data-peek-msg="${m.id}">${t('msg_her_btn')} · ${t('per_msg_rate', { price: fmt(m.per_message_cents) })}</button>
+    </div>` : ''}
+    ${showGuestBar ? `
+    <div class="peek-msgbar">
+      <button class="peek-msg-btn" data-peek-join>${t('msg_her_join_btn')}</button>
     </div>` : ''}`);
   const sheet = document.getElementById('ft-sheet');
   if (sheet) {
@@ -10202,6 +10232,16 @@ function openModelPeek(m, models) {
         const id = parseInt(msgBtn.dataset.peekMsg);
         sheet.remove();
         openChatWithModel(id);
+      };
+    }
+    // Guest bar: no conversation is started — the tap closes her
+    // page and lands on the auth view to join / log in, the same
+    // route as the landing's own Log in / Sign up button.
+    const joinBtn = sheet.querySelector('[data-peek-join]');
+    if (joinBtn) {
+      joinBtn.onclick = () => {
+        sheet.remove();
+        show('auth', {});
       };
     }
     // Preview video hero: tap toggles the sound. Unmuting restarts from
