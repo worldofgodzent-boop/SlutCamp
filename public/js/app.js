@@ -153,6 +153,7 @@ const I18N = {
     more_like_her: '💋 More like her',
     ranked_n: '🏆 Ranked #{n}',
     tap_for_sound: 'Tap for sound',
+    msg_her_btn: '💬 Message her',
     tap_to_mute: 'Tap to mute',
     new_models_title: '🆕 New models you may like',
     new_badge: 'NEW',
@@ -755,6 +756,7 @@ const I18N = {
     more_like_her: '💋 Más como ella',
     ranked_n: '🏆 En el puesto #{n}',
     tap_for_sound: 'Toca para escuchar',
+    msg_her_btn: '💬 Escríbele',
     tap_to_mute: 'Toca para silenciar',
     new_models_title: '🆕 Modelos nuevas que te pueden gustar',
     new_badge: 'NUEVA',
@@ -1357,6 +1359,7 @@ const I18N = {
     more_like_her: '💋 Mais como ela',
     ranked_n: '🏆 Posição #{n}',
     tap_for_sound: 'Toque para ouvir',
+    msg_her_btn: '💬 Fale com ela',
     tap_to_mute: 'Toque para silenciar',
     new_models_title: '🆕 Modelos novas que você pode gostar',
     new_badge: 'NOVA',
@@ -1959,6 +1962,7 @@ const I18N = {
     more_like_her: '💋 Plus comme elle',
     ranked_n: '🏆 Classée #{n}',
     tap_for_sound: 'Touchez pour le son',
+    msg_her_btn: '💬 Lui écrire',
     tap_to_mute: 'Touchez pour couper le son',
     new_models_title: '🆕 Nouveaux modèles qui pourraient vous plaire',
     new_badge: 'NOUVEAU',
@@ -2561,6 +2565,7 @@ const I18N = {
     more_like_her: '💋 Mehr wie sie',
     ranked_n: '🏆 Platz #{n}',
     tap_for_sound: 'Für Ton tippen',
+    msg_her_btn: '💬 Schreib ihr',
     tap_to_mute: 'Zum Stummschalten tippen',
     new_models_title: '🆕 Neue Modelle, die dir gefallen könnten',
     new_badge: 'NEU',
@@ -3163,6 +3168,7 @@ const I18N = {
     more_like_her: '💋 Похожие на неё',
     ranked_n: '🏆 Место #{n} в рейтинге',
     tap_for_sound: 'Нажмите для звука',
+    msg_her_btn: '💬 Написать ей',
     tap_to_mute: 'Нажмите, чтобы выключить звук',
     new_models_title: '🆕 Новые модели, которые могут вам понравиться',
     new_badge: 'НОВАЯ',
@@ -3765,6 +3771,7 @@ const I18N = {
     more_like_her: '💋 彼女に似たモデル',
     ranked_n: '🏆 ランキング #{n}位',
     tap_for_sound: 'タップで音声オン',
+    msg_her_btn: '💬 彼女にメッセージ',
     tap_to_mute: 'タップでミュート',
     new_models_title: '🆕 おすすめの新人モデル',
     new_badge: 'NEW',
@@ -4367,6 +4374,7 @@ const I18N = {
     more_like_her: '💋 更多像她这样的',
     ranked_n: '🏆 排名 #{n}',
     tap_for_sound: '点击开启声音',
+    msg_her_btn: '💬 给她发消息',
     tap_to_mute: '点击静音',
     new_models_title: '🆕 你可能喜欢的新模特',
     new_badge: 'NEW',
@@ -4969,6 +4977,7 @@ const I18N = {
     more_like_her: '💋 그녀와 비슷한 모델',
     ranked_n: '🏆 순위 #{n}위',
     tap_for_sound: '탭하면 소리가 켜집니다',
+    msg_her_btn: '💬 그녀에게 메시지',
     tap_to_mute: '탭하면 음소거됩니다',
     new_models_title: '🆕 마음에 들 수 있는 새 모델',
     new_badge: '신규',
@@ -5571,6 +5580,7 @@ const I18N = {
     more_like_her: '💋 Altre come lei',
     ranked_n: '🏆 Posizione #{n}',
     tap_for_sound: 'Tocca per l\'audio',
+    msg_her_btn: '💬 Scrivile',
     tap_to_mute: 'Tocca per silenziare',
     new_models_title: '🆕 Nuove modelle che potrebbero piacerti',
     new_badge: 'NUOVA',
@@ -6173,6 +6183,7 @@ const I18N = {
     more_like_her: '💋 Więcej takich jak ona',
     ranked_n: '🏆 Miejsce #{n} w rankingu',
     tap_for_sound: 'Dotknij, aby włączyć dźwięk',
+    msg_her_btn: '💬 Napisz do niej',
     tap_to_mute: 'Dotknij, aby wyciszyć',
     new_models_title: '🆕 Nowe modelki, które mogą Ci się spodobać',
     new_badge: 'NOWA',
@@ -6775,6 +6786,7 @@ const I18N = {
     more_like_her: '💋 Meer zoals zij',
     ranked_n: '🏆 Gerangschikt #{n}',
     tap_for_sound: 'Tik voor geluid',
+    msg_her_btn: '💬 Stuur haar een bericht',
     tap_to_mute: 'Tik om te dempen',
     new_models_title: '🆕 Nieuwe modellen die je misschien leuk vindt',
     new_badge: 'NIEUW',
@@ -7377,6 +7389,7 @@ const I18N = {
     more_like_her: '💋 Ona benzer daha fazlası',
     ranked_n: '🏆 Sıralama #{n}',
     tap_for_sound: 'Ses için dokun',
+    msg_her_btn: '💬 Ona mesaj at',
     tap_to_mute: 'Sessize almak için dokun',
     new_models_title: '🆕 Beğenebileceğin yeni modeller',
     new_badge: 'YENİ',
@@ -10013,7 +10026,19 @@ function openModelPeek(m, models) {
   const status = m.is_live
     ? `🔴 LIVE now — ${m.live_viewers || 0} watching`
     : m.is_online ? '🟢 Online now' : '⚫ Offline';
+  // Her profile pictures beyond the hero video: the photos she already
+  // has — her storefront photo plus her clean public photo when it is
+  // a different file (up to two; show what exists). Exactly ONE
+  // profile video field exists today — the preview hero above; there
+  // is no second profile video to gallery.
+  const galleryPics = [...new Set([m.photo_url, m.public_photo_url].filter(Boolean))].slice(0, 2);
+  // The sticky Message bar is a FAN action: real fans get it, and the
+  // admin's fan-preview stands in for a fan so he sees her page as
+  // fans do. Models browsing a sister stay look-only (no fan actions),
+  // and nobody ever gets a message-themselves button.
+  const showMsgBar = !isMe && !!S.user && (S.user.role === 'fan' || isFanPreview());
   ftSheet(`
+    <div class="peek-scroll">
     ${m.preview_video_url ? `
     <div class="peek-hero">
       <video class="peek-hero-video" data-peek-video src="${esc(m.preview_video_url)}" autoplay muted loop playsinline></video>
@@ -10024,6 +10049,10 @@ function openModelPeek(m, models) {
       <div class="sheet-title" style="margin-top:8px">${esc(m.display_name)}${isMe ? ' (that\'s you! 💅)' : ''}</div>
       <div class="muted small">@${esc(m.username)}</div>
     </div>
+    ${galleryPics.length ? `
+    <div class="peek-gallery">
+      ${galleryPics.map((p) => `<img class="peek-gallery-img" src="${esc(p)}" alt="${esc(m.display_name)}" loading="lazy">`).join('')}
+    </div>` : ''}
     <div class="peek-rows">
       <div class="peek-row"><span>Status</span><b>${status}</b></div>
       ${rankLine ? `<div class="peek-row"><span>Home rank</span><b>${rankLine}</b></div>` : ''}
@@ -10043,9 +10072,28 @@ function openModelPeek(m, models) {
         <span class="small muted">${s.is_live ? '🔴 LIVE' : s.is_online ? '🟢' : '⚫'} ${fmt(s.per_message_cents)}/msg</span>
       </button>`).join('')}
     </div>` : ''}
-    <button class="sheet-btn" style="margin-top:12px" onclick="document.getElementById('ft-sheet').remove()">Close</button>`);
+    <button class="sheet-btn" style="margin-top:12px" onclick="document.getElementById('ft-sheet').remove()">Close</button>
+    </div>
+    ${showMsgBar ? `
+    <div class="peek-msgbar">
+      <button class="peek-msg-btn" data-peek-msg="${m.id}">${t('msg_her_btn')} · ${t('per_msg_rate', { price: fmt(m.per_message_cents) })}</button>
+    </div>` : ''}`);
   const sheet = document.getElementById('ft-sheet');
   if (sheet) {
+    // The peek panel becomes a flex column: her page scrolls inside
+    // .peek-scroll while the Message bar (fan view) stays pinned to
+    // the bottom of the sheet — visible at all times while scrolling.
+    const panel = sheet.querySelector('.sheet');
+    if (panel) panel.classList.add('peek-sheet');
+    const msgBtn = sheet.querySelector('[data-peek-msg]');
+    if (msgBtn) {
+      msgBtn.onclick = () => {
+        if (isFanPreview()) { toast('👁 Preview mode — messaging is fan-only'); return; }
+        const id = parseInt(msgBtn.dataset.peekMsg);
+        sheet.remove();
+        openChatWithModel(id);
+      };
+    }
     // Preview video hero: tap toggles the sound. Unmuting restarts from
     // 0 so her spoken hook is heard from the top; tapping again re-mutes.
     // The pill mirrors the state (🔇 tap for sound / 🔊 tap to mute).
@@ -10130,6 +10178,13 @@ async function vFanModels() {
       }
       const liveId = b.dataset.live;
       if (liveId) return watchLive(parseInt(liveId));
+      // Fans land on her profile first (owner, Oct 17 2026): her
+      // pictures + preview video, with the Message bar pinned while
+      // they scroll — the bar opens the chat from there.
+      if (S.user && S.user.role === 'fan') {
+        const m = models.find((x) => x.id === parseInt(b.dataset.model));
+        if (m) { openModelPeek(m, models); return; }
+      }
       openChatWithModel(parseInt(b.dataset.model));
     };
   });
@@ -10238,6 +10293,13 @@ async function vLives() {
       }
       const liveId = b.dataset.live;
       if (liveId) return watchLive(parseInt(liveId));
+      // Fans land on her profile first (owner, Oct 17 2026) — same
+      // profile-first flow as the home grid; live tiles still join
+      // the stream directly above.
+      if (S.user && S.user.role === 'fan') {
+        const m = models.find((x) => x.id === parseInt(b.dataset.model));
+        if (m) { openModelPeek(m, models); return; }
+      }
       openChatWithModel(parseInt(b.dataset.model));
     };
   });
