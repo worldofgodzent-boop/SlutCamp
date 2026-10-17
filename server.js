@@ -2690,7 +2690,7 @@ function sendModelWelcome(modelUserId) {
   db.prepare("UPDATE users SET welcome_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
     notifyUser(m.id, 'welcome', '🎉 Welcome to SlutCamp!',
-      'Congratulations — Asce sent you a message in your inbox 💋', '');
+      'Congratulations — Asce sent you a message in your inbox 💋', `/#chat/${conv.id}`);
   } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
   return true;
 }
@@ -2794,7 +2794,7 @@ function sendModelGuide(modelUserId) {
   db.prepare("UPDATE users SET guide_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
     notifyUser(m.id, 'guide', '💋 How SlutCamp works',
-      'Asce sent you the playbook — how the app works and how you get paid 💰', '');
+      'Asce sent you the playbook — how the app works and how you get paid 💰', `/#chat/${conv.id}`);
   } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
   return true;
 }
@@ -2837,7 +2837,7 @@ function sendModelGuideVideo(modelUserId) {
   db.prepare("UPDATE users SET guide_video_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
     notifyUser(m.id, 'guide_video', '🎬 Your 1-minute tour is here',
-      'Asce sent you a quick video tour of how SlutCamp works 💋', '');
+      'Asce sent you a quick video tour of how SlutCamp works 💋', `/#chat/${conv.id}`);
   } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
   return true;
 }
@@ -2882,7 +2882,7 @@ function sendModelHomeScreenVideo(modelUserId) {
   db.prepare("UPDATE users SET ath_video_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
     notifyUser(m.id, 'home_screen_video', '📲 Put SlutCamp on your home screen',
-      'Asce sent you a 30-second video showing how to add SlutCamp to your home screen 💋', '');
+      'Asce sent you a 30-second video showing how to add SlutCamp to your home screen 💋', `/#chat/${conv.id}`);
   } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
   return true;
 }
@@ -2940,7 +2940,7 @@ function sendModelIdVerify(modelUserId) {
   db.prepare("UPDATE users SET id_verify_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
     notifyUser(m.id, 'id_verify', '🪪 One last step: verify your ID',
-      'It unlocks going live and getting paid — 2 minutes in Settings 💋', '');
+      'It unlocks going live and getting paid — 2 minutes in Settings 💋', `/#chat/${conv.id}`);
   } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
   return true;
 }
@@ -3004,7 +3004,7 @@ function sendModelAffiliate(modelUserId) {
   db.prepare("UPDATE users SET affiliate_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
     notifyUser(m.id, 'affiliate_program', '💰 Make money bringing models',
-      'Earn 20% of everything your recruited models make — reply here for your link 💋', '');
+      'Earn 20% of everything your recruited models make — reply here for your link 💋', `/#chat/${conv.id}`);
   } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
   return true;
 }
@@ -3047,7 +3047,7 @@ function announceGameCategoryToModels() {
       db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
       try {
         notifyUser(m.id, 'game_category', '🎲 NEW UPDATE: Game Category is here!',
-          'Fans can now buy requests from YOUR list on live — build it in your live controls 💋', '');
+          'Fans can now buy requests from YOUR list on live — build it in your live controls 💋', `/#chat/${conv.id}`);
       } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
       sent++;
     } catch (e) { /* one bad thread must not block the rest — flag stays unset only if ALL fail */ }
@@ -3087,7 +3087,7 @@ function announceAgreement12ToModels() {
       db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
       try {
         notifyUser(m.id, 'agreement_12', '📄 New model agreement — please read & sign',
-          'Agreement v1.2 is ready — open the app to read and sign 💋', '');
+          'Agreement v1.2 is ready — open the app to read and sign 💋', `/#chat/${conv.id}`);
       } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
       sent++;
     } catch (e) { /* one bad thread must not block the rest */ }
@@ -3133,7 +3133,7 @@ function announcePublicPhotoToModels() {
       db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
       try {
         notifyUser(m.id, 'public_photo', "📸 NEW UPDATE: You're live on Google!",
-          'Set your clean public photo — Settings → My Photo → Public photo 💋', '');
+          'Set your clean public photo — Settings → My Photo → Public photo 💋', `/#chat/${conv.id}`);
       } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
       sent++;
     } catch (e) { /* one bad thread must not block the rest */ }
@@ -3172,7 +3172,7 @@ function announceNotifFixToModels() {
       db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
       try {
         notifyUser(m.id, 'notif_fix', '🔔 FIXED: Your notifications open now!',
-          'Tap a notification — it takes you straight to the message, booking or request 💋', '');
+          'Tap a notification — it takes you straight to the message, booking or request 💋', `/#chat/${conv.id}`);
       } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
       sent++;
     } catch (e) { /* one bad thread must not block the rest */ }
@@ -3212,7 +3212,7 @@ function announcePreviewVideoToModels() {
       db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
       try {
         notifyUser(m.id, 'preview_video', '🎬 NEW UPDATE: Your preview video now plays on your profile!',
-          'Fans see it on your profile — tap it and they hear you too. Add yours in Settings 💋', '');
+          'Fans see it on your profile — tap it and they hear you too. Add yours in Settings 💋', `/#chat/${conv.id}`);
       } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
       sent++;
     } catch (e) { /* one bad thread must not block the rest */ }
@@ -8570,7 +8570,7 @@ function sendAdminApologyDm(fanId, modelName, totalCents) {
   db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
     .run(conv.id, admin.id, body);
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
-  try { notifyUser(fanId, 'message', '💬 SlutCamp', body.slice(0, 90), ''); } catch (e) { /* bell is a bonus */ }
+  try { notifyUser(fanId, 'message', '💬 SlutCamp', body.slice(0, 90), `/#chat/${conv.id}`); } catch (e) { /* bell is a bonus */ }
 }
 
 function bookingCallStarted(b) {
@@ -9506,7 +9506,7 @@ app.post('/api/admin/models/:id/message', ...adminOnly, (req, res) => {
   const info = db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
     .run(conv.id, req.user.id, body);
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
-  try { notifyUser(m.id, 'message', '💬 Asce (Admin)', body.slice(0, 90), ''); } catch (e) { /* bell is a bonus */ }
+  try { notifyUser(m.id, 'message', '💬 Asce (Admin)', body.slice(0, 90), `/#chat/${conv.id}`); } catch (e) { /* bell is a bonus */ }
   res.json({ ok: true, conversation_id: conv.id, message_id: Number(info.lastInsertRowid) });
 });
 

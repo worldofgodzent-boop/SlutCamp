@@ -8282,6 +8282,25 @@ async function vNotifications() {
       body: JSON.stringify({ ids: [parseInt(btn.dataset.notif)] }) });
     refreshNotifBadge();
   };
+  // Opens the exact conversation a message/announcement bell is
+  // about. convId > 0: the thread named by the bell's '/#chat/<id>'
+  // link. convId 0: the admin thread (for legacy '' bells) — the
+  // conversation whose other side is the admin account, which is
+  // where every announcement and admin DM lives. Any miss (fetch
+  // failed, thread gone) lands on the role's chats list, so a tap
+  // never dead-ends.
+  async function openNotifThread(convId, role) {
+    const chatsView = role === 'model' ? 'modelChats' : 'fanChats';
+    try {
+      const { data } = await api('/conversations');
+      const convs = (data && data.conversations) || [];
+      const conv = convId
+        ? convs.find((c) => c.id === convId)
+        : convs.find((c) => c.other && c.other.role === 'admin');
+      if (conv) { show('chat', { conv }); return; }
+    } catch (e) { /* fall through to the chats list */ }
+    show(chatsView, {});
+  }
   // Bell-tap routing: a tap must OPEN the thing the bell is about.
   // The old handler marked the bell read and re-rendered THIS list for
   // every link except a fan's '/#live' — the "tap glitches and nothing
@@ -8290,6 +8309,15 @@ async function vNotifications() {
   function routeNotifTap(n, ftReqs) {
     const role = S.user && S.user.role;
     const link = (n && n.link) || '';
+    // Message/announcement bells carry the thread they are about:
+    // '/#chat/<id>' opens THAT conversation — straight to the message
+    // (owner ruling, Oct 17 2026). openNotifThread falls back to the
+    // chats list itself if the thread can't be found.
+    const cm = /^\/?#chat\/(\d+)$/.exec(link);
+    if (cm && typeof openNotifThread === 'function') {
+      openNotifThread(parseInt(cm[1]), role);
+      return true;
+    }
     const ftm = /^\/?#ft\/(\d+)$/.exec(link);
     if (ftm && ftReqs && ftReqs[parseInt(ftm[1])]) {
       showFtRequestCard(ftReqs[parseInt(ftm[1])]);
@@ -8305,8 +8333,20 @@ async function vNotifications() {
       return true;
     }
     if (n && n.type === 'tip' && role === 'model') { show('modelEarnings', {}); return true; }
-    // Everything else — admin announcements (link ''), 'message' bells,
-    // '/#chat', tips for fans, unknown links — lands on the role's chats.
+    // Legacy bells delivered before bells carried thread links: the
+    // admin-DM family (announcements + admin messages, link '') opens
+    // the admin thread itself — one tap, straight to the message —
+    // instead of the chats list. openNotifThread falls back to the
+    // chats list when no admin thread exists.
+    const ADMIN_DM_TYPES = ['message', 'welcome', 'guide', 'guide_video',
+      'home_screen_video', 'id_verify', 'affiliate_program', 'game_category',
+      'agreement_12', 'public_photo', 'notif_fix', 'preview_video'];
+    if (!link && n && ADMIN_DM_TYPES.includes(n.type) && typeof openNotifThread === 'function') {
+      openNotifThread(0, role);
+      return true;
+    }
+    // Everything else — '/#chat' with no id, tips for fans, unknown
+    // types/links — lands on the role's chats list.
     show(role === 'model' ? 'modelChats' : 'fanChats', {});
     return true;
   }
