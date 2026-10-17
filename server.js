@@ -1165,6 +1165,8 @@ addColumnIfMissing('platform_stats', 'agreement_12_announced_at', 'TEXT'); // on
 addColumnIfMissing('platform_stats', 'public_photo_announced_at', 'TEXT'); // one-time public-photo (Google pages) broadcast stamp
 addColumnIfMissing('platform_stats', 'notif_fix_announced_at', 'TEXT'); // one-time notification-tap fix broadcast stamp
 addColumnIfMissing('platform_stats', 'preview_video_announced_at', 'TEXT'); // one-time preview-video-on-profile broadcast stamp
+addColumnIfMissing('platform_stats', 'thread_tap_announced_at', 'TEXT'); // one-time one-tap-to-the-message broadcast stamp
+addColumnIfMissing('platform_stats', 'fan_preview_announced_at', 'TEXT'); // one-time fan preview-video blast stamp
 addColumnIfMissing('live_viewers', 'explicit_until', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_viewers', 'explicit_paid', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'explicit_gift_grace_sec', 'INTEGER NOT NULL DEFAULT 180');
@@ -1283,6 +1285,13 @@ addColumnIfMissing('users', 'language', "TEXT NOT NULL DEFAULT 'en'");
 // changes until they set one). Enforced inside chargeFan(); read by
 // GET /api/me/spending. See the spending block above chargeFan.
 addColumnIfMissing('users', 'spend_cap_cents', 'INTEGER');
+
+// Optional contact email for update blasts (favorite models + deals).
+// NULL = never opted in. Owner rule (Oct 17 2026): NEVER forced — a fan
+// adds it at sign-up or in Settings, can skip it everywhere, and can
+// clear it anytime. Collection only for now: no email provider exists
+// yet, so nothing sends to this address until one is wired up.
+addColumnIfMissing('users', 'email', 'TEXT');
 
 // Admin presence override per model ('auto' | 'on' | 'off'): 'auto' = her own
 // is_online toggle decides; 'on'/'off' force what fans SEE. Display/discovery
@@ -1778,6 +1787,17 @@ const getUserPublic = (u) => ({
   language: u.language || 'en',
   welcomed: !!u.welcomed_at,
 });
+
+/* Optional contact email — same loose shape check as the DMCA report
+ * route. Empty/absent means the fan SKIPPED it (owner rule: never
+ * forced) and stores NULL; a provided value must look like an email. */
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+function optionalEmail(raw) {
+  const v = String(raw == null ? '' : raw).trim().slice(0, 160);
+  if (!v) return { email: null };
+  if (!EMAIL_RE.test(v)) return { error: 'bad_email' };
+  return { email: v };
+}
 
 const fmt$ = (c) => '$' + (c / 100).toFixed(2); // server-side money formatter (cents → $x.xx)
 
@@ -3223,6 +3243,72 @@ function announcePreviewVideoToModels() {
   return sent;
 }
 
+/* ------------------------------------------------------------------ */
+/* One-tap thread routing — ONE-TIME broadcast to every model, same   */
+/* admin-thread DM + stamp pattern as the broadcasts above            */
+/* (thread_tap_announced_at on platform_stats). PR #33 made bell taps */
+/* open the message itself; this is that update's message to the      */
+/* girls (owner's standing rule). The bell itself carries the new     */
+/* /#chat/<convId> link, so tapping it demonstrates the feature.      */
+/* ------------------------------------------------------------------ */
+function announceThreadTapToModels() {
+  const st = db.prepare('SELECT thread_tap_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.thread_tap_announced_at) return 0;
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin) return 0;
+  const models = db.prepare("SELECT id, username FROM users WHERE role = 'model' AND banned = 0").all();
+  let sent = 0;
+  for (const m of models) {
+    if (m.id === admin.id) continue;
+    try {
+      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
+      if (!conv) {
+        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
+        conv = { id: Number(info.lastInsertRowid) };
+      }
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, admin.id, `👆 UPDATE: One tap, straight to the message! Now when you tap a notification, it opens the message itself — no more landing on the list first. Messages, announcements, everything from us opens right up. Simple and easy 💋`);
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(m.id, 'thread_tap', '👆 UPDATE: One tap, straight to the message!',
+          'Tap a notification — it opens the message itself now. One tap, straight in 💋', `/#chat/${conv.id}`);
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest */ }
+  }
+  if (sent > 0 || models.length === 0) {
+    db.prepare("UPDATE platform_stats SET thread_tap_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
+/* ------------------------------------------------------------------ */
+/* Fan blast — ONE-TIME bell + Web Push to every fan (stamp           */
+/* fan_preview_announced_at on platform_stats). Fans have no email or */
+/* text channel today (no provider; users held no contact info until  */
+/* the optional email opt-in shipped alongside this), so notifyUser — */
+/* bell row + push — is the entire fan channel. First use: profile    */
+/* preview videos are live, and notifications open straight to the    */
+/* message. No admin DM: fans have no standing broadcast thread.      */
+/* ------------------------------------------------------------------ */
+function announceFanPreviewToFans() {
+  const st = db.prepare('SELECT fan_preview_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.fan_preview_announced_at) return 0;
+  const fans = db.prepare("SELECT id FROM users WHERE role = 'fan' AND banned = 0").all();
+  let sent = 0;
+  for (const f of fans) {
+    try {
+      notifyUser(f.id, 'fan_news', '🎬 NEW: Her profile video plays now!',
+        "Tap any girl's profile — her preview video plays right there. Tap the video for sound 🔊 And your notifications now open straight to the message. Come see who's new 💋", '');
+      sent++;
+    } catch (e) { /* one bad fan must not block the rest */ }
+  }
+  if (sent > 0 || fans.length === 0) {
+    db.prepare("UPDATE platform_stats SET fan_preview_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
 function seed() {
   // Demo accounts are DEV-ONLY and strictly opt-in (SEED_DEMO=1). A seeded
   // fan carries $100 of test credits and every seeded password is printed
@@ -3272,6 +3358,8 @@ try { const n = announceAgreement12ToModels(); if (n) console.log(`[contract] Ag
 try { const n = announcePublicPhotoToModels(); if (n) console.log(`[seo] Public-photo announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceNotifFixToModels(); if (n) console.log(`[notif] Notification-fix announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announcePreviewVideoToModels(); if (n) console.log(`[preview] Preview-video announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
+try { const n = announceThreadTapToModels(); if (n) console.log(`[threadtap] Thread-tap announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
+try { const n = announceFanPreviewToFans(); if (n) console.log(`[fanblast] Fan preview blast sent to ${n} fans.`); } catch (e) { /* retry next boot */ }
 
 // One-time grandfathering for payout protection (Oct 16, 2026): every
 // earning recorded BEFORE this feature existed counts as fully matured —
@@ -3739,7 +3827,14 @@ app.post('/api/auth/signup', (req, res) => {
   if (db.prepare('SELECT id FROM users WHERE username = ?').get(username.trim()))
     return res.status(409).json({ error: 'username_taken' });
 
+  // Optional contact email — skippable (owner rule: never forced);
+  // validated only when the fan actually provided one.
+  const contact = optionalEmail(req.body.email);
+  if (contact.error)
+    return res.status(400).json({ error: 'bad_email', message: "That email doesn't look right — check it, or leave it blank and skip." });
+
   const id = createUser(username.trim(), password, finalRole, display_name.trim().slice(0, 40), dob, signupLanguage(req));
+  if (contact.email) db.prepare('UPDATE users SET email = ? WHERE id = ?').run(contact.email, id);
   recordAgeAttestation(id, req);
   if (finalRole === 'fan') recordFanState(id, req);
 
@@ -4298,7 +4393,9 @@ app.post('/api/auth/admin-verify-phone', (req, res) => {
 
 app.get('/api/me', identMiddleware, requireUser, (req, res) => {
   const wallet = getWallet(req.user.id);
-  const out = { user: getUserPublic(req.user), wallet };
+  // email rides ONLY on the caller's own /api/me payload — getUserPublic
+  // stays clean for everyone else's views (chat partners, directories).
+  const out = { user: { ...getUserPublic(req.user), email: req.user.email || '' }, wallet };
   if (req.user.role === 'model')
     out.model = db.prepare('SELECT * FROM models WHERE user_id = ?').get(req.user.id);
   if (req.user.role === 'admin' || req.user.role === 'model') out.commission_pct = getCommission();
@@ -4338,6 +4435,23 @@ app.patch('/api/me/language', identMiddleware, requireUser, (req, res) => {
     return res.status(400).json({ error: 'bad_language', message: 'Supported languages: en, es, pt.' });
   db.prepare('UPDATE users SET language = ? WHERE id = ?').run(lang, req.user.id);
   res.json({ ok: true, language: lang });
+});
+
+// Optional contact email for update blasts (favorite models + deals).
+// Owner rule (Oct 17 2026): NEVER forced — any logged-in user may set
+// or clear theirs; an empty value clears to NULL, and NULL means "send
+// me nothing". Collection only: no email provider exists yet.
+app.patch('/api/me/contact', identMiddleware, requireUser, (req, res) => {
+  const raw = req.body ? req.body.email : undefined;
+  if (raw === null || raw === undefined || String(raw).trim() === '') {
+    db.prepare('UPDATE users SET email = NULL WHERE id = ?').run(req.user.id);
+    return res.json({ ok: true, email: null });
+  }
+  const contact = optionalEmail(raw);
+  if (contact.error)
+    return res.status(400).json({ error: 'bad_email', message: "That email doesn't look right — check it, or clear it to skip." });
+  db.prepare('UPDATE users SET email = ? WHERE id = ?').run(contact.email, req.user.id);
+  res.json({ ok: true, email: contact.email });
 });
 
 /* --- Fan spending dashboard + optional monthly cap ---

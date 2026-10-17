@@ -158,6 +158,8 @@ const I18N = {
     welcome_back: 'Welcome back 😈', create_account_h: 'Create your account',
     log_in: 'Log in', sign_up: 'Sign up', log_out: 'Log out',
     username: 'Username', password: 'Password', password_hint: 'Password (6+ characters)',
+    signup_email_optional: 'Email (optional — for updates about your favorite models & deals)',
+    err_bad_email: "That email doesn't look right — check it or leave it blank.",
     display_name: 'Display name', dob: 'Date of birth',
     im_fan: "I'm a Fan", fan_desc: 'Chat & video call the models',
     im_model: "I'm a Model", model_desc: 'Get paid to chat (SlutCamp verifies you)',
@@ -464,6 +466,8 @@ const I18N = {
     welcome_back: 'Bienvenido de nuevo 😈', create_account_h: 'Crea tu cuenta',
     log_in: 'Iniciar sesión', sign_up: 'Registrarse', log_out: 'Cerrar sesión',
     username: 'Usuario', password: 'Contraseña', password_hint: 'Contraseña (6+ caracteres)',
+    signup_email_optional: 'Correo (opcional — novedades de tus modelos favoritas y ofertas)',
+    err_bad_email: 'Ese correo no parece válido — revísalo o déjalo en blanco.',
     display_name: 'Nombre visible', dob: 'Fecha de nacimiento',
     im_fan: 'Soy Fan', fan_desc: 'Chatea y haz videollamadas con las modelos',
     im_model: 'Soy Modelo', model_desc: 'Gana dinero chateando (SlutCamp te verifica)',
@@ -767,6 +771,8 @@ const I18N = {
     welcome_back: 'Bem-vindo de volta 😈', create_account_h: 'Crie sua conta',
     log_in: 'Entrar', sign_up: 'Cadastrar', log_out: 'Sair',
     username: 'Nome de usuário', password: 'Senha', password_hint: 'Senha (6+ caracteres)',
+    signup_email_optional: 'E-mail (opcional — novidades das suas modelos favoritas e ofertas)',
+    err_bad_email: 'Esse e-mail não parece válido — confira ou deixe em branco.',
     display_name: 'Nome de exibição', dob: 'Data de nascimento',
     im_fan: 'Sou Fã', fan_desc: 'Converse e faça videochamadas com as modelos',
     im_model: 'Sou Modelo', model_desc: 'Ganhe dinheiro conversando (a SlutCamp verifica você)',
@@ -2250,6 +2256,7 @@ function renderSignupFields(role) {
       <label class="field">${t('display_name')}<input class="input" id="a-name" maxlength="40"></label>
       <label class="field">${t('username')}<input class="input" id="a-user" autocomplete="username"></label>
       <label class="field">${t('password_hint')}${pwField('a-pass', 'new-password')}</label>
+      ${role === 'fan' ? `<label class="field">${t('signup_email_optional')}<input class="input" id="a-email" type="email" autocomplete="email"></label>` : ''}
       <label class="field">${t('dob')}<input class="input" id="a-dob" type="date"></label>
       <div class="age-box">🔞 <b>${t('age18_only')}</b> ${t('age18_line')}
         ${role === 'model' ? t('model_age_id_note') : t('fan_age_line')}</div>
@@ -2294,15 +2301,19 @@ async function doSignup(role) {
   const password = $('#a-pass').value;
   const dob = $('#a-dob').value;
   const agree18 = $('#a-18').checked;
+  // Optional contact email (fan form only) — blank = skipped, and the
+  // server stores nothing. Sent only when she/he typed one.
+  const emailEl = $('#a-email');
+  const email = emailEl ? emailEl.value.trim() : '';
   if (!display_name || !username || !password || !dob) return toast(t('fill_all_fields'));
   if (!agree18) return toast(t('must_confirm_18'));
   const { status, data } = await api('/auth/signup', {
     method: 'POST',
-    body: JSON.stringify({ username, password, role, display_name, dob, agree18, guest_token: S.guestToken, language: LANG }),
+    body: JSON.stringify({ username, password, role, display_name, dob, agree18, guest_token: S.guestToken, language: LANG, ...(email ? { email } : {}) }),
   });
   if (status === 200) return afterLogin(data);
   const msgs = { username_taken: t('err_username_taken'), must_be_18: t('err_must_be_18'),
-    password_too_short: t('err_password_short') };
+    password_too_short: t('err_password_short'), bad_email: t('err_bad_email') };
   toast(msgs[data.error] || t('err_signup_failed'));
 }
 
@@ -2514,6 +2525,59 @@ function renderPwSettingsCard() {
     } else {
       toast('Could not change password — try again');
     }
+  };
+}
+
+/* Settings card (fan wallet only): OPTIONAL contact email for update
+   blasts about favorite models + deals. Owner rule: never forced —
+   prefilled from /api/me, Save PATCHes /api/me/contact, Remove clears
+   it (empty = NULL server-side = send nothing). Collection only;
+   nothing is emailed until an email provider exists. */
+function renderContactSettingsCard() {
+  const host = document.getElementById('contact-card');
+  if (!host) return;
+  const current = (S.user && S.user.email) || '';
+  host.innerHTML = `
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">📣 Updates about your favorites (optional)</div>
+      <div class="muted small" style="margin-bottom:10px">Want updates about your favorite models and deals? Add an email and we'll send them there. Totally optional — skip it and nothing changes.</div>
+      <label class="field">Email<input class="input" id="ct-email" type="email" autocomplete="email" value="${esc(current)}" placeholder="you@example.com"></label>
+      <button class="btn" id="ct-save" style="width:100%;margin-top:6px">Save email</button>
+      ${current ? '<button class="btn ghost" id="ct-remove" style="width:100%;margin-top:6px">Remove email</button>' : ''}
+      <div class="muted small" id="ct-msg" style="margin-top:6px"></div>
+    </div>`;
+  $('#ct-save').onclick = async () => {
+    const v = $('#ct-email').value.trim();
+    const { status, data } = await api('/me/contact', {
+      method: 'PATCH', body: JSON.stringify({ email: v }),
+    });
+    if (status === 200) {
+      if (S.user) S.user.email = data.email || '';
+      const m = $('#ct-msg');
+      if (data.email) {
+        if (m) m.textContent = '✅ Saved — updates about your favorites and deals will go to ' + data.email + '.';
+        toast('✅ Email saved');
+      } else {
+        if (m) m.textContent = 'Email cleared — no updates will be sent.';
+        toast('Email cleared');
+      }
+      renderContactSettingsCard();
+    } else if (data && data.error === 'bad_email') {
+      toast("That email doesn't look right — check it, or clear it to skip");
+    } else {
+      toast('Could not save email — try again');
+    }
+  };
+  const rm = $('#ct-remove');
+  if (rm) rm.onclick = async () => {
+    const { status } = await api('/me/contact', {
+      method: 'PATCH', body: JSON.stringify({ email: '' }),
+    });
+    if (status === 200) {
+      if (S.user) S.user.email = '';
+      toast('Email removed — no updates will be sent');
+      renderContactSettingsCard();
+    } else toast('Could not remove email — try again');
   };
 }
 
@@ -3373,6 +3437,7 @@ async function vWallet() {
       <div id="av-box"></div>
       <div id="pk-card"></div>
       <div id="pw-card"></div>
+      <div id="contact-card"></div>
       ${langCardHTML()}
       <button class="btn ghost" id="w-logout">${t('log_out')}</button>
     </div>`;
@@ -3504,6 +3569,7 @@ async function vWallet() {
   if (wth) wth.onclick = openAthSheet;
   renderPkSettingsCard();
   renderPwSettingsCard();
+  renderContactSettingsCard();
   $('#w-logout').onclick = () => logout();
 }
 
