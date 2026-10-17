@@ -1133,6 +1133,17 @@ CREATE TABLE IF NOT EXISTS stream_flags (
   matched     TEXT NOT NULL,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- Fan Suggestion Box: ideas submitted from the fan Wallet card.
+-- username is a snapshot at submit time (display names can change).
+CREATE TABLE IF NOT EXISTS suggestions (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  username   TEXT NOT NULL DEFAULT '',
+  body       TEXT NOT NULL,
+  status     TEXT NOT NULL DEFAULT 'new',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_suggestions_status ON suggestions(status, id);
 `);
 
 db.prepare(`INSERT OR IGNORE INTO platform_stats (id, earnings_cents, commission_pct)
@@ -1169,6 +1180,7 @@ addColumnIfMissing('platform_stats', 'thread_tap_announced_at', 'TEXT'); // one-
 addColumnIfMissing('platform_stats', 'fan_preview_announced_at', 'TEXT'); // one-time fan preview-video blast stamp
 addColumnIfMissing('platform_stats', 'languages_announced_at', 'TEXT'); // one-time 13-languages model broadcast stamp
 addColumnIfMissing('platform_stats', 'fan_languages_announced_at', 'TEXT'); // one-time 13-languages fan blast stamp
+addColumnIfMissing('platform_stats', 'suggestion_box_announced_at', 'TEXT'); // one-time Suggestion Box fan blast stamp
 addColumnIfMissing('live_viewers', 'explicit_until', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_viewers', 'explicit_paid', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'explicit_gift_grace_sec', 'INTEGER NOT NULL DEFAULT 180');
@@ -2711,6 +2723,9 @@ const SRV = {
   ann_lang_dm: { en: '🌍 BIG NEWS: SlutCamp now speaks 13 languages! You — and your fans — can switch the whole app to your own language anytime in Settings: buttons, messages, notifications and even the agreements. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Fans from everywhere can now feel at home here — tell your boys! 💋', es: '🌍 GRANDES NOTICIAS: ¡SlutCamp ahora habla 13 idiomas! Tú — y tus fans — pueden cambiar toda la app a su propio idioma cuando quieran en Ajustes: botones, mensajes, notificaciones e incluso los acuerdos. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Los fans de todas partes ahora pueden sentirse en casa aquí — ¡cuéntaselo a tus chicos! 💋', pt: '🌍 GRANDE NOVIDADE: a SlutCamp agora fala 13 idiomas! Você — e seus fãs — podem trocar o app inteiro para o seu idioma quando quiserem em Configurações: botões, mensagens, notificações e até os contratos. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Fãs de todo lugar agora podem se sentir em casa aqui — avisa seus garotos! 💋', fr: '🌍 GRANDE NOUVELLE : SlutCamp parle maintenant 13 langues ! Vous — et vos fans — pouvez basculer toute l\'appli dans votre propre langue à tout moment dans Paramètres : boutons, messages, notifications et même les contrats. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Les fans du monde entier peuvent désormais se sentir chez eux ici — dites-le à vos gars ! 💋', de: '🌍 GROSSE NEUIGKEITEN: SlutCamp spricht jetzt 13 Sprachen! Du — und deine Fans — könnt die ganze App jederzeit in den Einstellungen auf eure eigene Sprache umstellen: Schaltflächen, Nachrichten, Benachrichtigungen und sogar die Vereinbarungen. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Fans von überall können sich hier jetzt zu Hause fühlen — erzähl es deinen Jungs! 💋', ru: '🌍 БОЛЬШИЕ НОВОСТИ: SlutCamp теперь говорит на 13 языках! Вы — и ваши фанаты — можете переключить всё приложение на свой язык в любое время в Настройках: кнопки, сообщения, уведомления и даже соглашения. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Фанаты со всего мира теперь могут чувствовать себя здесь как дома — расскажите своим парням! 💋', ja: '🌍 ビッグニュース：SlutCampは13言語に対応しました！あなたも — あなたのファンも — 設定でいつでもアプリ全体を自分の言語に切り替えられます：ボタン、メッセージ、通知、契約まで。English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe。世界中のファンがここでくつろげるようになりました — あなたのボーイズに教えてあげて！ 💋', zh: '🌍 重大消息：SlutCamp 现在支持 13 种语言！你 — 以及你的粉丝 — 可以随时在设置中将整个应用切换到你自己的语言：按钮、消息、通知甚至协议。English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe。现在来自世界各地的粉丝都能在这里感到宾至如归 — 告诉你的小伙子们吧！💋', ko: '🌍 큰 소식: SlutCamp가 이제 13개 언어를 지원합니다! 나와 팬들 모두 설정에서 언제든지 앱 전체를 본인의 언어로 바꿀 수 있습니다: 버튼, 메시지, 알림, 심지어 계약까지. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. 이제 전 세계 팬들이 여기서 편안함을 느낄 수 있습니다 — 친구들에게 알려주세요! 💋', it: '🌍 GRANDE NOVITÀ: SlutCamp ora parla 13 lingue! Tu — e i tuoi fan — potete cambiare l\'intera app nella vostra lingua in qualsiasi momento in Impostazioni: pulsanti, messaggi, notifiche e persino i contratti. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Fan da ovunque ora possono sentirsi a casa qui — dillo ai tuoi ragazzi! 💋', pl: '🌍 WIELKA WIADOMOŚĆ: SlutCamp mówi teraz w 13 językach! Ty — i Twoi fani — możecie w każdej chwili przełączyć całą aplikację na własny język w Ustawieniach: przyciski, wiadomości, powiadomienia, a nawet umowy. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Fani z całego świata mogą teraz czuć się tu jak w domu — powiedz swoim chłopakom! 💋', nl: '🌍 GROOT NIEUWS: SlutCamp spreekt nu 13 talen! Jij — en je fans — kunnen de hele app op elk moment in Instellingen naar je eigen taal schakelen: knoppen, berichten, meldingen en zelfs de overeenkomsten. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Fans van overal kunnen zich hier nu thuis voelen — vertel het je jongens! 💋', tr: '🌍 BÜYÜK HABER: SlutCamp artık 13 dil konuşuyor! Sen — ve hayranların — tüm uygulamayı Ayarlar\'dan istediğin zaman kendi diline çevirebilirsiniz: düğmeler, mesajlar, bildirimler ve hatta sözleşmeler. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Artık her yerden hayranlar burada kendini evinde hissedebilir — oğlanlarına söyle! 💋' },
   ann_lang_bell_title: { en: '🌍 NEW UPDATE: SlutCamp speaks 13 languages!', es: '🌍 NUEVA ACTUALIZACIÓN: ¡SlutCamp habla 13 idiomas!', pt: '🌍 NOVA ATUALIZAÇÃO: a SlutCamp fala 13 idiomas!', fr: '🌍 NOUVELLE MISE À JOUR : SlutCamp parle 13 langues !', de: '🌍 NEUES UPDATE: SlutCamp spricht 13 Sprachen!', ru: '🌍 НОВОЕ ОБНОВЛЕНИЕ: SlutCamp говорит на 13 языках!', ja: '🌍 新しいアップデート：SlutCampは13言語に対応！', zh: '🌍 新更新：SlutCamp 支持 13 种语言！', ko: '🌍 새 업데이트: SlutCamp가 13개 언어를 지원합니다!', it: '🌍 NUOVO AGGIORNAMENTO: SlutCamp parla 13 lingue!', pl: '🌍 NOWA AKTUALIZACJA: SlutCamp mówi w 13 językach!', nl: '🌍 NIEUWE UPDATE: SlutCamp spreekt 13 talen!', tr: '🌍 YENİ GÜNCELLEME: SlutCamp 13 dil konuşuyor!' },
   ann_lang_bell_body: { en: 'Switch the whole app to your language in Settings — your fans too! 💋', es: 'Cambia toda la app a tu idioma en Ajustes — ¡tus fans también! 💋', pt: 'Troque o app inteiro para seu idioma em Configurações — seus fãs também! 💋', fr: 'Basculez toute l\'appli dans votre langue dans Paramètres — vos fans aussi ! 💋', de: 'Stelle die ganze App in den Einstellungen auf deine Sprache um — deine Fans auch! 💋', ru: 'Переключите всё приложение на ваш язык в Настройках — ваши фанаты тоже! 💋', ja: '設定でアプリ全体をあなたの言語に切り替えてね — あなたのファンも！ 💋', zh: '在设置中将整个应用切换到你的语言 — 你的粉丝也可以！💋', ko: '설정에서 앱 전체를 본인의 언어로 바꾸세요 — 팬들도 마찬가지입니다! 💋', it: 'Cambia l\'intera app nella tua lingua in Impostazioni — anche i tuoi fan! 💋', pl: 'Przełącz całą aplikację na swój język w Ustawieniach — Twoi fani też! 💋', nl: 'Schakel de hele app in Instellingen naar jouw taal — je fans ook! 💋', tr: 'Tüm uygulamayı Ayarlar\'dan diline çevir — hayranların da! 💋' },
+  ann_suggest_title: { en: '💡 NEW: The Suggestion Box is open!', es: '💡 NUEVO: ¡El buzón de sugerencias está abierto!', pt: '💡 NOVIDADE: A caixa de sugestões está aberta!', fr: '💡 NOUVEAU : La boîte à suggestions est ouverte !', de: '💡 NEU: Die Vorschlagsbox ist geöffnet!', ru: '💡 НОВОЕ: Ящик предложений открыт!', ja: '💡 新機能：ご意見ボックスがオープン！', zh: '💡 新功能：意见箱已开启！', ko: '💡 새 소식: 건의함이 열렸어요!', it: '💡 NOVITÀ: La cassetta dei suggerimenti è aperta!', pl: '💡 NOWOŚĆ: Skrzynka sugestii jest otwarta!', nl: '💡 NIEUW: De ideeënbus is geopend!', tr: '💡 YENİ: Öneri kutusu açıldı!' },
+  ann_suggest_body: { en: 'Want something on the app we haven\'t added yet? Tell us! Open your Wallet and drop your idea in the 💡 Suggestion Box — we read every single one 💋', es: '¿Quieres algo en la app que aún no agregamos? ¡Cuéntanos! Abre tu billetera y deja tu idea en el 💡 Buzón de sugerencias — leemos cada una 💋', pt: 'Quer algo no app que ainda não adicionamos? Conta pra gente! Abra sua carteira e deixe sua ideia na 💡 Caixa de sugestões — lemos todas 💋', fr: 'Vous voulez quelque chose dans l\'app que nous n\'avons pas encore ajouté ? Dites-le-nous ! Ouvrez votre portefeuille et déposez votre idée dans la 💡 Boîte à suggestions — nous lisons chacune d\'elles 💋', de: 'Wünschst du dir etwas in der App, das wir noch nicht hinzugefügt haben? Sag es uns! Öffne deine Wallet und hinterlasse deine Idee in der 💡 Vorschlagsbox — wir lesen jede einzelne 💋', ru: 'Хотите что-то в приложении, чего мы ещё не добавили? Расскажите нам! Откройте кошелёк и оставьте свою идею в 💡 Ящике предложений — мы читаем каждое 💋', ja: 'アプリにまだない機能がほしい？教えて！ウォレットを開いて💡ご意見ボックスにアイデアを入れてね — 全部読んでます💋', zh: '想要应用里还没有的功能？告诉我们！打开你的钱包，把想法投进 💡 意见箱 — 每一条我们都会看 💋', ko: '앱에 아직 없는 기능이 있었으면 하나요? 알려주세요! 지갑을 열고 💡 건의함에 아이디어를 남겨주세요 — 하나하나 다 읽어요 💋', it: 'Vuoi qualcosa nell\'app che non abbiamo ancora aggiunto? Diccelo! Apri il tuo portafoglio e lascia la tua idea nella 💡 Cassetta dei suggerimenti — le leggiamo tutte 💋', pl: 'Chcesz czegoś w aplikacji, czego jeszcze nie dodaliśmy? Powiedz nam! Otwórz portfel i zostaw swój pomysł w 💡 Skrzynce sugestii — czytamy każdą 💋', nl: 'Wil je iets in de app dat we nog niet hebben toegevoegd? Vertel het ons! Open je wallet en laat je idee achter in de 💡 Ideeënbus — we lezen ze allemaal 💋', tr: 'Uygulamada henüz eklemediğimiz bir şey mi istiyorsun? Bize söyle! Cüzdanını aç ve fikrini 💡 Öneri kutusuna bırak — hepsini tek tek okuyoruz 💋' },
+  suggest_admin_title: { en: '💡 New suggestion from {username}', es: '💡 Nueva sugerencia de {username}', pt: '💡 Nova sugestão de {username}', fr: '💡 Nouvelle suggestion de {username}', de: '💡 Neuer Vorschlag von {username}', ru: '💡 Новое предложение от {username}', ja: '💡 {username} さんからの新しい提案', zh: '💡 来自 {username} 的新建议', ko: '💡 {username}님의 새 건의', it: '💡 Nuovo suggerimento da {username}', pl: '💡 Nowa sugestia od {username}', nl: '💡 Nieuwe suggestie van {username}', tr: '💡 {username} kullanıcısından yeni öneri' },
   ann_lang_fan_title: { en: '🌍 NEW: SlutCamp speaks YOUR language!', es: '🌍 NUEVO: ¡SlutCamp habla TU idioma!', pt: '🌍 NOVIDADE: a SlutCamp fala SEU idioma!', fr: '🌍 NOUVEAU : SlutCamp parle VOTRE langue !', de: '🌍 NEU: SlutCamp spricht DEINE Sprache!', ru: '🌍 НОВОЕ: SlutCamp говорит на ВАШЕМ языке!', ja: '🌍 新機能：SlutCampはあなたの言語に対応！', zh: '🌍 新功能：SlutCamp 说你的语言！', ko: '🌍 새 소식: SlutCamp가 당신의 언어를 지원합니다!', it: '🌍 NOVITÀ: SlutCamp parla la TUA lingua!', pl: '🌍 NOWOŚĆ: SlutCamp mówi w TWOIM języku!', nl: '🌍 NIEUW: SlutCamp spreekt JOUW taal!', tr: '🌍 YENİ: SlutCamp SENİN dilini konuşuyor!' },
   ann_lang_fan_body: { en: 'The whole app now speaks 13 languages — switch anytime in Settings: buttons, messages and agreements included 💋', es: 'Toda la app ahora habla 13 idiomas — cámbialo cuando quieras en Ajustes: botones, mensajes y acuerdos incluidos 💋', pt: 'O app inteiro agora fala 13 idiomas — troque quando quiser em Configurações: botões, mensagens e contratos incluídos 💋', fr: 'Toute l\'appli parle maintenant 13 langues — changez à tout moment dans Paramètres : boutons, messages et contrats inclus 💋', de: 'Die ganze App spricht jetzt 13 Sprachen — stelle jederzeit in den Einstellungen um: Schaltflächen, Nachrichten und Vereinbarungen inklusive 💋', ru: 'Всё приложение теперь говорит на 13 языках — переключайте в любое время в Настройках: кнопки, сообщения и соглашения включены 💋', ja: 'アプリ全体が13言語に対応しました — 設定でいつでも切り替え可能：ボタン、メッセージ、契約も含まれます 💋', zh: '整个应用现在支持 13 种语言 — 随时在设置中切换：包括按钮、消息和协议 💋', ko: '이제 앱 전체가 13개 언어를 지원합니다 — 설정에서 언제든지 바꾸세요: 버튼, 메시지, 계약까지 포함됩니다 💋', it: 'L\'intera app ora parla 13 lingue — cambia in qualsiasi momento in Impostazioni: pulsanti, messaggi e contratti inclusi 💋', pl: 'Cała aplikacja mówi teraz w 13 językach — przełącz w każdej chwili w Ustawieniach: przyciski, wiadomości i umowy w zestawie 💋', nl: 'De hele app spreekt nu 13 talen — schakel op elk moment in Instellingen: knoppen, berichten en overeenkomsten inbegrepen 💋', tr: 'Tüm uygulama artık 13 dil konuşuyor — Ayarlar\'dan istediğin zaman değiştir: düğmeler, mesajlar ve sözleşmeler dahil 💋' },
 };
@@ -3816,6 +3831,30 @@ function announceLanguagesToFans() {
   return sent;
 }
 
+/* ------------------------------------------------------------------ */
+/* Suggestion Box announcement — ONE-TIME bell + Web Push to every    */
+/* fan (stamp suggestion_box_announced_at on platform_stats, set      */
+/* BEFORE sending so a mid-send crash can never double-blast). Each   */
+/* fan gets the copy in his stored language via the SRV table. No     */
+/* admin DM: fans have no standing broadcast thread (same fan channel */
+/* rule as the preview blast).                                        */
+/* ------------------------------------------------------------------ */
+function announceSuggestionBoxToFans() {
+  const st = db.prepare('SELECT suggestion_box_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.suggestion_box_announced_at) return 0;
+  const fans = db.prepare("SELECT id, language FROM users WHERE role = 'fan' AND banned = 0").all();
+  db.prepare("UPDATE platform_stats SET suggestion_box_announced_at = datetime('now') WHERE id = 1").run();
+  let sent = 0;
+  for (const f of fans) {
+    try {
+      notifyUser(f.id, 'suggestion_box', srv('ann_suggest_title', f.language),
+        srv('ann_suggest_body', f.language), '');
+      sent++;
+    } catch (e) { /* one bad fan must not block the rest */ }
+  }
+  return sent;
+}
+
 function seed() {
   // Demo accounts are DEV-ONLY and strictly opt-in (SEED_DEMO=1). A seeded
   // fan carries $100 of test credits and every seeded password is printed
@@ -3869,6 +3908,7 @@ try { const n = announceThreadTapToModels(); if (n) console.log(`[threadtap] Thr
 try { const n = announceFanPreviewToFans(); if (n) console.log(`[fanblast] Fan preview blast sent to ${n} fans.`); } catch (e) { /* retry next boot */ }
 try { const n = announceLanguagesToModels(); if (n) console.log(`[lang] Languages announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceLanguagesToFans(); if (n) console.log(`[fanlang] Languages blast sent to ${n} fans.`); } catch (e) { /* retry next boot */ }
+try { const n = announceSuggestionBoxToFans(); if (n) console.log(`[suggest] Suggestion box announcement sent to ${n} fans.`); } catch (e) { /* retry next boot */ }
 
 // One-time grandfathering for payout protection (Oct 16, 2026): every
 // earning recorded BEFORE this feature existed counts as fully matured —
@@ -4961,6 +5001,56 @@ app.patch('/api/me/contact', identMiddleware, requireUser, (req, res) => {
     return res.status(400).json({ error: 'bad_email', message: "That email doesn't look right — check it, or clear it to skip." });
   db.prepare('UPDATE users SET email = ? WHERE id = ?').run(contact.email, req.user.id);
   res.json({ ok: true, email: contact.email });
+});
+
+/* --- Fan Suggestion Box ------------------------------------------------
+ * Any logged-in user may drop an idea (the card itself lives in the
+ * fan Wallet). Validation: non-empty after trim, ≤1000 chars, and a
+ * rolling rate limit of 5 per user per 24h. The username is stored
+ * as a snapshot. On success every admin gets a bell (title via SRV in
+ * the admin's language, body = the suggestion, truncated) — wrapped
+ * so a notify failure can never fail the submission itself. */
+app.post('/api/suggestions', identMiddleware, requireUser, (req, res) => {
+  const text = String((req.body && req.body.text) || '').trim();
+  if (!text)
+    return res.status(400).json({ error: 'suggest_empty', message: 'Write a suggestion first.' });
+  if (text.length > 1000)
+    return res.status(400).json({ error: 'suggest_too_long', message: 'Keep it under 1,000 characters.' });
+  const recent = db.prepare(
+    "SELECT COUNT(*) AS c FROM suggestions WHERE user_id = ? AND created_at > datetime('now', '-24 hours')"
+  ).get(req.user.id).c;
+  if (recent >= 5)
+    return res.status(429).json({ error: 'suggest_rate', message: "You've sent 5 suggestions today — try again tomorrow." });
+  db.prepare('INSERT INTO suggestions (user_id, username, body) VALUES (?,?,?)')
+    .run(req.user.id, req.user.username, text);
+  try {
+    const admins = db.prepare("SELECT id, language FROM users WHERE role = 'admin'").all();
+    const bellBody = text.length > 120 ? text.slice(0, 120) + '…' : text;
+    for (const a of admins) {
+      try {
+        notifyUser(a.id, 'suggestion_admin',
+          srv('suggest_admin_title', a.language, { username: req.user.username }), bellBody, '');
+      } catch (e) { /* one admin's bell must not block the others */ }
+    }
+  } catch (e) { /* bells are a bonus; the stored suggestion is the deliverable */ }
+  res.json({ ok: true });
+});
+
+/* Read-only Suggestion Box digest for Ms. Pink's triage watch. Auth is
+ * ONLY the x-digest-token header against SUGGEST_DIGEST_TOKEN (timing-
+ * safe compare) — no session, no Manager header, and it never mutates
+ * anything. Env unset → 503 (the watch simply isn't configured). */
+app.get('/api/internal/suggestions-digest', (req, res) => {
+  const expected = process.env.SUGGEST_DIGEST_TOKEN;
+  if (!expected) return res.status(503).json({ error: 'digest_unavailable' });
+  const given = Buffer.from(String(req.headers['x-digest-token'] || ''), 'utf8');
+  const want = Buffer.from(String(expected), 'utf8');
+  if (given.length !== want.length || !crypto.timingSafeEqual(given, want))
+    return res.status(401).json({ error: 'unauthorized' });
+  const suggestions = db.prepare(
+    "SELECT id, username, body, status, created_at FROM suggestions WHERE status = 'new' ORDER BY id DESC LIMIT 200"
+  ).all();
+  res.json({ ok: true, suggestions });
 });
 
 /* --- Fan spending dashboard + optional monthly cap ---
@@ -11261,6 +11351,24 @@ app.get('/api/admin/safety/stream-flags', ...adminOnly, (req, res) => {
 });
 
 /* ---- Virtual gift catalog (admin-editable) ---- */
+
+/* Admin — fan Suggestion Box triage (Manager 💡 Suggestions screen) */
+app.get('/api/admin/suggestions', ...adminOnly, (req, res) => {
+  const suggestions = db.prepare(
+    'SELECT id, user_id, username, body, status, created_at FROM suggestions ORDER BY id DESC LIMIT 100'
+  ).all();
+  res.json({ suggestions });
+});
+
+app.post('/api/admin/suggestions/:id/status', ...adminOnly, (req, res) => {
+  const status = String((req.body && req.body.status) || '');
+  if (!['new', 'read', 'done'].includes(status))
+    return res.status(400).json({ error: 'bad_status', message: "Status must be 'new', 'read' or 'done'." });
+  const info = db.prepare('UPDATE suggestions SET status = ? WHERE id = ?')
+    .run(status, Number(req.params.id));
+  if (!info.changes) return res.status(404).json({ error: 'not_found', message: 'No such suggestion.' });
+  res.json({ ok: true, status });
+});
 
 app.get('/api/admin/gifts', ...adminOnly, (req, res) => {
   res.json({ gifts: db.prepare('SELECT * FROM gifts ORDER BY sort_order, price_cents').all() });

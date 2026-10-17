@@ -611,6 +611,14 @@ const I18N = {
     contact_save_fail: 'Could not save email — try again',
     contact_removed_toast: 'Email removed — no updates will be sent',
     contact_remove_fail: 'Could not remove email — try again',
+    suggest_title: '💡 Suggestion Box',
+    suggest_hint: 'Want something on the app we haven\'t added yet? Tell us — we read every suggestion. 💋',
+    suggest_placeholder: 'Your idea…',
+    suggest_send: 'Send suggestion',
+    suggest_thanks: '✅ Thanks! Your suggestion is in — we read every one 💋',
+    suggest_err_empty: 'Write a suggestion first',
+    suggest_err_long: 'Keep it under 1,000 characters',
+    suggest_err_rate: 'You\'ve sent 5 suggestions today — try again tomorrow',
     pk_h: '🔐 Face ID sign-in',
     pk_unsupported: 'This device or browser doesn\'t support Face ID sign-in — it needs Safari or Chrome over HTTPS on a device with Face ID / a fingerprint reader. Your password works as always.',
     pk_note: 'Sign in with your face or fingerprint instead of typing your password. Your password still works as a backup.',
@@ -1205,6 +1213,14 @@ const I18N = {
     contact_save_fail: 'No se pudo guardar el correo — inténtalo de nuevo',
     contact_removed_toast: 'Correo eliminado — no se enviarán novedades',
     contact_remove_fail: 'No se pudo quitar el correo — inténtalo de nuevo',
+    suggest_title: '💡 Buzón de sugerencias',
+    suggest_hint: '¿Quieres algo en la app que aún no agregamos? Cuéntanos — leemos cada sugerencia. 💋',
+    suggest_placeholder: 'Tu idea…',
+    suggest_send: 'Enviar sugerencia',
+    suggest_thanks: '✅ ¡Gracias! Tu sugerencia ya llegó — leemos cada una 💋',
+    suggest_err_empty: 'Primero escribe una sugerencia',
+    suggest_err_long: 'Mantenlo en menos de 1.000 caracteres',
+    suggest_err_rate: 'Ya enviaste 5 sugerencias hoy — inténtalo mañana',
     pk_h: '🔐 Inicio de sesión con Face ID',
     pk_unsupported: 'Este dispositivo o navegador no admite el inicio de sesión con Face ID — necesitas Safari o Chrome por HTTPS en un dispositivo con Face ID / lector de huellas. Tu contraseña funciona como siempre.',
     pk_note: 'Inicia sesión con tu rostro o huella en vez de escribir tu contraseña. Tu contraseña sigue funcionando como respaldo.',
@@ -1799,6 +1815,14 @@ const I18N = {
     contact_save_fail: 'Não foi possível salvar o e-mail — tente de novo',
     contact_removed_toast: 'E-mail removido — nenhuma novidade será enviada',
     contact_remove_fail: 'Não foi possível remover o e-mail — tente de novo',
+    suggest_title: '💡 Caixa de sugestões',
+    suggest_hint: 'Quer algo no app que ainda não adicionamos? Conta pra gente — lemos cada sugestão. 💋',
+    suggest_placeholder: 'Sua ideia…',
+    suggest_send: 'Enviar sugestão',
+    suggest_thanks: '✅ Obrigado! Sua sugestão chegou — lemos todas 💋',
+    suggest_err_empty: 'Escreva uma sugestão primeiro',
+    suggest_err_long: 'Mantenha abaixo de 1.000 caracteres',
+    suggest_err_rate: 'Você já enviou 5 sugestões hoje — tente amanhã',
     pk_h: '🔐 Entrar com Face ID',
     pk_unsupported: 'Este dispositivo ou navegador não suporta entrar com Face ID — é preciso Safari ou Chrome em HTTPS em um aparelho com Face ID / leitor de digital. Sua senha funciona como sempre.',
     pk_note: 'Entre com seu rosto ou digital em vez de digitar sua senha. Sua senha continua funcionando como reserva.',
@@ -2393,6 +2417,14 @@ const I18N = {
     contact_save_fail: 'Impossible d\'enregistrer l\'e-mail — réessayez',
     contact_removed_toast: 'E-mail retiré — aucune nouvelle ne sera envoyée',
     contact_remove_fail: 'Impossible de retirer l\'e-mail — réessayez',
+    suggest_title: '💡 Boîte à suggestions',
+    suggest_hint: 'Vous voulez quelque chose dans l\'app que nous n\'avons pas encore ajouté ? Dites-le-nous — nous lisons chaque suggestion. 💋',
+    suggest_placeholder: 'Votre idée…',
+    suggest_send: 'Envoyer la suggestion',
+    suggest_thanks: '✅ Merci ! Votre suggestion est bien arrivée — nous lisons chacune d\'elles 💋',
+    suggest_err_empty: 'Écrivez d\'abord une suggestion',
+    suggest_err_long: 'Restez sous les 1 000 caractères',
+    suggest_err_rate: 'Vous avez déjà envoyé 5 suggestions aujourd\'hui — réessayez demain',
     pk_h: '🔐 Connexion Face ID',
     pk_unsupported: 'Cet appareil ou navigateur ne prend pas en charge la connexion Face ID — il faut Safari ou Chrome en HTTPS sur un appareil avec Face ID / un lecteur d\'empreintes. Votre mot de passe fonctionne comme toujours.',
     pk_note: 'Connectez-vous avec votre visage ou votre empreinte au lieu de saisir votre mot de passe. Votre mot de passe reste une solution de secours.',
@@ -2987,6 +3019,14 @@ const I18N = {
     contact_save_fail: 'E-Mail konnte nicht gespeichert werden — versuche es erneut',
     contact_removed_toast: 'E-Mail entfernt — es werden keine Updates gesendet',
     contact_remove_fail: 'E-Mail konnte nicht entfernt werden — versuche es erneut',
+    suggest_title: '💡 Vorschlagsbox',
+    suggest_hint: 'Wünschst du dir etwas in der App, das wir noch nicht hinzugefügt haben? Sag es uns — wir lesen jeden Vorschlag. 💋',
+    suggest_placeholder: 'Deine Idee…',
+    suggest_send: 'Vorschlag senden',
+    suggest_thanks: '✅ Danke! Dein Vorschlag ist da — wir lesen jeden einzelnen 💋',
+    suggest_err_empty: 'Schreibe zuerst einen Vorschlag',
+    suggest_err_long: 'Bitte unter 1.000 Zeichen bleiben',
+    suggest_err_rate: 'Du hast heute schon 5 Vorschläge gesendet — versuch es morgen wieder',
     pk_h: '🔐 Face ID Anmeldung',
     pk_unsupported: 'Dieses Gerät oder dieser Browser unterstützt Face ID-Anmeldung nicht — es braucht Safari oder Chrome über HTTPS auf einem Gerät mit Face ID / Fingerabdruckleser. Dein Passwort funktioniert wie immer.',
     pk_note: 'Melde dich mit deinem Gesicht oder Fingerabdruck an, statt dein Passwort zu tippen. Dein Passwort funktioniert weiterhin als Backup.',
@@ -3581,6 +3621,14 @@ const I18N = {
     contact_save_fail: 'Не удалось сохранить email — попробуйте ещё раз',
     contact_removed_toast: 'Email удалён — новости отправляться не будут',
     contact_remove_fail: 'Не удалось удалить email — попробуйте ещё раз',
+    suggest_title: '💡 Ящик предложений',
+    suggest_hint: 'Хотите что-то в приложении, чего мы ещё не добавили? Расскажите нам — мы читаем каждое предложение. 💋',
+    suggest_placeholder: 'Ваша идея…',
+    suggest_send: 'Отправить предложение',
+    suggest_thanks: '✅ Спасибо! Ваше предложение получено — мы читаем каждое 💋',
+    suggest_err_empty: 'Сначала напишите предложение',
+    suggest_err_long: 'Не более 1 000 символов',
+    suggest_err_rate: 'Вы уже отправили 5 предложений сегодня — попробуйте завтра',
     pk_h: '🔐 Вход по Face ID',
     pk_unsupported: 'Это устройство или браузер не поддерживает вход по Face ID — нужен Safari или Chrome по HTTPS на устройстве с Face ID / сканером отпечатков. Ваш пароль работает как всегда.',
     pk_note: 'Входите с помощью лица или отпечатка вместо ввода пароля. Ваш пароль по-прежнему работает как запасной вариант.',
@@ -4175,6 +4223,14 @@ const I18N = {
     contact_save_fail: 'メールを保存できませんでした — 再試行してね',
     contact_removed_toast: 'メールを削除しました — 更新は送信されません',
     contact_remove_fail: 'メールを削除できませんでした — 再試行してね',
+    suggest_title: '💡 ご意見ボックス',
+    suggest_hint: 'アプリにまだない機能がほしい？教えて — 全部の提案を読んでます。💋',
+    suggest_placeholder: 'あなたのアイデア…',
+    suggest_send: '提案を送信',
+    suggest_thanks: '✅ ありがとう！提案が届きました — 全部読んでます💋',
+    suggest_err_empty: 'まず提案を書いてね',
+    suggest_err_long: '1,000文字以内でお願いします',
+    suggest_err_rate: '今日はもう5件送信済みです — 明日また試してね',
     pk_h: '🔐 Face IDサインイン',
     pk_unsupported: 'このデバイスまたはブラウザはFace IDサインインに対応していません — Face ID / 指紋リーダーを備えたデバイスで、HTTPS経由のSafariまたはChromeが必要です。パスワードはいつも通り使えます。',
     pk_note: 'パスワードを入力する代わりに、顔や指紋でサインインできます。パスワードもバックアップとして使えます。',
@@ -4769,6 +4825,14 @@ const I18N = {
     contact_save_fail: '无法保存电子邮件 — 请重试',
     contact_removed_toast: '电子邮件已移除 — 不会发送任何更新',
     contact_remove_fail: '无法移除电子邮件 — 请重试',
+    suggest_title: '💡 意见箱',
+    suggest_hint: '想要应用里还没有的功能？告诉我们 — 每条建议我们都会看。💋',
+    suggest_placeholder: '你的想法…',
+    suggest_send: '发送建议',
+    suggest_thanks: '✅ 谢谢！你的建议已收到 — 每一条我们都会看 💋',
+    suggest_err_empty: '请先写下你的建议',
+    suggest_err_long: '请控制在 1,000 个字符以内',
+    suggest_err_rate: '你今天已发送 5 条建议 — 明天再来',
     pk_h: '🔐 Face ID 登录',
     pk_unsupported: '此设备或浏览器不支持 Face ID 登录 — 它需要在带有 Face ID / 指纹读取器的设备上通过 HTTPS 使用 Safari 或 Chrome。你的密码照常可用。',
     pk_note: '用你的面容或指纹登录，而不是输入密码。你的密码仍可作为备用。',
@@ -5363,6 +5427,14 @@ const I18N = {
     contact_save_fail: '이메일을 저장할 수 없습니다 — 다시 시도하세요',
     contact_removed_toast: '이메일이 제거되었습니다 — 소식이 전송되지 않습니다',
     contact_remove_fail: '이메일을 제거할 수 없습니다 — 다시 시도하세요',
+    suggest_title: '💡 건의함',
+    suggest_hint: '앱에 아직 없는 기능이 있었으면 하나요? 알려주세요 — 모든 건의를 다 읽어요. 💋',
+    suggest_placeholder: '아이디어를 입력하세요…',
+    suggest_send: '건의 보내기',
+    suggest_thanks: '✅ 감사해요! 건의가 접수됐어요 — 하나하나 다 읽어요 💋',
+    suggest_err_empty: '먼저 건의를 입력하세요',
+    suggest_err_long: '1,000자 이내로 작성해주세요',
+    suggest_err_rate: '오늘 이미 5건을 보냈어요 — 내일 다시 시도하세요',
     pk_h: '🔐 Face ID 로그인',
     pk_unsupported: '이 기기나 브라우저는 Face ID 로그인을 지원하지 않습니다 — Face ID / 지문 인식기가 있는 기기에서 HTTPS를 통한 Safari나 Chrome이 필요합니다. 비밀번호는 평소처럼 작동합니다.',
     pk_note: '비밀번호를 입력하는 대신 얼굴이나 지문으로 로그인하세요. 비밀번호도 백업으로 계속 사용할 수 있습니다.',
@@ -5957,6 +6029,14 @@ const I18N = {
     contact_save_fail: 'Impossibile salvare l\'email — riprova',
     contact_removed_toast: 'Email rimossa — nessun aggiornamento verrà inviato',
     contact_remove_fail: 'Impossibile rimuovere l\'email — riprova',
+    suggest_title: '💡 Cassetta dei suggerimenti',
+    suggest_hint: 'Vuoi qualcosa nell\'app che non abbiamo ancora aggiunto? Diccelo — leggiamo ogni suggerimento. 💋',
+    suggest_placeholder: 'La tua idea…',
+    suggest_send: 'Invia suggerimento',
+    suggest_thanks: '✅ Grazie! Il tuo suggerimento è arrivato — li leggiamo tutti 💋',
+    suggest_err_empty: 'Prima scrivi un suggerimento',
+    suggest_err_long: 'Resta sotto i 1.000 caratteri',
+    suggest_err_rate: 'Hai già inviato 5 suggerimenti oggi — riprova domani',
     pk_h: '🔐 Accesso con Face ID',
     pk_unsupported: 'Questo dispositivo o browser non supporta l\'accesso con Face ID — serve Safari o Chrome su HTTPS su un dispositivo con Face ID / lettore di impronte. La tua password funziona come sempre.',
     pk_note: 'Accedi con il viso o l\'impronta invece di scrivere la password. La tua password funziona ancora come backup.',
@@ -6551,6 +6631,14 @@ const I18N = {
     contact_save_fail: 'Nie udało się zapisać e-maila — spróbuj ponownie',
     contact_removed_toast: 'E-mail usunięty — żadne aktualizacje nie będą wysyłane',
     contact_remove_fail: 'Nie udało się usunąć e-maila — spróbuj ponownie',
+    suggest_title: '💡 Skrzynka sugestii',
+    suggest_hint: 'Chcesz czegoś w aplikacji, czego jeszcze nie dodaliśmy? Powiedz nam — czytamy każdą sugestię. 💋',
+    suggest_placeholder: 'Twój pomysł…',
+    suggest_send: 'Wyślij sugestię',
+    suggest_thanks: '✅ Dzięki! Twoja sugestia dotarła — czytamy każdą 💋',
+    suggest_err_empty: 'Najpierw napisz sugestię',
+    suggest_err_long: 'Maksymalnie 1 000 znaków',
+    suggest_err_rate: 'Wysłałeś już dziś 5 sugestii — spróbuj jutro',
     pk_h: '🔐 Logowanie Face ID',
     pk_unsupported: 'To urządzenie lub przeglądarka nie obsługuje logowania Face ID — wymaga Safari lub Chrome przez HTTPS na urządzeniu z Face ID / czytnikiem linii papilarnych. Twoje hasło działa jak zawsze.',
     pk_note: 'Loguj się twarzą lub odciskiem palca zamiast wpisywać hasło. Twoje hasło nadal działa jako kopia zapasowa.',
@@ -7145,6 +7233,14 @@ const I18N = {
     contact_save_fail: 'Kon e-mail niet opslaan — probeer opnieuw',
     contact_removed_toast: 'E-mail verwijderd — er worden geen updates verzonden',
     contact_remove_fail: 'Kon e-mail niet verwijderen — probeer opnieuw',
+    suggest_title: '💡 Ideeënbus',
+    suggest_hint: 'Wil je iets in de app dat we nog niet hebben toegevoegd? Vertel het ons — we lezen elke suggestie. 💋',
+    suggest_placeholder: 'Jouw idee…',
+    suggest_send: 'Suggestie versturen',
+    suggest_thanks: '✅ Bedankt! Je suggestie is binnen — we lezen ze allemaal 💋',
+    suggest_err_empty: 'Schrijf eerst een suggestie',
+    suggest_err_long: 'Houd het onder de 1.000 tekens',
+    suggest_err_rate: 'Je hebt vandaag al 5 suggesties gestuurd — probeer het morgen opnieuw',
     pk_h: '🔐 Face ID inloggen',
     pk_unsupported: 'Dit apparaat of deze browser ondersteunt Face ID inloggen niet — het heeft Safari of Chrome via HTTPS nodig op een apparaat met Face ID / een vingerafdruklezer. Je wachtwoord werkt zoals altijd.',
     pk_note: 'Log in met je gezicht of vingerafdruk in plaats van je wachtwoord te typen. Je wachtwoord werkt nog steeds als back-up.',
@@ -7739,6 +7835,14 @@ const I18N = {
     contact_save_fail: 'E-posta kaydedilemedi — tekrar dene',
     contact_removed_toast: 'E-posta kaldırıldı — güncelleme gönderilmeyecek',
     contact_remove_fail: 'E-posta kaldırılamadı — tekrar dene',
+    suggest_title: '💡 Öneri kutusu',
+    suggest_hint: 'Uygulamada henüz eklemediğimiz bir şey mi istiyorsun? Bize söyle — her öneriyi okuyoruz. 💋',
+    suggest_placeholder: 'Fikrin…',
+    suggest_send: 'Öneriyi gönder',
+    suggest_thanks: '✅ Teşekkürler! Önerin ulaştı — hepsini tek tek okuyoruz 💋',
+    suggest_err_empty: 'Önce bir öneri yaz',
+    suggest_err_long: 'En fazla 1.000 karakter olsun',
+    suggest_err_rate: 'Bugün zaten 5 öneri gönderdin — yarın tekrar dene',
     pk_h: '🔐 Face ID ile giriş',
     pk_unsupported: 'Bu cihaz veya tarayıcı Face ID ile girişi desteklemiyor — Face ID / parmak izi okuyucusu olan bir cihazda HTTPS üzerinden Safari veya Chrome gerekir. Şifren her zamanki gibi çalışır.',
     pk_note: 'Şifreni yazmak yerine yüzün veya parmak izinle giriş yap. Şifren yedek olarak çalışmaya devam eder.',
@@ -9398,6 +9502,45 @@ function renderContactSettingsCard() {
   };
 }
 
+/* Suggestion Box card (fan wallet only, right under the contact
+   card): fans drop ideas for things we haven't added yet. POSTs
+   /api/suggestions; the server enforces non-empty, ≤1000 chars and
+   5-per-24h. Fans only — the host div exists only in the fan wallet,
+   and the renderer double-checks the role. */
+function renderSuggestionCard() {
+  const host = document.getElementById('suggest-card');
+  if (!host) return;
+  if (!S.user || S.user.role !== 'fan') { host.innerHTML = ''; return; }
+  host.innerHTML = `
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">${t('suggest_title')}</div>
+      <div class="muted small" style="margin-bottom:10px">${t('suggest_hint')}</div>
+      <label class="field"><textarea class="input" id="sg-text" rows="3" maxlength="1000" placeholder="${t('suggest_placeholder')}"></textarea></label>
+      <button class="btn" id="sg-send" style="width:100%;margin-top:6px">${t('suggest_send')}</button>
+      <div class="muted small" id="sg-msg" style="margin-top:6px"></div>
+    </div>`;
+  $('#sg-send').onclick = async () => {
+    const v = $('#sg-text').value.trim();
+    if (!v) { toast(t('suggest_err_empty')); return; }
+    const { status, data } = await api('/suggestions', {
+      method: 'POST', body: JSON.stringify({ text: v }),
+    });
+    if (status === 200) {
+      $('#sg-text').value = '';
+      const m = $('#sg-msg'); if (m) m.textContent = t('suggest_thanks');
+      toast(t('suggest_thanks'));
+    } else if (status === 429 || (data && data.error === 'suggest_rate')) {
+      toast(t('suggest_err_rate'));
+    } else if (data && data.error === 'suggest_too_long') {
+      toast(t('suggest_err_long'));
+    } else if (data && data.error === 'suggest_empty') {
+      toast(t('suggest_err_empty'));
+    } else {
+      toast((data && data.message) || t('suggest_err_empty'));
+    }
+  };
+}
+
 /* ---------------- MODEL INVITE SIGNUP (?invite=CODE) ---------------- */
 
 async function vInviteSignup(code) {
@@ -10405,6 +10548,7 @@ async function vWallet() {
       <div id="pk-card"></div>
       <div id="pw-card"></div>
       <div id="contact-card"></div>
+      <div id="suggest-card"></div>
       ${langCardHTML()}
       <button class="btn ghost" id="w-logout">${t('log_out')}</button>
     </div>`;
@@ -10537,6 +10681,7 @@ async function vWallet() {
   renderPkSettingsCard();
   renderPwSettingsCard();
   renderContactSettingsCard();
+  renderSuggestionCard();
   $('#w-logout').onclick = () => logout();
 }
 
