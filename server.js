@@ -1280,6 +1280,8 @@ addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0
 addColumnIfMissing('platform_stats', 'test_money_cleared_at', 'TEXT');
 addColumnIfMissing('platform_stats', 'commission_60_40_fixed_at', 'TEXT'); // one-time canonical 60/40 correction stamp
 addColumnIfMissing('platform_stats', 'demo_purge_at', 'TEXT'); // one-time demo-seed purge stamp
+addColumnIfMissing('platform_stats', 'play_money_zeroed_at', 'TEXT'); // one-time play-money totals cleanup stamp (Oct 17 2026)
+addColumnIfMissing('platform_stats', 'play_money_abort_at', 'TEXT');   // play-money cleanup abort report stamp (full report logs once)
 addColumnIfMissing('transactions', 'is_test', 'INTEGER NOT NULL DEFAULT 0');
 // Admin visibility switch: hidden models vanish from the public listings
 // (home grid, Lives) without touching their account (Corry, Oct 12 2026).
@@ -3996,6 +3998,119 @@ try { const n = announceSuggestionBoxToFans(); if (n) console.log(`[suggest] Sug
     db.prepare("UPDATE platform_stats SET test_money_cleared_at = datetime('now') WHERE id = 1").run();
     console.log('[cleanup] Pre-launch test money cleared (transactions flagged is_test, balances zeroed).');
   } catch (e) { console.log('[cleanup] test money clear failed:', e.message); }
+})();
+
+// One-time play-money totals cleanup (Asce, Oct 17 2026): every sale on
+// the platform to date is PLAY money — demo/test credits spent by test
+// fan accounts (chiefly fandemo). No real purchase has ever occurred
+// (card buy returns 501; CCBill webhook dormant). The Oct 12 cleanup
+// flagged only the transactions that existed then; test fans kept
+// spending afterwards with is_test=0, polluting total_sales, model
+// earnings and rank_score. This pass audits the ledger FIRST and only
+// flags rows it can prove are play money:
+//   - a fan's spends are play iff that fan has NEVER received a real
+//     credit load (no 'crypto_load' / 'ccbill_load' transaction and no
+//     credited crypto invoice). Wallet credits are fungible, so ANY
+//     real load by a spending fan aborts the whole pass untouched.
+//   - any unattributed (fan_id NULL) non-payout model row aborts too.
+//   - any paid_out_cents > 0 on an affected model/recruiter aborts
+//     (play money actually paid out is the owner's to handle).
+// On success it flags the exact audited rows is_test=1 (nothing is
+// deleted — same as the Oct 12 precedent), resyncs the affected
+// earnings wallets from the post-flag ledger, subtracts the play
+// platform cut, rejects pending withdrawals of affected earners, and
+// recomputes ranks. Fan wallets are NEVER touched: nobody is
+// re-credited, and fandemo's test-credit balance stays exactly as-is.
+(function zeroPlayMoneyOnce() {
+  try {
+    const stats = db.prepare('SELECT play_money_zeroed_at, play_money_abort_at FROM platform_stats WHERE id = 1').get();
+    if (!stats || stats.play_money_zeroed_at) return;
+    const rows = db.prepare(`SELECT id, fan_id, model_id, type, gross_cents, model_cents,
+                                    platform_cents, recruiter_id, recruiter_cents
+                             FROM transactions
+                             WHERE is_test = 0 AND model_id IS NOT NULL AND type <> 'payout'`).all();
+    if (!rows.length) {
+      db.prepare("UPDATE platform_stats SET play_money_zeroed_at = datetime('now') WHERE id = 1").run();
+      console.log('[cleanup] Play-money pass: no live (is_test=0) model transactions — nothing to zero.');
+      return;
+    }
+    // ---- audit ----
+    const uname = (id) => { const u = db.prepare('SELECT username FROM users WHERE id = ?').get(id); return u ? u.username : `#${id}`; };
+    const fanIds = [...new Set(rows.filter(r => r.fan_id != null).map(r => r.fan_id))];
+    const nullFanRows = rows.filter(r => r.fan_id == null);
+    let abort = null;
+    if (nullFanRows.length) abort = `${nullFanRows.length} model transaction(s) have no fan attribution — cannot classify, owner review needed`;
+    const fanAudit = [];
+    for (const fid of fanIds) {
+      const loads = db.prepare(`SELECT COUNT(*) AS n FROM transactions
+                                WHERE fan_id = ? AND type IN ('crypto_load','ccbill_load')`).get(fid).n;
+      let invoices = 0;
+      try { invoices = db.prepare('SELECT COUNT(*) AS n FROM crypto_invoices WHERE user_id = ? AND credited_cents > 0').get(fid).n; } catch (e) { /* table absent on very old DBs */ }
+      const mine = rows.filter(r => r.fan_id === fid);
+      fanAudit.push({ fid, name: uname(fid), rows: mine.length, gross: mine.reduce((s, r) => s + r.gross_cents, 0), loads, invoices });
+      if (!abort && (loads > 0 || invoices > 0)) abort = `fan ${uname(fid)} (#${fid}) holds REAL credit loads (${loads} load txns, ${invoices} credited crypto invoices) — real and play money are commingled, refusing to guess`;
+    }
+    const modelIds = [...new Set(rows.map(r => r.model_id))];
+    const recUserId = (rid) => { const rec = db.prepare('SELECT user_id FROM recruiters WHERE id = ?').get(rid); return rec ? rec.user_id : null; };
+    const recruiterUserIds = [...new Set(rows.filter(r => r.recruiter_id != null).map(r => recUserId(r.recruiter_id)).filter(x => x != null))];
+    for (const uid of [...modelIds, ...recruiterUserIds]) {
+      const w = db.prepare('SELECT paid_out_cents FROM wallets WHERE user_id = ?').get(uid);
+      if (!abort && w && w.paid_out_cents > 0) abort = `${uname(uid)} (#${uid}) already has paid_out_cents=${w.paid_out_cents} — possible real payout of play earnings, owner review needed`;
+    }
+    // the audit trail (logged whether the pass proceeds or aborts)
+    for (const m of modelIds) {
+      const mine = rows.filter(r => r.model_id === m);
+      console.log(`[cleanup][audit] model ${uname(m)} (#${m}): ${mine.length} live rows, gross $${(mine.reduce((s, r) => s + r.gross_cents, 0) / 100).toFixed(2)}, credited $${(mine.reduce((s, r) => s + r.model_cents, 0) / 100).toFixed(2)}`);
+    }
+    for (const f of fanAudit) console.log(`[cleanup][audit] fan ${f.name} (#${f.fid}): ${f.rows} spend rows, gross $${(f.gross / 100).toFixed(2)}, real loads: ${f.loads} txns / ${f.invoices} invoices`);
+    if (abort) {
+      if (!stats.play_money_abort_at) {
+        db.prepare("UPDATE platform_stats SET play_money_abort_at = datetime('now') WHERE id = 1").run();
+        console.log(`[cleanup] Play-money pass ABORTED — ${abort}. NOTHING was changed. Full audit above; this report logs once.`);
+      } else {
+        console.log(`[cleanup] Play-money pass still aborted (${abort}) — see first abort report. Nothing changed.`);
+      }
+      return;
+    }
+    // ---- clean ----
+    const before = {};
+    for (const m of modelIds) {
+      const mine = rows.filter(r => r.model_id === m);
+      before[m] = { gross: mine.reduce((s, r) => s + r.gross_cents, 0), credited: mine.reduce((s, r) => s + r.model_cents, 0) };
+    }
+    const playPlatform = rows.reduce((s, r) => s + r.platform_cents, 0);
+    txn(() => {
+      const upd = db.prepare('UPDATE transactions SET is_test = 1 WHERE id = ?');
+      for (const r of rows) upd.run(r.id);
+      // Resync model earnings wallets from the post-flag ledger (documented
+      // invariant: ledger sum = earnings_cents + paid_out_cents; the guard
+      // above proved paid_out_cents = 0 for every affected earner).
+      for (const m of modelIds) {
+        const w = db.prepare('SELECT paid_out_cents FROM wallets WHERE user_id = ?').get(m) || { paid_out_cents: 0 };
+        db.prepare('UPDATE wallets SET earnings_cents = ? WHERE user_id = ?').run(modelEarningsCents(m) - w.paid_out_cents, m);
+      }
+      // Recruiter wallets: subtract exactly the flagged recruiter cents.
+      const recByUser = {};
+      for (const r of rows) if (r.recruiter_id != null && r.recruiter_cents) {
+        const uid = recUserId(r.recruiter_id);
+        if (uid != null) recByUser[uid] = (recByUser[uid] || 0) + r.recruiter_cents;
+      }
+      for (const [uid, cents] of Object.entries(recByUser)) {
+        db.prepare('UPDATE wallets SET earnings_cents = MAX(0, earnings_cents - ?) WHERE user_id = ?').run(cents, Number(uid));
+      }
+      db.prepare('UPDATE platform_stats SET earnings_cents = MAX(0, earnings_cents - ?) WHERE id = 1').run(playPlatform);
+      const affected = [...modelIds, ...Object.keys(recByUser).map(Number)];
+      if (affected.length) {
+        db.prepare(`UPDATE withdrawals SET status = 'rejected', decided_at = datetime('now'),
+                    note = 'Play-money cleanup — test balance cleared (Oct 17 2026)'
+                    WHERE status = 'pending' AND model_id IN (${affected.map(() => '?').join(',')})`).run(...affected);
+      }
+      db.prepare("UPDATE platform_stats SET play_money_zeroed_at = datetime('now') WHERE id = 1").run();
+    });
+    recomputeAllModelRanks();
+    for (const m of modelIds) console.log(`[cleanup] model ${uname(m)}: total_sales $${(before[m].gross / 100).toFixed(2)} → $0.00, credited $${(before[m].credited / 100).toFixed(2)} → $0.00 (play money flagged is_test)`);
+    console.log(`[cleanup] Play-money totals zeroed: ${rows.length} transactions flagged is_test across ${modelIds.length} models / ${fanIds.length} test fans. No accounts touched, no fan balances changed, nothing deleted.`);
+  } catch (e) { console.log('[cleanup] play-money zeroing failed:', e.message); }
 })();
 
 // One-time correction (Asce, Oct 16 2026): the canonical split has always
