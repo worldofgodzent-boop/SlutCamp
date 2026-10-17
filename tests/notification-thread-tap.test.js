@@ -37,7 +37,7 @@
  *     extracted from app.js and run in a vm against stubbed
  *     show/api/S. The router fires the helper without awaiting it,
  *     so tests settle a macrotask before asserting the final show.
- *  2. Source pins: all 13 server call sites carry the thread link
+ *  2. Source pins: all 14 server call sites carry the thread link
  *     (per-function statement extraction + an exact global count),
  *     and the client's /#chat/ rule sits before the generic
  *     chats-list fallback.
@@ -213,7 +213,8 @@ const ADMIN_DM_FNS = [
   'sendModelHomeScreenVideo', 'sendModelIdVerify', 'sendModelAffiliate',
   'announceGameCategoryToModels', 'announceAgreement12ToModels',
   'announcePublicPhotoToModels', 'announceNotifFixToModels',
-  'announcePreviewVideoToModels', 'sendAdminApologyDm',
+  'announcePreviewVideoToModels', 'announceThreadTapToModels',
+  'sendAdminApologyDm',
 ];
 
 test('pin: every admin-DM sender/broadcast bell carries its thread link', () => {
@@ -232,10 +233,12 @@ test('pin: the Manager admin→model message bell carries its thread link', () =
   assert.ok(stmt.includes('`/#chat/${conv.id}`'), 'route bell must link to its thread');
 });
 
-test('pin: exactly 13 thread links exist server-side — no more, no fewer', () => {
-  // 12 named functions + the Manager route. Any other bell gaining
-  // a '/#chat/' link (or one of the 13 losing it) trips this count.
-  assert.equal(server.split('/#chat/${conv.id}').length - 1, 13);
+test('pin: exactly 14 thread links exist server-side — no more, no fewer', () => {
+  // 13 named functions + the Manager route. (The thread-tap broadcast
+  // joined the list when it shipped — its bell demonstrates the
+  // feature.) Any other bell gaining a '/#chat/' link (or one of the
+  // 14 losing it) trips this count.
+  assert.equal(server.split('/#chat/${conv.id}').length - 1, 14);
 });
 
 test('pin: non-DM bells keep their links (tip/facetime/live/booking untouched)', () => {
