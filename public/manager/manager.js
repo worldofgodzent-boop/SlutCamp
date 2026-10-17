@@ -625,6 +625,20 @@ async function adminPayoutsBody() {
         <span class="muted">${timeHM(h.created_at)}</span></div>`).join('') || '<div class="muted">No payouts yet.</div>'}`;
 }
 
+async function adminSuggestionsBody() {
+  const { data } = await api('/admin/suggestions');
+  const rows = (data && data.suggestions) || [];
+  const nextOf = { new: 'read', read: 'done', done: 'new' };
+  return `
+    <div style="font-weight:800;margin-bottom:10px">💡 Fan suggestions <span class="small muted">(newest first · the button cycles status new → read → done)</span></div>
+    ${rows.map((s) => `
+      <div class="card" style="padding:10px;margin-bottom:8px">
+        <b>${esc(s.username)}</b> <span class="small muted">${timeHM(s.created_at)} · status: <b>${esc(s.status)}</b></span>
+        <div style="white-space:pre-wrap;font-size:14px;margin:6px 0">${esc(s.body)}</div>
+        <button class="btn small ghost" data-sug-cycle="${s.id}" data-sug-status="${esc(s.status)}">Mark ${nextOf[s.status] || 'read'} →</button>
+      </div>`).join('') || '<div class="empty">No suggestions yet.</div>'}`;
+}
+
 async function adminFansBody() {
   const { data } = await api('/admin/fans');
   const fanLoadsLine = (f) => {
@@ -1139,6 +1153,20 @@ function wireAdminBody(tab) {
   const go = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
   go('#go-safety', () => M.go('safety'));
   go('#a-logout', () => M.logout());
+
+  // 💡 Suggestions — status cycle buttons (new → read → done → new)
+  if (tab === 'suggestions') {
+    document.querySelectorAll('[data-sug-cycle]').forEach((b) => {
+      b.onclick = async () => {
+        const next = { new: 'read', read: 'done', done: 'new' }[b.dataset.sugStatus] || 'read';
+        const { status } = await api(`/admin/suggestions/${b.dataset.sugCycle}/status`, {
+          method: 'POST', body: JSON.stringify({ status: next }),
+        });
+        if (status === 200) M.render();
+        else toast('Could not update that suggestion.');
+      };
+    });
+  }
 
   // 🧾 Tax — CSV export for the accountant (download via fetch → blob)
   go('#tax-export', async () => {
@@ -1946,7 +1974,7 @@ const NAV = [
   ['dash', '📊 Overview'], ['models', '💃 Models'], ['idchecks', '🪪 ID Checks'],
   ['invites', '✉️ Invites'], ['chats', '👀 Chats'], ['safety', '🛡️ Safety'],
   ['live', '🔴 Live'], ['payouts', '💸 Payouts'], ['tax', '🧾 Tax'],
-  ['dmca', '⚖️ DMCA'], ['fans', '🧑 Fans'], ['bookings', '📅 Bookings'],
+  ['dmca', '⚖️ DMCA'], ['fans', '🧑 Fans'], ['suggestions', '💡 Suggestions'], ['bookings', '📅 Bookings'],
   ['contracts', '📝 Contracts'], ['partners', '🤝 Partners'],
   ['refunds', '💳 Refunds'], ['disputes', '⚠️ Disputes'],
   ['analytics', '📈 Analytics'], ['more', '⚙️ Settings'],
@@ -1956,7 +1984,7 @@ const NAV = [
    source of labels/titles). '' heading = no heading row. */
 const NAV_GROUPS = [
   ['', ['dash']],
-  ['People', ['models', 'idchecks', 'fans', 'partners']],
+  ['People', ['models', 'idchecks', 'fans', 'suggestions', 'partners']],
   ['Money', ['payouts', 'tax', 'refunds', 'disputes']],
   ['Safety & Content', ['chats', 'live', 'safety', 'dmca']],
   ['Growth', ['invites', 'bookings', 'contracts', 'analytics']],
@@ -2001,6 +2029,7 @@ const SCREENS = {
   fans: adminFansBody, bookings: adminBookingsBody, contracts: adminContractsBody,
   idchecks: adminIdChecksBody, partners: adminPartnersBody, refunds: adminRefundsBody,
   disputes: adminDisputesBody, tax: adminTaxBody, dmca: adminDmcaBody,
+  suggestions: adminSuggestionsBody,
   analytics: adminAnalyticsBody, more: adminMoreBody,
   peek: peekBody, watch: watchBody,
 };
