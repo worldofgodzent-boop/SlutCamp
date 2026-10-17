@@ -154,7 +154,6 @@ const I18N = {
     ranked_n: '🏆 Ranked #{n}',
     tap_for_sound: 'Tap for sound',
     msg_her_btn: '💬 Message her',
-    msg_her_join_btn: '💬 Join free to message her',
     pv2_blurb: '🎬 <b>Second profile video</b> — one more main video on your profile, under your pictures. Twerk, introduce yourself, tease — whatever you want, it\'s your hook. It only ever plays inside the app. Under 15MB.',
     gallery_h: '🖼️ Profile pictures',
     gallery_note: 'Fans see these on your profile page — your main photo first, then these. 10 pictures max, no feed, just your page.',
@@ -163,8 +162,6 @@ const I18N = {
     gallery_main: 'Main',
     gallery_full: 'That\'s 10 — your profile is full! Remove one to add another.',
     gallery_removed: 'Picture removed 🖼️',
-    gallery_reordered: 'Picture order saved ✨',
-    gallery_drag_hint: 'Hold a picture and drag it where you want — the first picture tops your profile.',
     tap_to_mute: 'Tap to mute',
     new_models_title: '🆕 New models you may like',
     new_badge: 'NEW',
@@ -185,6 +182,8 @@ const I18N = {
     offline: '● Offline',
     watching: '{n} watching',
     featured: '⭐ Featured',
+    official_label: 'Official',
+    official_tagline: 'The app itself — lives, news & specials 💋',
     top_model: '👑 Top Model',
     per_msg_rate: '{price}/msg',
     per_min_rate: '{price}/min video',
@@ -768,7 +767,6 @@ const I18N = {
     ranked_n: '🏆 En el puesto #{n}',
     tap_for_sound: 'Toca para escuchar',
     msg_her_btn: '💬 Escríbele',
-    msg_her_join_btn: '💬 Únete gratis para escribirle',
     pv2_blurb: '🎬 <b>Segundo video de perfil</b> — un video principal más en tu perfil, debajo de tus fotos. Twerk, preséntate, provoca — lo que quieras, es tu gancho. Solo se reproduce dentro de la app. Menos de 15MB.',
     gallery_h: '🖼️ Fotos de perfil',
     gallery_note: 'Los fans las ven en tu página de perfil: primero tu foto principal, luego estas. Máximo 10 fotos, sin feed, solo tu página.',
@@ -777,8 +775,6 @@ const I18N = {
     gallery_main: 'Principal',
     gallery_full: 'Ya son 10 — ¡tu perfil está lleno! Elimina una para agregar otra.',
     gallery_removed: 'Foto eliminada 🖼️',
-    gallery_reordered: 'Orden de fotos guardado ✨',
-    gallery_drag_hint: 'Mantén presionada una foto y arrástrala donde quieras: la primera foto encabeza tu perfil.',
     tap_to_mute: 'Toca para silenciar',
     new_models_title: '🆕 Modelos nuevas que te pueden gustar',
     new_badge: 'NUEVA',
@@ -799,6 +795,8 @@ const I18N = {
     offline: '● Desconectada',
     watching: '{n} mirando',
     featured: '⭐ Destacada',
+    official_label: 'Oficial',
+    official_tagline: 'La propia app — directos, novedades y especiales 💋',
     top_model: '👑 Modelo Top',
     per_msg_rate: '{price}/msj',
     per_min_rate: '{price}/min de video',
@@ -1382,7 +1380,6 @@ const I18N = {
     ranked_n: '🏆 Posição #{n}',
     tap_for_sound: 'Toque para ouvir',
     msg_her_btn: '💬 Fale com ela',
-    msg_her_join_btn: '💬 Entre grátis para falar com ela',
     pv2_blurb: '🎬 <b>Segundo vídeo de perfil</b> — mais um vídeo principal no seu perfil, abaixo das suas fotos. Twerk, se apresente, provoque — o que quiser, é o seu gancho. Só toca dentro do app. Menos de 15MB.',
     gallery_h: '🖼️ Fotos de perfil',
     gallery_note: 'Os fãs veem estas na sua página de perfil — sua foto principal primeiro, depois estas. Máximo de 10 fotos, sem feed, só a sua página.',
@@ -1391,8 +1388,6 @@ const I18N = {
     gallery_main: 'Principal',
     gallery_full: 'Já são 10 — seu perfil está cheio! Remova uma para adicionar outra.',
     gallery_removed: 'Foto removida 🖼️',
-    gallery_reordered: 'Ordem das fotos salva ✨',
-    gallery_drag_hint: 'Segure uma foto e arraste para onde quiser — a primeira foto fica no topo do seu perfil.',
     tap_to_mute: 'Toque para silenciar',
     new_models_title: '🆕 Modelos novas que você pode gostar',
     new_badge: 'NOVA',
@@ -1413,6 +1408,8 @@ const I18N = {
     offline: '● Offline',
     watching: '{n} assistindo',
     featured: '⭐ Destaque',
+    official_label: 'Oficial',
+    official_tagline: 'O próprio app — lives, novidades e especiais 💋',
     top_model: '👑 Modelo Top',
     per_msg_rate: '{price}/msg',
     per_min_rate: '{price}/min de vídeo',
@@ -1996,7 +1993,6 @@ const I18N = {
     ranked_n: '🏆 Classée #{n}',
     tap_for_sound: 'Touchez pour le son',
     msg_her_btn: '💬 Lui écrire',
-    msg_her_join_btn: '💬 Inscris-toi gratuitement pour lui écrire',
     pv2_blurb: '🎬 <b>Deuxième vidéo de profil</b> — une vidéo principale de plus sur ton profil, sous tes photos. Twerk, présente-toi, provoque — ce que tu veux, c\'est ton accroche. Ne joue que dans l\'app. Moins de 15 Mo.',
     gallery_h: '🖼️ Photos de profil',
     gallery_note: 'Les fans les voient sur ta page de profil — ta photo principale d\'abord, puis celles-ci. 10 photos max, pas de fil, juste ta page.',
@@ -2005,8 +2001,6 @@ const I18N = {
     gallery_main: 'Principale',
     gallery_full: 'Ça fait 10 — ton profil est plein ! Retire-en une pour en ajouter une autre.',
     gallery_removed: 'Photo retirée 🖼️',
-    gallery_reordered: 'Ordre des photos enregistré ✨',
-    gallery_drag_hint: 'Maintiens une photo et fais-la glisser où tu veux — la première photo est en haut de ton profil.',
     tap_to_mute: 'Touchez pour couper le son',
     new_models_title: '🆕 Nouveaux modèles qui pourraient vous plaire',
     new_badge: 'NOUVEAU',
@@ -2027,6 +2021,8 @@ const I18N = {
     offline: '● Hors ligne',
     watching: '{n} regardent',
     featured: '⭐ À la une',
+    official_label: 'Officiel',
+    official_tagline: 'L’application elle-même — directs, infos et offres spéciales 💋',
     top_model: '👑 Top Modèle',
     per_msg_rate: '{price}/message',
     per_min_rate: '{price}/min vidéo',
@@ -2610,7 +2606,6 @@ const I18N = {
     ranked_n: '🏆 Platz #{n}',
     tap_for_sound: 'Für Ton tippen',
     msg_her_btn: '💬 Schreib ihr',
-    msg_her_join_btn: '💬 Gratis anmelden, um ihr zu schreiben',
     pv2_blurb: '🎬 <b>Zweites Profilvideo</b> — ein weiteres Hauptvideo auf deinem Profil, unter deinen Bildern. Twerk, stell dich vor, tease — was du willst, es ist dein Hook. Läuft nur in der App. Unter 15MB.',
     gallery_h: '🖼️ Profilbilder',
     gallery_note: 'Fans sehen diese auf deiner Profilseite — zuerst dein Hauptbild, dann diese. Max. 10 Bilder, kein Feed, nur deine Seite.',
@@ -2619,8 +2614,6 @@ const I18N = {
     gallery_main: 'Haupt',
     gallery_full: 'Das sind 10 — dein Profil ist voll! Entferne eins, um ein neues hinzuzufügen.',
     gallery_removed: 'Bild entfernt 🖼️',
-    gallery_reordered: 'Bildreihenfolge gespeichert ✨',
-    gallery_drag_hint: 'Halte ein Bild gedrückt und ziehe es an die gewünschte Stelle — das erste Bild steht oben auf deinem Profil.',
     tap_to_mute: 'Zum Stummschalten tippen',
     new_models_title: '🆕 Neue Modelle, die dir gefallen könnten',
     new_badge: 'NEU',
@@ -2641,6 +2634,8 @@ const I18N = {
     offline: '● Offline',
     watching: '{n} schauen zu',
     featured: '⭐ Empfohlen',
+    official_label: 'Offiziell',
+    official_tagline: 'Die App selbst — Lives, News & Specials 💋',
     top_model: '👑 Top-Model',
     per_msg_rate: '{price}/Nachr.',
     per_min_rate: '{price}/Min. Video',
@@ -3224,7 +3219,6 @@ const I18N = {
     ranked_n: '🏆 Место #{n} в рейтинге',
     tap_for_sound: 'Нажмите для звука',
     msg_her_btn: '💬 Написать ей',
-    msg_her_join_btn: '💬 Зарегистрируйся бесплатно, чтобы написать ей',
     pv2_blurb: '🎬 <b>Второе видео профиля</b> — ещё одно главное видео в твоём профиле, под твоими фото. Тверк, представься, дразни — что хочешь, это твой крючок. Играет только в приложении. До 15МБ.',
     gallery_h: '🖼️ Фотографии профиля',
     gallery_note: 'Фанаты видят их на странице твоего профиля — сначала главное фото, потом эти. Максимум 10 фото, никакой ленты, только твоя страница.',
@@ -3233,8 +3227,6 @@ const I18N = {
     gallery_main: 'Главное',
     gallery_full: 'Уже 10 — твой профиль полон! Удали одно, чтобы добавить другое.',
     gallery_removed: 'Фото удалено 🖼️',
-    gallery_reordered: 'Порядок фото сохранён ✨',
-    gallery_drag_hint: 'Удерживай фото и перетаскивай его куда хочешь — первое фото будет наверху твоего профиля.',
     tap_to_mute: 'Нажмите, чтобы выключить звук',
     new_models_title: '🆕 Новые модели, которые могут вам понравиться',
     new_badge: 'НОВАЯ',
@@ -3255,6 +3247,8 @@ const I18N = {
     offline: '● Не в сети',
     watching: '{n} смотрят',
     featured: '⭐ Избранное',
+    official_label: 'Официальный',
+    official_tagline: 'Само приложение — эфиры, новости и акции 💋',
     top_model: '👑 Топ-модель',
     per_msg_rate: '{price}/сообщ.',
     per_min_rate: '{price}/мин видео',
@@ -3838,7 +3832,6 @@ const I18N = {
     ranked_n: '🏆 ランキング #{n}位',
     tap_for_sound: 'タップで音声オン',
     msg_her_btn: '💬 彼女にメッセージ',
-    msg_her_join_btn: '💬 無料登録して彼女にメッセージ',
     pv2_blurb: '🎬 <b>2本目のプロフィール動画</b> — 写真の下に、もう1本のメイン動画をプロフィールに。トゥワーク、自己紹介、ティーズ — 何でもOK、あなたのフックです。アプリ内でのみ再生。15MB未満。',
     gallery_h: '🖼️ プロフィール写真',
     gallery_note: 'ファンはあなたのプロフィールページでこれらを見ます — メイン写真が最初、その後にこれら。最大10枚、フィードなし、あなたのページだけ。',
@@ -3847,8 +3840,6 @@ const I18N = {
     gallery_main: 'メイン',
     gallery_full: '10枚になりました — プロフィールがいっぱいです！追加するには1枚削除してください。',
     gallery_removed: '写真を削除しました 🖼️',
-    gallery_reordered: '写真の順番を保存しました ✨',
-    gallery_drag_hint: '写真を長押しして好きな場所にドラッグ — 最初の写真がプロフィールのトップになります。',
     tap_to_mute: 'タップでミュート',
     new_models_title: '🆕 おすすめの新人モデル',
     new_badge: 'NEW',
@@ -3869,6 +3860,8 @@ const I18N = {
     offline: '● オフライン',
     watching: '{n}人が視聴中',
     featured: '⭐ 注目',
+    official_label: '公式',
+    official_tagline: 'アプリ公式 — ライブ・ニュース・特集 💋',
     top_model: '👑 トップモデル',
     per_msg_rate: '{price}/通',
     per_min_rate: '{price}/分 ビデオ',
@@ -4452,7 +4445,6 @@ const I18N = {
     ranked_n: '🏆 排名 #{n}',
     tap_for_sound: '点击开启声音',
     msg_her_btn: '💬 给她发消息',
-    msg_her_join_btn: '💬 免费加入，给她发消息',
     pv2_blurb: '🎬 <b>第二段主页视频</b> — 在你的主页照片下方再加一段主视频。电臀舞、自我介绍、撩人 — 随你喜欢，这是你的招牌。只在应用内播放。小于 15MB。',
     gallery_h: '🖼️ 主页照片',
     gallery_note: '粉丝在你的主页上看到这些 — 先是你的主照片，然后是这些。最多 10 张，没有动态流，只有你的页面。',
@@ -4461,8 +4453,6 @@ const I18N = {
     gallery_main: '主图',
     gallery_full: '已经 10 张了 — 你的主页满了！删掉一张才能再加。',
     gallery_removed: '照片已删除 🖼️',
-    gallery_reordered: '照片顺序已保存 ✨',
-    gallery_drag_hint: '按住照片并拖动到想要的位置 — 第一张照片会显示在主页顶部。',
     tap_to_mute: '点击静音',
     new_models_title: '🆕 你可能喜欢的新模特',
     new_badge: 'NEW',
@@ -4483,6 +4473,8 @@ const I18N = {
     offline: '● 离线',
     watching: '{n} 人在看',
     featured: '⭐ 精选',
+    official_label: '官方',
+    official_tagline: '应用官方 — 直播、资讯与特别活动 💋',
     top_model: '👑 顶级模特',
     per_msg_rate: '{price}/条消息',
     per_min_rate: '{price}/分钟视频',
@@ -5066,7 +5058,6 @@ const I18N = {
     ranked_n: '🏆 순위 #{n}위',
     tap_for_sound: '탭하면 소리가 켜집니다',
     msg_her_btn: '💬 그녀에게 메시지',
-    msg_her_join_btn: '💬 무료로 가입하고 그녀에게 메시지 보내기',
     pv2_blurb: '🎬 <b>두 번째 프로필 영상</b> — 사진 아래, 프로필에 메인 영상을 하나 더. 트월킹, 자기소개, 티징 — 원하는 대로, 당신의 훅이에요. 앱 안에서만 재생돼요. 15MB 미만.',
     gallery_h: '🖼️ 프로필 사진',
     gallery_note: '팬들은 당신의 프로필 페이지에서 이것들을 봐요 — 대표 사진이 먼저, 그 다음 이것들이에요. 최대 10장, 피드 없이, 당신의 페이지만.',
@@ -5075,8 +5066,6 @@ const I18N = {
     gallery_main: '대표',
     gallery_full: '10장이 됐어요 — 프로필이 가득 찼어요! 추가하려면 하나를 삭제하세요.',
     gallery_removed: '사진이 삭제됐어요 🖼️',
-    gallery_reordered: '사진 순서가 저장됐어요 ✨',
-    gallery_drag_hint: '사진을 길게 눌러 원하는 위치로 드래그하세요 — 첫 번째 사진이 프로필 맨 위에 표시돼요.',
     tap_to_mute: '탭하면 음소거됩니다',
     new_models_title: '🆕 마음에 들 수 있는 새 모델',
     new_badge: '신규',
@@ -5097,6 +5086,8 @@ const I18N = {
     offline: '● 오프라인',
     watching: '{n}명 시청 중',
     featured: '⭐ 추천',
+    official_label: '공식',
+    official_tagline: '앱 공식 — 라이브, 소식 & 특집 💋',
     top_model: '👑 톱 모델',
     per_msg_rate: '{price}/메시지',
     per_min_rate: '{price}/분 영상',
@@ -5680,7 +5671,6 @@ const I18N = {
     ranked_n: '🏆 Posizione #{n}',
     tap_for_sound: 'Tocca per l\'audio',
     msg_her_btn: '💬 Scrivile',
-    msg_her_join_btn: '💬 Iscriviti gratis per scriverle',
     pv2_blurb: '🎬 <b>Secondo video profilo</b> — un altro video principale sul tuo profilo, sotto le tue foto. Twerk, presentati, provoca — quello che vuoi, è il tuo gancio. Si riproduce solo nell\'app. Sotto i 15MB.',
     gallery_h: '🖼️ Foto profilo',
     gallery_note: 'I fan le vedono sulla pagina del tuo profilo — prima la tua foto principale, poi queste. Massimo 10 foto, nessun feed, solo la tua pagina.',
@@ -5689,8 +5679,6 @@ const I18N = {
     gallery_main: 'Principale',
     gallery_full: 'Sono 10 — il tuo profilo è pieno! Rimuovine una per aggiungerne un\'altra.',
     gallery_removed: 'Foto rimossa 🖼️',
-    gallery_reordered: 'Ordine delle foto salvato ✨',
-    gallery_drag_hint: 'Tieni premuta una foto e trascinala dove vuoi: la prima foto va in cima al tuo profilo.',
     tap_to_mute: 'Tocca per silenziare',
     new_models_title: '🆕 Nuove modelle che potrebbero piacerti',
     new_badge: 'NUOVA',
@@ -5711,6 +5699,8 @@ const I18N = {
     offline: '● Offline',
     watching: '{n} stanno guardando',
     featured: '⭐ In evidenza',
+    official_label: 'Ufficiale',
+    official_tagline: 'L’app stessa — live, novità e speciali 💋',
     top_model: '👑 Top Model',
     per_msg_rate: '{price}/msg',
     per_min_rate: '{price}/min video',
@@ -6294,7 +6284,6 @@ const I18N = {
     ranked_n: '🏆 Miejsce #{n} w rankingu',
     tap_for_sound: 'Dotknij, aby włączyć dźwięk',
     msg_her_btn: '💬 Napisz do niej',
-    msg_her_join_btn: '💬 Dołącz za darmo i napisz do niej',
     pv2_blurb: '🎬 <b>Drugi film profilowy</b> — jeszcze jeden główny film na Twoim profilu, pod Twoimi zdjęciami. Twerk, przedstaw się, drażnij — co chcesz, to Twój haczyk. Odtwarza się tylko w aplikacji. Poniżej 15MB.',
     gallery_h: '🖼️ Zdjęcia profilowe',
     gallery_note: 'Fani widzą je na stronie Twojego profilu — najpierw Twoje główne zdjęcie, potem te. Maks. 10 zdjęć, żadnego feedu, tylko Twoja strona.',
@@ -6303,8 +6292,6 @@ const I18N = {
     gallery_main: 'Główne',
     gallery_full: 'To już 10 — Twój profil jest pełny! Usuń jedno, aby dodać kolejne.',
     gallery_removed: 'Zdjęcie usunięte 🖼️',
-    gallery_reordered: 'Kolejność zdjęć zapisana ✨',
-    gallery_drag_hint: 'Przytrzymaj zdjęcie i przeciągnij je w wybrane miejsce — pierwsze zdjęcie znajdzie się na górze profilu.',
     tap_to_mute: 'Dotknij, aby wyciszyć',
     new_models_title: '🆕 Nowe modelki, które mogą Ci się spodobać',
     new_badge: 'NOWA',
@@ -6325,6 +6312,8 @@ const I18N = {
     offline: '● Offline',
     watching: '{n} ogląda',
     featured: '⭐ Wyróżniona',
+    official_label: 'Oficjalny',
+    official_tagline: 'Sama aplikacja — transmisje, nowości i promocje 💋',
     top_model: '👑 Top Modelka',
     per_msg_rate: '{price}/wiad.',
     per_min_rate: '{price}/min wideo',
@@ -6908,7 +6897,6 @@ const I18N = {
     ranked_n: '🏆 Gerangschikt #{n}',
     tap_for_sound: 'Tik voor geluid',
     msg_her_btn: '💬 Stuur haar een bericht',
-    msg_her_join_btn: '💬 Meld je gratis aan om haar een bericht te sturen',
     pv2_blurb: '🎬 <b>Tweede profielvideo</b> — nog een hoofdvideo op je profiel, onder je foto\'s. Twerk, stel jezelf voor, tease — wat je wilt, het is jouw hook. Speelt alleen in de app. Onder 15MB.',
     gallery_h: '🖼️ Profielfoto\'s',
     gallery_note: 'Fans zien deze op je profielpagina — eerst je hoofdfoto, daarna deze. Max. 10 foto\'s, geen feed, alleen jouw pagina.',
@@ -6917,8 +6905,6 @@ const I18N = {
     gallery_main: 'Hoofd',
     gallery_full: 'Dat zijn er 10 — je profiel is vol! Verwijder er een om een nieuwe toe te voegen.',
     gallery_removed: 'Foto verwijderd 🖼️',
-    gallery_reordered: 'Foto-volgorde opgeslagen ✨',
-    gallery_drag_hint: 'Houd een foto ingedrukt en sleep hem waar je wilt — de eerste foto staat bovenaan je profiel.',
     tap_to_mute: 'Tik om te dempen',
     new_models_title: '🆕 Nieuwe modellen die je misschien leuk vindt',
     new_badge: 'NIEUW',
@@ -6939,6 +6925,8 @@ const I18N = {
     offline: '● Offline',
     watching: '{n} kijken',
     featured: '⭐ Uitgelicht',
+    official_label: 'Officieel',
+    official_tagline: 'De app zelf — lives, nieuws & specials 💋',
     top_model: '👑 Topmodel',
     per_msg_rate: '{price}/bericht',
     per_min_rate: '{price}/min video',
@@ -7522,7 +7510,6 @@ const I18N = {
     ranked_n: '🏆 Sıralama #{n}',
     tap_for_sound: 'Ses için dokun',
     msg_her_btn: '💬 Ona mesaj at',
-    msg_her_join_btn: '💬 Ona mesaj atmak için ücretsiz katıl',
     pv2_blurb: '🎬 <b>İkinci profil videosu</b> — fotoğraflarının altında, profiline bir ana video daha. Twerk yap, kendini tanıt, kışkırt — ne istersen, bu senin kancan. Yalnızca uygulamada oynar. 15MB altı.',
     gallery_h: '🖼️ Profil fotoğrafları',
     gallery_note: 'Hayranlar bunları profil sayfanda görür — önce ana fotoğrafın, sonra bunlar. En fazla 10 fotoğraf, akış yok, sadece senin sayfan.',
@@ -7531,8 +7518,6 @@ const I18N = {
     gallery_main: 'Ana',
     gallery_full: '10 oldu — profilin doldu! Bir tane daha eklemek için birini kaldır.',
     gallery_removed: 'Fotoğraf kaldırıldı 🖼️',
-    gallery_reordered: 'Fotoğraf sırası kaydedildi ✨',
-    gallery_drag_hint: 'Bir fotoğrafı basılı tutup istediğin yere sürükle — ilk fotoğraf profilinin en üstünde yer alır.',
     tap_to_mute: 'Sessize almak için dokun',
     new_models_title: '🆕 Beğenebileceğin yeni modeller',
     new_badge: 'YENİ',
@@ -7553,6 +7538,8 @@ const I18N = {
     offline: '● Çevrimdışı',
     watching: '{n} izliyor',
     featured: '⭐ Öne Çıkan',
+    official_label: 'Resmi',
+    official_tagline: 'Uygulamanın ta kendisi — canlı yayınlar, haberler ve özel içerikler 💋',
     top_model: '👑 En İyi Model',
     per_msg_rate: '{price}/msj',
     per_min_rate: '{price}/dk video',
@@ -9138,6 +9125,30 @@ function livesBtnHTML(models) {
   return `<button class="btn-lives${n ? ' has-live' : ''}" id="go-lives">${t('lives_btn')}${n ? `<span class="lives-count">${t('lives_count', { n })}</span>` : ''}</button>`;
 }
 
+/* The OFFICIAL house account's pinned card (owner, Oct 17 2026): the
+   SlutCamp account is the app itself, not a model — it never renders
+   as a model tile anywhere. Instead it stays pinned at the TOP of the
+   fan home in both states: LIVE (tap joins the stream exactly like a
+   live model tile; tipping/spending inside are the regular live
+   machinery) and quiet (tap opens its look-only profile page — no
+   Message bar, ever). Data = the `official` object on the /api/models
+   payload; null (no house account) renders nothing, and because the
+   server keeps the account OUT of the models array, the card can
+   never duplicate as a tile. */
+function officialCardHTML(official) {
+  if (!official) return '';
+  return `
+    <button class="official-card" data-official="${official.id}">
+      <span class="avatar-wrap">${avatarHTML(official.display_name, '', official.photo_url)}</span>
+      <span class="grow">
+        <span class="official-name">${esc(official.display_name)} <span class="official-pill">${t('official_label')}</span></span><br>
+        ${official.is_live
+          ? `<span class="live-badge">🔴 LIVE</span> <span class="small muted">👁 ${t('watching', { n: official.live_viewers || 0 })}</span>`
+          : `<span class="small muted">${t('official_tagline')}</span>`}
+      </span><span style="font-size:22px">›</span>
+    </button>`;
+}
+
 /* ---------------- LANDING (public model grid) ---------------- */
 
 async function vLanding() {
@@ -9179,14 +9190,6 @@ async function vLanding() {
     b.onclick = () => {
       const liveId = b.dataset.live;
       if (liveId) return watchLive(parseInt(liveId));
-      // Her profile comes first on the front door too (owner,
-      // Oct 17 2026) — the same profile-first rule as the fan home
-      // grid: a tile tap opens her profile page, and the peek's
-      // pinned bar carries the next step (Message for fans, join /
-      // log in for guests). Straight-to-chat was the old behaviour
-      // and skipped her page entirely.
-      const m = models.find((x) => x.id === parseInt(b.dataset.model));
-      if (m) { openModelPeek(m, models); return; }
       openChatWithModel(parseInt(b.dataset.model));
     };
   });
@@ -10184,16 +10187,17 @@ function openModelPeek(m, models) {
   // this gallery. She also has TWO main videos now: the preview hero
   // above and her second video, rendered in the scroll region below.
   const galleryPics = [...new Set([m.photo_url, ...(Array.isArray(m.gallery_photos) ? m.gallery_photos : [])].filter(Boolean))].slice(0, 10);
+  // The official house account is the app itself (owner, Oct 17 2026):
+  // its page is look-only for EVERYONE — no Message bar ever, and the
+  // Official label stands where the bar would be. It is also never
+  // ranked: the server keeps it out of the roster + rank positions.
+  const isOfficial = !!m.is_official;
+  const officialBarHTML = `<div class="peek-official-bar"><span class="official-pill">${t('official_label')}</span><span class="small muted">${t('official_tagline')}</span></div>`;
   // The sticky Message bar is a FAN action: real fans get it, and the
   // admin's fan-preview stands in for a fan so he sees her page as
   // fans do. Models browsing a sister stay look-only (no fan actions),
   // and nobody ever gets a message-themselves button.
   const showMsgBar = !isMe && !!S.user && (S.user.role === 'fan' || isFanPreview());
-  // A logged-out guest gets a bar in the same pinned spot — never a
-  // working chat (guests can't message), but the way forward: join /
-  // log in, routed to the auth view. Signed-in users never see this
-  // one; fan / model / preview behaviour above is untouched.
-  const showGuestBar = !S.user;
   ftSheet(`
     <div class="peek-scroll">
     ${m.preview_video_url ? `
@@ -10203,7 +10207,7 @@ function openModelPeek(m, models) {
     </div>` : ''}
     <div style="text-align:center">
       ${avatarHTML(m.display_name, 'xl', m.photo_url)}
-      <div class="sheet-title" style="margin-top:8px">${esc(m.display_name)}${isMe ? ' (that\'s you! 💅)' : ''}</div>
+      <div class="sheet-title" style="margin-top:8px">${esc(m.display_name)}${isMe ? ' (that\'s you! 💅)' : ''}${isOfficial ? ` <span class="official-pill">${t('official_label')}</span>` : ''}</div>
       <div class="muted small">@${esc(m.username)}</div>
     </div>
     ${galleryPics.length ? `
@@ -10218,7 +10222,7 @@ function openModelPeek(m, models) {
     <div class="peek-rows">
       <div class="peek-row"><span>Status</span><b>${status}</b></div>
       ${rankLine ? `<div class="peek-row"><span>Home rank</span><b>${rankLine}</b></div>` : ''}
-      <div class="peek-row"><span>Messages</span><b>${fmt(m.per_message_cents)} / msg</b></div>
+      ${isOfficial ? '' : `<div class="peek-row"><span>Messages</span><b>${fmt(m.per_message_cents)} / msg</b></div>`}
       <div class="peek-row"><span>Video calls</span><b>${fmt(m.per_minute_cents)} / min</b></div>
       ${m.schedule_summary ? `<div class="peek-row"><span>Usually live</span><b>${esc(m.schedule_summary)}</b></div>` : ''}
     </div>
@@ -10238,11 +10242,13 @@ function openModelPeek(m, models) {
     </div>
     ${showMsgBar ? `
     <div class="peek-msgbar">
-      <button class="peek-msg-btn" data-peek-msg="${m.id}">${t('msg_her_btn')} · ${t('per_msg_rate', { price: fmt(m.per_message_cents) })}</button>
+      ${isOfficial
+        ? officialBarHTML
+        : `<button class="peek-msg-btn" data-peek-msg="${m.id}">${t('msg_her_btn')} · ${t('per_msg_rate', { price: fmt(m.per_message_cents) })}</button>`}
     </div>` : ''}
-    ${showGuestBar ? `
+    ${isOfficial && !showMsgBar ? `
     <div class="peek-msgbar">
-      <button class="peek-msg-btn" data-peek-join>${t('msg_her_join_btn')}</button>
+      ${officialBarHTML}
     </div>` : ''}`);
   const sheet = document.getElementById('ft-sheet');
   if (sheet) {
@@ -10258,16 +10264,6 @@ function openModelPeek(m, models) {
         const id = parseInt(msgBtn.dataset.peekMsg);
         sheet.remove();
         openChatWithModel(id);
-      };
-    }
-    // Guest bar: no conversation is started — the tap closes her
-    // page and lands on the auth view to join / log in, the same
-    // route as the landing's own Log in / Sign up button.
-    const joinBtn = sheet.querySelector('[data-peek-join]');
-    if (joinBtn) {
-      joinBtn.onclick = () => {
-        sheet.remove();
-        show('auth', {});
       };
     }
     // Preview video hero: tap toggles the sound. Unmuting restarts from
@@ -10329,6 +10325,7 @@ function openModelPeek(m, models) {
 async function vFanModels() {
   const { data } = await api('/models');
   const models = data.models || [];
+  const official = data.official || null;
   await refreshMe();
   const inPreview = isFanPreview();
   const isModelViewer = !!(S.user && (S.user.role === 'model' || inPreview));
@@ -10349,6 +10346,7 @@ async function vFanModels() {
         ? '<span class="balance-pill">👀 Browsing the home screen</span>'
         : `<span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span>`}</div></div>
     <div class="screen">
+      ${officialCardHTML(official)}
       ${athCardHTML()}
       ${livesBtnHTML(models)}
       ${discoveryBarHTML(models)}
@@ -10360,6 +10358,18 @@ async function vFanModels() {
     </div>`;
   wireAthCard();
   wireDiscovery('fanModels');
+  // Pinned official card: LIVE → join the stream exactly like a live
+  // model tile; quiet → its look-only profile page. Model viewers and
+  // the admin fan-preview stay look-only in both states (the grid rule).
+  app.querySelectorAll('[data-official]').forEach((b) => {
+    b.onclick = () => {
+      if (!official) return;
+      if (official.is_live && official.live_session_id && !isModelViewer) {
+        return watchLive(parseInt(official.live_session_id));
+      }
+      openModelPeek(official, models);
+    };
+  });
   const lv = $('#go-lives');
   if (lv) lv.onclick = () => show('lives', {});
   const hlo = $('#home-logout');
@@ -12258,10 +12268,9 @@ async function vModelSettings() {
           <div style="font-weight:800;margin-bottom:4px">${t('gallery_h')}</div>
           <div class="muted small" style="margin-bottom:6px">${t('gallery_note')}</div>
           <div class="muted small" style="margin-bottom:8px">${t('gallery_count', { n: profilePicCount, max: 10 })}</div>
-          ${profilePicCount > 1 ? `<div class="muted small" style="margin-bottom:8px">${t('gallery_drag_hint')}</div>` : ''}
           <div class="set-gallery-grid">
-            ${m.photo_url ? `<div class="set-gallery-item" data-pic="${esc(m.photo_url)}"><img src="${esc(m.photo_url)}" alt="" draggable="false"><span class="set-gallery-badge">${t('gallery_main')}</span></div>` : ''}
-            ${myGallery.map((u) => `<div class="set-gallery-item" data-pic="${esc(u)}"><img src="${esc(u)}" alt="" draggable="false"><button class="set-gallery-del" data-gallery-del="${esc(u)}">✕</button></div>`).join('')}
+            ${m.photo_url ? `<div class="set-gallery-item"><img src="${esc(m.photo_url)}" alt=""><span class="set-gallery-badge">${t('gallery_main')}</span></div>` : ''}
+            ${myGallery.map((u) => `<div class="set-gallery-item"><img src="${esc(u)}" alt=""><button class="set-gallery-del" data-gallery-del="${esc(u)}">✕</button></div>`).join('')}
           </div>
           ${profilePicCount < 10 ? `<button class="btn ghost small" id="s-gallery-add" style="margin-top:8px">${t('gallery_add')}</button>` : `<div class="muted small" style="margin-top:8px">${t('gallery_full')}</div>`}
         </div>
@@ -12596,81 +12605,10 @@ async function vModelSettings() {
     };
     inp.click();
   };
-  // Profile gallery: hold-and-drag reorder over the COMPOSED list —
-  // her main photo included, any picture can be dragged to position 1
-  // and become the top of her profile. The drag arms only after a
-  // ~300ms hold (a plain tap never reorders, and a swipe before the
-  // hold cancels it so page scroll still wins). On drop the new order
-  // auto-saves via /api/model/gallery-reorder; the server accepts
-  // only her exact current picture set, in the submitted order.
-  const galGrid = app.querySelector('.set-gallery-grid');
-  let galDragSuppressUntil = 0;
-  if (galGrid) {
-    const picNodes = () => [...galGrid.querySelectorAll('[data-pic]')];
-    if (picNodes().length > 1) {
-      const originalOrder = picNodes().map((n) => n.dataset.pic);
-      let dragEl = null, holdTimer = null, downX = 0, downY = 0;
-      const clearHold = () => { if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; } };
-      const endDrag = async (commit) => {
-        const el = dragEl;
-        dragEl = null;
-        if (el) el.classList.remove('dragging');
-        if (!commit || !el) return;
-        // Swallow the click this gesture ends with, wherever it lands.
-        galDragSuppressUntil = Date.now() + 400;
-        const order = picNodes().map((n) => n.dataset.pic);
-        if (order.join('|') === originalOrder.join('|')) return;
-        const { status, data } = await api('/model/gallery-reorder', {
-          method: 'POST', body: JSON.stringify({ order }) });
-        if (status === 200 && data && data.ok) {
-          toast(t('gallery_reordered'));
-          await refreshMe();
-          show('modelSettings', {});
-        } else {
-          toast(t('couldnt_save'));
-          show('modelSettings', {});
-        }
-      };
-      picNodes().forEach((item) => {
-        item.addEventListener('contextmenu', (e) => e.preventDefault());
-        item.addEventListener('pointerdown', (e) => {
-          if (e.target.closest('[data-gallery-del]')) return; // ✕ stays a plain tap
-          if (e.button !== undefined && e.button > 0) return;
-          downX = e.clientX; downY = e.clientY;
-          clearHold();
-          holdTimer = setTimeout(() => {
-            holdTimer = null;
-            dragEl = item;
-            item.classList.add('dragging');
-            try { item.setPointerCapture(e.pointerId); } catch (err) { /* older engines */ }
-            if (navigator.vibrate) { try { navigator.vibrate(12); } catch (err) { /* no haptics */ } }
-          }, 300);
-        });
-        item.addEventListener('pointermove', (e) => {
-          if (!dragEl) {
-            // Moving before the hold arms it = a scroll swipe, not a drag.
-            if (holdTimer && (Math.abs(e.clientX - downX) > 10 || Math.abs(e.clientY - downY) > 10)) clearHold();
-            return;
-          }
-          if (dragEl !== item) return;
-          e.preventDefault();
-          const over = document.elementFromPoint(e.clientX, e.clientY);
-          const overItem = over && over.closest ? over.closest('[data-pic]') : null;
-          if (!overItem || overItem === dragEl || overItem.parentElement !== galGrid) return;
-          const r = overItem.getBoundingClientRect();
-          if (e.clientX > r.left + r.width / 2) galGrid.insertBefore(dragEl, overItem.nextSibling);
-          else galGrid.insertBefore(dragEl, overItem);
-        });
-        item.addEventListener('pointerup', () => { clearHold(); if (dragEl === item) endDrag(true); });
-        item.addEventListener('pointercancel', () => { clearHold(); if (dragEl === item) endDrag(false); });
-      });
-    }
-  }
   // Profile gallery: remove one picture (her main photo is not here —
   // it is managed by the main-photo control above)
   app.querySelectorAll('[data-gallery-del]').forEach((b) => {
     b.onclick = async () => {
-      if (Date.now() < galDragSuppressUntil) return; // the tail of a drag, not a tap
       const headers = { 'Content-Type': 'application/json' };
       if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
       const r = await fetch('/api/model/gallery-photo', {

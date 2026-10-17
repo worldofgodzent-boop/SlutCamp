@@ -1098,22 +1098,10 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 /* Settings → profile gallery manager: thumbnails of the composed
    profile list (main photo badged, gallery uploads removable). */
 .set-gallery-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-/* Hold-and-drag reorder: touch-action none so an armed drag is never
-   stolen by page scroll; plain taps are untouched (the drag arms
-   only after a 300ms hold in JS). */
-.set-gallery-item {
-  position: relative; touch-action: none; cursor: grab;
-  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent;
-}
+.set-gallery-item { position: relative; }
 .set-gallery-item img {
   width: 100%; aspect-ratio: 1; object-fit: cover; display: block;
   border-radius: 10px; border: 1px solid rgba(139,92,246,.3); background: #000;
-  -webkit-user-drag: none; pointer-events: none;
-}
-.set-gallery-item.dragging { z-index: 6; transform: scale(1.07); cursor: grabbing; }
-.set-gallery-item.dragging img {
-  border-color: var(--pink); box-shadow: 0 12px 30px rgba(0,0,0,.55);
 }
 .set-gallery-badge {
   position: absolute; left: 4px; bottom: 4px; background: rgba(16,6,12,.8); color: #fff;
@@ -1342,6 +1330,29 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
   border: 1px solid rgba(255,209,102,.5); color: #ffd166;
   font-size: 11px; font-weight: 800; letter-spacing: .4px;
   padding: 5px 10px; border-radius: 999px;
+}
+/* Official house account (owner, Oct 17 2026): the SlutCamp account is
+   the app itself — its pinned card is a wide banner at the top of the
+   fan home, never a model tile; the gold pill marks it Official on the
+   card, on its profile page, and where the Message bar would be. */
+.official-card {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  text-align: left; cursor: pointer; font-family: inherit; color: #fff;
+  background: linear-gradient(135deg, #3b1d6e, #1a0f2e);
+  border: 1px solid rgba(255,209,102,.55); border-radius: 14px;
+  padding: 12px 14px; margin-bottom: 12px;
+  -webkit-tap-highlight-color: transparent;
+}
+.official-name { font-weight: 800; font-size: 16px; }
+.official-pill {
+  display: inline-block; vertical-align: middle;
+  background: linear-gradient(135deg, #ffd166, #f59e0b); color: #231303;
+  font-size: 10px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 999px;
+}
+.peek-official-bar {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 10px; text-align: center;
 }
 .tile-top-pill {
   position: absolute; top: 10px; left: 10px; z-index: 3;
