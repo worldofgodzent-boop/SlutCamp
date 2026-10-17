@@ -1167,6 +1167,8 @@ addColumnIfMissing('platform_stats', 'notif_fix_announced_at', 'TEXT'); // one-t
 addColumnIfMissing('platform_stats', 'preview_video_announced_at', 'TEXT'); // one-time preview-video-on-profile broadcast stamp
 addColumnIfMissing('platform_stats', 'thread_tap_announced_at', 'TEXT'); // one-time one-tap-to-the-message broadcast stamp
 addColumnIfMissing('platform_stats', 'fan_preview_announced_at', 'TEXT'); // one-time fan preview-video blast stamp
+addColumnIfMissing('platform_stats', 'languages_announced_at', 'TEXT'); // one-time 13-languages model broadcast stamp
+addColumnIfMissing('platform_stats', 'fan_languages_announced_at', 'TEXT'); // one-time 13-languages fan blast stamp
 addColumnIfMissing('live_viewers', 'explicit_until', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_viewers', 'explicit_paid', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'explicit_gift_grace_sec', 'INTEGER NOT NULL DEFAULT 180');
@@ -1276,9 +1278,11 @@ addColumnIfMissing('transactions', 'ip', 'TEXT');
 // Display name changes: fans get 1 per 30 days (self-service); models submit requests for admin approval
 addColumnIfMissing('users', 'name_changed_at', 'TEXT');
 
-// UI language preference ('en' | 'es' | 'pt') — set from the in-app language
-// picker, returned by /api/me so it follows the user across devices
+// UI language preference — set from the in-app language picker, returned
+// by /api/me so it follows the user across devices. 13 languages since the
+// Oct 17 2026 expansion (Arabic deferred — RTL layout is separate work).
 addColumnIfMissing('users', 'language', "TEXT NOT NULL DEFAULT 'en'");
+const SUPPORTED_LANGS = ['en', 'es', 'pt', 'fr', 'de', 'ru', 'ja', 'zh', 'ko', 'it', 'pl', 'nl', 'tr'];
 
 // Fan spend dashboard: the fan's OPTIONAL monthly spend cap, in cents.
 // NULL = no cap (the default for every existing fan — nobody's spending
@@ -2614,15 +2618,16 @@ function addStrike(key) {
 /* ------------------------------------------------------------------ */
 
 // Signup language: the client sends its UI language (browser-detected on
-// first visit); only en/es/pt are honored, anything else falls back to 'en'.
-// Stored on the user row at creation so her welcome DM lands in her language.
+// first visit); only the 13 supported codes are honored, anything else
+// falls back to 'en'. Stored on the user row at creation so her welcome
+// DM lands in her language.
 function signupLanguage(req) {
   const l = String((req.body && req.body.language) || '').toLowerCase();
-  return ['en', 'es', 'pt'].includes(l) ? l : 'en';
+  return SUPPORTED_LANGS.includes(l) ? l : 'en';
 }
 
 function createUser(username, password, role, displayName, dob, language) {
-  const lang = ['en', 'es', 'pt'].includes(language) ? language : 'en';
+  const lang = SUPPORTED_LANGS.includes(language) ? language : 'en';
   const hash = bcrypt.hashSync(password, 10);
   const info = db.prepare(
     'INSERT INTO users (username, password_hash, role, display_name, dob, language) VALUES (?,?,?,?,?,?)'
@@ -2645,6 +2650,84 @@ function createUser(username, password, role, displayName, dob, language) {
     try { sendModelAffiliate(Number(info.lastInsertRowid)); } catch (e) { /* boot sweep retries */ }
   }
   return Number(info.lastInsertRowid);
+}
+
+/* ------------------------------------------------------------------ */
+/* Server-side string table (SRV) — notification bells, admin DM      */
+/* texts and announcement copy in all 13 supported languages.         */
+/* srv(key, lang, vars): recipient-language lookup with EN fallback;  */
+/* {var} placeholders substitute exactly like the client's t().       */
+/* The welcome/guide DM bodies keep their own per-language maps       */
+/* (MODEL_WELCOME / MODEL_GUIDE / MODEL_ID_VERIFY / MODEL_AFFILIATE)  */
+/* below — this table covers everything composed at a call site.      */
+/* ------------------------------------------------------------------ */
+const SRV = {
+  guide_video_text: { en: '🎬 Watch your 1-minute tour: https://slutcamp.app/video/model-guide.mp4', es: '🎬 Mira tu tour de 1 minuto: https://slutcamp.app/video/model-guide.mp4', pt: '🎬 Assista ao seu tour de 1 minuto: https://slutcamp.app/video/model-guide.mp4', fr: '🎬 Regardez votre visite d\'1 minute : https://slutcamp.app/video/model-guide.mp4', de: '🎬 Schau dir deine 1-minütige Tour an: https://slutcamp.app/video/model-guide.mp4', ru: '🎬 Смотрите ваш 1-минутный тур: https://slutcamp.app/video/model-guide.mp4', ja: '🎬 1分ツアーを見てね：https://slutcamp.app/video/model-guide.mp4', zh: '🎬 观看你的 1 分钟导览：https://slutcamp.app/video/model-guide.mp4', ko: '🎬 1분 투어 보기: https://slutcamp.app/video/model-guide.mp4', it: '🎬 Guarda il tuo tour di 1 minuto: https://slutcamp.app/video/model-guide.mp4', pl: '🎬 Obejrzyj swoją 1-minutową wycieczkę: https://slutcamp.app/video/model-guide.mp4', nl: '🎬 Bekijk je 1-minuut tour: https://slutcamp.app/video/model-guide.mp4', tr: '🎬 1 dakikalık turunu izle: https://slutcamp.app/video/model-guide.mp4' },
+  ath_video_text: { en: '📲 Put SlutCamp on your home screen — watch this, takes 30 seconds: https://slutcamp.app/video/add-to-home-screen.mp4', es: '📲 Pon SlutCamp en tu pantalla de inicio — mira esto, toma 30 segundos: https://slutcamp.app/video/add-to-home-screen.mp4', pt: '📲 Coloque a SlutCamp na sua tela inicial — assista a isto, leva 30 segundos: https://slutcamp.app/video/add-to-home-screen.mp4', fr: '📲 Mettez SlutCamp sur votre écran d\'accueil — regardez ceci, ça prend 30 secondes : https://slutcamp.app/video/add-to-home-screen.mp4', de: '📲 SlutCamp auf deinen Startbildschirm legen — schau dir das an, dauert 30 Sekunden: https://slutcamp.app/video/add-to-home-screen.mp4', ru: '📲 Добавьте SlutCamp на главный экран — посмотрите это, займёт 30 секунд: https://slutcamp.app/video/add-to-home-screen.mp4', ja: '📲 SlutCampをホーム画面に追加 — これを見てね、30秒で終わるよ：https://slutcamp.app/video/add-to-home-screen.mp4', zh: '📲 把 SlutCamp 放到你的主屏幕 — 看看这个，只需 30 秒：https://slutcamp.app/video/add-to-home-screen.mp4', ko: '📲 홈 화면에 SlutCamp 추가하기 — 이 영상을 보세요, 30초면 됩니다: https://slutcamp.app/video/add-to-home-screen.mp4', it: '📲 Metti SlutCamp sulla tua schermata home — guarda questo, ci vogliono 30 secondi: https://slutcamp.app/video/add-to-home-screen.mp4', pl: '📲 Umieść SlutCamp na ekranie głównym — obejrzyj to, zajmuje 30 sekund: https://slutcamp.app/video/add-to-home-screen.mp4', nl: '📲 Zet SlutCamp op je startscherm — bekijk dit, duurt 30 seconden: https://slutcamp.app/video/add-to-home-screen.mp4', tr: '📲 SlutCamp\'i ana ekranına koy — bunu izle, 30 saniye sürer: https://slutcamp.app/video/add-to-home-screen.mp4' },
+  bell_welcome_title: { en: '🎉 Welcome to SlutCamp!', es: '🎉 ¡Bienvenida a SlutCamp!', pt: '🎉 Bem-vinda à SlutCamp!', fr: '🎉 Bienvenue sur SlutCamp !', de: '🎉 Willkommen bei SlutCamp!', ru: '🎉 Добро пожаловать в SlutCamp!', ja: '🎉 SlutCampへようこそ！', zh: '🎉 欢迎来到 SlutCamp！', ko: '🎉 SlutCamp에 오신 것을 환영합니다!', it: '🎉 Benvenuta su SlutCamp!', pl: '🎉 Witaj w SlutCamp!', nl: '🎉 Welkom bij SlutCamp!', tr: '🎉 SlutCamp\'e hoş geldin!' },
+  bell_welcome_body: { en: 'Congratulations — Asce sent you a message in your inbox 💋', es: 'Felicidades — Asce te envió un mensaje a tu bandeja 💋', pt: 'Parabéns — Asce te enviou uma mensagem na sua caixa de entrada 💋', fr: 'Félicitations — Asce vous a envoyé un message dans votre boîte 💋', de: 'Glückwunsch — Asce hat dir eine Nachricht in dein Postfach geschickt 💋', ru: 'Поздравляем — Asce отправил вам сообщение в ваши входящие 💋', ja: 'おめでとう — Asceから受信箱にメッセージが届いています 💋', zh: '恭喜 — Asce 在你的收件箱里给你发了一条消息 💋', ko: '축하합니다 — Asce가 받은편지함에 메시지를 보냈습니다 💋', it: 'Congratulazioni — Asce ti ha mandato un messaggio nella tua inbox 💋', pl: 'Gratulacje — Asce wysłał Ci wiadomość do skrzynki odbiorczej 💋', nl: 'Gefeliciteerd — Asce heeft je een bericht gestuurd in je inbox 💋', tr: 'Tebrikler — Asce sana gelen kutunda bir mesaj gönderdi 💋' },
+  bell_guide_title: { en: '💋 How SlutCamp works', es: '💋 Cómo funciona SlutCamp', pt: '💋 Como a SlutCamp funciona', fr: '💋 Comment fonctionne SlutCamp', de: '💋 So funktioniert SlutCamp', ru: '💋 Как работает SlutCamp', ja: '💋 SlutCampの仕組み', zh: '💋 SlutCamp 如何运作', ko: '💋 SlutCamp 이용 방법', it: '💋 Come funziona SlutCamp', pl: '💋 Jak działa SlutCamp', nl: '💋 Hoe SlutCamp werkt', tr: '💋 SlutCamp nasıl çalışır' },
+  bell_guide_body: { en: 'Asce sent you the playbook — how the app works and how you get paid 💰', es: 'Asce te envió la guía — cómo funciona la app y cómo te pagan 💰', pt: 'Asce te enviou o manual — como o app funciona e como você recebe 💰', fr: 'Asce vous a envoyé le guide — comment l\'appli fonctionne et comment vous êtes payée 💰', de: 'Asce hat dir das Playbook geschickt — wie die App funktioniert und wie du bezahlt wirst 💰', ru: 'Asce отправил вам руководство — как работает приложение и как вы получаете оплату 💰', ja: 'Asceがプレイブックを送りました — アプリの仕組みと支払いの受け方 💰', zh: 'Asce 给你发了手册 — 应用如何运作以及你如何获得报酬 💰', ko: 'Asce가 플레이북을 보냈습니다 — 앱 이용 방법과 수익을 받는 방법 💰', it: 'Asce ti ha mandato la guida — come funziona l\'app e come vieni pagata 💰', pl: 'Asce wysłał Ci przewodnik — jak działa aplikacja i jak otrzymujesz wypłaty 💰', nl: 'Asce heeft je het playbook gestuurd — hoe de app werkt en hoe je betaald krijgt 💰', tr: 'Asce sana rehberi gönderdi — uygulama nasıl çalışır ve nasıl ödeme alırsın 💰' },
+  bell_guide_video_title: { en: '🎬 Your 1-minute tour is here', es: '🎬 Tu tour de 1 minuto ya llegó', pt: '🎬 Seu tour de 1 minuto chegou', fr: '🎬 Votre visite d\'1 minute est là', de: '🎬 Deine 1-minütige Tour ist da', ru: '🎬 Ваш 1-минутный тур здесь', ja: '🎬 あなたの1分ツアーが届きました', zh: '🎬 你的 1 分钟导览来了', ko: '🎬 1분 투어가 도착했습니다', it: '🎬 Il tuo tour di 1 minuto è qui', pl: '🎬 Twoja 1-minutowa wycieczka jest tutaj', nl: '🎬 Je 1-minuut tour is hier', tr: '🎬 1 dakikalık turun burada' },
+  bell_guide_video_body: { en: 'Asce sent you a quick video tour of how SlutCamp works 💋', es: 'Asce te envió un tour rápido en video de cómo funciona SlutCamp 💋', pt: 'Asce te enviou um tour rápido em vídeo de como a SlutCamp funciona 💋', fr: 'Asce vous a envoyé une visite vidéo rapide de SlutCamp 💋', de: 'Asce hat dir eine kurze Videotour geschickt, wie SlutCamp funktioniert 💋', ru: 'Asce отправил вам короткий видеотур о том, как работает SlutCamp 💋', ja: 'AsceがSlutCampの仕組みを説明する短いビデオツアーを送りました 💋', zh: 'Asce 给你发了一个关于 SlutCamp 如何运作的快速视频导览 💋', ko: 'Asce가 SlutCamp 이용 방법을 담은 짧은 영상 투어를 보냈습니다 💋', it: 'Asce ti ha mandato un rapido tour video di come funziona SlutCamp 💋', pl: 'Asce wysłał Ci krótką wycieczkę wideo o tym, jak działa SlutCamp 💋', nl: 'Asce heeft je een snelle videotour gestuurd over hoe SlutCamp werkt 💋', tr: 'Asce sana SlutCamp\'in nasıl çalıştığına dair hızlı bir video turu gönderdi 💋' },
+  bell_home_screen_title: { en: '📲 Put SlutCamp on your home screen', es: '📲 Pon SlutCamp en tu pantalla de inicio', pt: '📲 Coloque a SlutCamp na sua tela inicial', fr: '📲 Mettez SlutCamp sur votre écran d\'accueil', de: '📲 SlutCamp auf deinen Startbildschirm legen', ru: '📲 Добавьте SlutCamp на главный экран', ja: '📲 SlutCampをホーム画面に追加', zh: '📲 把 SlutCamp 放到你的主屏幕', ko: '📲 홈 화면에 SlutCamp 추가하기', it: '📲 Metti SlutCamp sulla tua schermata home', pl: '📲 Umieść SlutCamp na ekranie głównym', nl: '📲 Zet SlutCamp op je startscherm', tr: '📲 SlutCamp\'i ana ekranına koy' },
+  bell_home_screen_body: { en: 'Asce sent you a 30-second video showing how to add SlutCamp to your home screen 💋', es: 'Asce te envió un video de 30 segundos que muestra cómo agregar SlutCamp a tu pantalla de inicio 💋', pt: 'Asce te enviou um vídeo de 30 segundos mostrando como adicionar a SlutCamp à sua tela inicial 💋', fr: 'Asce vous a envoyé une vidéo de 30 secondes montrant comment ajouter SlutCamp à votre écran d\'accueil 💋', de: 'Asce hat dir ein 30-Sekunden-Video geschickt, das zeigt, wie du SlutCamp zu deinem Startbildschirm hinzufügst 💋', ru: 'Asce отправил вам 30-секундное видео, показывающее, как добавить SlutCamp на главный экран 💋', ja: 'AsceがSlutCampをホーム画面に追加する方法を説明する30秒動画を送りました 💋', zh: 'Asce 给你发了一个 30 秒的视频，展示如何把 SlutCamp 添加到你的主屏幕 💋', ko: 'Asce가 홈 화면에 SlutCamp를 추가하는 방법을 보여주는 30초 영상을 보냈습니다 💋', it: 'Asce ti ha mandato un video di 30 secondi che mostra come aggiungere SlutCamp alla tua schermata home 💋', pl: 'Asce wysłał Ci 30-sekundowe wideo pokazujące, jak dodać SlutCamp do ekranu głównego 💋', nl: 'Asce heeft je een video van 30 seconden gestuurd die laat zien hoe je SlutCamp aan je startscherm toevoegt 💋', tr: 'Asce sana SlutCamp\'i ana ekranına nasıl ekleyeceğini gösteren 30 saniyelik bir video gönderdi 💋' },
+  bell_id_verify_title: { en: '🪪 One last step: verify your ID', es: '🪪 Un último paso: verifica tu ID', pt: '🪪 Um último passo: verifique seu documento', fr: '🪪 Dernière étape : vérifiez votre pièce d\'identité', de: '🪪 Ein letzter Schritt: Verifiziere deinen Ausweis', ru: '🪪 Последний шаг: подтвердите ваше удостоверение личности', ja: '🪪 最後のステップ：身分証を確認', zh: '🪪 最后一步：验证你的身份证件', ko: '🪪 마지막 단계: 신분증 인증하기', it: '🪪 Ultimo passo: verifica il tuo documento', pl: '🪪 Ostatni krok: zweryfikuj swój dokument tożsamości', nl: '🪪 Laatste stap: verifieer je ID', tr: '🪪 Son bir adım: Kimliğini doğrula' },
+  bell_id_verify_body: { en: 'It unlocks going live and getting paid — 2 minutes in Settings 💋', es: 'Desbloquea salir en vivo y cobrar — 2 minutos en Ajustes 💋', pt: 'Isso libera entrar ao vivo e receber — 2 minutos em Configurações 💋', fr: 'Cela débloque le direct et les paiements — 2 minutes dans Paramètres 💋', de: 'Es schaltet Live-Gehen und Bezahltwerden frei — 2 Minuten in den Einstellungen 💋', ru: 'Это открывает выход в эфир и получение оплаты — 2 минуты в Настройках 💋', ja: 'ライブ配信と支払い受け取りがアンロックされます — 設定で2分 💋', zh: '它能解锁开播和获得报酬 — 在设置中只需 2 分钟 💋', ko: '라이브와 수익 받기가 잠금 해제됩니다 — 설정에서 2분이면 됩니다 💋', it: 'Sblocca l\'andare live e l\'essere pagata — 2 minuti in Impostazioni 💋', pl: 'Odblokowuje transmisje na żywo i wypłaty — 2 minuty w Ustawieniach 💋', nl: 'Het ontgrendelt live gaan en betaald krijgen — 2 minuten in Instellingen 💋', tr: 'Canlıya geçmeyi ve ödeme almayı açar — Ayarlar\'da 2 dakika 💋' },
+  bell_affiliate_title: { en: '💰 Make money bringing models', es: '💰 Gana dinero trayendo modelos', pt: '💰 Ganhe dinheiro trazendo modelos', fr: '💰 Gagnez de l\'argent en amenant des modèles', de: '💰 Verdiene Geld, indem du Modelle bringst', ru: '💰 Зарабатывайте, привлекая моделей', ja: '💰 モデルを紹介して稼ごう', zh: '💰 靠带来模特赚钱', ko: '💰 모델을 데려와 수익을 얻으세요', it: '💰 Guadagna portando modelle', pl: '💰 Zarabiaj, przyprowadzając modelki', nl: '💰 Verdien geld door modellen te brengen', tr: '💰 Model getirerek para kazan' },
+  bell_affiliate_body: { en: 'Earn 20% of everything your recruited models make — reply here for your link 💋', es: 'Gana el 20% de todo lo que ganen las modelos que reclutes — responde aquí para obtener tu enlace 💋', pt: 'Ganhe 20% de tudo o que suas modelos recrutadas ganharem — responda aqui para receber seu link 💋', fr: 'Gagnez 20% de tout ce que vos modèles recrutées gagnent — répondez ici pour votre lien 💋', de: 'Verdiene 20% von allem, was deine angeworbenen Modelle verdienen — antworte hier für deinen Link 💋', ru: 'Зарабатывайте 20% от всего, что зарабатывают привлечённые вами модели — ответьте здесь, чтобы получить вашу ссылку 💋', ja: 'あなたが募集したモデルの収益の20%を稼げます — リンクが欲しい場合はここに返信してね 💋', zh: '赚取你招募的模特全部收入的 20% — 在这里回复获取你的链接 💋', ko: '모집한 모델이 버는 모든 수익의 20%를 받으세요 — 링크를 받으려면 여기에 답장하세요 💋', it: 'Guadagna il 20% di tutto ciò che guadagnano le modelle che hai reclutato — rispondi qui per il tuo link 💋', pl: 'Zarabiaj 20% wszystkiego, co zarobią zrekrutowane przez Ciebie modelki — odpowiedz tutaj po swój link 💋', nl: 'Verdien 20% van alles wat je geworven modellen maken — antwoord hier voor je link 💋', tr: 'Getirdiğin modellerin kazandığı her şeyin %20\'sini kazan — bağlantın için buraya yanıt ver 💋' },
+  bell_tip_title: { en: '💰 {fan} tipped {emoji} {label}!', es: '💰 ¡{fan} dio una propina {emoji} {label}!', pt: '💰 {fan} deu uma gorjeta {emoji} {label}!', fr: '💰 {fan} a donné un pourboire {emoji} {label} !', de: '💰 {fan} hat {emoji} {label} als Trinkgeld gegeben!', ru: '💰 {fan} отправил чаевые {emoji} {label}!', ja: '💰 {fan} が {emoji} {label} をチップしました！', zh: '💰 {fan} 打赏了 {emoji} {label}！', ko: '💰 {fan}님이 {emoji} {label} 팁을 보냈습니다!', it: '💰 {fan} ha dato una mancia {emoji} {label}!', pl: '💰 {fan} dał napiwek {emoji} {label}!', nl: '💰 {fan} gaf een fooi {emoji} {label}!', tr: '💰 {fan} bahşiş verdi {emoji} {label}!' },
+  bell_tip_body: { en: '{amount} tip received', es: 'Propina de {amount} recibida', pt: 'Gorjeta de {amount} recebida', fr: 'Pourboire de {amount} reçu', de: '{amount} Trinkgeld erhalten', ru: 'Получены чаевые {amount}', ja: '{amount} のチップを受け取りました', zh: '收到 {amount} 小费', ko: '{amount} 팁을 받았습니다', it: 'Mancia di {amount} ricevuta', pl: 'Otrzymano napiwek {amount}', nl: '{amount} fooi ontvangen', tr: '{amount} bahşiş alındı' },
+  bell_ft_turn_title: { en: '📹 Your turn!', es: '📹 ¡Tu turno!', pt: '📹 Sua vez!', fr: '📹 À votre tour !', de: '📹 Du bist dran!', ru: '📹 Ваша очередь!', ja: '📹 あなたの番です！', zh: '📹 轮到你了！', ko: '📹 차례입니다!', it: '📹 È il tuo turno!', pl: '📹 Twoja kolej!', nl: '📹 Jouw beurt!', tr: '📹 Sıra sende!' },
+  bell_ft_turn_body: { en: '{model} is ready for your FaceTime — join in the next 90 seconds or the spot passes on.', es: '{model} está lista para tu FaceTime — únete en los próximos 90 segundos o el espacio pasa al siguiente.', pt: '{model} está pronta para seu FaceTime — entre nos próximos 90 segundos ou a vaga passa para o próximo.', fr: '{model} est prête pour votre FaceTime — rejoignez dans les 90 prochaines secondes, sinon la place passe.', de: '{model} ist bereit für dein FaceTime — tritt in den nächsten 90 Sekunden bei, sonst geht der Platz weiter.', ru: '{model} готова к вашему FaceTime — присоединяйтесь в течение следующих 90 секунд, иначе место перейдёт дальше.', ja: '{model} があなたのFaceTimeの準備ができています — 次の90秒以内に参加しないと枠が次に移ります。', zh: '{model} 已准备好与你 FaceTime — 在接下来 90 秒内加入，否则名额会顺延。', ko: '{model}님이 FaceTime 준비를 마쳤습니다 — 다음 90초 안에 참여하지 않으면 자리가 넘어갑니다.', it: '{model} è pronta per il tuo FaceTime — entra nei prossimi 90 secondi o il posto passa a un altro.', pl: '{model} jest gotowa na Twój FaceTime — dołącz w ciągu następnych 90 sekund, bo miejsce przejdzie dalej.', nl: '{model} is klaar voor je FaceTime — doe binnen de volgende 90 seconden mee of de plek gaat door.', tr: '{model} FaceTime\'ın için hazır — sonraki 90 saniye içinde katıl, yoksa sıra başkasına geçer.' },
+  bell_ft_req_title: { en: '📹 FaceTime request', es: '📹 Solicitud de FaceTime', pt: '📹 Solicitação de FaceTime', fr: '📹 Demande FaceTime', de: '📹 FaceTime-Anfrage', ru: '📹 Запрос FaceTime', ja: '📹 FaceTimeリクエスト', zh: '📹 FaceTime 请求', ko: '📹 FaceTime 요청', it: '📹 Richiesta FaceTime', pl: '📹 Prośba o FaceTime', nl: '📹 FaceTime-verzoek', tr: '📹 FaceTime isteği' },
+  bell_ft_req_body: { en: '{fan} wants a {min}-min FaceTime with you — {amount}.', es: '{fan} quiere un FaceTime de {min} min contigo — {amount}.', pt: '{fan} quer um FaceTime de {min} min com você — {amount}.', fr: '{fan} veut un FaceTime de {min} min avec vous — {amount}.', de: '{fan} will ein {min}-minütiges FaceTime mit dir — {amount}.', ru: '{fan} хочет FaceTime с вами на {min} мин — {amount}.', ja: '{fan} があなたと {min}分のFaceTimeを希望しています — {amount}。', zh: '{fan} 想与你进行 {min} 分钟的 FaceTime — {amount}。', ko: '{fan}님이 {min}분 FaceTime을 원합니다 — {amount}.', it: '{fan} vuole un FaceTime di {min} min con te — {amount}.', pl: '{fan} chce FaceTime z Tobą na {min} min — {amount}.', nl: '{fan} wil een FaceTime van {min} min met jou — {amount}.', tr: '{fan} seninle {min} dakikalık bir FaceTime istiyor — {amount}.' },
+  bell_ft_accepted_title: { en: '📹 She accepted!', es: '📹 ¡Aceptó!', pt: '📹 Ela aceitou!', fr: '📹 Elle a accepté !', de: '📹 Sie hat akzeptiert!', ru: '📹 Она приняла!', ja: '📹 彼女が承諾しました！', zh: '📹 她接受了！', ko: '📹 그녀가 수락했습니다!', it: '📹 Ha accettato!', pl: '📹 Zaakceptowała!', nl: '📹 Ze heeft geaccepteerd!', tr: '📹 Kabul etti!' },
+  bell_ft_accepted_body: { en: '{model} accepted your FaceTime — join in the next 90 seconds.', es: '{model} aceptó tu FaceTime — únete en los próximos 90 segundos.', pt: '{model} aceitou seu FaceTime — entre nos próximos 90 segundos.', fr: '{model} a accepté votre FaceTime — rejoignez dans les 90 prochaines secondes.', de: '{model} hat dein FaceTime akzeptiert — tritt in den nächsten 90 Sekunden bei.', ru: '{model} приняла ваш FaceTime — присоединяйтесь в течение следующих 90 секунд.', ja: '{model} があなたのFaceTimeを承諾しました — 次の90秒以内に参加してね。', zh: '{model} 接受了你的 FaceTime — 在接下来 90 秒内加入。', ko: '{model}님이 FaceTime을 수락했습니다 — 다음 90초 안에 참여하세요.', it: '{model} ha accettato il tuo FaceTime — entra nei prossimi 90 secondi.', pl: '{model} zaakceptowała Twój FaceTime — dołącz w ciągu następnych 90 sekund.', nl: '{model} heeft je FaceTime geaccepteerd — doe binnen de volgende 90 seconden mee.', tr: '{model} FaceTime\'ını kabul etti — sonraki 90 saniye içinde katıl.' },
+  bell_live_title: { en: '🔴 {model} just went live!', es: '🔴 ¡{model} acaba de salir en vivo!', pt: '🔴 {model} acabou de entrar ao vivo!', fr: '🔴 {model} vient de passer en direct !', de: '🔴 {model} ist gerade live gegangen!', ru: '🔴 {model} только что вышла в эфир!', ja: '🔴 {model} がライブを開始しました！', zh: '🔴 {model} 刚刚开播了！', ko: '🔴 {model}님이 방금 라이브를 시작했습니다!', it: '🔴 {model} è appena andata live!', pl: '🔴 {model} właśnie rozpoczęła transmisję na żywo!', nl: '🔴 {model} is net live gegaan!', tr: '🔴 {model} az önce canlıya geçti!' },
+  bell_live_body_titled: { en: '“{title}” — tap to watch.', es: '“{title}” — toca para ver.', pt: '“{title}” — toque para assistir.', fr: '“{title}” — touchez pour regarder.', de: '“{title}” — tippen zum Ansehen.', ru: '«{title}» — нажмите, чтобы смотреть.', ja: '“{title}” — タップして視聴。', zh: '“{title}” — 点击观看。', ko: '“{title}” — 탭하여 시청하세요.', it: '“{title}” — tocca per guardare.', pl: '„{title}” — dotknij, aby oglądać.', nl: '“{title}” — tik om te kijken.', tr: '“{title}” — izlemek için dokun.' },
+  bell_live_body: { en: 'Tap to watch her now.', es: 'Toca para verla ahora.', pt: 'Toque para assistir a ela agora.', fr: 'Touchez pour la regarder maintenant.', de: 'Tippen, um sie jetzt anzusehen.', ru: 'Нажмите, чтобы смотреть её сейчас.', ja: 'タップして今すぐ彼女を視聴。', zh: '点击立即观看她。', ko: '탭하여 지금 그녀를 시청하세요.', it: 'Tocca per guardarla ora.', pl: 'Dotknij, aby oglądać ją teraz.', nl: 'Tik om haar nu te kijken.', tr: 'Onu şimdi izlemek için dokun.' },
+  bell_stage_title: { en: '🎥 {fan} wants to join your live!', es: '🎥 {fan} quiere unirse a tu en vivo', pt: '🎥 {fan} quer entrar na sua live!', fr: '🎥 {fan} veut rejoindre votre direct !', de: '🎥 {fan} will bei deinem Live mitmachen!', ru: '🎥 {fan} хочет присоединиться к вашему эфиру!', ja: '🎥 {fan} があなたのライブに参加したいです！', zh: '🎥 {fan} 想加入你的直播！', ko: '🎥 {fan}님이 라이브에 참여하고 싶어 합니다!', it: '🎥 {fan} vuole unirsi alla tua live!', pl: '🎥 {fan} chce dołączyć do Twojej transmisji na żywo!', nl: '🎥 {fan} wil meedoen aan je live!', tr: '🎥 {fan} canlına katılmak istiyor!' },
+  bell_stage_body: { en: 'Tap to review and approve (paid {fee})', es: 'Toca para revisar y aprobar (pago de {fee})', pt: 'Toque para revisar e aprovar (pago {fee})', fr: 'Touchez pour examiner et approuver (payé {fee})', de: 'Tippen zum Überprüfen und Genehmigen (bezahlt {fee})', ru: 'Нажмите, чтобы рассмотреть и одобрить (оплачено {fee})', ja: 'タップして確認・承認（有料 {fee}）', zh: '点击查看并批准（已付费 {fee}）', ko: '탭하여 검토하고 승인하세요 (유료 {fee})', it: 'Tocca per esaminare e approvare (a pagamento {fee})', pl: 'Dotknij, aby sprawdzić i zatwierdzić (płatne {fee})', nl: 'Tik om te beoordelen en goed te keuren (betaald {fee})', tr: 'İncelemek ve onaylamak için dokun (ücretli {fee})' },
+  bell_booking_fan_active_title: { en: '📹 Your 1-on-1 is now active', es: '📹 Tu 1 a 1 ya está activo', pt: '📹 Seu 1 a 1 está ativo agora', fr: '📹 Votre 1-à-1 est maintenant actif', de: '📹 Dein 1-zu-1 ist jetzt aktiv', ru: '📹 Ваш 1-на-1 теперь активен', ja: '📹 あなたの1対1が有効になりました', zh: '📹 你的一对一已激活', ko: '📹 1:1이 지금 활성화되었습니다', it: '📹 Il tuo 1-a-1 è ora attivo', pl: '📹 Twoje 1 na 1 jest teraz aktywne', nl: '📹 Je 1-op-1 is nu actief', tr: '📹 Bire birin şimdi aktif' },
+  bell_booking_fan_active_body: { en: '📹 Your FaceTime call with {model} is now active — you have 3 minutes to get to the call.', es: '📹 Tu llamada FaceTime con {model} ya está activa — tienes 3 minutos para llegar a la llamada.', pt: '📹 Sua chamada FaceTime com {model} está ativa agora — você tem 3 minutos para entrar na chamada.', fr: '📹 Votre appel FaceTime avec {model} est maintenant actif — vous avez 3 minutes pour rejoindre l\'appel.', de: '📹 Dein FaceTime-Anruf mit {model} ist jetzt aktiv — du hast 3 Minuten, um zum Anruf zu kommen.', ru: '📹 Ваш звонок FaceTime с {model} теперь активен — у вас есть 3 минуты, чтобы попасть на звонок.', ja: '📹 {model} とのFaceTime通話が有効になりました — 通話に参加するまで3分あります。', zh: '📹 你与 {model} 的 FaceTime 通话已激活 — 你有 3 分钟时间进入通话。', ko: '📹 {model}님과의 FaceTime 통화가 지금 활성화되었습니다 — 3분 안에 통화에 참여하세요.', it: '📹 La tua chiamata FaceTime con {model} è ora attiva — hai 3 minuti per arrivare alla chiamata.', pl: '📹 Twoja rozmowa FaceTime z {model} jest teraz aktywna — masz 3 minuty, aby dotrzeć na rozmowę.', nl: '📹 Je FaceTime-gesprek met {model} is nu actief — je hebt 3 minuten om naar het gesprek te gaan.', tr: '📹 {model} ile FaceTime araman şimdi aktif — aramaya gitmek için 3 dakikan var.' },
+  bell_booking_fan_noshow_model_title: { en: '💔 Fan no-show', es: '💔 El fan no se presentó', pt: '💔 Fã não apareceu', fr: '💔 Fan absent', de: '💔 Fan-No-Show', ru: '💔 Фанат не явился', ja: '💔 ファンのノーショー', zh: '💔 粉丝爽约', ko: '💔 팬 노쇼', it: '💔 Fan assente', pl: '💔 Fan się nie pojawił', nl: '💔 Fan no-show', tr: '💔 Hayran gelmedi' },
+  bell_booking_fan_noshow_model_body: { en: '💔 {fan} never showed up for your 1-on-1 — the booking is paid, you keep it.', es: '💔 {fan} nunca se presentó a tu 1 a 1 — la reserva está pagada, te la quedas.', pt: '💔 {fan} nunca apareceu no seu 1 a 1 — a reserva está paga, você fica com ela.', fr: '💔 {fan} ne s\'est jamais présenté à votre 1-à-1 — la réservation est payée, vous la gardez.', de: '💔 {fan} ist nie zu deinem 1-zu-1 erschienen — die Buchung ist bezahlt, du behältst sie.', ru: '💔 {fan} так и не явился на ваш 1-на-1 — бронирование оплачено, вы его сохраняете.', ja: '💔 {fan} はあなたの1対1に現れませんでした — 予約は支払い済みで、あなたのものになります。', zh: '💔 {fan} 没有出现在你的一对一中 — 预约已付款，你保留这笔费用。', ko: '💔 {fan}님이 1:1에 나타나지 않았습니다 — 예약은 결제되었으며, 금액은 내 것입니다.', it: '💔 {fan} non si è mai presentato al tuo 1-a-1 — la prenotazione è pagata, la trattieni tu.', pl: '💔 {fan} nigdy nie pojawił się na Waszym 1 na 1 — rezerwacja jest opłacona, zatrzymujesz ją.', nl: '💔 {fan} is nooit verschenen voor je 1-op-1 — de boeking is betaald, je houdt hem.', tr: '💔 {fan} bire birine hiç gelmedi — rezervasyon ödendi, sen alırsın.' },
+  bell_booking_fan_noshow_fan_title: { en: '📅 You missed your 1-on-1', es: '📅 Perdiste tu 1 a 1', pt: '📅 Você perdeu seu 1 a 1', fr: '📅 Vous avez manqué votre 1-à-1', de: '📅 Du hast dein 1-zu-1 verpasst', ru: '📅 Вы пропустили ваш 1-на-1', ja: '📅 1対1を逃しました', zh: '📅 你错过了你的一对一', ko: '📅 1:1을 놓쳤습니다', it: '📅 Hai perso il tuo 1-a-1', pl: '📅 Przegapiłeś swoje 1 na 1', nl: '📅 Je hebt je 1-op-1 gemist', tr: '📅 Bire birini kaçırdın' },
+  bell_booking_fan_noshow_fan_body: { en: 'You missed your 1-on-1 with {model} — no-show bookings aren\'t refunded (your slot was reserved for you).', es: 'Perdiste tu 1 a 1 con {model} — las reservas con ausencia no se reembolsan (tu espacio estuvo reservado para ti).', pt: 'Você perdeu seu 1 a 1 com {model} — reservas com falta não são reembolsadas (seu horário foi reservado para você).', fr: 'Vous avez manqué votre 1-à-1 avec {model} — les réservations en cas d\'absence ne sont pas remboursées (votre créneau vous était réservé).', de: 'Du hast dein 1-zu-1 mit {model} verpasst — No-Show-Buchungen werden nicht erstattet (dein Slot war für dich reserviert).', ru: 'Вы пропустили ваш 1-на-1 с {model} — бронирования при неявке не возвращаются (ваш слот был зарезервирован за вами).', ja: '{model} との1対1を逃しました — ノーショー予約は返金されません（あなたの枠が予約されていました）。', zh: '你错过了与 {model} 的一对一 — 爽约的预约不予退款（该时段已为你保留）。', ko: '{model}님과의 1:1을 놓쳤습니다 — 노쇼 예약은 환불되지 않습니다 (자리가 나를 위해 예약되어 있었습니다).', it: 'Hai perso il tuo 1-a-1 con {model} — le prenotazioni con assenza non vengono rimborsate (il tuo posto era riservato per te).', pl: 'Przegapiłeś swoje 1 na 1 z {model} — rezerwacje z nieobecnością nie podlegają zwrotowi (Twój termin był zarezerwowany dla Ciebie).', nl: 'Je hebt je 1-op-1 met {model} gemist — no-show boekingen worden niet terugbetaald (je slot was voor jou gereserveerd).', tr: '{model} ile bire birini kaçırdın — gelinmeyen rezervasyonlar iade edilmez (yerin senin için ayrılmıştı).' },
+  bell_booking_model_noshow_title: { en: '📅 You missed a 1-on-1', es: '📅 Perdiste un 1 a 1', pt: '📅 Você perdeu um 1 a 1', fr: '📅 Vous avez manqué un 1-à-1', de: '📅 Du hast ein 1-zu-1 verpasst', ru: '📅 Вы пропустили 1-на-1', ja: '📅 1対1を逃しました', zh: '📅 你错过了一次一对一', ko: '📅 1:1을 놓쳤습니다', it: '📅 Hai perso un 1-a-1', pl: '📅 Przegapiłaś 1 na 1', nl: '📅 Je hebt een 1-op-1 gemist', tr: '📅 Bir bire biri kaçırdın' },
+  bell_booking_model_noshow_body: { en: 'You missed your 1-on-1 with {fan} — he was refunded in full.', es: 'Perdiste tu 1 a 1 con {fan} — se le reembolsó por completo.', pt: 'Você perdeu seu 1 a 1 com {fan} — ele foi reembolsado integralmente.', fr: 'Vous avez manqué votre 1-à-1 avec {fan} — il a été intégralement remboursé.', de: 'Du hast dein 1-zu-1 mit {fan} verpasst — er wurde vollständig erstattet.', ru: 'Вы пропустили ваш 1-на-1 с {fan} — ему вернули полную сумму.', ja: '{fan} との1対1を逃しました — 彼は全額返金されました。', zh: '你错过了与 {fan} 的一对一 — 他已获得全额退款。', ko: '{fan}님과의 1:1을 놓쳤습니다 — 그에게는 전액 환불되었습니다.', it: 'Hai perso il tuo 1-a-1 con {fan} — è stato rimborsato per intero.', pl: 'Przegapiłaś swoje 1 na 1 z {fan} — otrzymał pełny zwrot.', nl: 'Je hebt je 1-op-1 met {fan} gemist — hij is volledig terugbetaald.', tr: '{fan} ile bire birini kaçırdın — ona tam iade yapıldı.' },
+  bell_booking_reminder_title: { en: '📅 1-on-1 reminder', es: '📅 Recordatorio de 1 a 1', pt: '📅 Lembrete de 1 a 1', fr: '📅 Rappel de 1-à-1', de: '📅 1-zu-1 Erinnerung', ru: '📅 Напоминание о 1-на-1', ja: '📅 1対1リマインダー', zh: '📅 一对一提醒', ko: '📅 1:1 알림', it: '📅 Promemoria 1-a-1', pl: '📅 Przypomnienie o 1 na 1', nl: '📅 1-op-1 herinnering', tr: '📅 Bire bir hatırlatması' },
+  bell_booking_reminder_body: { en: '📅 Reminder: your 1-on-1 with {fan} is {label} — {when}, {min} min{tail} 💋', es: '📅 Recordatorio: tu 1 a 1 con {fan} es {label} — {when}, {min} min{tail} 💋', pt: '📅 Lembrete: seu 1 a 1 com {fan} é {label} — {when}, {min} min{tail} 💋', fr: '📅 Rappel : votre 1-à-1 avec {fan} est {label} — {when}, {min} min{tail} 💋', de: '📅 Erinnerung: dein 1-zu-1 mit {fan} ist {label} — {when}, {min} Min.{tail} 💋', ru: '📅 Напоминание: ваш 1-на-1 с {fan} {label} — {when}, {min} мин{tail} 💋', ja: '📅 リマインダー：{fan} との1対1は {label} — {when}、{min}分{tail} 💋', zh: '📅 提醒：你与 {fan} 的一对一是 {label} — {when}，{min} 分钟{tail} 💋', ko: '📅 알림: {fan}님과의 1:1이 {label}입니다 — {when}, {min}분{tail} 💋', it: '📅 Promemoria: il tuo 1-a-1 con {fan} è {label} — {when}, {min} min{tail} 💋', pl: '📅 Przypomnienie: Twoje 1 na 1 z {fan} jest {label} — {when}, {min} min{tail} 💋', nl: '📅 Herinnering: je 1-op-1 met {fan} is {label} — {when}, {min} min{tail} 💋', tr: '📅 Hatırlatma: {fan} ile bire birin {label} — {when}, {min} dk{tail} 💋' },
+  reminder_label_3d: { en: 'in 3 days', es: 'en 3 días', pt: 'em 3 dias', fr: 'dans 3 jours', de: 'in 3 Tagen', ru: 'через 3 дня', ja: '3日後', zh: '3 天后', ko: '3일 후', it: 'tra 3 giorni', pl: 'za 3 dni', nl: 'over 3 dagen', tr: '3 gün içinde' },
+  reminder_label_3h: { en: 'in 3 hours', es: 'en 3 horas', pt: 'em 3 horas', fr: 'dans 3 heures', de: 'in 3 Stunden', ru: 'через 3 часа', ja: '3時間後', zh: '3 小时后', ko: '3시간 후', it: 'tra 3 ore', pl: 'za 3 godziny', nl: 'over 3 uur', tr: '3 saat içinde' },
+  reminder_label_15m: { en: 'in 15 minutes', es: 'en 15 minutos', pt: 'em 15 minutos', fr: 'dans 15 minutes', de: 'in 15 Minuten', ru: 'через 15 минут', ja: '15分後', zh: '15 分钟后', ko: '15분 후', it: 'tra 15 minuti', pl: 'za 15 minut', nl: 'over 15 minuten', tr: '15 dakika içinde' },
+  reminder_tail_15m: { en: ' — get ready!', es: ' — ¡prepárate!', pt: ' — se prepare!', fr: ' — préparez-vous !', de: ' — mach dich bereit!', ru: ' — приготовьтесь!', ja: ' — 準備してね！', zh: ' — 准备好了！', ko: ' — 준비하세요!', it: ' — preparati!', pl: ' — przygotuj się!', nl: ' — maak je klaar!', tr: ' — hazırlan!' },
+  bell_booking_start_title: { en: '📅 Your 1-on-1 is now active', es: '📅 Tu 1 a 1 ya está activo', pt: '📅 Seu 1 a 1 está ativo agora', fr: '📅 Votre 1-à-1 est maintenant actif', de: '📅 Dein 1-zu-1 ist jetzt aktiv', ru: '📅 Ваш 1-на-1 теперь активен', ja: '📅 あなたの1対1が有効になりました', zh: '📅 你的一对一已激活', ko: '📅 1:1이 지금 활성화되었습니다', it: '📅 Il tuo 1-a-1 è ora attivo', pl: '📅 Twoje 1 na 1 jest teraz aktywne', nl: '📅 Je 1-op-1 is nu actief', tr: '📅 Bire birin şimdi aktif' },
+  bell_booking_start_body: { en: '📅 Your 1-on-1 with {fan} is now active — you have 5 minutes to get to the call or their money will be fully refunded.', es: '📅 Tu 1 a 1 con {fan} ya está activo — tienes 5 minutos para llegar a la llamada o se le reembolsará su dinero por completo.', pt: '📅 Seu 1 a 1 com {fan} está ativo agora — você tem 5 minutos para entrar na chamada ou o dinheiro dele será reembolsado integralmente.', fr: '📅 Votre 1-à-1 avec {fan} est maintenant actif — vous avez 5 minutes pour rejoindre l\'appel, sinon son argent sera intégralement remboursé.', de: '📅 Dein 1-zu-1 mit {fan} ist jetzt aktiv — du hast 5 Minuten, um zum Anruf zu kommen, sonst wird sein Geld vollständig erstattet.', ru: '📅 Ваш 1-на-1 с {fan} теперь активен — у вас есть 5 минут, чтобы попасть на звонок, иначе его деньги будут полностью возвращены.', ja: '📅 {fan} との1対1が有効になりました — 通話に参加するまで5分あります。過ぎると彼の支払いは全額返金されます。', zh: '📅 你与 {fan} 的一对一已激活 — 你有 5 分钟时间进入通话，否则他的款项将全额退还。', ko: '📅 {fan}님과의 1:1이 지금 활성화되었습니다 — 5분 안에 통화에 참여하지 않으면 그에게 전액 환불됩니다.', it: '📅 Il tuo 1-a-1 con {fan} è ora attivo — hai 5 minuti per arrivare alla chiamata o i suoi soldi saranno rimborsati per intero.', pl: '📅 Twoje 1 na 1 z {fan} jest teraz aktywne — masz 5 minut, aby dotrzeć na rozmowę, w przeciwnym razie jego pieniądze zostaną w pełni zwrócone.', nl: '📅 Je 1-op-1 met {fan} is nu actief — je hebt 5 minuten om naar het gesprek te gaan of zijn geld wordt volledig terugbetaald.', tr: '📅 {fan} ile bire birin şimdi aktif — aramaya gitmek için 5 dakikan var, yoksa parası tam iade edilecek.' },
+  bell_booking_new_title: { en: '📅 New 1-on-1 booked', es: '📅 Nuevo 1 a 1 reservado', pt: '📅 Novo 1 a 1 reservado', fr: '📅 Nouveau 1-à-1 réservé', de: '📅 Neues 1-zu-1 gebucht', ru: '📅 Забронирован новый 1-на-1', ja: '📅 新しい1対1が予約されました', zh: '📅 新的一对一已预约', ko: '📅 새 1:1이 예약되었습니다', it: '📅 Nuovo 1-a-1 prenotato', pl: '📅 Zarezerwowano nowe 1 na 1', nl: '📅 Nieuwe 1-op-1 geboekt', tr: '📅 Yeni bire bir rezerve edildi' },
+  bell_booking_new_body: { en: '{fan} booked a {min}-min 1-on-1 — {when}.', es: '{fan} reservó un 1 a 1 de {min} min — {when}.', pt: '{fan} reservou um 1 a 1 de {min} min — {when}.', fr: '{fan} a réservé un 1-à-1 de {min} min — {when}.', de: '{fan} hat ein {min}-minütiges 1-zu-1 gebucht — {when}.', ru: '{fan} забронировал 1-на-1 на {min} мин — {when}.', ja: '{fan} が {min}分の1対1を予約しました — {when}。', zh: '{fan} 预约了 {min} 分钟的一对一 — {when}。', ko: '{fan}님이 {min}분 1:1을 예약했습니다 — {when}.', it: '{fan} ha prenotato un 1-a-1 di {min} min — {when}.', pl: '{fan} zarezerwował 1 na 1 na {min} min — {when}.', nl: '{fan} heeft een 1-op-1 van {min} min geboekt — {when}.', tr: '{fan} {min} dakikalık bir bire bir rezerve etti — {when}.' },
+  apology_dm_body: { en: 'We\'re so sorry 💔 {model} couldn\'t make your 1-on-1 today — that\'s on us. Your {amount} has been refunded in full to your balance. She\'d love to make it up to you — her latest openings are on her booking calendar 💋', es: 'Lo sentimos mucho 💔 {model} no pudo hacer tu 1 a 1 hoy — es culpa nuestra. Tu {amount} se reembolsó por completo a tu saldo. Le encantaría compensártelo — sus horarios más recientes están en su calendario de reservas 💋', pt: 'Sentimos muito 💔 {model} não pôde comparecer ao seu 1 a 1 hoje — a culpa é nossa. Seu {amount} foi reembolsado integralmente para seu saldo. Ela adoraria compensar você — os horários mais recentes dela estão no calendário de reservas dela 💋', fr: 'Nous sommes vraiment désolés 💔 {model} n\'a pas pu assurer votre 1-à-1 aujourd\'hui — c\'est de notre faute. Votre {amount} a été intégralement remboursé sur votre solde. Elle adorerait se rattraper — ses dernières disponibilités sont sur son calendrier de réservation 💋', de: 'Es tut uns so leid 💔 {model} konnte dein 1-zu-1 heute nicht wahrnehmen — das geht auf uns. Deine {amount} wurde vollständig auf dein Guthaben erstattet. Sie würde es gerne wiedergutmachen — ihre neuesten Öffnungen sind in ihrem Buchungskalender 💋', ru: 'Нам очень жаль 💔 {model} не смогла прийти на ваш 1-на-1 сегодня — это наша вина. Ваши {amount} были полностью возвращены на ваш баланс. Она с радостью загладит вину — её последние свободные места в её календаре бронирований 💋', ja: '本当にごめんなさい 💔 {model} は今日あなたの1対1に参加できませんでした — 私たちの責任です。{amount} は全額あなたの残高に返金されました。彼女は埋め合わせをしたいと思っています — 最新の空き状況は彼女の予約カレンダーにあります 💋', zh: '我们非常抱歉 💔 {model} 今天无法赴约你的一对一 — 这是我们的责任。你的 {amount} 已全额退回到你的余额。她很想弥补你 — 她最新的空位在她的预约日历上 💋', ko: '정말 죄송합니다 💔 {model}님이 오늘 1:1에 오지 못했습니다 — 저희 책임입니다. {amount}는 잔액으로 전액 환불되었습니다. 그녀가 꼭 만회하고 싶어 합니다 — 그녀의 최신 빈 일정은 예약 캘린더에 있습니다 💋', it: 'Ci dispiace tantissimo 💔 {model} non ha potuto fare il tuo 1-a-1 oggi — è colpa nostra. Il tuo {amount} è stato rimborsato per intero sul tuo saldo. Le piacerebbe farsi perdonare — le sue ultime disponibilità sono sul suo calendario prenotazioni 💋', pl: 'Bardzo przepraszamy 💔 {model} nie mogła dziś dotrzeć na Twoje 1 na 1 — to nasza wina. Twoje {amount} zostało w pełni zwrócone na Twoje saldo. Chętnie Ci to wynagrodzi — jej najnowsze wolne terminy są w jej kalendarzu rezerwacji 💋', nl: 'Het spijt ons zo 💔 {model} kon je 1-op-1 vandaag niet halen — dat ligt aan ons. Je {amount} is volledig terugbetaald naar je saldo. Ze zou het graag goedmaken — haar nieuwste openingen staan op haar boekingskalender 💋', tr: 'Çok üzgünüz 💔 {model} bugünkü bire birine gelemedi — bu bizim hatamız. {amount} tutarın bakiyene tam olarak iade edildi. Bunu telafi etmeyi çok ister — en son boşlukları rezervasyon takviminde 💋' },
+  ann_lang_dm: { en: '🌍 BIG NEWS: SlutCamp now speaks 13 languages! You — and your fans — can switch the whole app to your own language anytime in Settings: buttons, messages, notifications and even the agreements. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Fans from everywhere can now feel at home here — tell your boys! 💋', es: '🌍 GRANDES NOTICIAS: ¡SlutCamp ahora habla 13 idiomas! Tú — y tus fans — pueden cambiar toda la app a su propio idioma cuando quieran en Ajustes: botones, mensajes, notificaciones e incluso los acuerdos. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Los fans de todas partes ahora pueden sentirse en casa aquí — ¡cuéntaselo a tus chicos! 💋', pt: '🌍 GRANDE NOVIDADE: a SlutCamp agora fala 13 idiomas! Você — e seus fãs — podem trocar o app inteiro para o seu idioma quando quiserem em Configurações: botões, mensagens, notificações e até os contratos. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Fãs de todo lugar agora podem se sentir em casa aqui — avisa seus garotos! 💋', fr: '🌍 GRANDE NOUVELLE : SlutCamp parle maintenant 13 langues ! Vous — et vos fans — pouvez basculer toute l\'appli dans votre propre langue à tout moment dans Paramètres : boutons, messages, notifications et même les contrats. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Les fans du monde entier peuvent désormais se sentir chez eux ici — dites-le à vos gars ! 💋', de: '🌍 GROSSE NEUIGKEITEN: SlutCamp spricht jetzt 13 Sprachen! Du — und deine Fans — könnt die ganze App jederzeit in den Einstellungen auf eure eigene Sprache umstellen: Schaltflächen, Nachrichten, Benachrichtigungen und sogar die Vereinbarungen. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Fans von überall können sich hier jetzt zu Hause fühlen — erzähl es deinen Jungs! 💋', ru: '🌍 БОЛЬШИЕ НОВОСТИ: SlutCamp теперь говорит на 13 языках! Вы — и ваши фанаты — можете переключить всё приложение на свой язык в любое время в Настройках: кнопки, сообщения, уведомления и даже соглашения. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Фанаты со всего мира теперь могут чувствовать себя здесь как дома — расскажите своим парням! 💋', ja: '🌍 ビッグニュース：SlutCampは13言語に対応しました！あなたも — あなたのファンも — 設定でいつでもアプリ全体を自分の言語に切り替えられます：ボタン、メッセージ、通知、契約まで。English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe。世界中のファンがここでくつろげるようになりました — あなたのボーイズに教えてあげて！ 💋', zh: '🌍 重大消息：SlutCamp 现在支持 13 种语言！你 — 以及你的粉丝 — 可以随时在设置中将整个应用切换到你自己的语言：按钮、消息、通知甚至协议。English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe。现在来自世界各地的粉丝都能在这里感到宾至如归 — 告诉你的小伙子们吧！💋', ko: '🌍 큰 소식: SlutCamp가 이제 13개 언어를 지원합니다! 나와 팬들 모두 설정에서 언제든지 앱 전체를 본인의 언어로 바꿀 수 있습니다: 버튼, 메시지, 알림, 심지어 계약까지. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. 이제 전 세계 팬들이 여기서 편안함을 느낄 수 있습니다 — 친구들에게 알려주세요! 💋', it: '🌍 GRANDE NOVITÀ: SlutCamp ora parla 13 lingue! Tu — e i tuoi fan — potete cambiare l\'intera app nella vostra lingua in qualsiasi momento in Impostazioni: pulsanti, messaggi, notifiche e persino i contratti. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Fan da ovunque ora possono sentirsi a casa qui — dillo ai tuoi ragazzi! 💋', pl: '🌍 WIELKA WIADOMOŚĆ: SlutCamp mówi teraz w 13 językach! Ty — i Twoi fani — możecie w każdej chwili przełączyć całą aplikację na własny język w Ustawieniach: przyciski, wiadomości, powiadomienia, a nawet umowy. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Fani z całego świata mogą teraz czuć się tu jak w domu — powiedz swoim chłopakom! 💋', nl: '🌍 GROOT NIEUWS: SlutCamp spreekt nu 13 talen! Jij — en je fans — kunnen de hele app op elk moment in Instellingen naar je eigen taal schakelen: knoppen, berichten, meldingen en zelfs de overeenkomsten. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Fans van overal kunnen zich hier nu thuis voelen — vertel het je jongens! 💋', tr: '🌍 BÜYÜK HABER: SlutCamp artık 13 dil konuşuyor! Sen — ve hayranların — tüm uygulamayı Ayarlar\'dan istediğin zaman kendi diline çevirebilirsiniz: düğmeler, mesajlar, bildirimler ve hatta sözleşmeler. English · Español · Português · Français · Deutsch · Русский · 日本語 · 中文 · 한국어 · Italiano · Polski · Nederlands · Türkçe. Artık her yerden hayranlar burada kendini evinde hissedebilir — oğlanlarına söyle! 💋' },
+  ann_lang_bell_title: { en: '🌍 NEW UPDATE: SlutCamp speaks 13 languages!', es: '🌍 NUEVA ACTUALIZACIÓN: ¡SlutCamp habla 13 idiomas!', pt: '🌍 NOVA ATUALIZAÇÃO: a SlutCamp fala 13 idiomas!', fr: '🌍 NOUVELLE MISE À JOUR : SlutCamp parle 13 langues !', de: '🌍 NEUES UPDATE: SlutCamp spricht 13 Sprachen!', ru: '🌍 НОВОЕ ОБНОВЛЕНИЕ: SlutCamp говорит на 13 языках!', ja: '🌍 新しいアップデート：SlutCampは13言語に対応！', zh: '🌍 新更新：SlutCamp 支持 13 种语言！', ko: '🌍 새 업데이트: SlutCamp가 13개 언어를 지원합니다!', it: '🌍 NUOVO AGGIORNAMENTO: SlutCamp parla 13 lingue!', pl: '🌍 NOWA AKTUALIZACJA: SlutCamp mówi w 13 językach!', nl: '🌍 NIEUWE UPDATE: SlutCamp spreekt 13 talen!', tr: '🌍 YENİ GÜNCELLEME: SlutCamp 13 dil konuşuyor!' },
+  ann_lang_bell_body: { en: 'Switch the whole app to your language in Settings — your fans too! 💋', es: 'Cambia toda la app a tu idioma en Ajustes — ¡tus fans también! 💋', pt: 'Troque o app inteiro para seu idioma em Configurações — seus fãs também! 💋', fr: 'Basculez toute l\'appli dans votre langue dans Paramètres — vos fans aussi ! 💋', de: 'Stelle die ganze App in den Einstellungen auf deine Sprache um — deine Fans auch! 💋', ru: 'Переключите всё приложение на ваш язык в Настройках — ваши фанаты тоже! 💋', ja: '設定でアプリ全体をあなたの言語に切り替えてね — あなたのファンも！ 💋', zh: '在设置中将整个应用切换到你的语言 — 你的粉丝也可以！💋', ko: '설정에서 앱 전체를 본인의 언어로 바꾸세요 — 팬들도 마찬가지입니다! 💋', it: 'Cambia l\'intera app nella tua lingua in Impostazioni — anche i tuoi fan! 💋', pl: 'Przełącz całą aplikację na swój język w Ustawieniach — Twoi fani też! 💋', nl: 'Schakel de hele app in Instellingen naar jouw taal — je fans ook! 💋', tr: 'Tüm uygulamayı Ayarlar\'dan diline çevir — hayranların da! 💋' },
+  ann_lang_fan_title: { en: '🌍 NEW: SlutCamp speaks YOUR language!', es: '🌍 NUEVO: ¡SlutCamp habla TU idioma!', pt: '🌍 NOVIDADE: a SlutCamp fala SEU idioma!', fr: '🌍 NOUVEAU : SlutCamp parle VOTRE langue !', de: '🌍 NEU: SlutCamp spricht DEINE Sprache!', ru: '🌍 НОВОЕ: SlutCamp говорит на ВАШЕМ языке!', ja: '🌍 新機能：SlutCampはあなたの言語に対応！', zh: '🌍 新功能：SlutCamp 说你的语言！', ko: '🌍 새 소식: SlutCamp가 당신의 언어를 지원합니다!', it: '🌍 NOVITÀ: SlutCamp parla la TUA lingua!', pl: '🌍 NOWOŚĆ: SlutCamp mówi w TWOIM języku!', nl: '🌍 NIEUW: SlutCamp spreekt JOUW taal!', tr: '🌍 YENİ: SlutCamp SENİN dilini konuşuyor!' },
+  ann_lang_fan_body: { en: 'The whole app now speaks 13 languages — switch anytime in Settings: buttons, messages and agreements included 💋', es: 'Toda la app ahora habla 13 idiomas — cámbialo cuando quieras en Ajustes: botones, mensajes y acuerdos incluidos 💋', pt: 'O app inteiro agora fala 13 idiomas — troque quando quiser em Configurações: botões, mensagens e contratos incluídos 💋', fr: 'Toute l\'appli parle maintenant 13 langues — changez à tout moment dans Paramètres : boutons, messages et contrats inclus 💋', de: 'Die ganze App spricht jetzt 13 Sprachen — stelle jederzeit in den Einstellungen um: Schaltflächen, Nachrichten und Vereinbarungen inklusive 💋', ru: 'Всё приложение теперь говорит на 13 языках — переключайте в любое время в Настройках: кнопки, сообщения и соглашения включены 💋', ja: 'アプリ全体が13言語に対応しました — 設定でいつでも切り替え可能：ボタン、メッセージ、契約も含まれます 💋', zh: '整个应用现在支持 13 种语言 — 随时在设置中切换：包括按钮、消息和协议 💋', ko: '이제 앱 전체가 13개 언어를 지원합니다 — 설정에서 언제든지 바꾸세요: 버튼, 메시지, 계약까지 포함됩니다 💋', it: 'L\'intera app ora parla 13 lingue — cambia in qualsiasi momento in Impostazioni: pulsanti, messaggi e contratti inclusi 💋', pl: 'Cała aplikacja mówi teraz w 13 językach — przełącz w każdej chwili w Ustawieniach: przyciski, wiadomości i umowy w zestawie 💋', nl: 'De hele app spreekt nu 13 talen — schakel op elk moment in Instellingen: knoppen, berichten en overeenkomsten inbegrepen 💋', tr: 'Tüm uygulama artık 13 dil konuşuyor — Ayarlar\'dan istediğin zaman değiştir: düğmeler, mesajlar ve sözleşmeler dahil 💋' },
+};
+
+function srv(key, lang, vars) {
+  const row = SRV[key];
+  let s = (row && (row[lang] || row.en)) || key;
+  if (vars) for (const k in vars) s = s.split('{' + k + '}').join(String(vars[k]));
+  return s;
+}
+
+/* The stored UI language of a user id (recipient-side bell/DM copy). */
+function userLang(userId) {
+  try {
+    const u = db.prepare('SELECT language FROM users WHERE id = ?').get(userId);
+    return (u && u.language) || 'en';
+  } catch (e) { return 'en'; }
 }
 
 /* ------------------------------------------------------------------ */
@@ -2687,6 +2770,126 @@ Para começar a ganhar:
 📸 Adicione sua foto, defina seus preços e entre ao vivo
 
 Dúvidas? Responda aqui mesmo. Bem-vinda à família 🔥 — Asce`,
+  fr: (name) => `🎉 Félicitations, ${name} !
+
+Bienvenue sur SlutCamp 💋 Vous êtes officiellement l'un de nos modèles — et vous arrivez tôt. Les premiers modèles sont vus en premier, et les fans attendent déjà.
+
+💰 Vous gardez 60% de tout : messages payants, diffusions en direct + appels vidéo payés à la minute à VOS tarifs, pourboires et contenu payant.
+
+Pour commencer à gagner :
+✍️ Signez votre contrat de modèle
+🪪 Vérifiez votre pièce d'identité (2257 — pour rester en règle et être payée)
+📸 Ajoutez votre photo, définissez vos tarifs et passez en direct
+
+Des questions ? Répondez simplement ici même. Bienvenue dans la famille 🔥 — Asce`,
+  de: (name) => `🎉 Glückwunsch, ${name}!
+
+Willkommen bei SlutCamp 💋 Du bist jetzt offiziell eines unserer Modelle — und du bist früh dabei. Frühe Modelle werden zuerst gesehen, und die Fans warten schon.
+
+💰 Du behältst 60% von allem: bezahlte Nachrichten, Livestreams + Videoanrufe, die pro Minute zu DEINEN Preisen abgerechnet werden, Trinkgelder und bezahlte Inhalte.
+
+So fängst du an zu verdienen:
+✍️ Unterschreibe deine Model-Vereinbarung
+🪪 Verifiziere deinen Ausweis (2257 — hält dich legal und bezahlt)
+📸 Füge dein Foto hinzu, lege deine Preise fest und geh live
+
+Fragen? Antworte einfach hier. Willkommen in der Familie 🔥 — Asce`,
+  ru: (name) => `🎉 Поздравляем, ${name}!
+
+Добро пожаловать в SlutCamp 💋 Теперь вы официально одна из наших моделей — и вы здесь с самого начала. Первых моделей видят первыми, а фанаты уже ждут.
+
+💰 Вы сохраняете 60% от всего: платные сообщения, прямые эфиры + видеозвонки с оплатой за минуту по ВАШИМ ценам, чаевые и платный контент.
+
+Чтобы начать зарабатывать:
+✍️ Подпишите ваше соглашение модели
+🪪 Подтвердите удостоверение личности (2257 — это сохраняет вашу легальность и оплату)
+📸 Добавьте фото, установите цены и выходите в эфир
+
+Вопросы? Просто ответьте прямо здесь. Добро пожаловать в семью 🔥 — Asce`,
+  ja: (name) => `🎉 おめでとう、${name}さん！
+
+SlutCampへようこそ 💋 あなたは正式に当社のモデルの1人です — しかも早めに参加できました。早いモデルのほうが先に目立てるし、ファンはもう待っています。
+
+💰 あなたはすべての60%をキープします：有料メッセージ、ライブ配信＋あなたの値段で1分ごとに課金されるビデオ通話、チップ、有料コンテンツ。
+
+稼ぎ始めるには：
+✍️ モデル契約にサインする
+🪪 身分証を確認する（2257 — 法的に守られて、ちゃんと支払いが受けられるよ）
+📸 写真を追加して、料金を設定して、ライブ配信を開始
+
+質問は？ここに返信してね。ファミリーへようこそ 🔥 — Asce`,
+  zh: (name) => `🎉 恭喜你，${name}！
+
+欢迎来到 SlutCamp 💋 你已正式成为我们的模特之一 — 而且你入驻得很早。早期模特会优先被看到，粉丝们已经在等你了。
+
+💰 所有收入你都能留 60%：付费消息、直播 + 按分钟计费的视频通话（价格由你定）、小费和付费内容。
+
+开始赚钱：
+✍️ 签署你的模特协议
+🪪 验证你的身份证件（2257 — 让你合法且能拿到报酬）
+📸 添加你的照片、设置价格，然后开始直播
+
+有问题？直接在这里回复。欢迎加入这个大家庭 🔥 — Asce`,
+  ko: (name) => `🎉 축하합니다, ${name}님!
+
+SlutCamp에 오신 것을 환영합니다 💋 이제 공식적으로 저희 모델 중 한 분입니다 — 게다가 일찍 합류하셨네요. 초기 모델이 가장 먼저 노출되고, 팬들이 이미 기다리고 있습니다.
+
+💰 모든 수익의 60%를 가져가세요: 유료 메시지, 본인이 정한 분당 가격으로 진행하는 라이브 스트림 + 영상 통화, 팁과 유료 콘텐츠.
+
+수익을 시작하려면:
+✍️ 모델 계약서에 서명하세요
+🪪 신분증을 인증하세요 (2257 — 합법적으로 활동하고 수익을 받기 위해 필요합니다)
+📸 사진을 추가하고, 가격을 설정한 뒤 라이브를 시작하세요
+
+궁금한 점이 있으신가요? 바로 여기에 답장하세요. 가족이 된 것을 환영합니다 🔥 — Asce`,
+  it: (name) => `🎉 Congratulazioni, ${name}!
+
+Benvenuta su SlutCamp 💋 Sei ufficialmente una delle nostre modelle — e sei tra le prime. Le prime modelle vengono viste per prime, e i fan stanno già aspettando.
+
+💰 Trattieni il 60% di tutto: messaggi a pagamento, live stream + videochiamate pagate al minuto ai TUOI prezzi, mance e contenuti a pagamento.
+
+Per iniziare a guadagnare:
+✍️ Firma il tuo contratto da modella
+🪪 Verifica il tuo documento (2257 — ti mantiene in regola e pagata)
+📸 Aggiungi la tua foto, imposta i tuoi prezzi e vai live
+
+Domande? Rispondi pure qui. Benvenuta in famiglia 🔥 — Asce`,
+  pl: (name) => `🎉 Gratulacje, ${name}!
+
+Witaj w SlutCamp 💋 Jesteś teraz oficjalnie jedną z naszych modelek — i jesteś tu wcześnie. Wczesne modelki są widoczne jako pierwsze, a fani już czekają.
+
+💰 Zatrzymujesz 60% wszystkiego: płatnych wiadomości, transmisji na żywo + rozmów wideo płatnych za minutę według TWOICH cen, napiwków i płatnych treści.
+
+Aby zacząć zarabiać:
+✍️ Podpisz umowę modelki
+🪪 Zweryfikuj swój dokument tożsamości (2257 — dzięki temu działasz legalnie i otrzymujesz wypłaty)
+📸 Dodaj swoje zdjęcie, ustaw ceny i rozpocznij transmisję na żywo
+
+Pytania? Po prostu odpowiedz tutaj. Witaj w rodzinie 🔥 — Asce`,
+  nl: (name) => `🎉 Gefeliciteerd, ${name}!
+
+Welkom bij SlutCamp 💋 Je bent officieel één van onze modellen — en je bent er vroeg bij. Vroege modellen worden als eerste gezien, en de fans wachten al.
+
+💰 Je houdt 60% van alles: betaalde berichten, livestreams + videogesprekken betaald per minuut tegen JOUW tarieven, fooien en betaalde content.
+
+Om te beginnen met verdienen:
+✍️ Onderteken je modellenovereenkomst
+🪪 Verifieer je ID (2257 — houdt je legaal en betaald)
+📸 Voeg je foto toe, stel je tarieven in en ga live
+
+Vragen? Antwoord gewoon hier. Welkom bij de familie 🔥 — Asce`,
+  tr: (name) => `🎉 Tebrikler, ${name}!
+
+SlutCamp'e hoş geldin 💋 Artık resmen modellerimizden birisin — ve erken geldin. Erken modeller önce görülür, hayranlar da çoktan bekliyor.
+
+💰 Her şeyin %60'ını sen alırsın: ücretli mesajlar, canlı yayınlar + SENİN fiyatlarınla dakika başına ücretli görüntülü aramalar, bahşişler ve ücretli içerik.
+
+Kazanmaya başlamak için:
+✍️ Model sözleşmeni imzala
+🪪 Kimliğini doğrula (2257 — seni yasal ve kazançta tutar)
+📸 Fotoğrafını ekle, fiyatlarını belirle ve canlıya geç
+
+Soruların mı var? Buraya yanıt ver. Aileye hoş geldin 🔥 — Asce`,
 };
 
 /* Send the welcome message into a model's inbox exactly once. Sender is
@@ -2709,8 +2912,8 @@ function sendModelWelcome(modelUserId) {
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   db.prepare("UPDATE users SET welcome_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
-    notifyUser(m.id, 'welcome', '🎉 Welcome to SlutCamp!',
-      'Congratulations — Asce sent you a message in your inbox 💋', `/#chat/${conv.id}`);
+    notifyUser(m.id, 'welcome', srv('bell_welcome_title', m.language),
+      srv('bell_welcome_body', m.language), `/#chat/${conv.id}`);
   } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
   return true;
 }
@@ -2792,6 +2995,216 @@ Bem-vinda! Aqui está o jogo todo, rapidinho:
 Comece aqui: assine seu contrato → verifique seu documento → foto + preços → entre ao vivo. Os fãs estão esperando 🔥
 
 Dúvidas? Responda aqui mesmo, eu leio tudo. — Asce`,
+  fr: `💋 Comment fonctionne SlutCamp — et comment vous êtes payée
+
+Bienvenue ! Voici tout le jeu, en rapide :
+
+🏠 ACCUEIL — la vitrine. Les fans font défiler les filles ici. Votre place se mérite : plus de likes ❤️ + plus de ventes = plus haut, et la fille n°1 porte la 👑. Jetez un œil aux autres filles depuis votre onglet Accueil — voyez ce que les meilleures facturent et comment elles s'y prennent.
+
+💬 DISCUSSIONS — les fans paient par message à VOTRE tarif. Chaque texto qu'il vous envoie vous rapporte. Définissez votre tarif dans Paramètres.
+
+📹 FACETIME — vidéo privée à la minute (10–60 min, il paie d'avance). Acceptez quand vous voulez ; si vous êtes en plein appel, il attend en file. En plein appel, vous pouvez proposer de passer en explicite pour le double. Votre tarif, votre décision.
+
+🔴 PASSER EN DIRECT — diffusez pour tout le monde. Les fans paient pour rejoindre votre scène, vous donnent des pourboires et se battent pour la 👑 en haut de votre direct (le plus gros dépensier du stream). Vos plus gros dépensiers atterrissent dans votre 🏆 Fan Club sous Gains — traitez-les bien, ce sont eux qui paient le loyer.
+
+📅 RÉSERVATIONS — les fans programment des rendez-vous FaceTime à l'avance. Minutes prépayées garanties.
+
+💰 VOTRE ARGENT — vous gardez 60% de TOUT. Suivez-le en direct dans Gains. Avant votre premier paiement, ajoutez vos informations fiscales (W-9) dans Paramètres — vous êtes une contractante indépendante 1099, nous ne touchons jamais à vos impôts.
+
+⚠️ LA RÈGLE UNIQUE — tout reste sur SlutCamp. Ne déplacez jamais un fan vers Cash App, Venmo, Zelle ou une autre appli, et ne laissez jamais votre numéro ou vos réseaux sociaux dans la discussion. Le système écoute — il met fin au stream et sanctionne votre compte. Protégez votre argent.
+
+Commencez ici : signez votre contrat → vérifiez votre pièce d'identité → photo + tarifs → passez en direct. Les fans attendent 🔥
+
+Des questions ? Répondez ici même, je lis tout. — Asce`,
+  de: `💋 So funktioniert SlutCamp — und so wirst du bezahlt
+
+Willkommen drin! Hier ist das ganze Spiel, kurz:
+
+🏠 START — das Schaufenster. Fans scrollen hier durch die Mädchen. Dein Platz ist verdient: mehr Likes ❤️ + mehr Verkäufe = weiter oben, und das #1-Mädchen trägt die 👑. Schau dir die anderen Mädchen in deinem Start-Tab an — sieh, was die Top-Mädchen verlangen und wie sie es machen.
+
+💬 CHATS — Fans zahlen pro Nachricht zu DEINEM Preis. Jeder Text, den er dir schickt, verdient. Lege deinen Preis in den Einstellungen fest.
+
+📹 FACETIME — privates Video pro Minute (10–60 Min., er zahlt im Voraus). Akzeptiere, wenn du willst; wenn du mitten in einem Anruf bist, wartet er in der Schlange. Während des Anrufs kannst du anbieten, für das Doppelte auf explizit zu wechseln. Dein Preis, deine Entscheidung.
+
+🔴 LIVE GEHEN — streame für alle. Fans zahlen, um deiner Bühne beizutreten, dir Trinkgeld zu geben und um die 👑 oben in deinem Live zu kämpfen (Top-Ausgeber des Streams). Deine größten Ausgeber landen in deinem 🏆 Fanclub unter Einnahmen — behandle sie süß, sie zahlen die Miete.
+
+📅 BUCHUNGEN — Fans planen FaceTime-Termine im Voraus. Garantierte, im Voraus bezahlte Minuten.
+
+💰 DEIN GELD — du behältst 60% von ALLEM. Beobachte es live unter Einnahmen. Vor deiner ersten Auszahlung füge deine Steuerinformationen (W-9) in den Einstellungen hinzu — du bist eine 1099-Vertragspartnerin, wir fassen deine Steuern nie an.
+
+⚠️ DIE EINE REGEL — alles bleibt auf SlutCamp. Bewege einen Fan niemals zu Cash App, Venmo, Zelle oder einer anderen App und gib niemals deine Nummer oder Socials im Chat weiter. Das System hört mit — es beendet den Stream und schlägt deinen Account. Schütze deine Tasche.
+
+Starte hier: unterschreibe deine Vereinbarung → verifiziere deinen Ausweis → Foto + Preise → geh live. Fans warten 🔥
+
+Fragen? Antworte hier, ich lese alles. — Asce`,
+  ru: `💋 Как работает SlutCamp — и как вы получаете оплату
+
+Добро пожаловать! Вот вся игра, быстро:
+
+🏠 ГЛАВНАЯ — витрина магазина. Фанаты листают девушек здесь. Ваше место заслужено: больше лайков ❤️ + больше продаж = выше, а девушка №1 носит 👑. Загляните к другим девушкам из вкладки Главная — посмотрите, сколько берут топовые девушки и как они это делают.
+
+💬 ЧАТЫ — фанаты платят за сообщение по ВАШЕЙ цене. Каждое отправленное им сообщение приносит вам доход. Установите вашу цену в Настройках.
+
+📹 FACETIME — приватное видео по минутам (10–60 мин, он платит вперёд). Принимайте, когда хотите; если вы в середине звонка, он ждёт в очереди. В середине звонка вы можете предложить перейти к откровенному за двойную плату. Ваш тариф, ваше решение.
+
+🔴 ВЫХОД В ЭФИР — трансляция для всех. Фанаты платят, чтобы присоединиться к вашей сцене, отправляют вам чаевые и борются за 👑 на вершине вашего эфира (самый щедрый фанат трансляции). Ваши самые щедрые фанаты попадают в ваш 🏆 Фан-клуб в разделе Доход — относитесь к ним ласково, они оплачивают аренду.
+
+📅 БРОНИРОВАНИЯ — фанаты заранее назначают даты FaceTime. Гарантированные предоплаченные минуты.
+
+💰 ВАШИ ДЕНЬГИ — вы сохраняете 60% от ВСЕГО. Следите за этим в реальном времени в разделе Доход. Перед первой выплатой добавьте вашу налоговую информацию (W-9) в Настройках — вы подрядчик 1099, мы никогда не трогаем ваши налоги.
+
+⚠️ ОДНО ПРАВИЛО — всё остаётся на SlutCamp. Никогда не переводите фаната в Cash App, Venmo, Zelle или другое приложение и никогда не оставляйте ваш номер или соцсети в чате. Система следит за этим — она завершает трансляцию и выносит предупреждение вашему аккаунту. Берегите свой заработок.
+
+Начните здесь: подпишите соглашение → подтвердите удостоверение личности → фото + цены → выходите в эфир. Фанаты ждут 🔥
+
+Вопросы? Ответьте прямо здесь, я читаю всё. — Asce`,
+  ja: `💋 SlutCampの仕組み — そして支払いの受け方
+
+ようこそ！全体の流れをサクッと説明するね：
+
+🏠 ホーム — ショーウィンドウ。ファンはここで女の子たちをスクロールします。あなたの順位は努力で決まります：いいね ❤️ が多いほど＋売上が多いほど上位に表示され、1位の女の子は 👑 を着けます。ホームタブから他の女の子たちを覗いてみて — トップの子たちがどれくらい請求して、どうやってるか見てみてね。
+
+💬 チャット — ファンはあなたの値段でメッセージごとに支払います。彼が送るテキスト1通ごとにあなたが稼げます。料金は設定で決めてね。
+
+📹 FACETIME — 1分ごとのプライベートビデオ（10〜60分、彼は前払い）。好きなときに承諾してね。通話中の場合は彼は列で待ちます。通話中に露骨に切り替えるオファーを2倍で出すこともできます。あなたの料金、あなたの判断。
+
+🔴 ライブ配信 — 全員に向けて配信。ファンはステージ参加のために支払い、チップを送り、あなたのライブ上位の 👑 を競います（その配信での最高額利用者）。あなたの最大の支援者は収益内の 🏆 ファンクラブに入ります — 大切にしてね、彼らが家賃を払ってくれるんだから。
+
+📅 予約 — ファンはFaceTimeの予定を事前に予約します。前払い保証の分数です。
+
+💰 あなたのお金 — あなたはすべての60%をキープします。収益でライブで確認してね。初回出金の前に、設定で税務情報（W-9）を追加してね — あなたは1099の個人事業主です。当社があなたの税金に触れることは決してありません。
+
+⚠️ たった1つのルール — すべてはSlutCamp内に留めてね。ファンをCash App、Venmo、Zelleや別のアプリに決して移さず、チャットで番号やSNSを決して出さないでね。システムが監視しています — 配信が終了し、アカウントにペナルティが付きます。あなたの収入を守ってね。
+
+ここから始めてね：契約にサイン → 身分証を確認 → 写真＋料金 → ライブ配信。ファンが待ってるよ 🔥
+
+質問は？ここに返信してね、全部読んでいます。— Asce`,
+  zh: `💋 SlutCamp 如何运作 — 以及你如何获得报酬
+
+欢迎加入！这是全部玩法，很简单：
+
+🏠 首页 — 橱窗。粉丝在这里浏览女孩们。你的位置靠争取：点赞越多 ❤️ + 销售越多 = 排名越靠前，排名第一的女孩戴着 👑。从你的首页标签看看其他女孩 — 看看顶级女孩收多少钱、她们怎么做。
+
+💬 聊天 — 粉丝按你定的价格为每条消息付费。他发给你的每条短信你都能赚钱。在设置中设置你的价格。
+
+📹 FACETIME — 按分钟计费的私密视频（10–60 分钟，他预付费用）。想接的时候就接；如果你正在通话中，他会排队等候。通话中你可以提出切换到露骨模式，价格翻倍。你的费率，你做主。
+
+🔴 开始直播 — 向所有人直播。粉丝付费加入你的舞台、给你打赏，并在你的直播顶部争夺 👑（本场直播消费最高者）。你消费最高的粉丝会进入收入下的 🏆 粉丝俱乐部 — 好好待他们，他们付房租。
+
+📅 预约 — 粉丝提前预约 FaceTime 约会。保证预付的分钟数。
+
+💰 你的钱 — 所有收入你留 60%。在收入中实时查看。在首次提现前，在设置中添加你的税务信息 (W-9) — 你是 1099 独立承包商，我们从不碰你的税。
+
+⚠️ 唯一规则 — 一切都留在 SlutCamp。绝不要把粉丝转移到 Cash App、Venmo、Zelle 或其他应用，也绝不要在聊天中留下你的号码或社交账号。系统会监听 — 它会结束直播并对你的账号记过。保护好你的钱袋。
+
+从这里开始：签署协议 → 验证身份证件 → 照片 + 价格 → 开始直播。粉丝们在等你 🔥
+
+有问题？直接在这里回复，我什么都看。— Asce`,
+  ko: `💋 SlutCamp 이용 방법 — 그리고 수익을 받는 방법
+
+환영합니다! 전체 게임을 빠르게 알려드립니다:
+
+🏠 홈 — 상점의 쇼윈도입니다. 팬들이 여기서 여자들을 스크롤합니다. 내 자리는 노력으로 얻어집니다: 좋아요 ❤️가 많고 + 판매가 많을수록 더 위에 올라가고, 1위인 그녀는 👑를 착용합니다. 홈 탭에서 다른 그녀들을 살펴보세요 — 상위 그녀들이 얼마를 받고 어떻게 하는지 보세요.
+
+💬 채팅 — 팬이 본인이 정한 가격으로 메시지마다 결제합니다. 그가 보내는 문자마다 수익이 발생합니다. 설정에서 가격을 정하세요.
+
+📹 FACETIME — 분당 프라이빗 영상 (10–60분, 그가 선불로 결제합니다). 원할 때 수락하세요; 통화 중이면 그는 줄을 서서 기다립니다. 통화 중에는 선정적으로 전환하면 두 배를 받도록 제안할 수 있습니다. 내 요금, 내 결정입니다.
+
+🔴 라이브 시작 — 모두에게 스트리밍하세요. 팬이 무대에 참여하기 위해 결제하고, 팁을 주고, 라이브 맨 위의 👑를 차지하기 위해 경쟁합니다 (스트림의 최고 지출자). 가장 많이 쓰는 팬들은 수익 아래의 🏆 팬클럽에 들어갑니다 — 그들을 달콤하게 대하세요, 그들이 월세를 냅니다.
+
+📅 예약 — 팬이 FaceTime 날짜를 미리 예약합니다. 보장된 선불 시간입니다.
+
+💰 내 돈 — 모든 것의 60%를 가져갑니다. 수익에서 실시간으로 확인하세요. 첫 지급 전에 설정에서 세금 정보(W-9)를 추가하세요 — 1099 계약자이며, 저희는 세금에 절대 손대지 않습니다.
+
+⚠️ 유일한 규칙 — 모든 것은 SlutCamp 안에 머무릅니다. 팬을 Cash App, Venmo, Zelle이나 다른 앱으로 절대 이동시키지 말고, 채팅에 번호나 소셜 계정을 절대 올리지 마세요. 시스템이 이를 감지합니다 — 스트림이 종료되고 계정에 경고가 쌓입니다. 내 수익을 지키세요.
+
+여기서 시작하세요: 계약서에 서명 → 신분증 인증 → 사진 + 가격 → 라이브 시작. 팬들이 기다리고 있습니다 🔥
+
+궁금한 점이 있으신가요? 바로 여기에 답장하세요, 저는 모든 것을 읽습니다. — Asce`,
+  it: `💋 Come funziona SlutCamp — e come vieni pagata
+
+Benvenuta! Ecco tutto il gioco, in breve:
+
+🏠 HOME — la vetrina. I fan scorrono le ragazze qui. Il tuo posto si guadagna: più like ❤️ + più vendite = più in alto, e la ragazza #1 indossa la 👑. Dai un'occhiata alle altre ragazze dalla tua scheda Home — vedi quanto chiedono le top e come fanno.
+
+💬 CHAT — i fan pagano per messaggio al TUO prezzo. Ogni messaggio che ti manda guadagna. Imposta il tuo prezzo in Impostazioni.
+
+📹 FACETIME — video privato al minuto (10–60 min, lui paga in anticipo). Accetta quando vuoi; se sei in un'altra chiamata lui aspetta in fila. Durante la chiamata puoi proporre di passare a esplicito per il doppio. La tua tariffa, la tua scelta.
+
+🔴 VAI LIVE — trasmetti a tutti. I fan pagano per unirsi al tuo palco, ti danno mance e lottano per la 👑 in cima alla tua live (il maggior spenditore dello stream). I tuoi maggiori spenditori finiscono nel tuo 🏆 Fan Club sotto Guadagni — trattali bene, pagano l'affitto.
+
+📅 PRENOTAZIONI — i fan programmano appuntamenti FaceTime in anticipo. Minuti prepagati garantiti.
+
+💰 I TUOI SOLDI — trattieni il 60% di TUTTO. Guardalo in tempo reale in Guadagni. Prima del tuo primo pagamento, aggiungi le tue informazioni fiscali (W-9) in Impostazioni — sei una collaboratrice 1099, non tocchiamo mai le tue tasse.
+
+⚠️ L'UNICA REGOLA — tutto resta su SlutCamp. Non spostare mai un fan su Cash App, Venmo, Zelle o un'altra app, e non lasciare mai il tuo numero o i tuoi social in chat. Il sistema ascolta — termina lo stream e colpisce il tuo account. Proteggi il tuo guadagno.
+
+Inizia qui: firma il contratto → verifica il documento → foto + prezzi → vai live. I fan stanno aspettando 🔥
+
+Domande? Rispondi qui, leggo tutto. — Asce`,
+  pl: `💋 Jak działa SlutCamp — i jak otrzymujesz wypłaty
+
+Witaj! Oto cała gra, w skrócie:
+
+🏠 STRONA GŁÓWNA — witryna sklepowa. Fani przewijają tu dziewczyny. Twoje miejsce trzeba zdobyć: więcej polubień ❤️ + więcej sprzedaży = wyżej, a dziewczyna nr 1 nosi 👑. Podejrzyj inne dziewczyny w zakładce Strona główna — zobacz, ile pobierają najlepsze dziewczyny i jak to robią.
+
+💬 CZATY — fani płacą za wiadomość według TWOJEJ ceny. Każda wiadomość, którą Ci wyśle, zarabia. Ustaw swoją cenę w Ustawieniach.
+
+📹 FACETIME — prywatne wideo za minutę (10–60 min, on płaci z góry). Akceptuj, kiedy chcesz; jeśli jesteś w trakcie rozmowy, on czeka w kolejce. W trakcie rozmowy możesz zaproponować przejście do erotyki za podwójną stawkę. Twoja stawka, Twoja decyzja.
+
+🔴 NA ŻYWO — streamuj do wszystkich. Fani płacą, aby dołączyć do Twojej sceny, dają Ci napiwki i walczą o 👑 na górze Twojej transmisji (największy wydający transmisji). Twoi najwięksi wydający trafiają do Twojego 🏆 Klubu Fanów w Zarobkach — traktuj ich słodko, oni płacą czynsz.
+
+📅 REZERWACJE — fani umawiają terminy FaceTime z wyprzedzeniem. Gwarantowane przedpłacone minuty.
+
+💰 TWOJE PIENIĄDZE — zatrzymujesz 60% WSZYSTKIEGO. Obserwuj to na żywo w Zarobkach. Przed pierwszą wypłatą dodaj swoje informacje podatkowe (W-9) w Ustawieniach — jesteś wykonawcą 1099, nigdy nie dotykamy Twoich podatków.
+
+⚠️ JEDNA ZASADA — wszystko zostaje w SlutCamp. Nigdy nie przenoś fana do Cash App, Venmo, Zelle ani innej aplikacji i nigdy nie podawaj swojego numeru ani social mediów na czacie. System tego nasłuchuje — kończy transmisję i obciąża Twoje konto. Chroń swoją kasę.
+
+Zacznij tutaj: podpisz umowę → zweryfikuj dokument tożsamości → zdjęcie + ceny → rozpocznij transmisję na żywo. Fani czekają 🔥
+
+Pytania? Odpowiedz tutaj, czytam wszystko. — Asce`,
+  nl: `💋 Hoe SlutCamp werkt — en hoe je betaald krijgt
+
+Welkom binnen! Hier is het hele spel, snel:
+
+🏠 HOME — de etalage. Fans scrollen hier langs de meiden. Jouw plek is verdiend: meer likes ❤️ + meer verkopen = hoger, en het #1 meisje draagt de 👑. Kijk vanaf je Home-tab naar de andere meiden — zie wat de topmeiden vragen en hoe ze het doen.
+
+💬 CHATS — fans betalen per bericht tegen JOUW tarief. Elke sms die hij je stuurt verdient. Stel je tarief in bij Instellingen.
+
+📹 FACETIME — privévideo per minuut (10–60 min, hij betaalt vooraf). Accepteer wanneer je wilt; als je midden in een gesprek zit, wacht hij in de rij. Midden in het gesprek kun je aanbieden om expliciet te schakelen voor het dubbele. Jouw tarief, jouw beslissing.
+
+🔴 GA LIVE — stream naar iedereen. Fans betalen om mee te doen aan je podium, geven je fooien en vechten om de 👑 bovenaan je live (topbesteder van de stream). Je grootste besteders landen in je 🏆 Fanclub onder Inkomsten — behandel ze lief, zij betalen de huur.
+
+📅 BOEKINGEN — fans plannen FaceTime-dates vooruit. Gegarandeerde vooraf betaalde minuten.
+
+💰 JOUW GELD — je houdt 60% van ALLES. Bekijk het live bij Inkomsten. Voeg vóór je eerste uitbetaling je belastinginfo (W-9) toe bij Instellingen — je bent een 1099-contractant, wij raken je belastingen nooit aan.
+
+⚠️ DE ENE REGEL — alles blijft op SlutCamp. Verplaats een fan nooit naar Cash App, Venmo, Zelle of een andere app, en laat nooit je nummer of socials vallen in de chat. Het systeem luistert ernaar — het beëindigt de stream en slaat je account. Bescherm je geld.
+
+Begin hier: onderteken je overeenkomst → verifieer je ID → foto + tarieven → ga live. Fans wachten 🔥
+
+Vragen? Antwoord gewoon hier, ik lees alles. — Asce`,
+  tr: `💋 SlutCamp nasıl çalışır — ve nasıl ödeme alırsın
+
+Hoş geldin! İşte tüm oyun, hızlıca:
+
+🏠 ANA SAYFA — vitrin. Hayranlar kızları burada kaydırır. Yerin kazanılır: daha fazla beğeni ❤️ + daha fazla satış = daha yukarı, ve 1 numaralı kız 👑 takar. Ana Sayfa sekmeden diğer kızlara göz at — en iyi kızların ne ücret aldığını ve nasıl yaptığını gör.
+
+💬 SOHBETLER — hayranlar SENİN fiyatınla mesaj başına öder. Gönderdiği her metin kazandırır. Fiyatını Ayarlar'da belirle.
+
+📹 FACETIME — dakika başına özel video (10–60 dk, önceden öder). İstediğinde kabul et; aramanın ortasındaysan sırada bekler. Arama ortasında iki katına müstehcene geçmeyi teklif edebilirsin. Senin ücretin, senin kararın.
+
+🔴 CANLIYA GEÇ — herkese yayın yap. Hayranlar sahnene katılmak için öder, sana bahşiş verir ve canlı yayının en üstündeki 👑 için yarışır (yayının en çok harcayanı). En çok harcayanların Kazançlar altında 🏆 Hayran Kulübüne düşer — onlara tatlı davran, kirayı onlar öder.
+
+📅 REZERVASYONLAR — hayranlar FaceTime randevularını önceden planlar. Garantili ön ödemeli dakikalar.
+
+💰 PARAN — HER ŞEYİN %60'ını sen alırsın. Kazançlar'da canlı izle. İlk ödemenden önce, Ayarlar'da vergi bilgilerini (W-9) ekle — sen bir 1099 yüklenicisisin, vergilerine asla dokunmayız.
+
+⚠️ TEK KURAL — her şey SlutCamp'te kalır. Bir hayranı asla Cash App, Venmo, Zelle veya başka bir uygulamaya taşıma ve sohbette numaranı veya sosyal hesaplarını asla paylaşma. Sistem bunu dinler — yayını bitirir ve hesabına ihtar verir. Çantanı koru.
+
+Buradan başla: sözleşmeni imzala → kimliğini doğrula → fotoğraf + fiyatlar → canlıya geç. Hayranlar bekliyor 🔥
+
+Soruların mı var? Buraya yanıt ver, her şeyi okurum. — Asce`,
 };
 
 /* Send the guide message into a model's inbox exactly once (same
@@ -2813,8 +3226,8 @@ function sendModelGuide(modelUserId) {
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   db.prepare("UPDATE users SET guide_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
-    notifyUser(m.id, 'guide', '💋 How SlutCamp works',
-      'Asce sent you the playbook — how the app works and how you get paid 💰', `/#chat/${conv.id}`);
+    notifyUser(m.id, 'guide', srv('bell_guide_title', m.language),
+      srv('bell_guide_body', m.language), `/#chat/${conv.id}`);
   } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
   return true;
 }
@@ -2837,7 +3250,7 @@ function sendPendingModelGuides() {
 /* fan-role), while the static /video/ URL plays for anyone.          */
 /* ------------------------------------------------------------------ */
 const GUIDE_VIDEO_FILE = path.join(__dirname, 'public', 'video', 'model-guide.mp4');
-const GUIDE_VIDEO_TEXT = '🎬 Watch your 1-minute tour: https://slutcamp.app/video/model-guide.mp4';
+/* (DM text lives in the SRV table: key guide_video_text, per-language.) */
 
 function sendModelGuideVideo(modelUserId) {
   const m = db.prepare("SELECT id, display_name, language, guide_video_sent_at FROM users WHERE id = ? AND role = 'model'")
@@ -2852,12 +3265,12 @@ function sendModelGuideVideo(modelUserId) {
     conv = { id: Number(info.lastInsertRowid) };
   }
   db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-    .run(conv.id, admin.id, GUIDE_VIDEO_TEXT);
+    .run(conv.id, admin.id, srv('guide_video_text', m.language));
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   db.prepare("UPDATE users SET guide_video_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
-    notifyUser(m.id, 'guide_video', '🎬 Your 1-minute tour is here',
-      'Asce sent you a quick video tour of how SlutCamp works 💋', `/#chat/${conv.id}`);
+    notifyUser(m.id, 'guide_video', srv('bell_guide_video_title', m.language),
+      srv('bell_guide_video_body', m.language), `/#chat/${conv.id}`);
   } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
   return true;
 }
@@ -2882,7 +3295,7 @@ function sendPendingModelGuideVideos() {
 /* anyone.                                                            */
 /* ------------------------------------------------------------------ */
 const ATH_VIDEO_FILE = path.join(__dirname, 'public', 'video', 'add-to-home-screen.mp4');
-const ATH_VIDEO_TEXT = '📲 Put SlutCamp on your home screen — watch this, takes 30 seconds: https://slutcamp.app/video/add-to-home-screen.mp4';
+/* (DM text lives in the SRV table: key ath_video_text, per-language.) */
 
 function sendModelHomeScreenVideo(modelUserId) {
   const m = db.prepare("SELECT id, display_name, language, ath_video_sent_at FROM users WHERE id = ? AND role = 'model'")
@@ -2897,12 +3310,12 @@ function sendModelHomeScreenVideo(modelUserId) {
     conv = { id: Number(info.lastInsertRowid) };
   }
   db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-    .run(conv.id, admin.id, ATH_VIDEO_TEXT);
+    .run(conv.id, admin.id, srv('ath_video_text', m.language));
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   db.prepare("UPDATE users SET ath_video_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
-    notifyUser(m.id, 'home_screen_video', '📲 Put SlutCamp on your home screen',
-      'Asce sent you a 30-second video showing how to add SlutCamp to your home screen 💋', `/#chat/${conv.id}`);
+    notifyUser(m.id, 'home_screen_video', srv('bell_home_screen_title', m.language),
+      srv('bell_home_screen_body', m.language), `/#chat/${conv.id}`);
   } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
   return true;
 }
@@ -2939,6 +3352,26 @@ ${ID_VERIFY_IMG_URL}`,
 ${ID_VERIFY_IMG_URL}`,
   pt: `Bem-vinda à SlutCamp 💋 Um último passo para terminar de configurar: verifique seu documento — é o que desbloqueia entrar ao vivo e receber. Leva 2 minutos no app: Configurações → 🪪 ID Verification (o cartão bem no topo). Tire uma foto do seu documento + uma selfie rápida e pronto — aprovamos rápido. 👑
 ${ID_VERIFY_IMG_URL}`,
+  fr: `Bienvenue sur SlutCamp 💋 Une dernière étape pour terminer la configuration : vérifiez votre pièce d'identité — c'est ce qui débloque le direct et les paiements. Cela prend 2 minutes directement dans l'appli : Paramètres → 🪪 Vérification d'identité (la carte tout en haut). Photographiez votre pièce d'identité + un selfie rapide et c'est terminé — nous approuvons vite. 👑
+https://slutcamp.app/img/id-verify-announce.png`,
+  de: `Willkommen bei SlutCamp 💋 Ein letzter Schritt, um die Einrichtung abzuschließen: Verifiziere deinen Ausweis — das schaltet Live-Gehen und Bezahltwerden frei. Es dauert 2 Minuten direkt in der App: Einstellungen → 🪪 Ausweisverifizierung (die Karte ganz oben). Fotografiere deinen Ausweis + ein kurzes Selfie und du bist fertig — wir genehmigen schnell. 👑
+https://slutcamp.app/img/id-verify-announce.png`,
+  ru: `Добро пожаловать в SlutCamp 💋 Последний шаг, чтобы завершить настройку: подтвердите ваше удостоверение личности — это то, что открывает выход в эфир и получение оплаты. Это займёт 2 минуты прямо в приложении: Настройки → 🪪 Проверка удостоверения личности (карточка в самом верху). Сфотографируйте ваше удостоверение + быстрое селфи, и вы готовы — мы одобряем быстро. 👑
+https://slutcamp.app/img/id-verify-announce.png`,
+  ja: `SlutCampへようこそ 💋 セットアップを完了するための最後のステップ：身分証を確認してね — ライブ配信と支払い受け取りがアンロックされます。アプリ内で2分で終わります：設定 → 🪪 身分証確認（一番上のカード）。身分証を撮影＋簡単な自撮りで完了 — 承認は早いです。👑
+https://slutcamp.app/img/id-verify-announce.png`,
+  zh: `欢迎来到 SlutCamp 💋 完成设置的最后一步：验证你的身份证件 — 它能解锁开播和获得报酬。在应用中只需 2 分钟：设置 → 🪪 身份验证（就在顶部的卡片）。拍下你的身份证件 + 一张快速自拍就完成了 — 我们审核很快。👑
+https://slutcamp.app/img/id-verify-announce.png`,
+  ko: `SlutCamp에 오신 것을 환영합니다 💋 설정을 마치는 마지막 단계: 신분증을 인증하세요 — 라이브와 수익 받기가 잠금 해제됩니다. 앱에서 바로 2분이면 됩니다: 설정 → 🪪 신분증 인증 (맨 위에 있는 카드). 신분증 사진 + 간단한 셀카를 찍으면 완료입니다 — 빠르게 승인합니다. 👑
+https://slutcamp.app/img/id-verify-announce.png`,
+  it: `Benvenuta su SlutCamp 💋 Un ultimo passo per finire la configurazione: verifica il tuo documento — è ciò che sblocca l'andare live e l'essere pagata. Ci vogliono 2 minuti direttamente nell'app: Impostazioni → 🪪 Verifica documento (la scheda proprio in cima). Scatta una foto del documento + un rapido selfie e hai finito — approviamo in fretta. 👑
+https://slutcamp.app/img/id-verify-announce.png`,
+  pl: `Witaj w SlutCamp 💋 Ostatni krok, aby dokończyć konfigurację: zweryfikuj swój dokument tożsamości — to on odblokowuje transmisje na żywo i wypłaty. Zajmuje to 2 minuty prosto w aplikacji: Ustawienia → 🪪 Weryfikacja tożsamości (karta na samej górze). Zrób zdjęcie dokumentu + szybkie selfie i gotowe — zatwierdzamy szybko. 👑
+https://slutcamp.app/img/id-verify-announce.png`,
+  nl: `Welkom bij SlutCamp 💋 Een laatste stap om het instellen af te ronden: verifieer je ID — dat ontgrendelt live gaan en betaald krijgen. Het duurt 2 minuten direct in de app: Instellingen → 🪪 ID-verificatie (de kaart helemaal bovenaan). Maak een foto van je ID + een snelle selfie en je bent klaar — wij keuren snel goed. 👑
+https://slutcamp.app/img/id-verify-announce.png`,
+  tr: `SlutCamp'e hoş geldin 💋 Kurulumu bitirmek için son bir adım: Kimliğini doğrula — canlıya geçmeyi ve ödeme almayı açan şey bu. Uygulamada 2 dakika sürer: Ayarlar → 🪪 Kimlik Doğrulama (en üstteki kart). Kimliğinin fotoğrafını çek + hızlı bir selfie ve bitti — hızlı onaylarız. 👑
+https://slutcamp.app/img/id-verify-announce.png`,
 };
 
 function sendModelIdVerify(modelUserId) {
@@ -2959,8 +3392,8 @@ function sendModelIdVerify(modelUserId) {
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   db.prepare("UPDATE users SET id_verify_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
-    notifyUser(m.id, 'id_verify', '🪪 One last step: verify your ID',
-      'It unlocks going live and getting paid — 2 minutes in Settings 💋', `/#chat/${conv.id}`);
+    notifyUser(m.id, 'id_verify', srv('bell_id_verify_title', m.language),
+      srv('bell_id_verify_body', m.language), `/#chat/${conv.id}`);
   } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
   return true;
 }
@@ -3003,6 +3436,26 @@ ${AFFILIATE_IMG_URL}`,
 ${AFFILIATE_IMG_URL}`,
   pt: `💰 Outra forma de ganhar dinheiro aqui: nosso programa de afiliadas. Recrute outras modelos para a SlutCamp com seu link pessoal e você ganha 20% de tudo que essas modelos ganharem. É simples assim: elas ganham, você ganha. ⏳ Esta oferta é limitada — o programa não estará disponível para sempre, então garanta o seu enquanto está aberto. Quer participar? Responda aqui mesmo e enviamos seu link de cadastro de afiliada e configuramos seu link pessoal de recrutamento. Se tiver dúvidas, é só me chamar. 💋
 ${AFFILIATE_IMG_URL}`,
+  fr: `💰 Une autre façon de gagner de l'argent ici : notre programme d'affiliation. Recrutez d'autres modèles sur SlutCamp avec votre lien personnel, et vous gagnerez 20% de tout ce que ces modèles gagnent. C'est aussi simple que ça : elles gagnent, vous gagnez. ⏳ Cette offre est limitée — le programme ne durera pas éternellement, alors configurez-vous pendant qu'il est ouvert. Intéressée ? Répondez ici même et nous vous enverrons votre lien d'inscription d'affilié et configurerons votre lien de recrutement personnel. Si vous avez des questions, faites-le-moi savoir. 💋
+https://slutcamp.app/img/affiliate-program-announce.png`,
+  de: `💰 Noch eine Möglichkeit, hier Geld zu verdienen: unser Affiliate-Programm. Wirb andere Modelle mit deinem persönlichen Link für SlutCamp an, und du verdienst 20% von allem, was diese Modelle verdienen. So einfach ist es: Sie verdienen, du verdienst. ⏳ Dieses Angebot ist begrenzt — das Programm wird nicht für immer da sein, also richte dich ein, solange es offen ist. Interessiert? Antworte hier und wir senden dir deinen Affiliate-Anmeldelink und richten deinen persönlichen Anwerbelink ein. Wenn du Fragen hast, lass es mich wissen. 💋
+https://slutcamp.app/img/affiliate-program-announce.png`,
+  ru: `💰 Ещё один способ зарабатывать здесь: наша партнёрская программа. Привлекайте других моделей на SlutCamp по вашей личной ссылке, и вы будете зарабатывать 20% от всего, что зарабатывают эти модели. Всё просто: они зарабатывают, вы зарабатываете. ⏳ Это предложение ограничено — программа не будет существовать вечно, поэтому настройтесь, пока она открыта. Интересно? Ответьте прямо здесь, и мы отправим вам ссылку для регистрации партнёра и настроим вашу личную рекрутинговую ссылку. Если у вас есть вопросы, дайте мне знать. 💋
+https://slutcamp.app/img/affiliate-program-announce.png`,
+  ja: `💰 ここでもう1つ稼ぐ方法：当社のアフィリエイトプログラム。あなた専用のリンクで他のモデルをSlutCampに募集すると、それらのモデルの収益の20%があなたに入ります。シンプルでしょ：彼女たちが稼げば、あなたも稼げます。⏳ このオファーは期間限定です — プログラムはいつまでも続くわけではないので、受付中の今のうちに設定してね。興味ある？ここに返信してくれれば、アフィリエイト登録リンクを送って、あなた専用の募集リンクを設定します。質問があれば教えてね。💋
+https://slutcamp.app/img/affiliate-program-announce.png`,
+  zh: `💰 在这里赚钱的另一种方式：我们的推广伙伴计划。用你的个人链接招募其他模特加入 SlutCamp，你将获得那些模特全部收入的 20%。就这么简单：她们赚钱，你赚钱。⏳ 此优惠有限 — 该计划不会永远存在，所以趁它开放时赶紧设置。感兴趣？直接在这里回复，我们会发送你的推广伙伴注册链接，并为你设置个人招募链接。如有任何问题，请告诉我。💋
+https://slutcamp.app/img/affiliate-program-announce.png`,
+  ko: `💰 여기서 돈을 버는 또 다른 방법: 제휴 프로그램입니다. 개인 링크로 다른 모델들을 SlutCamp에 모집하면, 그 모델들이 버는 모든 수익의 20%를 받게 됩니다. 그만큼 간단합니다: 그들이 벌면, 나도 법니다. ⏳ 이 기회는 기간 한정입니다 — 프로그램이 영원히 열려 있지 않으니, 열려 있을 때 설정하세요. 관심이 있으신가요? 바로 여기에 답장하시면 제휴 가입 링크를 보내드리고 개인 모집 링크를 설정해 드립니다. 궁금한 점이 있으면 알려주세요. 💋
+https://slutcamp.app/img/affiliate-program-announce.png`,
+  it: `💰 Un altro modo per guadagnare qui: il nostro programma affiliati. Recluta altre modelle su SlutCamp con il tuo link personale, e guadagnerai il 20% di tutto ciò che quelle modelle guadagnano. È semplicissimo: loro guadagnano, tu guadagni. ⏳ Questa offerta è limitata — il programma non ci sarà per sempre, quindi configurati finché è aperto. Interessata? Rispondi qui e ti manderemo il tuo link di registrazione affiliata e configureremo il tuo link personale di reclutamento. Se hai domande, fammelo sapere. 💋
+https://slutcamp.app/img/affiliate-program-announce.png`,
+  pl: `💰 Jeszcze jeden sposób na zarabianie tutaj: nasz program afiliacyjny. Rekrutuj inne modelki do SlutCamp za pomocą swojego osobistego linku, a zarobisz 20% wszystkiego, co te modelki zarobią. To takie proste: one zarabiają, Ty zarabiasz. ⏳ Ta oferta jest ograniczona — program nie będzie dostępny na zawsze, więc skonfiguruj się, póki jest otwarty. Zainteresowana? Odpowiedz tutaj, a wyślemy Ci link do rejestracji afiliacyjnej i skonfigurujemy Twój osobisty link rekrutacyjny. Jeśli masz pytania, daj mi znać. 💋
+https://slutcamp.app/img/affiliate-program-announce.png`,
+  nl: `💰 Nog een manier om hier geld te verdienen: ons affiliate-programma. Werf andere modellen naar SlutCamp met je persoonlijke link, en je verdient 20% van alles wat die modellen maken. Zo simpel is het: zij verdienen, jij verdient. ⏳ Dit aanbod is beperkt — het programma blijft niet voor altijd bestaan, dus stel het in terwijl het open is. Geïnteresseerd? Antwoord gewoon hier en we sturen je affiliate-aanmeldlink en stellen je persoonlijke werflink in. Als je vragen hebt, laat het me weten. 💋
+https://slutcamp.app/img/affiliate-program-announce.png`,
+  tr: `💰 Burada para kazanmanın bir yolu daha: ortaklık programımız. Kişisel bağlantınla SlutCamp'e başka modeller getir, o modellerin kazandığı her şeyin %20'sini kazanırsın. Bu kadar basit: onlar kazanır, sen kazanırsın. ⏳ Bu teklif sınırlı — program sonsuza dek burada olmayacak, açıkken kurulumunu yap. İlgileniyor musun? Buraya yanıt ver, sana ortaklık kayıt bağlantını gönderelim ve kişisel işe alım bağlantını kuralım. Soruların varsa bana bildir. 💋
+https://slutcamp.app/img/affiliate-program-announce.png`,
 };
 
 function sendModelAffiliate(modelUserId) {
@@ -3023,8 +3476,8 @@ function sendModelAffiliate(modelUserId) {
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   db.prepare("UPDATE users SET affiliate_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
-    notifyUser(m.id, 'affiliate_program', '💰 Make money bringing models',
-      'Earn 20% of everything your recruited models make — reply here for your link 💋', `/#chat/${conv.id}`);
+    notifyUser(m.id, 'affiliate_program', srv('bell_affiliate_title', m.language),
+      srv('bell_affiliate_body', m.language), `/#chat/${conv.id}`);
   } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
   return true;
 }
@@ -3309,6 +3762,60 @@ function announceFanPreviewToFans() {
   return sent;
 }
 
+/* ------------------------------------------------------------------ */
+/* 13-languages announcement — ONE-TIME broadcasts (stamps            */
+/* languages_announced_at / fan_languages_announced_at). Each         */
+/* recipient gets the copy in HER stored language via the SRV table.  */
+/* ------------------------------------------------------------------ */
+function announceLanguagesToModels() {
+  const st = db.prepare('SELECT languages_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.languages_announced_at) return 0;
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin) return 0;
+  const models = db.prepare("SELECT id, username, language FROM users WHERE role = 'model' AND banned = 0").all();
+  let sent = 0;
+  for (const m of models) {
+    if (m.id === admin.id) continue;
+    try {
+      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
+      if (!conv) {
+        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
+        conv = { id: Number(info.lastInsertRowid) };
+      }
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, admin.id, srv('ann_lang_dm', m.language));
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(m.id, 'languages', srv('ann_lang_bell_title', m.language),
+          srv('ann_lang_bell_body', m.language), `/#chat/${conv.id}`);
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest */ }
+  }
+  if (sent > 0 || models.length === 0) {
+    db.prepare("UPDATE platform_stats SET languages_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
+function announceLanguagesToFans() {
+  const st = db.prepare('SELECT fan_languages_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.fan_languages_announced_at) return 0;
+  const fans = db.prepare("SELECT id, language FROM users WHERE role = 'fan' AND banned = 0").all();
+  let sent = 0;
+  for (const f of fans) {
+    try {
+      notifyUser(f.id, 'fan_languages', srv('ann_lang_fan_title', f.language),
+        srv('ann_lang_fan_body', f.language), '');
+      sent++;
+    } catch (e) { /* one bad fan must not block the rest */ }
+  }
+  if (sent > 0 || fans.length === 0) {
+    db.prepare("UPDATE platform_stats SET fan_languages_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
 function seed() {
   // Demo accounts are DEV-ONLY and strictly opt-in (SEED_DEMO=1). A seeded
   // fan carries $100 of test credits and every seeded password is printed
@@ -3360,6 +3867,8 @@ try { const n = announceNotifFixToModels(); if (n) console.log(`[notif] Notifica
 try { const n = announcePreviewVideoToModels(); if (n) console.log(`[preview] Preview-video announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceThreadTapToModels(); if (n) console.log(`[threadtap] Thread-tap announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceFanPreviewToFans(); if (n) console.log(`[fanblast] Fan preview blast sent to ${n} fans.`); } catch (e) { /* retry next boot */ }
+try { const n = announceLanguagesToModels(); if (n) console.log(`[lang] Languages announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
+try { const n = announceLanguagesToFans(); if (n) console.log(`[fanlang] Languages blast sent to ${n} fans.`); } catch (e) { /* retry next boot */ }
 
 // One-time grandfathering for payout protection (Oct 16, 2026): every
 // earning recorded BEFORE this feature existed counts as fully matured —
@@ -4431,8 +4940,8 @@ app.patch('/api/me/display-name', identMiddleware, requireUser, (req, res) => {
 // the choice follows the user across devices; guests keep it in localStorage.
 app.patch('/api/me/language', identMiddleware, requireUser, (req, res) => {
   const lang = String(req.body?.language || '').toLowerCase();
-  if (!['en', 'es', 'pt'].includes(lang))
-    return res.status(400).json({ error: 'bad_language', message: 'Supported languages: en, es, pt.' });
+  if (!SUPPORTED_LANGS.includes(lang))
+    return res.status(400).json({ error: 'bad_language', message: 'Supported languages: en, es, pt, fr, de, ru, ja, zh, ko, it, pl, nl, tr.' });
   db.prepare('UPDATE users SET language = ? WHERE id = ?').run(lang, req.user.id);
   res.json({ ok: true, language: lang });
 });
@@ -5583,8 +6092,10 @@ app.post('/api/models/:id/tip', identMiddleware, requireUser, requireRole('fan')
     .run(req.user.id, modelId, item.id, item.price_cents, context);
 
   // Notify the model (in-app + WS). Fans don't need a row for their own tip.
-  notifyUser(modelId, 'tip', `💰 ${req.user.display_name || 'A fan'} tipped ${item.emoji} ${item.label}!`,
-    `${fmt$(item.price_cents)} tip received`, null);
+  const tipLang = userLang(modelId);
+  notifyUser(modelId, 'tip', srv('bell_tip_title', tipLang,
+      { fan: req.user.display_name || 'A fan', emoji: item.emoji, label: item.label }),
+    srv('bell_tip_body', tipLang, { amount: fmt$(item.price_cents) }), null);
   pushToUser(modelId, { type: 'tip:received', fan_id: req.user.id,
     fan_name: req.user.display_name || 'A fan',
     emoji: item.emoji, label: item.label, price_cents: item.price_cents, context });
@@ -5766,6 +6277,1390 @@ const RECRUITER_CONTRACT = {
     },
   ],
 };
+
+/* Per-language presentations of the two signable agreements (Oct 17,
+   2026 — 13-language expansion). EN stays the canonical text above;
+   versions are UNCHANGED — these are the same terms in other languages,
+   each carrying a "the English version governs" note the client renders
+   above the sections. Unknown language → EN sections, no note. */
+const MODEL_CONTRACT_I18N = {
+ "es": {
+  "governs": "Traducción por conveniencia — rige la versión en inglés.",
+  "sections": [
+   {
+    "title": "1. Partes",
+    "body": "Este Acuerdo de Modelo (\"Acuerdo\") se celebra entre tú, la artista (\"Artista\"), y World of Godz Entertainment LLC (\"Compañía\"), que opera como SlutCamp (\"SlutCamp\"). Al firmar, aceptas todo lo que se indica a continuación."
+   },
+   {
+    "title": "2. Contratista independiente",
+    "body": "Eres una CONTRATISTA INDEPENDIENTE, no una empleada de la Compañía. Nada en este Acuerdo crea una relación laboral, de sociedad o de agencia. Eres responsable de tus propios impuestos, seguros y gastos comerciales. La Compañía no retendrá impuestos de tus pagos, y aceptas declarar todos tus ingresos según lo exija la ley."
+   },
+   {
+    "title": "3. Verificación de edad e identidad",
+    "body": "Confirmas que tienes al menos 18 años. Has completado (o completarás) la verificación con una identificación oficial ante SlutCamp antes de salir en vivo, según lo requerido para el cumplimiento de los registros de 18 U.S.C. §2257. Si no puedes verificar tu edad e identidad, no podrás actuar en la plataforma."
+   },
+   {
+    "title": "4. Reparto de ingresos y tus tarifas",
+    "body": "Te quedas con el 60% de todo lo que los fans gastan en ti (chats, llamadas, regalos, acceso a en vivos, mensajes prioritarios, uniones al escenario, reservas). La Compañía se queda con el 40%. Tú fijas tus propias tarifas dentro de la app, dentro de los rangos permitidos: por mensaje, por minuto de video, por nota de voz y tus tarifas de unión explícita al escenario ($5–$100). La Compañía puede cambiar en cualquier momento las tarifas predeterminadas de toda la plataforma o los rangos permitidos."
+   },
+   {
+    "title": "5. Pagos",
+    "body": "Agregas tus datos bancarios en la app y solicitas retiros de tu saldo disponible en cualquier momento. Los pagos los procesa manualmente SlutCamp según el propio calendario de la Compañía — no hay una fecha de pago garantizada. Las solicitudes de retiro pendientes pueden tardar varios días hábiles. Tu saldo disponible solo incluye las ganancias que hayan superado el periodo de espera para pagos descrito en la sección 13."
+   },
+   {
+    "title": "6. Derechos sobre el contenido",
+    "body": "Conservas la propiedad del contenido que creas en la plataforma. Al publicar o transmitir en SlutCamp, otorgas a la Compañía una licencia mundial y libre de regalías para usar, mostrar, reproducir y promover ese contenido en la plataforma y en el marketing de la Compañía (incluidas redes sociales y anuncios). Confirmas que tienes derecho a otorgar esta licencia y que tu contenido no infringe los derechos de ninguna otra persona."
+   },
+   {
+    "title": "7. Normas de conducta",
+    "body": "En la plataforma NO debes: compartir datos de contacto ni identificadores de pago con los fans; intentar llevarte a los fans o las transacciones fuera de la plataforma; usar discurso de odio o insultos; publicar contenido que incluya a cualquier persona menor de 18 años o a cualquier persona que no haya dado su consentimiento. Incumplir estas normas puede hacer que tus mensajes sean bloqueados, tu cuenta suspendida o tu cuenta desactivada — y puedes perder las ganancias pendientes a discreción de la Compañía."
+   },
+   {
+    "title": "8. Acceso a la cuenta",
+    "body": "Las cuentas de modelo son solo por invitación. La Compañía puede suspender o desactivar tu cuenta en cualquier momento, por cualquier motivo, con o sin previo aviso. Si se desactiva, cualquier saldo ganado que no se haya pagado permanecerá disponible para que lo retires."
+   },
+   {
+    "title": "9. Confidencialidad",
+    "body": "Aceptas no divulgar los métodos comerciales, las estructuras de comisiones ni las operaciones internas de la Compañía, ni la información personal de ninguna otra modelo ni los datos personales de ningún fan, a ninguna persona ajena a la Compañía."
+   },
+   {
+    "title": "10. No elusión",
+    "body": "Durante 12 meses después de que tu cuenta termine (por cualquier motivo), aceptas no solicitar directamente a los fans que conociste a través de SlutCamp que usen un servicio competidor de chat pago o de cámara en lugar de la plataforma. La promoción pública normal de tu propia marca (redes sociales, etc.) está bien — esto solo cubre la captación dirigida de fans de SlutCamp."
+   },
+   {
+    "title": "11. Terminación",
+    "body": "Cualquiera de las partes puede terminar este Acuerdo en cualquier momento. Puedes dejar de usar la plataforma cuando quieras. Si la Compañía desactiva tu cuenta, este Acuerdo termina de inmediato, excepto las secciones de confidencialidad, no elusión y derechos sobre el contenido, que sobreviven a la terminación."
+   },
+   {
+    "title": "12. 1 a 1 programados y la lista de espera de FaceTime",
+    "body": "Tú controlas tu propio horario de 1 a 1: fijas los días y las horas en que aceptas reservas privadas de 1 a 1, y cuántas aceptas por día y por semana. Una reserva confirmada reserva tu tiempo para ese fan. La plataforma te enviará avisos recordatorios antes de cada reserva — 3 días antes, 3 horas antes y 15 minutos antes. Debes iniciar un 1 a 1 reservado dentro de los 5 minutos de su hora de inicio programada. Si no lo inicias a tiempo, al fan se le reembolsa automáticamente por completo y recibe una disculpa de la plataforma, y esa reserva no te paga nada. Si inicias a tiempo y el fan no se une dentro de los 3 minutos, eso es una ausencia del fan: el fan no recibe reembolso y la reserva se te paga como ganada. También puedes recibir solicitudes de FaceTime mientras estás ocupada: cuando aceptas una solicitud durante otra llamada, el fan se une a tu lista de espera y puede ver su lugar en la fila y su tiempo de espera estimado. Cuando tu llamada termina, el siguiente fan en la fila obtiene una ventana de 90 segundos para unirse. Al aceptar una solicitud, te comprometes a atender la llamada de ese fan cuando llegue su turno."
+   },
+   {
+    "title": "13. Retenciones de pago, reversiones por contracargos y fraude",
+    "body": "RETENCIÓN DE PAGO: Tus ganancias se vuelven elegibles para retiro 7 días después de generarse — tu dinero va una semana por detrás de lo que ganas. La app muestra tu saldo disponible por separado de las ganancias que aún están dentro de su periodo. La Compañía publica el periodo actual en la app y puede cambiarlo con aviso en la app; las ganancias que ya están dentro de su periodo conservan el periodo con el que comenzaron. REVERSIONES POR CONTRACARGOS: Los fans pagan con créditos prepagados. Si la compra de créditos de un fan es objeto de un contracargo, reembolso o cualquier otra reversión por parte de su banco o emisor de tarjeta, la Compañía puede revertir el dinero en este orden: (1) los créditos no gastados del fan provenientes de esa compra; (2) tus ganancias no pagadas provenientes de ese fan — primero las ganancias que aún están dentro de su periodo de espera para pagos, luego las ganancias que ya lo superaron; y (3) cualquier monto restante se convierte en un ajuste negativo en tu cuenta, que se descuenta de tus ganancias futuras antes de que cualquier monto nuevo se vuelva retirable. Las ganancias que ya retiraste correctamente nunca se te cobrarán de vuelta de tu bolsillo. Si un contracargo supera las ganancias no pagadas que pueden revertirse según (1) y (2) — incluso porque ya retiraste las ganancias a las que se relaciona — la diferencia se convierte en un saldo que le debes a la Compañía. Ese saldo se recupera automáticamente: el sistema lo deduce de tus ganancias futuras antes de que cualquier monto nuevo se vuelva retirable, hasta que se pague por completo. Nunca se te exige hacer un pago manual ni de tu bolsillo por un faltante por contracargo. Este párrafo no protege el fraude — las ganancias obtenidas fraudulentamente se pierden según las normas de FRAUDE que siguen. FRAUDE: Las compras coordinadas, la autooperación (comprarte a ti misma o a través de cuentas que controlas), los esquemas de contracargos o cualquier otro esquema para fabricar ganancias o pagos es fraude, además de las normas de conducta de la sección 7. En caso de fraude, la Compañía puede poner los pagos en retención o bajo revisión, revertir ganancias y terminar cuentas; las ganancias obtenidas fraudulentamente se pierden."
+   },
+   {
+    "title": "14. Ley aplicable y jurisdicción",
+    "body": "Este Acuerdo se rige por las leyes del Estado de Texas, sin tener en cuenta sus normas sobre conflicto de leyes. Cualquier disputa que surja de este Acuerdo o se relacione con él debe presentarse ante los tribunales estatales o federales ubicados en Texas, y tú y la Compañía aceptan la jurisdicción personal y la competencia de esos tribunales. Nada en esta sección renuncia ni limita ningún derecho que tu estado de residencia te otorgue y que legalmente no pueda renunciarse."
+   },
+   {
+    "title": "15. Aviso sobre lenguaje sencillo",
+    "body": "Este es un resumen en lenguaje sencillo redactado para mayor claridad — NO es asesoramiento legal y no ha sido revisado por un abogado. La Compañía te recomienda encarecidamente que tu propio abogado revise este Acuerdo antes de firmarlo. Si alguna parte de este Acuerdo se considera inaplicable, el resto seguirá vigente."
+   }
+  ]
+ },
+ "pt": {
+  "governs": "Tradução apenas para conveniência — prevalece a versão em inglês.",
+  "sections": [
+   {
+    "title": "1. Partes",
+    "body": "Este Contrato de Modelo (\"Contrato\") é celebrado entre você, a artista (\"Artista\"), e a World of Godz Entertainment LLC (\"Empresa\"), operando sob o nome SlutCamp (\"SlutCamp\"). Ao assinar, você concorda com tudo o que está abaixo."
+   },
+   {
+    "title": "2. Prestador Independente",
+    "body": "Você é um PRESTADOR INDEPENDENTE, e não empregado da Empresa. Nada neste Contrato cria uma relação de emprego, sociedade ou representação. Você é responsável por seus próprios impostos, seguros e despesas do seu negócio. A Empresa não reterá impostos dos seus pagamentos, e você concorda em declarar toda a sua renda conforme exigido por lei."
+   },
+   {
+    "title": "3. Verificação de Idade e Identidade",
+    "body": "Você confirma que tem pelo menos 18 anos de idade. Você concluiu (ou concluirá) a verificação com documento oficial de identidade junto à SlutCamp antes de entrar ao vivo, conforme exigido para a conformidade com os registros de 18 U.S.C. §2257. Se você não puder verificar sua idade e identidade, você não poderá se apresentar na plataforma."
+   },
+   {
+    "title": "4. Divisão de Receita e Suas Tarifas",
+    "body": "Você fica com 60% de tudo o que os fãs gastam com você (conversas, chamadas, presentes, acesso a lives, mensagens prioritárias, subidas ao palco, reservas). A Empresa fica com 40%. Você define suas próprias tarifas dentro do app, dentro das faixas permitidas: por mensagem, por minuto de vídeo, por mensagem de voz e suas tarifas explícitas de subida ao palco ($5–$100). A Empresa pode alterar os padrões de toda a plataforma ou as faixas permitidas a qualquer momento."
+   },
+   {
+    "title": "5. Pagamentos",
+    "body": "Você adiciona seus dados bancários no app e solicita saques do seu saldo disponível a qualquer momento. Os pagamentos são processados manualmente pela SlutCamp conforme o cronograma da própria Empresa — não há data de pagamento garantida. Solicitações de saque pendentes podem levar vários dias úteis. Seu saldo disponível inclui apenas os ganhos que já passaram pelo prazo de liberação descrito na seção 13."
+   },
+   {
+    "title": "6. Direitos sobre o Conteúdo",
+    "body": "Você mantém a propriedade do conteúdo que cria na plataforma. Ao publicar ou transmitir na SlutCamp, você concede à Empresa uma licença mundial e gratuita para usar, exibir, reproduzir e promover esse conteúdo na plataforma e no marketing da Empresa (incluindo redes sociais e anúncios). Você confirma que tem o direito de conceder esta licença e que seu conteúdo não infringe os direitos de nenhuma outra pessoa."
+   },
+   {
+    "title": "7. Regras de Conduta",
+    "body": "Na plataforma, você NÃO deve: compartilhar informações de contato ou dados de pagamento com fãs; tentar levar fãs ou transações para fora da plataforma; usar discurso de ódio ou injúrias; publicar conteúdo com qualquer pessoa menor de 18 anos ou qualquer pessoa que não tenha consentido. Violar estas regras pode fazer suas mensagens serem bloqueadas, sua conta ser suspensa ou sua conta ser desativada — e você pode perder os ganhos pendentes, a critério da Empresa."
+   },
+   {
+    "title": "8. Acesso à Conta",
+    "body": "As contas de modelo são apenas por convite. A Empresa pode suspender ou desativar sua conta a qualquer momento, por qualquer motivo, com ou sem aviso. Se desativada, qualquer saldo já ganho que ainda não tenha sido pago permanecerá disponível para você sacar."
+   },
+   {
+    "title": "9. Confidencialidade",
+    "body": "Você concorda em não divulgar os métodos de negócio, as estruturas de comissão ou as operações internas da Empresa, nem as informações pessoais de qualquer outra modelo ou quaisquer dados pessoais de qualquer fã, a ninguém fora da Empresa."
+   },
+   {
+    "title": "10. Não Desvio",
+    "body": "Por 12 meses após o encerramento da sua conta (por qualquer motivo), você concorda em não abordar diretamente os fãs que conheceu por meio da SlutCamp para que usem um serviço concorrente de conversa paga ou de câmera em vez da plataforma. A promoção pública normal da sua própria marca (redes sociais etc.) é permitida — isto abrange apenas o aliciamento direcionado de fãs da SlutCamp."
+   },
+   {
+    "title": "11. Rescisão",
+    "body": "Qualquer uma das partes pode encerrar este Contrato a qualquer momento. Você pode parar de usar a plataforma quando quiser. Se a Empresa desativar sua conta, este Contrato se encerra imediatamente, exceto as seções de confidencialidade, não desvio e direitos sobre o conteúdo, que sobrevivem à rescisão."
+   },
+   {
+    "title": "12. Sessões 1 a 1 Agendadas e a Lista de Espera do FaceTime",
+    "body": "Você controla sua própria agenda de sessões 1 a 1: você define os dias e horários em que aceita reservas privadas 1 a 1 e quantas aceita por dia e por semana. Uma reserva confirmada reserva seu tempo para aquele fã. A plataforma enviará avisos de lembrete antes de cada reserva — 3 dias antes, 3 horas antes e 15 minutos antes. Você deve iniciar uma sessão 1 a 1 reservada dentro de 5 minutos do horário agendado de início. Se você não iniciar a tempo, o fã será reembolsado integralmente de forma automática e receberá um pedido de desculpas da plataforma, e essa reserva não lhe pagará nada. Se você iniciar no horário e o fã não entrar dentro de 3 minutos, isso é uma falta do fã: o fã não recebe reembolso, e a reserva é paga a você como ganho. Você também pode receber solicitações de FaceTime enquanto estiver ocupada: quando você aceita uma solicitação durante outra chamada, o fã entra na sua lista de espera e pode ver sua posição na fila e seu tempo estimado de espera. Quando sua chamada termina, o próximo fã da fila tem uma janela de 90 segundos para entrar. Ao aceitar uma solicitação, você se compromete a atender a chamada daquele fã quando chegar a vez dele."
+   },
+   {
+    "title": "13. Retenções de Pagamento, Reversões por Estorno e Fraude",
+    "body": "RETENÇÃO DE PAGAMENTO: Seus ganhos ficam disponíveis para saque 7 dias depois de gerados — seu dinheiro fica uma semana atrás do que você ganha. O app mostra seu saldo disponível separado dos ganhos ainda dentro do prazo. A Empresa publica o prazo atual no app e pode alterá-lo mediante aviso no app; os ganhos já dentro do prazo mantêm o prazo com que começaram. REVERSÕES POR ESTORNO: Os fãs pagam com créditos pré-pagos. Se a compra de créditos de um fã for estornada, reembolsada ou revertida de outra forma pelo banco ou emissor do cartão dele, a Empresa poderá reverter o dinheiro nesta ordem: (1) os créditos não gastos do fã provenientes daquela compra; (2) seus ganhos não pagos provenientes daquele fã — primeiro os ganhos ainda dentro do prazo de liberação, depois os ganhos que já passaram por ele; e (3) qualquer valor restante se torna um ajuste negativo na sua conta, que é descontado dos seus ganhos futuros antes que qualquer valor novo fique disponível para saque. Ganhos que você já sacou devidamente nunca serão cobrados de você do seu próprio bolso. Se um estorno exceder os ganhos não pagos que podem ser revertidos conforme (1) e (2) — inclusive porque você já sacou os ganhos a que ele se refere —, a diferença se torna um saldo que você deve à Empresa. Esse saldo é recuperado automaticamente: o sistema o deduz dos seus ganhos futuros antes que qualquer valor novo fique disponível para saque, até que ele seja quitado integralmente. Você nunca será obrigada a fazer um pagamento manual ou do seu próprio bolso por um déficit de estorno. Este parágrafo não protege fraude — ganhos obtidos de forma fraudulenta são perdidos conforme as regras de FRAUDE a seguir. FRAUDE: Compras coordenadas, autocontratação (comprar de si mesma ou por meio de contas que você controla), esquemas de estorno ou qualquer outro esquema para fabricar ganhos ou pagamentos constitui fraude, além das regras de conduta da seção 7. Em caso de fraude, a Empresa pode reter pagamentos ou colocá-los em análise, reverter ganhos e encerrar contas; ganhos obtidos de forma fraudulenta são perdidos."
+   },
+   {
+    "title": "14. Lei Aplicável e Foro",
+    "body": "Este Contrato é regido pelas leis do Estado do Texas, independentemente de suas regras de conflito de leis. Qualquer disputa decorrente deste Contrato ou a ele relacionada deve ser levada aos tribunais estaduais ou federais localizados no Texas, e você e a Empresa consentem com a jurisdição pessoal e o foro desses tribunais. Nada nesta seção renuncia ou limita qualquer direito que seu estado de origem lhe conceda e que não possa ser legalmente renunciado."
+   },
+   {
+    "title": "15. Aviso de Linguagem Simples",
+    "body": "Este é um resumo em linguagem simples, redigido para maior clareza — ele NÃO é aconselhamento jurídico e não foi revisado por um advogado. A Empresa recomenda enfaticamente que você peça ao seu próprio advogado para revisar este Contrato antes de assinar. Se qualquer parte deste Contrato for considerada inexequível, o restante continua válido."
+   }
+  ]
+ },
+ "fr": {
+  "governs": "Traduction fournie à titre de commodité — la version anglaise prévaut.",
+  "sections": [
+   {
+    "title": "1. Parties",
+    "body": "Le présent Contrat de modèle (« Contrat ») est conclu entre vous, l'artiste (« Artiste »), et World of Godz Entertainment LLC (« Société »), exerçant sous le nom de SlutCamp (« SlutCamp »). En signant, vous acceptez tout ce qui suit."
+   },
+   {
+    "title": "2. Contractant indépendant",
+    "body": "Vous êtes un CONTRACTANT INDÉPENDANT, et non un employé de la Société. Rien dans le présent Contrat ne crée de relation d'emploi, de partenariat ou de mandat. Vous êtes responsable de vos propres impôts, assurances et frais professionnels. La Société ne retiendra pas d'impôts sur vos paiements, et vous acceptez de déclarer tous vos revenus conformément à la loi."
+   },
+   {
+    "title": "3. Vérification de l'âge et de l'identité",
+    "body": "Vous confirmez avoir au moins 18 ans. Vous avez effectué (ou effectuerez) une vérification d'identité au moyen d'une pièce d'identité officielle auprès de SlutCamp avant de passer en direct, comme l'exige la conformité en matière de tenue de registres au titre de 18 U.S.C. §2257. Si vous ne pouvez pas vérifier votre âge et votre identité, vous ne pouvez pas vous produire sur la plateforme."
+   },
+   {
+    "title": "4. Répartition des revenus et vos tarifs",
+    "body": "Vous gardez 60% de tout ce que les fans dépensent pour vous (discussions, appels, cadeaux, accès aux directs, messages prioritaires, participations à la scène, réservations). La Société garde 40%. Vous définissez vos propres tarifs dans l'application, dans les limites autorisées : par message, par minute de vidéo, par note vocale, ainsi que vos tarifs de participation explicite à la scène ($5–$100). La Société peut modifier à tout moment les valeurs par défaut à l'échelle de la plateforme ou les limites autorisées."
+   },
+   {
+    "title": "5. Paiements",
+    "body": "Vous ajoutez vos coordonnées bancaires dans l'application et demandez des retraits de votre solde disponible à tout moment. Les paiements sont traités manuellement par SlutCamp selon le propre calendrier de la Société — il n'y a aucune date de paiement garantie. Les demandes de retrait en attente peuvent prendre plusieurs jours ouvrables. Votre solde disponible ne comprend que les gains qui ont franchi le délai de paiement décrit à la section 13."
+   },
+   {
+    "title": "6. Droits sur le contenu",
+    "body": "Vous conservez la propriété du contenu que vous créez sur la plateforme. En publiant ou en diffusant sur SlutCamp, vous accordez à la Société une licence mondiale et libre de redevances pour utiliser, afficher, reproduire et promouvoir ce contenu sur la plateforme et dans le marketing de la Société (y compris les réseaux sociaux et les publicités). Vous confirmez avoir le droit d'accorder cette licence et que votre contenu ne porte atteinte aux droits de personne d'autre."
+   },
+   {
+    "title": "7. Règles de conduite",
+    "body": "Sur la plateforme, vous ne devez PAS : partager des coordonnées ou des identifiants de paiement avec les fans ; tenter de déplacer les fans ou les transactions hors plateforme ; utiliser des discours de haine ou des insultes ; publier du contenu mettant en scène une personne de moins de 18 ans ou une personne qui n'a pas consenti. Enfreindre ces règles peut entraîner le blocage de vos messages, la suspension de votre compte ou sa désactivation — et vous pouvez perdre vos gains en attente, à la discrétion de la Société."
+   },
+   {
+    "title": "8. Accès au compte",
+    "body": "Les comptes de modèles sont uniquement sur invitation. La Société peut suspendre ou désactiver votre compte à tout moment, pour n'importe quelle raison, avec ou sans préavis. En cas de désactivation, tout solde gagné qui n'a pas été payé reste disponible pour que vous le retiriez."
+   },
+   {
+    "title": "9. Confidentialité",
+    "body": "Vous acceptez de ne divulguer à personne en dehors de la Société ni les méthodes commerciales, les structures de commission ou le fonctionnement interne de la Société, ni les informations personnelles d'un autre modèle ou les données personnelles d'un fan."
+   },
+   {
+    "title": "10. Non-contournement",
+    "body": "Pendant 12 mois après la fin de votre compte (pour quelque raison que ce soit), vous acceptez de ne pas solliciter directement les fans que vous avez rencontrés via SlutCamp pour qu'ils utilisent un service concurrent de discussion payante ou de cam au lieu de la plateforme. La promotion publique normale de votre propre marque (réseaux sociaux, etc.) est autorisée — ceci ne couvre que le démarchage ciblé des fans de SlutCamp."
+   },
+   {
+    "title": "11. Résiliation",
+    "body": "Chaque partie peut mettre fin au présent Contrat à tout moment. Vous pouvez cesser d'utiliser la plateforme quand vous le souhaitez. Si la Société désactive votre compte, le présent Contrat prend fin immédiatement, à l'exception des sections relatives à la confidentialité, au non-contournement et aux droits sur le contenu, qui survivent à la résiliation."
+   },
+   {
+    "title": "12. 1-à-1 programmés et liste d'attente FaceTime",
+    "body": "Vous contrôlez votre propre programme de 1-à-1 : vous définissez les jours et les heures auxquels vous acceptez les réservations privées en 1-à-1, ainsi que le nombre que vous acceptez par jour et par semaine. Une réservation confirmée réserve votre temps pour ce fan. La plateforme vous enverra des avis de rappel avant chaque réservation — 3 jours avant, 3 heures avant et 15 minutes avant. Vous devez commencer un 1-à-1 réservé dans les 5 minutes suivant son heure de début programmée. Si vous ne commencez pas à temps, le fan est automatiquement remboursé intégralement et reçoit des excuses de la plateforme, et cette réservation ne vous rapporte rien. Si vous commencez à temps et que le fan ne rejoint pas dans les 3 minutes, il s'agit d'une absence du fan : le fan ne reçoit aucun remboursement, et la réservation vous est payée comme un gain. Vous pouvez également recevoir des demandes FaceTime pendant que vous êtes occupée : lorsque vous acceptez une demande pendant un autre appel, le fan rejoint votre liste d'attente et peut voir sa place dans la file et son temps d'attente estimé. Lorsque votre appel se termine, le fan suivant dans la file dispose d'un délai de 90 secondes pour rejoindre. En acceptant une demande, vous vous engagez à prendre l'appel de ce fan lorsque son tour viendra."
+   },
+   {
+    "title": "13. Délais de paiement, annulations pour rejet de débit et fraude",
+    "body": "DÉLAI DE PAIEMENT : Vos gains deviennent éligibles au retrait 7 jours après avoir été gagnés — votre argent a une semaine de retard sur ce que vous gagnez. L'application affiche votre solde disponible séparément des gains encore dans leur délai. La Société publie le délai actuel dans l'application et peut le modifier avec un avis dans l'application ; les gains déjà dans leur délai conservent le délai avec lequel ils ont commencé. ANNULATIONS POUR REJET DE DÉBIT : Les fans paient avec des crédits prépayés. Si l'achat de crédits d'un fan fait l'objet d'un rejet de débit, d'un remboursement ou d'une autre annulation par sa banque ou l'émetteur de sa carte, la Société peut annuler l'argent dans cet ordre : (1) les crédits non dépensés du fan provenant de cet achat ; (2) vos gains non payés provenant de ce fan — d'abord les gains encore dans leur délai de paiement, puis les gains qui l'ont déjà franchi ; et (3) tout montant restant devient un ajustement négatif sur votre compte, qui est prélevé sur vos gains futurs avant que quoi que ce soit de nouveau devienne retirable. Les gains que vous avez déjà correctement retirés ne vous sont jamais réclamés de votre poche. Si un rejet de débit dépasse les gains non payés qui peuvent être annulés au titre de (1) et (2) — y compris parce que vous avez déjà retiré les gains auxquels il se rapporte — la différence devient un solde que vous devez à la Société. Ce solde est récupéré automatiquement : le système le déduit de vos gains futurs avant que quoi que ce soit de nouveau devienne retirable, jusqu'à son remboursement intégral. Vous n'êtes jamais tenue d'effectuer un paiement manuel ou de votre poche pour un déficit lié à un rejet de débit. Ce paragraphe ne protège pas la fraude — les gains obtenus frauduleusement sont confisqués conformément aux règles relatives à la FRAUDE qui suivent. FRAUDE : Les achats coordonnés, les opérations pour son propre compte (acheter auprès de vous-même ou via des comptes que vous contrôlez), les stratagèmes de rejet de débit, ou tout autre stratagème visant à fabriquer des gains ou des paiements constituent une fraude, en plus des règles de conduite de la section 7. En cas de fraude, la Société peut mettre les paiements en attente ou en examen, annuler des gains et résilier des comptes ; les gains obtenus frauduleusement sont confisqués."
+   },
+   {
+    "title": "14. Droit applicable et juridiction",
+    "body": "Le présent Contrat est régi par les lois de l'État du Texas, sans égard à ses règles de conflit de lois. Tout litige découlant du présent Contrat ou s'y rapportant doit être porté devant les tribunaux d'État ou fédéraux situés au Texas, et vous et la Société consentez à la compétence personnelle et à la juridiction de ces tribunaux. Rien dans cette section ne renonce ni ne limite un droit que votre État d'origine vous accorde et qui ne peut légalement faire l'objet d'une renonciation."
+   },
+   {
+    "title": "15. Avertissement en langage clair",
+    "body": "Ceci est un résumé en langage clair rédigé pour plus de clarté — ce n'est PAS un avis juridique, et il n'a pas été examiné par un avocat. La Société vous recommande vivement de faire examiner le présent Contrat par votre propre avocat avant de signer. Si une partie du présent Contrat est jugée inapplicable, le reste continue de s'appliquer."
+   }
+  ]
+ },
+ "de": {
+  "governs": "Übersetzung zur Erleichterung — die englische Version ist maßgebend.",
+  "sections": [
+   {
+    "title": "1. Parteien",
+    "body": "Diese Model-Vereinbarung („Vereinbarung\") ist zwischen Ihnen, der Darstellerin/dem Darsteller („Performer\"), und World of Godz Entertainment LLC („Unternehmen\"), die als SlutCamp („SlutCamp\") tätig ist. Mit Ihrer Unterschrift stimmen Sie allem Folgenden zu."
+   },
+   {
+    "title": "2. Unabhängige Auftragnehmerin / Unabhängiger Auftragnehmer",
+    "body": "Sie sind eine UNABHÄNGIGE AUFTRAGNEHMERIN / ein UNABHÄNGIGER AUFTRAGNEHMER, keine Angestellte / kein Angestellter des Unternehmens. Nichts in dieser Vereinbarung begründet ein Beschäftigungs-, Partnerschafts- oder Vertretungsverhältnis. Sie sind für Ihre eigenen Steuern, Versicherungen und Geschäftsausgaben verantwortlich. Das Unternehmen wird keine Steuern von Ihren Auszahlungen einbehalten, und Sie stimmen zu, alle Einkünfte wie gesetzlich vorgeschrieben zu melden."
+   },
+   {
+    "title": "3. Alters- & Identitätsverifizierung",
+    "body": "Sie bestätigen, dass Sie mindestens 18 Jahre alt sind. Sie haben die Verifizierung eines amtlichen Ausweises bei SlutCamp abgeschlossen (oder werden sie abschließen), bevor Sie live gehen, wie für die Compliance mit der Aufzeichnungspflicht nach 18 U.S.C. §2257 erforderlich. Wenn Sie Ihr Alter und Ihre Identität nicht verifizieren können, dürfen Sie auf der Plattform nicht auftreten."
+   },
+   {
+    "title": "4. Umsatzaufteilung & Ihre Preise",
+    "body": "Sie behalten 60% von allem, was Fans für Sie ausgeben (Chats, Anrufe, Geschenke, Live-Zugang, Prioritätsnachrichten, Bühnenbeitritte, Buchungen). Das Unternehmen behält 40%. Sie legen Ihre eigenen Preise in der App innerhalb der erlaubten Bereiche fest: pro Nachricht, pro Minute Video, pro Sprachnachricht und Ihre expliziten Preise für den Bühnenbeitritt ($5–$100). Das Unternehmen kann die plattformweiten Standardwerte oder erlaubten Bereiche jederzeit ändern."
+   },
+   {
+    "title": "5. Auszahlungen",
+    "body": "Sie fügen Ihre Bankdaten in der App hinzu und fordern jederzeit Abhebungen Ihres verfügbaren Guthabens an. Auszahlungen werden von SlutCamp manuell nach dem eigenen Zeitplan des Unternehmens bearbeitet — es gibt kein garantiertes Auszahlungsdatum. Ausstehende Abhebungsanfragen können mehrere Werktage dauern. Ihr verfügbares Guthaben umfasst nur Einnahmen, die das in Abschnitt 13 beschriebene Auszahlungsfenster durchlaufen haben."
+   },
+   {
+    "title": "6. Inhaltsrechte",
+    "body": "Sie behalten das Eigentum an den Inhalten, die Sie auf der Plattform erstellen. Indem Sie auf SlutCamp posten oder streamen, gewähren Sie dem Unternehmen eine weltweite, gebührenfreie Lizenz, diese Inhalte auf der Plattform und im Marketing des Unternehmens (einschließlich sozialer Medien und Werbung) zu nutzen, anzuzeigen, zu reproduzieren und zu bewerben. Sie bestätigen, dass Sie das Recht haben, diese Lizenz zu gewähren, und dass Ihre Inhalte die Rechte Dritter nicht verletzen."
+   },
+   {
+    "title": "7. Verhaltensregeln",
+    "body": "Auf der Plattform dürfen Sie NICHT: Kontaktdaten oder Zahlungs-Handles mit Fans teilen; versuchen, Fans oder Transaktionen außerhalb der Plattform zu bewegen; Hassrede oder Beleidigungen verwenden; Inhalte posten, die Personen unter 18 Jahren oder Personen zeigen, die nicht zugestimmt haben. Ein Verstoß gegen diese Regeln kann dazu führen, dass Ihre Nachrichten blockiert, Ihr Account ausgesetzt oder Ihr Account deaktiviert wird — und Sie können ausstehende Einnahmen nach Ermessen des Unternehmens verwirken."
+   },
+   {
+    "title": "8. Account-Zugang",
+    "body": "Model-Accounts sind nur auf Einladung. Das Unternehmen kann Ihren Account jederzeit, aus beliebigem Grund, mit oder ohne Vorankündigung aussetzen oder deaktivieren. Bei Deaktivierung bleibt jedes verdiente Guthaben, das noch nicht ausgezahlt wurde, für Sie zur Abhebung verfügbar."
+   },
+   {
+    "title": "9. Vertraulichkeit",
+    "body": "Sie stimmen zu, die Geschäftsmethoden, Provisionsstrukturen oder internen Abläufe des Unternehmens oder die persönlichen Informationen eines anderen Models oder die persönlichen Daten eines Fans gegenüber niemandem außerhalb des Unternehmens offenzulegen."
+   },
+   {
+    "title": "10. Umgehungsverbot",
+    "body": "Für 12 Monate nach Beendigung Ihres Accounts (aus beliebigem Grund) stimmen Sie zu, Fans, die Sie über SlutCamp kennengelernt haben, nicht direkt dazu aufzufordern, einen konkurrierenden bezahlten Chat- oder Cam-Dienst anstelle der Plattform zu nutzen. Normale öffentliche Werbung für Ihre eigene Marke (soziale Medien usw.) ist in Ordnung — dies betrifft nur gezieltes Abwerben von SlutCamp-Fans."
+   },
+   {
+    "title": "11. Kündigung",
+    "body": "Jede Seite kann diese Vereinbarung jederzeit beenden. Sie können die Nutzung der Plattform jederzeit einstellen. Wenn das Unternehmen Ihren Account deaktiviert, endet diese Vereinbarung sofort, mit Ausnahme der Abschnitte zu Vertraulichkeit, Umgehungsverbot und Inhaltsrechten, die über die Beendigung hinaus fortbestehen."
+   },
+   {
+    "title": "12. Geplante 1-zu-1 & die FaceTime-Warteliste",
+    "body": "Sie kontrollieren Ihren eigenen 1-zu-1-Zeitplan: Sie legen die Tage und Stunden fest, an denen Sie private 1-zu-1-Buchungen annehmen, und wie viele Sie pro Tag und pro Woche akzeptieren. Eine bestätigte Buchung reserviert Ihre Zeit für diesen Fan. Die Plattform sendet Ihnen Erinnerungsbenachrichtigungen vor jeder Buchung — 3 Tage vorher, 3 Stunden vorher und 15 Minuten vorher. Sie müssen ein gebuchtes 1-zu-1 innerhalb von 5 Minuten nach seiner geplanten Startzeit beginnen. Wenn Sie nicht rechtzeitig beginnen, wird der Fan automatisch vollständig erstattet und erhält eine Entschuldigung von der Plattform, und diese Buchung zahlt Ihnen nichts. Wenn Sie pünktlich beginnen und der Fan nicht innerhalb von 3 Minuten beitritt, ist das ein Fan-No-Show: Der Fan erhält keine Rückerstattung, und die Buchung wird Ihnen als verdient ausgezahlt. Sie können auch FaceTime-Anfragen erhalten, während Sie beschäftigt sind: Wenn Sie eine Anfrage während eines anderen Anrufs akzeptieren, tritt der Fan Ihrer Warteliste bei und kann seinen Platz in der Schlange und seine geschätzte Wartezeit sehen. Wenn Ihr Anruf endet, erhält der nächste Fan in der Schlange ein 90-Sekunden-Fenster, um beizutreten. Mit der Annahme einer Anfrage verpflichten Sie sich, den Anruf dieses Fans anzunehmen, wenn er an der Reihe ist."
+   },
+   {
+    "title": "13. Auszahlungssperren, Rückbuchungsumkehrungen & Betrug",
+    "body": "AUSZAHLUNGSSPERRE: Ihre Einnahmen werden 7 Tage nach dem Verdienen für die Abhebung berechtigt — Ihr Geld läuft eine Woche hinter dem, was Sie verdienen. Die App zeigt Ihr verfügbares Guthaben getrennt von Einnahmen, die sich noch in ihrem Fenster befinden. Das Unternehmen veröffentlicht das aktuelle Fenster in der App und kann es mit Benachrichtigung in der App ändern; Einnahmen, die sich bereits in ihrem Fenster befinden, behalten das Fenster, mit dem sie begonnen haben. RÜCKBUCHUNGSUMKEHRUNGEN: Fans zahlen mit Prepaid-Credits. Wenn ein Credit-Kauf eines Fans von seiner Bank oder seinem Kartenherausgeber zurückgebucht, erstattet oder anderweitig rückgängig gemacht wird, kann das Unternehmen das Geld in dieser Reihenfolge umkehren: (1) die nicht ausgegebenen Credits des Fans aus diesem Kauf; (2) Ihre unbezahlten Einnahmen von diesem Fan — Einnahmen, die sich noch in ihrem Auszahlungsfenster befinden, zuerst, dann Einnahmen, die es bereits durchlaufen haben; und (3) jeder verbleibende Betrag wird zu einer negativen Anpassung auf Ihrem Account, die von Ihren zukünftigen Einnahmen abgezogen wird, bevor etwas Neues abhebbar wird. Einnahmen, die Sie bereits ordnungsgemäß abgehoben haben, werden niemals aus eigener Tasche von Ihnen zurückgeholt. Wenn eine Rückbuchung die unbezahlten Einnahmen übersteigt, die unter (1) und (2) umgekehrt werden können — auch weil Sie die Einnahmen, auf die sie sich bezieht, bereits abgehoben haben — wird die Differenz zu einem Guthaben, das Sie dem Unternehmen schulden. Dieses Guthaben wird automatisch zurückgewonnen: Das System zieht es von Ihren zukünftigen Einnahmen ab, bevor etwas Neues abhebbar wird, bis es vollständig zurückgezahlt ist. Sie sind niemals verpflichtet, eine manuelle Zahlung oder Zahlung aus eigener Tasche für ein Rückbuchungsdefizit zu leisten. Dieser Absatz schützt keinen Betrug — betrügerisch erlangte Einnahmen werden gemäß den folgenden BETRUGS-Regeln verwirkt. BETRUG: Koordinierte Käufe, Selbstgeschäfte (Kauf von sich selbst oder über Accounts, die Sie kontrollieren), Rückbuchungssysteme oder jedes andere System zur Herstellung von Einnahmen oder Auszahlungen ist Betrug, zusätzlich zu den Verhaltensregeln in Abschnitt 7. Bei Betrug kann das Unternehmen Auszahlungen sperren oder einer Überprüfung unterziehen, Einnahmen umkehren und Accounts kündigen; betrügerisch erlangte Einnahmen werden verwirkt."
+   },
+   {
+    "title": "14. Geltendes Recht & Gerichtsstand",
+    "body": "Diese Vereinbarung unterliegt den Gesetzen des Bundesstaates Texas, ohne Rücksicht auf seine Kollisionsnormen. Jeder Streit, der aus dieser Vereinbarung entsteht oder damit zusammenhängt, muss vor den staatlichen oder bundesstaatlichen Gerichten in Texas gebracht werden, und Sie und das Unternehmen stimmen der persönlichen Gerichtsbarkeit und dem Gerichtsstand dieser Gerichte zu. Nichts in diesem Abschnitt verzichtet auf oder beschränkt ein Recht, das Ihnen Ihr Heimatstaat gibt und das gesetzlich nicht verzichtet werden kann."
+   },
+   {
+    "title": "15. Haftungsausschluss in einfacher Sprache",
+    "body": "Dies ist eine Zusammenfassung in einfacher Sprache, die der Klarheit dient — sie ist KEINE Rechtsberatung und wurde nicht von einem Anwalt überprüft. Das Unternehmen empfiehlt Ihnen dringend, diese Vereinbarung vor der Unterzeichnung von Ihrem eigenen Anwalt überprüfen zu lassen. Wenn ein Teil dieser Vereinbarung für nicht durchsetzbar befunden wird, gilt der Rest weiterhin."
+   }
+  ]
+ },
+ "ru": {
+  "governs": "Перевод для удобства — преимущественную силу имеет английская версия.",
+  "sections": [
+   {
+    "title": "1. Стороны",
+    "body": "Настоящее Соглашение модели («Соглашение») заключается между вами, исполнителем («Исполнитель»), и World of Godz Entertainment LLC («Компания»), осуществляющей деятельность под названием SlutCamp («SlutCamp»). Подписывая, вы соглашаетесь со всем нижеизложенным."
+   },
+   {
+    "title": "2. Независимый подрядчик",
+    "body": "Вы являетесь НЕЗАВИСИМЫМ ПОДРЯДЧИКОМ, а не сотрудником Компании. Ничто в настоящем Соглашении не создаёт трудовых, партнёрских или агентских отношений. Вы несёте ответственность за свои собственные налоги, страхование и деловые расходы. Компания не будет удерживать налоги из ваших выплат, и вы соглашаетесь отчитываться о всех доходах в соответствии с требованиями закона."
+   },
+   {
+    "title": "3. Подтверждение возраста и личности",
+    "body": "Вы подтверждаете, что вам не менее 18 лет. Вы прошли (или пройдёте) проверку государственного удостоверения личности в SlutCamp, прежде чем выходить в эфир, как требуется для соблюдения требований ведения учёта по 18 U.S.C. §2257. Если вы не можете подтвердить ваш возраст и личность, вы не можете выступать на платформе."
+   },
+   {
+    "title": "4. Разделение дохода и ваши тарифы",
+    "body": "Вы сохраняете 60% от всего, что фанаты тратят на вас (чаты, звонки, подарки, доступ к эфирам, приоритетные сообщения, присоединения к сцене, бронирования). Компания сохраняет 40%. Вы устанавливаете свои собственные тарифы внутри приложения в разрешённых пределах: за сообщение, за минуту видео, за голосовое сообщение и ваши тарифы откровенного присоединения к сцене ($5–$100). Компания может изменить общеплатформенные значения по умолчанию или разрешённые диапазоны в любое время."
+   },
+   {
+    "title": "5. Выплаты",
+    "body": "Вы добавляете ваши банковские реквизиты в приложении и запрашиваете вывод вашего доступного баланса в любое время. Выплаты обрабатываются вручную SlutCamp по собственному расписанию Компании — гарантированной даты выплаты нет. Ожидающие запросы на вывод могут занять несколько рабочих дней. Ваш доступный баланс включает только доходы, прошедшие период выплаты, описанный в разделе 13."
+   },
+   {
+    "title": "6. Права на контент",
+    "body": "Вы сохраняете право собственности на контент, который вы создаёте на платформе. Размещая или транслируя контент на SlutCamp, вы предоставляете Компании всемирную, безвозмездную лицензию на использование, отображение, воспроизведение и продвижение этого контента на платформе и в маркетинге Компании (включая социальные сети и рекламу). Вы подтверждаете, что у вас есть право предоставлять эту лицензию и что ваш контент не нарушает чужих прав."
+   },
+   {
+    "title": "7. Правила поведения",
+    "body": "На платформе вы НЕ должны: делиться контактной информацией или платёжными реквизитами с фанатами; пытаться увести фанатов или транзакции за пределы платформы; использовать язык ненависти или оскорбления; публиковать контент с участием лиц младше 18 лет или лиц, не давших согласия. Нарушение этих правил может привести к блокировке ваших сообщений, приостановке вашего аккаунта или его деактивации — и вы можете лишиться ожидающих доходов по усмотрению Компании."
+   },
+   {
+    "title": "8. Доступ к аккаунту",
+    "body": "Аккаунты моделей только по приглашению. Компания может приостановить или деактивировать ваш аккаунт в любое время, по любой причине, с уведомлением или без него. В случае деактивации любой заработанный баланс, который не был выплачен, остаётся доступным для вашего вывода."
+   },
+   {
+    "title": "9. Конфиденциальность",
+    "body": "Вы соглашаетесь не раскрывать методы ведения бизнеса Компании, структуры комиссий или внутренние операции, а также личную информацию любой другой модели или личные данные любого фаната кому-либо за пределами Компании."
+   },
+   {
+    "title": "10. Запрет обхода",
+    "body": "В течение 12 месяцев после прекращения вашего аккаунта (по любой причине) вы соглашаетесь не переманивать напрямую фанатов, с которыми вы познакомились через SlutCamp, пользоваться конкурирующим платным чатом или кам-сервисом вместо платформы. Обычное публичное продвижение вашего собственного бренда (социальные сети и т.д.) допустимо — это касается только целенаправленного переманивания фанатов SlutCamp."
+   },
+   {
+    "title": "11. Расторжение",
+    "body": "Любая сторона может расторгнуть настоящее Соглашение в любое время. Вы можете прекратить пользоваться платформой, когда захотите. Если Компания деактивирует ваш аккаунт, настоящее Соглашение немедленно прекращается, за исключением разделов о конфиденциальности, запрете обхода и правах на контент, которые сохраняют силу после расторжения."
+   },
+   {
+    "title": "12. Запланированные 1-на-1 и лист ожидания FaceTime",
+    "body": "Вы контролируете ваше собственное расписание 1-на-1: вы устанавливаете дни и часы, когда вы принимаете приватные бронирования 1-на-1, и сколько вы принимаете в день и в неделю. Подтверждённое бронирование резервирует ваше время за этим фанатом. Платформа будет отправлять вам напоминания перед каждым бронированием — за 3 дня, за 3 часа и за 15 минут. Вы должны начать забронированный 1-на-1 в течение 5 минут от его запланированного времени начала. Если вы не начнёте вовремя, фанату автоматически возвращается полная сумма и он получает извинение от платформы, а это бронирование вам ничего не оплачивает. Если вы начнёте вовремя, а фанат не присоединится в течение 3 минут, это неявка фаната: фанат не получает возврата, а бронирование оплачивается вам как заработанное. Вы также можете получать запросы FaceTime, пока вы заняты: когда вы принимаете запрос во время другого звонка, фанат присоединяется к вашему листу ожидания и может видеть своё место в очереди и предполагаемое время ожидания. Когда ваш звонок заканчивается, следующий фанат в очереди получает 90-секундное окно для присоединения. Принимая запрос, вы обязуетесь принять звонок этого фаната, когда придёт его очередь."
+   },
+   {
+    "title": "13. Удержание выплат, отмены по чарджбэкам и мошенничество",
+    "body": "УДЕРЖАНИЕ ВЫПЛАТ: Ваши доходы становятся доступными для вывода через 7 дней после их получения — ваши деньги отстают на неделю от того, что вы зарабатываете. Приложение показывает ваш доступный баланс отдельно от доходов, всё ещё находящихся в их периоде. Компания публикует текущий период в приложении и может изменить его с уведомлением в приложении; доходы, уже находящиеся в их периоде, сохраняют период, с которым они начались. ОТМЕНЫ ПО ЧАРДЖБЭКАМ: Фанаты платят предоплаченными кредитами. Если покупка кредитов фаната будет оспорена, возвращена или иным образом отменена его банком или эмитентом карты, Компания может отменить деньги в следующем порядке: (1) непотраченные кредиты фаната от этой покупки; (2) ваши невыплаченные доходы от этого фаната — сначала доходы, всё ещё находящиеся в их периоде выплаты, затем доходы, уже прошедшие его; и (3) любая оставшаяся сумма становится отрицательной корректировкой на вашем аккаунте, которая вычитается из ваших будущих доходов, прежде чем что-либо новое станет доступным для вывода. Доходы, которые вы уже надлежащим образом вывели, никогда не взыскиваются с вас из вашего кармана. Если чарджбэк превышает невыплаченные доходы, которые могут быть отменены в соответствии с пунктами (1) и (2) — в том числе потому, что вы уже вывели доходы, к которым он относится, — разница становится балансом, который вы должны Компании. Этот баланс взыскивается автоматически: система вычитает его из ваших будущих доходов, прежде чем что-либо новое станет доступным для вывода, до полного погашения. От вас никогда не требуется производить ручной или личный платёж за недостачу по чарджбэку. Этот абзац не защищает мошенничество — мошеннически полученные доходы подлежат конфискации в соответствии с правилами о МОШЕННИЧЕСТВЕ, изложенными ниже. МОШЕННИЧЕСТВО: Скоординированные покупки, сделки с самим собой (покупка у себя или через аккаунты, которые вы контролируете), схемы чарджбэков или любая другая схема для искусственного создания доходов или выплат является мошенничеством, в дополнение к правилам поведения в разделе 7. За мошенничество Компания может приостановить выплаты или поставить их на проверку, отменить доходы и расторгнуть аккаунты; мошеннически полученные доходы подлежат конфискации."
+   },
+   {
+    "title": "14. Применимое право и место рассмотрения",
+    "body": "Настоящее Соглашение регулируется законами штата Техас, без учёта его коллизионных норм. Любой спор, возникающий из настоящего Соглашения или связанный с ним, должен подаваться в суды штата или федеральные суды, расположенные в Техасе, и вы и Компания соглашаетесь с персональной юрисдикцией и местом рассмотрения этих судов. Ничто в этом разделе не отменяет и не ограничивает какое-либо право, предоставляемое вам вашим родным штатом, которое не может быть юридически отменено."
+   },
+   {
+    "title": "15. Отказ от ответственности, изложенный простым языком",
+    "body": "Это краткое изложение простым языком, написанное для ясности — это НЕ юридическая консультация, и оно не было проверено адвокатом. Компания настоятельно рекомендует вам попросить вашего собственного адвоката проверить настоящее Соглашение перед подписанием. Если какая-либо часть настоящего Соглашения будет признана неисполнимой, остальная часть по-прежнему применяется."
+   }
+  ]
+ },
+ "ja": {
+  "governs": "便宜上の翻訳です — 英語版が正式なものとなります。",
+  "sections": [
+   {
+    "title": "1. 当事者",
+    "body": "本モデル契約（以下「本契約」）は、あなたであるパフォーマー（以下「パフォーマー」）と、SlutCampとして事業を行う World of Godz Entertainment LLC（以下「当社」）との間で締結されます。署名することにより、あなたは以下のすべてに同意します。"
+   },
+   {
+    "title": "2. 独立請負業者",
+    "body": "あなたは当社の従業員ではなく、独立請負業者です。本契約のいかなる規定も、雇用、パートナーシップ、または代理関係を創設するものではありません。あなたは自身の税金、保険、および事業経費について責任を負います。当社はあなたの支払いから税金を源泉徴収せず、あなたは法律で要求されるすべての所得を申告することに同意します。"
+   },
+   {
+    "title": "3. 年齢および本人確認",
+    "body": "あなたは18歳以上であることを確認します。あなたは、合衆国法典第18編 §2257 の記録保持コンプライアンスのために必要なとおり、ライブ配信を開始する前にSlutCampによる政府発行身分証の確認を完了しています（または完了します）。年齢と身元を確認できない場合、プラットフォームでパフォーマンスを行うことはできません。"
+   },
+   {
+    "title": "4. 収益分配とあなたの料金",
+    "body": "あなたは、ファンがあなたに使う金額の60%を保持します（チャット、通話、ギフト、ライブアクセス、優先メッセージ、ステージ参加、予約）。当社は40%を保持します。あなたは、許容範囲内でアプリ内に独自の料金を設定します：メッセージ単価、ビデオ1分単価、ボイスノート単価、および露骨なステージ参加料金（$5–$100）です。当社は、プラットフォーム全体のデフォルトまたは許容範囲をいつでも変更できます。"
+   },
+   {
+    "title": "5. 出金",
+    "body": "あなたはアプリに銀行情報を追加し、いつでも利用可能残高の出金をリクエストできます。出金はSlutCampにより当社独自のスケジュールで手動処理されます。保証された出金日はありません。保留中の出金リクエストには数営業日かかる場合があります。あなたの利用可能残高には、第13条に記載された出金ウィンドウをクリアした収益のみが含まれます。"
+   },
+   {
+    "title": "6. コンテンツの権利",
+    "body": "あなたは、プラットフォーム上で作成したコンテンツの所有権を保持します。SlutCampに投稿または配信することにより、あなたは当社に対し、そのコンテンツをプラットフォーム上および当社のマーケティング（ソーシャルメディアおよび広告を含む）で使用、表示、複製、宣伝するための、世界的でロイヤルティフリーのライセンスを付与します。あなたは、このライセンスを付与する権利を有すること、およびあなたのコンテンツが他者の権利を侵害しないことを確認します。"
+   },
+   {
+    "title": "7. 行動規範",
+    "body": "プラットフォーム上で、あなたは以下を行ってはなりません：ファンと連絡先情報や支払いハンドルを共有すること、ファンや取引をプラットフォーム外に移そうとすること、ヘイトスピーチや中傷を使用すること、18歳未満の者または同意していない者をフィーチャーしたコンテンツを投稿すること。これらの規則に違反すると、メッセージがブロックされ、アカウントが停止または無効化され、当社の裁量により保留中の収益を没収される場合があります。"
+   },
+   {
+    "title": "8. アカウントへのアクセス",
+    "body": "モデルアカウントは招待制のみです。当社は、いつでも、理由を問わず、通知の有無にかかわらず、あなたのアカウントを停止または無効化できます。無効化された場合、まだ支払われていない獲得残高は引き続き出金できます。"
+   },
+   {
+    "title": "9. 守秘義務",
+    "body": "あなたは、当社の事業手法、手数料体系、内部運営、他のモデルの個人情報、またはファンの個人データを、当社外部のいかなる者にも開示しないことに同意します。"
+   },
+   {
+    "title": "10. 迂回禁止",
+    "body": "あなたのアカウントが終了してから（理由を問わず）12か月間、あなたは、SlutCampを通じて出会ったファンに対し、プラットフォームの代わりに競合する有料チャットまたはカムサービスを利用するよう直接勧誘しないことに同意します。あなた自身のブランドの通常の公開宣伝（ソーシャルメディア等）は問題ありません。本条はSlutCampのファンを対象とした引き抜きのみを対象とします。"
+   },
+   {
+    "title": "11. 終了",
+    "body": "どちらの当事者もいつでも本契約を終了できます。あなたはいつでもプラットフォームの使用を停止できます。当社があなたのアカウントを無効化した場合、本契約は直ちに終了します。ただし、守秘義務、迂回禁止、およびコンテンツの権利に関する条項は、終了後も存続します。"
+   },
+   {
+    "title": "12. 予定された1対1とFaceTime待機リスト",
+    "body": "あなたは自身の1対1スケジュールを管理します：プライベート1対1予約を受ける曜日と時間、および1日あたり・1週間あたりに受ける件数を設定します。確定した予約は、そのファンのためにあなたの時間を確保します。プラットフォームは各予約の前にリマインダー通知を送信します — 3日前、3時間前、15分前です。あなたは、予約された1対1を予定開始時刻から5分以内に開始しなければなりません。時間内に開始しない場合、ファンには自動的に全額返金され、プラットフォームから謝罪が送られ、その予約についてあなたへの支払いはありません。あなたが時間通りに開始し、ファンが3分以内に参加しない場合、それはファンのノーショーです：ファンは返金を受けず、予約分は獲得分としてあなたに支払われます。あなたは、忙しいときにFaceTimeリクエストを受け取ることもあります：別の通話中にリクエストを承諾すると、ファンはあなたの待機リストに参加し、順番と推定待ち時間を確認できます。あなたの通話が終了すると、列の次のファンは参加するための90秒の猶予が与えられます。リクエストを承諾することにより、あなたは、そのファンの番が来たときにその通話を受けることを約束します。"
+   },
+   {
+    "title": "13. 出金保留、チャージバック取消し、および不正行為",
+    "body": "出金保留：あなたの収益は、獲得してから7日後に出金可能となります — あなたのお金は、稼いだ金額より1週間遅れます。アプリでは、利用可能残高とまだウィンドウ内にある収益が別々に表示されます。当社は現在のウィンドウをアプリで公開し、アプリでの通知により変更できます。すでにウィンドウ内にある収益は、開始時のウィンドウを保持します。チャージバック取消し：ファンはプリペイドクレジットで支払います。ファンのクレジット購入がチャージバック、返金、または銀行やカード発行会社によってその他の方法で取り消された場合、当社は次の順序で金銭を取り消すことができます：（1）その購入分のファンの未使用クレジット、（2）そのファンからのあなたの未払い収益 — まずまだ出金ウィンドウ内にある収益、次にすでにウィンドウをクリアした収益、（3）残りの金額はあなたのアカウントに対するマイナス調整となり、将来の収益から差し引かれてから、新たな金額が出金可能となります。あなたがすでに適切に出金した収益が、あなたの自己負担で回収されることは決してありません。チャージバックが（1）および（2）に基づいて取り消し可能な未払い収益を超える場合 — あなたがすでに関連する収益を出金したためである場合を含みます — その差額はあなたが当社に負う残高となります。その残高は自動的に回収されます：システムは、全額返済されるまで、将来の収益から差し引いてから、新たな金額が出金可能となります。チャージバック不足分について、手動または自己負担での支払いを求められることは決してありません。本段落は不正行為を保護しません — 不正に取得した収益は、以下の不正行為規則に基づいて没収されます。不正行為：組織的な購入、自己取引（自分自身から、またはあなたが管理するアカウントを通じて購入すること）、チャージバックスキーム、または収益や支払いを捏造するためのその他のスキームは、第7条の行動規範に加えて、不正行為です。不正行為については、当社は支払いを保留または審査対象とし、収益を取り消し、アカウントを終了できます。不正に取得した収益は没収されます。"
+   },
+   {
+    "title": "14. 準拠法および裁判地",
+    "body": "本契約は、抵触法の規則にかかわらず、テキサス州の法律に準拠します。本契約に起因または関連する紛争は、テキサス州に所在する州裁判所または連邦裁判所に提起しなければならず、あなたと当社は、それらの裁判所の対人管轄権および裁判地に同意します。本条のいかなる規定も、法的に放棄できないあなたの居住州が与える権利を放棄または制限するものではありません。"
+   },
+   {
+    "title": "15. 平易な言葉による免責事項",
+    "body": "本書は、明確さのために書かれた平易な言葉による要約です。法的助言ではなく、弁護士によるレビューも受けていません。当社は、署名する前にあなた自身の弁護士に本契約をレビューしてもらうことを強く推奨します。本契約の一部が執行不能と判断された場合でも、残りの部分は引き続き適用されます。"
+   }
+  ]
+ },
+ "zh": {
+  "governs": "此译文仅供方便参考 — 以英文版本为准。",
+  "sections": [
+   {
+    "title": "1. 双方",
+    "body": "本模特协议（“协议”）由你，即表演者（“表演者”），与 World of Godz Entertainment LLC（“公司”）订立，公司以 SlutCamp（“SlutCamp”）名义开展业务。签署即表示你同意以下所有内容。"
+   },
+   {
+    "title": "2. 独立承包商",
+    "body": "你是独立承包商，不是公司的雇员。本协议中的任何内容均不构成雇佣、合伙或代理关系。你负责自己的税款、保险和业务费用。公司不会从你的付款中预扣税款，你同意依法申报所有收入。"
+   },
+   {
+    "title": "3. 年龄与身份验证",
+    "body": "你确认你至少 18 岁。你已经完成（或将完成）SlutCamp 的政府身份证件验证，之后才能开播，这是 18 U.S.C. §2257 记录保存合规所要求的。如果你无法验证你的年龄和身份，你不得在平台上表演。"
+   },
+   {
+    "title": "4. 收入分成与你的费率",
+    "body": "你保留粉丝在你身上消费的全部金额的 60%（聊天、通话、礼物、直播访问、优先消息、舞台加入、预约）。公司保留 40%。你在应用内在允许的范围内设定自己的费率：每条消息、每分钟视频、每条语音消息，以及你的露骨舞台加入费率 ($5–$100)。公司可随时更改全平台的默认值或允许的范围。"
+   },
+   {
+    "title": "5. 付款",
+    "body": "你在应用中添加银行详细信息，并可随时申请提取你的可用余额。付款由 SlutCamp 按公司自己的时间表手动处理 — 不保证付款日期。待处理的提现请求可能需要几个工作日。你的可用余额仅包括已通过第 13 节所述付款窗口的收入。"
+   },
+   {
+    "title": "6. 内容权利",
+    "body": "你保留你在平台上创建的内容的所有权。通过在 SlutCamp 上发布或直播，你授予公司一项全球性、免版税的许可，允许其在平台上和公司营销中（包括社交媒体和广告）使用、展示、复制和推广该内容。你确认你有权授予此许可，且你的内容不侵犯任何其他人的权利。"
+   },
+   {
+    "title": "7. 行为规则",
+    "body": "在平台上，你不得：与粉丝分享联系信息或付款账号；试图将粉丝或交易转移到平台外；使用仇恨言论或侮辱性语言；发布涉及 18 岁以下任何人或任何未同意的人的内容。违反这些规则可能导致你的消息被屏蔽、你的账号被暂停或被停用 — 并且公司可酌情没收你待领取的收入。"
+   },
+   {
+    "title": "8. 账号访问权限",
+    "body": "模特账号仅限邀请。公司可随时以任何理由停用或暂停你的账号，无论是否通知。如果被停用，任何尚未支付的已赚取余额仍可供你提取。"
+   },
+   {
+    "title": "9. 保密",
+    "body": "你同意不向公司以外的任何人披露公司的业务方法、佣金结构或内部运营，或任何其他模特的个人信息或任何粉丝的个人数据。"
+   },
+   {
+    "title": "10. 禁止规避",
+    "body": "在你的账号结束（出于任何原因）后的 12 个月内，你同意不直接招揽你通过 SlutCamp 认识的粉丝，让他们使用竞争性的付费聊天或摄像头服务来代替本平台。对你自己品牌的正常公开推广（社交媒体等）是可以的 — 本条仅涵盖针对 SlutCamp 粉丝的定向挖角。"
+   },
+   {
+    "title": "11. 终止",
+    "body": "任何一方均可随时终止本协议。你可以随时停止使用本平台。如果公司停用你的账号，本协议立即终止，但保密、禁止规避和内容权利条款除外，这些条款在终止后继续有效。"
+   },
+   {
+    "title": "12. 预约的一对一与 FaceTime 等候名单",
+    "body": "你掌控自己的一对一日程：你设定接受一对一私密预约的日期和时间，以及你每天和每周接受的数量。已确认的预约会为该粉丝保留你的时间。平台会在每次预约前向你发送提醒通知 — 提前 3 天、提前 3 小时和提前 15 分钟。你必须在预定的开始时间后 5 分钟内开始已预约的一对一。如果你未及时开始，粉丝将自动获得全额退款，并收到平台的道歉，该预约不会向你支付任何费用。如果你按时开始，而粉丝未在 3 分钟内加入，则为粉丝爽约：粉丝不获得退款，该预约将作为已赚取收入支付给你。当你忙碌时，你也可能收到 FaceTime 请求：当你在另一次通话期间接受一个请求时，该粉丝会加入你的等候名单，并能看到他在队列中的位置和预计等候时间。当你的通话结束时，队列中的下一位粉丝有 90 秒的时间加入。接受请求即表示你承诺在轮到该粉丝时接听他的通话。"
+   },
+   {
+    "title": "13. 付款暂扣、拒付逆转与欺诈",
+    "body": "付款暂扣：你的收入在赚取 7 天后才有资格提现 — 你的钱比你赚取的时间晚一周。应用会将你的可用余额与仍在其窗口内的收入分开显示。公司在应用中公布当前的窗口，并可在应用中通知后更改它；已在窗口内的收入保留其开始时的窗口。拒付逆转：粉丝使用预付点数付款。如果粉丝的点数购买被其银行或发卡机构拒付、退款或以其他方式逆转，公司可按以下顺序逆转款项：(1) 该粉丝来自该购买的未消费点数；(2) 你来自该粉丝的未支付收入 — 先是仍在其付款窗口内的收入，然后是已通过该窗口的收入；以及 (3) 任何剩余金额将成为你账号的负调整，将从你未来的收入中扣除，然后才有任何新的收入可提现。你已正当提取的收入绝不会要求你自掏腰包收回。如果一笔拒付超过根据 (1) 和 (2) 可逆转的未支付收入 — 包括因为你已提取了与之相关的收入 — 差额将成为你欠公司的余额。该余额会自动收回：系统会从你未来的收入中扣除它，然后才有任何新的收入可提现，直到全额偿还为止。对于拒付差额，你绝不需要手动或自掏腰包付款。本段不保护欺诈 — 以欺诈方式获得的收入将根据下述欺诈规则被没收。欺诈：协同购买、自我交易（从你自己或通过你控制的账号购买）、拒付骗局，或任何其他制造收入或付款的骗局，均构成欺诈，此外还包括第 7 节的行为规则。对于欺诈，公司可将付款置于暂扣或审核状态、逆转收入并终止账号；以欺诈方式获得的收入将被没收。"
+   },
+   {
+    "title": "14. 适用法律与审判地",
+    "body": "本协议受德克萨斯州法律管辖，不考虑其法律冲突规则。因本协议引起或与之相关的任何争议必须提交位于德克萨斯州的州法院或联邦法院，你和公司同意接受这些法院的属人管辖权和审判地。本节中的任何内容均不放弃或限制你所在州依法不可放弃的任何权利。"
+   },
+   {
+    "title": "15. 通俗语言免责声明",
+    "body": "这是一份为清晰起见而编写的通俗语言摘要 — 它不是法律建议，也未经律师审查。公司强烈建议你在签署前请你自己的律师审查本协议。如果本协议的任何部分被认定不可执行，其余部分仍然适用。"
+   }
+  ]
+ },
+ "ko": {
+  "governs": "편의를 위한 번역입니다 — 영어 버전이 우선합니다.",
+  "sections": [
+   {
+    "title": "1. 당사자",
+    "body": "본 모델 계약(\"계약\")은 출연자인 귀하(\"출연자\")와 SlutCamp(\"SlutCamp\")라는 상호로 사업을 영위하는 World of Godz Entertainment LLC(\"회사\") 사이에 체결됩니다. 서명함으로써 귀하는 아래의 모든 내용에 동의합니다."
+   },
+   {
+    "title": "2. 독립 계약자",
+    "body": "귀하는 회사의 직원이 아닌 독립 계약자입니다. 본 계약의 어떤 내용도 고용, 파트너십 또는 대리 관계를 만들지 않습니다. 귀하는 본인의 세금, 보험 및 사업 비용에 대해 책임을 집니다. 회사는 지급금에서 세금을 원천징수하지 않으며, 귀하는 법률에서 요구하는 대로 모든 소득을 신고하는 데 동의합니다."
+   },
+   {
+    "title": "3. 연령 및 신원 인증",
+    "body": "귀하는 최소 18세 이상임을 확인합니다. 귀하는 18 U.S.C. §2257 기록 보관 준수를 위해 요구되는 대로, 라이브를 시작하기 전에 SlutCamp에서 정부 발급 신분증 인증을 완료했거나 완료할 것입니다. 연령과 신원을 인증할 수 없으면 플랫폼에서 출연할 수 없습니다."
+   },
+   {
+    "title": "4. 수익 배분 및 요금",
+    "body": "귀하는 팬이 귀하에게 쓰는 모든 금액(채팅, 통화, 선물, 라이브 입장, 우선 메시지, 무대 참여, 예약)의 60%를 가져갑니다. 회사는 40%를 가져갑니다. 귀하는 허용 범위 내에서 앱 안에서 본인의 요금을 직접 정합니다: 메시지당, 영상 분당, 음성 메시지당, 그리고 선정적 무대 참여 요금 ($5–$100). 회사는 플랫폼 전체의 기본값이나 허용 범위를 언제든지 변경할 수 있습니다."
+   },
+   {
+    "title": "5. 지급",
+    "body": "귀하는 앱에 은행 정보를 추가하고 언제든지 사용 가능 잔액의 출금을 요청할 수 있습니다. 지급은 회사의 자체 일정에 따라 SlutCamp가 수동으로 처리합니다 — 보장된 지급일은 없습니다. 대기 중인 출금 요청은 영업일 기준 며칠이 걸릴 수 있습니다. 사용 가능 잔액에는 제13조에 설명된 지급 기간을 통과한 수익만 포함됩니다."
+   },
+   {
+    "title": "6. 콘텐츠 권리",
+    "body": "귀하는 플랫폼에서 만드는 콘텐츠의 소유권을 유지합니다. SlutCamp에 게시하거나 스트리밍함으로써 귀하는 회사에 해당 콘텐츠를 플랫폼과 회사 마케팅(소셜 미디어 및 광고 포함)에서 사용, 표시, 복제 및 홍보할 수 있는 전 세계적이고 로열티 없는 라이선스를 부여합니다. 귀하는 이 라이선스를 부여할 권리가 있으며 귀하의 콘텐츠가 타인의 권리를 침해하지 않음을 확인합니다."
+   },
+   {
+    "title": "7. 행동 규칙",
+    "body": "플랫폼에서 귀하는 다음을 해서는 안 됩니다: 팬과 연락처 정보나 결제 정보를 공유하는 행위; 팬이나 거래를 플랫폼 밖으로 가져가려고 시도하는 행위; 혐오 발언이나 비하 발언을 사용하는 행위; 18세 미만의 사람이나 동의하지 않은 사람이 등장하는 콘텐츠를 게시하는 행위. 이러한 규칙을 위반하면 메시지가 차단되거나, 계정이 정지되거나, 계정이 비활성화될 수 있습니다 — 그리고 회사의 재량에 따라 보류 중인 수익을 몰수당할 수 있습니다."
+   },
+   {
+    "title": "8. 계정 접근",
+    "body": "모델 계정은 초대 전용입니다. 회사는 언제든지, 어떤 이유로든, 통지 여부와 관계없이 귀하의 계정을 정지하거나 비활성화할 수 있습니다. 비활성화된 경우, 아직 지급되지 않은 벌어둔 잔액은 귀하가 출금할 수 있도록 유지됩니다."
+   },
+   {
+    "title": "9. 비밀 유지",
+    "body": "귀하는 회사의 사업 방법, 수수료 구조 또는 내부 운영, 또는 다른 모델의 개인정보나 팬의 개인 데이터를 회사 외부의 누구에게도 공개하지 않는 데 동의합니다."
+   },
+   {
+    "title": "10. 우회 금지",
+    "body": "귀하의 계정이 종료된 후(어떤 이유로든) 12개월 동안, 귀하는 SlutCamp를 통해 만난 팬들에게 플랫폼 대신 경쟁 유료 채팅 또는 캠 서비스를 이용하도록 직접 권유하지 않는 데 동의합니다. 본인 브랜드에 대한 일반적인 공개 홍보(소셜 미디어 등)는 괜찮습니다 — 본 조항은 SlutCamp 팬을 대상으로 한 빼가기에만 적용됩니다."
+   },
+   {
+    "title": "11. 종료",
+    "body": "어느 쪽이든 언제든지 본 계약을 종료할 수 있습니다. 귀하는 언제든지 플랫폼 이용을 중단할 수 있습니다. 회사가 귀하의 계정을 비활성화하면 본 계약은 즉시 종료됩니다. 단, 비밀 유지, 우회 금지 및 콘텐츠 권리 조항은 종료 후에도 존속합니다."
+   },
+   {
+    "title": "12. 예약된 1:1 및 FaceTime 대기 목록",
+    "body": "귀하는 본인의 1:1 일정을 직접 관리합니다: 프라이빗 1:1 예약을 받는 요일과 시간을 정하고, 하루와 일주일에 몇 건을 받을지도 정합니다. 확정된 예약은 해당 팬을 위해 귀하의 시간을 예약합니다. 플랫폼은 각 예약 전에 알림을 보냅니다 — 3일 전, 3시간 전, 15분 전. 귀하는 예약된 1:1을 예정된 시작 시간으로부터 5분 안에 시작해야 합니다. 제시간에 시작하지 않으면 팬에게 자동으로 전액 환불되고 플랫폼으로부터 사과를 받으며, 해당 예약은 귀하에게 아무것도 지급하지 않습니다. 귀하가 제시간에 시작하고 팬이 3분 안에 참여하지 않으면 그것은 팬 노쇼입니다: 팬은 환불받지 못하고, 예약 금액은 귀하에게 수익으로 지급됩니다. 귀하는 바쁠 때 FaceTime 요청을 받을 수도 있습니다: 다른 통화 중에 요청을 수락하면 팬은 대기 목록에 들어가고 자신의 순서와 예상 대기 시간을 볼 수 있습니다. 통화가 끝나면 다음 순서의 팬은 90초 안에 참여할 수 있는 시간이 주어집니다. 요청을 수락함으로써 귀하는 그 팬의 차례가 오면 그의 통화를 받는 데 동의합니다."
+   },
+   {
+    "title": "13. 지급 보류, 차지백 취소 및 사기",
+    "body": "지급 보류: 귀하의 수익은 발생한 지 7일 후에 출금할 수 있습니다 — 돈은 벌어들이는 것보다 1주일 뒤에 들어옵니다. 앱은 사용 가능 잔액을 아직 기간 안에 있는 수익과 별도로 표시합니다. 회사는 현재 기간을 앱에 게시하고 앱 내 통지로 변경할 수 있습니다; 이미 기간 안에 있는 수익은 시작할 때의 기간을 유지합니다. 차지백 취소: 팬은 선불 크레딧으로 결제합니다. 팬의 크레딧 구매가 은행이나 카드 발급사에 의해 차지백, 환불 또는 기타 방식으로 취소되면, 회사는 다음 순서로 금액을 취소할 수 있습니다: (1) 해당 구매로 인한 팬의 사용하지 않은 크레딧; (2) 해당 팬으로부터 발생한 귀하의 미지급 수익 — 아직 지급 기간 안에 있는 수익을 먼저, 그다음 이미 기간을 통과한 수익; 그리고 (3) 남은 금액은 귀하의 계정에 마이너스 조정이 되며, 새로 출금할 수 있는 금액이 생기기 전에 향후 수익에서 차감됩니다. 이미 정당하게 출금한 수익은 본인 부담으로 다시 회수되지 않습니다. 차지백이 (1)과 (2)에 따라 취소할 수 있는 미지급 수익을 초과하면 — 이미 관련 수익을 출금했기 때문인 경우를 포함하여 — 그 차액은 귀하가 회사에 빚진 잔액이 됩니다. 그 잔액은 자동으로 회수됩니다: 시스템은 새로 출금할 수 있는 금액이 생기기 전에 향후 수익에서 이를 차감하며, 전액 상환될 때까지 계속됩니다. 귀하는 차지백 부족분에 대해 수동으로 또는 본인 부담으로 지급해야 할 의무가 없습니다. 본 단락은 사기를 보호하지 않습니다 — 사기적으로 얻은 수익은 뒤에 나오는 사기 규칙에 따라 몰수됩니다. 사기: 조직적인 구매, 자기 거래(본인이 직접 또는 본인이 통제하는 계정을 통해 구매하는 행위), 차지백 사기, 또는 수익이나 지급을 만들어내기 위한 기타 모든 사기는 제7조의 행동 규칙에 더해 사기에 해당합니다. 사기의 경우, 회사는 지급을 보류하거나 검토 중으로 둘 수 있고, 수익을 취소하고, 계정을 종료할 수 있습니다; 사기적으로 얻은 수익은 몰수됩니다."
+   },
+   {
+    "title": "14. 준거법 및 재판지",
+    "body": "본 계약은 텍사스주 법률의 저촉법 규칙과 관계없이 텍사스주 법률에 따라 규율됩니다. 본 계약에서 발생하거나 본 계약과 관련된 모든 분쟁은 텍사스에 위치한 주 또는 연방 법원에 제기해야 하며, 귀하와 회사는 해당 법원의 대인 관할권과 재판지에 동의합니다. 본 조항의 어떤 내용도 법적으로 포기할 수 없는, 거주 주가 귀하에게 부여하는 권리를 포기하거나 제한하지 않습니다."
+   },
+   {
+    "title": "15. 쉬운 말 면책 조항",
+    "body": "이것은 명확성을 위해 쉬운 말로 쓴 요약입니다 — 법률 자문이 아니며, 변호사의 검토를 받지 않았습니다. 회사는 서명하기 전에 본인의 변호사에게 본 계약을 검토받으실 것을 강력히 권장합니다. 본 계약의 일부가 집행 불가능하다고 판정되더라도 나머지는 계속 적용됩니다."
+   }
+  ]
+ },
+ "it": {
+  "governs": "Traduzione fornita per comodità — fa fede la versione inglese.",
+  "sections": [
+   {
+    "title": "1. Parti",
+    "body": "Il presente Contratto da Modella (\"Contratto\") è tra te, l'artista (\"Artista\"), e World of Godz Entertainment LLC (\"Società\"), operante come SlutCamp (\"SlutCamp\"). Firmando, accetti tutto quanto segue."
+   },
+   {
+    "title": "2. Collaboratrice indipendente",
+    "body": "Sei una COLLABORATRICE INDIPENDENTE, non una dipendente della Società. Nulla nel presente Contratto crea un rapporto di lavoro subordinato, di società o di agenzia. Sei responsabile delle tue tasse, assicurazioni e spese aziendali. La Società non tratterrà tasse dai tuoi pagamenti, e accetti di dichiarare tutti i redditi come richiesto dalla legge."
+   },
+   {
+    "title": "3. Verifica di età e identità",
+    "body": "Confermi di avere almeno 18 anni. Hai completato (o completerai) la verifica del documento d'identità governativo con SlutCamp prima di andare live, come richiesto per la conformità alla tenuta dei registri ai sensi del 18 U.S.C. §2257. Se non puoi verificare la tua età e identità, non puoi esibirti sulla piattaforma."
+   },
+   {
+    "title": "4. Ripartizione dei ricavi e le tue tariffe",
+    "body": "Trattieni il 60% di tutto ciò che i fan spendono per te (chat, chiamate, regali, accesso live, messaggi prioritari, accessi al palco, prenotazioni). La Società trattiene il 40%. Imposti le tue tariffe dentro l'app entro gli intervalli consentiti: per messaggio, per minuto video, per nota vocale e le tue tariffe esplicite di accesso al palco ($5–$100). La Società può modificare in qualsiasi momento le impostazioni predefinite a livello di piattaforma o gli intervalli consentiti."
+   },
+   {
+    "title": "5. Pagamenti",
+    "body": "Aggiungi i tuoi dati bancari nell'app e richiedi prelievi del tuo saldo disponibile in qualsiasi momento. I pagamenti sono elaborati manualmente da SlutCamp secondo il programma della Società — non c'è una data di pagamento garantita. Le richieste di prelievo in attesa possono richiedere diversi giorni lavorativi. Il tuo saldo disponibile include solo i guadagni che hanno superato la finestra di pagamento descritta nella sezione 13."
+   },
+   {
+    "title": "6. Diritti sui contenuti",
+    "body": "Mantieni la proprietà dei contenuti che crei sulla piattaforma. Pubblicando o trasmettendo in streaming su SlutCamp, concedi alla Società una licenza mondiale, gratuita, per usare, mostrare, riprodurre e promuovere tali contenuti sulla piattaforma e nel marketing della Società (inclusi social media e annunci). Confermi di avere il diritto di concedere questa licenza e che i tuoi contenuti non violano i diritti di nessun altro."
+   },
+   {
+    "title": "7. Regole di condotta",
+    "body": "Sulla piattaforma NON devi: condividere informazioni di contatto o coordinate di pagamento con i fan; tentare di portare fan o transazioni fuori piattaforma; usare discorsi d'odio o insulti; pubblicare contenuti che mostrano chiunque abbia meno di 18 anni o chiunque non abbia dato il consenso. Violare queste regole può far bloccare i tuoi messaggi, sospendere il tuo account o disattivarlo — e potresti perdere i guadagni in attesa a discrezione della Società."
+   },
+   {
+    "title": "8. Accesso all'account",
+    "body": "Gli account modella sono solo su invito. La Società può sospendere o disattivare il tuo account in qualsiasi momento, per qualsiasi motivo, con o senza preavviso. Se disattivato, qualsiasi saldo guadagnato che non è stato pagato resta disponibile per il tuo prelievo."
+   },
+   {
+    "title": "9. Riservatezza",
+    "body": "Accetti di non divulgare i metodi aziendali della Società, le strutture commissionali o le operazioni interne, né le informazioni personali di qualsiasi altra modella o i dati personali di qualsiasi fan, a chiunque al di fuori della Società."
+   },
+   {
+    "title": "10. Non elusione",
+    "body": "Per 12 mesi dopo la fine del tuo account (per qualsiasi motivo), accetti di non sollecitare direttamente i fan che hai conosciuto tramite SlutCamp a usare un servizio concorrente di chat a pagamento o cam invece della piattaforma. La normale promozione pubblica del tuo marchio (social media, ecc.) va bene — questo copre solo il furto mirato di fan di SlutCamp."
+   },
+   {
+    "title": "11. Risoluzione",
+    "body": "Entrambe le parti possono terminare il presente Contratto in qualsiasi momento. Puoi smettere di usare la piattaforma quando vuoi. Se la Società disattiva il tuo account, il presente Contratto termina immediatamente, ad eccezione delle sezioni su riservatezza, non elusione e diritti sui contenuti, che sopravvivono alla risoluzione."
+   },
+   {
+    "title": "12. 1-a-1 programmati e lista d'attesa FaceTime",
+    "body": "Controlli il tuo programma 1-a-1: imposti i giorni e gli orari in cui accetti prenotazioni private 1-a-1, e quante ne accetti al giorno e a settimana. Una prenotazione confermata riserva il tuo tempo per quel fan. La piattaforma ti manderà avvisi di promemoria prima di ogni prenotazione — 3 giorni prima, 3 ore prima e 15 minuti prima. Devi iniziare un 1-a-1 prenotato entro 5 minuti dall'orario di inizio programmato. Se non inizi in tempo, il fan viene automaticamente rimborsato per intero e riceve le scuse dalla piattaforma, e quella prenotazione non ti paga nulla. Se inizi in tempo e il fan non si unisce entro 3 minuti, è un'assenza del fan: il fan non riceve rimborso, e la prenotazione ti viene pagata come guadagnata. Puoi anche ricevere richieste FaceTime mentre sei occupata: quando accetti una richiesta durante un'altra chiamata, il fan si unisce alla tua lista d'attesa e può vedere il suo posto in fila e la sua attesa stimata. Quando la tua chiamata finisce, il prossimo fan in fila ha una finestra di 90 secondi per unirsi. Accettando una richiesta, ti impegni a prendere la chiamata di quel fan quando arriva il suo turno."
+   },
+   {
+    "title": "13. Trattenute sui pagamenti, storni per chargeback e frode",
+    "body": "TRATTENUTA SUI PAGAMENTI: I tuoi guadagni diventano idonei al prelievo 7 giorni dopo essere stati guadagnati — i tuoi soldi sono una settimana indietro rispetto a ciò che guadagni. L'app mostra il tuo saldo disponibile separatamente dai guadagni ancora dentro la loro finestra. La Società pubblica la finestra attuale nell'app e può modificarla con avviso nell'app; i guadagni già dentro la loro finestra mantengono la finestra con cui sono iniziati. STORNI PER CHARGEBACK: I fan pagano con crediti prepagati. Se un acquisto di crediti di un fan viene sottoposto a chargeback, rimborsato o altrimenti stornato dalla sua banca o dall'emittente della carta, la Società può stornare il denaro in questo ordine: (1) i crediti non spesi del fan da quell'acquisto; (2) i tuoi guadagni non pagati da quel fan — prima i guadagni ancora dentro la loro finestra di pagamento, poi i guadagni che l'hanno già superata; e (3) qualsiasi importo residuo diventa un adeguamento negativo sul tuo account, che viene detratto dai tuoi guadagni futuri prima che qualsiasi cosa nuova diventi prelevabile. I guadagni che hai già correttamente prelevato non ti vengono mai richiesti di tasca tua. Se un chargeback supera i guadagni non pagati che possono essere stornati ai sensi di (1) e (2) — incluso perché hai già prelevato i guadagni a cui si riferisce — la differenza diventa un saldo che devi alla Società. Tale saldo viene recuperato automaticamente: il sistema lo detrae dai tuoi guadagni futuri prima che qualsiasi cosa nuova diventi prelevabile, finché non è ripagato per intero. Non sei mai tenuta a effettuare un pagamento manuale o di tasca tua per un deficit da chargeback. Questo paragrafo non protegge la frode — i guadagni ottenuti fraudolentemente sono confiscati ai sensi delle regole sulla FRODE che seguono. FRODE: Acquisti coordinati, auto-negoziazione (comprare da te stessa o tramite account che controlli), schemi di chargeback o qualsiasi altro schema per fabbricare guadagni o pagamenti è frode, in aggiunta alle regole di condotta nella sezione 7. Per la frode, la Società può mettere i pagamenti in attesa o sotto revisione, stornare guadagni e terminare account; i guadagni ottenuti fraudolentemente sono confiscati."
+   },
+   {
+    "title": "14. Legge applicabile e foro competente",
+    "body": "Il presente Contratto è governato dalle leggi dello Stato del Texas, senza riguardo alle sue norme sul conflitto di leggi. Qualsiasi controversia derivante da o relativa al presente Contratto deve essere portata davanti ai tribunali statali o federali situati in Texas, e tu e la Società acconsentite alla giurisdizione personale e alla sede di quei tribunali. Nulla in questa sezione rinuncia o limita qualsiasi diritto che il tuo stato di residenza ti concede e che non può essere legalmente oggetto di rinuncia."
+   },
+   {
+    "title": "15. Avvertenza in linguaggio semplice",
+    "body": "Questo è un riepilogo in linguaggio semplice scritto per chiarezza — NON è una consulenza legale, e non è stato revisionato da un avvocato. La Società raccomanda vivamente di far revisionare il presente Contratto dal tuo avvocato prima di firmarlo. Se qualsiasi parte del presente Contratto viene ritenuta inapplicabile, il resto continua ad applicarsi."
+   }
+  ]
+ },
+ "pl": {
+  "governs": "Tłumaczenie dla wygody — obowiązuje wersja angielska.",
+  "sections": [
+   {
+    "title": "1. Strony",
+    "body": "Niniejsza Umowa modelki („Umowa”) jest zawierana między Tobą, wykonawczynią („Wykonawczyni”), a World of Godz Entertainment LLC („Spółka”), prowadzącą działalność pod nazwą SlutCamp („SlutCamp”). Podpisując ją, wyrażasz zgodę na wszystko poniżej."
+   },
+   {
+    "title": "2. Niezależny wykonawca",
+    "body": "Jesteś NIEZALEŻNYM WYKONAWCĄ, a nie pracownikiem Spółki. Żadne postanowienie niniejszej Umowy nie tworzy stosunku pracy, spółki ani stosunku agencyjnego. Jesteś odpowiedzialna za własne podatki, ubezpieczenie i koszty działalności. Spółka nie będzie potrącać podatków z Twoich wypłat, a Ty zobowiązujesz się zgłaszać wszystkie dochody zgodnie z wymogami prawa."
+   },
+   {
+    "title": "3. Weryfikacja wieku i tożsamości",
+    "body": "Potwierdzasz, że masz co najmniej 18 lat. Ukończyłaś (lub ukończysz) weryfikację na podstawie dokumentu tożsamości wydanego przez organ państwowy w SlutCamp przed rozpoczęciem transmisji na żywo, zgodnie z wymogami prowadzenia dokumentacji według 18 U.S.C. §2257. Jeśli nie możesz zweryfikować swojego wieku i tożsamości, nie możesz występować na platformie."
+   },
+   {
+    "title": "4. Podział przychodów i Twoje stawki",
+    "body": "Zatrzymujesz 60% wszystkiego, co fani u Ciebie wydadzą (czaty, rozmowy, prezenty, dostęp do transmisji na żywo, wiadomości priorytetowe, dołączenia do sceny, rezerwacje). Spółka zatrzymuje 40%. Ustalasz własne stawki w aplikacji w dozwolonych zakresach: za wiadomość, za minutę wideo, za wiadomość głosową oraz swoje stawki za dołączenie do sceny erotycznej (5–100 $). Spółka może w każdej chwili zmienić ogólnopatformowe stawki domyślne lub dozwolone zakresy."
+   },
+   {
+    "title": "5. Wypłaty",
+    "body": "Dodajesz swoje dane bankowe w aplikacji i możesz w każdej chwili wnioskować o wypłatę dostępnego salda. Wypłaty są przetwarzane ręcznie przez SlutCamp według własnego harmonogramu Spółki — nie ma gwarantowanej daty wypłaty. Oczekujące wnioski o wypłatę mogą potrwać kilka dni roboczych. Twoje dostępne saldo obejmuje wyłącznie zarobki, które przeszły okres wypłaty opisany w sekcji 13."
+   },
+   {
+    "title": "6. Prawa do treści",
+    "body": "Zachowujesz własność treści, które tworzysz na platformie. Publikując lub streamując w SlutCamp, udzielasz Spółce ogólnoświatowej, wolnej od opłat licencyjnych licencji na używanie, wyświetlanie, powielanie i promowanie tych treści na platformie oraz w marketingu Spółki (w tym w mediach społecznościowych i reklamach). Potwierdzasz, że masz prawo udzielić tej licencji oraz że Twoje treści nie naruszają praw żadnej innej osoby."
+   },
+   {
+    "title": "7. Zasady postępowania",
+    "body": "Na platformie NIE wolno Ci: udostępniać fanom danych kontaktowych ani identyfikatorów płatności; podejmować prób przeniesienia fanów lub transakcji poza platformę; używać mowy nienawiści ani wyzwisk; publikować treści przedstawiających jakąkolwiek osobę poniżej 18 roku życia lub jakąkolwiek osobę, która nie wyraziła zgody. Złamanie tych zasad może spowodować zablokowanie Twoich wiadomości, zawieszenie Twojego konta lub jego dezaktywację — a Ty możesz utracić oczekujące zarobki według uznania Spółki."
+   },
+   {
+    "title": "8. Dostęp do konta",
+    "body": "Konta modelek są dostępne tylko na zaproszenie. Spółka może zawiesić lub dezaktywować Twoje konto w każdej chwili, z dowolnego powodu, za uprzedzeniem lub bez niego. W przypadku dezaktywacji wszelkie zarobione saldo, które nie zostało wypłacone, pozostaje dostępne do wypłaty przez Ciebie."
+   },
+   {
+    "title": "9. Poufność",
+    "body": "Zobowiązujesz się nie ujawniać metod biznesowych Spółki, struktur prowizji ani operacji wewnętrznych, ani też danych osobowych żadnej innej modelki ani żadnych danych osobowych żadnego fana, żadnej osobie spoza Spółki."
+   },
+   {
+    "title": "10. Zakaz obchodzenia",
+    "body": "Przez 12 miesięcy po zakończeniu Twojego konta (z dowolnego powodu) zobowiązujesz się nie nakłaniać bezpośrednio fanów, których poznałaś za pośrednictwem SlutCamp, do korzystania z konkurencyjnej płatnej usługi czatu lub cam zamiast platformy. Normalna publiczna promocja własnej marki (media społecznościowe itp.) jest w porządku — dotyczy to wyłącznie celowanego przejmowania fanów SlutCamp."
+   },
+   {
+    "title": "11. Rozwiązanie",
+    "body": "Każda ze stron może w każdej chwili rozwiązać niniejszą Umowę. Możesz przestać korzystać z platformy, kiedy tylko chcesz. Jeśli Spółka dezaktywuje Twoje konto, niniejsza Umowa kończy się natychmiast, z wyjątkiem sekcji dotyczących poufności, zakazu obchodzenia oraz praw do treści, które pozostają w mocy po rozwiązaniu."
+   },
+   {
+    "title": "12. Zaplanowane 1 na 1 i lista oczekujących FaceTime",
+    "body": "Kontrolujesz własny harmonogram 1 na 1: ustalasz dni i godziny, w których przyjmujesz prywatne rezerwacje 1 na 1, oraz ile przyjmujesz dziennie i tygodniowo. Potwierdzona rezerwacja rezerwuje Twój czas dla tego fana. Platforma wyśle Ci przypomnienia przed każdą rezerwacją — 3 dni wcześniej, 3 godziny wcześniej i 15 minut wcześniej. Musisz rozpocząć zarezerwowane 1 na 1 w ciągu 5 minut od zaplanowanego czasu rozpoczęcia. Jeśli nie rozpoczniesz na czas, fan automatycznie otrzyma pełny zwrot oraz przeprosiny od platformy, a ta rezerwacja nic Ci nie zapłaci. Jeśli rozpoczniesz na czas, a fan nie dołączy w ciągu 3 minut, jest to nieobecność fana: fan nie otrzymuje zwrotu, a rezerwacja jest Ci wypłacana jako zarobiona. Możesz również otrzymywać prośby o FaceTime, gdy jesteś zajęta: gdy zaakceptujesz prośbę podczas innej rozmowy, fan dołącza do Twojej listy oczekujących i może zobaczyć swoje miejsce w kolejce oraz szacowany czas oczekiwania. Gdy Twoja rozmowa się zakończy, następny fan w kolejce otrzymuje 90-sekundowe okno na dołączenie. Akceptując prośbę, zobowiązujesz się przyjąć rozmowę tego fana, gdy nadejdzie jego kolej."
+   },
+   {
+    "title": "13. Wstrzymania wypłat, cofnięcia z tytułu obciążeń zwrotnych i oszustwa",
+    "body": "WSTRZYMANIE WYPŁATY: Twoje zarobki stają się uprawnione do wypłaty 7 dni po ich zarobieniu — Twoje pieniądze są tydzień za tym, co zarabiasz. Aplikacja pokazuje Twoje dostępne saldo oddzielnie od zarobków nadal znajdujących się w ich okresie. Spółka publikuje aktualny okres w aplikacji i może go zmienić za powiadomieniem w aplikacji; zarobki już znajdujące się w ich okresie zachowują okres, z którym się rozpoczęły. COFNIĘCIA Z TYTUŁU OBCIĄŻEŃ ZWROTNYCH: Fani płacą przedpłaconymi kredytami. Jeśli zakup kredytów fana zostanie obciążony zwrotnie, zwrócony lub w inny sposób cofnięty przez jego bank lub wydawcę karty, Spółka może cofnąć pieniądze w tej kolejności: (1) niewydane kredyty fana z tego zakupu; (2) Twoje niewypłacone zarobki od tego fana — najpierw zarobki nadal znajdujące się w ich okresie wypłaty, potem zarobki, które już go przeszły; oraz (3) wszelka pozostała kwota staje się ujemną korektą na Twoim koncie, która jest potrącana z Twoich przyszłych zarobków, zanim cokolwiek nowego stanie się dostępne do wypłaty. Zarobki, które już prawidłowo wypłaciłaś, nigdy nie są od Ciebie pobierane z własnej kieszeni. Jeśli obciążenie zwrotne przekroczy niewypłacone zarobki, które mogą zostać cofnięte zgodnie z (1) i (2) — w tym dlatego, że już wypłaciłaś zarobki, których ono dotyczy — różnica staje się saldem, które jesteś winna Spółce. Saldo to jest odzyskiwane automatycznie: system potrąca je z Twoich przyszłych zarobków, zanim cokolwiek nowego stanie się dostępne do wypłaty, aż zostanie spłacone w całości. Nigdy nie jesteś zobowiązana do dokonywania ręcznej ani z własnej kieszeni płatności za niedobór z tytułu obciążenia zwrotnego. Niniejszy akapit nie chroni oszustwa — zarobki uzyskane w wyniku oszustwa przepadają zgodnie z zasadami dotyczącymi OSZUSTWA poniżej. OSZUSTWO: Skoordynowane zakupy, działanie na własną korzyść (kupowanie od siebie lub za pośrednictwem kont, które kontrolujesz), schematy obciążeń zwrotnych ani żaden inny schemat mający na celu wytworzenie zarobków lub wypłat jest oszustwem, niezależnie od zasad postępowania w sekcji 7. W przypadku oszustwa Spółka może wstrzymać wypłaty lub poddać je sprawdzeniu, cofnąć zarobki i rozwiązać konta; zarobki uzyskane w wyniku oszustwa przepadają."
+   },
+   {
+    "title": "14. Prawo właściwe i miejsce postępowania",
+    "body": "Niniejsza Umowa podlega prawu stanu Teksas, bez względu na jego przepisy kolizyjne. Wszelkie spory wynikające z niniejszej Umowy lub jej dotyczące muszą być wnoszone do sądów stanowych lub federalnych znajdujących się w Teksasie, a Ty i Spółka wyrażacie zgodę na właściwość osobistą i miejsce postępowania tych sądów. Żadne postanowienie niniejszej sekcji nie zrzeka się ani nie ogranicza żadnego prawa, które przyznaje Ci Twój stan zamieszkania, a którego nie można zgodnie z prawem się zrzec."
+   },
+   {
+    "title": "15. Zastrzeżenie dotyczące prostego języka",
+    "body": "Jest to streszczenie w prostym języku, napisane dla jasności — NIE jest to porada prawna i nie zostało sprawdzone przez prawnika. Spółka stanowczo zaleca, abyś przed podpisaniem zleciła własnemu prawnikowi sprawdzenie niniejszej Umowy. Jeśli jakakolwiek część niniejszej Umowy zostanie uznana za niewykonalną, pozostała część nadal obowiązuje."
+   }
+  ]
+ },
+ "nl": {
+  "governs": "Vertaling voor het gemak — de Engelse versie is leidend.",
+  "sections": [
+   {
+    "title": "1. Partijen",
+    "body": "Deze Modellenovereenkomst (\"Overeenkomst\") is tussen jou, de performer (\"Performer\"), en World of Godz Entertainment LLC (\"Bedrijf\"), handelend onder de naam SlutCamp (\"SlutCamp\"). Door te ondertekenen ga je akkoord met alles hieronder."
+   },
+   {
+    "title": "2. Onafhankelijke Contractant",
+    "body": "Je bent een ONAFHANKELIJKE CONTRACTANT, geen werknemer van het Bedrijf. Niets in deze Overeenkomst creëert een arbeids-, partnerschaps- of vertegenwoordigingsrelatie. Je bent verantwoordelijk voor je eigen belastingen, verzekeringen en zakelijke kosten. Het Bedrijf zal geen belastingen inhouden op je uitbetalingen, en je stemt ermee in om alle inkomsten te rapporteren zoals vereist door de wet."
+   },
+   {
+    "title": "3. Leeftijds- & Identiteitsverificatie",
+    "body": "Je bevestigt dat je minstens 18 jaar oud bent. Je hebt overheids-ID-verificatie bij SlutCamp voltooid (of zult voltooien) voordat je live gaat, zoals vereist voor naleving van de administratieplicht onder 18 U.S.C. §2257. Als je je leeftijd en identiteit niet kunt verifiëren, mag je niet optreden op het platform."
+   },
+   {
+    "title": "4. Inkomstenverdeling & Jouw Tarieven",
+    "body": "Je houdt 60% van alles wat fans aan jou uitgeven (chats, gesprekken, cadeaus, live-toegang, prioriteitsberichten, podiumdeelnames, boekingen). Het Bedrijf houdt 40%. Je stelt je eigen tarieven in binnen de app binnen de toegestane bereiken: per bericht, per minuut video, per spraaknotitie, en je expliciete podiumdeelname-tarieven ($5–$100). Het Bedrijf kan de platformbrede standaarden of toegestane bereiken op elk moment wijzigen."
+   },
+   {
+    "title": "5. Uitbetalingen",
+    "body": "Je voegt je bankgegevens toe in de app en vraagt op elk moment opnames van je beschikbare saldo aan. Uitbetalingen worden handmatig verwerkt door SlutCamp volgens het eigen schema van het Bedrijf — er is geen gegarandeerde uitbetalingsdatum. Openstaande opnameverzoeken kunnen enkele werkdagen duren. Je beschikbare saldo omvat alleen inkomsten die het in sectie 13 beschreven uitbetalingsvenster hebben doorlopen."
+   },
+   {
+    "title": "6. Contentrechten",
+    "body": "Je behoudt het eigendom van de content die je op het platform creëert. Door te posten of te streamen op SlutCamp verleen je het Bedrijf een wereldwijde, royaltyvrije licentie om die content te gebruiken, weer te geven, te reproduceren en te promoten op het platform en in marketing van het Bedrijf (inclusief sociale media en advertenties). Je bevestigt dat je het recht hebt om deze licentie te verlenen en dat je content geen inbreuk maakt op de rechten van iemand anders."
+   },
+   {
+    "title": "7. Gedragsregels",
+    "body": "Op het platform mag je NIET: contactgegevens of betaalhandles delen met fans; proberen fans of transacties buiten het platform te brengen; haatspraak of beledigingen gebruiken; content plaatsen met iemand onder de 18 of iemand die geen toestemming heeft gegeven. Het overtreden van deze regels kan ertoe leiden dat je berichten worden geblokkeerd, je account wordt geschorst, of je account wordt gedeactiveerd — en je kunt openstaande inkomsten verliezen naar goeddunken van het Bedrijf."
+   },
+   {
+    "title": "8. Accounttoegang",
+    "body": "Modelaccounts zijn alleen op uitnodiging. Het Bedrijf kan je account op elk moment schorsen of deactiveren, om welke reden dan ook, met of zonder kennisgeving. Indien gedeactiveerd, blijft elk verdiend saldo dat nog niet is uitbetaald voor jou beschikbaar om op te nemen."
+   },
+   {
+    "title": "9. Vertrouwelijkheid",
+    "body": "Je stemt ermee in om de bedrijfsmethoden, commissiestructuren of interne bedrijfsvoering van het Bedrijf, of de persoonlijke informatie van een ander model of de persoonlijke gegevens van een fan, niet te openbaren aan iemand buiten het Bedrijf."
+   },
+   {
+    "title": "10. Niet-omzeiling",
+    "body": "Gedurende 12 maanden nadat je account eindigt (om welke reden dan ook), stem je ermee in om fans die je via SlutCamp hebt ontmoet niet direct te benaderen om een concurrerende betaalde chat- of camdienst te gebruiken in plaats van het platform. Normale openbare promotie van je eigen merk (sociale media, enz.) is prima — dit dekt alleen gerichte stroperij van SlutCamp-fans."
+   },
+   {
+    "title": "11. Beëindiging",
+    "body": "Beide partijen kunnen deze Overeenkomst op elk moment beëindigen. Je kunt op elk moment stoppen met het gebruik van het platform. Als het Bedrijf je account deactiveert, eindigt deze Overeenkomst onmiddellijk, behalve de secties over vertrouwelijkheid, niet-omzeiling en contentrechten, die na beëindiging blijven bestaan."
+   },
+   {
+    "title": "12. Geplande 1-op-1's & de FaceTime-wachtlijst",
+    "body": "Je beheert je eigen 1-op-1-schema: je stelt de dagen en uren in wanneer je privé 1-op-1-boekingen aanneemt, en hoeveel je er per dag en per week accepteert. Een bevestigde boeking reserveert je tijd voor die fan. Het platform stuurt je herinneringen vóór elke boeking — 3 dagen ervoor, 3 uur ervoor en 15 minuten ervoor. Je moet een geboekte 1-op-1 binnen 5 minuten na de geplande starttijd starten. Als je niet op tijd start, wordt de fan automatisch volledig terugbetaald en ontvangt hij een verontschuldiging van het platform, en die boeking betaalt je niets. Als je op tijd start en de fan neemt niet binnen 3 minuten deel, is dat een fan no-show: de fan ontvangt geen terugbetaling, en de boeking wordt aan jou uitbetaald als verdiend. Je kunt ook FaceTime-verzoeken krijgen terwijl je bezig bent: wanneer je een verzoek accepteert tijdens een ander gesprek, komt de fan op je wachtlijst en kan hij zijn plaats in de rij en zijn geschatte wachttijd zien. Wanneer je gesprek eindigt, krijgt de volgende fan in de rij een venster van 90 seconden om deel te nemen. Door een verzoek te accepteren, verplicht je je om het gesprek van die fan aan te nemen wanneer zijn beurt komt."
+   },
+   {
+    "title": "13. Uitbetalingsblokkeringen, Chargeback-terugdraaiingen & Fraude",
+    "body": "UITBETALINGSBLOKKERING: Je inkomsten komen in aanmerking voor opname 7 dagen nadat ze zijn verdiend — je geld loopt één week achter op wat je maakt. De app toont je beschikbare saldo apart van inkomsten die nog in hun venster zitten. Het Bedrijf publiceert het huidige venster in de app en kan het wijzigen met kennisgeving in de app; inkomsten die al in hun venster zitten, behouden het venster waarmee ze begonnen. CHARGEBACK-TERUGDRAAIINGEN: Fans betalen met vooraf betaalde credits. Als de creditaankoop van een fan wordt teruggeboekt, terugbetaald of anderszins teruggedraaid door zijn bank of kaartuitgever, kan het Bedrijf het geld in deze volgorde terugdraaien: (1) de niet-uitgegeven credits van de fan uit die aankoop; (2) je onbetaalde inkomsten van die fan — inkomsten die nog in hun uitbetalingsvenster zitten eerst, daarna inkomsten die het al hebben doorlopen; en (3) elk overblijvend bedrag wordt een negatieve aanpassing op je account, die wordt afgetrokken van je toekomstige inkomsten voordat iets nieuws opneembaar wordt. Inkomsten die je al correct hebt opgenomen, worden nooit uit eigen zak bij je teruggevorderd. Als een chargeback de onbetaalde inkomsten overschrijdt die onder (1) en (2) kunnen worden teruggedraaid — inclusief omdat je de inkomsten waarop het betrekking heeft al hebt opgenomen — wordt het verschil een saldo dat je aan het Bedrijf verschuldigd bent. Dat saldo wordt automatisch teruggevorderd: het systeem trekt het af van je toekomstige inkomsten voordat iets nieuws opneembaar wordt, totdat het volledig is terugbetaald. Je bent nooit verplicht om een handmatige of out-of-pocket betaling te doen voor een chargeback-tekort. Deze paragraaf beschermt fraude niet — frauduleus verkregen inkomsten worden verbeurd onder de FRAUDE-regels die volgen. FRAUDE: Gecoördineerd kopen, zelfdealing (kopen van jezelf of via accounts die je beheert), chargeback-schema's, of elk ander schema om inkomsten of uitbetalingen te fabriceren is fraude, naast de gedragsregels in sectie 7. Voor fraude kan het Bedrijf uitbetalingen blokkeren of in beoordeling plaatsen, inkomsten terugdraaien en accounts beëindigen; frauduleus verkregen inkomsten worden verbeurd."
+   },
+   {
+    "title": "14. Toepasselijk Recht & Rechtsplaats",
+    "body": "Deze Overeenkomst wordt beheerst door de wetten van de Staat Texas, zonder rekening te houden met haar regels inzake wetsconflicten. Elk geschil dat voortvloeit uit of verband houdt met deze Overeenkomst moet worden voorgelegd aan de staats- of federale rechtbanken in Texas, en jij en het Bedrijf stemmen in met de persoonlijke jurisdictie en rechtsplaats van die rechtbanken. Niets in deze sectie doet afstand van of beperkt enig recht dat je thuisstaat je geeft dat wettelijk niet kan worden opgegeven."
+   },
+   {
+    "title": "15. Disclaimer in Begrijpelijke Taal",
+    "body": "Dit is een samenvatting in begrijpelijke taal, geschreven voor duidelijkheid — het is GEEN juridisch advies, en het is niet beoordeeld door een advocaat. Het Bedrijf raadt je ten zeerste aan om je eigen advocaat deze Overeenkomst te laten beoordelen voordat je tekent. Als enig deel van deze Overeenkomst niet-afdwingbaar wordt bevonden, blijft de rest van toepassing."
+   }
+  ]
+ },
+ "tr": {
+  "governs": "Kolaylık için çeviri — İngilizce sürüm geçerlidir.",
+  "sections": [
+   {
+    "title": "1. Taraflar",
+    "body": "Bu Model Sözleşmesi (\"Sözleşme\"), sen, performans gösteren kişi (\"Performans Gösteren\") ile SlutCamp (\"SlutCamp\") olarak faaliyet gösteren World of Godz Entertainment LLC (\"Şirket\") arasındadır. İmzalayarak, aşağıdaki her şeyi kabul edersin."
+   },
+   {
+    "title": "2. Bağımsız Yüklenici",
+    "body": "Sen bir BAĞIMSIZ YÜKLENİCİSİN, Şirketin bir çalışanı değilsin. Bu Sözleşmedeki hiçbir şey bir istihdam, ortaklık veya temsilcilik ilişkisi oluşturmaz. Kendi vergilerinden, sigortandan ve iş giderlerinden sorumlusun. Şirket, ödemelerinden vergi kesintisi yapmayacak ve tüm geliri yasaların gerektirdiği şekilde bildirmeyi kabul edersin."
+   },
+   {
+    "title": "3. Yaş ve Kimlik Doğrulama",
+    "body": "En az 18 yaşında olduğunu onaylarsın. 18 U.S.C. §2257 kayıt tutma uyumu için gerekli olduğu üzere, canlıya geçmeden önce SlutCamp ile resmi kimlik doğrulamasını tamamladın (veya tamamlayacaksın). Yaşını ve kimliğini doğrulayamazsan, platformda performans gösteremezsin."
+   },
+   {
+    "title": "4. Gelir Paylaşımı ve Ücretlerin",
+    "body": "Hayranların sana harcadığı her şeyin %60'ını sen alırsın (sohbetler, aramalar, hediyeler, canlı erişim, öncelikli mesajlar, sahne katılımları, rezervasyonlar). Şirket %40'ını alır. Kendi ücretlerini, izin verilen aralıklar içinde uygulama içinde belirlersin: mesaj başına, video dakikası başına, sesli not başına ve müstehcen sahne katılım ücretlerin (5$–100$). Şirket, platform genelindeki varsayılanları veya izin verilen aralıkları istediği zaman değiştirebilir."
+   },
+   {
+    "title": "5. Ödemeler",
+    "body": "Banka bilgilerini uygulamaya eklersin ve kullanılabilir bakiyenin para çekme talebini istediğin zaman yaparsın. Ödemeler, Şirketin kendi programına göre SlutCamp tarafından manuel olarak işlenir — garantili bir ödeme tarihi yoktur. Bekleyen para çekme talepleri birkaç iş günü sürebilir. Kullanılabilir bakiyen yalnızca bölüm 13'te açıklanan ödeme penceresini geçmiş kazançları içerir."
+   },
+   {
+    "title": "6. İçerik Hakları",
+    "body": "Platformda oluşturduğun içeriğin mülkiyetini korursun. SlutCamp'te paylaşarak veya yayın yaparak, Şirkete o içeriği platformda ve Şirket pazarlamasında (sosyal medya ve reklamlar dahil) kullanmak, sergilemek, çoğaltmak ve tanıtmak için dünya çapında, telifsiz bir lisans verirsin. Bu lisansı verme hakkına sahip olduğunu ve içeriğinin başka kimsenin haklarını ihlal etmediğini onaylarsın."
+   },
+   {
+    "title": "7. Davranış Kuralları",
+    "body": "Platformda şunları YAPMAMALISIN: hayranlarla iletişim bilgisi veya ödeme bilgileri paylaşmak; hayranları veya işlemleri platform dışına taşımaya çalışmak; nefret söylemi veya hakaret kullanmak; 18 yaşından küçük herhangi birini veya rıza göstermemiş herhangi birini içeren içerik paylaşmak. Bu kuralları ihlal etmek, mesajlarının engellenmesine, hesabının askıya alınmasına veya hesabının devre dışı bırakılmasına yol açabilir — ve Şirketin takdirine bağlı olarak bekleyen kazançlarını kaybedebilirsin."
+   },
+   {
+    "title": "8. Hesap Erişimi",
+    "body": "Model hesapları yalnızca davetiyeyle açılır. Şirket, hesabını istediği zaman, herhangi bir nedenle, bildirimli veya bildirimsiz olarak askıya alabilir veya devre dışı bırakabilir. Devre dışı bırakılırsa, ödenmemiş kazanılmış bakiyen çekmen için kullanılabilir kalır."
+   },
+   {
+    "title": "9. Gizlilik",
+    "body": "Şirketin iş yöntemlerini, komisyon yapılarını veya iç işleyişini ya da başka herhangi bir modelin kişisel bilgilerini veya herhangi bir hayranın kişisel verilerini, Şirket dışındaki herhangi birine açıklamamayı kabul edersin."
+   },
+   {
+    "title": "10. Dolanmayı Önleme",
+    "body": "Hesabın sona erdikten sonra (herhangi bir nedenle) 12 ay boyunca, SlutCamp aracılığıyla tanıştığın hayranları, platform yerine rakip bir ücretli sohbet veya kamera hizmetini kullanmaya doğrudan yönlendirmemeyi kabul edersin. Kendi markanın normal herkese açık tanıtımı (sosyal medya vb.) sorun değildir — bu yalnızca SlutCamp hayranlarının hedefli olarak çalınmasını kapsar."
+   },
+   {
+    "title": "11. Fesih",
+    "body": "Her iki taraf da bu Sözleşmeyi istediği zaman sona erdirebilir. Platformu kullanmayı istediğin zaman bırakabilirsin. Şirket hesabını devre dışı bırakırsa, bu Sözleşme derhal sona erer; gizlilik, dolanmayı önleme ve içerik hakları bölümleri hariç, bunlar fesihten sonra da geçerli kalır."
+   },
+   {
+    "title": "12. Planlanmış Bire Birler ve FaceTime Bekleme Listesi",
+    "body": "Kendi bire bir programını sen kontrol edersin: özel bire bir rezervasyonlarını hangi gün ve saatlerde aldığını ve günde ve haftada kaç tane kabul ettiğini sen belirlersin. Onaylanmış bir rezervasyon, zamanını o hayran için ayırır. Platform, her rezervasyondan önce sana hatırlatma bildirimleri gönderecek — 3 gün önce, 3 saat önce ve 15 dakika önce. Rezerve edilmiş bir bire bire, planlanan başlangıç saatinden itibaren 5 dakika içinde başlamalısın. Zamanında başlamazsan, hayrana otomatik olarak tam iade yapılır ve platformdan bir özür alır, ve o rezervasyon sana hiçbir şey ödemez. Zamanında başlarsan ve hayran 3 dakika içinde katılmazsa, bu bir hayran gelmemesidir: hayran iade almaz ve rezervasyon sana kazanılmış olarak ödenir. Meşgulken de FaceTime istekleri alabilirsin: başka bir arama sırasında bir isteği kabul ettiğinde, hayran bekleme listene katılır ve sıradaki yerini ve tahmini bekleme süresini görebilir. Araman bittiğinde, sıradaki hayrana katılmak için 90 saniyelik bir pencere verilir. Bir isteği kabul ederek, sırası geldiğinde o hayranın aramasını almayı taahhüt edersin."
+   },
+   {
+    "title": "13. Ödeme Bekletmeleri, Ters İbraz İptalleri ve Dolandırıcılık",
+    "body": "ÖDEME BEKLETMESİ: Kazançların, kazanıldıktan 7 gün sonra çekilmeye uygun hale gelir — paran, kazandığının bir hafta gerisinden gelir. Uygulama, kullanılabilir bakiyeni hâlâ penceresi içinde olan kazançlardan ayrı gösterir. Şirket, mevcut pencereyi uygulamada yayınlar ve uygulamada bildirimde bulunarak değiştirebilir; zaten penceresi içinde olan kazançlar, başladıkları pencereyi korur. TERS İBRAZ İPTALLERİ: Hayranlar ön ödemeli kredilerle öder. Bir hayranın kredi satın alımı ters ibraz edilir, iade edilir veya bankası ya da kart sağlayıcısı tarafından başka şekilde tersine çevrilirse, Şirket parayı şu sırayla tersine çevirebilir: (1) hayranın o satın alımdan harcanmamış kredileri; (2) o hayrandan ödenmemiş kazançların — önce hâlâ ödeme penceresi içinde olan kazançlar, sonra zaten geçmiş olan kazançlar; ve (3) kalan herhangi bir tutar, hesabında negatif bir düzeltme olur ve yeni bir şey çekilebilir hale gelmeden önce gelecek kazançlarından çıkarılır. Zaten düzgün şekilde çektiğin kazançlar, asla cebinden geri toplanmaz. Bir ters ibraz, (1) ve (2) kapsamında tersine çevrilebilecek ödenmemiş kazançları aşarsa — ilgili kazançları zaten çekmiş olman nedeniyle dahil — fark, Şirkete borçlu olduğun bir bakiye olur. Bu bakiye otomatik olarak tahsil edilir: sistem, tam olarak geri ödenene kadar, yeni bir şey çekilebilir hale gelmeden önce bunu gelecek kazançlarından düşer. Bir ters ibraz açığı için asla manuel veya cepten ödeme yapman gerekmez. Bu paragraf dolandırıcılığı korumaz — hileli olarak elde edilen kazançlar, izleyen DOLANDIRICILIK kuralları uyarınca kaybedilir. DOLANDIRICILIK: Koordineli satın alma, kendi kendine işlem (kendinden veya kontrol ettiğin hesaplar aracılığıyla satın alma), ters ibraz planları veya kazanç ya da ödeme üretmeye yönelik başka herhangi bir plan, bölüm 7'deki davranış kurallarına ek olarak dolandırıcılıktır. Dolandırıcılık için Şirket, ödemeleri bekletebilir veya incelemeye alabilir, kazançları tersine çevirebilir ve hesapları sonlandırabilir; hileli olarak elde edilen kazançlar kaybedilir."
+   },
+   {
+    "title": "14. Uygulanacak Hukuk ve Yargı Yeri",
+    "body": "Bu Sözleşme, kanunlar ihtilafı kurallarına bakılmaksızın, Teksas Eyaleti yasalarına tabidir. Bu Sözleşmeden doğan veya onunla ilgili herhangi bir uyuşmazlık, Teksas'ta bulunan eyalet veya federal mahkemelerde açılmalıdır ve sen ve Şirket, o mahkemelerin kişisel yargı yetkisini ve yerini kabul edersiniz. Bu bölümdeki hiçbir şey, kendi eyaletinin sana verdiği ve yasal olarak feragat edilemeyen herhangi bir hakkı feragat ettirmez veya sınırlamaz."
+   },
+   {
+    "title": "15. Sade Dil Feragatnamesi",
+    "body": "Bu, netlik için yazılmış sade dille bir özettir — hukuki tavsiye DEĞİLDİR ve bir avukat tarafından incelenmemiştir. Şirket, imzalamadan önce kendi avukatının bu Sözleşmeyi incelemesini şiddetle tavsiye eder. Bu Sözleşmenin herhangi bir kısmı uygulanamaz bulunursa, geri kalanı hâlâ geçerlidir."
+   }
+  ]
+ }
+};
+const RECRUITER_CONTRACT_I18N = {
+ "es": {
+  "governs": "Traducción por conveniencia — rige la versión en inglés.",
+  "sections": [
+   {
+    "title": "1. Partes",
+    "body": "Este Acuerdo de Reclutador (\"Acuerdo\") se celebra entre tú (\"Reclutador\") y World of Godz Entertainment LLC (\"Compañía\"), que opera como SlutCamp (\"SlutCamp\"). Al firmar, aceptas todo lo que se indica a continuación."
+   },
+   {
+    "title": "2. Contratista independiente — no socio",
+    "body": "Eres un CONTRATISTA INDEPENDIENTE, no un empleado de la Compañía. Nada en este Acuerdo crea una relación laboral, una sociedad comercial legal ni una relación de agencia — \"socio\" es solo como llamamos al rol en la app. Eres responsable de tus propios impuestos, seguros y gastos. La Compañía no retendrá impuestos de tus pagos."
+   },
+   {
+    "title": "3. Lo que haces",
+    "body": "Reclutas modelos para que se unan a SlutCamp usando tu enlace de referido personal. Eres responsable de tus propios métodos de reclutamiento. Debes ser honesto sobre la plataforma — sin promesas falsas sobre ganancias."
+   },
+   {
+    "title": "4. Tu parte",
+    "body": "Ganas el 20% de todo lo que gane en la plataforma cada modelo que reclutes (su parte del 60% — tu parte proviene de la porción de la Compañía, no de la modelo). La modelo se queda con su 60% completo. Los pagos se procesan según el calendario de pagos de la Compañía. Tus ganancias se vuelven elegibles para pago 7 días después de generarse, bajo el mismo periodo de espera para pagos que las modelos ven en la app."
+   },
+   {
+    "title": "5. Terminación — a voluntad",
+    "body": "La Compañía puede revocar tu estatus de reclutador EN CUALQUIER MOMENTO, por cualquier motivo o sin motivo alguno, SIN que se requiera PREVIO AVISO. Cuando se revoca, este Acuerdo termina de inmediato y dejas de ganar sobre todos los ingresos futuros de tus modelos reclutadas. Cualquier saldo ya ganado permanece disponible para retiro."
+   },
+   {
+    "title": "6. Normas de conducta",
+    "body": "NO debes: compartir datos de contacto ni identificadores de pago con nadie en la plataforma; intentar llevarte a modelos o fans fuera de la plataforma; usar discurso de odio o insultos. Incumplir estas normas puede hacer que tu cuenta sea suspendida o desactivada de inmediato."
+   },
+   {
+    "title": "7. No elusión",
+    "body": "Durante 12 meses después de que tu estatus de reclutador termine (por cualquier motivo), aceptas no reclutar para una plataforma competidora a las modelos que conociste a través de SlutCamp."
+   },
+   {
+    "title": "8. Confidencialidad",
+    "body": "Aceptas no divulgar los métodos comerciales, las estructuras de comisiones ni las operaciones internas de la Compañía a ninguna persona ajena a la Compañía."
+   },
+   {
+    "title": "9. Ley aplicable y jurisdicción",
+    "body": "Este Acuerdo se rige por las leyes del Estado de Texas, sin tener en cuenta sus normas sobre conflicto de leyes. Cualquier disputa que surja de este Acuerdo o se relacione con él debe presentarse ante los tribunales estatales o federales ubicados en Texas, y tú y la Compañía aceptan la jurisdicción personal y la competencia de esos tribunales. Nada en esta sección renuncia ni limita ningún derecho que tu estado de residencia te otorgue y que legalmente no pueda renunciarse."
+   },
+   {
+    "title": "10. Cuota del primer año — 10 modelos en tu primer año",
+    "body": "Tienes UN AÑO desde la fecha en que te registras y aceptas este Acuerdo para incorporar un mínimo de 10 modelos. Una modelo cuenta para tu cuota solo cuando se une a SlutCamp a través de tu enlace de referido personal y tiene una cuenta de modelo. Cuando tu primer año termine, la Compañía revisará tu cuenta. Si has incorporado menos de 10 modelos, la Compañía puede revocar tu estatus de reclutador si lo considera necesario, como se describe en la Sección 5. Si las modelos que incorporaste le han generado a la Compañía una cantidad significativa de dinero, la Compañía extenderá tu estatus de reclutador hasta que se cumpla la cuota, incluso si tu primer año ya terminó. Esta revisión la hace la Compañía — llegar a la marca de un año no termina por sí solo automáticamente tu estatus. Nada en esta sección limita el derecho de la Compañía, según la Sección 5, de revocar tu estatus de reclutador y tu enlace de referido en cualquier momento, por cualquier motivo, sin previo aviso."
+   },
+   {
+    "title": "11. Aviso sobre lenguaje sencillo",
+    "body": "Este es un resumen en lenguaje sencillo redactado para mayor claridad — NO es asesoramiento legal y no ha sido revisado por un abogado. La Compañía te recomienda encarecidamente que tu propio abogado revise este Acuerdo antes de firmarlo. Si alguna parte de este Acuerdo se considera inaplicable, el resto seguirá vigente."
+   }
+  ]
+ },
+ "pt": {
+  "governs": "Tradução apenas para conveniência — prevalece a versão em inglês.",
+  "sections": [
+   {
+    "title": "1. Partes",
+    "body": "Este Contrato de Recrutador (\"Contrato\") é celebrado entre você (\"Recrutador\") e a World of Godz Entertainment LLC (\"Empresa\"), operando sob o nome SlutCamp (\"SlutCamp\"). Ao assinar, você concorda com tudo o que está abaixo."
+   },
+   {
+    "title": "2. Prestador Independente — Não é Sócio",
+    "body": "Você é um PRESTADOR INDEPENDENTE, e não empregado da Empresa. Nada neste Contrato cria uma relação de emprego, uma sociedade comercial legal ou uma relação de representação — \"parceiro\" é apenas como chamamos a função no app. Você é responsável por seus próprios impostos, seguros e despesas. A Empresa não reterá impostos dos seus pagamentos."
+   },
+   {
+    "title": "3. O Que Você Faz",
+    "body": "Você recruta modelos para entrar na SlutCamp usando seu link pessoal de indicação. Você é responsável pelos seus próprios métodos de recrutamento. Você deve ser honesto sobre a plataforma — sem promessas falsas sobre ganhos."
+   },
+   {
+    "title": "4. Sua Parte",
+    "body": "Você ganha 20% de tudo o que cada modelo que você recruta ganha na plataforma (a parte de 60% dela — sua parte sai da porção da Empresa, não da modelo). A modelo mantém seus 60% integralmente. Os pagamentos são processados conforme o cronograma de pagamentos da Empresa. Seus ganhos ficam disponíveis para pagamento 7 dias depois de gerados, sob o mesmo prazo de liberação que as modelos veem no app."
+   },
+   {
+    "title": "5. Rescisão — A Qualquer Momento",
+    "body": "A Empresa pode revogar seu status de recrutador A QUALQUER MOMENTO, por qualquer motivo ou sem motivo, SEM NECESSIDADE DE AVISO. Quando revogado, este Contrato se encerra imediatamente e você para de ganhar sobre todas as receitas futuras das suas modelos recrutadas. Qualquer saldo já ganho permanece disponível para saque."
+   },
+   {
+    "title": "6. Regras de Conduta",
+    "body": "Você NÃO deve: compartilhar informações de contato ou dados de pagamento com ninguém na plataforma; tentar levar modelos ou fãs para fora da plataforma; usar discurso de ódio ou injúrias. Violar estas regras pode fazer sua conta ser suspensa ou desativada imediatamente."
+   },
+   {
+    "title": "7. Não Desvio",
+    "body": "Por 12 meses após o encerramento do seu status de recrutador (por qualquer motivo), você concorda em não recrutar modelos que conheceu por meio da SlutCamp para uma plataforma concorrente."
+   },
+   {
+    "title": "8. Confidencialidade",
+    "body": "Você concorda em não divulgar os métodos de negócio, as estruturas de comissão ou as operações internas da Empresa a ninguém fora da Empresa."
+   },
+   {
+    "title": "9. Lei Aplicável e Foro",
+    "body": "Este Contrato é regido pelas leis do Estado do Texas, independentemente de suas regras de conflito de leis. Qualquer disputa decorrente deste Contrato ou a ele relacionada deve ser levada aos tribunais estaduais ou federais localizados no Texas, e você e a Empresa consentem com a jurisdição pessoal e o foro desses tribunais. Nada nesta seção renuncia ou limita qualquer direito que seu estado de origem lhe conceda e que não possa ser legalmente renunciado."
+   },
+   {
+    "title": "10. Cota do Primeiro Ano — 10 Modelos no Seu Primeiro Ano",
+    "body": "Você tem UM ANO a partir da data em que se cadastra e aceita este Contrato para incorporar um mínimo de 10 modelos. Uma modelo conta para sua cota apenas quando ela entra na SlutCamp por meio do seu link pessoal de indicação e mantém uma conta de modelo. Quando seu primeiro ano terminar, a Empresa revisará sua conta. Se você tiver incorporado menos de 10 modelos, a Empresa poderá revogar seu status de recrutador se julgar necessário, conforme descrito na Seção 5. Se as modelos que você incorporou tiverem gerado uma quantia significativa de dinheiro para a Empresa, a Empresa estenderá seu status de recrutador até que a cota seja atingida, mesmo que seu primeiro ano já tenha terminado. Esta revisão é feita pela Empresa — atingir a marca de um ano não encerra, por si só, automaticamente o seu status. Nada nesta seção limita o direito da Empresa, conforme a Seção 5, de revogar seu status de recrutador e seu link de indicação a qualquer momento, por qualquer motivo, sem aviso."
+   },
+   {
+    "title": "11. Aviso de Linguagem Simples",
+    "body": "Este é um resumo em linguagem simples, redigido para maior clareza — ele NÃO é aconselhamento jurídico e não foi revisado por um advogado. A Empresa recomenda enfaticamente que você peça ao seu próprio advogado para revisar este Contrato antes de assinar. Se qualquer parte deste Contrato for considerada inexequível, o restante continua válido."
+   }
+  ]
+ },
+ "fr": {
+  "governs": "Traduction fournie à titre de commodité — la version anglaise prévaut.",
+  "sections": [
+   {
+    "title": "1. Parties",
+    "body": "Le présent Contrat de recruteur (« Contrat ») est conclu entre vous (« Recruteur ») et World of Godz Entertainment LLC (« Société »), exerçant sous le nom de SlutCamp (« SlutCamp »). En signant, vous acceptez tout ce qui suit."
+   },
+   {
+    "title": "2. Contractant indépendant — Pas un partenaire",
+    "body": "Vous êtes un CONTRACTANT INDÉPENDANT, et non un employé de la Société. Rien dans le présent Contrat ne crée de relation d'emploi, de partenariat commercial légal ou de relation de mandat — « partenaire » est simplement le nom que nous donnons au rôle dans l'application. Vous êtes responsable de vos propres impôts, assurances et frais. La Société ne retiendra pas d'impôts sur vos paiements."
+   },
+   {
+    "title": "3. Ce que vous faites",
+    "body": "Vous recrutez des modèles pour qu'elles rejoignent SlutCamp à l'aide de votre lien de parrainage personnel. Vous êtes responsable de vos propres méthodes de recrutement. Vous devez être honnête au sujet de la plateforme — aucune fausse promesse concernant les gains."
+   },
+   {
+    "title": "4. Votre part",
+    "body": "Vous gagnez 20% de tout ce que chaque modèle que vous recrutez gagne sur la plateforme (sa part de 60% — votre part provient de la portion de la Société, et non du modèle). Le modèle conserve l'intégralité de ses 60%. Les paiements sont traités selon le calendrier de paiement de la Société. Vos gains deviennent éligibles au paiement 7 jours après avoir été gagnés, selon le même délai de paiement que les modèles voient dans l'application."
+   },
+   {
+    "title": "5. Résiliation — À tout moment",
+    "body": "La Société peut révoquer votre statut de recruteur À TOUT MOMENT, pour n'importe quelle raison ou sans raison, SANS AUCUN PRÉAVIS requis. En cas de révocation, le présent Contrat prend fin immédiatement et vous cessez de gagner sur tous les revenus futurs de vos modèles recrutées. Tout solde déjà gagné reste disponible au retrait."
+   },
+   {
+    "title": "6. Règles de conduite",
+    "body": "Vous ne devez PAS : partager des coordonnées ou des identifiants de paiement avec quiconque sur la plateforme ; tenter de déplacer des modèles ou des fans hors plateforme ; utiliser des discours de haine ou des insultes. Enfreindre ces règles peut entraîner la suspension ou la désactivation immédiate de votre compte."
+   },
+   {
+    "title": "7. Non-contournement",
+    "body": "Pendant 12 mois après la fin de votre statut de recruteur (pour quelque raison que ce soit), vous acceptez de ne pas recruter, pour une plateforme concurrente, des modèles que vous avez rencontrées via SlutCamp."
+   },
+   {
+    "title": "8. Confidentialité",
+    "body": "Vous acceptez de ne divulguer à personne en dehors de la Société ni les méthodes commerciales, les structures de commission ou le fonctionnement interne de la Société."
+   },
+   {
+    "title": "9. Droit applicable et juridiction",
+    "body": "Le présent Contrat est régi par les lois de l'État du Texas, sans égard à ses règles de conflit de lois. Tout litige découlant du présent Contrat ou s'y rapportant doit être porté devant les tribunaux d'État ou fédéraux situés au Texas, et vous et la Société consentez à la compétence personnelle et à la juridiction de ces tribunaux. Rien dans cette section ne renonce ni ne limite un droit que votre État d'origine vous accorde et qui ne peut légalement faire l'objet d'une renonciation."
+   },
+   {
+    "title": "10. Quota de première année — 10 modèles au cours de votre première année",
+    "body": "Vous avez UN AN à compter de la date à laquelle vous vous inscrivez et acceptez le présent Contrat pour intégrer un minimum de 10 modèles. Un modèle ne compte dans votre quota que lorsqu'elle rejoint SlutCamp via votre lien de parrainage personnel et détient un compte de modèle. À la fin de votre première année, la Société examinera votre compte. Si vous avez intégré moins de 10 modèles, la Société peut révoquer votre statut de recruteur si elle le juge nécessaire, comme décrit à la Section 5. Si les modèles que vous avez intégrées ont fait gagner à la Société une somme d'argent importante, la Société prolongera votre statut de recruteur jusqu'à ce que le quota soit atteint, même si votre première année est terminée. Cet examen est effectué par la Société — atteindre la marque d'un an ne met pas en soi automatiquement fin à votre statut. Rien dans cette section ne limite le droit de la Société, au titre de la Section 5, de révoquer votre statut de recruteur et votre lien de parrainage à tout moment, pour n'importe quelle raison, sans préavis."
+   },
+   {
+    "title": "11. Avertissement en langage clair",
+    "body": "Ceci est un résumé en langage clair rédigé pour plus de clarté — ce n'est PAS un avis juridique, et il n'a pas été examiné par un avocat. La Société vous recommande vivement de faire examiner le présent Contrat par votre propre avocat avant de signer. Si une partie du présent Contrat est jugée inapplicable, le reste continue de s'appliquer."
+   }
+  ]
+ },
+ "de": {
+  "governs": "Übersetzung zur Erleichterung — die englische Version ist maßgebend.",
+  "sections": [
+   {
+    "title": "1. Parteien",
+    "body": "Diese Recruiter-Vereinbarung („Vereinbarung\") ist zwischen Ihnen („Recruiter\") und World of Godz Entertainment LLC („Unternehmen\"), die als SlutCamp („SlutCamp\") tätig ist. Mit Ihrer Unterschrift stimmen Sie allem Folgenden zu."
+   },
+   {
+    "title": "2. Unabhängige Auftragnehmerin / Unabhängiger Auftragnehmer — Kein Partner",
+    "body": "Sie sind eine UNABHÄNGIGE AUFTRAGNEHMERIN / ein UNABHÄNGIGER AUFTRAGNEHMER, keine Angestellte / kein Angestellter des Unternehmens. Nichts in dieser Vereinbarung begründet ein Beschäftigungsverhältnis, eine rechtliche Geschäftspartnerschaft oder ein Vertretungsverhältnis — „Partner\" ist nur, wie wir die Rolle in der App nennen. Sie sind für Ihre eigenen Steuern, Versicherungen und Ausgaben verantwortlich. Das Unternehmen wird keine Steuern von Ihren Auszahlungen einbehalten."
+   },
+   {
+    "title": "3. Was Sie tun",
+    "body": "Sie werben Modelle an, um SlutCamp über Ihren persönlichen Empfehlungslink beizutreten. Sie sind für Ihre eigenen Anwerbemethoden verantwortlich. Sie müssen ehrlich über die Plattform sein — keine falschen Versprechen über Einnahmen."
+   },
+   {
+    "title": "4. Ihr Anteil",
+    "body": "Sie verdienen 20% von allem, was jedes von Ihnen angeworbene Model auf der Plattform verdient (ihr 60%-Anteil — Ihr Anteil kommt aus dem Anteil des Unternehmens, nicht vom Model). Das Model behält ihre vollen 60%. Zahlungen werden nach dem Auszahlungszeitplan des Unternehmens bearbeitet. Ihre Einnahmen werden 7 Tage nach dem Verdienen für die Auszahlung berechtigt, unter demselben Auszahlungsfenster, das die Modelle in der App sehen."
+   },
+   {
+    "title": "5. Kündigung — Jederzeit möglich",
+    "body": "Das Unternehmen kann Ihren Recruiter-Status JEDERZEIT, aus beliebigem Grund oder ohne Grund, OHNE erforderliche VORANKÜNDIGUNG widerrufen. Bei Widerruf endet diese Vereinbarung sofort und Sie hören auf, an allen zukünftigen Einnahmen Ihrer angeworbenen Modelle zu verdienen. Jedes bereits verdiente Guthaben bleibt für die Abhebung verfügbar."
+   },
+   {
+    "title": "6. Verhaltensregeln",
+    "body": "Sie dürfen NICHT: Kontaktdaten oder Zahlungs-Handles mit jemandem auf der Plattform teilen; versuchen, Modelle oder Fans außerhalb der Plattform zu bewegen; Hassrede oder Beleidigungen verwenden. Ein Verstoß gegen diese Regeln kann dazu führen, dass Ihr Account sofort ausgesetzt oder deaktiviert wird."
+   },
+   {
+    "title": "7. Umgehungsverbot",
+    "body": "Für 12 Monate nach Beendigung Ihres Recruiter-Status (aus beliebigem Grund) stimmen Sie zu, Modelle, die Sie über SlutCamp kennengelernt haben, nicht für eine konkurrierende Plattform anzuwerben."
+   },
+   {
+    "title": "8. Vertraulichkeit",
+    "body": "Sie stimmen zu, die Geschäftsmethoden, Provisionsstrukturen oder internen Abläufe des Unternehmens gegenüber niemandem außerhalb des Unternehmens offenzulegen."
+   },
+   {
+    "title": "9. Geltendes Recht & Gerichtsstand",
+    "body": "Diese Vereinbarung unterliegt den Gesetzen des Bundesstaates Texas, ohne Rücksicht auf seine Kollisionsnormen. Jeder Streit, der aus dieser Vereinbarung entsteht oder damit zusammenhängt, muss vor den staatlichen oder bundesstaatlichen Gerichten in Texas gebracht werden, und Sie und das Unternehmen stimmen der persönlichen Gerichtsbarkeit und dem Gerichtsstand dieser Gerichte zu. Nichts in diesem Abschnitt verzichtet auf oder beschränkt ein Recht, das Ihnen Ihr Heimatstaat gibt und das gesetzlich nicht verzichtet werden kann."
+   },
+   {
+    "title": "10. Quote im ersten Jahr — 10 Modelle in Ihrem ersten Jahr",
+    "body": "Sie haben EIN JAHR ab dem Datum, an dem Sie sich registrieren und diese Vereinbarung akzeptieren, um mindestens 10 Modelle einzubinden. Ein Model zählt nur dann zu Ihrer Quote, wenn sie SlutCamp über Ihren persönlichen Empfehlungslink beitritt und einen Model-Account besitzt. Wenn Ihr erstes Jahr endet, wird das Unternehmen Ihren Account überprüfen. Wenn Sie weniger als 10 Modelle eingebunden haben, kann das Unternehmen Ihren Recruiter-Status widerrufen, wenn dies für notwendig erachtet wird, wie in Abschnitt 5 beschrieben. Wenn die von Ihnen eingebundenen Modelle dem Unternehmen einen beträchtlichen Geldbetrag eingebracht haben, wird das Unternehmen Ihren Recruiter-Status verlängern, bis die Quote erfüllt ist, auch wenn Ihr erstes Jahr beendet ist. Diese Überprüfung wird vom Unternehmen durchgeführt — das Erreichen der Ein-Jahres-Marke beendet Ihren Status nicht von selbst automatisch. Nichts in diesem Abschnitt beschränkt das Recht des Unternehmens gemäß Abschnitt 5, Ihren Recruiter-Status und Ihren Empfehlungslink jederzeit, aus beliebigem Grund, ohne Vorankündigung zu widerrufen."
+   },
+   {
+    "title": "11. Haftungsausschluss in einfacher Sprache",
+    "body": "Dies ist eine Zusammenfassung in einfacher Sprache, die der Klarheit dient — sie ist KEINE Rechtsberatung und wurde nicht von einem Anwalt überprüft. Das Unternehmen empfiehlt Ihnen dringend, diese Vereinbarung vor der Unterzeichnung von Ihrem eigenen Anwalt überprüfen zu lassen. Wenn ein Teil dieser Vereinbarung für nicht durchsetzbar befunden wird, gilt der Rest weiterhin."
+   }
+  ]
+ },
+ "ru": {
+  "governs": "Перевод для удобства — преимущественную силу имеет английская версия.",
+  "sections": [
+   {
+    "title": "1. Стороны",
+    "body": "Настоящее Соглашение рекрутера («Соглашение») заключается между вами («Рекрутер») и World of Godz Entertainment LLC («Компания»), осуществляющей деятельность под названием SlutCamp («SlutCamp»). Подписывая, вы соглашаетесь со всем нижеизложенным."
+   },
+   {
+    "title": "2. Независимый подрядчик — не партнёр",
+    "body": "Вы являетесь НЕЗАВИСИМЫМ ПОДРЯДЧИКОМ, а не сотрудником Компании. Ничто в настоящем Соглашении не создаёт трудовых отношений, юридического делового партнёрства или агентских отношений — «партнёр» — это просто то, как мы называем эту роль в приложении. Вы несёте ответственность за свои собственные налоги, страхование и расходы. Компания не будет удерживать налоги из ваших выплат."
+   },
+   {
+    "title": "3. Что вы делаете",
+    "body": "Вы привлекаете моделей присоединяться к SlutCamp, используя вашу личную реферальную ссылку. Вы несёте ответственность за ваши собственные методы привлечения. Вы должны быть честны в отношении платформы — никаких ложных обещаний о доходах."
+   },
+   {
+    "title": "4. Ваша доля",
+    "body": "Вы зарабатываете 20% от всего, что каждая привлечённая вами модель зарабатывает на платформе (их доля 60% — ваша доля берётся из части Компании, а не от модели). Модель сохраняет свои полные 60%. Платежи обрабатываются по расписанию выплат Компании. Ваши доходы становятся доступными для выплаты через 7 дней после их получения, в соответствии с тем же периодом выплаты, который модели видят в приложении."
+   },
+   {
+    "title": "5. Расторжение — по усмотрению сторон",
+    "body": "Компания может отозвать ваш статус рекрутера В ЛЮБОЕ ВРЕМЯ, по любой причине или без причины, БЕЗ ТРЕБОВАНИЯ УВЕДОМЛЕНИЯ. При отзыве настоящее Соглашение немедленно прекращается, и вы перестаёте зарабатывать на всех будущих доходах от ваших привлечённых моделей. Любой уже заработанный баланс остаётся доступным для вывода."
+   },
+   {
+    "title": "6. Правила поведения",
+    "body": "Вы НЕ должны: делиться контактной информацией или платёжными реквизитами с кем-либо на платформе; пытаться увести моделей или фанатов за пределы платформы; использовать язык ненависти или оскорбления. Нарушение этих правил может привести к немедленной приостановке или деактивации вашего аккаунта."
+   },
+   {
+    "title": "7. Запрет обхода",
+    "body": "В течение 12 месяцев после прекращения вашего статуса рекрутера (по любой причине) вы соглашаетесь не привлекать моделей, с которыми вы познакомились через SlutCamp, на конкурирующую платформу."
+   },
+   {
+    "title": "8. Конфиденциальность",
+    "body": "Вы соглашаетесь не раскрывать методы ведения бизнеса Компании, структуры комиссий или внутренние операции кому-либо за пределами Компании."
+   },
+   {
+    "title": "9. Применимое право и место рассмотрения",
+    "body": "Настоящее Соглашение регулируется законами штата Техас, без учёта его коллизионных норм. Любой спор, возникающий из настоящего Соглашения или связанный с ним, должен подаваться в суды штата или федеральные суды, расположенные в Техасе, и вы и Компания соглашаетесь с персональной юрисдикцией и местом рассмотрения этих судов. Ничто в этом разделе не отменяет и не ограничивает какое-либо право, предоставляемое вам вашим родным штатом, которое не может быть юридически отменено."
+   },
+   {
+    "title": "10. Квота первого года — 10 моделей в ваш первый год",
+    "body": "У вас есть ОДИН ГОД с даты, когда вы регистрируетесь и принимаете настоящее Соглашение, чтобы подключить минимум 10 моделей. Модель засчитывается в вашу квоту только когда она присоединяется к SlutCamp по вашей личной реферальной ссылке и имеет аккаунт модели. Когда ваш первый год заканчивается, Компания рассмотрит ваш аккаунт. Если вы подключили менее 10 моделей, Компания может отозвать ваш статус рекрутера, если сочтёт это необходимым, как описано в Разделе 5. Если модели, которых вы подключили, принесли Компании значительную сумму денег, Компания продлит ваш статус рекрутера до выполнения квоты, даже если ваш первый год закончился. Эта проверка проводится Компанией — достижение отметки в один год само по себе не прекращает ваш статус автоматически. Ничто в этом разделе не ограничивает право Компании в соответствии с Разделом 5 отозвать ваш статус рекрутера и вашу реферальную ссылку в любое время, по любой причине, без уведомления."
+   },
+   {
+    "title": "11. Отказ от ответственности, изложенный простым языком",
+    "body": "Это краткое изложение простым языком, написанное для ясности — это НЕ юридическая консультация, и оно не было проверено адвокатом. Компания настоятельно рекомендует вам попросить вашего собственного адвоката проверить настоящее Соглашение перед подписанием. Если какая-либо часть настоящего Соглашения будет признана неисполнимой, остальная часть по-прежнему применяется."
+   }
+  ]
+ },
+ "ja": {
+  "governs": "便宜上の翻訳です — 英語版が正式なものとなります。",
+  "sections": [
+   {
+    "title": "1. 当事者",
+    "body": "本リクルーター契約（以下「本契約」）は、あなた（以下「リクルーター」）と、SlutCampとして事業を行う World of Godz Entertainment LLC（以下「当社」）との間で締結されます。署名することにより、あなたは以下のすべてに同意します。"
+   },
+   {
+    "title": "2. 独立請負業者 — パートナーではありません",
+    "body": "あなたは当社の従業員ではなく、独立請負業者です。本契約のいかなる規定も、雇用関係、法的な事業パートナーシップ、または代理関係を創設するものではありません。「パートナー」はアプリ内でその役割を呼ぶ際の名称にすぎません。あなたは自身の税金、保険、および経費について責任を負います。当社はあなたの支払いから税金を源泉徴収しません。"
+   },
+   {
+    "title": "3. あなたの役割",
+    "body": "あなたは、あなた専用の紹介リンクを使用して、モデルをSlutCampに参加するよう募集します。あなたは自身の募集方法について責任を負います。プラットフォームについて正直でなければなりません — 収益に関する虚偽の約束をしてはなりません。"
+   },
+   {
+    "title": "4. あなたの取り分",
+    "body": "あなたは、あなたが募集した各モデルがプラットフォームで獲得する金額の20%を稼ぎます（彼女たちの60%の取り分 — あなたの取り分は当社の部分から支払われ、モデルからは支払われません）。モデルは完全な60%を保持します。支払いは当社の出金スケジュールで処理されます。あなたの収益は、モデルがアプリで見るのと同じ出金ウィンドウに基づいて、獲得してから7日後に出金可能となります。"
+   },
+   {
+    "title": "5. 終了 — 任意",
+    "body": "当社は、いつでも、理由の有無を問わず、通知を必要とせずに、あなたのリクルーター資格を取り消すことができます。取り消されると、本契約は直ちに終了し、あなたが募集したモデルからの将来のすべての収益に対する獲得は停止します。すでに獲得した残高は引き続き出金できます。"
+   },
+   {
+    "title": "6. 行動規範",
+    "body": "あなたは以下を行ってはなりません：プラットフォーム上のいかなる者とも連絡先情報や支払いハンドルを共有すること、モデルやファンをプラットフォーム外に移そうとすること、ヘイトスピーチや中傷を使用すること。これらの規則に違反すると、アカウントが直ちに停止または無効化される場合があります。"
+   },
+   {
+    "title": "7. 迂回禁止",
+    "body": "あなたのリクルーター資格が終了してから（理由を問わず）12か月間、あなたは、SlutCampを通じて出会ったモデルを競合プラットフォームに募集しないことに同意します。"
+   },
+   {
+    "title": "8. 守秘義務",
+    "body": "あなたは、当社の事業手法、手数料体系、または内部運営を、当社外部のいかなる者にも開示しないことに同意します。"
+   },
+   {
+    "title": "9. 準拠法および裁判地",
+    "body": "本契約は、抵触法の規則にかかわらず、テキサス州の法律に準拠します。本契約に起因または関連する紛争は、テキサス州に所在する州裁判所または連邦裁判所に提起しなければならず、あなたと当社は、それらの裁判所の対人管轄権および裁判地に同意します。本条のいかなる規定も、法的に放棄できないあなたの居住州が与える権利を放棄または制限するものではありません。"
+   },
+   {
+    "title": "10. 初年度クォータ — 初年度に10人のモデル",
+    "body": "あなたは、登録して本契約に同意した日から1年間で、最低10人のモデルをオンボーディングしなければなりません。モデルがあなたの個人紹介リンクを通じてSlutCampに参加し、モデルアカウントを保持する場合にのみ、あなたのクォータにカウントされます。初年度が終了すると、当社はあなたのアカウントを審査します。オンボーディングしたモデルが10人未満の場合、当社は必要と判断すれば、第5条に記載のとおり、あなたのリクルーター資格を取り消す場合があります。あなたがオンボーディングしたモデルが当社に多額の収益をもたらしている場合、当社は、初年度が終了していても、クォータが満たされるまであなたのリクルーター資格を延長します。この審査は当社が行います。1年の節目に到達しただけでは、自動的に資格が終了することはありません。本条のいかなる規定も、第5条に基づく当社の権利、すなわちいつでも、理由を問わず、通知なしにあなたのリクルーター資格と紹介リンクを取り消す権利を制限するものではありません。"
+   },
+   {
+    "title": "11. 平易な言葉による免責事項",
+    "body": "本書は、明確さのために書かれた平易な言葉による要約です。法的助言ではなく、弁護士によるレビューも受けていません。当社は、署名する前にあなた自身の弁護士に本契約をレビューしてもらうことを強く推奨します。本契約の一部が執行不能と判断された場合でも、残りの部分は引き続き適用されます。"
+   }
+  ]
+ },
+ "zh": {
+  "governs": "此译文仅供方便参考 — 以英文版本为准。",
+  "sections": [
+   {
+    "title": "1. 双方",
+    "body": "本招募者协议（“协议”）由你（“招募者”）与 World of Godz Entertainment LLC（“公司”）订立，公司以 SlutCamp（“SlutCamp”）名义开展业务。签署即表示你同意以下所有内容。"
+   },
+   {
+    "title": "2. 独立承包商 — 不是合伙人",
+    "body": "你是独立承包商，不是公司的雇员。本协议中的任何内容均不构成雇佣关系、法律上的业务合伙关系或代理关系 — “合伙人”只是我们在应用中对该角色的称呼。你负责自己的税款、保险和费用。公司不会从你的付款中预扣税款。"
+   },
+   {
+    "title": "3. 你的职责",
+    "body": "你使用你的个人推荐链接招募模特加入 SlutCamp。你对自己的招募方法负责。你必须诚实介绍本平台 — 不得对收入作虚假承诺。"
+   },
+   {
+    "title": "4. 你的分成",
+    "body": "你赚取你招募的每位模特在平台上全部收入的 20%（她们的 60% 份额 — 你的分成来自公司的部分，而不是来自模特）。模特保留她完整的 60%。付款按公司的付款时间表处理。你的收入在赚取 7 天后才有资格付款，适用与模特在应用中看到的相同的付款窗口。"
+   },
+   {
+    "title": "5. 终止 — 任意终止",
+    "body": "公司可随时以任何理由或无理由撤销你的招募者身份，无需通知。被撤销时，本协议立即终止，你停止从你招募的模特的未来收入中获利。任何已赚取的余额仍可供提取。"
+   },
+   {
+    "title": "6. 行为规则",
+    "body": "你不得：在平台上与任何人分享联系信息或付款账号；试图将模特或粉丝转移到平台外；使用仇恨言论或侮辱性语言。违反这些规则可能导致你的账号立即被暂停或停用。"
+   },
+   {
+    "title": "7. 禁止规避",
+    "body": "在你的招募者身份结束（出于任何原因）后的 12 个月内，你同意不将你通过 SlutCamp 认识的模特招募到竞争平台。"
+   },
+   {
+    "title": "8. 保密",
+    "body": "你同意不向公司以外的任何人披露公司的业务方法、佣金结构或内部运营。"
+   },
+   {
+    "title": "9. 适用法律与审判地",
+    "body": "本协议受德克萨斯州法律管辖，不考虑其法律冲突规则。因本协议引起或与之相关的任何争议必须提交位于德克萨斯州的州法院或联邦法院，你和公司同意接受这些法院的属人管辖权和审判地。本节中的任何内容均不放弃或限制你所在州依法不可放弃的任何权利。"
+   },
+   {
+    "title": "10. 第一年度配额 — 第一年度 10 位模特",
+    "body": "你从签署并接受本协议之日起有一年时间，至少招募 10 位模特。只有当一位模特通过你的个人推荐链接加入 SlutCamp 并持有模特账号时，她才计入你的配额。当你的第一年结束时，公司将审查你的账号。如果你招募的模特少于 10 位，公司如认为有必要，可按第 5 节所述撤销你的招募者身份。如果你招募的模特已为公司赚取了可观的金额，公司将延长你的招募者身份，直到达到配额为止，即使你的第一年已结束。此审查由公司进行 — 仅达到一年期限本身并不会自动终止你的身份。本节中的任何内容均不限制公司根据第 5 节随时以任何理由、无需通知撤销你的招募者身份和推荐链接的权利。"
+   },
+   {
+    "title": "11. 通俗语言免责声明",
+    "body": "这是一份为清晰起见而编写的通俗语言摘要 — 它不是法律建议，也未经律师审查。公司强烈建议你在签署前请你自己的律师审查本协议。如果本协议的任何部分被认定不可执行，其余部分仍然适用。"
+   }
+  ]
+ },
+ "ko": {
+  "governs": "편의를 위한 번역입니다 — 영어 버전이 우선합니다.",
+  "sections": [
+   {
+    "title": "1. 당사자",
+    "body": "본 리크루터 계약(\"계약\")은 귀하(\"리크루터\")와 SlutCamp(\"SlutCamp\")라는 상호로 사업을 영위하는 World of Godz Entertainment LLC(\"회사\") 사이에 체결됩니다. 서명함으로써 귀하는 아래의 모든 내용에 동의합니다."
+   },
+   {
+    "title": "2. 독립 계약자 — 파트너가 아님",
+    "body": "귀하는 회사의 직원이 아닌 독립 계약자입니다. 본 계약의 어떤 내용도 고용 관계, 법적 사업 파트너십 또는 대리 관계를 만들지 않습니다 — \"파트너\"는 앱에서 그 역할을 부르는 이름일 뿐입니다. 귀하는 본인의 세금, 보험 및 비용에 대해 책임을 집니다. 회사는 지급금에서 세금을 원천징수하지 않습니다."
+   },
+   {
+    "title": "3. 귀하가 하는 일",
+    "body": "귀하는 개인 추천 링크를 사용하여 모델들을 SlutCamp에 가입하도록 모집합니다. 귀하는 본인의 모집 방법에 대해 책임을 집니다. 플랫폼에 대해 정직해야 합니다 — 수익에 대해 거짓 약속을 해서는 안 됩니다."
+   },
+   {
+    "title": "4. 귀하의 몫",
+    "body": "귀하는 모집한 각 모델이 플랫폼에서 버는 모든 수익의 20%를 받습니다 (그들의 60% 몫 — 귀하의 몫은 모델이 아닌 회사의 부분에서 나옵니다). 모델은 자신의 60% 전액을 유지합니다. 지급은 회사의 지급 일정에 따라 처리됩니다. 귀하의 수익은 발생한 지 7일 후에 지급받을 수 있으며, 모델들이 앱에서 보는 것과 동일한 지급 기간이 적용됩니다."
+   },
+   {
+    "title": "5. 종료 — 임의 종료 가능",
+    "body": "회사는 언제든지, 어떤 이유로든 또는 이유 없이, 통지 없이 귀하의 리크루터 자격을 취소할 수 있습니다. 취소되면 본 계약은 즉시 종료되고 모집한 모델들의 향후 모든 수익에 대한 수익 창출이 중단됩니다. 이미 벌어둔 잔액은 출금할 수 있도록 유지됩니다."
+   },
+   {
+    "title": "6. 행동 규칙",
+    "body": "귀하는 다음을 해서는 안 됩니다: 플랫폼에서 누구와도 연락처 정보나 결제 정보를 공유하는 행위; 모델이나 팬을 플랫폼 밖으로 가져가려고 시도하는 행위; 혐오 발언이나 비하 발언을 사용하는 행위. 이러한 규칙을 위반하면 계정이 즉시 정지되거나 비활성화될 수 있습니다."
+   },
+   {
+    "title": "7. 우회 금지",
+    "body": "귀하의 리크루터 자격이 종료된 후(어떤 이유로든) 12개월 동안, 귀하는 SlutCamp를 통해 만난 모델들을 경쟁 플랫폼으로 모집하지 않는 데 동의합니다."
+   },
+   {
+    "title": "8. 비밀 유지",
+    "body": "귀하는 회사의 사업 방법, 수수료 구조 또는 내부 운영을 회사 외부의 누구에게도 공개하지 않는 데 동의합니다."
+   },
+   {
+    "title": "9. 준거법 및 재판지",
+    "body": "본 계약은 텍사스주 법률의 저촉법 규칙과 관계없이 텍사스주 법률에 따라 규율됩니다. 본 계약에서 발생하거나 본 계약과 관련된 모든 분쟁은 텍사스에 위치한 주 또는 연방 법원에 제기해야 하며, 귀하와 회사는 해당 법원의 대인 관할권과 재판지에 동의합니다. 본 조항의 어떤 내용도 법적으로 포기할 수 없는, 거주 주가 귀하에게 부여하는 권리를 포기하거나 제한하지 않습니다."
+   },
+   {
+    "title": "10. 첫해 할당량 — 첫해에 10명의 모델",
+    "body": "귀하는 가입하고 본 계약에 동의한 날로부터 1년 안에 최소 10명의 모델을 온보딩해야 합니다. 모델은 귀하의 개인 추천 링크를 통해 SlutCamp에 가입하고 모델 계정을 보유할 때만 할당량에 포함됩니다. 첫해가 끝나면 회사는 귀하의 계정을 검토합니다. 온보딩한 모델이 10명 미만이면 회사는 제5조에 설명된 대로 필요하다고 판단될 경우 리크루터 자격을 취소할 수 있습니다. 온보딩한 모델들이 회사에 상당한 금액을 벌어다 주었다면, 회사는 첫해가 끝났더라도 할당량을 충족할 때까지 리크루터 자격을 연장합니다. 이 검토는 회사가 수행합니다 — 1년이 되었다는 사실만으로 자격이 자동으로 종료되지 않습니다. 본 조항의 어떤 내용도 제5조에 따른, 언제든지 어떤 이유로든 통지 없이 리크루터 자격과 추천 링크를 취소할 수 있는 회사의 권리를 제한하지 않습니다."
+   },
+   {
+    "title": "11. 쉬운 말 면책 조항",
+    "body": "이것은 명확성을 위해 쉬운 말로 쓴 요약입니다 — 법률 자문이 아니며, 변호사의 검토를 받지 않았습니다. 회사는 서명하기 전에 본인의 변호사에게 본 계약을 검토받으실 것을 강력히 권장합니다. 본 계약의 일부가 집행 불가능하다고 판정되더라도 나머지는 계속 적용됩니다."
+   }
+  ]
+ },
+ "it": {
+  "governs": "Traduzione fornita per comodità — fa fede la versione inglese.",
+  "sections": [
+   {
+    "title": "1. Parti",
+    "body": "Il presente Contratto Reclutatore (\"Contratto\") è tra te (\"Reclutatore\") e World of Godz Entertainment LLC (\"Società\"), operante come SlutCamp (\"SlutCamp\"). Firmando, accetti tutto quanto segue."
+   },
+   {
+    "title": "2. Collaboratore indipendente — Non un socio",
+    "body": "Sei un COLLABORATORE INDIPENDENTE, non un dipendente della Società. Nulla nel presente Contratto crea un rapporto di lavoro subordinato, una società commerciale legale o un rapporto di agenzia — \"partner\" è solo come chiamiamo il ruolo nell'app. Sei responsabile delle tue tasse, assicurazioni e spese. La Società non tratterrà tasse dai tuoi pagamenti."
+   },
+   {
+    "title": "3. Cosa fai",
+    "body": "Recluti modelle perché si uniscano a SlutCamp usando il tuo link di referral personale. Sei responsabile dei tuoi metodi di reclutamento. Devi essere onesto sulla piattaforma — nessuna falsa promessa sui guadagni."
+   },
+   {
+    "title": "4. La tua quota",
+    "body": "Guadagni il 20% di tutto ciò che ogni modella che recluti guadagna sulla piattaforma (la loro quota del 60% — la tua quota proviene dalla porzione della Società, non dalla modella). La modella trattiene il suo intero 60%. I pagamenti sono elaborati secondo il programma di pagamento della Società. I tuoi guadagni diventano idonei al pagamento 7 giorni dopo essere stati guadagnati, secondo la stessa finestra di pagamento che le modelle vedono nell'app."
+   },
+   {
+    "title": "5. Risoluzione — A discrezione",
+    "body": "La Società può revocare il tuo status di reclutatore IN QUALSIASI MOMENTO, per qualsiasi motivo o senza motivo, SENZA PREAVVISO richiesto. Quando revocato, il presente Contratto termina immediatamente e smetti di guadagnare su tutti i ricavi futuri dalle modelle che hai reclutato. Qualsiasi saldo già guadagnato resta disponibile per il prelievo."
+   },
+   {
+    "title": "6. Regole di condotta",
+    "body": "NON devi: condividere informazioni di contatto o coordinate di pagamento con chiunque sulla piattaforma; tentare di portare modelle o fan fuori piattaforma; usare discorsi d'odio o insulti. Violare queste regole può far sospendere o disattivare immediatamente il tuo account."
+   },
+   {
+    "title": "7. Non elusione",
+    "body": "Per 12 mesi dopo la fine del tuo status di reclutatore (per qualsiasi motivo), accetti di non reclutare modelle che hai conosciuto tramite SlutCamp verso una piattaforma concorrente."
+   },
+   {
+    "title": "8. Riservatezza",
+    "body": "Accetti di non divulgare i metodi aziendali della Società, le strutture commissionali o le operazioni interne a chiunque al di fuori della Società."
+   },
+   {
+    "title": "9. Legge applicabile e foro competente",
+    "body": "Il presente Contratto è governato dalle leggi dello Stato del Texas, senza riguardo alle sue norme sul conflitto di leggi. Qualsiasi controversia derivante da o relativa al presente Contratto deve essere portata davanti ai tribunali statali o federali situati in Texas, e tu e la Società acconsentite alla giurisdizione personale e alla sede di quei tribunali. Nulla in questa sezione rinuncia o limita qualsiasi diritto che il tuo stato di residenza ti concede e che non può essere legalmente oggetto di rinuncia."
+   },
+   {
+    "title": "10. Quota del primo anno — 10 modelle nel tuo primo anno",
+    "body": "Hai UN ANNO dalla data in cui ti registri e accetti il presente Contratto per inserire un minimo di 10 modelle. Una modella conta ai fini della tua quota solo quando si unisce a SlutCamp tramite il tuo link di referral personale e detiene un account modella. Quando il tuo primo anno finisce, la Società esaminerà il tuo account. Se hai inserito meno di 10 modelle, la Società potrà revocare il tuo status di reclutatore se ritenuto necessario, come descritto nella Sezione 5. Se le modelle che hai inserito hanno fatto guadagnare alla Società una somma significativa di denaro, la Società estenderà il tuo status di reclutatore finché la quota non è raggiunta, anche se il tuo primo anno è finito. Questa revisione è fatta dalla Società — raggiungere il traguardo di un anno non termina di per sé automaticamente il tuo status. Nulla in questa sezione limita il diritto della Società ai sensi della Sezione 5 di revocare il tuo status di reclutatore e il tuo link di referral in qualsiasi momento, per qualsiasi motivo, senza preavviso."
+   },
+   {
+    "title": "11. Avvertenza in linguaggio semplice",
+    "body": "Questo è un riepilogo in linguaggio semplice scritto per chiarezza — NON è una consulenza legale, e non è stato revisionato da un avvocato. La Società raccomanda vivamente di far revisionare il presente Contratto dal tuo avvocato prima di firmarlo. Se qualsiasi parte del presente Contratto viene ritenuta inapplicabile, il resto continua ad applicarsi."
+   }
+  ]
+ },
+ "pl": {
+  "governs": "Tłumaczenie dla wygody — obowiązuje wersja angielska.",
+  "sections": [
+   {
+    "title": "1. Strony",
+    "body": "Niniejsza Umowa rekrutera („Umowa”) jest zawierana między Tobą („Rekruter”) a World of Godz Entertainment LLC („Spółka”), prowadzącą działalność pod nazwą SlutCamp („SlutCamp”). Podpisując ją, wyrażasz zgodę na wszystko poniżej."
+   },
+   {
+    "title": "2. Niezależny wykonawca — nie partner",
+    "body": "Jesteś NIEZALEŻNYM WYKONAWCĄ, a nie pracownikiem Spółki. Żadne postanowienie niniejszej Umowy nie tworzy stosunku pracy, prawnej spółki biznesowej ani stosunku agencyjnego — „partner” to tylko nazwa, którą nazywamy tę rolę w aplikacji. Jesteś odpowiedzialny za własne podatki, ubezpieczenie i wydatki. Spółka nie będzie potrącać podatków z Twoich wypłat."
+   },
+   {
+    "title": "3. Co robisz",
+    "body": "Rekrutujesz modelki do dołączenia do SlutCamp za pomocą swojego osobistego linku polecającego. Jesteś odpowiedzialny za własne metody rekrutacji. Musisz być uczciwy co do platformy — bez fałszywych obietnic dotyczących zarobków."
+   },
+   {
+    "title": "4. Twoja część",
+    "body": "Zarabiasz 20% wszystkiego, co każda zrekrutowana przez Ciebie modelka zarobi na platformie (jej udział 60% — Twoja część pochodzi z części Spółki, a nie od modelki). Modelka zachowuje swoje pełne 60%. Płatności są przetwarzane według harmonogramu wypłat Spółki. Twoje zarobki stają się uprawnione do wypłaty 7 dni po ich zarobieniu, w tym samym okresie wypłaty, który modelki widzą w aplikacji."
+   },
+   {
+    "title": "5. Rozwiązanie — w dowolnym momencie",
+    "body": "Spółka może unieważnić Twój status rekrutera W KAŻDEJ CHWILI, z dowolnego powodu lub bez powodu, BEZ WYMAGANEGO UPZEDZENIA. Po unieważnieniu niniejsza Umowa kończy się natychmiast, a Ty przestajesz zarabiać na wszystkich przyszłych przychodach od zrekrutowanych przez Ciebie modelek. Wszelkie już zarobione saldo pozostaje dostępne do wypłaty."
+   },
+   {
+    "title": "6. Zasady postępowania",
+    "body": "NIE wolno Ci: udostępniać danych kontaktowych ani identyfikatorów płatności nikomu na platformie; podejmować prób przeniesienia modelek lub fanów poza platformę; używać mowy nienawiści ani wyzwisk. Złamanie tych zasad może spowodować natychmiastowe zawieszenie lub dezaktywację Twojego konta."
+   },
+   {
+    "title": "7. Zakaz obchodzenia",
+    "body": "Przez 12 miesięcy po zakończeniu Twojego statusu rekrutera (z dowolnego powodu) zobowiązujesz się nie rekrutować modelek, które poznałeś za pośrednictwem SlutCamp, na konkurencyjną platformę."
+   },
+   {
+    "title": "8. Poufność",
+    "body": "Zobowiązujesz się nie ujawniać metod biznesowych Spółki, struktur prowizji ani operacji wewnętrznych żadnej osobie spoza Spółki."
+   },
+   {
+    "title": "9. Prawo właściwe i miejsce postępowania",
+    "body": "Niniejsza Umowa podlega prawu stanu Teksas, bez względu na jego przepisy kolizyjne. Wszelkie spory wynikające z niniejszej Umowy lub jej dotyczące muszą być wnoszone do sądów stanowych lub federalnych znajdujących się w Teksasie, a Ty i Spółka wyrażacie zgodę na właściwość osobistą i miejsce postępowania tych sądów. Żadne postanowienie niniejszej sekcji nie zrzeka się ani nie ogranicza żadnego prawa, które przyznaje Ci Twój stan zamieszkania, a którego nie można zgodnie z prawem się zrzec."
+   },
+   {
+    "title": "10. Limit pierwszego roku — 10 modelek w pierwszym roku",
+    "body": "Masz JEDEN ROK od daty rejestracji i akceptacji niniejszej Umowy na pozyskanie co najmniej 10 modelek. Modelka zalicza się do Twojego limitu tylko wtedy, gdy dołączy do SlutCamp za pośrednictwem Twojego osobistego linku polecającego i posiada konto modelki. Gdy Twój pierwszy rok się zakończy, Spółka sprawdzi Twoje konto. Jeśli pozyskałeś mniej niż 10 modelek, Spółka może unieważnić Twój status rekrutera, jeśli uzna to za konieczne, jak opisano w Sekcji 5. Jeśli modelki, które pozyskałeś, zarobiły dla Spółki znaczącą kwotę pieniędzy, Spółka przedłuży Twój status rekrutera, aż limit zostanie osiągnięty, nawet jeśli Twój pierwszy rok się zakończył. Przegląd ten jest dokonywany przez Spółkę — osiągnięcie rocznego terminu samo w sobie nie kończy automatycznie Twojego statusu. Żadne postanowienie niniejszej sekcji nie ogranicza prawa Spółki wynikającego z Sekcji 5 do unieważnienia Twojego statusu rekrutera i Twojego linku polecającego w każdej chwili, z dowolnego powodu, bez uprzedzenia."
+   },
+   {
+    "title": "11. Zastrzeżenie dotyczące prostego języka",
+    "body": "Jest to streszczenie w prostym języku, napisane dla jasności — NIE jest to porada prawna i nie zostało sprawdzone przez prawnika. Spółka stanowczo zaleca, abyś przed podpisaniem zlecił własnemu prawnikowi sprawdzenie niniejszej Umowy. Jeśli jakakolwiek część niniejszej Umowy zostanie uznana za niewykonalną, pozostała część nadal obowiązuje."
+   }
+  ]
+ },
+ "nl": {
+  "governs": "Vertaling voor het gemak — de Engelse versie is leidend.",
+  "sections": [
+   {
+    "title": "1. Partijen",
+    "body": "Deze Recruiter-overeenkomst (\"Overeenkomst\") is tussen jou (\"Recruiter\") en World of Godz Entertainment LLC (\"Bedrijf\"), handelend onder de naam SlutCamp (\"SlutCamp\"). Door te ondertekenen ga je akkoord met alles hieronder."
+   },
+   {
+    "title": "2. Onafhankelijke Contractant — Geen Partner",
+    "body": "Je bent een ONAFHANKELIJKE CONTRACTANT, geen werknemer van het Bedrijf. Niets in deze Overeenkomst creëert een arbeidsrelatie, een juridisch zakelijk partnerschap of een vertegenwoordigingsrelatie — \"partner\" is gewoon hoe we de rol in de app noemen. Je bent verantwoordelijk voor je eigen belastingen, verzekeringen en kosten. Het Bedrijf zal geen belastingen inhouden op je uitbetalingen."
+   },
+   {
+    "title": "3. Wat Je Doet",
+    "body": "Je werft modellen om zich bij SlutCamp aan te sluiten met je persoonlijke verwijzingslink. Je bent verantwoordelijk voor je eigen werfmethoden. Je moet eerlijk zijn over het platform — geen valse beloften over inkomsten."
+   },
+   {
+    "title": "4. Jouw Deel",
+    "body": "Je verdient 20% van alles wat elk model dat je werft op het platform verdient (hun 60%-aandeel — jouw deel komt uit het deel van het Bedrijf, niet van het model). Het model houdt haar volledige 60%. Betalingen worden verwerkt volgens het uitbetalingsschema van het Bedrijf. Je inkomsten komen in aanmerking voor uitbetaling 7 dagen nadat ze zijn verdiend, onder hetzelfde uitbetalingsvenster dat de modellen in de app zien."
+   },
+   {
+    "title": "5. Beëindiging — Naar Willekeur",
+    "body": "Het Bedrijf kan je recruiter-status OP ELK MOMENT intrekken, om welke reden dan ook of zonder reden, met GEEN KENNISGEVING vereist. Wanneer ingetrokken, eindigt deze Overeenkomst onmiddellijk en stop je met verdienen aan alle toekomstige inkomsten van je geworven modellen. Elk al verdiend saldo blijft beschikbaar voor opname."
+   },
+   {
+    "title": "6. Gedragsregels",
+    "body": "Je mag NIET: contactgegevens of betaalhandles delen met iemand op het platform; proberen modellen of fans buiten het platform te brengen; haatspraak of beledigingen gebruiken. Het overtreden van deze regels kan ertoe leiden dat je account onmiddellijk wordt geschorst of gedeactiveerd."
+   },
+   {
+    "title": "7. Niet-omzeiling",
+    "body": "Gedurende 12 maanden nadat je recruiter-status eindigt (om welke reden dan ook), stem je ermee in om modellen die je via SlutCamp hebt ontmoet niet te werven voor een concurrerend platform."
+   },
+   {
+    "title": "8. Vertrouwelijkheid",
+    "body": "Je stemt ermee in om de bedrijfsmethoden, commissiestructuren of interne bedrijfsvoering van het Bedrijf niet te openbaren aan iemand buiten het Bedrijf."
+   },
+   {
+    "title": "9. Toepasselijk Recht & Rechtsplaats",
+    "body": "Deze Overeenkomst wordt beheerst door de wetten van de Staat Texas, zonder rekening te houden met haar regels inzake wetsconflicten. Elk geschil dat voortvloeit uit of verband houdt met deze Overeenkomst moet worden voorgelegd aan de staats- of federale rechtbanken in Texas, en jij en het Bedrijf stemmen in met de persoonlijke jurisdictie en rechtsplaats van die rechtbanken. Niets in deze sectie doet afstand van of beperkt enig recht dat je thuisstaat je geeft dat wettelijk niet kan worden opgegeven."
+   },
+   {
+    "title": "10. Eerstejaarsquotum — 10 Modellen in Je Eerste Jaar",
+    "body": "Je hebt ÉÉN JAAR vanaf de datum waarop je je aanmeldt en deze Overeenkomst accepteert om minimaal 10 modellen aan boord te brengen. Een model telt alleen mee voor je quotum wanneer zij zich via je persoonlijke verwijzingslink bij SlutCamp aansluit en een modelaccount heeft. Wanneer je eerste jaar eindigt, zal het Bedrijf je account beoordelen. Als je minder dan 10 modellen hebt aangebracht, kan het Bedrijf je recruiter-status intrekken indien nodig geacht, zoals beschreven in Sectie 5. Als de modellen die je hebt aangebracht het Bedrijf een aanzienlijk bedrag hebben opgeleverd, zal het Bedrijf je recruiter-status verlengen tot het quotum is gehaald, zelfs als je eerste jaar is geëindigd. Deze beoordeling wordt gedaan door het Bedrijf — het bereiken van de grens van één jaar beëindigt op zichzelf je status niet automatisch. Niets in deze sectie beperkt het recht van het Bedrijf onder Sectie 5 om je recruiter-status en je verwijzingslink op elk moment in te trekken, om welke reden dan ook, zonder kennisgeving."
+   },
+   {
+    "title": "11. Disclaimer in Begrijpelijke Taal",
+    "body": "Dit is een samenvatting in begrijpelijke taal, geschreven voor duidelijkheid — het is GEEN juridisch advies, en het is niet beoordeeld door een advocaat. Het Bedrijf raadt je ten zeerste aan om je eigen advocaat deze Overeenkomst te laten beoordelen voordat je tekent. Als enig deel van deze Overeenkomst niet-afdwingbaar wordt bevonden, blijft de rest van toepassing."
+   }
+  ]
+ },
+ "tr": {
+  "governs": "Kolaylık için çeviri — İngilizce sürüm geçerlidir.",
+  "sections": [
+   {
+    "title": "1. Taraflar",
+    "body": "Bu İşe Alım Sözleşmesi (\"Sözleşme\"), sen (\"İşe Alan\") ile SlutCamp (\"SlutCamp\") olarak faaliyet gösteren World of Godz Entertainment LLC (\"Şirket\") arasındadır. İmzalayarak, aşağıdaki her şeyi kabul edersin."
+   },
+   {
+    "title": "2. Bağımsız Yüklenici — Ortak Değil",
+    "body": "Sen bir BAĞIMSIZ YÜKLENİCİSİN, Şirketin bir çalışanı değilsin. Bu Sözleşmedeki hiçbir şey bir istihdam ilişkisi, yasal bir iş ortaklığı veya bir temsilcilik ilişkisi oluşturmaz — \"ortak\" yalnızca uygulamada bu role verdiğimiz addır. Kendi vergilerinden, sigortandan ve giderlerinden sorumlusun. Şirket, ödemelerinden vergi kesintisi yapmayacak."
+   },
+   {
+    "title": "3. Ne Yaparsın",
+    "body": "Kişisel yönlendirme bağlantını kullanarak SlutCamp'e katılmaları için model getirirsin. Kendi işe alım yöntemlerinden sorumlusun. Platform hakkında dürüst olmalısın — kazançlar hakkında yanlış vaatler yok."
+   },
+   {
+    "title": "4. Payın",
+    "body": "Getirdiğin her modelin platformda kazandığı her şeyin %20'sini kazanırsın (onların %60'lık payı — payın modelden değil, Şirketin kısmından gelir). Model tam %60'ını korur. Ödemeler, Şirketin ödeme programına göre işlenir. Kazançların, modellerin uygulamada gördüğü aynı ödeme penceresi kapsamında, kazanıldıktan 7 gün sonra ödemeye uygun hale gelir."
+   },
+   {
+    "title": "5. Fesih — İsteğe Bağlı",
+    "body": "Şirket, işe alan durumunu İSTEDİĞİ ZAMAN, herhangi bir nedenle veya nedensiz olarak, BİLDİRİM GEREKMEDEN iptal edebilir. İptal edildiğinde, bu Sözleşme derhal sona erer ve getirdiğin modellerden gelecek tüm gelirler üzerinden kazanmayı bırakırsın. Zaten kazanılmış herhangi bir bakiye, çekmen için kullanılabilir kalır."
+   },
+   {
+    "title": "6. Davranış Kuralları",
+    "body": "Şunları YAPMAMALISIN: platformdaki herhangi biriyle iletişim bilgisi veya ödeme bilgileri paylaşmak; modelleri veya hayranları platform dışına taşımaya çalışmak; nefret söylemi veya hakaret kullanmak. Bu kuralları ihlal etmek, hesabının derhal askıya alınmasına veya devre dışı bırakılmasına yol açabilir."
+   },
+   {
+    "title": "7. Dolanmayı Önleme",
+    "body": "İşe alan durumun sona erdikten sonra (herhangi bir nedenle) 12 ay boyunca, SlutCamp aracılığıyla tanıştığın modelleri rakip bir platforma getirmemeyi kabul edersin."
+   },
+   {
+    "title": "8. Gizlilik",
+    "body": "Şirketin iş yöntemlerini, komisyon yapılarını veya iç işleyişini, Şirket dışındaki herhangi birine açıklamamayı kabul edersin."
+   },
+   {
+    "title": "9. Uygulanacak Hukuk ve Yargı Yeri",
+    "body": "Bu Sözleşme, kanunlar ihtilafı kurallarına bakılmaksızın, Teksas Eyaleti yasalarına tabidir. Bu Sözleşmeden doğan veya onunla ilgili herhangi bir uyuşmazlık, Teksas'ta bulunan eyalet veya federal mahkemelerde açılmalıdır ve sen ve Şirket, o mahkemelerin kişisel yargı yetkisini ve yerini kabul edersiniz. Bu bölümdeki hiçbir şey, kendi eyaletinin sana verdiği ve yasal olarak feragat edilemeyen herhangi bir hakkı feragat ettirmez veya sınırlamaz."
+   },
+   {
+    "title": "10. İlk Yıl Kotası — İlk Yılında 10 Model",
+    "body": "Bu Sözleşmeyi imzalayıp kabul ettiğin tarihten itibaren, en az 10 modeli bünyeye katmak için BİR YILIN var. Bir model, kotana yalnızca kişisel yönlendirme bağlantın aracılığıyla SlutCamp'e katıldığında ve bir model hesabına sahip olduğunda sayılır. İlk yılın sona erdiğinde, Şirket hesabını inceleyecek. 10'dan az model kattıysan, Şirket, Bölüm 5'te açıklandığı gibi, gerekli görürse işe alan durumunu iptal edebilir. Kattığın modeller Şirkete önemli miktarda para kazandırdıysa, Şirket, ilk yılın sona ermiş olsa bile, kota karşılanana kadar işe alan durumunu uzatacaktır. Bu inceleme Şirket tarafından yapılır — bir yıllık işarete ulaşmak, tek başına durumunu otomatik olarak sona erdirmez. Bu bölümdeki hiçbir şey, Şirketin Bölüm 5 kapsamındaki, işe alan durumunu ve yönlendirme bağlantını istediği zaman, herhangi bir nedenle, bildirimde bulunmadan iptal etme hakkını sınırlamaz."
+   },
+   {
+    "title": "11. Sade Dil Feragatnamesi",
+    "body": "Bu, netlik için yazılmış sade dille bir özettir — hukuki tavsiye DEĞİLDİR ve bir avukat tarafından incelenmemiştir. Şirket, imzalamadan önce kendi avukatının bu Sözleşmeyi incelemesini şiddetle tavsiye eder. Bu Sözleşmenin herhangi bir kısmı uygulanamaz bulunursa, geri kalanı hâlâ geçerlidir."
+   }
+  ]
+ }
+};
+
+function localizedContract(contract, i18n, lang) {
+  const t = lang && i18n[lang];
+  if (!t) return { sections: contract.sections, governs_note: null };
+  return { sections: t.sections, governs_note: t.governs };
+}
 
 app.get('/api/credits/packages', (req, res) => {
   res.json({ packages: CREDIT_PACKAGES, stubbed: true });
@@ -5965,10 +7860,12 @@ function latestRecruiterSignature(userId) {
 // Get the current contract + whether this model has signed it
 app.get('/api/model/contract', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const sig = latestModelSignature(req.user.id);
+  const loc = localizedContract(MODEL_CONTRACT, MODEL_CONTRACT_I18N, req.user.language);
   res.json({
     version: MODEL_CONTRACT.version,
     updated: MODEL_CONTRACT.updated,
-    sections: MODEL_CONTRACT.sections,
+    sections: loc.sections,
+    governs_note: loc.governs_note,
     signed: !!sig && sig.contract_version === MODEL_CONTRACT.version,
     signed_version: sig ? sig.contract_version : null,
     signed_at: sig ? sig.signed_at : null,
@@ -5995,10 +7892,12 @@ app.post('/api/model/contract/sign', identMiddleware, requireUser, requireRole('
 // Recruiter: get agreement status + text
 app.get('/api/recruiter/contract', identMiddleware, requireUser, requireRole('recruiter'), (req, res) => {
   const sig = latestRecruiterSignature(req.user.id);
+  const loc = localizedContract(RECRUITER_CONTRACT, RECRUITER_CONTRACT_I18N, req.user.language);
   res.json({
     version: RECRUITER_CONTRACT.version,
     updated: RECRUITER_CONTRACT.updated,
-    sections: RECRUITER_CONTRACT.sections,
+    sections: loc.sections,
+    governs_note: loc.governs_note,
     signed: !!sig && String(sig.contract_version || '').startsWith('R'),
     signed_version: sig ? sig.contract_version : null,
     signed_at: sig ? sig.signed_at : null,
@@ -6792,8 +8691,8 @@ function ftPromote(modelId) {
   const fresh = ftGet(next.id);
   ftPushFan(fresh);
   pushToSubject(`u:${fresh.fan_id}`, { type: 'queue:your_turn', request: ftPublic(fresh) });
-  notifyUser(fresh.fan_id, 'facetime', '📹 Your turn!',
-    `${fresh.model_name} is ready for your FaceTime — join in the next 90 seconds or the spot passes on.`,
+  notifyUser(fresh.fan_id, 'facetime', srv('bell_ft_turn_title', userLang(fresh.fan_id)),
+    srv('bell_ft_turn_body', userLang(fresh.fan_id), { model: fresh.model_name }),
     '/#chat');
   ftPushQueue(modelId);
 }
@@ -6872,8 +8771,9 @@ app.post('/api/facetime/request', identMiddleware, requireUser, requireRole('fan
   // The bell row is the request's persistent home: its link carries the
   // request id so her notification box can render live Accept/Decline
   // actions against it until she acts (owner ruling, Oct 15).
-  notifyUser(row.id, 'facetime', '📹 FaceTime request',
-    `${req.user.display_name} wants a ${duration}-min FaceTime with you — $${(amount / 100).toFixed(2)}.`,
+  notifyUser(row.id, 'facetime', srv('bell_ft_req_title', userLang(row.id)),
+    srv('bell_ft_req_body', userLang(row.id),
+      { fan: req.user.display_name, min: duration, amount: '$' + (amount / 100).toFixed(2) }),
     `/#ft/${fresh.id}`);
   res.json({ request: ftPublic(fresh) });
 });
@@ -6929,8 +8829,8 @@ app.post('/api/facetime/:id/accept', identMiddleware, requireUser, requireRole('
     .run(Date.now() + FT_INVITE_WINDOW_MS, r.id);
   const fresh = ftGet(r.id);
   ftPushFan(fresh);
-  notifyUser(fresh.fan_id, 'facetime', '📹 She accepted!',
-    `${fresh.model_name} accepted your FaceTime — join in the next 90 seconds.`, '/#chat');
+  notifyUser(fresh.fan_id, 'facetime', srv('bell_ft_accepted_title', userLang(fresh.fan_id)),
+    srv('bell_ft_accepted_body', userLang(fresh.fan_id), { model: fresh.model_name }), '/#chat');
   res.json({ request: ftPublic(fresh), queued: false });
 });
 
@@ -7244,9 +9144,10 @@ app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), 
   const me = db.prepare('SELECT display_name FROM users WHERE id = ?').get(req.user.id);
   const followers = db.prepare('SELECT fan_id FROM follows WHERE model_id = ?').all(req.user.id);
   for (const f of followers) {
+    const fanLang = userLang(f.fan_id);
     notifyUser(f.fan_id, 'live',
-      `🔴 ${me.display_name} just went live!`,
-      title ? `“${title}” — tap to watch.` : 'Tap to watch her now.',
+      srv('bell_live_title', fanLang, { model: me.display_name }),
+      title ? srv('bell_live_body_titled', fanLang, { title }) : srv('bell_live_body', fanLang),
       '/#live');
   }
   res.json({ session_id: Number(info.lastInsertRowid), explicit_rate_cents, title });
@@ -8410,8 +10311,8 @@ app.post('/api/live/:id/join-request', identMiddleware, requireUser, requireRole
   // Also create a persistent notification so it shows in the bell
   try {
     notifyUser(sess.model_id, 'stage_request',
-      `🎥 ${req.user.display_name} wants to join your live!`,
-      `Tap to review and approve (paid ${fmt(fee)})`,
+      srv('bell_stage_title', userLang(sess.model_id), { fan: req.user.display_name }),
+      srv('bell_stage_body', userLang(sess.model_id), { fee: fmt(fee) }),
       `/live/${sess.id}`);
   } catch (e) { /* notification failed, WS still sent */ }
   res.json({ ok: true, request_id: rid, is_explicit: isExplicitJoin, mode, fee_cents: fee,
@@ -8678,9 +10579,7 @@ function sendAdminApologyDm(fanId, modelName, totalCents) {
     conv = { id: Number(info.lastInsertRowid) };
   }
   const amt = '$' + (totalCents / 100).toFixed(2);
-  const body = `We're so sorry 💔 ${modelName} couldn't make your 1-on-1 today — that's on us. ` +
-    `Your ${amt} has been refunded in full to your balance. She'd love to make it up to you — ` +
-    `her latest openings are on her booking calendar 💋`;
+  const body = srv('apology_dm_body', userLang(fanId), { model: modelName, amount: amt });
   db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
     .run(conv.id, admin.id, body);
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
@@ -8707,10 +10606,10 @@ function activateBookingSession(b) {
   b.fan_join_deadline = deadline;
   const model = db.prepare('SELECT display_name FROM users WHERE id = ?').get(b.model_id);
   const modelName = model ? model.display_name : 'Your model';
-  const copy = `📹 Your FaceTime call with ${modelName} is now active — you have 3 minutes to get to the call.`;
+  const copy = srv('bell_booking_fan_active_body', userLang(b.fan_id), { model: modelName });
   pushToUser(b.fan_id, { type: 'booking:live', booking_id: b.id,
     fan_join_deadline: deadline, message: copy });
-  try { notifyUser(b.fan_id, 'booking', '📹 Your 1-on-1 is now active', copy, '/#bookings'); }
+  try { notifyUser(b.fan_id, 'booking', srv('bell_booking_fan_active_title', userLang(b.fan_id)), copy, '/#bookings'); }
   catch (e) { /* bell is a bonus */ }
   return deadline;
 }
@@ -8734,11 +10633,11 @@ function settleFanNoShow(b) {
   const model = db.prepare('SELECT display_name FROM users WHERE id = ?').get(b.model_id);
   const fanName = fan ? fan.display_name : 'A fan';
   const modelName = model ? model.display_name : 'Your model';
-  try { notifyUser(b.model_id, 'booking', '💔 Fan no-show',
-    `💔 ${fanName} never showed up for your 1-on-1 — the booking is paid, you keep it.`, '/#bookings'); }
+  try { notifyUser(b.model_id, 'booking', srv('bell_booking_fan_noshow_model_title', userLang(b.model_id)),
+    srv('bell_booking_fan_noshow_model_body', userLang(b.model_id), { fan: fanName }), '/#bookings'); }
   catch (e) { /* bell is a bonus */ }
-  try { notifyUser(b.fan_id, 'booking', '📅 You missed your 1-on-1',
-    `You missed your 1-on-1 with ${modelName} — no-show bookings aren't refunded (your slot was reserved for you).`, '/#bookings'); }
+  try { notifyUser(b.fan_id, 'booking', srv('bell_booking_fan_noshow_fan_title', userLang(b.fan_id)),
+    srv('bell_booking_fan_noshow_fan_body', userLang(b.fan_id), { model: modelName }), '/#bookings'); }
   catch (e) { /* bell is a bonus */ }
 }
 
@@ -8770,8 +10669,8 @@ function settleBookingNoShow(b) {
   const fanName = fan ? fan.display_name : 'A fan';
   const modelName = model ? model.display_name : 'Your model';
   sendAdminApologyDm(b.fan_id, modelName, b.total_cents);
-  try { notifyUser(b.model_id, 'booking', '📅 You missed a 1-on-1',
-    `You missed your 1-on-1 with ${fanName} — he was refunded in full.`, '/#bookings'); }
+  try { notifyUser(b.model_id, 'booking', srv('bell_booking_model_noshow_title', userLang(b.model_id)),
+    srv('bell_booking_model_noshow_body', userLang(b.model_id), { fan: fanName }), '/#bookings'); }
   catch (e) { /* bell is a bonus */ }
 }
 
@@ -8799,9 +10698,9 @@ function checkNoShow(b) {
    that threshold stamped-but-skipped (she booked late; a "3 days out"
    ping for a same-day booking would be noise). */
 const BOOKING_REMINDERS = [
-  { col: 'reminded_3d', ms: 3 * 24 * 60 * 60 * 1000, label: 'in 3 days', tail: '' },
-  { col: 'reminded_3h', ms: 3 * 60 * 60 * 1000, label: 'in 3 hours', tail: '' },
-  { col: 'reminded_15m', ms: 15 * 60 * 1000, label: 'in 15 minutes', tail: ' — get ready!' },
+  { col: 'reminded_3d', ms: 3 * 24 * 60 * 60 * 1000, labelKey: 'reminder_label_3d', tailKey: null },
+  { col: 'reminded_3h', ms: 3 * 60 * 60 * 1000, labelKey: 'reminder_label_3h', tailKey: null },
+  { col: 'reminded_15m', ms: 15 * 60 * 1000, labelKey: 'reminder_label_15m', tailKey: 'reminder_tail_15m' },
 ];
 function bookingRemindersSweep() {
   const now = Date.now();
@@ -8819,9 +10718,13 @@ function bookingRemindersSweep() {
       b[r.col] = 'sent';
       if (Number.isFinite(createdMs) && createdMs > windowOpens) continue; // booked after this window opened
       try {
-        notifyUser(b.model_id, 'booking', '📅 1-on-1 reminder',
-          `📅 Reminder: your 1-on-1 with ${fanName} is ${r.label} — ` +
-          `${chiWhenLabel(b.scheduled_at)}, ${b.duration_min} min${r.tail} 💋`, '/#bookings');
+        const remLang = userLang(b.model_id);
+        notifyUser(b.model_id, 'booking', srv('bell_booking_reminder_title', remLang),
+          srv('bell_booking_reminder_body', remLang, {
+            fan: fanName, label: srv(r.labelKey, remLang),
+            when: chiWhenLabel(b.scheduled_at), min: b.duration_min,
+            tail: r.tailKey ? srv(r.tailKey, remLang) : '',
+          }), '/#bookings');
       } catch (e) { /* bell is a bonus */ }
     }
   }
@@ -8845,8 +10748,8 @@ function bookingStartNoticesSweep() {
     const fan = db.prepare('SELECT display_name FROM users WHERE id = ?').get(b.fan_id);
     const fanName = fan ? fan.display_name : 'A fan';
     try {
-      notifyUser(b.model_id, 'booking', '📅 Your 1-on-1 is now active',
-        `📅 Your 1-on-1 with ${fanName} is now active — you have 5 minutes to get to the call or their money will be fully refunded.`, '/#bookings');
+      notifyUser(b.model_id, 'booking', srv('bell_booking_start_title', userLang(b.model_id)),
+        srv('bell_booking_start_body', userLang(b.model_id), { fan: fanName }), '/#bookings');
     } catch (e) { /* bell is a bonus */ }
   }
 }
@@ -9037,8 +10940,9 @@ function slotBookingCreate(req, res) {
     fan_id: req.user.id, fan_name: req.user.display_name,
     scheduled_at: startsAt, duration_min: minutes, total_cents: total });
   try {
-    notifyUser(model.id, 'booking', '📅 New 1-on-1 booked',
-      `${req.user.display_name} booked a ${minutes}-min 1-on-1 — ${chiWhenLabel(startsAt)}.`,
+    notifyUser(model.id, 'booking', srv('bell_booking_new_title', userLang(model.id)),
+      srv('bell_booking_new_body', userLang(model.id),
+        { fan: req.user.display_name, min: minutes, when: chiWhenLabel(startsAt) }),
       '/#bookings');
   } catch (e) { /* bell is a bonus */ }
   res.json({ ok: true, booking_id: bookingId, status: 'booked', total_cents: total,
