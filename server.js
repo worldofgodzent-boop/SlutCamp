@@ -8173,6 +8173,50 @@ app.delete('/api/model/gallery-photo', identMiddleware, requireUser, requireRole
     profile_pics: profilePicsList(updated), count: profilePicsList(updated).length });
 });
 
+// Model reorders her profile pictures (hold-and-drag in Settings,
+// owner Oct 17 2026). The submitted order is the FULL composed list
+// (main photo + gallery) and must be exactly her current picture
+// set — same URLs, no duplicates, nothing added or dropped — or it
+// is rejected with NO state change. On save, position 1 becomes her
+// main photo (photo_url) and the rest become the gallery list in
+// order, so "the top of her profile" is simply the first entry
+// everywhere the composed list is read (directory, peek, Settings).
+// No file is created, moved or deleted — the two columns swap
+// values. The gallery tail is re-checked against the photo-pipeline
+// shape, the same rule parseGalleryPhotos applies on every read, so
+// a stored list can never point elsewhere.
+app.post('/api/model/gallery-reorder', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const order = req.body && req.body.order;
+  if (!Array.isArray(order) || order.some((u) => typeof u !== 'string')) {
+    return res.status(400).json({ error: 'bad_order',
+      message: 'Send the full ordered list of your profile pictures.' });
+  }
+  const row = db.prepare('SELECT photo_url, gallery_photos FROM models WHERE user_id = ?').get(req.user.id);
+  const current = profilePicsList(row);
+  const seen = new Set();
+  for (const u of order) {
+    if (seen.has(u)) {
+      return res.status(400).json({ error: 'duplicate_picture',
+        message: 'Each picture can only appear once in the order.' });
+    }
+    seen.add(u);
+  }
+  if (order.length !== current.length || order.some((u) => !current.includes(u))) {
+    return res.status(400).json({ error: 'order_mismatch',
+      message: 'That list is not your current profile pictures — nothing was changed.' });
+  }
+  const rest = order.slice(1);
+  if (rest.some((u) => !GALLERY_PHOTO_RE.test(u))) {
+    return res.status(400).json({ error: 'order_mismatch',
+      message: 'That list is not your current profile pictures — nothing was changed.' });
+  }
+  db.prepare('UPDATE models SET photo_url = ?, gallery_photos = ? WHERE user_id = ?')
+    .run(order.length ? order[0] : '', JSON.stringify(rest), req.user.id);
+  const updated = db.prepare('SELECT photo_url, gallery_photos FROM models WHERE user_id = ?').get(req.user.id);
+  res.json({ ok: true, gallery_photos: parseGalleryPhotos(updated.gallery_photos),
+    profile_pics: profilePicsList(updated), count: profilePicsList(updated).length });
+});
+
 /* ------------------------------------------------------------------ */
 /* Model contract — independent-contractor agreement signing          */
 /* ------------------------------------------------------------------ */

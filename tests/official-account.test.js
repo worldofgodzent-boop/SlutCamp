@@ -95,6 +95,8 @@ test('pins: client — peek is look-only for the official account, Official labe
   assert.ok(peek.includes('const isOfficial = !!m.is_official;'), 'peek reads the official flag');
   assert.ok(peek.includes('officialBarHTML'), 'official bar content defined');
   assert.ok(peek.includes('? officialBarHTML'), 'bar block branches to the official label');
+  assert.equal(peek.split('? officialBarHTML').length - 1, 2,
+    'BOTH pinned bars (fan Message bar + guest join bar) branch to the official label');
   assert.ok(peek.includes("official-pill\">${t('official_label')}"),
     'official pill renders by the name and in the bar');
   assert.ok(peek.includes("${isOfficial ? '' : `<div class=\"peek-row\"><span>Messages</span>"),
