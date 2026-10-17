@@ -115,6 +115,7 @@ const I18N = {
     no_matches: 'No models match that — try clearing a filter.',
     clear_filters: '✖ Clear filters',
     more_like_her: '💋 More like her', ranked_n: '🏆 Ranked #{n}',
+    tap_for_sound: 'Tap for sound', tap_to_mute: 'Tap to mute',
     new_models_title: '🆕 New models you may like', new_badge: 'NEW',
     tags_h: '🏷️ My discovery tags',
     tags_note: 'Pick up to 5 tags so fans can find you by vibe, look and what you offer. They show on your card and fans can tap them to filter the home screen.',
@@ -420,6 +421,7 @@ const I18N = {
     no_matches: 'Ningún modelo coincide — prueba quitar un filtro.',
     clear_filters: '✖ Quitar filtros',
     more_like_her: '💋 Más como ella', ranked_n: '🏆 En el puesto #{n}',
+    tap_for_sound: 'Toca para escuchar', tap_to_mute: 'Toca para silenciar',
     new_models_title: '🆕 Modelos nuevas que te pueden gustar', new_badge: 'NUEVA',
     tags_h: '🏷️ Mis etiquetas de descubrimiento',
     tags_note: 'Elige hasta 5 etiquetas para que los fans te encuentren por estilo, look y lo que ofreces. Se muestran en tu tarjeta y los fans pueden tocarlas para filtrar.',
@@ -722,6 +724,7 @@ const I18N = {
     no_matches: 'Nenhuma modelo combina — tente limpar um filtro.',
     clear_filters: '✖ Limpar filtros',
     more_like_her: '💋 Mais como ela', ranked_n: '🏆 Posição #{n}',
+    tap_for_sound: 'Toque para ouvir', tap_to_mute: 'Toque para silenciar',
     new_models_title: '🆕 Modelos novas que você pode gostar', new_badge: 'NOVA',
     tags_h: '🏷️ Minhas tags de descoberta',
     tags_note: 'Escolha até 5 tags para os fãs te encontrarem pelo estilo, visual e o que você oferece. Elas aparecem no seu card e os fãs podem tocar para filtrar.',
@@ -2837,6 +2840,11 @@ function openModelPeek(m, models) {
     ? `🔴 LIVE now — ${m.live_viewers || 0} watching`
     : m.is_online ? '🟢 Online now' : '⚫ Offline';
   ftSheet(`
+    ${m.preview_video_url ? `
+    <div class="peek-hero">
+      <video class="peek-hero-video" data-peek-video src="${esc(m.preview_video_url)}" autoplay muted loop playsinline></video>
+      <span class="peek-sound-pill" data-peek-sound>🔇 ${t('tap_for_sound')}</span>
+    </div>` : ''}
     <div style="text-align:center">
       ${avatarHTML(m.display_name, 'xl', m.photo_url)}
       <div class="sheet-title" style="margin-top:8px">${esc(m.display_name)}${isMe ? ' (that\'s you! 💅)' : ''}</div>
@@ -2864,6 +2872,25 @@ function openModelPeek(m, models) {
     <button class="sheet-btn" style="margin-top:12px" onclick="document.getElementById('ft-sheet').remove()">Close</button>`);
   const sheet = document.getElementById('ft-sheet');
   if (sheet) {
+    // Preview video hero: tap toggles the sound. Unmuting restarts from
+    // 0 so her spoken hook is heard from the top; tapping again re-mutes.
+    // The pill mirrors the state (🔇 tap for sound / 🔊 tap to mute).
+    const pv = sheet.querySelector('[data-peek-video]');
+    if (pv) {
+      const pill = sheet.querySelector('[data-peek-sound]');
+      const togglePeekSound = () => {
+        if (pv.muted) {
+          pv.muted = false;
+          try { pv.currentTime = 0; } catch (e) { /* not seekable yet */ }
+          const p = pv.play(); if (p && p.catch) p.catch(() => {});
+        } else {
+          pv.muted = true;
+        }
+        if (pill) pill.innerHTML = pv.muted ? `🔇 ${t('tap_for_sound')}` : `🔊 ${t('tap_to_mute')}`;
+      };
+      pv.onclick = togglePeekSound;
+      if (pill) pill.onclick = togglePeekSound;
+    }
     sheet.querySelectorAll('[data-sim]').forEach((b) => {
       b.onclick = () => {
         const s = (models || []).find((x) => x.id === parseInt(b.dataset.sim));
@@ -4772,7 +4799,7 @@ async function vModelSettings() {
           </div>
         </div>
         <div style="margin-top:12px">
-          <div class="muted small" style="margin-bottom:6px">🎬 <b>Preview video loop</b> — a few seconds that plays on the home screen instead of your photo. Keep it SFW and under 15MB.</div>
+          <div class="muted small" style="margin-bottom:6px">🎬 <b>Preview video</b> — a few seconds that plays on your home tile and on your profile. This is your free hook — it can be as wild as you like: talking, teasing, explicit. It only ever plays inside the app, never on Google or your public page. Everything after it stays paid. Under 15MB.</div>
           ${m.preview_video_url ? `<video src="${esc(m.preview_video_url)}" autoplay muted loop playsinline style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:2px solid var(--purple)"></video><br>` : ''}
           <button class="btn ghost small" id="s-preview-video" style="margin-top:6px">🎬 ${m.preview_video_url ? 'Change' : 'Upload'} preview video</button>
           ${m.preview_video_url ? `<button class="btn ghost small danger" id="s-preview-remove" style="margin-top:6px;margin-left:6px">Remove</button>` : ''}
