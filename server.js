@@ -12210,7 +12210,7 @@ app.get('/api/admin/overview', ...adminOnly, (req, res) => {
       (SELECT COUNT(*) FROM users WHERE role = 'fan' AND banned = 0) AS fans,
       (SELECT COUNT(*) FROM users WHERE role = 'model' AND banned = 0) AS models,
       (SELECT COUNT(*) FROM users u WHERE u.merged_into IS NULL
-        AND (u.role = 'recruiter' OR EXISTS (SELECT 1 FROM recruiters r WHERE r.user_id = u.id))) AS affiliates,
+        AND (u.role = 'recruiter' OR EXISTS (SELECT 1 FROM recruiters r WHERE r.user_id = u.id)) AND u.status != 'deleted') AS affiliates,
       (SELECT COUNT(*) FROM dmca_notices WHERE status IN ('received','under_review')) AS open_dmca,
       (SELECT COUNT(*) FROM safety_incidents WHERE status = 'open') AS open_incidents`).get();
   const LEDGER_SUM = `
@@ -12746,16 +12746,18 @@ app.get('/api/admin/affiliates', ...adminOnly, (req, res) => {
   const stats = db.prepare(`
     SELECT
       (SELECT COUNT(*) FROM users u LEFT JOIN recruiters r ON r.user_id = u.id
-        WHERE u.merged_into IS NULL AND (u.role = 'recruiter' OR r.id IS NOT NULL)) AS total_affiliates,
+        WHERE u.merged_into IS NULL AND (u.role = 'recruiter' OR r.id IS NOT NULL)
+          AND u.status != 'deleted') AS total_affiliates,
       (SELECT COUNT(*) FROM users u LEFT JOIN recruiters r ON r.user_id = u.id
         WHERE u.merged_into IS NULL AND (u.role = 'recruiter' OR r.id IS NOT NULL)
+          AND u.status != 'deleted'
           AND COALESCE(r.created_at, u.created_at) >= datetime('now', '-30 days')) AS new_last_30_days,
       (SELECT COUNT(*) FROM models WHERE recruiter_id IS NOT NULL) AS models_onboarded,
       (SELECT COALESCE(SUM(recruiter_cents), 0) FROM transactions
         WHERE is_test = 0 AND recruiter_id IS NOT NULL
           AND type IN ${EARN_TYPES}) AS recruiter_earnings_cents`).get();
   const affiliates = db.prepare(`
-    SELECT u.id AS user_id, u.username, u.display_name, u.banned,
+    SELECT u.id AS user_id, u.username, u.display_name, u.banned, u.role AS role,
            COALESCE(r.created_at, u.created_at) AS signed_up_at,
            r.id AS recruiter_id, r.name AS recruiter_name, r.city, r.referral_code,
            (SELECT COUNT(*) FROM models m WHERE m.recruiter_id = r.id) AS models_onboarded,
@@ -12764,6 +12766,7 @@ app.get('/api/admin/affiliates', ...adminOnly, (req, res) => {
                AND t.type IN ${EARN_TYPES}) AS earnings_cents
     FROM users u LEFT JOIN recruiters r ON r.user_id = u.id
     WHERE u.merged_into IS NULL AND (u.role = 'recruiter' OR r.id IS NOT NULL)
+      AND u.status != 'deleted'
     ORDER BY signed_up_at DESC`).all();
   const QUOTA_TARGET = 10; // Recruiter Agreement §10: 10 models in year one
   for (const a of affiliates) {
@@ -12784,14 +12787,16 @@ app.get('/api/admin/affiliates', ...adminOnly, (req, res) => {
 });
 
 /* Shared target lookup for the two affiliate reset actions below:
-   an affiliate is a CAPABILITY (PR #45) — a live (never merged-away)
-   account that is recruiter-role OR holds a recruiters row. Retired
-   merged duplicates (merged_into set) are refused: a reset always
-   lands on her single surviving login. Merge-protected accounts
-   (admin / house / fandemo, isMergeProtected) are refused too. */
+   an affiliate is a CAPABILITY (PR #45) — a live (never merged-away
+   or admin-deleted) account that is recruiter-role OR holds a
+   recruiters row. Retired merged duplicates (merged_into set) are
+   refused: a reset always lands on her single surviving login.
+   Merge-protected accounts (admin / house / fandemo,
+   isMergeProtected) are refused too. */
 function affiliateResetTarget(id) {
   const u = db.prepare(`SELECT u.* FROM users u LEFT JOIN recruiters r ON r.user_id = u.id
-    WHERE u.id = ? AND u.merged_into IS NULL AND (u.role = 'recruiter' OR r.id IS NOT NULL)`).get(id);
+    WHERE u.id = ? AND u.merged_into IS NULL AND (u.role = 'recruiter' OR r.id IS NOT NULL)
+      AND u.status != 'deleted'`).get(id);
   if (!u || isMergeProtected(u)) return null;
   return u;
 }
@@ -12838,6 +12843,86 @@ app.post('/api/admin/affiliates/:id/password', ...adminOnly, (req, res) => {
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(password, 10), u.id);
   deleteUserSessions(u.id);
   res.json({ ok: true, generated, ...(generated ? { password } : {}) });
+});
+
+/* Accounts the Affiliates Delete must never touch: everything the
+   one-account merge protects (any admin, the house account, fandemo)
+   PLUS the CCBill review account — a model login created for the
+   processor's site review; it must survive any roster cleanup. */
+function isAffiliateDeleteProtected(user) {
+  if (isMergeProtected(user)) return true;
+  return String(user.username || '').toLowerCase() === 'ccbillreview';
+}
+
+/* Admin — Affiliates action: DELETE an affiliate off the roster
+   (owner request, Oct 18 2026 — "I need a delete button for the ones
+   I revoke or refresh/renew"). The old Partners remove deleted the
+   recruiters row + banned the user, yet the account still surfaced
+   on this roster (a card that lingers with no link); this endpoint
+   finishes the job, and it is also how a revoked affiliate is
+   cleared out so she can be re-onboarded FRESH (new signup, new
+   link, new §10 first-year window). What "delete" means depends on
+   the kind of account:
+   - STANDALONE recruiter (role='recruiter'): full retirement. Her
+     recruiters row + code aliases go (every link dies; her models
+     keep their accounts, recruiter_id → NULL via FK), her sessions
+     die, and her users row retires the way the one-account merge
+     retires a duplicate (banned, password scrambled, status
+     marker) — plus her username is tombstoned and her email
+     cleared, freeing both for a fresh signup. The users row and
+     the ledger are NEVER hard-deleted (history stays auditable).
+   - CAPABILITY holder (fan/model with a recruiters row): ONLY the
+     affiliate side is stripped — row + aliases deleted, links die,
+     attribution detaches going forward. Her account, content,
+     credits/earnings and login are completely untouched, and
+     /api/me flips is_affiliate to false (her Model|Affiliate
+     switch disappears).
+   Refusals change nothing: protected accounts (403), already
+   retired/merged duplicates (409), and anyone with a payout
+   request still pending (409 — resolve the money first). A
+   recruiter-role account whose row is already gone (the lingering
+   "removed" card) retires cleanly through the standalone branch. */
+app.delete('/api/admin/affiliates/:id', ...adminOnly, (req, res) => {
+  const u = db.prepare(`SELECT u.*, r.id AS recruiter_row_id FROM users u
+    LEFT JOIN recruiters r ON r.user_id = u.id WHERE u.id = ?`).get(req.params.id);
+  if (!u) return res.status(404).json({ error: 'not_found' });
+  if (isAffiliateDeleteProtected(u))
+    return res.status(403).json({ error: 'protected_account',
+      message: 'This account is protected and cannot be deleted.' });
+  if (u.merged_into || u.status === 'deleted')
+    return res.status(409).json({ error: 'already_retired',
+      message: 'This affiliate was already removed.' });
+  const hasRow = u.recruiter_row_id != null;
+  if (u.role !== 'recruiter' && !hasRow)
+    return res.status(404).json({ error: 'not_found' });
+  const pending = db.prepare(
+    "SELECT id FROM withdrawals WHERE model_id = ? AND status = 'pending' LIMIT 1").get(u.id);
+  if (pending)
+    return res.status(409).json({ error: 'pending_withdrawal',
+      message: 'She has a payout request still pending — resolve that first, then delete.' });
+  const mode = txn(() => {
+    if (hasRow) {
+      // Aliases first (they FK-cascade with the row anyway), then
+      // the row itself: models.recruiter_id and
+      // transactions.recruiter_id go NULL via FK — her models keep
+      // their accounts, just unattributed from here on. The ledger
+      // rows themselves are never deleted.
+      db.prepare('DELETE FROM recruiter_code_aliases WHERE recruiter_id = ?').run(u.recruiter_row_id);
+      db.prepare('DELETE FROM recruiters WHERE id = ?').run(u.recruiter_row_id);
+    }
+    if (u.role !== 'recruiter') return 'affiliate_removed';
+    // Standalone: retire the login itself (cf. the merge's
+    // duplicate retirement) and free the username + email so she
+    // can sign up fresh. The tombstone name is one no real signup
+    // can ever collide with.
+    deleteUserSessions(u.id);
+    const tombstone = `deleted-${u.id}-${crypto.randomBytes(3).toString('hex')}`;
+    db.prepare(`UPDATE users SET banned = 1, status = 'deleted', username = ?,
+                email = NULL, password_hash = ? WHERE id = ?`)
+      .run(tombstone, bcrypt.hashSync(crypto.randomBytes(24).toString('hex'), 10), u.id);
+    return 'account_retired';
+  });
+  res.json({ ok: true, mode });
 });
 
 // Admin: remove a partner (their models stay; revenue reverts to Corry)
