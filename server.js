@@ -1429,6 +1429,8 @@ CREATE TABLE IF NOT EXISTS recruiter_code_aliases (
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 )`);
 addColumnIfMissing('platform_stats', 'one_account_announced_at', 'TEXT'); // one-time "one account" broadcast stamp
+addColumnIfMissing('platform_stats', 'official_inbox_announced_at', 'TEXT'); // one-time "SlutCamp notices thread" broadcast stamp
+addColumnIfMissing('conversations', 'is_official', 'INTEGER NOT NULL DEFAULT 0'); // the pinned read-only SlutCamp notices thread
 
 /* The recruiters row IS the affiliate capability (see above). */
 function getRecruiterRow(userId) {
@@ -2861,6 +2863,10 @@ const SRV = {
   ann_one_account_dm: { en: '💋 NEW UPDATE: One login for everything! There\'s now a Model / Affiliate switch at the top of the app. If you\'re an affiliate too, you don\'t need a second account anymore — add Affiliate to THIS account in Settings, and if you already made a separate affiliate account, bring it into this one from Settings too. One username, one password, done 💋', es: '💋 NUEVA ACTUALIZACIÓN: ¡Un solo inicio de sesión para todo! Ahora hay un interruptor Modelo / Afiliada en la parte superior de la app. Si también eres afiliada, ya no necesitas una segunda cuenta: agrega Afiliada a ESTA cuenta en Ajustes, y si ya creaste una cuenta de afiliada aparte, tráela a esta desde Ajustes también. Un usuario, una contraseña, listo 💋', pt: '💋 NOVA ATUALIZAÇÃO: Um único login para tudo! Agora há um botão Modelo / Afiliada no topo do app. Se você também é afiliada, não precisa mais de uma segunda conta — adicione Afiliada a ESTA conta em Configurações e, se já criou uma conta de afiliada separada, traga-a para esta em Configurações também. Um usuário, uma senha, pronto 💋', fr: '💋 NOUVELLE MISE À JOUR : Une seule connexion pour tout ! Il y a maintenant un interrupteur Modèle / Affiliée en haut de l\'app. Si vous êtes aussi affiliée, plus besoin d\'un deuxième compte — ajoutez Affiliée à CE compte dans les Paramètres, et si vous avez déjà créé un compte affilié séparé, ramenez-le dans celui-ci depuis les Paramètres aussi. Un identifiant, un mot de passe, c\'est fait 💋', de: '💋 NEUES UPDATE: Ein Login für alles! Oben in der App gibt es jetzt einen Model / Affiliate-Schalter. Wenn du auch Affiliate bist, brauchst du kein zweites Konto mehr — füge Affiliate in den Einstellungen zu DIESEM Konto hinzu, und falls du schon ein separates Affiliate-Konto erstellt hast, hole es in den Einstellungen ebenfalls hierher. Ein Benutzername, ein Passwort, fertig 💋', ru: '💋 НОВОЕ ОБНОВЛЕНИЕ: Один вход для всего! Теперь вверху приложения есть переключатель «Модель / Партнёр». Если ты ещё и партнёр, второй аккаунт больше не нужен — добавь партнёрство к ЭТОМУ аккаунту в Настройках, а если ты уже создала отдельный партнёрский аккаунт, перенеси его сюда тоже в Настройках. Один логин, один пароль — готово 💋', ja: '💋 新しいアップデート：ログインは1つで全部OK！アプリの上に「モデル / アフィリエイト」の切り替えができました。アフィリエイトもやっているなら、もう2つ目のアカウントは不要です — 設定でこのアカウントにアフィリエイトを追加してね。すでに別のアフィリエイトアカウントを作っていたら、それも設定からこのアカウントに移せます。ユーザー名もパスワードも1つだけ 💋', zh: '💋 新更新：一个登录搞定一切！应用顶部现在有“模特 / 推广伙伴”切换。如果你也是推广伙伴，不再需要第二个账号 — 在设置里把推广伙伴添加到这个账号；如果你已经单独建了推广伙伴账号，也可以从设置里把它并入这个账号。一个用户名、一个密码，搞定 💋', ko: '💋 새 업데이트: 로그인 하나로 전부 해결! 이제 앱 상단에 모델 / 제휴 전환 버튼이 있어요. 제휴도 하고 있다면 두 번째 계정은 더 이상 필요 없어요 — 설정에서 이 계정에 제휴를 추가하고, 이미 별도의 제휴 계정을 만들었다면 설정에서 이 계정으로 가져오세요. 아이디 하나, 비밀번호 하나면 끝 💋', it: '💋 NUOVO AGGIORNAMENTO: Un solo accesso per tutto! Ora c\'è un interruttore Modella / Affiliata in cima all\'app. Se sei anche affiliata, non ti serve più un secondo account — aggiungi Affiliata a QUESTO account nelle Impostazioni e, se hai già creato un account affiliata separato, portalo in questo dalle Impostazioni. Un nome utente, una password, fatto 💋', pl: '💋 NOWA AKTUALIZACJA: Jedno logowanie do wszystkiego! Na górze aplikacji jest teraz przełącznik Modelka / Partnerka. Jeśli jesteś też partnerką, nie potrzebujesz już drugiego konta — dodaj Partnerkę do TEGO konta w Ustawieniach, a jeśli już założyłaś osobne konto partnerskie, przenieś je tutaj również w Ustawieniach. Jedna nazwa użytkownika, jedno hasło, gotowe 💋', nl: '💋 NIEUWE UPDATE: Eén login voor alles! Boven in de app staat nu een Model / Affiliate-schakelaar. Als je ook affiliate bent, heb je geen tweede account meer nodig — voeg Affiliate toe aan DIT account in Instellingen, en als je al een apart affiliate-account hebt gemaakt, haal het dan in Instellingen ook hierheen. Eén gebruikersnaam, één wachtwoord, klaar 💋', tr: '💋 YENİ GÜNCELLEME: Her şey için tek giriş! Artık uygulamanın üstünde Model / İş Ortağı geçişi var. İş ortağı da isen, artık ikinci bir hesaba ihtiyacın yok — Ayarlar\'dan İş Ortağı\'nı BU hesabına ekle; ayrı bir iş ortağı hesabı açtıysan onu da Ayarlar\'dan bu hesaba getir. Tek kullanıcı adı, tek şifre, tamam 💋' },
   ann_one_account_bell_title: { en: '💋 One account for everything', es: '💋 Una cuenta para todo', pt: '💋 Uma conta para tudo', fr: '💋 Un seul compte pour tout', de: '💋 Ein Konto für alles', ru: '💋 Один аккаунт для всего', ja: '💋 全部1つのアカウントで', zh: '💋 一个账号搞定一切', ko: '💋 하나의 계정으로 전부', it: '💋 Un account per tutto', pl: '💋 Jedno konto do wszystkiego', nl: '💋 Eén account voor alles', tr: '💋 Her şey için tek hesap' },
   ann_one_account_bell_body: { en: 'There\'s a Model / Affiliate switch at the top now — add or bring in your affiliate side from Settings 💋', es: 'Ahora hay un interruptor Modelo / Afiliada arriba — agrega o trae tu lado afiliada desde Ajustes 💋', pt: 'Agora há um botão Modelo / Afiliada no topo — adicione ou traga seu lado afiliada em Configurações 💋', fr: 'Il y a un interrupteur Modèle / Affiliée en haut — ajoutez ou ramenez votre côté affiliée depuis les Paramètres 💋', de: 'Oben gibt es jetzt einen Model / Affiliate-Schalter — füge deine Affiliate-Seite in den Einstellungen hinzu oder hole sie hierher 💋', ru: 'Теперь вверху есть переключатель «Модель / Партнёр» — добавь или перенеси свою партнёрскую сторону в Настройках 💋', ja: '上に「モデル / アフィリエイト」切り替えができました — 設定からアフィリエイト側を追加、または移してね 💋', zh: '顶部现在有“模特 / 推广伙伴”切换 — 在设置里添加或并入你的推广伙伴身份 💋', ko: '상단에 모델 / 제휴 전환 버튼이 생겼어요 — 설정에서 제휴를 추가하거나 가져오세요 💋', it: 'Ora c\'è un interruttore Modella / Affiliata in cima — aggiungi o porta il tuo lato affiliata dalle Impostazioni 💋', pl: 'Na górze jest teraz przełącznik Modelka / Partnerka — dodaj lub przenieś swoją stronę partnerską w Ustawieniach 💋', nl: 'Bovenin staat nu een Model / Affiliate-schakelaar — voeg je affiliate-kant toe of haal hem hierheen via Instellingen 💋', tr: 'Artık üstte Model / İş Ortağı geçişi var — iş ortağı tarafını Ayarlar\'dan ekle veya buraya getir 💋' },
+  ann_inbox_dm: { en: '💋 NEW UPDATE: Your SlutCamp notices have a home! Every update from us now lands in ONE place — this SlutCamp thread, pinned at the top of your Chats so you can always find it and read it again. No more hunting through bells: tap any SlutCamp notification and it opens right here. This is that thread — every future update arrives here 💋', es: '💋 NUEVA ACTUALIZACIÓN: ¡Tus avisos de SlutCamp tienen un hogar! Cada novedad nuestra ahora llega a UN solo lugar — este hilo de SlutCamp, fijo en la parte superior de tus Chats para que siempre lo encuentres y puedas volver a leerlo. Nada de buscar entre campanitas: toca cualquier notificación de SlutCamp y se abre justo aquí. Este es ese hilo — cada novedad futura llegará aquí 💋', pt: '💋 NOVA ATUALIZAÇÃO: Seus avisos da SlutCamp têm uma casa! Cada novidade nossa agora chega a UM só lugar — esta conversa da SlutCamp, fixada no topo dos seus Chats para você sempre encontrar e reler. Nada de caçar sininhos: toque em qualquer notificação da SlutCamp e ela abre bem aqui. Esta é essa conversa — cada novidade futura chega aqui 💋', fr: '💋 NOUVELLE MISE À JOUR : Vos avis SlutCamp ont une maison ! Chaque nouveauté de notre part arrive désormais à UN seul endroit — ce fil SlutCamp, épinglé en haut de vos Chats pour que vous le retrouviez toujours et puissiez le relire. Fini de chercher parmi les cloches : touchez n\'importe quelle notification SlutCamp et elle s\'ouvre ici même. C\'est ce fil — chaque future nouveauté arrivera ici 💋', de: '💋 NEUES UPDATE: Deine SlutCamp-Hinweise haben ein Zuhause! Jedes Update von uns landet jetzt an EINEM Ort — diesem SlutCamp-Thread, oben in deinen Chats angeheftet, damit du ihn immer findest und wieder lesen kannst. Kein Suchen mehr zwischen Glocken: Tippe auf irgendeine SlutCamp-Benachrichtigung und sie öffnet sich genau hier. Das ist dieser Thread — jedes künftige Update kommt hierher 💋', ru: '💋 НОВОЕ ОБНОВЛЕНИЕ: У уведомлений SlutCamp есть дом! Каждое обновление от нас теперь приходит в ОДНО место — в этот тред SlutCamp, закреплённый вверху ваших Чатов, чтобы вы всегда могли его найти и перечитать. Больше не нужно искать среди колокольчиков: нажмите на любое уведомление SlutCamp — и оно откроется прямо здесь. Это и есть тот тред — каждое будущее обновление придёт сюда 💋', ja: '💋 新しいアップデート：SlutCampのお知らせにホームができました！私たちからのアップデートはこれから1か所に届きます — このSlutCampスレッドです。チャットの一番上にピン留めされているので、いつでも見つけて読み返せます。ベルを探し回る必要はもうありません：SlutCampの通知をタップすれば、ここが開きます。これがそのスレッドです — 今後のアップデートは全部ここに届きます 💋', zh: '💋 新更新：你的 SlutCamp 通知有家了！我们今后的每条更新都会发送到同一个地方 — 就是这个 SlutCamp 对话，它会置顶在你聊天列表的最上方，方便你随时找到、随时重读。不用再在一堆铃铛里翻找：点开任何一条 SlutCamp 通知，就会直接打开这里。这就是那个对话 — 未来的每条更新都会来到这里 💋', ko: '💋 새 업데이트: SlutCamp 공지에 집이 생겼어요! 이제 저희의 모든 업데이트는 한곳으로 도착합니다 — 바로 이 SlutCamp 스레드예요. 채팅 맨 위에 고정되어 있어서 언제든 찾고 다시 읽을 수 있어요. 더 이상 벨 사이에서 헤매지 마세요: SlutCamp 알림을 탭하면 바로 여기가 열립니다. 바로 이 스레드예요 — 앞으로의 모든 업데이트가 여기로 와요 💋', it: '💋 NUOVO AGGIORNAMENTO: I tuoi avvisi SlutCamp hanno una casa! Ogni nostro aggiornamento ora arriva in UN solo posto — questa conversazione SlutCamp, fissata in cima alle tue Chat così puoi sempre trovarla e rileggerla. Basta cercare tra le campanelle: tocca qualsiasi notifica SlutCamp e si apre proprio qui. Questa è quella conversazione — ogni aggiornamento futuro arriverà qui 💋', pl: '💋 NOWA AKTUALIZACJA: Twoje powiadomienia SlutCamp mają dom! Każda nasza nowość trafia teraz w JEDNO miejsce — ten wątek SlutCamp, przypięty na górze Twoich Czatów, żebyś zawsze mogła go znaleźć i przeczytać ponownie. Koniec szukania między dzwonkami: dotknij dowolnego powiadomienia SlutCamp, a otworzy się właśnie tutaj. To jest ten wątek — każda przyszła nowość trafi tutaj 💋', nl: '💋 NIEUWE UPDATE: Je SlutCamp-meldingen hebben een thuis! Elke update van ons komt nu op ÉÉN plek terecht — deze SlutCamp-thread, vastgepind bovenaan je Chats zodat je hem altijd kunt vinden en teruglezen. Niet meer zoeken tussen de belletjes: tik op een SlutCamp-melding en hij opent precies hier. Dit is die thread — elke toekomstige update komt hierheen 💋', tr: '💋 YENİ GÜNCELLEME: SlutCamp bildirimlerinin bir evi var! Bizden gelen her güncelleme artık TEK bir yere geliyor — bu SlutCamp sohbeti, Sohbetlerinin en üstüne sabitlendi; her zaman bulup yeniden okuyabilirsin. Ziller arasında aramak yok: herhangi bir SlutCamp bildirimine dokun, tam burada açılsın. İşte bu sohbet — gelecekteki her güncelleme buraya gelecek 💋' },
+  ann_inbox_fan_dm: { en: '💋 NEW: Your SlutCamp notices have a home! Every update from us now lands in ONE place — this SlutCamp thread at the top of your Chats. Tap any SlutCamp notification and it opens right here. While it has something new it stays pinned at the top; once you\'ve read everything it steps aside until the next update 💋', es: '💋 NUEVO: ¡Tus avisos de SlutCamp tienen un hogar! Cada novedad nuestra ahora llega a UN solo lugar — este hilo de SlutCamp en la parte superior de tus Chats. Toca cualquier notificación de SlutCamp y se abre justo aquí. Mientras tenga algo nuevo se queda fijo arriba; cuando lo hayas leído todo, se hace a un lado hasta la próxima novedad 💋', pt: '💋 NOVO: Seus avisos da SlutCamp têm uma casa! Cada novidade nossa agora chega a UM só lugar — esta conversa da SlutCamp no topo dos seus Chats. Toque em qualquer notificação da SlutCamp e ela abre bem aqui. Enquanto tiver algo novo, fica fixada no topo; depois que você ler tudo, ela sai do caminho até a próxima novidade 💋', fr: '💋 NOUVEAU : Vos avis SlutCamp ont une maison ! Chaque nouveauté arrive désormais à UN seul endroit — ce fil SlutCamp en haut de vos Chats. Touchez n\'importe quelle notification SlutCamp et elle s\'ouvre ici même. Tant qu\'il a du nouveau, il reste épinglé en haut ; une fois tout lu, il s\'écarte jusqu\'à la prochaine nouveauté 💋', de: '💋 NEU: Deine SlutCamp-Hinweise haben ein Zuhause! Jedes Update von uns landet jetzt an EINEM Ort — diesem SlutCamp-Thread oben in deinen Chats. Tippe auf irgendeine SlutCamp-Benachrichtigung und sie öffnet sich genau hier. Solange es etwas Neues gibt, bleibt er oben angeheftet; wenn du alles gelesen hast, tritt er bis zum nächsten Update beiseite 💋', ru: '💋 НОВОЕ: У уведомлений SlutCamp есть дом! Каждое обновление от нас теперь приходит в ОДНО место — в этот тред SlutCamp вверху ваших Чатов. Нажмите на любое уведомление SlutCamp — и оно откроется прямо здесь. Пока в нём есть что-то новое, он остаётся закреплённым вверху; когда вы всё прочитаете, он уйдёт в сторону до следующего обновления 💋', ja: '💋 新着：SlutCampのお知らせにホームができました！私たちからのアップデートはこれから1か所に届きます — チャットの一番上にあるこのSlutCampスレッドです。SlutCampの通知をタップすれば、ここが開きます。新しいお知らせがある間は一番上にピン留めされ、全部読むと次のアップデートまで控えめに退きます 💋', zh: '💋 新消息：你的 SlutCamp 通知有家了！我们今后的每条更新都会发送到同一个地方 — 聊天列表顶部的这个 SlutCamp 对话。点开任何一条 SlutCamp 通知，就会直接打开这里。有新内容时它会置顶；等你全部读完，它会先让开，直到下一次更新 💋', ko: '💋 새 소식: SlutCamp 공지에 집이 생겼어요! 이제 저희의 모든 업데이트는 한곳으로 도착합니다 — 채팅 맨 위의 이 SlutCamp 스레드예요. SlutCamp 알림을 탭하면 바로 여기가 열립니다. 새 소식이 있는 동안은 맨 위에 고정되고, 다 읽으면 다음 업데이트까지 잠시 물러나 있어요 💋', it: '💋 NOVITÀ: I tuoi avvisi SlutCamp hanno una casa! Ogni nostro aggiornamento ora arriva in UN solo posto — questa conversazione SlutCamp in cima alle tue Chat. Tocca qualsiasi notifica SlutCamp e si apre proprio qui. Finché ha qualcosa di nuovo resta fissata in cima; quando hai letto tutto, si fa da parte fino al prossimo aggiornamento 💋', pl: '💋 NOWOŚĆ: Twoje powiadomienia SlutCamp mają dom! Każda nasza nowość trafia teraz w JEDNO miejsce — ten wątek SlutCamp na górze Twoich Czatów. Dotknij dowolnego powiadomienia SlutCamp, a otworzy się właśnie tutaj. Dopóki ma coś nowego, zostaje przypięty na górze; gdy wszystko przeczytasz, ustępuje miejsca do następnej nowości 💋', nl: '💋 NIEUW: Je SlutCamp-meldingen hebben een thuis! Elke update van ons komt nu op ÉÉN plek terecht — deze SlutCamp-thread bovenaan je Chats. Tik op een SlutCamp-melding en hij opent precies hier. Zolang er iets nieuws is, blijft hij bovenaan vastgepind; zodra je alles hebt gelezen, stapt hij opzij tot de volgende update 💋', tr: '💋 YENİ: SlutCamp bildirimlerinin bir evi var! Bizden gelen her güncelleme artık TEK bir yere geliyor — Sohbetlerinin en üstündeki bu SlutCamp sohbeti. Herhangi bir SlutCamp bildirimine dokun, tam burada açılsın. Yeni bir şey olduğu sürece en üstte sabit kalır; hepsini okuduğunda bir sonraki güncellemeye kadar kenara çekilir 💋' },
+  ann_inbox_bell_title: { en: '💋 Your SlutCamp inbox is here', es: '💋 Tu bandeja de SlutCamp ya está aquí', pt: '💋 Sua caixa da SlutCamp chegou', fr: '💋 Votre boîte SlutCamp est là', de: '💋 Dein SlutCamp-Postfach ist da', ru: '💋 Ваш почтовый ящик SlutCamp уже здесь', ja: '💋 SlutCamp受信箱ができました', zh: '💋 你的 SlutCamp 收件箱来了', ko: '💋 SlutCamp 받은편지함이 생겼어요', it: '💋 La tua casella SlutCamp è qui', pl: '💋 Twoja skrzynka SlutCamp już jest', nl: '💋 Je SlutCamp-inbox is er', tr: '💋 SlutCamp kutun burada' },
+  ann_inbox_bell_body: { en: 'All our updates now live in one thread at the top of your Chats — tap to open it 💋', es: 'Todas nuestras novedades ahora viven en un hilo en la parte superior de tus Chats — toca para abrirlo 💋', pt: 'Todas as nossas novidades agora vivem em uma conversa no topo dos seus Chats — toque para abrir 💋', fr: 'Toutes nos nouveautés vivent désormais dans un fil en haut de vos Chats — touchez pour l\'ouvrir 💋', de: 'Alle unsere Updates leben jetzt in einem Thread oben in deinen Chats — tippe, um ihn zu öffnen 💋', ru: 'Все наши обновления теперь живут в одном треде вверху ваших Чатов — нажмите, чтобы открыть 💋', ja: '私たちからのお知らせは全部、チャットの一番上の1つのスレッドに届きます — タップして開いてね 💋', zh: '我们的所有更新现在都在聊天顶部的一个对话里 — 点开就能看 💋', ko: '저희의 모든 업데이트는 이제 채팅 맨 위의 한 스레드에 모여요 — 탭해서 열어보세요 💋', it: 'Tutti i nostri aggiornamenti ora vivono in una conversazione in cima alle tue Chat — tocca per aprirla 💋', pl: 'Wszystkie nasze nowości żyją teraz w jednym wątku na górze Twoich Czatów — dotknij, aby otworzyć 💋', nl: 'Al onze updates leven nu in één thread bovenaan je Chats — tik om te openen 💋', tr: 'Tüm güncellemelerimiz artık Sohbetlerinin en üstündeki tek bir sohbette — açmak için dokun 💋' },
 };
 
 function srv(key, lang, vars) {
@@ -3049,14 +3055,10 @@ function sendModelWelcome(modelUserId) {
   if (!m || m.welcome_msg_sent_at) return false;
   const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
   if (!admin || admin.id === m.id) return false;
-  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-  if (!conv) {
-    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-    conv = { id: Number(info.lastInsertRowid) };
-  }
+  const conv = announcementThreadFor(m.id, 'model', admin.id);
   const make = MODEL_WELCOME[m.language] || MODEL_WELCOME.en;
   db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-    .run(conv.id, admin.id, make(m.display_name));
+    .run(conv.id, conv.senderId, make(m.display_name));
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   db.prepare("UPDATE users SET welcome_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
@@ -3363,14 +3365,10 @@ function sendModelGuide(modelUserId) {
   if (!m || m.guide_msg_sent_at) return false;
   const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
   if (!admin || admin.id === m.id) return false;
-  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-  if (!conv) {
-    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-    conv = { id: Number(info.lastInsertRowid) };
-  }
+  const conv = announcementThreadFor(m.id, 'model', admin.id);
   const text = MODEL_GUIDE[m.language] || MODEL_GUIDE.en;
   db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-    .run(conv.id, admin.id, text);
+    .run(conv.id, conv.senderId, text);
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   db.prepare("UPDATE users SET guide_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
@@ -3407,13 +3405,9 @@ function sendModelGuideVideo(modelUserId) {
   if (!fs.existsSync(GUIDE_VIDEO_FILE)) return false; // video not shipped yet — stay unstamped
   const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
   if (!admin || admin.id === m.id) return false;
-  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-  if (!conv) {
-    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-    conv = { id: Number(info.lastInsertRowid) };
-  }
+  const conv = announcementThreadFor(m.id, 'model', admin.id);
   db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-    .run(conv.id, admin.id, srv('guide_video_text', m.language));
+    .run(conv.id, conv.senderId, srv('guide_video_text', m.language));
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   db.prepare("UPDATE users SET guide_video_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
@@ -3452,13 +3446,9 @@ function sendModelHomeScreenVideo(modelUserId) {
   if (!fs.existsSync(ATH_VIDEO_FILE)) return false; // video not shipped yet — stay unstamped
   const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
   if (!admin || admin.id === m.id) return false;
-  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-  if (!conv) {
-    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-    conv = { id: Number(info.lastInsertRowid) };
-  }
+  const conv = announcementThreadFor(m.id, 'model', admin.id);
   db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-    .run(conv.id, admin.id, srv('ath_video_text', m.language));
+    .run(conv.id, conv.senderId, srv('ath_video_text', m.language));
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   db.prepare("UPDATE users SET ath_video_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
@@ -3529,14 +3519,10 @@ function sendModelIdVerify(modelUserId) {
   if (!fs.existsSync(ID_VERIFY_IMG_FILE)) return false; // print not shipped yet — stay unstamped
   const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
   if (!admin || admin.id === m.id) return false;
-  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-  if (!conv) {
-    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-    conv = { id: Number(info.lastInsertRowid) };
-  }
+  const conv = announcementThreadFor(m.id, 'model', admin.id);
   const text = MODEL_ID_VERIFY[m.language] || MODEL_ID_VERIFY.en;
   db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-    .run(conv.id, admin.id, text);
+    .run(conv.id, conv.senderId, text);
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   db.prepare("UPDATE users SET id_verify_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
@@ -3613,14 +3599,10 @@ function sendModelAffiliate(modelUserId) {
   if (!fs.existsSync(AFFILIATE_IMG_FILE)) return false; // print not shipped yet — stay unstamped
   const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
   if (!admin || admin.id === m.id) return false;
-  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-  if (!conv) {
-    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-    conv = { id: Number(info.lastInsertRowid) };
-  }
+  const conv = announcementThreadFor(m.id, 'model', admin.id);
   const text = MODEL_AFFILIATE[m.language] || MODEL_AFFILIATE.en;
   db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-    .run(conv.id, admin.id, text);
+    .run(conv.id, conv.senderId, text);
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   db.prepare("UPDATE users SET affiliate_msg_sent_at = datetime('now') WHERE id = ?").run(m.id);
   try {
@@ -3658,13 +3640,9 @@ function announceGameCategoryToModels() {
   for (const m of models) {
     if (m.id === admin.id) continue;
     try {
-      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-      if (!conv) {
-        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-        conv = { id: Number(info.lastInsertRowid) };
-      }
+      const conv = announcementThreadFor(m.id, 'model', admin.id);
       db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-        .run(conv.id, admin.id, GAME_CATEGORY_ANNOUNCE_TEXT);
+        .run(conv.id, conv.senderId, GAME_CATEGORY_ANNOUNCE_TEXT);
       db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
       try {
         notifyUser(m.id, 'game_category', '🎲 NEW UPDATE: Game Category is here!',
@@ -3698,13 +3676,9 @@ function announceAgreement12ToModels() {
   for (const m of models) {
     if (m.id === admin.id) continue;
     try {
-      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-      if (!conv) {
-        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-        conv = { id: Number(info.lastInsertRowid) };
-      }
+      const conv = announcementThreadFor(m.id, 'model', admin.id);
       db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-        .run(conv.id, admin.id, AGREEMENT_12_ANNOUNCE_TEXT);
+        .run(conv.id, conv.senderId, AGREEMENT_12_ANNOUNCE_TEXT);
       db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
       try {
         notifyUser(m.id, 'agreement_12', '📄 New model agreement — please read & sign',
@@ -3744,13 +3718,9 @@ function announcePublicPhotoToModels() {
   for (const m of models) {
     if (m.id === admin.id) continue;
     try {
-      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-      if (!conv) {
-        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-        conv = { id: Number(info.lastInsertRowid) };
-      }
+      const conv = announcementThreadFor(m.id, 'model', admin.id);
       db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-        .run(conv.id, admin.id, publicPhotoAnnounceText(m.username));
+        .run(conv.id, conv.senderId, publicPhotoAnnounceText(m.username));
       db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
       try {
         notifyUser(m.id, 'public_photo', "📸 NEW UPDATE: You're live on Google!",
@@ -3783,13 +3753,9 @@ function announceNotifFixToModels() {
   for (const m of models) {
     if (m.id === admin.id) continue;
     try {
-      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-      if (!conv) {
-        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-        conv = { id: Number(info.lastInsertRowid) };
-      }
+      const conv = announcementThreadFor(m.id, 'model', admin.id);
       db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-        .run(conv.id, admin.id, `🔔 FIXED: Your notifications open now! Tapping a notification used to just flicker — now it takes you straight there: messages open the chat, bookings open your bookings, tips open your earnings, FaceTime requests open the request. Try it — tap that bell 💋`);
+        .run(conv.id, conv.senderId, `🔔 FIXED: Your notifications open now! Tapping a notification used to just flicker — now it takes you straight there: messages open the chat, bookings open your bookings, tips open your earnings, FaceTime requests open the request. Try it — tap that bell 💋`);
       db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
       try {
         notifyUser(m.id, 'notif_fix', '🔔 FIXED: Your notifications open now!',
@@ -3823,13 +3789,9 @@ function announcePreviewVideoToModels() {
   for (const m of models) {
     if (m.id === admin.id) continue;
     try {
-      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-      if (!conv) {
-        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-        conv = { id: Number(info.lastInsertRowid) };
-      }
+      const conv = announcementThreadFor(m.id, 'model', admin.id);
       db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-        .run(conv.id, admin.id, `🎬 NEW UPDATE: Your preview video now plays on your profile! Fans who open your profile see it playing — they tap it and hear you too. Make it your hook: a few seconds, as wild as you like, it's free to watch and everything after it stays paid. Add yours: Settings → Preview video 💋`);
+        .run(conv.id, conv.senderId, `🎬 NEW UPDATE: Your preview video now plays on your profile! Fans who open your profile see it playing — they tap it and hear you too. Make it your hook: a few seconds, as wild as you like, it's free to watch and everything after it stays paid. Add yours: Settings → Preview video 💋`);
       db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
       try {
         notifyUser(m.id, 'preview_video', '🎬 NEW UPDATE: Your preview video now plays on your profile!',
@@ -3863,13 +3825,9 @@ function announceProfileMediaToModels() {
   for (const m of models) {
     if (m.id === admin.id) continue;
     try {
-      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-      if (!conv) {
-        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-        conv = { id: Number(info.lastInsertRowid) };
-      }
+      const conv = announcementThreadFor(m.id, 'model', admin.id);
       db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-        .run(conv.id, admin.id, srv('ann_profile_media_dm', m.language));
+        .run(conv.id, conv.senderId, srv('ann_profile_media_dm', m.language));
       db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
       try {
         notifyUser(m.id, 'profile_media', srv('ann_profile_media_bell_title', m.language),
@@ -3903,13 +3861,9 @@ function announceRoleSigninToModels() {
   for (const m of models) {
     if (m.id === admin.id) continue;
     try {
-      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-      if (!conv) {
-        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-        conv = { id: Number(info.lastInsertRowid) };
-      }
+      const conv = announcementThreadFor(m.id, 'model', admin.id);
       db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-        .run(conv.id, admin.id, srv('ann_role_signin_dm', m.language));
+        .run(conv.id, conv.senderId, srv('ann_role_signin_dm', m.language));
       db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
       try {
         notifyUser(m.id, 'role_signin', srv('ann_role_signin_bell_title', m.language),
@@ -3941,13 +3895,9 @@ function announceOneAccountToModels() {
   for (const m of models) {
     if (m.id === admin.id) continue;
     try {
-      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-      if (!conv) {
-        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-        conv = { id: Number(info.lastInsertRowid) };
-      }
+      const conv = announcementThreadFor(m.id, 'model', admin.id);
       db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-        .run(conv.id, admin.id, srv('ann_one_account_dm', m.language));
+        .run(conv.id, conv.senderId, srv('ann_one_account_dm', m.language));
       db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
       try {
         notifyUser(m.id, 'one_account', srv('ann_one_account_bell_title', m.language),
@@ -3980,13 +3930,9 @@ function announceThreadTapToModels() {
   for (const m of models) {
     if (m.id === admin.id) continue;
     try {
-      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-      if (!conv) {
-        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-        conv = { id: Number(info.lastInsertRowid) };
-      }
+      const conv = announcementThreadFor(m.id, 'model', admin.id);
       db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-        .run(conv.id, admin.id, `👆 UPDATE: One tap, straight to the message! Now when you tap a notification, it opens the message itself — no more landing on the list first. Messages, announcements, everything from us opens right up. Simple and easy 💋`);
+        .run(conv.id, conv.senderId, `👆 UPDATE: One tap, straight to the message! Now when you tap a notification, it opens the message itself — no more landing on the list first. Messages, announcements, everything from us opens right up. Simple and easy 💋`);
       db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
       try {
         notifyUser(m.id, 'thread_tap', '👆 UPDATE: One tap, straight to the message!',
@@ -4002,23 +3948,71 @@ function announceThreadTapToModels() {
 }
 
 /* ------------------------------------------------------------------ */
+/* SlutCamp notices thread — ONE-TIME launch announcement (stamp      */
+/* official_inbox_announced_at on platform_stats). Every model, fan   */
+/* and recruiter gets the intro DM as the FIRST entry of their own    */
+/* official thread + a bell that opens it (owner, Oct 18 2026: fans   */
+/* tapped announcement bells and landed on the chats list because     */
+/* fan blasts had no thread to open). Copy localized per recipient    */
+/* via the SRV table; fans hear the pinned-while-new framing, models  */
+/* and recruiters the always-there framing. Needs the house account:  */
+/* without one there is no official thread to introduce, so the       */
+/* stamp stays unset and a later boot retries.                        */
+/* ------------------------------------------------------------------ */
+function announceOfficialInbox() {
+  const st = db.prepare('SELECT official_inbox_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.official_inbox_announced_at) return 0;
+  const hid = houseAccountId();
+  if (!hid) return 0;
+  const people = db.prepare(
+    "SELECT id, role, language FROM users WHERE banned = 0 AND role IN ('model','fan','recruiter') AND id != ?")
+    .all(hid);
+  let sent = 0;
+  for (const p of people) {
+    try {
+      const conv = officialThreadFor(p.id);
+      if (!conv) continue;
+      const dm = srv(p.role === 'fan' ? 'ann_inbox_fan_dm' : 'ann_inbox_dm', p.language);
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, hid, dm);
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(p.id, 'official_inbox', srv('ann_inbox_bell_title', p.language),
+          srv('ann_inbox_bell_body', p.language), `/#chat/${conv.id}`);
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest */ }
+  }
+  if (sent > 0 || people.length === 0) {
+    db.prepare("UPDATE platform_stats SET official_inbox_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
 /* Fan blast — ONE-TIME bell + Web Push to every fan (stamp           */
 /* fan_preview_announced_at on platform_stats). Fans have no email or */
 /* text channel today (no provider; users held no contact info until  */
 /* the optional email opt-in shipped alongside this), so notifyUser — */
-/* bell row + push — is the entire fan channel. First use: profile    */
-/* preview videos are live, and notifications open straight to the    */
-/* message. No admin DM: fans have no standing broadcast thread.      */
+/* bell row + push — is the fan channel. First use: profile preview   */
+/* videos are live, and notifications open straight to the message.   */
+/* Since Oct 18 2026 the blast also persists into the fan's official  */
+/* SlutCamp thread and the bell opens it (postToOfficialThread);      */
+/* deployments without a house account keep the bell+push-only form.  */
 /* ------------------------------------------------------------------ */
 function announceFanPreviewToFans() {
   const st = db.prepare('SELECT fan_preview_announced_at FROM platform_stats WHERE id = 1').get();
   if (!st || st.fan_preview_announced_at) return 0;
   const fans = db.prepare("SELECT id FROM users WHERE role = 'fan' AND banned = 0").all();
+  const title = '🎬 NEW: Her profile video plays now!';
+  const body = "Tap any girl's profile — her preview video plays right there. Tap the video for sound 🔊 And your notifications now open straight to the message. Come see who's new 💋";
   let sent = 0;
   for (const f of fans) {
     try {
-      notifyUser(f.id, 'fan_news', '🎬 NEW: Her profile video plays now!',
-        "Tap any girl's profile — her preview video plays right there. Tap the video for sound 🔊 And your notifications now open straight to the message. Come see who's new 💋", '');
+      // The blast now also lives in his official SlutCamp thread, and
+      // the bell opens that thread (owner, Oct 18 2026). No house
+      // account in this deployment → bell+push only, as before.
+      const thr = postToOfficialThread(f.id, `${title}\n${body}`);
+      notifyUser(f.id, 'fan_news', title, body, thr ? `/#chat/${thr.id}` : '');
       sent++;
     } catch (e) { /* one bad fan must not block the rest */ }
   }
@@ -4043,13 +4037,9 @@ function announceLanguagesToModels() {
   for (const m of models) {
     if (m.id === admin.id) continue;
     try {
-      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
-      if (!conv) {
-        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
-        conv = { id: Number(info.lastInsertRowid) };
-      }
+      const conv = announcementThreadFor(m.id, 'model', admin.id);
       db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-        .run(conv.id, admin.id, srv('ann_lang_dm', m.language));
+        .run(conv.id, conv.senderId, srv('ann_lang_dm', m.language));
       db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
       try {
         notifyUser(m.id, 'languages', srv('ann_lang_bell_title', m.language),
@@ -4071,8 +4061,10 @@ function announceLanguagesToFans() {
   let sent = 0;
   for (const f of fans) {
     try {
+      const thr = postToOfficialThread(f.id,
+        `${srv('ann_lang_fan_title', f.language)}\n${srv('ann_lang_fan_body', f.language)}`);
       notifyUser(f.id, 'fan_languages', srv('ann_lang_fan_title', f.language),
-        srv('ann_lang_fan_body', f.language), '');
+        srv('ann_lang_fan_body', f.language), thr ? `/#chat/${thr.id}` : '');
       sent++;
     } catch (e) { /* one bad fan must not block the rest */ }
   }
@@ -4086,9 +4078,10 @@ function announceLanguagesToFans() {
 /* Suggestion Box announcement — ONE-TIME bell + Web Push to every    */
 /* fan (stamp suggestion_box_announced_at on platform_stats, set      */
 /* BEFORE sending so a mid-send crash can never double-blast). Each   */
-/* fan gets the copy in his stored language via the SRV table. No     */
-/* admin DM: fans have no standing broadcast thread (same fan channel */
-/* rule as the preview blast).                                        */
+/* fan gets the copy in his stored language via the SRV table. Since  */
+/* Oct 18 2026 the blast also persists into the fan's official        */
+/* SlutCamp thread and the bell opens it (same fan channel rule as    */
+/* the preview blast).                                                */
 /* ------------------------------------------------------------------ */
 function announceSuggestionBoxToFans() {
   const st = db.prepare('SELECT suggestion_box_announced_at FROM platform_stats WHERE id = 1').get();
@@ -4098,8 +4091,10 @@ function announceSuggestionBoxToFans() {
   let sent = 0;
   for (const f of fans) {
     try {
+      const thr = postToOfficialThread(f.id,
+        `${srv('ann_suggest_title', f.language)}\n${srv('ann_suggest_body', f.language)}`);
       notifyUser(f.id, 'suggestion_box', srv('ann_suggest_title', f.language),
-        srv('ann_suggest_body', f.language), '');
+        srv('ann_suggest_body', f.language), thr ? `/#chat/${thr.id}` : '');
       sent++;
     } catch (e) { /* one bad fan must not block the rest */ }
   }
@@ -4144,6 +4139,12 @@ function seed() {
   console.log('Seeded: admin/admin123 · bunny|stacey|bella/model123 · fandemo/fan123 ($100)');
 }
 seed();
+/* The official house account's username (see houseAccountId(), far   */
+/* below). Declared HERE, before the boot-time announcement sweeps    */
+/* run: since the Oct 18 2026 notices build those sweeps resolve the  */
+/* house account while this module is still evaluating, and a const   */
+/* declared later would still be in its temporal dead zone.          */
+const HOUSE_USERNAME = 'asceaaspade';
 sendPendingModelWelcomes();
 sendPendingModelGuides();
 sendPendingModelGuideVideos();
@@ -4163,6 +4164,7 @@ try { const n = announceFanPreviewToFans(); if (n) console.log(`[fanblast] Fan p
 try { const n = announceLanguagesToModels(); if (n) console.log(`[lang] Languages announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceLanguagesToFans(); if (n) console.log(`[fanlang] Languages blast sent to ${n} fans.`); } catch (e) { /* retry next boot */ }
 try { const n = announceSuggestionBoxToFans(); if (n) console.log(`[suggest] Suggestion box announcement sent to ${n} fans.`); } catch (e) { /* retry next boot */ }
+try { const n = announceOfficialInbox(); if (n) console.log(`[inbox] SlutCamp notices thread announced to ${n} users.`); } catch (e) { /* retry next boot */ }
 
 // One-time grandfathering for payout protection (Oct 16, 2026): every
 // earning recorded BEFORE this feature existed counts as fully matured —
@@ -4598,7 +4600,9 @@ function profilePicsList(modelRow) {
 /* username column is UNIQUE + NOCASE, so this match is exact and     */
 /* can never collide with a numeric id.                               */
 /* ------------------------------------------------------------------ */
-const HOUSE_USERNAME = 'asceaaspade';
+/* HOUSE_USERNAME itself is declared near the top of this file: the   */
+/* boot-time announcement sweeps call houseAccountId() during module  */
+/* evaluation, before a const down here would initialize (TDZ).       */
 function houseAccountId() {
   const r = db.prepare("SELECT id FROM users WHERE username = ? AND role = 'model'")
     .get(HOUSE_USERNAME);
@@ -4608,6 +4612,89 @@ function isHouseAccountId(userId) {
   if (!userId) return false;
   const hid = houseAccountId();
   return hid !== null && hid === userId;
+}
+
+/* ------------------------------------------------------------------ */
+/* The OFFICIAL SlutCamp notices thread (owner, Oct 18 2026): every   */
+/* user gets ONE conversation with the house account — the app's      */
+/* announcement inbox. It sits pinned at the top of Chats (fans see   */
+/* it while it holds unread notices, then it steps aside; models,     */
+/* recruiters and affiliate holders keep it permanently), it is       */
+/* READ-ONLY for users (only the announcement paths below may post    */
+/* into it), and every announcement bell links straight into it so a  */
+/* tap opens the message itself instead of the chats list.            */
+/* Identity: the (fan_id = the user, model_id = house) conversation,  */
+/* flagged is_official — UNIQUE(fan_id, model_id) keeps it singular.  */
+/* A pre-existing (user, house) thread is adopted into the role.      */
+/* ------------------------------------------------------------------ */
+function officialThreadFor(userId) {
+  const hid = houseAccountId();
+  if (!hid || !userId || userId === hid) return null;
+  let conv = db.prepare('SELECT * FROM conversations WHERE fan_id = ? AND model_id = ?')
+    .get(userId, hid);
+  if (!conv) {
+    const info = db.prepare('INSERT INTO conversations (fan_id, model_id, is_official) VALUES (?,?,1)')
+      .run(userId, hid);
+    conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(Number(info.lastInsertRowid));
+  } else if (!conv.is_official) {
+    db.prepare('UPDATE conversations SET is_official = 1 WHERE id = ?').run(conv.id);
+    conv = { ...conv, is_official: 1 };
+  }
+  return conv;
+}
+function isOfficialThread(conv) {
+  return !!conv && conv.is_official === 1 && isHouseAccountId(conv.model_id);
+}
+
+/* Resolve where an announcement for `recipientId` lands, and who it is
+ * "from". With the house account present (production), that is the
+ * official notices thread, sent by the house account itself. In a
+ * deployment with no house account, the legacy inbox shapes keep
+ * working exactly as before: the admin thread for a model recipient
+ * (admin on the fan side), or the admin-in-the-model-seat thread for
+ * a fan recipient (the apology-DM shape). Returns { id, senderId }. */
+function announcementThreadFor(recipientId, recipientRole, adminId) {
+  const hid = houseAccountId();
+  if (hid && recipientId !== hid) {
+    const conv = officialThreadFor(recipientId);
+    if (conv) return { id: conv.id, senderId: hid };
+  }
+  if (!adminId) return null;
+  let conv;
+  if (recipientRole === 'model') {
+    conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?')
+      .get(adminId, recipientId);
+    if (!conv) {
+      const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)')
+        .run(adminId, recipientId);
+      conv = { id: Number(info.lastInsertRowid) };
+    }
+  } else {
+    conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?')
+      .get(recipientId, adminId);
+    if (!conv) {
+      const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)')
+        .run(recipientId, adminId);
+      conv = { id: Number(info.lastInsertRowid) };
+    }
+  }
+  return { id: conv.id, senderId: adminId };
+}
+
+/* Persist one fan-facing announcement into the fan's official thread
+ * (the fan blast used to be bell+push only — fans had no thread the
+ * bell could open). Returns { id, senderId } or null when this
+ * deployment has no house account, in which case the blast stays
+ * bell+push only, exactly as before. */
+function postToOfficialThread(userId, text) {
+  const hid = houseAccountId();
+  if (!hid || userId === hid) return null;
+  const conv = officialThreadFor(userId);
+  if (!conv) return null;
+  db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+    .run(conv.id, hid, text);
+  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+  return { id: conv.id, senderId: hid };
 }
 
 // GET /api/models — PUBLIC so guests can browse before signing up.
@@ -5637,9 +5724,28 @@ app.get('/api/conversations', identMiddleware, (req, res) => {
   // filter applies only when the requester sits on the FAN side (a fan
   // account or a guest) — the house account's own model inbox and the
   // admin's announcement threads keep it.
+  // Oct 18 2026 refinement: the ONE exception is the official notices
+  // thread itself (is_official). A fan sees it pinned at the top of
+  // his Chats while it holds unread notices; once he has read them
+  // all it steps aside until the next announcement. A fan who also
+  // holds the affiliate capability keeps it permanently, like models
+  // and recruiters do — it is their affiliate inbox too.
   if (req.ident.kind === 'guest' || (req.ident.kind === 'user' && req.ident.user.role === 'fan')) {
     const hid = houseAccountId();
-    if (hid) convs = convs.filter((c) => c.model_id !== hid);
+    if (hid) {
+      const meId = req.ident.kind === 'user' ? req.ident.user.id : null;
+      const affHolder = meId
+        ? !!db.prepare('SELECT id FROM recruiters WHERE user_id = ?').get(meId)
+        : false;
+      convs = convs.filter((c) => {
+        if (c.model_id !== hid) return true;
+        if (!c.is_official || !meId) return false;
+        if (affHolder) return true;
+        const unread = db.prepare(`SELECT COUNT(*) AS n FROM messages
+          WHERE conversation_id = ? AND sender_id != ? AND is_read = 0`).get(c.id, meId).n;
+        return unread > 0;
+      });
+    }
   }
   const meId = req.ident.kind === 'user' ? req.ident.user.id : null;
   const out = convs.map((c) => {
@@ -5652,7 +5758,7 @@ app.get('/api/conversations', identMiddleware, (req, res) => {
                     WHERE conversation_id = ? AND guest_token != ? AND is_read = 0`)
           .get(c.id, req.ident.token).n;
     return { id: c.id, other: otherParty(c, req.ident), last_message: last || null,
-             unread_count: unread, is_paused: !!c.is_paused,
+             unread_count: unread, is_paused: !!c.is_paused, is_official: !!c.is_official,
              free_remaining: freeRemaining(req.ident, c.model_id),
              updated_at: c.updated_at };
   });
@@ -5858,7 +5964,11 @@ app.post('/api/messages', identMiddleware, (req, res) => {
   // unchanged), and admin announcement threads never have the house
   // account on the fan side writing through this endpoint (admins are
   // rejected above with admins_cannot_chat; broadcasts insert directly).
-  if (!isModelSender && isHouseAccountId(conv.model_id))
+  // Oct 18 2026: the official notices thread (is_official) is
+  // read-only for EVERYONE through this endpoint — fans, models,
+  // recruiters and the house account alike. Only the announcement
+  // paths may post into it, and they insert directly, never via here.
+  if (isHouseAccountId(conv.model_id) && (conv.is_official || !isModelSender))
     return res.status(403).json({ error: 'cannot_message_official',
       message: 'SlutCamp is the app itself — you can\'t message it. Catch us on a live instead! 💋' });
 
@@ -9544,7 +9654,7 @@ function ftPromote(modelId) {
   ftPushFan(fresh);
   pushToSubject(`u:${fresh.fan_id}`, { type: 'queue:your_turn', request: ftPublic(fresh) });
   notifyUser(fresh.fan_id, 'facetime', srv('bell_ft_turn_title', userLang(fresh.fan_id)),
-    srv('bell_ft_turn_body', userLang(fresh.fan_id), { model: fresh.model_name }),
+    srv('bell_ft_turn_body', userLang(fresh.fan_id), { model: ftPublic(fresh).model_name }),
     '/#chat');
   ftPushQueue(modelId);
 }
@@ -9682,7 +9792,7 @@ app.post('/api/facetime/:id/accept', identMiddleware, requireUser, requireRole('
   const fresh = ftGet(r.id);
   ftPushFan(fresh);
   notifyUser(fresh.fan_id, 'facetime', srv('bell_ft_accepted_title', userLang(fresh.fan_id)),
-    srv('bell_ft_accepted_body', userLang(fresh.fan_id), { model: fresh.model_name }), '/#chat');
+    srv('bell_ft_accepted_body', userLang(fresh.fan_id), { model: ftPublic(fresh).model_name }), '/#chat');
   res.json({ request: ftPublic(fresh), queued: false });
 });
 
@@ -11428,17 +11538,12 @@ function buildAvailability(modelId, days = SLOT_MAX_DAYS) {
 function sendAdminApologyDm(fanId, modelName, totalCents) {
   const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
   if (!admin || admin.id === fanId) return;
-  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?')
-    .get(fanId, admin.id);
-  if (!conv) {
-    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)')
-      .run(fanId, admin.id);
-    conv = { id: Number(info.lastInsertRowid) };
-  }
+  const conv = announcementThreadFor(fanId, 'fan', admin.id);
+  if (!conv) return;
   const amt = '$' + (totalCents / 100).toFixed(2);
   const body = srv('apology_dm_body', userLang(fanId), { model: modelName, amount: amt });
   db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-    .run(conv.id, admin.id, body);
+    .run(conv.id, conv.senderId, body);
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   try { notifyUser(fanId, 'message', '💬 SlutCamp', body.slice(0, 90), `/#chat/${conv.id}`); } catch (e) { /* bell is a bonus */ }
 }

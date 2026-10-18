@@ -200,6 +200,7 @@ const I18N = {
     featured: '⭐ Featured',
     official_label: 'Official',
     official_tagline: 'The app itself — lives, news & specials 💋',
+    official_readonly_hint: '📣 Official SlutCamp notices — announcements only, you can\'t reply here.',
     top_model: '👑 Top Model',
     per_msg_rate: '{price}/msg',
     per_min_rate: '{price}/min video',
@@ -852,6 +853,7 @@ const I18N = {
     featured: '⭐ Destacada',
     official_label: 'Oficial',
     official_tagline: 'La propia app — directos, novedades y especiales 💋',
+    official_readonly_hint: '📣 Avisos oficiales de SlutCamp — solo anuncios, no puedes responder aquí.',
     top_model: '👑 Modelo Top',
     per_msg_rate: '{price}/msj',
     per_min_rate: '{price}/min de video',
@@ -1504,6 +1506,7 @@ const I18N = {
     featured: '⭐ Destaque',
     official_label: 'Oficial',
     official_tagline: 'O próprio app — lives, novidades e especiais 💋',
+    official_readonly_hint: '📣 Avisos oficiais da SlutCamp — apenas anúncios, você não pode responder aqui.',
     top_model: '👑 Modelo Top',
     per_msg_rate: '{price}/msg',
     per_min_rate: '{price}/min de vídeo',
@@ -2156,6 +2159,7 @@ const I18N = {
     featured: '⭐ À la une',
     official_label: 'Officiel',
     official_tagline: 'L’application elle-même — directs, infos et offres spéciales 💋',
+    official_readonly_hint: '📣 Avis officiels SlutCamp — annonces uniquement, vous ne pouvez pas répondre ici.',
     top_model: '👑 Top Modèle',
     per_msg_rate: '{price}/message',
     per_min_rate: '{price}/min vidéo',
@@ -2808,6 +2812,7 @@ const I18N = {
     featured: '⭐ Empfohlen',
     official_label: 'Offiziell',
     official_tagline: 'Die App selbst — Lives, News & Specials 💋',
+    official_readonly_hint: '📣 Offizielle SlutCamp-Hinweise — nur Ankündigungen, Antworten ist hier nicht möglich.',
     top_model: '👑 Top-Model',
     per_msg_rate: '{price}/Nachr.',
     per_min_rate: '{price}/Min. Video',
@@ -3460,6 +3465,7 @@ const I18N = {
     featured: '⭐ Избранное',
     official_label: 'Официальный',
     official_tagline: 'Само приложение — эфиры, новости и акции 💋',
+    official_readonly_hint: '📣 Официальные уведомления SlutCamp — только объявления, ответить здесь нельзя.',
     top_model: '👑 Топ-модель',
     per_msg_rate: '{price}/сообщ.',
     per_min_rate: '{price}/мин видео',
@@ -4112,6 +4118,7 @@ const I18N = {
     featured: '⭐ 注目',
     official_label: '公式',
     official_tagline: 'アプリ公式 — ライブ・ニュース・特集 💋',
+    official_readonly_hint: '📣 SlutCamp公式のお知らせ — お知らせ専用です。ここには返信できません。',
     top_model: '👑 トップモデル',
     per_msg_rate: '{price}/通',
     per_min_rate: '{price}/分 ビデオ',
@@ -4764,6 +4771,7 @@ const I18N = {
     featured: '⭐ 精选',
     official_label: '官方',
     official_tagline: '应用官方 — 直播、资讯与特别活动 💋',
+    official_readonly_hint: '📣 SlutCamp 官方通知 — 仅用于发布公告，无法在此回复。',
     top_model: '👑 顶级模特',
     per_msg_rate: '{price}/条消息',
     per_min_rate: '{price}/分钟视频',
@@ -5416,6 +5424,7 @@ const I18N = {
     featured: '⭐ 추천',
     official_label: '공식',
     official_tagline: '앱 공식 — 라이브, 소식 & 특집 💋',
+    official_readonly_hint: '📣 SlutCamp 공식 공지 — 공지 전용이며 여기서는 답장할 수 없어요.',
     top_model: '👑 톱 모델',
     per_msg_rate: '{price}/메시지',
     per_min_rate: '{price}/분 영상',
@@ -6068,6 +6077,7 @@ const I18N = {
     featured: '⭐ In evidenza',
     official_label: 'Ufficiale',
     official_tagline: 'L’app stessa — live, novità e speciali 💋',
+    official_readonly_hint: '📣 Avvisi ufficiali SlutCamp — solo annunci, non puoi rispondere qui.',
     top_model: '👑 Top Model',
     per_msg_rate: '{price}/msg',
     per_min_rate: '{price}/min video',
@@ -6720,6 +6730,7 @@ const I18N = {
     featured: '⭐ Wyróżniona',
     official_label: 'Oficjalny',
     official_tagline: 'Sama aplikacja — transmisje, nowości i promocje 💋',
+    official_readonly_hint: '📣 Oficjalne powiadomienia SlutCamp — tylko ogłoszenia, nie możesz tu odpowiedzieć.',
     top_model: '👑 Top Modelka',
     per_msg_rate: '{price}/wiad.',
     per_min_rate: '{price}/min wideo',
@@ -7372,6 +7383,7 @@ const I18N = {
     featured: '⭐ Uitgelicht',
     official_label: 'Officieel',
     official_tagline: 'De app zelf — lives, nieuws & specials 💋',
+    official_readonly_hint: '📣 Officiële SlutCamp-meldingen — alleen aankondigingen, je kunt hier niet antwoorden.',
     top_model: '👑 Topmodel',
     per_msg_rate: '{price}/bericht',
     per_min_rate: '{price}/min video',
@@ -8024,6 +8036,7 @@ const I18N = {
     featured: '⭐ Öne Çıkan',
     official_label: 'Resmi',
     official_tagline: 'Uygulamanın ta kendisi — canlı yayınlar, haberler ve özel içerikler 💋',
+    official_readonly_hint: '📣 Resmi SlutCamp bildirimleri — yalnızca duyurular içindir, buradan yanıt veremezsin.',
     top_model: '👑 En İyi Model',
     per_msg_rate: '{price}/msj',
     per_min_rate: '{price}/dk video',
@@ -11109,7 +11122,11 @@ async function vLives() {
 
 async function vChatList(role) {
   const { data } = await api('/conversations');
-  const convs = data.conversations || [];
+  // The official SlutCamp notices thread is PINNED at the top of the
+  // list (owner, Oct 18 2026) — the server already decides whether it
+  // appears at all (fans: only while it holds unread notices).
+  const convs = (data.conversations || []).slice()
+    .sort((a, b) => (b.is_official ? 1 : 0) - (a.is_official ? 1 : 0));
   const title = role === 'model' ? t('your_chats') : t('chats_title');
   app.innerHTML = `
     <div class="header"><h1>${title}</h1>
@@ -11127,7 +11144,7 @@ async function vChatList(role) {
         <button class="list-item" data-conv="${c.id}">
           ${avatarHTML(c.other.display_name, 'sm', c.other.photo_url)}
           <span class="grow">
-            <span class="title">${esc(c.other.display_name)}
+            <span class="title">${esc(c.other.display_name)}${c.is_official ? ` <span class="official-pill">${t('official_label')}</span>` : ''}
               ${c.is_paused ? ` <span class="small" style="color:var(--red)">${t('paused_tag')}</span>` : ''}</span><br>
             <span class="preview">${c.last_message ? esc(c.last_message.body).slice(0, 60) : `<i>${t('no_messages_yet')}</i>`}</span>
           </span>
@@ -12398,6 +12415,7 @@ async function vRecruiter() {
     <div class="screen">
       ${sideSwitchHTML('aff')}
       ${affiliateSwitchNoteHTML()}
+      <div id="aff-notices"></div>
       <div class="card" style="background:linear-gradient(135deg,#2a2208,#1a1405);border-color:var(--gold);text-align:center">
         <div style="font-size:13px;color:#d4a843;font-weight:700;letter-spacing:1px">${t('rc_earnings_h')}</div>
         <div style="font-size:42px;font-weight:800;color:var(--green);margin:4px 0">${fmt(data.available_cents)}</div>
@@ -12465,6 +12483,26 @@ async function vRecruiter() {
       <button class="btn ghost" id="r-logout" style="margin-top:12px">${t('log_out')}</button>
     </div>`;
 
+  // SlutCamp notices: the official announcements thread lives
+  // permanently for affiliates (owner, Oct 18 2026) — one entry here
+  // opens it, since the affiliate side has no Chats tab of its own.
+  (async () => {
+    try {
+      const holder = $('#aff-notices');
+      if (!holder) return;
+      const { data: cd } = await api('/conversations');
+      const off = ((cd && cd.conversations) || []).find((c) => c.is_official);
+      if (!off) return;
+      holder.innerHTML = `<button class="list-item" id="aff-notices-open" style="width:100%;text-align:left;margin-bottom:12px">
+        ${avatarHTML(off.other.display_name, 'sm', off.other.photo_url)}
+        <span class="grow"><span class="title">${esc(off.other.display_name)} <span class="official-pill">${t('official_label')}</span></span><br>
+        <span class="small muted">${esc((off.last_message && off.last_message.body) || t('official_tagline'))}</span></span>
+        ${off.unread_count ? `<span class="badge">${off.unread_count}</span>` : ''}
+      </button>`;
+      const btn = $('#aff-notices-open');
+      if (btn) btn.onclick = () => show('chat', { conv: off });
+    } catch (e) { /* notices entry is a bonus; the dashboard stands */ }
+  })();
   $('#rc-copy').onclick = async () => {
     try { await navigator.clipboard.writeText(link); toast('Link copied 📋'); }
     catch { prompt('Copy your referral link:', link); }
@@ -13703,7 +13741,10 @@ async function vChat(params) {
 
   const isModel = S.user && S.user.role === 'model';
   const other = conv.other;
-  const canVideo = S.user && S.user.role === 'fan' && other.is_online && !conv.is_paused;
+  // The official SlutCamp notices thread (owner, Oct 18 2026):
+  // announcements only — no calls, no booking, no composer below.
+  const isOfficial = !!conv.is_official;
+  const canVideo = S.user && S.user.role === 'fan' && other.is_online && !conv.is_paused && !isOfficial;
 
   app.innerHTML = `
     <div class="chat-wrap">
@@ -13711,18 +13752,18 @@ async function vChat(params) {
       <button class="icon-btn" id="c-back">‹</button>
       ${avatarHTML(other.display_name, 'sm', other.photo_url)}
       <div class="grow">
-        <div class="name">${esc(other.display_name)}</div>
-        <div class="status">${conv.is_paused ? t('st_paused') : (other.is_online ? t('st_online') : t('st_offline'))}</div>
+        <div class="name">${esc(other.display_name)}${isOfficial ? ` <span class="official-pill">${t('official_label')}</span>` : ''}</div>
+        <div class="status">${isOfficial ? t('official_tagline') : (conv.is_paused ? t('st_paused') : (other.is_online ? t('st_online') : t('st_offline')))}</div>
       </div>
       ${!isModel && !S.user ? `<span class="small" style="color:var(--pink);font-weight:700">${t('free_left', { n: conv.free_remaining })}</span>` : ''}
       ${canVideo ? `<button class="icon-btn" id="c-video" title="Video call">📹</button>` : ''}
-      ${S.user && S.user.role === 'fan' ? `<button class="btn-book" id="c-book" title="${t('book_title')}">${t('book_1on1')}</button>` : ''}
+      ${S.user && S.user.role === 'fan' && !isOfficial ? `<button class="btn-book" id="c-book" title="${t('book_title')}">${t('book_1on1')}</button>` : ''}
     </div>
     ${conv.is_paused ? `
       <div class="rate-hint" style="background:rgba(248,113,113,.12);color:#fca5a5;font-weight:700">
         ${t('chat_paused_banner')}<br><span class="small">${t('sharing_not_allowed')}</span>
       </div>` : ''}
-    ${!isModel && !conv.is_paused ? `
+    ${!isModel && !isOfficial && !conv.is_paused ? `
       <div class="rate-hint">${S.user
         ? t('msgs_cost', { price: fmt(other.per_message_cents) })
         : t('free_msgs_left', { n: conv.free_remaining })}</div>` : ''}
@@ -13747,6 +13788,14 @@ async function vChat(params) {
     <input type="file" id="ppv-file-cam" class="file-offscreen" accept="image/*,video/*">
     </div>`;
 
+  // Notices thread: the composer becomes a static read-only bar —
+  // announcements only, nobody can reply (the server 403s the send too).
+  if (isOfficial) {
+    const ftr = app.querySelector('.chat-footer');
+    if (ftr) ftr.outerHTML = `<div class="official-readonly">${t('official_readonly_hint')}</div>`;
+    const pf = $('#ppv-file-cam');
+    if (pf) pf.remove();
+  }
   $('#c-back').onclick = () => {
     if (!S.user) show('landing', {});
     else if (isModel) show('modelChats', {});
@@ -13756,8 +13805,8 @@ async function vChat(params) {
   if (!isModel) lockCopyForFans(app, $('#c-input'));
   const vb = $('#c-video');
   if (vb) vb.onclick = openFaceTimeSheet;
-  if (!isModel && S.user) refreshFtPanel();
-  if (isModel) refreshFtCard();
+  if (!isModel && S.user && !isOfficial) refreshFtPanel();
+  if (isModel && !isOfficial) refreshFtCard();
   const bb = $('#c-book');
   if (bb) bb.onclick = () => openSlotBookingSheet(conv.other.id, conv.other.display_name,
     conv.other.per_minute_cents || 399);
@@ -13793,6 +13842,9 @@ async function vChat(params) {
   api(`/conversations/${conv.id}/read`, { method: 'POST' })
     .then(() => refreshTabBadges()).catch(() => {});
 
+  // Notices thread: messages are rendered and marked read above; there
+  // is no composer to wire (the footer was swapped for the read-only bar).
+  if (isOfficial) return;
   const input = $('#c-input');
   const send = () => {
     const ep = $('#emoji-panel');
@@ -16658,7 +16710,8 @@ async function vNotifications() {
       const convs = (data && data.conversations) || [];
       const conv = convId
         ? convs.find((c) => c.id === convId)
-        : convs.find((c) => c.other && c.other.role === 'admin');
+        : convs.find((c) => c.is_official)
+          || convs.find((c) => c.other && c.other.role === 'admin');
       if (conv) { show('chat', { conv }); return; }
     } catch (e) { /* fall through to the chats list */ }
     show(chatsView, {});
@@ -16703,7 +16756,13 @@ async function vNotifications() {
     const ADMIN_DM_TYPES = ['message', 'welcome', 'guide', 'guide_video',
       'home_screen_video', 'id_verify', 'affiliate_program', 'game_category',
       'agreement_12', 'public_photo', 'notif_fix', 'preview_video'];
-    if (!link && n && ADMIN_DM_TYPES.includes(n.type) && typeof openNotifThread === 'function') {
+    // Announcement bells (owner, Oct 18 2026): the fan blasts and the
+    // newer model announcements resolve to the official notices
+    // thread — openNotifThread prefers it for convId 0.
+    const ANNOUNCE_TYPES = ['fan_news', 'fan_languages', 'suggestion_box',
+      'languages', 'thread_tap', 'profile_media', 'role_signin',
+      'one_account', 'official_inbox'];
+    if (!link && n && (ADMIN_DM_TYPES.includes(n.type) || ANNOUNCE_TYPES.includes(n.type)) && typeof openNotifThread === 'function') {
       openNotifThread(0, role);
       return true;
     }
