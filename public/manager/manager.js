@@ -772,6 +772,43 @@ async function adminBookingsBody() {
       </div>`).join('') || '<div class="empty">No bookings yet.</div>'}`;
 }
 
+/* 🔗 Affiliates — read-only signup + §10 quota tracking (owner request,
+   Oct 17 2026: "add a Affiliate section that keep track of how many
+   affiliate signed up"). Management actions (create/remove) live on
+   the Partners screen; this one just tracks. */
+async function adminAffiliatesBody() {
+  const { data } = await api('/admin/affiliates');
+  const s = (data && data.stats) || {};
+  const rows = (data && data.affiliates) || [];
+  const dateOf = (iso) => String(iso || '').slice(0, 10);
+  return `
+    <div class="stat-grid" style="margin-bottom:12px">
+      <div class="stat"><div class="n">${s.total_affiliates ?? '—'}</div><div class="l">Affiliates signed up</div></div>
+      <div class="stat"><div class="n">${s.new_last_30_days ?? '—'}</div><div class="l">New in last 30 days</div></div>
+      <div class="stat"><div class="n">${s.models_onboarded ?? '—'}</div><div class="l">Models onboarded via affiliate links</div></div>
+      <div class="stat"><div class="n" style="color:var(--green)">${fmt(s.recruiter_earnings_cents || 0)}</div><div class="l">Recruiter earnings · all-time</div></div>
+    </div>
+    <div class="muted small" style="margin-bottom:10px">Each affiliate has <b>one year</b> from signup to onboard <b>10 models</b> through her link (Recruiter Agreement §10). The year-end review is manual — this screen never revokes anyone automatically.</div>
+    ${rows.map((a) => {
+      const target = a.quota_target || 10;
+      const pct = Math.min(100, Math.round(((a.models_onboarded || 0) / target) * 100));
+      return `
+      <div class="card" style="padding:12px">
+        <div class="row">
+          <span class="grow"><b>${esc(a.recruiter_name || a.display_name)}</b>
+            ${a.banned ? ' <span class="small" style="color:var(--red)">⛔ removed</span>' : ''}<br>
+            <span class="small muted">@${esc(a.username)} · signed up ${dateOf(a.signed_up_at)}${a.city ? ` · ${esc(a.city)}` : ''}${a.referral_code ? ` · link code <b>${esc(a.referral_code)}</b>` : ''}</span></span>
+          <span style="text-align:right"><b style="color:var(--green)">${fmt(a.earnings_cents || 0)}</b><br>
+            <span class="small muted">earned</span></span>
+        </div>
+        <div style="margin-top:8px">
+          <div class="row small"><span class="grow">Models onboarded: <b>${a.models_onboarded} / ${target}</b>${a.quota_met ? ' ✅ quota met' : ''}</span><span class="muted">first year ends ${esc(a.year_end || '')}</span></div>
+          <div style="height:8px;border-radius:99px;background:rgba(255,255,255,.08);margin-top:6px;overflow:hidden"><div style="height:100%;width:${pct}%;border-radius:99px;background:linear-gradient(90deg,var(--pink),var(--purple))"></div></div>
+        </div>
+      </div>`;
+    }).join('') || '<div class="empty">No affiliates have signed up yet.</div>'}`;
+}
+
 async function adminPartnersBody() {
   const { data } = await api('/admin/recruiters');
   const partners = data.recruiters || [];
@@ -1975,7 +2012,7 @@ const NAV = [
   ['invites', '✉️ Invites'], ['chats', '👀 Chats'], ['safety', '🛡️ Safety'],
   ['live', '🔴 Live'], ['payouts', '💸 Payouts'], ['tax', '🧾 Tax'],
   ['dmca', '⚖️ DMCA'], ['fans', '🧑 Fans'], ['suggestions', '💡 Suggestions'], ['bookings', '📅 Bookings'],
-  ['contracts', '📝 Contracts'], ['partners', '🤝 Partners'],
+  ['contracts', '📝 Contracts'], ['partners', '🤝 Partners'], ['affiliates', '🔗 Affiliates'],
   ['refunds', '💳 Refunds'], ['disputes', '⚠️ Disputes'],
   ['analytics', '📈 Analytics'], ['more', '⚙️ Settings'],
 ];
@@ -1984,7 +2021,7 @@ const NAV = [
    source of labels/titles). '' heading = no heading row. */
 const NAV_GROUPS = [
   ['', ['dash']],
-  ['People', ['models', 'idchecks', 'fans', 'suggestions', 'partners']],
+  ['People', ['models', 'idchecks', 'fans', 'suggestions', 'partners', 'affiliates']],
   ['Money', ['payouts', 'tax', 'refunds', 'disputes']],
   ['Safety & Content', ['chats', 'live', 'safety', 'dmca']],
   ['Growth', ['invites', 'bookings', 'contracts', 'analytics']],
@@ -2016,6 +2053,7 @@ async function overviewBody(stats) {
       <div class="stat"><div class="n">${o.live_now ?? '—'}</div><div class="l">Live now</div></div>
       <div class="stat"><div class="n">${o.fans ?? '—'}</div><div class="l">Fans</div></div>
       <div class="stat"><div class="n">${o.models ?? '—'}</div><div class="l">Models</div></div>
+      <div class="stat"><div class="n">${o.affiliates ?? '—'}</div><div class="l">Affiliates</div></div>
       <div class="stat"><div class="n" style="color:${o.open_dmca ? 'var(--red)' : 'inherit'}">${o.open_dmca ?? '—'}</div><div class="l">Open DMCA</div></div>
       <div class="stat"><div class="n" style="color:var(--green)">${fmt(o.gross_today_cents || 0)}</div><div class="l">Gross today</div></div>
     </div>`;
@@ -2027,7 +2065,7 @@ const SCREENS = {
   chats: adminChatsBody, safety: adminSafetyBody, live: adminLiveBody,
   models: adminModelsBody, invites: adminInvitesBody, payouts: adminPayoutsBody,
   fans: adminFansBody, bookings: adminBookingsBody, contracts: adminContractsBody,
-  idchecks: adminIdChecksBody, partners: adminPartnersBody, refunds: adminRefundsBody,
+  idchecks: adminIdChecksBody, partners: adminPartnersBody, affiliates: adminAffiliatesBody, refunds: adminRefundsBody,
   disputes: adminDisputesBody, tax: adminTaxBody, dmca: adminDmcaBody,
   suggestions: adminSuggestionsBody,
   analytics: adminAnalyticsBody, more: adminMoreBody,

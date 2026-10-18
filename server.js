@@ -11854,6 +11854,7 @@ app.get('/api/admin/overview', ...adminOnly, (req, res) => {
       (SELECT COUNT(*) FROM live_sessions WHERE status = 'live') AS live_now,
       (SELECT COUNT(*) FROM users WHERE role = 'fan' AND banned = 0) AS fans,
       (SELECT COUNT(*) FROM users WHERE role = 'model' AND banned = 0) AS models,
+      (SELECT COUNT(*) FROM users WHERE role = 'recruiter') AS affiliates,
       (SELECT COUNT(*) FROM dmca_notices WHERE status IN ('received','under_review')) AS open_dmca,
       (SELECT COUNT(*) FROM safety_incidents WHERE status = 'open') AS open_incidents`).get();
   const LEDGER_SUM = `
@@ -12369,6 +12370,50 @@ app.get('/api/admin/recruiters', ...adminOnly, (req, res) => {
              WHERE t.recruiter_id = r.id AND t.platform_cents > 0) AS corrys_cut_cents
     FROM recruiters r JOIN users u ON u.id = r.user_id JOIN wallets w ON w.user_id = u.id
     ORDER BY r.created_at DESC`).all() });
+});
+
+/* Admin — Affiliates tracking (Manager 🔗 Affiliates screen): how many
+   affiliates have signed up + each affiliate's §10 first-year quota
+   progress. READ-ONLY — the quota review at year end is a human/Manager
+   decision (Recruiter Agreement R1.3 §10); nothing here revokes or
+   enforces anything. Roster = recruiter-role accounts (LEFT JOIN the
+   recruiters row, so the total always matches the roster length; a
+   model counts via models.recruiter_id, the same attribution
+   splitPayment pays on). Money reads the ledger with the Manager's
+   standard ruler (is_test = 0 + earning types, like /api/admin/overview). */
+app.get('/api/admin/affiliates', ...adminOnly, (req, res) => {
+  const EARN_TYPES = `('message','call','tip','ppv','voice','live_explicit','gift','game')`;
+  const stats = db.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM users WHERE role = 'recruiter') AS total_affiliates,
+      (SELECT COUNT(*) FROM users WHERE role = 'recruiter'
+        AND created_at >= datetime('now', '-30 days')) AS new_last_30_days,
+      (SELECT COUNT(*) FROM models WHERE recruiter_id IS NOT NULL) AS models_onboarded,
+      (SELECT COALESCE(SUM(recruiter_cents), 0) FROM transactions
+        WHERE is_test = 0 AND recruiter_id IS NOT NULL
+          AND type IN ${EARN_TYPES}) AS recruiter_earnings_cents`).get();
+  const affiliates = db.prepare(`
+    SELECT u.id AS user_id, u.username, u.display_name, u.banned,
+           u.created_at AS signed_up_at,
+           r.id AS recruiter_id, r.name AS recruiter_name, r.city, r.referral_code,
+           (SELECT COUNT(*) FROM models m WHERE m.recruiter_id = r.id) AS models_onboarded,
+           (SELECT COALESCE(SUM(t.recruiter_cents), 0) FROM transactions t
+             WHERE t.recruiter_id = r.id AND t.is_test = 0
+               AND t.type IN ${EARN_TYPES}) AS earnings_cents
+    FROM users u LEFT JOIN recruiters r ON r.user_id = u.id
+    WHERE u.role = 'recruiter'
+    ORDER BY u.created_at DESC`).all();
+  const QUOTA_TARGET = 10; // Recruiter Agreement §10: 10 models in year one
+  for (const a of affiliates) {
+    a.banned = !!a.banned;
+    a.quota_target = QUOTA_TARGET;
+    a.quota_met = a.models_onboarded >= QUOTA_TARGET;
+    // First-year window ends exactly one year after signup (§10).
+    const d = new Date(String(a.signed_up_at).replace(' ', 'T') + 'Z');
+    d.setUTCFullYear(d.getUTCFullYear() + 1);
+    a.year_end = d.toISOString().slice(0, 10);
+  }
+  res.json({ stats, affiliates });
 });
 
 // Admin: remove a partner (their models stay; revenue reverts to Corry)
