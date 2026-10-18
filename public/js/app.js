@@ -571,6 +571,9 @@ const I18N = {
     end_stream: 'End Stream',
     pause_live: '⏸ Pause',
     resume_live: '▶ Resume',
+    lock_rotation: '🔓 Lock rotation',
+    rotation_locked: '🔒 Rotation locked',
+    rotation_lock_unsupported: 'Rotation lock isn\'t available in this browser — use your phone\'s own rotation lock (Control Center) instead 🔒',
     brb_title: 'Hold your nutt 💦',
     brb_sub: 'We\'ll be right back',
     brb_name: '{name} will be right back',
@@ -1225,6 +1228,9 @@ const I18N = {
     end_stream: 'Terminar transmisión',
     pause_live: '⏸ Pausar',
     resume_live: '▶ Reanudar',
+    lock_rotation: '🔓 Bloquear rotación',
+    rotation_locked: '🔒 Rotación bloqueada',
+    rotation_lock_unsupported: 'El bloqueo de rotación no está disponible en este navegador — usa el bloqueo de rotación de tu teléfono (Centro de control) 🔒',
     brb_title: 'Aguanta tu nutt 💦',
     brb_sub: 'Volvemos enseguida',
     brb_name: '{name} vuelve enseguida',
@@ -1879,6 +1885,9 @@ const I18N = {
     end_stream: 'Encerrar live',
     pause_live: '⏸ Pausar',
     resume_live: '▶ Continuar',
+    lock_rotation: '🔓 Bloquear rotação',
+    rotation_locked: '🔒 Rotação bloqueada',
+    rotation_lock_unsupported: 'O bloqueio de rotação não está disponível neste navegador — use o bloqueio de rotação do seu telefone (Central de Controle) 🔒',
     brb_title: 'Segura seu nutt 💦',
     brb_sub: 'A gente já volta',
     brb_name: '{name} já volta',
@@ -2533,6 +2542,9 @@ const I18N = {
     end_stream: 'Terminer le stream',
     pause_live: '⏸ Pause',
     resume_live: '▶ Reprendre',
+    lock_rotation: '🔓 Verrouiller la rotation',
+    rotation_locked: '🔒 Rotation verrouillée',
+    rotation_lock_unsupported: 'Le verrouillage de la rotation n\'est pas disponible dans ce navigateur — utilisez le verrouillage de rotation de votre téléphone (Centre de contrôle) 🔒',
     brb_title: 'Gardez votre nutt 💦',
     brb_sub: 'On revient tout de suite',
     brb_name: '{name} revient tout de suite',
@@ -3187,6 +3199,9 @@ const I18N = {
     end_stream: 'Stream beenden',
     pause_live: '⏸ Pause',
     resume_live: '▶ Fortsetzen',
+    lock_rotation: '🔓 Drehung sperren',
+    rotation_locked: '🔒 Drehung gesperrt',
+    rotation_lock_unsupported: 'Die Drehsperre ist in diesem Browser nicht verfügbar — nutze stattdessen die Drehsperre deines Telefons (Kontrollzentrum) 🔒',
     brb_title: 'Halte deinen Nutt 💦',
     brb_sub: 'Wir sind gleich zurück',
     brb_name: '{name} ist gleich zurück',
@@ -3841,6 +3856,9 @@ const I18N = {
     end_stream: 'Завершить трансляцию',
     pause_live: '⏸ Пауза',
     resume_live: '▶ Возобновить',
+    lock_rotation: '🔓 Заблокировать поворот',
+    rotation_locked: '🔒 Поворот заблокирован',
+    rotation_lock_unsupported: 'Блокировка поворота недоступна в этом браузере — используйте блокировку поворота в Пункте управления вашего телефона 🔒',
     brb_title: 'Придержи свой Nutt 💦',
     brb_sub: 'Мы скоро вернёмся',
     brb_name: '{name} скоро вернётся',
@@ -4495,6 +4513,9 @@ const I18N = {
     end_stream: '配信を終了',
     pause_live: '⏸ 一時停止',
     resume_live: '▶ 再開',
+    lock_rotation: '🔓 回転をロック',
+    rotation_locked: '🔒 回転ロック中',
+    rotation_lock_unsupported: 'このブラウザでは画面の回転ロックが使えません — スマホのコントロールセンターで回転をロックしてください 🔒',
     brb_title: 'Nuttを待っててね 💦',
     brb_sub: 'すぐ戻ります',
     brb_name: '{name}はすぐ戻ります',
@@ -5149,6 +5170,9 @@ const I18N = {
     end_stream: '结束直播',
     pause_live: '⏸ 暂停',
     resume_live: '▶ 继续',
+    lock_rotation: '🔓 锁定旋转',
+    rotation_locked: '🔒 旋转已锁定',
+    rotation_lock_unsupported: '此浏览器不支持屏幕旋转锁定 — 请使用手机自带的旋转锁定（控制中心）🔒',
     brb_title: 'Hold your nutt 💦',
     brb_sub: '我们马上回来',
     brb_name: '{name} 马上回来',
@@ -5803,6 +5827,9 @@ const I18N = {
     end_stream: '스트림 종료',
     pause_live: '⏸ 일시 중지',
     resume_live: '▶ 재개',
+    lock_rotation: '🔓 회전 잠금',
+    rotation_locked: '🔒 회전 잠김',
+    rotation_lock_unsupported: '이 브라우저에서는 화면 회전 잠금을 사용할 수 없어요 — 휴대폰 제어 센터에서 회전을 잠가주세요 🔒',
     brb_title: '조금만 참아주세요 💦',
     brb_sub: '곧 돌아올게요',
     brb_name: '{name}님이 곧 돌아옵니다',
@@ -6457,6 +6484,9 @@ const I18N = {
     end_stream: 'Termina stream',
     pause_live: '⏸ Pausa',
     resume_live: '▶ Riprendi',
+    lock_rotation: '🔓 Blocca rotazione',
+    rotation_locked: '🔒 Rotazione bloccata',
+    rotation_lock_unsupported: 'Il blocco della rotazione non è disponibile in questo browser — usa il blocco rotazione del telefono (Centro di controllo) 🔒',
     brb_title: 'Trattieni il tuo nutt 💦',
     brb_sub: 'Torniamo subito',
     brb_name: '{name} torna subito',
@@ -7111,6 +7141,9 @@ const I18N = {
     end_stream: 'Zakończ transmisję',
     pause_live: '⏸ Wstrzymaj',
     resume_live: '▶ Wznów',
+    lock_rotation: '🔓 Zablokuj obrót',
+    rotation_locked: '🔒 Obrót zablokowany',
+    rotation_lock_unsupported: 'Blokada obrotu ekranu nie jest dostępna w tej przeglądarce — użyj blokady obrotu w Centrum sterowania telefonu 🔒',
     brb_title: 'Przytrzymaj swój nutt 💦',
     brb_sub: 'Zaraz wracamy',
     brb_name: '{name} zaraz wróci',
@@ -7765,6 +7798,9 @@ const I18N = {
     end_stream: 'Stream beëindigen',
     pause_live: '⏸ Pauzeren',
     resume_live: '▶ Hervatten',
+    lock_rotation: '🔓 Rotatie vergrendelen',
+    rotation_locked: '🔒 Rotatie vergrendeld',
+    rotation_lock_unsupported: 'Rotatievergrendeling is niet beschikbaar in deze browser — gebruik de rotatievergrendeling van je telefoon (bedieningspaneel) 🔒',
     brb_title: 'Houd je nutt vast 💦',
     brb_sub: 'We zijn zo terug',
     brb_name: '{name} is zo terug',
@@ -8419,6 +8455,9 @@ const I18N = {
     end_stream: 'Yayını Bitir',
     pause_live: '⏸ Duraklat',
     resume_live: '▶ Devam et',
+    lock_rotation: '🔓 Döndürmeyi kilitle',
+    rotation_locked: '🔒 Döndürme kilitli',
+    rotation_lock_unsupported: 'Bu tarayıcıda ekran döndürme kilidi kullanılamıyor — telefonunun Denetim Merkezi\'ndeki döndürme kilidini kullan 🔒',
     brb_title: 'Nutt\'ını tut 💦',
     brb_sub: 'Hemen döneceğiz',
     brb_name: '{name} hemen dönecek',
@@ -16228,6 +16267,77 @@ function untrackLiveBand() {
   kbTrack = null;
 }
 
+/* --- Broadcaster rotation lock (owner, 2026-10-18: "Let them be able
+ * to lock screen from rotating"). Android Chrome exposes
+ * screen.orientation.lock(), which requires fullscreen first; iOS
+ * Safari has NO Orientation Lock API at all — there the toggle must
+ * degrade honestly (a toast pointing her at the phone's own Control
+ * Center lock) instead of pretending. State is module-level so a
+ * re-render of the broadcast view (BRB, rejoin) keeps the label true.
+ * Fullscreen is only TAKEN on phone-like viewports: the app column is
+ * max-width 480, and fullscreening it on a desktop-width screen would
+ * stretch the live layout across a monitor — there we attempt the bare
+ * lock and let a rejection fall through to the same honest toast. --- */
+let rotLockOn = false;  // our orientation lock is engaged
+let rotLockFs = false;  // WE entered fullscreen to hold the lock
+
+function rotLockSupported() {
+  return !!(window.screen && screen.orientation && typeof screen.orientation.lock === 'function');
+}
+
+function syncRotLockBtn() {
+  const b = $('#live-rotlock-btn');
+  if (!b) return;
+  b.textContent = rotLockOn ? t('rotation_locked') : t('lock_rotation');
+  b.classList.toggle('danger', rotLockOn);
+}
+
+async function toggleRotationLock() {
+  if (rotLockOn) { releaseRotationLock(); return; }
+  if (!rotLockSupported()) return toast(t('rotation_lock_unsupported'), 4500);
+  try {
+    const phoneLike = !!(window.matchMedia && window.matchMedia('(max-width: 640px)').matches);
+    const root = document.documentElement;
+    if (phoneLike && root.requestFullscreen && !document.fullscreenElement) {
+      await root.requestFullscreen();
+      rotLockFs = true;
+    }
+    const type = (screen.orientation && screen.orientation.type) || '';
+    await screen.orientation.lock(type.indexOf('landscape') === 0 ? 'landscape' : 'portrait');
+    rotLockOn = true;
+  } catch (e) {
+    // Lock refused (no fullscreen on a wide screen, desktop browser,
+    // embedded webview…) — undo any fullscreen we took and degrade to
+    // the same honest instruction as iOS. Never a dead button.
+    if (rotLockFs) { try { document.exitFullscreen(); } catch (err) {} rotLockFs = false; }
+    toast(t('rotation_lock_unsupported'), 4500);
+  }
+  syncRotLockBtn();
+}
+
+function releaseRotationLock() {
+  if (window.screen && screen.orientation && typeof screen.orientation.unlock === 'function') {
+    try { screen.orientation.unlock(); } catch (e) {}
+  }
+  if (rotLockFs && document.fullscreenElement) {
+    try { document.exitFullscreen(); } catch (e) {}
+  }
+  rotLockOn = false;
+  rotLockFs = false;
+  syncRotLockBtn();
+}
+
+/* If SHE leaves fullscreen herself (Android back gesture / Esc), Chrome
+ * drops the orientation lock with it — keep our flag (and the button
+ * label) honest instead of claiming a lock that no longer exists. */
+document.addEventListener('fullscreenchange', () => {
+  if (rotLockOn && rotLockFs && !document.fullscreenElement) {
+    rotLockOn = false;
+    rotLockFs = false;
+    syncRotLockBtn();
+  }
+});
+
 function vLiveBroadcast() {
   const L = S.live;
   if (!L) return show('modelChats', {});
@@ -16235,7 +16345,7 @@ function vLiveBroadcast() {
     <div class="live-wrap broadcast${L.brb ? ' brb-on' : ''}">
       <div id="live-split" class="live-split full">
         <div class="split-pane" id="split-model">
-          <video id="live-local" autoplay playsinline muted></video>
+          <video id="live-local" class="mirror-self" autoplay playsinline muted></video>
           <div class="split-name" id="split-model-name">${esc(S.model?.display_name || 'You')}</div>
           <div id="live-brb-overlay" class="${L.brb ? '' : 'hidden'}">${liveBrbCardHTML(S.model?.display_name || S.user?.display_name || '')}<button class="btn" id="live-brb-resume" style="margin-top:18px">${t('resume_live')}</button><button class="btn danger" id="live-brb-end" style="margin-top:10px">${t('end_stream')}</button></div>
         </div>
@@ -16266,6 +16376,7 @@ function vLiveBroadcast() {
         <div class="row live-toggle-row" style="gap:8px;margin-bottom:8px">
           <button class="btn small ghost" id="live-mic-btn" style="flex:1">${t('mic_on')}</button>
           <button class="btn small ghost" id="live-cam-btn" style="flex:1">${t('cam_on')}</button>
+          <button class="btn small ghost" id="live-rotlock-btn" style="flex:1">${t('lock_rotation')}</button>
         </div>
         <div class="stream-chat-input live-typing-bubble">
           <input id="stream-chat-box" class="input" placeholder="${t('say_fans_ph')}" maxlength="500" autocomplete="off">
@@ -16317,6 +16428,10 @@ function vLiveBroadcast() {
     camBtn.textContent = track.enabled ? t('cam_on') : t('cam_off');
     camBtn.classList.toggle('danger', !track.enabled);
   };
+  // Rotation lock toggle (broadcaster only; state survives re-renders)
+  const rotBtn = $('#live-rotlock-btn');
+  if (rotBtn) rotBtn.onclick = toggleRotationLock;
+  syncRotLockBtn();
   renderStreamChat();
   renderLeaderboard();
   renderStageRequests();
@@ -17918,7 +18033,7 @@ function vLiveWatch() {
     <div class="live-wrap${L.brb ? ' brb-on' : ''}">
       <video id="live-remote" autoplay playsinline muted></video>
       <button id="live-unmute" class="hidden" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;padding:12px 24px;border-radius:999px;border:none;background:rgba(0,0,0,.7);color:#fff;font-size:16px;font-weight:700;cursor:pointer">🔊 Tap for sound</button>
-      <video id="fan-selfview" autoplay playsinline muted class="hidden"></video>
+      <video id="fan-selfview" autoplay playsinline muted class="mirror-self hidden"></video>
       <div id="live-blur-overlay" class="hidden">
         <div style="font-size:52px">🔞</div>
         <div id="live-blur-title" style="font-weight:800;font-size:19px;margin:8px 0">She's getting explicit…</div>
@@ -18316,6 +18431,9 @@ async function handleLiveSignal(m) {
 }
 
 function endLiveView(msg) {
+  // Rotation lock never outlives the broadcast (no-op if never engaged
+  // or if this is a fan leaving — fans never hold the lock).
+  releaseRotationLock();
   const L = S.live;
   if (L) {
     clearInterval(liveMonitorInt);

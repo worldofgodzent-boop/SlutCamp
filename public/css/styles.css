@@ -546,11 +546,23 @@ body.bg-blur #app { filter: blur(24px); }
 .btn-call.decline { background: #ef4444; }
 #active-call { flex-direction: column; }
 #remote-video { width: 100%; height: 100%; object-fit: cover; background: #000; }
+/* Self-view mirroring (owner, 2026-10-18: "I raise my left hand, but I
+   see it in the right side of the screen"): every mainstream app shows
+   you your own camera MIRRORED (FaceTime / IG Live / Zoom) — raise your
+   left hand and it rises on the left of your preview. CSS transforms are
+   display-only: the WebRTC track fans receive is never touched, so the
+   other side always sees her naturally. #local-video only ever displays
+   the user's OWN camera (calls), so it is mirrored here; the live
+   self-views carry the shared .mirror-self class in their markup.
+   NEVER mirror #remote-video, #live-remote or #stage-video — those show
+   ANOTHER person, who must appear natural. */
 #local-video {
   position: absolute; top: calc(16px + env(safe-area-inset-top)); right: 16px;
   width: 110px; height: 150px; object-fit: cover; border-radius: 12px;
   border: 2px solid var(--purple); background: #000;
+  transform: scaleX(-1);
 }
+.mirror-self { transform: scaleX(-1); }
 .call-hud {
   position: absolute; bottom: calc(40px + env(safe-area-inset-bottom));
   display: flex; flex-direction: column; align-items: center; gap: 10px;
