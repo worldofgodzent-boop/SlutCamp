@@ -66,8 +66,8 @@ test('pins: server — DM block lives on both write paths with one error code', 
     'block is checked before any conversation is created');
   const send = server.slice(server.indexOf("app.post('/api/messages'"),
     server.indexOf("app.post('/api/messages/:id/react'"));
-  assert.ok(send.includes('!isModelSender && isHouseAccountId(conv.model_id)'),
-    'send block is scoped to the fan/guest side only');
+  assert.ok(send.includes('isHouseAccountId(conv.model_id) && (conv.is_official || !isModelSender)'),
+    'send block: the official notices thread rejects every send; other house threads stay fan-side-blocked (notices build, Oct 18 2026)');
 });
 
 test('pins: server — fan-side conversation lists filter the house account', () => {
