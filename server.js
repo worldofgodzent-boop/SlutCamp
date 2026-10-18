@@ -1406,6 +1406,91 @@ addColumnIfMissing('models', 'is_featured', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('transactions', 'recruiter_id', 'INTEGER REFERENCES recruiters(id) ON DELETE SET NULL');
 addColumnIfMissing('transactions', 'recruiter_cents', 'INTEGER NOT NULL DEFAULT 0');
 
+/* --- One account for both (owner, Oct 17 2026) ----------------------
+ * "Affiliate" is a CAPABILITY, not just a role: any fan/model account
+ * holding a recruiters row IS an affiliate — the row is what
+ * splitPayment, the affiliate dashboard and the Manager all resolve
+ * through (recruiters.user_id is UNIQUE, so one row per person). A
+ * standalone 'recruiter'-role account is simply an account whose only
+ * side is that row. Merging folds a standalone affiliate account INTO
+ * a fan/model account: the recruiters row (or its attribution, ledger,
+ * wallet earnings and code) moves to the survivor and the duplicate's
+ * login is retired — users.merged_into points at the survivor, the
+ * password is scrambled and the row stays for ledger/history
+ * integrity; it can never sign in or be merged again.
+ * recruiter_code_aliases keeps a folded account's older referral code
+ * resolving to the survivor's recruiters row, so a link she already
+ * shared never dies in a merge. */
+addColumnIfMissing('users', 'merged_into', 'INTEGER');
+db.exec(`
+CREATE TABLE IF NOT EXISTS recruiter_code_aliases (
+  code         TEXT PRIMARY KEY,
+  recruiter_id INTEGER NOT NULL REFERENCES recruiters(id) ON DELETE CASCADE,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+)`);
+addColumnIfMissing('platform_stats', 'one_account_announced_at', 'TEXT'); // one-time "one account" broadcast stamp
+
+/* The recruiters row IS the affiliate capability (see above). */
+function getRecruiterRow(userId) {
+  return db.prepare('SELECT * FROM recruiters WHERE user_id = ?').get(userId) || null;
+}
+function isAffiliateHolder(user) {
+  return !!user && (user.role === 'recruiter' || !!getRecruiterRow(user.id));
+}
+/* Accounts attach/merge must never touch, grant to, or fold: any
+ * admin, the house account (username asceaaspade — the app itself),
+ * and Asce's fandemo test account. (The CCBill review account is a
+ * model account whose credentials live outside the app; it is never
+ * a merge target because only recruiter-role accounts can be folded,
+ * and it gains nothing here without its own sign-in.) */
+function isMergeProtected(user) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  const name = String(user.username || '').toLowerCase();
+  return name === HOUSE_USERNAME || name === 'fandemo';
+}
+/* Resolve a referral code — the row's primary code first, then any
+ * merge aliases — so every link ever shared keeps working. */
+function resolveRecruiterByCode(code) {
+  const c = String(code || '').trim();
+  if (!c) return null;
+  const primary = db.prepare(
+    `SELECT r.id, r.user_id, r.name, r.referral_code, u.banned FROM recruiters r
+     JOIN users u ON u.id = r.user_id WHERE r.referral_code = ?`).get(c);
+  if (primary) return primary;
+  return db.prepare(
+    `SELECT r.id, r.user_id, r.name, r.referral_code, u.banned FROM recruiter_code_aliases a
+     JOIN recruiters r ON r.id = a.recruiter_id JOIN users u ON u.id = r.user_id
+     WHERE a.code = ?`).get(c) || null;
+}
+/* What the client needs for the dual-account UI: the capability flag,
+ * her primary code, and whether an email-matched second account
+ * exists (the merge offer). The email match ONLY decides who SEES the
+ * offer — the merge itself always requires the other account's
+ * password; nothing here authorizes anything. */
+function affiliateFlagsFor(user) {
+  const row = user ? getRecruiterRow(user.id) : null;
+  const is_affiliate = !!user && (user.role === 'recruiter' || !!row);
+  let merge_offer = null;
+  if (user && !user.merged_into && user.email && String(user.email).trim()) {
+    const email = String(user.email).trim();
+    if ((user.role === 'fan' || user.role === 'model') && !row) {
+      const other = db.prepare(
+        `SELECT id, username FROM users WHERE role = 'recruiter' AND banned = 0
+           AND merged_into IS NULL AND LOWER(email) = LOWER(?) AND id != ? LIMIT 1`
+      ).get(email, user.id);
+      if (other) merge_offer = { direction: 'bring_in', other_username: other.username };
+    } else if (user.role === 'recruiter') {
+      const other = db.prepare(
+        `SELECT id, username, role FROM users WHERE role IN ('fan','model')
+           AND merged_into IS NULL AND LOWER(email) = LOWER(?) AND id != ? LIMIT 1`
+      ).get(email, user.id);
+      if (other) merge_offer = { direction: 'switch_account', other_username: other.username, other_role: other.role };
+    }
+  }
+  return { is_affiliate, affiliate_code: row ? row.referral_code : null, affiliate_merge_offer: merge_offer };
+}
+
 // Allow the 'recruiter' role: rebuild users table if its CHECK doesn't include it
 (function allowRecruiterRole() {
   let sql = null;
@@ -2493,6 +2578,34 @@ const requireRole = (...roles) => (req, res, next) => {
   next();
 };
 
+/* Affiliate-area gate (one account for both): standalone recruiters
+ * (role) OR any account holding the affiliate capability — a
+ * recruiters row. A fan/model who attached Affiliate passes with her
+ * normal login; everyone else gets the same 403 as before. */
+const requireAffiliate = (req, res, next) => {
+  if (req.ident.kind !== 'user') return res.status(401).json({ error: 'login_required' });
+  const u = req.ident.user;
+  if (u.role !== 'recruiter' && !getRecruiterRow(u.id)) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  req.user = u;
+  next();
+};
+
+/* Role gate widened for capability holders — used by the money
+ * endpoints the affiliate dashboard already calls (payout account,
+ * withdrawals, tax profile), so a fan+affiliate can be paid for her
+ * affiliate earnings through the exact same path as a model. */
+const requireRoleOrAffiliate = (...roles) => (req, res, next) => {
+  if (req.ident.kind !== 'user') return res.status(401).json({ error: 'login_required' });
+  const u = req.ident.user;
+  if (!roles.includes(u.role) && !getRecruiterRow(u.id)) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  req.user = u;
+  next();
+};
+
 function pushToSubject(key, event) {
   const set = socketsBySubject.get(key);
   if (!set) return;
@@ -2745,6 +2858,9 @@ const SRV = {
   ann_role_signin_dm: { en: '🔑 NEW UPDATE: Signing in is simpler now! There\'s a big “Sign in as a model” button right on the front page — tap it, enter your username and password, and you\'re in. No more hunting around 💋', es: '🔑 NUEVA ACTUALIZACIÓN: ¡Iniciar sesión ahora es más simple! Hay un botón grande de “Iniciar sesión como modelo” justo en la página principal: tócalo, escribe tu usuario y contraseña, y ya estás dentro. Sin más vueltas 💋', pt: '🔑 NOVA ATUALIZAÇÃO: Entrar ficou mais simples! Agora há um botão grande “Entrar como modelo” bem na página inicial — toque nele, digite seu usuário e senha, e pronto. Sem complicação 💋', fr: '🔑 NOUVELLE MISE À JOUR : Se connecter est plus simple ! Il y a maintenant un gros bouton « Se connecter comme modèle » sur la page d\'accueil — touchez-le, entrez votre identifiant et votre mot de passe, et vous êtes dedans. Fini de chercher 💋', de: '🔑 NEUES UPDATE: Anmelden ist jetzt einfacher! Auf der Startseite gibt es jetzt einen großen Button „Als Model anmelden“ — antippen, Benutzername und Passwort eingeben, und du bist drin. Kein Suchen mehr 💋', ru: '🔑 НОВОЕ ОБНОВЛЕНИЕ: Входить стало проще! Теперь на главной странице есть большая кнопка «Войти как модель» — нажми её, введи логин и пароль, и ты внутри. Больше не надо искать 💋', ja: '🔑 新しいアップデート：ログインがもっと簡単になりました！トップページに大きな「モデルとしてログイン」ボタンができました — タップして、ユーザー名とパスワードを入れるだけ。もう迷いません 💋', zh: '🔑 新更新：登录变得更简单了！主页上现在有一个大大的“以模特身份登录”按钮 — 点它，输入用户名和密码，就进来了。不用再找来找去 💋', ko: '🔑 새 업데이트: 로그인이 더 간단해졌어요! 이제 메인 페이지에 큰 “모델로 로그인” 버튼이 있어요 — 탭하고, 아이디와 비밀번호를 입력하면 끝. 더 이상 헤매지 마세요 💋', it: '🔑 NUOVO AGGIORNAMENTO: Accedere ora è più semplice! Sulla pagina principale c\'è un grande pulsante “Accedi come modella” — toccalo, inserisci nome utente e password, e sei dentro. Niente più ricerche 💋', pl: '🔑 NOWA AKTUALIZACJA: Logowanie jest teraz prostsze! Na stronie głównej jest teraz duży przycisk „Zaloguj się jako modelka” — dotknij go, wpisz nazwę użytkownika i hasło, i jesteś w środku. Koniec szukania 💋', nl: '🔑 NIEUWE UPDATE: Inloggen is nu eenvoudiger! Op de voorpagina staat nu een grote knop “Inloggen als model” — tik erop, vul je gebruikersnaam en wachtwoord in, en je bent binnen. Niet meer zoeken 💋', tr: '🔑 YENİ GÜNCELLEME: Giriş yapmak artık daha basit! Ana sayfada artık büyük bir “Model olarak giriş yap” düğmesi var — dokun, kullanıcı adını ve şifreni yaz, içeridesin. Aramak yok 💋' },
   ann_role_signin_bell_title: { en: '🔑 Signing in is simpler now', es: '🔑 Iniciar sesión es más simple ahora', pt: '🔑 Entrar ficou mais simples', fr: '🔑 La connexion est plus simple', de: '🔑 Anmelden ist jetzt einfacher', ru: '🔑 Входить стало проще', ja: '🔑 ログインが簡単になりました', zh: '🔑 登录更简单了', ko: '🔑 로그인이 더 간단해졌어요', it: '🔑 Accedere è più semplice ora', pl: '🔑 Logowanie jest prostsze', nl: '🔑 Inloggen is nu eenvoudiger', tr: '🔑 Giriş yapmak artık daha basit' },
   ann_role_signin_bell_body: { en: 'Tap “Sign in as a model” on the front page — username, password, you\'re in 💋', es: 'Toca “Iniciar sesión como modelo” en la página principal: usuario, contraseña y ya estás dentro 💋', pt: 'Toque em “Entrar como modelo” na página inicial — usuário, senha e pronto 💋', fr: 'Touchez « Se connecter comme modèle » sur la page d\'accueil — identifiant, mot de passe, et vous êtes dedans 💋', de: 'Tippe auf der Startseite auf „Als Model anmelden“ — Benutzername, Passwort, drin 💋', ru: 'Нажми «Войти как модель» на главной странице — логин, пароль, и ты внутри 💋', ja: 'トップページの「モデルとしてログイン」をタップ — ユーザー名とパスワードで完了 💋', zh: '点击主页上的“以模特身份登录” — 用户名、密码，搞定 💋', ko: '메인 페이지에서 “모델로 로그인”을 탭하세요 — 아이디, 비밀번호, 끝 💋', it: 'Tocca “Accedi come modella” sulla pagina principale — nome utente, password, e sei dentro 💋', pl: 'Dotknij „Zaloguj się jako modelka” na stronie głównej — nazwa użytkownika, hasło i gotowe 💋', nl: 'Tik op “Inloggen als model” op de voorpagina — gebruikersnaam, wachtwoord, klaar 💋', tr: 'Ana sayfada “Model olarak giriş yap”a dokun — kullanıcı adı, şifre, tamam 💋' },
+  ann_one_account_dm: { en: '💋 NEW UPDATE: One login for everything! There\'s now a Model / Affiliate switch at the top of the app. If you\'re an affiliate too, you don\'t need a second account anymore — add Affiliate to THIS account in Settings, and if you already made a separate affiliate account, bring it into this one from Settings too. One username, one password, done 💋', es: '💋 NUEVA ACTUALIZACIÓN: ¡Un solo inicio de sesión para todo! Ahora hay un interruptor Modelo / Afiliada en la parte superior de la app. Si también eres afiliada, ya no necesitas una segunda cuenta: agrega Afiliada a ESTA cuenta en Ajustes, y si ya creaste una cuenta de afiliada aparte, tráela a esta desde Ajustes también. Un usuario, una contraseña, listo 💋', pt: '💋 NOVA ATUALIZAÇÃO: Um único login para tudo! Agora há um botão Modelo / Afiliada no topo do app. Se você também é afiliada, não precisa mais de uma segunda conta — adicione Afiliada a ESTA conta em Configurações e, se já criou uma conta de afiliada separada, traga-a para esta em Configurações também. Um usuário, uma senha, pronto 💋', fr: '💋 NOUVELLE MISE À JOUR : Une seule connexion pour tout ! Il y a maintenant un interrupteur Modèle / Affiliée en haut de l\'app. Si vous êtes aussi affiliée, plus besoin d\'un deuxième compte — ajoutez Affiliée à CE compte dans les Paramètres, et si vous avez déjà créé un compte affilié séparé, ramenez-le dans celui-ci depuis les Paramètres aussi. Un identifiant, un mot de passe, c\'est fait 💋', de: '💋 NEUES UPDATE: Ein Login für alles! Oben in der App gibt es jetzt einen Model / Affiliate-Schalter. Wenn du auch Affiliate bist, brauchst du kein zweites Konto mehr — füge Affiliate in den Einstellungen zu DIESEM Konto hinzu, und falls du schon ein separates Affiliate-Konto erstellt hast, hole es in den Einstellungen ebenfalls hierher. Ein Benutzername, ein Passwort, fertig 💋', ru: '💋 НОВОЕ ОБНОВЛЕНИЕ: Один вход для всего! Теперь вверху приложения есть переключатель «Модель / Партнёр». Если ты ещё и партнёр, второй аккаунт больше не нужен — добавь партнёрство к ЭТОМУ аккаунту в Настройках, а если ты уже создала отдельный партнёрский аккаунт, перенеси его сюда тоже в Настройках. Один логин, один пароль — готово 💋', ja: '💋 新しいアップデート：ログインは1つで全部OK！アプリの上に「モデル / アフィリエイト」の切り替えができました。アフィリエイトもやっているなら、もう2つ目のアカウントは不要です — 設定でこのアカウントにアフィリエイトを追加してね。すでに別のアフィリエイトアカウントを作っていたら、それも設定からこのアカウントに移せます。ユーザー名もパスワードも1つだけ 💋', zh: '💋 新更新：一个登录搞定一切！应用顶部现在有“模特 / 推广伙伴”切换。如果你也是推广伙伴，不再需要第二个账号 — 在设置里把推广伙伴添加到这个账号；如果你已经单独建了推广伙伴账号，也可以从设置里把它并入这个账号。一个用户名、一个密码，搞定 💋', ko: '💋 새 업데이트: 로그인 하나로 전부 해결! 이제 앱 상단에 모델 / 제휴 전환 버튼이 있어요. 제휴도 하고 있다면 두 번째 계정은 더 이상 필요 없어요 — 설정에서 이 계정에 제휴를 추가하고, 이미 별도의 제휴 계정을 만들었다면 설정에서 이 계정으로 가져오세요. 아이디 하나, 비밀번호 하나면 끝 💋', it: '💋 NUOVO AGGIORNAMENTO: Un solo accesso per tutto! Ora c\'è un interruttore Modella / Affiliata in cima all\'app. Se sei anche affiliata, non ti serve più un secondo account — aggiungi Affiliata a QUESTO account nelle Impostazioni e, se hai già creato un account affiliata separato, portalo in questo dalle Impostazioni. Un nome utente, una password, fatto 💋', pl: '💋 NOWA AKTUALIZACJA: Jedno logowanie do wszystkiego! Na górze aplikacji jest teraz przełącznik Modelka / Partnerka. Jeśli jesteś też partnerką, nie potrzebujesz już drugiego konta — dodaj Partnerkę do TEGO konta w Ustawieniach, a jeśli już założyłaś osobne konto partnerskie, przenieś je tutaj również w Ustawieniach. Jedna nazwa użytkownika, jedno hasło, gotowe 💋', nl: '💋 NIEUWE UPDATE: Eén login voor alles! Boven in de app staat nu een Model / Affiliate-schakelaar. Als je ook affiliate bent, heb je geen tweede account meer nodig — voeg Affiliate toe aan DIT account in Instellingen, en als je al een apart affiliate-account hebt gemaakt, haal het dan in Instellingen ook hierheen. Eén gebruikersnaam, één wachtwoord, klaar 💋', tr: '💋 YENİ GÜNCELLEME: Her şey için tek giriş! Artık uygulamanın üstünde Model / İş Ortağı geçişi var. İş ortağı da isen, artık ikinci bir hesaba ihtiyacın yok — Ayarlar\'dan İş Ortağı\'nı BU hesabına ekle; ayrı bir iş ortağı hesabı açtıysan onu da Ayarlar\'dan bu hesaba getir. Tek kullanıcı adı, tek şifre, tamam 💋' },
+  ann_one_account_bell_title: { en: '💋 One account for everything', es: '💋 Una cuenta para todo', pt: '💋 Uma conta para tudo', fr: '💋 Un seul compte pour tout', de: '💋 Ein Konto für alles', ru: '💋 Один аккаунт для всего', ja: '💋 全部1つのアカウントで', zh: '💋 一个账号搞定一切', ko: '💋 하나의 계정으로 전부', it: '💋 Un account per tutto', pl: '💋 Jedno konto do wszystkiego', nl: '💋 Eén account voor alles', tr: '💋 Her şey için tek hesap' },
+  ann_one_account_bell_body: { en: 'There\'s a Model / Affiliate switch at the top now — add or bring in your affiliate side from Settings 💋', es: 'Ahora hay un interruptor Modelo / Afiliada arriba — agrega o trae tu lado afiliada desde Ajustes 💋', pt: 'Agora há um botão Modelo / Afiliada no topo — adicione ou traga seu lado afiliada em Configurações 💋', fr: 'Il y a un interrupteur Modèle / Affiliée en haut — ajoutez ou ramenez votre côté affiliée depuis les Paramètres 💋', de: 'Oben gibt es jetzt einen Model / Affiliate-Schalter — füge deine Affiliate-Seite in den Einstellungen hinzu oder hole sie hierher 💋', ru: 'Теперь вверху есть переключатель «Модель / Партнёр» — добавь или перенеси свою партнёрскую сторону в Настройках 💋', ja: '上に「モデル / アフィリエイト」切り替えができました — 設定からアフィリエイト側を追加、または移してね 💋', zh: '顶部现在有“模特 / 推广伙伴”切换 — 在设置里添加或并入你的推广伙伴身份 💋', ko: '상단에 모델 / 제휴 전환 버튼이 생겼어요 — 설정에서 제휴를 추가하거나 가져오세요 💋', it: 'Ora c\'è un interruttore Modella / Affiliata in cima — aggiungi o porta il tuo lato affiliata dalle Impostazioni 💋', pl: 'Na górze jest teraz przełącznik Modelka / Partnerka — dodaj lub przenieś swoją stronę partnerską w Ustawieniach 💋', nl: 'Bovenin staat nu een Model / Affiliate-schakelaar — voeg je affiliate-kant toe of haal hem hierheen via Instellingen 💋', tr: 'Artık üstte Model / İş Ortağı geçişi var — iş ortağı tarafını Ayarlar\'dan ekle veya buraya getir 💋' },
 };
 
 function srv(key, lang, vars) {
@@ -3808,6 +3924,44 @@ function announceRoleSigninToModels() {
   return sent;
 }
 
+/* One account for both (owner, Oct 17 2026): ONE-TIME broadcast to
+ * every model — in-app DM + bell, localized per recipient — the
+ * moment dual accounts die: one login, a Model / Affiliate switch at
+ * the top, Affiliate added (or a separate affiliate account brought
+ * in) from Settings. Guarded by one_account_announced_at on
+ * platform_stats; sends exactly once, at the first boot after deploy.
+ * Mirrors announceRoleSigninToModels above. */
+function announceOneAccountToModels() {
+  const st = db.prepare('SELECT one_account_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.one_account_announced_at) return 0;
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin) return 0;
+  const models = db.prepare("SELECT id, username, language FROM users WHERE role = 'model' AND banned = 0").all();
+  let sent = 0;
+  for (const m of models) {
+    if (m.id === admin.id) continue;
+    try {
+      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
+      if (!conv) {
+        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
+        conv = { id: Number(info.lastInsertRowid) };
+      }
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, admin.id, srv('ann_one_account_dm', m.language));
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(m.id, 'one_account', srv('ann_one_account_bell_title', m.language),
+          srv('ann_one_account_bell_body', m.language), `/#chat/${conv.id}`);
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest */ }
+  }
+  if (sent > 0 || models.length === 0) {
+    db.prepare("UPDATE platform_stats SET one_account_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
 /* ------------------------------------------------------------------ */
 /* One-tap thread routing — ONE-TIME broadcast to every model, same   */
 /* admin-thread DM + stamp pattern as the broadcasts above            */
@@ -4003,6 +4157,7 @@ try { const n = announceNotifFixToModels(); if (n) console.log(`[notif] Notifica
 try { const n = announcePreviewVideoToModels(); if (n) console.log(`[preview] Preview-video announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceProfileMediaToModels(); if (n) console.log(`[profilemedia] Profile-media announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceRoleSigninToModels(); if (n) console.log(`[rolesignin] Role sign-in announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
+try { const n = announceOneAccountToModels(); if (n) console.log(`[oneaccount] One-account announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceThreadTapToModels(); if (n) console.log(`[threadtap] Thread-tap announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceFanPreviewToFans(); if (n) console.log(`[fanblast] Fan preview blast sent to ${n} fans.`); } catch (e) { /* retry next boot */ }
 try { const n = announceLanguagesToModels(); if (n) console.log(`[lang] Languages announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
@@ -4660,10 +4815,8 @@ app.post('/api/auth/signup', (req, res) => {
   // Referral-code flow: a partner's link attributes the new model to that recruiter
   let recruiterId = null;
   if (req.body.referral_code) {
-    const rc = db.prepare(`SELECT r.id FROM recruiters r JOIN users u ON u.id = r.user_id
-                           WHERE r.referral_code = ? AND u.banned = 0`)
-      .get(String(req.body.referral_code).trim());
-    if (!rc) return res.status(400).json({ error: 'bad_referral', message: 'This referral link is invalid.' });
+    const rc = resolveRecruiterByCode(req.body.referral_code);
+    if (!rc || rc.banned) return res.status(400).json({ error: 'bad_referral', message: 'This referral link is invalid.' });
     recruiterId = rc.id;
   }
   if (!['fan', 'model'].includes(finalRole)) return res.status(400).json({ error: 'bad_role' });
@@ -5239,7 +5392,10 @@ app.get('/api/me', identMiddleware, requireUser, (req, res) => {
   const wallet = getWallet(req.user.id);
   // email rides ONLY on the caller's own /api/me payload — getUserPublic
   // stays clean for everyone else's views (chat partners, directories).
-  const out = { user: { ...getUserPublic(req.user), email: req.user.email || '' }, wallet };
+  // The affiliate flags ride the same private channel: capability,
+  // primary code, and the email-matched merge offer (one account for
+  // both) — the client shows dual-account UI ONLY from these flags.
+  const out = { user: { ...getUserPublic(req.user), email: req.user.email || '', ...affiliateFlagsFor(req.user) }, wallet };
   if (req.user.role === 'model')
     out.model = db.prepare('SELECT * FROM models WHERE user_id = ?').get(req.user.id);
   if (req.user.role === 'admin' || req.user.role === 'model') out.commission_pct = getCommission();
@@ -8432,7 +8588,7 @@ app.post('/api/model/contract/sign', identMiddleware, requireUser, requireRole('
 });
 
 // Recruiter: get agreement status + text
-app.get('/api/recruiter/contract', identMiddleware, requireUser, requireRole('recruiter'), (req, res) => {
+app.get('/api/recruiter/contract', identMiddleware, requireUser, requireAffiliate, (req, res) => {
   const sig = latestRecruiterSignature(req.user.id);
   const loc = localizedContract(RECRUITER_CONTRACT, RECRUITER_CONTRACT_I18N, req.user.language);
   res.json({
@@ -8447,7 +8603,7 @@ app.get('/api/recruiter/contract', identMiddleware, requireUser, requireRole('re
 });
 
 // Recruiter: sign the agreement (typed name = electronic signature)
-app.post('/api/recruiter/contract/sign', identMiddleware, requireUser, requireRole('recruiter'), (req, res) => {
+app.post('/api/recruiter/contract/sign', identMiddleware, requireUser, requireAffiliate, (req, res) => {
   const name = String(req.body.display_name || '').trim().slice(0, 80);
   if (!name || name.length < 2) return res.status(400).json({ error: 'bad_name' });
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
@@ -8459,6 +8615,30 @@ app.post('/api/recruiter/contract/sign', identMiddleware, requireUser, requireRo
   }
   res.json({ ok: true, version: RECRUITER_CONTRACT.version });
 });
+
+/* Duplicate guard for the logged-out affiliate signups (one account
+ * for both): if the username — or an email the form sent — already
+ * belongs to a fan/model account, she HAS an account; creating a
+ * second one just for the affiliate side is the exact confusion the
+ * owner killed. The client answers 'already_have_account' with "sign
+ * in and add Affiliate to your account" and routes her to sign-in.
+ * A username held by a recruiter/admin keeps the classic
+ * 'username_taken'. Returns the error code, or null when clear. */
+function affiliateSignupDuplicate(uname, emailRaw) {
+  const existing = db.prepare('SELECT id, role FROM users WHERE username = ?').get(uname);
+  if (existing) {
+    return (existing.role === 'fan' || existing.role === 'model')
+      ? 'already_have_account' : 'username_taken';
+  }
+  const email = String(emailRaw || '').trim();
+  if (email) {
+    const byEmail = db.prepare(
+      `SELECT id FROM users WHERE LOWER(email) = LOWER(?) AND role IN ('fan','model') LIMIT 1`
+    ).get(email);
+    if (byEmail) return 'already_have_account';
+  }
+  return null;
+}
 
 /* Shared recruiter-account creation — used by BOTH the Manager
  * affiliate invite signup below and the self-serve affiliate signup
@@ -8510,8 +8690,8 @@ app.post('/api/affiliate-invite/:code/signup', (req, res) => {
   const pwd = String(password || '');
   if (!uname || !dname || pwd.length < 6) return res.status(400).json({ error: 'missing_fields' });
   if (!agreed) return res.status(400).json({ error: 'must_agree' });
-  if (db.prepare('SELECT id FROM users WHERE username = ?').get(uname))
-    return res.status(409).json({ error: 'username_taken' });
+  const dup = affiliateSignupDuplicate(uname, req.body && req.body.email);
+  if (dup) return res.status(409).json({ error: dup });
   const userId = createRecruiterAccount(uname, dname, pwd, req);
   // Mark invite used
   db.prepare(`UPDATE invite_links SET used_by = ?, used_at = datetime('now') WHERE id = ?`)
@@ -8532,11 +8712,141 @@ app.post('/api/affiliate/signup', (req, res) => {
   const pwd = String(password || '');
   if (!uname || !dname || pwd.length < 6) return res.status(400).json({ error: 'missing_fields' });
   if (!agreed) return res.status(400).json({ error: 'must_agree' });
-  if (db.prepare('SELECT id FROM users WHERE username = ?').get(uname))
-    return res.status(409).json({ error: 'username_taken' });
+  const dup = affiliateSignupDuplicate(uname, req.body && req.body.email);
+  if (dup) return res.status(409).json({ error: dup });
   const userId = createRecruiterAccount(uname, dname, pwd, req);
   const token = createSession(userId);
   res.json({ ok: true, token, user: { id: userId, username: uname, display_name: dname, role: 'recruiter' } });
+});
+
+/* One account for both — ATTACH. A signed-in fan/model accepts the
+ * Recruiter Agreement and gains the affiliate capability on THIS
+ * account: agreement signature at the current version, 18+
+ * attestation, and a recruiters row with her own referral code —
+ * exactly what createRecruiterAccount provisions, minus the second
+ * user. Her link and dashboard are live immediately under the login
+ * she already has. */
+app.post('/api/affiliate/attach', identMiddleware, requireUser, (req, res) => {
+  const u = req.user;
+  if (isMergeProtected(u)) return res.status(403).json({ error: 'protected_account' });
+  if (!['fan', 'model'].includes(u.role)) return res.status(403).json({ error: 'forbidden' });
+  if (getRecruiterRow(u.id)) return res.status(409).json({ error: 'already_affiliate' });
+  const { display_name, agreed } = req.body || {};
+  const name = String(display_name || '').trim().slice(0, 80);
+  if (!agreed) return res.status(400).json({ error: 'must_agree' });
+  if (!name || name.length < 2) return res.status(400).json({ error: 'bad_name' });
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
+  const code = txn(() => {
+    recordAgeAttestation(u.id, req);
+    db.prepare(`INSERT INTO contract_signatures (user_id, contract_version, display_name, ip)
+                VALUES (?, ?, ?, ?)`)
+      .run(u.id, RECRUITER_CONTRACT.version, name, ip.slice(0, 60));
+    let rcode;
+    do { rcode = crypto.randomBytes(4).toString('hex'); }
+    while (db.prepare('SELECT id FROM recruiters WHERE referral_code = ?').get(rcode)
+        || db.prepare('SELECT code FROM recruiter_code_aliases WHERE code = ?').get(rcode));
+    db.prepare('INSERT INTO recruiters (user_id, name, referral_code) VALUES (?,?,?)')
+      .run(u.id, u.display_name, rcode);
+    return rcode;
+  });
+  const fresh = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
+  res.json({ ok: true, referral_code: code, ...affiliateFlagsFor(fresh) });
+});
+
+/* One account for both — MERGE. A signed-in fan/model folds her
+ * standalone affiliate account into this one. The OTHER account's
+ * username + password are the proof — an email match only surfaces
+ * the offer; it never authorizes anything by itself. Everything of
+ * value moves to the survivor and the sums add up: the recruiters row
+ * (attribution + ledger ride on its id), wallet earnings + paid-out
+ * totals, pending withdrawals, bank/tax details she doesn't already
+ * have, and the agreement signature. Links never die: the standalone
+ * account's code becomes the survivor's primary code, and any code
+ * the survivor already had becomes an alias — both keep resolving
+ * and paying her. The duplicate's login is then retired for good
+ * (sessions killed, password scrambled, banned, merged_into set). */
+app.post('/api/affiliate/merge', identMiddleware, requireUser, (req, res) => {
+  const survivor = req.user;
+  if (isMergeProtected(survivor)) return res.status(403).json({ error: 'protected_account' });
+  if (!['fan', 'model'].includes(survivor.role)) return res.status(403).json({ error: 'forbidden' });
+  const uname = String((req.body || {}).username || '').trim();
+  const pwd = String((req.body || {}).password || '');
+  const target = uname ? db.prepare('SELECT * FROM users WHERE username = ?').get(uname) : null;
+  // ONE refusal for unknown user and wrong password alike — never
+  // confirm which accounts exist — and a failed attempt changes
+  // nothing at all.
+  if (!target || !pwd || !bcrypt.compareSync(pwd, target.password_hash))
+    return res.status(401).json({ error: 'bad_credentials' });
+  if (target.id === survivor.id) return res.status(400).json({ error: 'same_account' });
+  if (target.merged_into) return res.status(400).json({ error: 'already_merged' });
+  if (isMergeProtected(target)) return res.status(403).json({ error: 'protected_account' });
+  if (target.role !== 'recruiter') return res.status(400).json({ error: 'not_affiliate_account' });
+  if (target.banned) return res.status(403).json({ error: 'account_unavailable' });
+
+  const result = txn(() => {
+    const tRow = getRecruiterRow(target.id);
+    let sRow = getRecruiterRow(survivor.id);
+    let primaryCode = sRow ? sRow.referral_code : null;
+    if (tRow && !sRow) {
+      // The whole row moves — attribution, ledger history and her
+      // original affiliate start date ride along untouched.
+      db.prepare('UPDATE recruiters SET user_id = ? WHERE id = ?').run(survivor.id, tRow.id);
+      sRow = getRecruiterRow(survivor.id);
+      primaryCode = tRow.referral_code;
+    } else if (tRow && sRow) {
+      // Both sides are already affiliates: fold hers into the
+      // survivor's row. Attribution + ledger repoint to the
+      // survivor's row, her code takes over as primary (it is the
+      // link she has been sharing), the survivor's old code becomes
+      // an alias, and the affiliate start keeps the EARLIER date.
+      db.prepare('UPDATE models SET recruiter_id = ? WHERE recruiter_id = ?').run(sRow.id, tRow.id);
+      db.prepare('UPDATE transactions SET recruiter_id = ? WHERE recruiter_id = ?').run(sRow.id, tRow.id);
+      db.prepare('UPDATE recruiter_code_aliases SET recruiter_id = ? WHERE recruiter_id = ?').run(sRow.id, tRow.id);
+      const earlier = tRow.created_at < sRow.created_at ? tRow.created_at : sRow.created_at;
+      const tCode = tRow.referral_code;
+      db.prepare('DELETE FROM recruiters WHERE id = ?').run(tRow.id);
+      db.prepare(`INSERT INTO recruiter_code_aliases (code, recruiter_id) VALUES (?,?)
+                  ON CONFLICT(code) DO UPDATE SET recruiter_id = excluded.recruiter_id`)
+        .run(sRow.referral_code, sRow.id);
+      db.prepare('UPDATE recruiters SET referral_code = ?, created_at = ? WHERE id = ?')
+        .run(tCode, earlier, sRow.id);
+      primaryCode = tCode;
+    }
+    // Wallet: affiliate earnings + paid-out totals add onto the
+    // survivor's, so nothing she earned is lost or double-counted.
+    // (Credits are fan money, not affiliate money — they stay put.)
+    const tw = getWallet(target.id), sw = getWallet(survivor.id);
+    if (tw && sw) {
+      db.prepare('UPDATE wallets SET earnings_cents = earnings_cents + ?, paid_out_cents = paid_out_cents + ? WHERE user_id = ?')
+        .run(tw.earnings_cents, tw.paid_out_cents, survivor.id);
+      db.prepare('UPDATE wallets SET earnings_cents = 0, paid_out_cents = 0 WHERE user_id = ?').run(target.id);
+    }
+    // Live obligations + payout identity follow her to the survivor.
+    db.prepare("UPDATE withdrawals SET model_id = ? WHERE model_id = ? AND status = 'pending'")
+      .run(survivor.id, target.id);
+    const tPayout = db.prepare('SELECT id FROM payout_accounts WHERE model_id = ?').get(target.id);
+    const sPayout = db.prepare('SELECT id FROM payout_accounts WHERE model_id = ?').get(survivor.id);
+    if (tPayout && !sPayout)
+      db.prepare('UPDATE payout_accounts SET model_id = ? WHERE model_id = ?').run(survivor.id, target.id);
+    const tTax = db.prepare('SELECT id FROM tax_profiles WHERE user_id = ?').get(target.id);
+    const sTax = db.prepare('SELECT id FROM tax_profiles WHERE user_id = ?').get(survivor.id);
+    if (tTax && !sTax)
+      db.prepare('UPDATE tax_profiles SET user_id = ? WHERE user_id = ?').run(survivor.id, target.id);
+    // Her agreement signature moves, so the dashboard gate sees it.
+    db.prepare("UPDATE contract_signatures SET user_id = ? WHERE user_id = ? AND contract_version LIKE 'R%'")
+      .run(survivor.id, target.id);
+    // Retire the duplicate login — permanently.
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(target.id);
+    db.prepare(`UPDATE users SET banned = 1, status = 'merged', merged_into = ?,
+                password_hash = ? WHERE id = ?`)
+      .run(survivor.id, bcrypt.hashSync(crypto.randomBytes(24).toString('hex'), 10), target.id);
+    const models = sRow ? db.prepare('SELECT COUNT(*) AS c FROM models WHERE recruiter_id = ?').get(sRow.id).c : 0;
+    const wallet = getWallet(survivor.id);
+    return { referral_code: primaryCode, models_onboarded: models,
+             earnings_cents: wallet ? wallet.earnings_cents : 0 };
+  });
+  const fresh = db.prepare('SELECT * FROM users WHERE id = ?').get(survivor.id);
+  res.json({ ok: true, ...result, ...affiliateFlagsFor(fresh) });
 });
 
 // Admin: list all models with contract signature status
@@ -8818,7 +9128,7 @@ app.get('/api/admin/tax/export', identMiddleware, requireUser, requireRole('admi
 /* ------------------------------------------------------------------ */
 
 // Save/replace her bank account for payouts
-app.post('/api/model/payout-account', identMiddleware, requireUser, requireRole('model', 'recruiter'), (req, res) => {
+app.post('/api/model/payout-account', identMiddleware, requireUser, requireRoleOrAffiliate('model', 'recruiter'), (req, res) => {
   const holder = String(req.body.holder_name || '').trim().slice(0, 80);
   const routing = String(req.body.routing_number || '').replace(/\D/g, '');
   const account = String(req.body.account_number || '').replace(/\D/g, '');
@@ -8834,7 +9144,7 @@ app.post('/api/model/payout-account', identMiddleware, requireUser, requireRole(
 });
 
 // Her saved account (masked — full number never leaves the server for models)
-app.get('/api/model/payout-account', identMiddleware, requireUser, requireRole('model', 'recruiter'), (req, res) => {
+app.get('/api/model/payout-account', identMiddleware, requireUser, requireRoleOrAffiliate('model', 'recruiter'), (req, res) => {
   const a = db.prepare('SELECT * FROM payout_accounts WHERE model_id = ?').get(req.user.id);
   if (!a) return res.json({ account: null });
   res.json({ account: { holder_name: a.holder_name, routing_number: a.routing_number,
@@ -8842,7 +9152,7 @@ app.get('/api/model/payout-account', identMiddleware, requireUser, requireRole('
 });
 
 // Her withdrawal history + available balance
-app.get('/api/model/withdrawals', identMiddleware, requireUser, requireRole('model', 'recruiter'), (req, res) => {
+app.get('/api/model/withdrawals', identMiddleware, requireUser, requireRoleOrAffiliate('model', 'recruiter'), (req, res) => {
   const rows = db.prepare(`SELECT id, amount_cents, status, requested_at, decided_at, note
                            FROM withdrawals WHERE model_id = ? ORDER BY id DESC`).all(req.user.id);
   const bd = getEarningsBreakdown(req.user.id);
@@ -8851,7 +9161,7 @@ app.get('/api/model/withdrawals', identMiddleware, requireUser, requireRole('mod
 });
 
 // Request a withdrawal (pending until Asce marks it paid)
-app.post('/api/model/withdrawals', identMiddleware, requireUser, requireRole('model', 'recruiter'), (req, res) => {
+app.post('/api/model/withdrawals', identMiddleware, requireUser, requireRoleOrAffiliate('model', 'recruiter'), (req, res) => {
   const amount = parseInt(req.body.amount_cents);
   const acct = db.prepare('SELECT id FROM payout_accounts WHERE model_id = ?').get(req.user.id);
   if (!acct) return res.status(400).json({ error: 'no_bank_account' });
@@ -8901,7 +9211,7 @@ function validateTaxProfile(body, existing) {
 }
 
 // Her/partner tax profile (masked — the full tax ID never leaves the server)
-app.get('/api/tax-profile', identMiddleware, requireUser, requireRole('model', 'recruiter'), (req, res) => {
+app.get('/api/tax-profile', identMiddleware, requireUser, requireRoleOrAffiliate('model', 'recruiter'), (req, res) => {
   const p = db.prepare('SELECT legal_name, business_name, tax_id_type, tax_id_last4, address_line1, address_line2, city, state, zip, submitted_at, updated_at, electronic_1099_consent, electronic_1099_consent_at FROM tax_profiles WHERE user_id = ?').get(req.user.id);
   if (!p) return res.json({ profile: null });
   const masked = p.tax_id_type === 'ein' ? `XX-XXXX${p.tax_id_last4}` : `***-**-${p.tax_id_last4}`;
@@ -8909,7 +9219,7 @@ app.get('/api/tax-profile', identMiddleware, requireUser, requireRole('model', '
 });
 
 // Model downloads her 1099-NEC summary (digital delivery)
-app.get('/api/tax-profile/1099/:year', identMiddleware, requireUser, requireRole('model', 'recruiter'), (req, res) => {
+app.get('/api/tax-profile/1099/:year', identMiddleware, requireUser, requireRoleOrAffiliate('model', 'recruiter'), (req, res) => {
   const year = parseInt(req.params.year);
   if (!year || year < 2020 || year > 2100) return res.status(400).json({ error: 'bad_year' });
   const p = db.prepare('SELECT * FROM tax_profiles WHERE user_id = ?').get(req.user.id);
@@ -8933,7 +9243,7 @@ app.get('/api/tax-profile/1099/:year', identMiddleware, requireUser, requireRole
 });
 
 // Submit/update tax profile (W-9 info)
-app.post('/api/tax-profile', identMiddleware, requireUser, requireRole('model', 'recruiter'), (req, res) => {
+app.post('/api/tax-profile', identMiddleware, requireUser, requireRoleOrAffiliate('model', 'recruiter'), (req, res) => {
   const existing = db.prepare('SELECT * FROM tax_profiles WHERE user_id = ?').get(req.user.id);
   const v = validateTaxProfile(req.body, existing);
   if (v.error) return res.status(400).json({ error: v.error });
@@ -11899,7 +12209,8 @@ app.get('/api/admin/overview', ...adminOnly, (req, res) => {
       (SELECT COUNT(*) FROM live_sessions WHERE status = 'live') AS live_now,
       (SELECT COUNT(*) FROM users WHERE role = 'fan' AND banned = 0) AS fans,
       (SELECT COUNT(*) FROM users WHERE role = 'model' AND banned = 0) AS models,
-      (SELECT COUNT(*) FROM users WHERE role = 'recruiter') AS affiliates,
+      (SELECT COUNT(*) FROM users u WHERE u.merged_into IS NULL
+        AND (u.role = 'recruiter' OR EXISTS (SELECT 1 FROM recruiters r WHERE r.user_id = u.id))) AS affiliates,
       (SELECT COUNT(*) FROM dmca_notices WHERE status IN ('received','under_review')) AS open_dmca,
       (SELECT COUNT(*) FROM safety_incidents WHERE status = 'open') AS open_incidents`).get();
   const LEDGER_SUM = `
@@ -12288,13 +12599,11 @@ app.get('/api/invite/:code', (req, res) => {
   res.json({ valid: true, label: inv.label });
 });
 
-// Public: validate a partner referral code
+// Public: validate a partner referral code (merge aliases resolve too)
 app.get('/api/referral/:code', (req, res) => {
-  const r = db.prepare(`SELECT r.referral_code, r.name AS recruiter_name, u.banned
-                        FROM recruiters r JOIN users u ON u.id = r.user_id
-                        WHERE r.referral_code = ?`).get(String(req.params.code).trim());
+  const r = resolveRecruiterByCode(req.params.code);
   if (!r || r.banned) return res.json({ valid: false });
-  res.json({ valid: true, recruiter_name: r.recruiter_name });
+  res.json({ valid: true, recruiter_name: r.name });
 });
 
 // Admin: generate a new invite link
@@ -12421,33 +12730,41 @@ app.get('/api/admin/recruiters', ...adminOnly, (req, res) => {
    affiliates have signed up + each affiliate's §10 first-year quota
    progress. READ-ONLY — the quota review at year end is a human/Manager
    decision (Recruiter Agreement R1.3 §10); nothing here revokes or
-   enforces anything. Roster = recruiter-role accounts (LEFT JOIN the
-   recruiters row, so the total always matches the roster length; a
-   model counts via models.recruiter_id, the same attribution
-   splitPayment pays on). Money reads the ledger with the Manager's
+   enforces anything. WHO COUNTS as an affiliate mirrors the one-account
+   capability model (PR #45): merged_into IS NULL AND (role='recruiter'
+   OR the account holds a recruiters row) — a merged model/fan appears
+   ONCE with combined numbers (her attribution + ledger were repointed
+   to the surviving recruiters row at merge), and retired merged
+   duplicates never appear. signed_up_at = her affiliate start
+   (recruiters.created_at when a row exists — a merge preserves the
+   earlier start), so the §10 year-end math runs off the true window.
+   A model counts via models.recruiter_id, the same attribution
+   splitPayment pays on. Money reads the ledger with the Manager's
    standard ruler (is_test = 0 + earning types, like /api/admin/overview). */
 app.get('/api/admin/affiliates', ...adminOnly, (req, res) => {
   const EARN_TYPES = `('message','call','tip','ppv','voice','live_explicit','gift','game')`;
   const stats = db.prepare(`
     SELECT
-      (SELECT COUNT(*) FROM users WHERE role = 'recruiter') AS total_affiliates,
-      (SELECT COUNT(*) FROM users WHERE role = 'recruiter'
-        AND created_at >= datetime('now', '-30 days')) AS new_last_30_days,
+      (SELECT COUNT(*) FROM users u LEFT JOIN recruiters r ON r.user_id = u.id
+        WHERE u.merged_into IS NULL AND (u.role = 'recruiter' OR r.id IS NOT NULL)) AS total_affiliates,
+      (SELECT COUNT(*) FROM users u LEFT JOIN recruiters r ON r.user_id = u.id
+        WHERE u.merged_into IS NULL AND (u.role = 'recruiter' OR r.id IS NOT NULL)
+          AND COALESCE(r.created_at, u.created_at) >= datetime('now', '-30 days')) AS new_last_30_days,
       (SELECT COUNT(*) FROM models WHERE recruiter_id IS NOT NULL) AS models_onboarded,
       (SELECT COALESCE(SUM(recruiter_cents), 0) FROM transactions
         WHERE is_test = 0 AND recruiter_id IS NOT NULL
           AND type IN ${EARN_TYPES}) AS recruiter_earnings_cents`).get();
   const affiliates = db.prepare(`
     SELECT u.id AS user_id, u.username, u.display_name, u.banned,
-           u.created_at AS signed_up_at,
+           COALESCE(r.created_at, u.created_at) AS signed_up_at,
            r.id AS recruiter_id, r.name AS recruiter_name, r.city, r.referral_code,
            (SELECT COUNT(*) FROM models m WHERE m.recruiter_id = r.id) AS models_onboarded,
            (SELECT COALESCE(SUM(t.recruiter_cents), 0) FROM transactions t
              WHERE t.recruiter_id = r.id AND t.is_test = 0
                AND t.type IN ${EARN_TYPES}) AS earnings_cents
     FROM users u LEFT JOIN recruiters r ON r.user_id = u.id
-    WHERE u.role = 'recruiter'
-    ORDER BY u.created_at DESC`).all();
+    WHERE u.merged_into IS NULL AND (u.role = 'recruiter' OR r.id IS NOT NULL)
+    ORDER BY signed_up_at DESC`).all();
   const QUOTA_TARGET = 10; // Recruiter Agreement §10: 10 models in year one
   for (const a of affiliates) {
     a.banned = !!a.banned;
@@ -12458,7 +12775,7 @@ app.get('/api/admin/affiliates', ...adminOnly, (req, res) => {
     a.referral_link = a.referral_code ? `${SEO_ORIGIN}/#join/${a.referral_code}` : null;
     a.quota_target = QUOTA_TARGET;
     a.quota_met = a.models_onboarded >= QUOTA_TARGET;
-    // First-year window ends exactly one year after signup (§10).
+    // First-year window ends exactly one year after her affiliate start (§10).
     const d = new Date(String(a.signed_up_at).replace(' ', 'T') + 'Z');
     d.setUTCFullYear(d.getUTCFullYear() + 1);
     a.year_end = d.toISOString().slice(0, 10);
@@ -12466,17 +12783,31 @@ app.get('/api/admin/affiliates', ...adminOnly, (req, res) => {
   res.json({ stats, affiliates });
 });
 
-/* Admin — Affiliates action: reset a recruiter's username (owner
+/* Shared target lookup for the two affiliate reset actions below:
+   an affiliate is a CAPABILITY (PR #45) — a live (never merged-away)
+   account that is recruiter-role OR holds a recruiters row. Retired
+   merged duplicates (merged_into set) are refused: a reset always
+   lands on her single surviving login. Merge-protected accounts
+   (admin / house / fandemo, isMergeProtected) are refused too. */
+function affiliateResetTarget(id) {
+  const u = db.prepare(`SELECT u.* FROM users u LEFT JOIN recruiters r ON r.user_id = u.id
+    WHERE u.id = ? AND u.merged_into IS NULL AND (u.role = 'recruiter' OR r.id IS NOT NULL)`).get(id);
+  if (!u || isMergeProtected(u)) return null;
+  return u;
+}
+
+/* Admin — Affiliates action: reset an affiliate's username (owner
    request, Oct 17 2026 — "so that I can reset their user name and
-   password if needed"). Recruiter-role targets ONLY. Attribution-safe
-   by construction: models.recruiter_id → recruiters.id, her signup
-   link is recruiters.referral_code, sessions/contracts/wallets all
-   key on users.id — nothing keys off the username string, so this
-   single UPDATE cannot detach her models, link or earnings.
+   password if needed"). Affiliate-capability targets only (see
+   affiliateResetTarget). Attribution-safe by construction:
+   models.recruiter_id → recruiters.id, her signup link is
+   recruiters.referral_code, sessions/contracts/wallets all key on
+   users.id — nothing keys off the username string, so this single
+   UPDATE cannot detach her models, link or earnings.
    Validation mirrors the affiliate signup paths: trimmed, non-empty,
    and unique across users (column is UNIQUE + NOCASE). */
 app.post('/api/admin/affiliates/:id/username', ...adminOnly, (req, res) => {
-  const u = db.prepare(`SELECT * FROM users WHERE id = ? AND role = 'recruiter'`).get(req.params.id);
+  const u = affiliateResetTarget(req.params.id);
   if (!u) return res.status(404).json({ error: 'not_found' });
   const uname = String((req.body && req.body.username) || '').trim();
   if (!uname) return res.status(400).json({ error: 'username_required', message: 'Username cannot be empty.' });
@@ -12486,13 +12817,14 @@ app.post('/api/admin/affiliates/:id/username', ...adminOnly, (req, res) => {
   res.json({ ok: true, username: uname });
 });
 
-/* Admin — Affiliates action: reset a recruiter's password. Mirrors the
+/* Admin — Affiliates action: reset an affiliate's password (for a
+   merged model this is her single surviving login). Mirrors the
    model reset (POST /api/admin/models/:id/reset-password) exactly:
    a typed password, or a generated temp to hand her when none is
    sent; bcrypt(10); min 6 chars; all her live sessions die with the
    old password (deleteUserSessions). */
 app.post('/api/admin/affiliates/:id/password', ...adminOnly, (req, res) => {
-  const u = db.prepare(`SELECT * FROM users WHERE id = ? AND role = 'recruiter'`).get(req.params.id);
+  const u = affiliateResetTarget(req.params.id);
   if (!u) return res.status(404).json({ error: 'not_found' });
   let { password } = req.body || {};
   let generated = false;
@@ -12560,7 +12892,7 @@ app.post('/api/admin/name-change-requests/:id', ...adminOnly, (req, res) => {
 });
 
 // Recruiter: dashboard (own link, models, earnings)
-app.get('/api/recruiter/dashboard', identMiddleware, requireUser, requireRole('recruiter'), (req, res) => {
+app.get('/api/recruiter/dashboard', identMiddleware, requireUser, requireAffiliate, (req, res) => {
   const r = db.prepare('SELECT * FROM recruiters WHERE user_id = ?').get(req.user.id);
   if (!r) return res.status(404).json({ error: 'not_found' });
   const models = db.prepare(`
@@ -12575,6 +12907,12 @@ app.get('/api/recruiter/dashboard', identMiddleware, requireUser, requireRole('r
   const wallet = getWallet(req.user.id);
   const pending = db.prepare(`SELECT COALESCE(SUM(amount_cents), 0) AS s FROM withdrawals
                               WHERE model_id = ? AND status = 'pending'`).get(req.user.id).s;
+  // §10 first-year quota state, same ruler as the Manager: one year
+  // from her affiliate start (recruiters.created_at — for a merged
+  // account this is her ORIGINAL affiliate start; the merge keeps the
+  // earlier date) to onboard 10 models.
+  const quotaStart = new Date(String(r.created_at).replace(' ', 'T') + 'Z');
+  const yearEnd = new Date(quotaStart); yearEnd.setUTCFullYear(yearEnd.getUTCFullYear() + 1);
   res.json({
     recruiter: { name: r.name, city: r.city, referral_code: r.referral_code },
     models,
@@ -12582,6 +12920,10 @@ app.get('/api/recruiter/dashboard', identMiddleware, requireUser, requireRole('r
     earnings_cents: wallet.earnings_cents,
     paid_out_cents: wallet.paid_out_cents,
     available_cents: getModelAvailable(req.user.id),
+    affiliate_since: r.created_at,
+    quota_target: 10,
+    quota_met: models.length >= 10,
+    quota_year_end: yearEnd.toISOString().slice(0, 10),
   });
 });
 

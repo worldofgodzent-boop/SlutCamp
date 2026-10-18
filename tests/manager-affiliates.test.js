@@ -20,11 +20,17 @@
  *    as an "Affiliates" stat tile in the Overview grid.
  *  - Actions (owner refinement #2, Oct 17 2026 — compact cards "like
  *    notification boxes" with resets, modeled on the Models screen):
- *    POST /api/admin/affiliates/:id/username + /:id/password,
- *    recruiter-role targets only. Rename is attribution-safe (models
- *    key on recruiters.id, the link is recruiters.referral_code);
- *    password reset mirrors the model flow (bcrypt(10), min 6,
- *    generated temp when blank, deleteUserSessions).
+ *    POST /api/admin/affiliates/:id/username + /:id/password.
+ *    Rename is attribution-safe (models key on recruiters.id, the
+ *    link is recruiters.referral_code); password reset mirrors the
+ *    model flow (bcrypt(10), min 6, generated temp when blank,
+ *    deleteUserSessions). Username uniqueness is sitewide +
+ *    case-insensitive; a refusal changes nothing ("Username is taken").
+ *  - One-account extension (PR #45, folded in at ship): an affiliate
+ *    is a capability — merged_into IS NULL AND (role='recruiter' OR a
+ *    recruiters row). Merged models count ONCE with combined numbers,
+ *    retired duplicates never appear and are refused as reset
+ *    targets, and the §10 window runs off recruiters.created_at.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -374,6 +380,105 @@ test('affiliates actions: username + password reset (recruiter-only, attribution
   }
 });
 
+/* Seed the post-one-account (PR #45) end state: a MODEL account that
+   holds the affiliate capability (recruiters row created EARLIER than
+   her model account — a merge preserves the earlier affiliate start),
+   plus her retired standalone affiliate duplicate (merged_into →
+   survivor, banned, status 'merged', no recruiters row of its own —
+   attribution/ledger were repointed to the survivor at merge). */
+function seedCapabilityPair(dir) {
+  const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+  try {
+    db.prepare(`UPDATE platform_stats SET play_money_zeroed_at = datetime('now')
+                WHERE id = 1 AND play_money_zeroed_at IS NULL`).run();
+    const fan = db.prepare("SELECT id FROM users WHERE username = 'fandemo'").get();
+    const insUser = db.prepare(
+      'INSERT INTO users (username, password_hash, role, display_name, dob, banned, created_at) VALUES (?,?,?,?,?,?,?)');
+    const insWallet = db.prepare('INSERT INTO wallets (user_id) VALUES (?)');
+    const survivorId = Number(insUser.run('cap_model', bcrypt.hashSync('model-pass-123', 10), 'model', 'Cap Model', null, 0, '2026-05-01 09:00:00').lastInsertRowid);
+    insWallet.run(survivorId);
+    db.prepare("INSERT INTO models (user_id) VALUES (?)").run(survivorId);
+    const recId = Number(db.prepare(
+      'INSERT INTO recruiters (user_id, name, city, referral_code, created_at) VALUES (?,?,?,?,?)')
+      .run(survivorId, 'Cap Model', '', 'capcode1', '2025-11-20 10:00:00').lastInsertRowid);
+    const dupId = Number(insUser.run('cap_dup', 'x', 'recruiter', 'Cap Model', null, 1, '2025-11-20 10:00:00').lastInsertRowid);
+    insWallet.run(dupId);
+    db.prepare("UPDATE users SET status = 'merged', merged_into = ? WHERE id = ?").run(survivorId, dupId);
+    const recruits = [];
+    for (const n of ['capm_one', 'capm_two']) {
+      const uid = Number(insUser.run(n, 'x', 'model', n, null, 0, '2026-06-01 00:00:00').lastInsertRowid);
+      insWallet.run(uid);
+      db.prepare('INSERT INTO models (user_id, recruiter_id) VALUES (?,?)').run(uid, recId);
+      recruits.push(uid);
+    }
+    db.prepare(
+      `INSERT INTO transactions (fan_id, model_id, type, gross_cents, model_cents, platform_cents, recruiter_id, recruiter_cents, is_test)
+       VALUES (?,?,?,?,?,?,?,?,0)`).run(fan.id, recruits[0], 'message', 1500, 900, 300, recId, 300);
+    return { survivorId, dupId, recId };
+  } finally {
+    db.close();
+  }
+}
+
+test('one-account extension: merged model counts once, resets land on her surviving login', async () => {
+  const dir = makeCopy();
+  const h1 = await boot(dir, { SEED_DEMO: '1' });
+  stop(h1);
+  const seeded = seedCapabilityPair(dir);
+  const h = await boot(dir, { SEED_DEMO: '1' });
+  try {
+    const mgr = await mgrLogin(h.base);
+    const { json } = await req(h.base, 'GET', '/api/admin/affiliates', { ...mgr });
+    // She appears ONCE with combined numbers; the retired duplicate
+    // never appears; the quota window runs off her AFFILIATE start
+    // (recruiters.created_at 2025-11-20), not her model account date.
+    assert.equal(json.affiliates.length, 1, 'exactly one roster row (the survivor)');
+    assert.equal(json.stats.total_affiliates, 1, 'overview-grade count matches the roster');
+    const row = json.affiliates[0];
+    assert.equal(row.user_id, seeded.survivorId);
+    assert.equal(row.username, 'cap_model');
+    assert.equal(row.signed_up_at, '2025-11-20 10:00:00', 'affiliate start = recruiters.created_at');
+    assert.equal(row.year_end, '2026-11-20', 'year end = affiliate start + 1 year');
+    assert.equal(row.models_onboarded, 2, 'combined onboarded count');
+    assert.equal(row.earnings_cents, 300, 'combined earnings');
+    assert.equal(row.referral_link, 'https://slutcamp.app/#join/capcode1');
+    const overview = await req(h.base, 'GET', '/api/admin/overview', { ...mgr });
+    assert.equal(overview.json.affiliates, 1, 'overview bubble counts the capability holder once');
+
+    // The retired duplicate is refused as a reset target on BOTH actions.
+    const dupPw = await req(h.base, 'POST', `/api/admin/affiliates/${seeded.dupId}/password`,
+      { ...mgr, body: { password: 'whatever-123' } });
+    assert.equal(dupPw.status, 404, 'retired duplicate refused for password reset');
+    const dupUn = await req(h.base, 'POST', `/api/admin/affiliates/${seeded.dupId}/username`,
+      { ...mgr, body: { username: 'whatever' } });
+    assert.equal(dupUn.status, 404, 'retired duplicate refused for username reset');
+
+    // PINNED: password reset on the merged model via the affiliate
+    // endpoint succeeds and her single login works with the new one.
+    const reset = await req(h.base, 'POST', `/api/admin/affiliates/${seeded.survivorId}/password`,
+      { ...mgr, body: { password: 'fresh-pass-456' } });
+    assert.equal(reset.status, 200, `merged-model password reset: ${reset.text}`);
+    const loginOld = await req(h.base, 'POST', '/api/auth/login',
+      { body: { username: 'cap_model', password: 'model-pass-123' } });
+    assert.equal(loginOld.status, 401, 'old password fails after reset');
+    const loginNew = await req(h.base, 'POST', '/api/auth/login',
+      { body: { username: 'cap_model', password: 'fresh-pass-456' } });
+    assert.equal(loginNew.status, 200, `surviving login works with the new password: ${loginNew.text}`);
+    assert.equal(loginNew.json.user.role, 'model', 'her single login is the model account');
+
+    // Username reset also lands on the surviving login.
+    const ren = await req(h.base, 'POST', `/api/admin/affiliates/${seeded.survivorId}/username`,
+      { ...mgr, body: { username: 'cap_model_new' } });
+    assert.equal(ren.status, 200, `merged-model username reset: ${ren.text}`);
+    const loginRenamed = await req(h.base, 'POST', '/api/auth/login',
+      { body: { username: 'cap_model_new', password: 'fresh-pass-456' } });
+    assert.equal(loginRenamed.status, 200, 'she signs in under the new username');
+  } finally {
+    stop(h);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('pins: route, attribution source, nav + screen wiring exist', () => {
   assert.ok(serverSrc.includes("app.get('/api/admin/affiliates', ...adminOnly"), 'admin affiliates route exists behind adminOnly');
   assert.ok(serverSrc.includes('LEFT JOIN recruiters r ON r.user_id = u.id'), 'roster keys off recruiter-role accounts');
@@ -384,9 +489,11 @@ test('pins: route, attribution source, nav + screen wiring exist', () => {
   assert.ok(managerSrc.includes('affiliates: adminAffiliatesBody'), 'manager screen registered');
   assert.ok(managerSrc.includes('async function adminAffiliatesBody()'), 'manager body exists');
   assert.ok(managerSrc.includes("api('/admin/affiliates')"), 'manager body reads the admin endpoint');
-  // Overview bubble: payload + tile.
-  assert.ok(serverSrc.includes("(SELECT COUNT(*) FROM users WHERE role = 'recruiter') AS affiliates"),
-    'overview payload carries the affiliates count');
+  // Overview bubble: payload + tile. The count predicate is the
+  // one-account capability predicate (PR #45 extension): live
+  // accounts that are recruiter-role OR hold a recruiters row.
+  assert.ok(serverSrc.includes("u.merged_into IS NULL\n        AND (u.role = 'recruiter' OR EXISTS (SELECT 1 FROM recruiters r WHERE r.user_id = u.id))) AS affiliates"),
+    'overview payload carries the capability-aware affiliates count');
   assert.ok(managerSrc.includes('${o.affiliates ?? \'—\'}</div><div class="l">Affiliates</div>'),
     'overview grid renders an Affiliates stat bubble');
   // Username/password reset actions (refinement #2).
@@ -394,7 +501,11 @@ test('pins: route, attribution source, nav + screen wiring exist', () => {
   assert.ok(serverSrc.includes("app.post('/api/admin/affiliates/:id/password', ...adminOnly"), 'password reset route exists behind adminOnly');
   const pwBody = serverSrc.slice(serverSrc.indexOf("app.post('/api/admin/affiliates/:id/password'"),
     serverSrc.indexOf("app.post('/api/admin/affiliates/:id/password'") + 1400);
-  assert.ok(pwBody.includes("role = 'recruiter'"), 'password reset targets recruiters only');
+  assert.ok(pwBody.includes('affiliateResetTarget(req.params.id)'), 'password reset resolves targets via the capability-aware lookup');
+  assert.ok(serverSrc.includes("u.merged_into IS NULL AND (u.role = 'recruiter' OR r.id IS NOT NULL)"),
+    'reset target predicate: live affiliate-capability holders only');
+  assert.ok(serverSrc.includes('if (!u || isMergeProtected(u)) return null;'),
+    'reset targets refuse merge-protected accounts');
   assert.ok(pwBody.includes('bcrypt.hashSync(password, 10)'), 'password reset hashes with bcrypt(10) like the model flow');
   assert.ok(pwBody.includes('deleteUserSessions(u.id)'), 'password reset kills live sessions like the model flow');
   // Refinement #3: payload link construction + card renders both lines.
