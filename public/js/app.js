@@ -9359,6 +9359,11 @@ function show(view, params) {
   // keeps it hidden only until the sheet closes.
   document.body.classList.toggle('in-chat', view === 'chat');
   document.body.classList.toggle('in-live', view === 'liveBroadcast' || view === 'liveWatch');
+  // The fan home gets its own mark: its header carries the Log out pill
+  // the floating bell stacks under while seasonal strips are up (the
+  // bell-drop rules live with .notif-bell in styles.css; the layout
+  // contract is written out at .home-head-row there).
+  document.body.classList.toggle('in-home', view === 'fanModels');
   // Every view change passes through here: drop any live-band keyboard
   // tracking (and its transform) before the old band leaves the DOM.
   untrackLiveBand();

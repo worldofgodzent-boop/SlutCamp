@@ -78,6 +78,29 @@ html, body {
    keep the base padding — progressive enhancement, never a breakage. */
 #phone:has(> .sc-theme-banner) .header { padding-top: 10px; }
 .header h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.3px; }
+
+/* Fan-home header backdrop (owner request 2026-10-18): the neon lips
+   mark (the STATIC /img/lips-logo.png — never the animated welcome
+   asset, which is welcome-screen-only) sits in the home header's
+   background so the compressed band reads as branded, not empty
+   black. Scoped by body.in-home (set by show() for the fanModels
+   view only). The layer paints above the header's own plum wash and
+   below its content (z-index: -1 inside the header's stacking
+   context), sized to 150% of the band height so the lips fill it,
+   parked right-of-center where the dead space was, at half strength
+   — a watermark-with-glow: the wordmark, balance pill and Log out
+   stay perfectly readable above it, and pointer-events: none keeps
+   every tap target clean. */
+body.in-home .header::before {
+  content: '';
+  position: absolute; inset: 0; z-index: -1;
+  background-image: url(/img/lips-logo.png);
+  background-repeat: no-repeat;
+  background-position: right 96px center;
+  background-size: auto 150%;
+  opacity: .5;
+  pointer-events: none;
+}
 .header h1 .logo {
   background: linear-gradient(135deg, #ff5c9e, #ff9e7d);
   -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -95,38 +118,48 @@ html, body {
 }
 .balance-pill:active { transform: scale(.95); }
 
-/* Fan home header row: wordmark left, Log out pill right (rendered for
-   logged-in fans only). With NO seasonal banner the pill sits in the
-   h1 band (inset+10 → ~inset+46), clear above the floating .notif-bell
-   (top: inset+56, bottom: inset+100). */
+/* Fan home header row: wordmark top-left, Log out pill right (rendered
+   for logged-in fans only), balance pill directly below the wordmark.
+   With NO seasonal banner the pill sits in the h1 band (inset+10 →
+   ~inset+46), clear above the floating bell (top: inset+56, bottom:
+   inset+100). */
 .home-head-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .home-logout-btn { min-height: 36px; flex-shrink: 0; }
 
-/* Bell/Log out stack (owner request 2026-10-16, screenshot-verified):
-   while the seasonal banner is up, #app starts one banner-height lower
-   (banner ≈ inset+52 — its greeting always wraps to 2 lines: #phone
-   caps at 480px and the text is ~536px wide at 13.5px), so the home
-   header's content top lands at ≈inset+62 — squarely inside the bell's
-   fixed band (inset+56 → inset+100), and the bell covered the Log out
-   pill's right end ("Log o🔔"). Owner's layout: bell top-right, Log out
-   stacked BELOW it. So in that state the pill is pushed one bell-height
-   down its row (align-items: flex-start keeps the wordmark at the top):
-   pill spans ≈inset+106 → inset+142, fully below the bell's bottom
-   edge with ~6px to spare, badge and pill both fully tappable. Every
-   variation moves the pill AWAY from the bell: the promo strip (when
-   it renders) adds ~29px above #app, a 3-line banner wrap adds more,
-   and the admin preview banner does the same. No banner → the rules
-   stop matching and the base row layout above applies untouched
-   (pill ends ≈inset+46, 10px clear of the bell). The one orphan state
-   — banner dismissed (node removed) but the promo strip still in the
-   column with no inset padding of its own — starts the header at
-   ≈inset+39, so the pill needs the deeper 66px push there
-   (≈inset+105 → inset+141). Browsers without :has() keep today's
-   layout: progressive enhancement, same contract as the de-dup rule. */
-#phone:has(> .sc-theme-banner) .home-head-row { align-items: flex-start; }
-#phone:has(> .sc-theme-banner) .home-logout-btn { margin-top: 44px; }
-#phone:has(> .sc-theme-promo):not(:has(> .sc-theme-banner)) .home-head-row { align-items: flex-start; }
-#phone:has(> .sc-theme-promo):not(:has(> .sc-theme-banner)) .home-logout-btn { margin-top: 66px; }
+/* Wordmark / Log out / bell stack (owner request 2026-10-18, annotated
+   screenshot — reverses the 2026-10-16 stack): the right column reads
+   Log out on TOP, bell BELOW it, and the header carries no dead
+   stagger. So the pill rides in the wordmark row in EVERY state — the
+   old 44px/66px margin pushes that dropped it under the bell (and
+   stretched the header by the same amount) are gone, which cuts the
+   strip-state header from ~140px of sprawl (10 pad + 80 staggered
+   row + 6 + ~34 pill + 10 pad) to the plain ~96px block.
+   The bell is one fixed element for the whole app, so it can only
+   follow the pill where CSS can see the view: show() marks the home
+   view with body.in-home and the bell drops below the pill ONLY
+   there (the drop rules sit with the bell, further down this file).
+   Banner height ≈ inset+52 (its greeting always wraps to 2 lines:
+   #phone caps at 480px and the text is ~536px wide at 13.5px) and
+   the promo strip adds ~29px above #app, so the home content top —
+   and the 36px pill under it — lands at:
+     banner + promo → content ≈inset+91, pill → ≈inset+127
+     banner only    → content ≈inset+62, pill → ≈inset+98
+     promo only     → content ≈inset+39 (orphan state: banner
+       dismissed, strip left in the column, header pays the full
+       inset again), pill → ≈inset+75
+     neither        → content ≈inset+10, pill → ≈inset+46
+   The bell parks 6px under the pill in the three strip states
+   (tops inset+133 / inset+104 / inset+81, written at .notif-bell);
+   in each, its bottom edge lands flush with the home header's own
+   bottom edge, clear of the first screen row (16px screen padding).
+   No strip → the base band (inset+56) already sits 10px below the
+   pill, so no rule is needed. Everywhere off the home view the bell
+   keeps its base band in all states on purpose: a global drop would
+   land on the chat header's 📹 / Book 1-on-1 buttons, which pay the
+   full safe-area inset even under the banner and so ride ~one inset
+   lower than the home row. Browsers without :has() keep the base
+   band everywhere: progressive enhancement, same posture as the
+   de-dup rule above. */
 
 /* ---------- Admin fan-preview banner (in-flow strip above #app) ---------- */
 .preview-banner {
@@ -1553,6 +1586,25 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   background: var(--card); border: 1px solid rgba(139,92,246,.35);
   font-size: 20px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
+}
+/* Home-view drop (owner stack, 2026-10-18 — the derivation is written
+   out at .home-head-row): on the fan home ONLY (body.in-home, set by
+   show()), the seasonal strips push the header — and its Log out
+   pill — down the screen, so the bell follows it and stays stacked
+   6px under the pill, bottom edge flush with the header's bottom
+   edge: banner+promo → inset+133, banner only → inset+104, promo
+   only → inset+81. Off the home view the base band above applies in
+   every state — a global drop would cover the chat header's 📹 /
+   Book 1-on-1 buttons, which ride ~one inset lower than the home
+   row under the strips. */
+body.in-home:has(> #phone > .sc-theme-banner):has(> #phone > .sc-theme-promo) .notif-bell {
+  top: calc(env(safe-area-inset-top, 0px) + 133px);
+}
+body.in-home:has(> #phone > .sc-theme-banner):not(:has(> #phone > .sc-theme-promo)) .notif-bell {
+  top: calc(env(safe-area-inset-top, 0px) + 104px);
+}
+body.in-home:has(> #phone > .sc-theme-promo):not(:has(> #phone > .sc-theme-banner)) .notif-bell {
+  top: calc(env(safe-area-inset-top, 0px) + 81px);
 }
 .notif-badge {
   position: absolute; top: -4px; right: -4px;
