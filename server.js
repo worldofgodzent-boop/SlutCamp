@@ -1430,6 +1430,7 @@ CREATE TABLE IF NOT EXISTS recruiter_code_aliases (
 )`);
 addColumnIfMissing('platform_stats', 'one_account_announced_at', 'TEXT'); // one-time "one account" broadcast stamp
 addColumnIfMissing('platform_stats', 'official_inbox_announced_at', 'TEXT'); // one-time "SlutCamp notices thread" broadcast stamp
+addColumnIfMissing('platform_stats', 'chat_retention_announced_at', 'TEXT'); // one-time "chats auto-clean after 7 days" broadcast stamp
 addColumnIfMissing('conversations', 'is_official', 'INTEGER NOT NULL DEFAULT 0'); // the pinned read-only SlutCamp notices thread
 
 /* The recruiters row IS the affiliate capability (see above). */
@@ -2867,6 +2868,9 @@ const SRV = {
   ann_inbox_fan_dm: { en: '💋 NEW: Your SlutCamp notices have a home! Every update from us now lands in ONE place — this SlutCamp thread at the top of your Chats. Tap any SlutCamp notification and it opens right here. While it has something new it stays pinned at the top; once you\'ve read everything it steps aside until the next update 💋', es: '💋 NUEVO: ¡Tus avisos de SlutCamp tienen un hogar! Cada novedad nuestra ahora llega a UN solo lugar — este hilo de SlutCamp en la parte superior de tus Chats. Toca cualquier notificación de SlutCamp y se abre justo aquí. Mientras tenga algo nuevo se queda fijo arriba; cuando lo hayas leído todo, se hace a un lado hasta la próxima novedad 💋', pt: '💋 NOVO: Seus avisos da SlutCamp têm uma casa! Cada novidade nossa agora chega a UM só lugar — esta conversa da SlutCamp no topo dos seus Chats. Toque em qualquer notificação da SlutCamp e ela abre bem aqui. Enquanto tiver algo novo, fica fixada no topo; depois que você ler tudo, ela sai do caminho até a próxima novidade 💋', fr: '💋 NOUVEAU : Vos avis SlutCamp ont une maison ! Chaque nouveauté arrive désormais à UN seul endroit — ce fil SlutCamp en haut de vos Chats. Touchez n\'importe quelle notification SlutCamp et elle s\'ouvre ici même. Tant qu\'il a du nouveau, il reste épinglé en haut ; une fois tout lu, il s\'écarte jusqu\'à la prochaine nouveauté 💋', de: '💋 NEU: Deine SlutCamp-Hinweise haben ein Zuhause! Jedes Update von uns landet jetzt an EINEM Ort — diesem SlutCamp-Thread oben in deinen Chats. Tippe auf irgendeine SlutCamp-Benachrichtigung und sie öffnet sich genau hier. Solange es etwas Neues gibt, bleibt er oben angeheftet; wenn du alles gelesen hast, tritt er bis zum nächsten Update beiseite 💋', ru: '💋 НОВОЕ: У уведомлений SlutCamp есть дом! Каждое обновление от нас теперь приходит в ОДНО место — в этот тред SlutCamp вверху ваших Чатов. Нажмите на любое уведомление SlutCamp — и оно откроется прямо здесь. Пока в нём есть что-то новое, он остаётся закреплённым вверху; когда вы всё прочитаете, он уйдёт в сторону до следующего обновления 💋', ja: '💋 新着：SlutCampのお知らせにホームができました！私たちからのアップデートはこれから1か所に届きます — チャットの一番上にあるこのSlutCampスレッドです。SlutCampの通知をタップすれば、ここが開きます。新しいお知らせがある間は一番上にピン留めされ、全部読むと次のアップデートまで控えめに退きます 💋', zh: '💋 新消息：你的 SlutCamp 通知有家了！我们今后的每条更新都会发送到同一个地方 — 聊天列表顶部的这个 SlutCamp 对话。点开任何一条 SlutCamp 通知，就会直接打开这里。有新内容时它会置顶；等你全部读完，它会先让开，直到下一次更新 💋', ko: '💋 새 소식: SlutCamp 공지에 집이 생겼어요! 이제 저희의 모든 업데이트는 한곳으로 도착합니다 — 채팅 맨 위의 이 SlutCamp 스레드예요. SlutCamp 알림을 탭하면 바로 여기가 열립니다. 새 소식이 있는 동안은 맨 위에 고정되고, 다 읽으면 다음 업데이트까지 잠시 물러나 있어요 💋', it: '💋 NOVITÀ: I tuoi avvisi SlutCamp hanno una casa! Ogni nostro aggiornamento ora arriva in UN solo posto — questa conversazione SlutCamp in cima alle tue Chat. Tocca qualsiasi notifica SlutCamp e si apre proprio qui. Finché ha qualcosa di nuovo resta fissata in cima; quando hai letto tutto, si fa da parte fino al prossimo aggiornamento 💋', pl: '💋 NOWOŚĆ: Twoje powiadomienia SlutCamp mają dom! Każda nasza nowość trafia teraz w JEDNO miejsce — ten wątek SlutCamp na górze Twoich Czatów. Dotknij dowolnego powiadomienia SlutCamp, a otworzy się właśnie tutaj. Dopóki ma coś nowego, zostaje przypięty na górze; gdy wszystko przeczytasz, ustępuje miejsca do następnej nowości 💋', nl: '💋 NIEUW: Je SlutCamp-meldingen hebben een thuis! Elke update van ons komt nu op ÉÉN plek terecht — deze SlutCamp-thread bovenaan je Chats. Tik op een SlutCamp-melding en hij opent precies hier. Zolang er iets nieuws is, blijft hij bovenaan vastgepind; zodra je alles hebt gelezen, stapt hij opzij tot de volgende update 💋', tr: '💋 YENİ: SlutCamp bildirimlerinin bir evi var! Bizden gelen her güncelleme artık TEK bir yere geliyor — Sohbetlerinin en üstündeki bu SlutCamp sohbeti. Herhangi bir SlutCamp bildirimine dokun, tam burada açılsın. Yeni bir şey olduğu sürece en üstte sabit kalır; hepsini okuduğunda bir sonraki güncellemeye kadar kenara çekilir 💋' },
   ann_inbox_bell_title: { en: '💋 Your SlutCamp inbox is here', es: '💋 Tu bandeja de SlutCamp ya está aquí', pt: '💋 Sua caixa da SlutCamp chegou', fr: '💋 Votre boîte SlutCamp est là', de: '💋 Dein SlutCamp-Postfach ist da', ru: '💋 Ваш почтовый ящик SlutCamp уже здесь', ja: '💋 SlutCamp受信箱ができました', zh: '💋 你的 SlutCamp 收件箱来了', ko: '💋 SlutCamp 받은편지함이 생겼어요', it: '💋 La tua casella SlutCamp è qui', pl: '💋 Twoja skrzynka SlutCamp już jest', nl: '💋 Je SlutCamp-inbox is er', tr: '💋 SlutCamp kutun burada' },
   ann_inbox_bell_body: { en: 'All our updates now live in one thread at the top of your Chats — tap to open it 💋', es: 'Todas nuestras novedades ahora viven en un hilo en la parte superior de tus Chats — toca para abrirlo 💋', pt: 'Todas as nossas novidades agora vivem em uma conversa no topo dos seus Chats — toque para abrir 💋', fr: 'Toutes nos nouveautés vivent désormais dans un fil en haut de vos Chats — touchez pour l\'ouvrir 💋', de: 'Alle unsere Updates leben jetzt in einem Thread oben in deinen Chats — tippe, um ihn zu öffnen 💋', ru: 'Все наши обновления теперь живут в одном треде вверху ваших Чатов — нажмите, чтобы открыть 💋', ja: '私たちからのお知らせは全部、チャットの一番上の1つのスレッドに届きます — タップして開いてね 💋', zh: '我们的所有更新现在都在聊天顶部的一个对话里 — 点开就能看 💋', ko: '저희의 모든 업데이트는 이제 채팅 맨 위의 한 스레드에 모여요 — 탭해서 열어보세요 💋', it: 'Tutti i nostri aggiornamenti ora vivono in una conversazione in cima alle tue Chat — tocca per aprirla 💋', pl: 'Wszystkie nasze nowości żyją teraz w jednym wątku na górze Twoich Czatów — dotknij, aby otworzyć 💋', nl: 'Al onze updates leven nu in één thread bovenaan je Chats — tik om te openen 💋', tr: 'Tüm güncellemelerimiz artık Sohbetlerinin en üstündeki tek bir sohbette — açmak için dokun 💋' },
+  ann_retention_dm: { en: '🧹 NEW: Your chats now clean themselves! To protect everyone\'s privacy and keep SlutCamp fast, chat messages are automatically deleted after 7 days — anything older than a week disappears on its own. Save anything important somewhere safe before then. (SlutCamp\'s official updates in this thread are never deleted 💋)', es: '🧹 NUEVO: ¡Tus chats ahora se limpian solos! Para proteger la privacidad de todos y mantener SlutCamp rápido, los mensajes de chat se eliminan automáticamente después de 7 días — todo lo que tenga más de una semana desaparece solo. Guarda lo importante en un lugar seguro antes de que pase. (Las novedades oficiales de SlutCamp en este hilo nunca se eliminan 💋)', pt: '🧹 NOVO: Suas conversas agora se limpam sozinhas! Para proteger a privacidade de todos e manter a SlutCamp rápida, as mensagens de chat são excluídas automaticamente após 7 dias — tudo o que tiver mais de uma semana desaparece sozinho. Salve o que for importante em um lugar seguro antes disso. (As novidades oficiais da SlutCamp nesta conversa nunca são excluídas 💋)', fr: '🧹 NOUVEAU : Vos chats se nettoient tout seuls ! Pour protéger la vie privée de tout le monde et garder SlutCamp rapide, les messages de chat sont automatiquement supprimés après 7 jours — tout ce qui a plus d\'une semaine disparaît tout seul. Enregistrez ce qui est important en lieu sûr avant. (Les nouveautés officielles de SlutCamp dans ce fil ne sont jamais supprimées 💋)', de: '🧹 NEU: Deine Chats räumen jetzt selbst auf! Zum Schutz aller Privatsphäre und damit SlutCamp schnell bleibt, werden Chat-Nachrichten nach 7 Tagen automatisch gelöscht — alles, was älter als eine Woche ist, verschwindet von selbst. Speichere Wichtiges vorher an einem sicheren Ort. (Offizielle SlutCamp-Updates in diesem Thread werden nie gelöscht 💋)', ru: '🧹 НОВОЕ: Ваши чаты теперь очищаются сами! Чтобы защитить приватность всех и сохранить скорость SlutCamp, сообщения чатов автоматически удаляются через 7 дней — всё, что старше недели, исчезает само. Сохраняйте важное в надёжном месте заранее. (Официальные обновления SlutCamp в этом треде никогда не удаляются 💋)', ja: '🧹 新機能：チャットが自動でお掃除されるようになりました！みんなのプライバシーを守り、SlutCampを快適に保つため、チャットメッセージは7日後に自動削除されます — 1週間より前のものは自動で消えます。大切なものは事前に安全な場所へ保存してね。（このスレッドのSlutCamp公式アップデートは削除されません 💋）', zh: '🧹 新功能：你的聊天现在会自动清理！为了保护大家的隐私、让 SlutCamp 保持流畅，聊天消息会在 7 天后自动删除 — 超过一周的内容会自动消失。重要的东西请提前保存到安全的地方。（本对话中的 SlutCamp 官方更新永远不会被删除 💋）', ko: '🧹 새 기능: 이제 채팅이 스스로 정리돼요! 모두의 프라이버시를 지키고 SlutCamp를 빠르게 유지하기 위해, 채팅 메시지는 7일 후 자동으로 삭제됩니다 — 일주일이 지난 것은 알아서 사라져요. 중요한 것은 미리 안전한 곳에 저장해 두세요. (이 스레드의 SlutCamp 공식 업데이트는 절대 삭제되지 않아요 💋)', it: '🧹 NOVITÀ: Le tue chat ora si puliscono da sole! Per proteggere la privacy di tutti e mantenere SlutCamp veloce, i messaggi di chat vengono eliminati automaticamente dopo 7 giorni — tutto ciò che ha più di una settimana sparisce da solo. Salva ciò che è importante in un posto sicuro prima. (Gli aggiornamenti ufficiali di SlutCamp in questa conversazione non vengono mai eliminati 💋)', pl: '🧹 NOWOŚĆ: Twoje czaty czyszczą się teraz same! Aby chronić prywatność wszystkich i utrzymać szybkość SlutCamp, wiadomości na czacie są automatycznie usuwane po 7 dniach — wszystko starsze niż tydzień znika samo. Zapisz to, co ważne, w bezpiecznym miejscu wcześniej. (Oficjalne aktualizacje SlutCamp w tym wątku nigdy nie są usuwane 💋)', nl: '🧹 NIEUW: Je chats ruimen zichzelf nu op! Om ieders privacy te beschermen en SlutCamp snel te houden, worden chatberichten na 7 dagen automatisch verwijderd — alles ouder dan een week verdwijnt vanzelf. Bewaar wat belangrijk is vooraf op een veilige plek. (Officiële SlutCamp-updates in deze thread worden nooit verwijderd 💋)', tr: '🧹 YENİ: Sohbetlerin artık kendini temizliyor! Herkesin gizliliğini korumak ve SlutCamp\'i hızlı tutmak için sohbet mesajları 7 gün sonra otomatik olarak siliniyor — bir haftadan eski her şey kendiliğinden kayboluyor. Önemli olanı önceden güvenli bir yere kaydet. (Bu sohbetteki resmi SlutCamp güncellemeleri asla silinmez 💋)' },
+  ann_retention_bell_title: { en: '🧹 Chats now auto-clean', es: '🧹 Los chats ahora se limpian solos', pt: '🧹 As conversas agora se limpam sozinhas', fr: '🧹 Les chats se nettoient tout seuls', de: '🧹 Chats räumen jetzt selbst auf', ru: '🧹 Чаты теперь очищаются сами', ja: '🧹 チャットが自動でお掃除されます', zh: '🧹 聊天现在会自动清理', ko: '🧹 채팅이 이제 자동으로 정리돼요', it: '🧹 Le chat ora si puliscono da sole', pl: '🧹 Czaty czyszczą się teraz same', nl: '🧹 Chats ruimen zichzelf nu op', tr: '🧹 Sohbetler artık kendini temizliyor' },
+  ann_retention_bell_body: { en: 'Messages older than 7 days delete themselves — save anything important. Tap to read more 💋', es: 'Los mensajes de más de 7 días se eliminan solos — guarda lo importante. Toca para leer más 💋', pt: 'Mensagens com mais de 7 dias se excluem sozinhas — salve o importante. Toque para ler mais 💋', fr: 'Les messages de plus de 7 jours se suppriment tout seuls — enregistrez l\'important. Touchez pour en savoir plus 💋', de: 'Nachrichten, die älter als 7 Tage sind, löschen sich selbst — speichere Wichtiges. Tippe für mehr 💋', ru: 'Сообщения старше 7 дней удаляются сами — сохраняйте важное. Нажмите, чтобы узнать больше 💋', ja: '7日より前のメッセージは自動で消えます — 大切なものは保存してね。タップして詳しく見る 💋', zh: '超过 7 天的消息会自动删除 — 重要的请保存好。点开了解更多 💋', ko: '7일이 지난 메시지는 자동으로 삭제돼요 — 중요한 것은 저장해 두세요. 탭해서 자세히 보기 💋', it: 'I messaggi più vecchi di 7 giorni si eliminano da soli — salva l\'importante. Tocca per saperne di più 💋', pl: 'Wiadomości starsze niż 7 dni usuwają się same — zapisz to, co ważne. Dotknij, aby dowiedzieć się więcej 💋', nl: 'Berichten ouder dan 7 dagen verwijderen zichzelf — bewaar wat belangrijk is. Tik voor meer info 💋', tr: '7 günden eski mesajlar kendini siliyor — önemli olanı kaydet. Daha fazlası için dokun 💋' },
 };
 
 function srv(key, lang, vars) {
@@ -3989,6 +3993,47 @@ function announceOfficialInbox() {
   return sent;
 }
 
+/* ------------------------------------------------------------------ */
+/* Chat auto-clean — ONE-TIME announcement (stamp                     */
+/* chat_retention_announced_at on platform_stats). Chat messages now  */
+/* delete themselves after 7 days (sweepChatRetention below — the     */
+/* owner does not want chats stored forever eating server space), so  */
+/* every model and fan hears it once: the DM lands in their official  */
+/* SlutCamp thread (which the sweep itself never touches) plus a bell */
+/* that opens it. Copy localized per recipient via the SRV table.     */
+/* Same house-account discipline as announceOfficialInbox: without a  */
+/* house account there is no official thread, so the stamp stays     */
+/* unset and a later boot retries.                                    */
+/* ------------------------------------------------------------------ */
+function announceChatRetention() {
+  const st = db.prepare('SELECT chat_retention_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.chat_retention_announced_at) return 0;
+  const hid = houseAccountId();
+  if (!hid) return 0;
+  const people = db.prepare(
+    "SELECT id, role, language FROM users WHERE banned = 0 AND role IN ('model','fan') AND id != ?")
+    .all(hid);
+  let sent = 0;
+  for (const p of people) {
+    try {
+      const conv = officialThreadFor(p.id);
+      if (!conv) continue;
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, hid, srv('ann_retention_dm', p.language));
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(p.id, 'chat_retention', srv('ann_retention_bell_title', p.language),
+          srv('ann_retention_bell_body', p.language), `/#chat/${conv.id}`);
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest */ }
+  }
+  if (sent > 0 || people.length === 0) {
+    db.prepare("UPDATE platform_stats SET chat_retention_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
 /* Fan blast — ONE-TIME bell + Web Push to every fan (stamp           */
 /* fan_preview_announced_at on platform_stats). Fans have no email or */
 /* text channel today (no provider; users held no contact info until  */
@@ -4165,6 +4210,7 @@ try { const n = announceLanguagesToModels(); if (n) console.log(`[lang] Language
 try { const n = announceLanguagesToFans(); if (n) console.log(`[fanlang] Languages blast sent to ${n} fans.`); } catch (e) { /* retry next boot */ }
 try { const n = announceSuggestionBoxToFans(); if (n) console.log(`[suggest] Suggestion box announcement sent to ${n} fans.`); } catch (e) { /* retry next boot */ }
 try { const n = announceOfficialInbox(); if (n) console.log(`[inbox] SlutCamp notices thread announced to ${n} users.`); } catch (e) { /* retry next boot */ }
+try { const n = announceChatRetention(); if (n) console.log(`[retention] Chat auto-clean announced to ${n} users.`); } catch (e) { /* retry next boot */ }
 
 // One-time grandfathering for payout protection (Oct 16, 2026): every
 // earning recorded BEFORE this feature existed counts as fully matured —
@@ -12349,22 +12395,44 @@ app.get('/api/admin/stats', ...adminOnly, (req, res) => {
 });
 
 app.get('/api/admin/conversations', ...adminOnly, (req, res) => {
+  // ?q= — the Chats monitor search bar: case-insensitive substring
+  // match against BOTH participants' display name AND username, so
+  // typing a model name brings up all her conversations. Filtering
+  // runs over a wider window than the page size so matches are not
+  // cut off by the default ordering before they can match.
+  const q = String(req.query.q || '').trim().toLowerCase();
   const convs = db.prepare(`
-    SELECT c.*, uf.display_name AS fan_name, um.display_name AS model_name
+    SELECT c.*, uf.display_name AS fan_name, uf.username AS fan_username,
+           um.display_name AS model_name, um.username AS model_username
     FROM conversations c
     LEFT JOIN users uf ON uf.id = c.fan_id
     JOIN users um ON um.id = c.model_id
-    ORDER BY c.updated_at DESC LIMIT 100`).all();
-  res.json({ conversations: convs.map((c) => {
+    ORDER BY c.updated_at DESC LIMIT 500`).all();
+  const filtered = q ? convs.filter((c) =>
+    [c.fan_name, c.fan_username, c.model_name, c.model_username]
+      .some((v) => (v || '').toLowerCase().includes(q))) : convs;
+  res.json({ conversations: filtered.slice(0, 100).map((c) => {
     const last = db.prepare(
       `SELECT m.*, COALESCE(u.display_name,'Guest Fan') AS sender_name
        FROM messages m LEFT JOIN users u ON u.id = m.sender_id
        WHERE m.conversation_id = ? ORDER BY m.id DESC LIMIT 1`).get(c.id);
     const n = db.prepare('SELECT COUNT(*) AS n FROM messages WHERE conversation_id = ?').get(c.id).n;
-    return { id: c.id, fan_name: c.fan_name || 'Guest Fan', model_name: c.model_name,
-             is_guest: !c.fan_id, is_paused: !!c.is_paused,
-             message_count: n, last_message: last, updated_at: c.updated_at };
+    return { id: c.id, fan_name: c.fan_name || 'Guest Fan', fan_username: c.fan_username || null,
+             model_name: c.model_name, model_username: c.model_username,
+             is_guest: !c.fan_id, is_paused: !!c.is_paused, is_official: !!c.is_official,
+             message_count: n, last_message: last,
+             last_activity_at: (last && last.created_at) || c.updated_at,
+             updated_at: c.updated_at };
   }) });
+});
+
+// Manual retention sweep — the Chats tab's 🧹 button. Runs the exact
+// same protected sweep as the 12h timer (official notices threads and
+// open-dispute chats are never touched) at the standard window and
+// reports how much was removed.
+app.post('/api/admin/conversations/cleanup', ...adminOnly, (req, res) => {
+  const r = sweepChatRetention(CHAT_RETENTION_DAYS);
+  res.json({ ok: true, ...r });
 });
 
 // Manual pause / resume
@@ -14110,6 +14178,89 @@ app.get(/^\/(?!api\/).*/, (req, res) => {
 });
 
 /* ------------------------------------------------------------------ */
+/* Chat retention sweep (owner, Oct 18 2026): the owner does not want */
+/* chat messages stored forever eating server space, so messages      */
+/* older than the retention window delete themselves — the timer      */
+/* below runs the sweep every 12 hours and once shortly after boot,   */
+/* and the Manager Chats tab's 🧹 button runs it on demand. Two hard   */
+/* exceptions, always:                                                */
+/*   • the official SlutCamp notices threads (is_official = 1) — the   */
+/*     permanent update archive; models must always be able to go     */
+/*     back and read the updates;                                     */
+/*   • any conversation involving a user with an OPEN dispute — the   */
+/*     disputes table links cases by user_id (there is no             */
+/*     conversation link), so every conversation that user takes      */
+/*     part in, on either side, is kept whole as evidence until the   */
+/*     case closes (status leaves 'open').                            */
+/* Message counts and last-message previews are computed live by both */
+/* chat-list endpoints, so nothing denormalized needs resyncing after */
+/* a delete. A non-official conversation the sweep leaves EMPTY is    */
+/* deleted too — an empty shell whose messages were its only content  */
+/* — and so are long-empty shells untouched past the window, unless   */
+/* an open dispute touches them. Reactions and edit history cascade   */
+/* with their messages (ON DELETE CASCADE, foreign_keys ON). Freed    */
+/* SQLite pages are reused by future writes; no vacuum, by design.    */
+/* ------------------------------------------------------------------ */
+const CHAT_RETENTION_DAYS = 7;
+
+function sweepChatRetention(retentionDays = CHAT_RETENTION_DAYS) {
+  const days = Math.max(1, parseInt(retentionDays, 10) || CHAT_RETENTION_DAYS);
+  const cutoff = `datetime('now', '-${days} days')`;
+  const disputed = new Set(db.prepare(
+    "SELECT DISTINCT user_id FROM disputes WHERE status = 'open' AND user_id IS NOT NULL")
+    .all().map((r) => r.user_id));
+  const isProtected = (c) => !!c.is_official ||
+    (c.fan_id != null && disputed.has(c.fan_id)) ||
+    (c.model_id != null && disputed.has(c.model_id));
+
+  // 1. Delete the aged messages from every unprotected conversation.
+  const candidates = db.prepare(`
+    SELECT c.id, c.fan_id, c.model_id, c.is_official FROM conversations c
+    WHERE EXISTS (SELECT 1 FROM messages m
+                  WHERE m.conversation_id = c.id AND m.created_at < ${cutoff})`).all();
+  const delAged = db.prepare(
+    `DELETE FROM messages WHERE conversation_id = ? AND created_at < ${cutoff}`);
+  const countLeft = db.prepare('SELECT COUNT(*) AS n FROM messages WHERE conversation_id = ?');
+  let messagesDeleted = 0;
+  const emptied = [];
+  for (const c of candidates) {
+    if (isProtected(c)) continue;
+    messagesDeleted += delAged.run(c.id).changes;
+    if (countLeft.get(c.id).n === 0) emptied.push(c.id);
+  }
+
+  // 2. Long-empty shells: no messages at all, untouched past the window.
+  const shells = db.prepare(`
+    SELECT c.id, c.fan_id, c.model_id, c.is_official FROM conversations c
+    WHERE c.updated_at < ${cutoff}
+      AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)`).all();
+  for (const c of shells) if (!isProtected(c)) emptied.push(c.id);
+
+  let conversationsDeleted = 0;
+  const delConv = db.prepare('DELETE FROM conversations WHERE id = ?');
+  for (const id of new Set(emptied)) { delConv.run(id); conversationsDeleted++; }
+
+  return { messages_deleted: messagesDeleted,
+           conversations_deleted: conversationsDeleted, retention_days: days };
+}
+
+// Cadence: once shortly after boot, then every 12 hours.
+setTimeout(() => {
+  try {
+    const r = sweepChatRetention();
+    if (r.messages_deleted || r.conversations_deleted)
+      console.log(`🧹 Chat retention (boot): ${r.messages_deleted} msgs, ${r.conversations_deleted} empty chats removed`);
+  } catch (e) { console.log('[retention] boot sweep failed:', e.message); }
+}, 30 * 1000);
+setInterval(() => {
+  try {
+    const r = sweepChatRetention();
+    if (r.messages_deleted || r.conversations_deleted)
+      console.log(`🧹 Chat retention: ${r.messages_deleted} msgs, ${r.conversations_deleted} empty chats removed`);
+  } catch (e) { console.log('[retention] sweep failed:', e.message); }
+}, 12 * 3600 * 1000);
+
+/* ------------------------------------------------------------------ */
 /* Biweekly cleanup — every Saturday, delete chat content older than    */
 /* 14 days (texts, photos, videos, voice notes) to save disk space.    */
 /* Financial records (transactions, payouts) are NEVER touched.         */
@@ -14158,8 +14309,11 @@ function runBiweeklyCleanup() {
     }
   } catch (e) { /* dir missing */ }
 
-  // 3. Delete old chat messages + media records + stream chat
-  const msgDel = db.prepare(`DELETE FROM messages WHERE created_at < ${cutoff}`).run();
+  // 3. Delete old chat messages — through the SAME protected retention
+  // sweep as the 7-day job, at this job's 14-day window, so the
+  // official notices threads and open-dispute chats survive this pass
+  // too (the old raw DELETE here would have wiped the archive).
+  const msgDel = { changes: sweepChatRetention(14).messages_deleted };
   const mediaDel = db.prepare(`DELETE FROM media_items WHERE created_at < ${cutoff}`).run();
   const streamDel = db.prepare(`DELETE FROM stream_chat WHERE created_at < ${cutoff}`).run();
   // 4. Clean up orphaned unlock records for deleted media
