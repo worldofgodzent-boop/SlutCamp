@@ -772,10 +772,12 @@ async function adminBookingsBody() {
       </div>`).join('') || '<div class="empty">No bookings yet.</div>'}`;
 }
 
-/* 🔗 Affiliates — read-only signup + §10 quota tracking (owner request,
-   Oct 17 2026: "add a Affiliate section that keep track of how many
-   affiliate signed up"). Management actions (create/remove) live on
-   the Partners screen; this one just tracks. */
+/* 🔗 Affiliates — signup + §10 quota tracking with username/password
+   reset (owner requests, Oct 17 2026: "add a Affiliate section that
+   keep track of how many affiliate signed up" + "a section like this
+   for affiliate, so that I can reset their user name and password if
+   needed... small and neat, like notification boxes"). Compact cards;
+   create/remove stays on the Partners screen. */
 async function adminAffiliatesBody() {
   const { data } = await api('/admin/affiliates');
   const s = (data && data.stats) || {};
@@ -793,18 +795,22 @@ async function adminAffiliatesBody() {
       const target = a.quota_target || 10;
       const pct = Math.min(100, Math.round(((a.models_onboarded || 0) / target) * 100));
       return `
-      <div class="card" style="padding:12px">
+      <div class="card" style="padding:10px 12px;margin-bottom:8px">
         <div class="row">
           <span class="grow"><b>${esc(a.recruiter_name || a.display_name)}</b>
             ${a.banned ? ' <span class="small" style="color:var(--red)">⛔ removed</span>' : ''}<br>
-            <span class="small muted">@${esc(a.username)} · signed up ${dateOf(a.signed_up_at)}${a.city ? ` · ${esc(a.city)}` : ''}${a.referral_code ? ` · link code <b>${esc(a.referral_code)}</b>` : ''}</span></span>
-          <span style="text-align:right"><b style="color:var(--green)">${fmt(a.earnings_cents || 0)}</b><br>
+            <span class="small muted">Username: <b>@${esc(a.username)}</b> · joined ${dateOf(a.signed_up_at)}</span><br>
+            <span class="small muted">🔗 Link: <span style="word-break:break-all;user-select:all">${esc(a.referral_link || '—')}</span></span></span>
+          <span style="text-align:right;flex-shrink:0"><b style="color:var(--green)">${fmt(a.earnings_cents || 0)}</b><br>
             <span class="small muted">earned</span></span>
         </div>
-        <div style="margin-top:8px">
-          <div class="row small"><span class="grow">Models onboarded: <b>${a.models_onboarded} / ${target}</b>${a.quota_met ? ' ✅ quota met' : ''}</span><span class="muted">first year ends ${esc(a.year_end || '')}</span></div>
-          <div style="height:8px;border-radius:99px;background:rgba(255,255,255,.08);margin-top:6px;overflow:hidden"><div style="height:100%;width:${pct}%;border-radius:99px;background:linear-gradient(90deg,var(--pink),var(--purple))"></div></div>
+        <div class="row small" style="margin-top:6px"><span class="grow">Models onboarded: <b>${a.models_onboarded} / ${target}</b>${a.quota_met ? ' ✅ quota met' : ''}</span><span class="muted">year ends ${esc(a.year_end || '')}</span></div>
+        <div style="height:6px;border-radius:99px;background:rgba(255,255,255,.08);margin-top:5px;overflow:hidden"><div style="height:100%;width:${pct}%;border-radius:99px;background:linear-gradient(90deg,var(--pink),var(--purple))"></div></div>
+        <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
+          <button class="btn small ghost" data-aff-user="${a.user_id}" data-aff-name="${esc(a.recruiter_name || a.display_name)}" data-aff-username="${esc(a.username)}">✏️ Username</button>
+          <button class="btn small ghost" data-aff-pw="${a.user_id}" data-aff-name="${esc(a.recruiter_name || a.display_name)}">🔑 Password</button>
         </div>
+        <div id="aff-edit-${a.user_id}"></div>
       </div>`;
     }).join('') || '<div class="empty">No affiliates have signed up yet.</div>'}`;
 }
@@ -1201,6 +1207,79 @@ function wireAdminBody(tab) {
         });
         if (status === 200) M.render();
         else toast('Could not update that suggestion.');
+      };
+    });
+  }
+
+  // 🔗 Affiliates — username + password reset panels (compact cards)
+  if (tab === 'affiliates') {
+    document.querySelectorAll('[data-aff-user]').forEach((b) => {
+      b.onclick = () => {
+        const id = b.dataset.affUser;
+        const name = b.dataset.affName || 'her';
+        const box = $('#aff-edit-' + id);
+        box.innerHTML = `
+          <div style="margin-top:10px">
+            <div class="small muted" style="margin-bottom:6px">✏️ Change ${esc(name)}'s username — her link, models and earnings stay attached (they key off her account, not the name). She logs in with the new one.</div>
+            <div class="row" style="gap:6px;flex-wrap:wrap">
+              <input class="input" id="afu-${id}" type="text" autocomplete="off" value="${esc(b.dataset.affUsername || '')}" style="margin-top:0;flex:1;min-width:180px">
+              <button class="btn small" id="afu-set-${id}">Save username</button>
+            </div>
+            <div class="small" id="afu-out-${id}" style="margin-top:6px"></div>
+          </div>`;
+        const out = $('#afu-out-' + id);
+        $('#afu-set-' + id).onclick = async () => {
+          const v = $('#afu-' + id).value.trim();
+          if (!v) { out.textContent = 'Username cannot be empty.'; return; }
+          if (!confirm(`Rename @${b.dataset.affUsername} to @${v}?`)) return;
+          const { status, data: r } = await api(`/admin/affiliates/${id}/username`, {
+            method: 'POST', body: JSON.stringify({ username: v }),
+          });
+          if (status === 200 && r && r.ok) { toast(`✅ Username is now @${r.username}`); M.render(); }
+          else if (status === 409) out.textContent = 'Username is taken';
+          else if (status === 400) out.textContent = 'Username cannot be empty.';
+          else out.textContent = 'Could not change it — try again.';
+        };
+      };
+    });
+    document.querySelectorAll('[data-aff-pw]').forEach((b) => {
+      b.onclick = () => {
+        const id = b.dataset.affPw;
+        const name = b.dataset.affName || 'her';
+        const box = $('#aff-edit-' + id);
+        box.innerHTML = `
+          <div style="margin-top:10px">
+            <div class="small muted" style="margin-bottom:6px">🔑 Reset ${esc(name)}'s password — she gets signed out everywhere and logs back in with the new one. Then send it to her.</div>
+            <div class="row" style="gap:6px;flex-wrap:wrap">
+              <input class="input" id="afp-${id}" type="text" autocomplete="off" placeholder="New password (min 6 characters)" style="margin-top:0;flex:1;min-width:180px">
+              <button class="btn small" id="afp-set-${id}">Set password</button>
+              <button class="btn small ghost" id="afp-gen-${id}">🎲 Generate one</button>
+            </div>
+            <div class="small" id="afp-out-${id}" style="margin-top:6px"></div>
+          </div>`;
+        const out = $('#afp-out-' + id);
+        const submit = async (password) => {
+          const { status, data: r } = await api(`/admin/affiliates/${id}/password`, {
+            method: 'POST', body: JSON.stringify({ password }) });
+          if (status === 200 && r && r.ok) {
+            if (r.generated) {
+              out.innerHTML = `✅ Done — her temporary password is <b style="user-select:all">${esc(r.password)}</b><br>Send it to her now; it's what she'll log in with.`;
+            } else {
+              out.innerHTML = '✅ Password updated — send her the new password so she can log in.';
+            }
+          } else if (status === 400) out.textContent = 'Too short — use at least 6 characters.';
+          else out.textContent = 'Could not reset it — try again.';
+        };
+        $('#afp-set-' + id).onclick = () => {
+          const v = $('#afp-' + id).value.trim();
+          if (v.length < 6) { out.textContent = 'Too short — use at least 6 characters.'; return; }
+          if (!confirm(`Set a new password for ${name}? She'll be signed out everywhere.`)) return;
+          submit(v);
+        };
+        $('#afp-gen-' + id).onclick = () => {
+          if (!confirm(`Generate a new temporary password for ${name}? She'll be signed out everywhere.`)) return;
+          submit('');
+        };
       };
     });
   }

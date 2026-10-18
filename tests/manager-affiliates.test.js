@@ -18,6 +18,13 @@
  *    in the bubble where I can see the numbers"): /api/admin/overview
  *    carries the SAME recruiter-role count as `affiliates`, rendered
  *    as an "Affiliates" stat tile in the Overview grid.
+ *  - Actions (owner refinement #2, Oct 17 2026 — compact cards "like
+ *    notification boxes" with resets, modeled on the Models screen):
+ *    POST /api/admin/affiliates/:id/username + /:id/password,
+ *    recruiter-role targets only. Rename is attribution-safe (models
+ *    key on recruiters.id, the link is recruiters.referral_code);
+ *    password reset mirrors the model flow (bcrypt(10), min 6,
+ *    generated temp when blank, deleteUserSessions).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,6 +34,7 @@ const path = require('node:path');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
 const { DatabaseSync } = require('node:sqlite');
+const bcrypt = require('bcryptjs');
 
 const REPO = path.join(__dirname, '..');
 const serverSrc = fs.readFileSync(path.join(REPO, 'server.js'), 'utf8');
@@ -117,13 +125,19 @@ function seedAffiliates(dir) {
 
     const insUser = db.prepare(
       'INSERT INTO users (username, password_hash, role, display_name, dob, banned, created_at) VALUES (?,?,?,?,?,?,?)');
-    const alphaId = Number(insUser.run('aff_alpha', 'x', 'recruiter', 'Alpha Recruiter', null, 0, '2026-03-04 05:06:07').lastInsertRowid);
+    const alphaId = Number(insUser.run('aff_alpha', bcrypt.hashSync('alpha-pass-123', 10), 'recruiter', 'Alpha Recruiter', null, 0, '2026-03-04 05:06:07').lastInsertRowid);
     const betaTs = sqlTs(new Date(Date.now() - 5 * 86400e3));
-    const betaId = Number(insUser.run('aff_beta', 'x', 'recruiter', 'Beta Recruiter', null, 1, betaTs).lastInsertRowid);
+    const betaId = Number(insUser.run('aff_beta', bcrypt.hashSync('beta-pass-123', 10), 'recruiter', 'Beta Recruiter', null, 1, betaTs).lastInsertRowid);
     const insRec = db.prepare(
       'INSERT INTO recruiters (user_id, name, city, referral_code, created_at) VALUES (?,?,?,?,?)');
     const alphaRec = Number(insRec.run(alphaId, 'Alpha Recruiter', 'Austin', 'alpha123', '2026-03-04 05:06:07').lastInsertRowid);
     const betaRec = Number(insRec.run(betaId, 'Beta Recruiter', '', 'beta456', betaTs).lastInsertRowid);
+    // Every real account gets a wallet at creation (createUser /
+    // createRecruiterAccount) — mirror that or the recruiter
+    // dashboard (which reads the wallet) 500s.
+    const insWallet = db.prepare('INSERT INTO wallets (user_id) VALUES (?)');
+    insWallet.run(alphaId);
+    insWallet.run(betaId);
 
     const insModelUser = db.prepare(
       "INSERT INTO users (username, password_hash, role, display_name, dob, created_at) VALUES (?, 'x', 'model', ?, NULL, '2026-04-01 00:00:00')");
@@ -132,10 +146,12 @@ function seedAffiliates(dir) {
     for (const n of ['affm_one', 'affm_two', 'affm_three']) {
       const uid = Number(insModelUser.run(n, n).lastInsertRowid);
       insModel.run(uid, alphaRec);
+      insWallet.run(uid);
       alphaModels.push(uid);
     }
     const soloUid = Number(insModelUser.run('affm_solo', 'affm_solo').lastInsertRowid);
     insModel.run(soloUid, null); // unattributed model — never counts
+    insWallet.run(soloUid);
 
     const insTxn = db.prepare(
       `INSERT INTO transactions (fan_id, model_id, type, gross_cents, model_cents, platform_cents, recruiter_id, recruiter_cents, is_test)
@@ -147,7 +163,7 @@ function seedAffiliates(dir) {
     insTxn.run(fan.id, alphaModels[0], 'message', 3885, 2331, 777, alphaRec, 777, 1); // test money — excluded
     insTxn.run(fan.id, alphaModels[0], 'chargeback', -999, 0, 0, alphaRec, 999, 0); // non-earning type — excluded
     insTxn.run(fan.id, soloUid, 'message', 1000, 600, 400, null, 0, 0); // no recruiter — excluded
-    return { alphaId, betaId, alphaRec, betaRec, betaTs };
+    return { alphaId, betaId, alphaRec, betaRec, betaTs, alphaModels, fanId: fan.id, soloUid };
   } finally {
     db.close();
   }
@@ -228,6 +244,12 @@ test('affiliates endpoint: counts, quota math, earnings ruler, roster shape', as
     // Alpha: quota progress + year-end math + earnings.
     assert.equal(alpha.recruiter_id, seeded.alphaRec);
     assert.equal(alpha.referral_code, 'alpha123');
+    // Refinement #3: every roster row carries the username AND her
+    // full shareable link (origin + '/#join/' + code, exactly as her
+    // own dashboard builds it) so the card can print both for a
+    // locked-out affiliate.
+    assert.equal(alpha.username, 'aff_alpha');
+    assert.equal(alpha.referral_link, 'https://slutcamp.app/#join/alpha123');
     assert.equal(alpha.signed_up_at, '2026-03-04 05:06:07');
     assert.equal(alpha.models_onboarded, 3);
     assert.equal(alpha.quota_target, 10);
@@ -236,13 +258,116 @@ test('affiliates endpoint: counts, quota math, earnings ruler, roster shape', as
     assert.equal(alpha.earnings_cents, 750);
     assert.equal(alpha.banned, false);
 
-    // Beta: banned surfaces, zero counts, her own year-end.
+    // Beta: banned surfaces, zero counts, her own year-end + link.
+    assert.equal(beta.username, 'aff_beta');
+    assert.equal(beta.referral_link, 'https://slutcamp.app/#join/beta456');
     assert.equal(beta.banned, true, 'stored banned flag surfaces as status');
     assert.equal(beta.models_onboarded, 0);
     assert.equal(beta.earnings_cents, 0);
     const betaYearEnd = new Date(seeded.betaTs.replace(' ', 'T') + 'Z');
     betaYearEnd.setUTCFullYear(betaYearEnd.getUTCFullYear() + 1);
     assert.equal(beta.year_end, betaYearEnd.toISOString().slice(0, 10));
+  } finally {
+    stop(h);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('affiliates actions: username + password reset (recruiter-only, attribution-safe)', async () => {
+  const dir = makeCopy();
+  const h1 = await boot(dir, { SEED_DEMO: '1' });
+  stop(h1);
+  const seeded = seedAffiliates(dir);
+  const h = await boot(dir, { SEED_DEMO: '1' });
+  try {
+    const mgr = await mgrLogin(h.base);
+    const login = (username, password) => req(h.base, 'POST', '/api/auth/login', { body: { username, password } });
+    const setUsername = (id, username, opts = mgr) =>
+      req(h.base, 'POST', `/api/admin/affiliates/${id}/username`, { ...opts, body: { username } });
+    const setPassword = (id, body, opts = mgr) =>
+      req(h.base, 'POST', `/api/admin/affiliates/${id}/password`, { ...opts, body });
+
+    // Auth gates on the actions: fan token + header → 403; no header → 403.
+    const fanSignup = await req(h.base, 'POST', '/api/auth/signup', {
+      body: { username: 'afffan_act', password: 'afffan-pass-123', role: 'fan',
+        display_name: 'afffan_act', dob: '1995-05-05', agree18: true },
+    });
+    assert.equal(fanSignup.status, 200, `fan signup: ${fanSignup.text}`);
+    const fanTry = await setUsername(seeded.alphaId, 'whatever',
+      { token: fanSignup.json.token, headers: { 'x-manager': '1' } });
+    assert.equal(fanTry.status, 403, 'fan cannot rename an affiliate');
+    const noHeader = await req(h.base, 'POST', `/api/admin/affiliates/${seeded.alphaId}/password`,
+      { token: mgr.token, body: { password: 'whatever-123' } });
+    assert.equal(noHeader.status, 403, 'missing X-Manager header rejected on actions');
+    assert.equal(noHeader.json.error, 'manager_only');
+
+    // Non-recruiter targets are refused (model, fan, missing id) on BOTH actions.
+    for (const target of [seeded.alphaModels[0], seeded.fanId, 999999]) {
+      const ru = await setUsername(target, 'newname');
+      assert.equal(ru.status, 404, `username reset refuses non-recruiter ${target}`);
+      const rp = await setPassword(target, { password: 'whatever-123' });
+      assert.equal(rp.status, 404, `password reset refuses non-recruiter ${target}`);
+    }
+
+    // Username validation: empty → 400; duplicates → 409 (case-insensitive).
+    const empty = await setUsername(seeded.alphaId, '   ');
+    assert.equal(empty.status, 400);
+    assert.equal(empty.json.error, 'username_required');
+    const dupSeed = await setUsername(seeded.betaId, 'FANDEMO');
+    assert.equal(dupSeed.status, 409, 'case-insensitive clash with a seed user');
+    assert.equal(dupSeed.json.error, 'username_taken');
+    const dupPeer = await setUsername(seeded.betaId, 'AFF_ALPHA');
+    assert.equal(dupPeer.status, 409, 'case-insensitive clash with another affiliate');
+    // On refusal NOTHING changes — Beta keeps her username, models, earnings.
+    const afterRefusals = await req(h.base, 'GET', '/api/admin/affiliates', { ...mgr });
+    const betaRow0 = afterRefusals.json.affiliates.find((a) => a.user_id === seeded.betaId);
+    assert.equal(betaRow0.username, 'aff_beta', 'refused renames leave the username untouched');
+    assert.equal(betaRow0.models_onboarded, 0);
+    assert.equal(betaRow0.earnings_cents, 0);
+
+    // Rename Alpha → attribution, link and earnings untouched.
+    const renamed = await setUsername(seeded.alphaId, 'AlphaNew');
+    assert.equal(renamed.status, 200, `rename: ${renamed.text}`);
+    assert.deepEqual(renamed.json, { ok: true, username: 'AlphaNew' });
+    const after = await req(h.base, 'GET', '/api/admin/affiliates', { ...mgr });
+    const alphaRow = after.json.affiliates.find((a) => a.user_id === seeded.alphaId);
+    assert.equal(alphaRow.username, 'AlphaNew');
+    assert.equal(alphaRow.models_onboarded, 3, 'onboarded count unchanged after rename');
+    assert.equal(alphaRow.earnings_cents, 750, 'earnings unchanged after rename');
+    assert.equal(alphaRow.referral_code, 'alpha123', 'referral link code unchanged after rename');
+
+    // She logs in with the NEW username + her existing password.
+    const loginNew = await login('AlphaNew', 'alpha-pass-123');
+    assert.equal(loginNew.status, 200, `login with new username: ${loginNew.text}`);
+    const oldToken = loginNew.json.token;
+    const dashBefore = await req(h.base, 'GET', '/api/recruiter/dashboard', { token: oldToken });
+    assert.equal(dashBefore.status, 200, 'recruiter session works before password reset');
+    assert.equal(dashBefore.json.model_count, 3, 'her dashboard still shows her 3 models');
+
+    // Password reset: too short → 400; real reset → old sessions die,
+    // old password fails, new password logs in.
+    const short = await setPassword(seeded.alphaId, { password: 'abc' });
+    assert.equal(short.status, 400);
+    assert.equal(short.json.error, 'password_too_short');
+    const reset = await setPassword(seeded.alphaId, { password: 'brand-new-pass' });
+    assert.equal(reset.status, 200, `password reset: ${reset.text}`);
+    assert.deepEqual(reset.json, { ok: true, generated: false });
+    const dashAfter = await req(h.base, 'GET', '/api/recruiter/dashboard', { token: oldToken });
+    assert.equal(dashAfter.status, 401, 'pre-reset session invalidated (mirrors model reset)');
+    const loginOld = await login('AlphaNew', 'alpha-pass-123');
+    assert.equal(loginOld.status, 401, 'old password no longer works');
+    const loginBrandNew = await login('AlphaNew', 'brand-new-pass');
+    assert.equal(loginBrandNew.status, 200, 'new password logs in');
+
+    // Generated temp path (no password sent) — mirrors the model flow.
+    const gen = await setPassword(seeded.betaId, {});
+    assert.equal(gen.status, 200, `generated reset: ${gen.text}`);
+    assert.equal(gen.json.generated, true);
+    assert.ok(typeof gen.json.password === 'string' && gen.json.password.length >= 6, 'temp password returned');
+    const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'), { readOnly: true });
+    const betaHash = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(seeded.betaId).password_hash;
+    db.close();
+    assert.ok(bcrypt.compareSync(gen.json.password, betaHash), 'temp password matches the stored hash');
   } finally {
     stop(h);
     fs.rmSync(dir, { recursive: true, force: true });
@@ -264,4 +389,20 @@ test('pins: route, attribution source, nav + screen wiring exist', () => {
     'overview payload carries the affiliates count');
   assert.ok(managerSrc.includes('${o.affiliates ?? \'—\'}</div><div class="l">Affiliates</div>'),
     'overview grid renders an Affiliates stat bubble');
+  // Username/password reset actions (refinement #2).
+  assert.ok(serverSrc.includes("app.post('/api/admin/affiliates/:id/username', ...adminOnly"), 'username reset route exists behind adminOnly');
+  assert.ok(serverSrc.includes("app.post('/api/admin/affiliates/:id/password', ...adminOnly"), 'password reset route exists behind adminOnly');
+  const pwBody = serverSrc.slice(serverSrc.indexOf("app.post('/api/admin/affiliates/:id/password'"),
+    serverSrc.indexOf("app.post('/api/admin/affiliates/:id/password'") + 1400);
+  assert.ok(pwBody.includes("role = 'recruiter'"), 'password reset targets recruiters only');
+  assert.ok(pwBody.includes('bcrypt.hashSync(password, 10)'), 'password reset hashes with bcrypt(10) like the model flow');
+  assert.ok(pwBody.includes('deleteUserSessions(u.id)'), 'password reset kills live sessions like the model flow');
+  // Refinement #3: payload link construction + card renders both lines.
+  assert.ok(serverSrc.includes('`${SEO_ORIGIN}/#join/${a.referral_code}`'), 'endpoint builds the full affiliate link from the canonical origin');
+  assert.ok(managerSrc.includes('Username: <b>@${esc(a.username)}</b>'), 'card prints a labeled Username line');
+  assert.ok(managerSrc.includes('🔗 Link: <span style="word-break:break-all;user-select:all">${esc(a.referral_link'), 'card prints the full affiliate link');
+  assert.ok(managerSrc.includes('data-aff-user="'), 'username button on the affiliate card');
+  assert.ok(managerSrc.includes("out.textContent = 'Username is taken'"), 'UI surfaces the plain "Username is taken" refusal');
+  assert.ok(managerSrc.includes('data-aff-pw="'), 'password button on the affiliate card');
+  assert.ok(managerSrc.includes("if (tab === 'affiliates')"), 'affiliates wiring registered in wireAdminBody');
 });

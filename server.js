@@ -1195,6 +1195,7 @@ addColumnIfMissing('models', 'preview_video_url', "TEXT NOT NULL DEFAULT ''"); /
 addColumnIfMissing('models', 'preview_video_url_2', "TEXT NOT NULL DEFAULT ''"); // Second main profile video
 addColumnIfMissing('models', 'gallery_photos', "TEXT NOT NULL DEFAULT '[]'"); // Extra profile pictures (JSON array)
 addColumnIfMissing('platform_stats', 'profile_media_announced_at', 'TEXT'); // one-time profile-media broadcast stamp
+addColumnIfMissing('platform_stats', 'role_signin_announced_at', 'TEXT'); // one-time role-sign-in broadcast stamp
 addColumnIfMissing('invite_links', 'expires_at', "TEXT NOT NULL DEFAULT (datetime('now', '+6 hours'))");
 addColumnIfMissing('invite_links', 'role', "TEXT NOT NULL DEFAULT 'model'");
 addColumnIfMissing('tax_profiles', 'electronic_1099_consent', 'INTEGER NOT NULL DEFAULT 0');
@@ -2741,6 +2742,9 @@ const SRV = {
   suggest_admin_title: { en: '💡 New suggestion from {username}', es: '💡 Nueva sugerencia de {username}', pt: '💡 Nova sugestão de {username}', fr: '💡 Nouvelle suggestion de {username}', de: '💡 Neuer Vorschlag von {username}', ru: '💡 Новое предложение от {username}', ja: '💡 {username} さんからの新しい提案', zh: '💡 来自 {username} 的新建议', ko: '💡 {username}님의 새 건의', it: '💡 Nuovo suggerimento da {username}', pl: '💡 Nowa sugestia od {username}', nl: '💡 Nieuwe suggestie van {username}', tr: '💡 {username} kullanıcısından yeni öneri' },
   ann_lang_fan_title: { en: '🌍 NEW: SlutCamp speaks YOUR language!', es: '🌍 NUEVO: ¡SlutCamp habla TU idioma!', pt: '🌍 NOVIDADE: a SlutCamp fala SEU idioma!', fr: '🌍 NOUVEAU : SlutCamp parle VOTRE langue !', de: '🌍 NEU: SlutCamp spricht DEINE Sprache!', ru: '🌍 НОВОЕ: SlutCamp говорит на ВАШЕМ языке!', ja: '🌍 新機能：SlutCampはあなたの言語に対応！', zh: '🌍 新功能：SlutCamp 说你的语言！', ko: '🌍 새 소식: SlutCamp가 당신의 언어를 지원합니다!', it: '🌍 NOVITÀ: SlutCamp parla la TUA lingua!', pl: '🌍 NOWOŚĆ: SlutCamp mówi w TWOIM języku!', nl: '🌍 NIEUW: SlutCamp spreekt JOUW taal!', tr: '🌍 YENİ: SlutCamp SENİN dilini konuşuyor!' },
   ann_lang_fan_body: { en: 'The whole app now speaks 13 languages — switch anytime in Settings: buttons, messages and agreements included 💋', es: 'Toda la app ahora habla 13 idiomas — cámbialo cuando quieras en Ajustes: botones, mensajes y acuerdos incluidos 💋', pt: 'O app inteiro agora fala 13 idiomas — troque quando quiser em Configurações: botões, mensagens e contratos incluídos 💋', fr: 'Toute l\'appli parle maintenant 13 langues — changez à tout moment dans Paramètres : boutons, messages et contrats inclus 💋', de: 'Die ganze App spricht jetzt 13 Sprachen — stelle jederzeit in den Einstellungen um: Schaltflächen, Nachrichten und Vereinbarungen inklusive 💋', ru: 'Всё приложение теперь говорит на 13 языках — переключайте в любое время в Настройках: кнопки, сообщения и соглашения включены 💋', ja: 'アプリ全体が13言語に対応しました — 設定でいつでも切り替え可能：ボタン、メッセージ、契約も含まれます 💋', zh: '整个应用现在支持 13 种语言 — 随时在设置中切换：包括按钮、消息和协议 💋', ko: '이제 앱 전체가 13개 언어를 지원합니다 — 설정에서 언제든지 바꾸세요: 버튼, 메시지, 계약까지 포함됩니다 💋', it: 'L\'intera app ora parla 13 lingue — cambia in qualsiasi momento in Impostazioni: pulsanti, messaggi e contratti inclusi 💋', pl: 'Cała aplikacja mówi teraz w 13 językach — przełącz w każdej chwili w Ustawieniach: przyciski, wiadomości i umowy w zestawie 💋', nl: 'De hele app spreekt nu 13 talen — schakel op elk moment in Instellingen: knoppen, berichten en overeenkomsten inbegrepen 💋', tr: 'Tüm uygulama artık 13 dil konuşuyor — Ayarlar\'dan istediğin zaman değiştir: düğmeler, mesajlar ve sözleşmeler dahil 💋' },
+  ann_role_signin_dm: { en: '🔑 NEW UPDATE: Signing in is simpler now! There\'s a big “Sign in as a model” button right on the front page — tap it, enter your username and password, and you\'re in. No more hunting around 💋', es: '🔑 NUEVA ACTUALIZACIÓN: ¡Iniciar sesión ahora es más simple! Hay un botón grande de “Iniciar sesión como modelo” justo en la página principal: tócalo, escribe tu usuario y contraseña, y ya estás dentro. Sin más vueltas 💋', pt: '🔑 NOVA ATUALIZAÇÃO: Entrar ficou mais simples! Agora há um botão grande “Entrar como modelo” bem na página inicial — toque nele, digite seu usuário e senha, e pronto. Sem complicação 💋', fr: '🔑 NOUVELLE MISE À JOUR : Se connecter est plus simple ! Il y a maintenant un gros bouton « Se connecter comme modèle » sur la page d\'accueil — touchez-le, entrez votre identifiant et votre mot de passe, et vous êtes dedans. Fini de chercher 💋', de: '🔑 NEUES UPDATE: Anmelden ist jetzt einfacher! Auf der Startseite gibt es jetzt einen großen Button „Als Model anmelden“ — antippen, Benutzername und Passwort eingeben, und du bist drin. Kein Suchen mehr 💋', ru: '🔑 НОВОЕ ОБНОВЛЕНИЕ: Входить стало проще! Теперь на главной странице есть большая кнопка «Войти как модель» — нажми её, введи логин и пароль, и ты внутри. Больше не надо искать 💋', ja: '🔑 新しいアップデート：ログインがもっと簡単になりました！トップページに大きな「モデルとしてログイン」ボタンができました — タップして、ユーザー名とパスワードを入れるだけ。もう迷いません 💋', zh: '🔑 新更新：登录变得更简单了！主页上现在有一个大大的“以模特身份登录”按钮 — 点它，输入用户名和密码，就进来了。不用再找来找去 💋', ko: '🔑 새 업데이트: 로그인이 더 간단해졌어요! 이제 메인 페이지에 큰 “모델로 로그인” 버튼이 있어요 — 탭하고, 아이디와 비밀번호를 입력하면 끝. 더 이상 헤매지 마세요 💋', it: '🔑 NUOVO AGGIORNAMENTO: Accedere ora è più semplice! Sulla pagina principale c\'è un grande pulsante “Accedi come modella” — toccalo, inserisci nome utente e password, e sei dentro. Niente più ricerche 💋', pl: '🔑 NOWA AKTUALIZACJA: Logowanie jest teraz prostsze! Na stronie głównej jest teraz duży przycisk „Zaloguj się jako modelka” — dotknij go, wpisz nazwę użytkownika i hasło, i jesteś w środku. Koniec szukania 💋', nl: '🔑 NIEUWE UPDATE: Inloggen is nu eenvoudiger! Op de voorpagina staat nu een grote knop “Inloggen als model” — tik erop, vul je gebruikersnaam en wachtwoord in, en je bent binnen. Niet meer zoeken 💋', tr: '🔑 YENİ GÜNCELLEME: Giriş yapmak artık daha basit! Ana sayfada artık büyük bir “Model olarak giriş yap” düğmesi var — dokun, kullanıcı adını ve şifreni yaz, içeridesin. Aramak yok 💋' },
+  ann_role_signin_bell_title: { en: '🔑 Signing in is simpler now', es: '🔑 Iniciar sesión es más simple ahora', pt: '🔑 Entrar ficou mais simples', fr: '🔑 La connexion est plus simple', de: '🔑 Anmelden ist jetzt einfacher', ru: '🔑 Входить стало проще', ja: '🔑 ログインが簡単になりました', zh: '🔑 登录更简单了', ko: '🔑 로그인이 더 간단해졌어요', it: '🔑 Accedere è più semplice ora', pl: '🔑 Logowanie jest prostsze', nl: '🔑 Inloggen is nu eenvoudiger', tr: '🔑 Giriş yapmak artık daha basit' },
+  ann_role_signin_bell_body: { en: 'Tap “Sign in as a model” on the front page — username, password, you\'re in 💋', es: 'Toca “Iniciar sesión como modelo” en la página principal: usuario, contraseña y ya estás dentro 💋', pt: 'Toque em “Entrar como modelo” na página inicial — usuário, senha e pronto 💋', fr: 'Touchez « Se connecter comme modèle » sur la page d\'accueil — identifiant, mot de passe, et vous êtes dedans 💋', de: 'Tippe auf der Startseite auf „Als Model anmelden“ — Benutzername, Passwort, drin 💋', ru: 'Нажми «Войти как модель» на главной странице — логин, пароль, и ты внутри 💋', ja: 'トップページの「モデルとしてログイン」をタップ — ユーザー名とパスワードで完了 💋', zh: '点击主页上的“以模特身份登录” — 用户名、密码，搞定 💋', ko: '메인 페이지에서 “모델로 로그인”을 탭하세요 — 아이디, 비밀번호, 끝 💋', it: 'Tocca “Accedi come modella” sulla pagina principale — nome utente, password, e sei dentro 💋', pl: 'Dotknij „Zaloguj się jako modelka” na stronie głównej — nazwa użytkownika, hasło i gotowe 💋', nl: 'Tik op “Inloggen als model” op de voorpagina — gebruikersnaam, wachtwoord, klaar 💋', tr: 'Ana sayfada “Model olarak giriş yap”a dokun — kullanıcı adı, şifre, tamam 💋' },
 };
 
 function srv(key, lang, vars) {
@@ -3765,6 +3769,46 @@ function announceProfileMediaToModels() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Role sign-in buttons — ONE-TIME broadcast to every model, same     */
+/* admin-thread DM + stamp pattern as the broadcasts above            */
+/* (role_signin_announced_at on platform_stats), copy localized per   */
+/* model via the SRV table. The front door now carries big            */
+/* "Sign in as a fan / model / affiliate" buttons and the login form  */
+/* is labelled per role, so returning girls stop hunting for the      */
+/* right door. Owner's standing rule: every update gets a message.    */
+/* ------------------------------------------------------------------ */
+function announceRoleSigninToModels() {
+  const st = db.prepare('SELECT role_signin_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.role_signin_announced_at) return 0;
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin) return 0;
+  const models = db.prepare("SELECT id, username, language FROM users WHERE role = 'model' AND banned = 0").all();
+  let sent = 0;
+  for (const m of models) {
+    if (m.id === admin.id) continue;
+    try {
+      let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(admin.id, m.id);
+      if (!conv) {
+        const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(admin.id, m.id);
+        conv = { id: Number(info.lastInsertRowid) };
+      }
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, admin.id, srv('ann_role_signin_dm', m.language));
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(m.id, 'role_signin', srv('ann_role_signin_bell_title', m.language),
+          srv('ann_role_signin_bell_body', m.language), `/#chat/${conv.id}`);
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest */ }
+  }
+  if (sent > 0 || models.length === 0) {
+    db.prepare("UPDATE platform_stats SET role_signin_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
+/* ------------------------------------------------------------------ */
 /* One-tap thread routing — ONE-TIME broadcast to every model, same   */
 /* admin-thread DM + stamp pattern as the broadcasts above            */
 /* (thread_tap_announced_at on platform_stats). PR #33 made bell taps */
@@ -3958,6 +4002,7 @@ try { const n = announcePublicPhotoToModels(); if (n) console.log(`[seo] Public-
 try { const n = announceNotifFixToModels(); if (n) console.log(`[notif] Notification-fix announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announcePreviewVideoToModels(); if (n) console.log(`[preview] Preview-video announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceProfileMediaToModels(); if (n) console.log(`[profilemedia] Profile-media announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
+try { const n = announceRoleSigninToModels(); if (n) console.log(`[rolesignin] Role sign-in announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceThreadTapToModels(); if (n) console.log(`[threadtap] Thread-tap announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceFanPreviewToFans(); if (n) console.log(`[fanblast] Fan preview blast sent to ${n} fans.`); } catch (e) { /* retry next boot */ }
 try { const n = announceLanguagesToModels(); if (n) console.log(`[lang] Languages announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
@@ -12406,6 +12451,11 @@ app.get('/api/admin/affiliates', ...adminOnly, (req, res) => {
   const QUOTA_TARGET = 10; // Recruiter Agreement §10: 10 models in year one
   for (const a of affiliates) {
     a.banned = !!a.banned;
+    // Her full shareable link, built exactly as her own dashboard
+    // builds it (app.js: origin + '/#join/' + referral_code) with the
+    // canonical public origin — the Manager card prints it in full so
+    // the owner can read her username + link to a locked-out affiliate.
+    a.referral_link = a.referral_code ? `${SEO_ORIGIN}/#join/${a.referral_code}` : null;
     a.quota_target = QUOTA_TARGET;
     a.quota_met = a.models_onboarded >= QUOTA_TARGET;
     // First-year window ends exactly one year after signup (§10).
@@ -12414,6 +12464,48 @@ app.get('/api/admin/affiliates', ...adminOnly, (req, res) => {
     a.year_end = d.toISOString().slice(0, 10);
   }
   res.json({ stats, affiliates });
+});
+
+/* Admin — Affiliates action: reset a recruiter's username (owner
+   request, Oct 17 2026 — "so that I can reset their user name and
+   password if needed"). Recruiter-role targets ONLY. Attribution-safe
+   by construction: models.recruiter_id → recruiters.id, her signup
+   link is recruiters.referral_code, sessions/contracts/wallets all
+   key on users.id — nothing keys off the username string, so this
+   single UPDATE cannot detach her models, link or earnings.
+   Validation mirrors the affiliate signup paths: trimmed, non-empty,
+   and unique across users (column is UNIQUE + NOCASE). */
+app.post('/api/admin/affiliates/:id/username', ...adminOnly, (req, res) => {
+  const u = db.prepare(`SELECT * FROM users WHERE id = ? AND role = 'recruiter'`).get(req.params.id);
+  if (!u) return res.status(404).json({ error: 'not_found' });
+  const uname = String((req.body && req.body.username) || '').trim();
+  if (!uname) return res.status(400).json({ error: 'username_required', message: 'Username cannot be empty.' });
+  const clash = db.prepare('SELECT id FROM users WHERE username = ? AND id != ?').get(uname, u.id);
+  if (clash) return res.status(409).json({ error: 'username_taken', message: 'That username is already taken.' });
+  db.prepare('UPDATE users SET username = ? WHERE id = ?').run(uname, u.id);
+  res.json({ ok: true, username: uname });
+});
+
+/* Admin — Affiliates action: reset a recruiter's password. Mirrors the
+   model reset (POST /api/admin/models/:id/reset-password) exactly:
+   a typed password, or a generated temp to hand her when none is
+   sent; bcrypt(10); min 6 chars; all her live sessions die with the
+   old password (deleteUserSessions). */
+app.post('/api/admin/affiliates/:id/password', ...adminOnly, (req, res) => {
+  const u = db.prepare(`SELECT * FROM users WHERE id = ? AND role = 'recruiter'`).get(req.params.id);
+  if (!u) return res.status(404).json({ error: 'not_found' });
+  let { password } = req.body || {};
+  let generated = false;
+  if (typeof password !== 'string' || !password.trim()) {
+    const alpha = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    password = Array.from(crypto.randomBytes(10)).map((n) => alpha[n % alpha.length]).join('');
+    generated = true;
+  }
+  password = password.trim();
+  if (password.length < 6) return res.status(400).json({ error: 'password_too_short' });
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(password, 10), u.id);
+  deleteUserSessions(u.id);
+  res.json({ ok: true, generated, ...(generated ? { password } : {}) });
 });
 
 // Admin: remove a partner (their models stay; revenue reverts to Corry)
