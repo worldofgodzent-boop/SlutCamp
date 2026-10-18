@@ -1993,3 +1993,20 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
   font-size: 13.5px; color: #fff;
 }
+
+/* One-account Model/Affiliate switch — shown ONLY to accounts holding
+   BOTH sides (owner spec: two labels at the top, one tap to flip). */
+.side-switch {
+  display: flex; gap: 0; padding: 3px; margin: 0 0 12px;
+  background: var(--card2, #241536); border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+}
+.side-switch button {
+  flex: 1; border: 0; background: transparent; cursor: pointer;
+  color: var(--muted, #c9a8b8); font-weight: 800; font-size: 14px;
+  padding: 8px 0; border-radius: 999px;
+}
+.side-switch button.on {
+  background: linear-gradient(135deg, var(--pink, #ff5c9e), var(--purple, #8b5cf6));
+  color: #fff;
+}
