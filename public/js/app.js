@@ -12287,6 +12287,7 @@ function affiliateSwitchNoteHTML() {
   if (!offer || offer.direction !== 'switch_account') return '';
   return `<div class="card" style="border-color:var(--gold)"><div class="small">🤝 ${t('aff_switch_note', { role: t(offer.other_role === 'model' ? 'role_word_model' : 'role_word_fan'), username: offer.other_username })}</div></div>`;
 }
+function hdrPublic(title) { return `<div class="header"><h1>${esc(title)}</h1></div>`; }
 function affiliateCardHTML() {
   if (!S.user || (S.user.role !== 'fan' && S.user.role !== 'model')) return '';
   if (S.user.is_affiliate) {
@@ -12346,7 +12347,6 @@ async function vAffiliateAttach() {
       <button class="btn ghost" id="aa-back" style="width:100%;margin-top:8px">${t('back')}</button>
     </div>`;
   entryRerender = vAffiliateAttach;
-  renderHeader();
   $('#aa-back').onclick = () => show(affSettingsBack(), {});
   $('#aa-go').onclick = async () => {
     const display_name = $('#aa-name').value.trim();
@@ -12375,7 +12375,6 @@ async function vAffiliateMerge() {
       </div>
     </div>`;
   entryRerender = vAffiliateMerge;
-  renderHeader();
   $('#am-back').onclick = () => show(affSettingsBack(), {});
   $('#am-go').onclick = async () => {
     const username = $('#am-user').value.trim(), password = $('#am-pass').value;

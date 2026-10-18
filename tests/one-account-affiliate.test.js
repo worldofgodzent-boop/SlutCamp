@@ -247,6 +247,21 @@ test('source pins: switch renders ONLY for dual holders; Settings card + views w
   assert.ok(cssSrc.includes('.side-switch'), 'switch styles shipped');
 });
 
+test('source pins: every helper the affiliate attach/merge views call is defined (called-but-undefined helpers render dead buttons)', () => {
+  // Regression pin for the PR #45 defect: vAffiliateAttach and
+  // vAffiliateMerge called hdrPublic() in their templates and
+  // renderHeader() after the paint — neither was defined anywhere, so
+  // the views threw and the affiliate card's buttons looked dead.
+  for (const name of ['hdrPublic', 'renderHeader']) {
+    const calls = (appSrc.match(new RegExp(name + '\\(', 'g')) || []).length;
+    const defined = appSrc.includes(`function ${name}(`);
+    assert.ok(calls === 0 || defined,
+      `${name}: ${calls} call(s) in app.js but no \`function ${name}(\` definition`);
+  }
+  assert.ok(appSrc.includes("hdrPublic('SlutCamp 🤝')"),
+    'affiliate attach/merge views still render their public header via hdrPublic');
+});
+
 test('source pins: PR #44 landing tie-in — "Sign in as an affiliate" lands capability holders on the affiliate side', () => {
   const after = sliceFn(appSrc, 'async function afterLogin(data', '/* Contract gate');
   assert.ok(after.includes("opts.roleHint) === 'affiliate' && !!S.user.is_affiliate"), 'tie-in gated on hint + capability');
