@@ -562,11 +562,14 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 // Uploads dir for PPV media + voice notes (served only via authed /api/media/:id/file)
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-// Model profile photos are public (fans see them on the grid).
-// PPV media + voice notes stay private: only files prefixed "photo-" are served here.
-// Everything else in uploads/ is still served only via authed /api/media/:id/file.
+// Public classes in uploads/: model profile photos ("photo-*") and profile
+// preview videos ("preview-*.mp4") — both are public profile content by
+// design (they render on profiles and home tiles, for guests too).
+// PPV media + voice notes stay private: only the two whitelisted patterns
+// below are served here. Everything else in uploads/ is still served only
+// via authed /api/media/:id/file.
 app.use('/uploads', (req, res, next) => {
-  if (/^\/photo-[a-f0-9]+\.(jpg|png|webp)$/.test(req.path)) return next();
+  if (/^\/(?:photo-[a-f0-9]+\.(?:jpg|png|webp)|preview-[a-f0-9]+\.mp4)$/.test(req.path)) return next();
   return res.status(404).end();
 }, express.static(UPLOAD_DIR));
 
