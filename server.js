@@ -12209,6 +12209,8 @@ app.get('/api/admin/overview', ...adminOnly, (req, res) => {
       (SELECT COUNT(*) FROM live_sessions WHERE status = 'live') AS live_now,
       (SELECT COUNT(*) FROM users WHERE role = 'fan' AND banned = 0) AS fans,
       (SELECT COUNT(*) FROM users WHERE role = 'model' AND banned = 0) AS models,
+      (SELECT COUNT(*) FROM users u WHERE u.merged_into IS NULL
+        AND (u.role = 'recruiter' OR EXISTS (SELECT 1 FROM recruiters r WHERE r.user_id = u.id))) AS affiliates,
       (SELECT COUNT(*) FROM dmca_notices WHERE status IN ('received','under_review')) AS open_dmca,
       (SELECT COUNT(*) FROM safety_incidents WHERE status = 'open') AS open_incidents`).get();
   const LEDGER_SUM = `
@@ -12722,6 +12724,120 @@ app.get('/api/admin/recruiters', ...adminOnly, (req, res) => {
              WHERE t.recruiter_id = r.id AND t.platform_cents > 0) AS corrys_cut_cents
     FROM recruiters r JOIN users u ON u.id = r.user_id JOIN wallets w ON w.user_id = u.id
     ORDER BY r.created_at DESC`).all() });
+});
+
+/* Admin — Affiliates tracking (Manager 🔗 Affiliates screen): how many
+   affiliates have signed up + each affiliate's §10 first-year quota
+   progress. READ-ONLY — the quota review at year end is a human/Manager
+   decision (Recruiter Agreement R1.3 §10); nothing here revokes or
+   enforces anything. WHO COUNTS as an affiliate mirrors the one-account
+   capability model (PR #45): merged_into IS NULL AND (role='recruiter'
+   OR the account holds a recruiters row) — a merged model/fan appears
+   ONCE with combined numbers (her attribution + ledger were repointed
+   to the surviving recruiters row at merge), and retired merged
+   duplicates never appear. signed_up_at = her affiliate start
+   (recruiters.created_at when a row exists — a merge preserves the
+   earlier start), so the §10 year-end math runs off the true window.
+   A model counts via models.recruiter_id, the same attribution
+   splitPayment pays on. Money reads the ledger with the Manager's
+   standard ruler (is_test = 0 + earning types, like /api/admin/overview). */
+app.get('/api/admin/affiliates', ...adminOnly, (req, res) => {
+  const EARN_TYPES = `('message','call','tip','ppv','voice','live_explicit','gift','game')`;
+  const stats = db.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM users u LEFT JOIN recruiters r ON r.user_id = u.id
+        WHERE u.merged_into IS NULL AND (u.role = 'recruiter' OR r.id IS NOT NULL)) AS total_affiliates,
+      (SELECT COUNT(*) FROM users u LEFT JOIN recruiters r ON r.user_id = u.id
+        WHERE u.merged_into IS NULL AND (u.role = 'recruiter' OR r.id IS NOT NULL)
+          AND COALESCE(r.created_at, u.created_at) >= datetime('now', '-30 days')) AS new_last_30_days,
+      (SELECT COUNT(*) FROM models WHERE recruiter_id IS NOT NULL) AS models_onboarded,
+      (SELECT COALESCE(SUM(recruiter_cents), 0) FROM transactions
+        WHERE is_test = 0 AND recruiter_id IS NOT NULL
+          AND type IN ${EARN_TYPES}) AS recruiter_earnings_cents`).get();
+  const affiliates = db.prepare(`
+    SELECT u.id AS user_id, u.username, u.display_name, u.banned,
+           COALESCE(r.created_at, u.created_at) AS signed_up_at,
+           r.id AS recruiter_id, r.name AS recruiter_name, r.city, r.referral_code,
+           (SELECT COUNT(*) FROM models m WHERE m.recruiter_id = r.id) AS models_onboarded,
+           (SELECT COALESCE(SUM(t.recruiter_cents), 0) FROM transactions t
+             WHERE t.recruiter_id = r.id AND t.is_test = 0
+               AND t.type IN ${EARN_TYPES}) AS earnings_cents
+    FROM users u LEFT JOIN recruiters r ON r.user_id = u.id
+    WHERE u.merged_into IS NULL AND (u.role = 'recruiter' OR r.id IS NOT NULL)
+    ORDER BY signed_up_at DESC`).all();
+  const QUOTA_TARGET = 10; // Recruiter Agreement §10: 10 models in year one
+  for (const a of affiliates) {
+    a.banned = !!a.banned;
+    // Her full shareable link, built exactly as her own dashboard
+    // builds it (app.js: origin + '/#join/' + referral_code) with the
+    // canonical public origin — the Manager card prints it in full so
+    // the owner can read her username + link to a locked-out affiliate.
+    a.referral_link = a.referral_code ? `${SEO_ORIGIN}/#join/${a.referral_code}` : null;
+    a.quota_target = QUOTA_TARGET;
+    a.quota_met = a.models_onboarded >= QUOTA_TARGET;
+    // First-year window ends exactly one year after her affiliate start (§10).
+    const d = new Date(String(a.signed_up_at).replace(' ', 'T') + 'Z');
+    d.setUTCFullYear(d.getUTCFullYear() + 1);
+    a.year_end = d.toISOString().slice(0, 10);
+  }
+  res.json({ stats, affiliates });
+});
+
+/* Shared target lookup for the two affiliate reset actions below:
+   an affiliate is a CAPABILITY (PR #45) — a live (never merged-away)
+   account that is recruiter-role OR holds a recruiters row. Retired
+   merged duplicates (merged_into set) are refused: a reset always
+   lands on her single surviving login. Merge-protected accounts
+   (admin / house / fandemo, isMergeProtected) are refused too. */
+function affiliateResetTarget(id) {
+  const u = db.prepare(`SELECT u.* FROM users u LEFT JOIN recruiters r ON r.user_id = u.id
+    WHERE u.id = ? AND u.merged_into IS NULL AND (u.role = 'recruiter' OR r.id IS NOT NULL)`).get(id);
+  if (!u || isMergeProtected(u)) return null;
+  return u;
+}
+
+/* Admin — Affiliates action: reset an affiliate's username (owner
+   request, Oct 17 2026 — "so that I can reset their user name and
+   password if needed"). Affiliate-capability targets only (see
+   affiliateResetTarget). Attribution-safe by construction:
+   models.recruiter_id → recruiters.id, her signup link is
+   recruiters.referral_code, sessions/contracts/wallets all key on
+   users.id — nothing keys off the username string, so this single
+   UPDATE cannot detach her models, link or earnings.
+   Validation mirrors the affiliate signup paths: trimmed, non-empty,
+   and unique across users (column is UNIQUE + NOCASE). */
+app.post('/api/admin/affiliates/:id/username', ...adminOnly, (req, res) => {
+  const u = affiliateResetTarget(req.params.id);
+  if (!u) return res.status(404).json({ error: 'not_found' });
+  const uname = String((req.body && req.body.username) || '').trim();
+  if (!uname) return res.status(400).json({ error: 'username_required', message: 'Username cannot be empty.' });
+  const clash = db.prepare('SELECT id FROM users WHERE username = ? AND id != ?').get(uname, u.id);
+  if (clash) return res.status(409).json({ error: 'username_taken', message: 'That username is already taken.' });
+  db.prepare('UPDATE users SET username = ? WHERE id = ?').run(uname, u.id);
+  res.json({ ok: true, username: uname });
+});
+
+/* Admin — Affiliates action: reset an affiliate's password (for a
+   merged model this is her single surviving login). Mirrors the
+   model reset (POST /api/admin/models/:id/reset-password) exactly:
+   a typed password, or a generated temp to hand her when none is
+   sent; bcrypt(10); min 6 chars; all her live sessions die with the
+   old password (deleteUserSessions). */
+app.post('/api/admin/affiliates/:id/password', ...adminOnly, (req, res) => {
+  const u = affiliateResetTarget(req.params.id);
+  if (!u) return res.status(404).json({ error: 'not_found' });
+  let { password } = req.body || {};
+  let generated = false;
+  if (typeof password !== 'string' || !password.trim()) {
+    const alpha = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    password = Array.from(crypto.randomBytes(10)).map((n) => alpha[n % alpha.length]).join('');
+    generated = true;
+  }
+  password = password.trim();
+  if (password.length < 6) return res.status(400).json({ error: 'password_too_short' });
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(password, 10), u.id);
+  deleteUserSessions(u.id);
+  res.json({ ok: true, generated, ...(generated ? { password } : {}) });
 });
 
 // Admin: remove a partner (their models stay; revenue reverts to Corry)
