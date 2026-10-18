@@ -436,6 +436,7 @@ const I18N = {
     rates_note: 'What fans pay for 1-on-1 with you. You set these — SlutCamp can also adjust them.',
     per_text: '💬 Per text:',
     per_min_video_l: '📹 Per minute video:',
+    per_min_booking_l: '📅 Per minute 1-on-1 booking:',
     per_voice: '🎙️ Per voice note:',
     explicit_rate_l: 'Live explicit rate — per minute ($)',
     save_rates: 'Save rates',
@@ -1089,6 +1090,7 @@ const I18N = {
     rates_note: 'Lo que pagan los fans por el 1 a 1 contigo. Tú las fijas — SlutCamp también puede ajustarlas.',
     per_text: '💬 Por mensaje:',
     per_min_video_l: '📹 Por minuto de video:',
+    per_min_booking_l: '📅 Por minuto de reserva 1 a 1:',
     per_voice: '🎙️ Por nota de voz:',
     explicit_rate_l: 'Tarifa explícita en vivo — por minuto ($)',
     save_rates: 'Guardar tarifas',
@@ -1742,6 +1744,7 @@ const I18N = {
     rates_note: 'O que os fãs pagam pelo 1 a 1 com você. Você define — a SlutCamp também pode ajustar.',
     per_text: '💬 Por mensagem:',
     per_min_video_l: '📹 Por minuto de vídeo:',
+    per_min_booking_l: '📅 Por minuto de reserva individual:',
     per_voice: '🎙️ Por mensagem de voz:',
     explicit_rate_l: 'Tarifa explícita ao vivo — por minuto ($)',
     save_rates: 'Salvar tarifas',
@@ -2395,6 +2398,7 @@ const I18N = {
     rates_note: 'Ce que les fans paient pour un 1-à-1 avec vous. C\'est vous qui les définissez — SlutCamp peut aussi les ajuster.',
     per_text: '💬 Par message :',
     per_min_video_l: '📹 Par minute de vidéo :',
+    per_min_booking_l: '📅 Par minute de réservation privée :',
     per_voice: '🎙️ Par note vocale :',
     explicit_rate_l: 'Tarif explicite en direct — par minute ($)',
     save_rates: 'Enregistrer les tarifs',
@@ -3048,6 +3052,7 @@ const I18N = {
     rates_note: 'Was Fans für 1-zu-1 mit dir zahlen. Du legst diese fest — SlutCamp kann sie auch anpassen.',
     per_text: '💬 Pro Text:',
     per_min_video_l: '📹 Pro Minute Video:',
+    per_min_booking_l: '📅 Pro Minute 1-zu-1-Buchung:',
     per_voice: '🎙️ Pro Sprachnachricht:',
     explicit_rate_l: 'Expliziter Live-Preis — pro Minute ($)',
     save_rates: 'Preise speichern',
@@ -3701,6 +3706,7 @@ const I18N = {
     rates_note: 'Сколько фанаты платят за 1-на-1 с вами. Вы устанавливаете их — SlutCamp также может их корректировать.',
     per_text: '💬 За сообщение:',
     per_min_video_l: '📹 За минуту видео:',
+    per_min_booking_l: '📅 За минуту личного бронирования:',
     per_voice: '🎙️ За голосовое сообщение:',
     explicit_rate_l: 'Тариф откровенного эфира — за минуту ($)',
     save_rates: 'Сохранить тарифы',
@@ -4354,6 +4360,7 @@ const I18N = {
     rates_note: 'ファンがあなたとの1対1に支払う金額です。あなたが設定します — SlutCampが調整することもあります。',
     per_text: '💬 テキスト1通あたり：',
     per_min_video_l: '📹 ビデオ1分あたり：',
+    per_min_booking_l: '📅 1対1予約・1分あたり：',
     per_voice: '🎙️ ボイスノート1件あたり：',
     explicit_rate_l: 'ライブ露骨料金 — 1分あたり（$）',
     save_rates: '料金を保存',
@@ -5007,6 +5014,7 @@ const I18N = {
     rates_note: '粉丝与你一对一时支付的价格。由你设定 — SlutCamp 也可以调整它们。',
     per_text: '💬 每条短信：',
     per_min_video_l: '📹 每分钟视频：',
+    per_min_booking_l: '📅 每分钟一对一预约：',
     per_voice: '🎙️ 每条语音消息：',
     explicit_rate_l: '露骨直播费率 — 每分钟 ($)',
     save_rates: '保存费率',
@@ -5660,6 +5668,7 @@ const I18N = {
     rates_note: '팬이 1:1로 지불하는 금액입니다. 본인이 설정합니다 — SlutCamp도 조정할 수 있습니다.',
     per_text: '💬 문자 1개당:',
     per_min_video_l: '📹 영상 분당:',
+    per_min_booking_l: '📅 1:1 예약 분당:',
     per_voice: '🎙️ 음성 메시지 1개당:',
     explicit_rate_l: '라이브 선정적 요금 — 분당 ($)',
     save_rates: '요금 저장',
@@ -6313,6 +6322,7 @@ const I18N = {
     rates_note: 'Ciò che i fan pagano per l\'1-a-1 con te. Le imposti tu — SlutCamp può anche modificarle.',
     per_text: '💬 Per messaggio:',
     per_min_video_l: '📹 Per minuto video:',
+    per_min_booking_l: '📅 Per minuto di prenotazione 1 a 1:',
     per_voice: '🎙️ Per nota vocale:',
     explicit_rate_l: 'Tariffa live esplicita — per minuto ($)',
     save_rates: 'Salva tariffe',
@@ -6966,6 +6976,7 @@ const I18N = {
     rates_note: 'Ile fani płacą za 1 na 1 z Tobą. Ty je ustawiasz — SlutCamp może je również dostosować.',
     per_text: '💬 Za wiadomość:',
     per_min_video_l: '📹 Za minutę wideo:',
+    per_min_booking_l: '📅 Za minutę rezerwacji 1 na 1:',
     per_voice: '🎙️ Za wiadomość głosową:',
     explicit_rate_l: 'Stawka za transmisję erotyczną na żywo — za minutę ($)',
     save_rates: 'Zapisz stawki',
@@ -7619,6 +7630,7 @@ const I18N = {
     rates_note: 'Wat fans betalen voor 1-op-1 met jou. Jij stelt deze in — SlutCamp kan ze ook aanpassen.',
     per_text: '💬 Per sms:',
     per_min_video_l: '📹 Per minuut video:',
+    per_min_booking_l: '📅 Per minuut 1-op-1 boeking:',
     per_voice: '🎙️ Per spraaknotitie:',
     explicit_rate_l: 'Live expliciet tarief — per minuut ($)',
     save_rates: 'Tarieven opslaan',
@@ -8272,6 +8284,7 @@ const I18N = {
     rates_note: 'Hayranların seninle bire bir için ödediği. Bunları sen belirlersin — SlutCamp de ayarlayabilir.',
     per_text: '💬 Metin başına:',
     per_min_video_l: '📹 Video dakikası başına:',
+    per_min_booking_l: '📅 Bire bir rezervasyon dakikası başına:',
     per_voice: '🎙️ Sesli not başına:',
     explicit_rate_l: 'Canlı müstehcen ücreti — dakika başına ($)',
     save_rates: 'Ücretleri kaydet',
@@ -12958,6 +12971,8 @@ async function vModelSettings() {
           <input type="range" id="s-msg" min="50" max="1000" step="25" value="${m.per_message_cents || 149}" style="width:100%"></label>
         <label class="field">${t('per_min_video_l')} <b id="s-min-label">${fmt(Math.max(500, m.per_minute_cents || 500))}</b>
           <input type="range" id="s-min" min="500" max="100000" step="100" value="${Math.max(500, m.per_minute_cents || 500)}" style="width:100%"></label>
+        <label class="field">${t('per_min_booking_l')} <b id="s-bk-label">${fmt(Math.min(10000, Math.max(100, m.booking_rate_cents ?? m.per_minute_cents ?? 399)))}</b>
+          <input type="range" id="s-bk" min="100" max="10000" step="50" value="${Math.min(10000, Math.max(100, m.booking_rate_cents ?? m.per_minute_cents ?? 399))}" style="width:100%"></label>
         <label class="field">${t('per_voice')} <b id="s-voice-label">${fmt(m.per_voice_cents || 299)}</b>
           <input type="range" id="s-voice" min="50" max="1000" step="25" value="${m.per_voice_cents || 299}" style="width:100%"></label>
         <label class="field">${t('explicit_rate_l')}<input class="input" id="s-exp" type="number" step="0.01" min="0" value="${((m.explicit_rate_cents || 499) / 100).toFixed(2)}"></label>
@@ -13115,17 +13130,19 @@ async function vModelSettings() {
     const per_message_cents = parseInt($('#s-msg').value);
     const per_minute_cents = parseInt($('#s-min').value);
     const per_voice_cents = parseInt($('#s-voice').value);
+    const booking_rate_cents = parseInt($('#s-bk').value);
     const explicit_rate_cents = Math.round(parseFloat($('#s-exp').value || '0') * 100);
     const { status } = await api('/model/profile', {
-      method: 'PUT', body: JSON.stringify({ per_message_cents, per_minute_cents, per_voice_cents, explicit_rate_cents }) });
+      method: 'PUT', body: JSON.stringify({ per_message_cents, per_minute_cents, per_voice_cents, booking_rate_cents, explicit_rate_cents }) });
     toast(status === 200 ? t('rates_saved') : t('couldnt_save'));
     if (status === 200) refreshMe();
   };
   // My Rates sliders — live label updates
-  const sMsg = $('#s-msg'), sMin = $('#s-min'), sVoice = $('#s-voice');
+  const sMsg = $('#s-msg'), sMin = $('#s-min'), sVoice = $('#s-voice'), sBk = $('#s-bk');
   if (sMsg) sMsg.oninput = () => { $('#s-msg-label').textContent = fmt(parseInt(sMsg.value)); };
   if (sMin) sMin.oninput = () => { $('#s-min-label').textContent = fmt(parseInt(sMin.value)); };
   if (sVoice) sVoice.oninput = () => { $('#s-voice-label').textContent = fmt(parseInt(sVoice.value)); };
+  if (sBk) sBk.oninput = () => { $('#s-bk-label').textContent = fmt(parseInt(sBk.value)); };
   $('#s-bio-save').onclick = async () => {
     const { status } = await api('/model/profile', {
       method: 'PUT', body: JSON.stringify({ bio: $('#s-bio').value }) });
@@ -13813,7 +13830,7 @@ async function vChat(params) {
   if (isModel && !isOfficial) refreshFtCard();
   const bb = $('#c-book');
   if (bb) bb.onclick = () => openSlotBookingSheet(conv.other.id, conv.other.display_name,
-    conv.other.per_minute_cents || 399);
+    conv.other.booking_rate_cents || conv.other.per_minute_cents || 399);
   // WhatsApp-style composer shortcuts: the round 🎤 button beside the bubble
   // starts a voice note DIRECTLY on the tap (no sheet hop in between —
   // every intermediate step is a chance for iOS to lose the mic gesture), and
