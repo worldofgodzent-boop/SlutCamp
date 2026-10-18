@@ -248,6 +248,10 @@ test('live: deploy announcement creates one official thread per user, bell opens
   // welcome DM at signup routes into it now that the house account
   // exists. That is the design working, not a leak.)
   dbExec('UPDATE platform_stats SET official_inbox_announced_at = NULL WHERE id = 1');
+  // The chat-retention announcement is a SEPARATE one-time broadcast
+  // into the same official threads — stamp it as already sent so this
+  // scenario measures the launch announcement alone.
+  dbExec("UPDATE platform_stats SET chat_retention_announced_at = datetime('now') WHERE id = 1");
   await stop();
   await boot();
 

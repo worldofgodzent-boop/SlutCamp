@@ -53,6 +53,15 @@ function timeHM(iso) {
   return `${h}:${m} ${ap}`;
 }
 
+/* Date + time, e.g. "Oct 18 · 8:45 AM" (Chats monitor cards + peek). */
+function fmtDT(iso) {
+  const d = new Date((iso || '').replace(' ', 'T') + 'Z');
+  if (isNaN(d)) return '';
+  const mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()];
+  return `${mon} ${d.getDate()} · ${timeHM(iso)}`;
+}
+
 /* ---------------- state + API ---------------- */
 const M = {
   token: localStorage.getItem('wc_token') || null,
@@ -244,24 +253,81 @@ async function adminDashBody(s, o) {
     <button class="btn ghost" id="a-logout">Log out</button>`;
 }
 
-async function adminChatsBody() {
-  const { data } = await api('/admin/conversations');
-  const convs = data.conversations || [];
-  return `
-    <div class="muted small" style="margin-bottom:10px">Read-only monitor — you can watch every conversation. Pause any chat with ⏸.</div>
-    ${convs.map((c) => `
+function chatCardsHTML(convs) {
+  return convs.map((c) => `
       <div class="card" style="padding:12px">
         <div class="row">
           <span class="grow"><b>${esc(c.model_name)}</b> <span class="muted">↔</span> <b>${esc(c.fan_name)}</b>
             ${c.is_guest ? '<span class="small muted">(guest)</span>' : ''}
             ${c.is_paused ? '<span class="small" style="color:var(--red)">⏸ paused</span>' : ''}<br>
-            <span class="small muted">${c.message_count} msgs · ${c.last_message ? esc(c.last_message.body).slice(0, 60) : '—'}</span></span>
+            <span class="small muted">${c.message_count} msgs · ${c.last_message ? esc(c.last_message.body).slice(0, 60) : '—'}</span><br>
+            <span class="small muted">🕒 ${fmtDT(c.last_activity_at || c.updated_at)}</span></span>
           <button class="btn small ghost" data-viewchat="${c.id}">Open</button>
           ${c.is_paused
             ? `<button class="btn small success" data-resume="${c.id}">▶</button>`
             : `<button class="btn small ghost" data-pause="${c.id}">⏸</button>`}
         </div>
-      </div>`).join('') || '<div class="empty">No conversations yet.</div>'}`;
+      </div>`).join('') || '<div class="empty">No conversations found.</div>';
+}
+
+async function adminChatsBody() {
+  const q = M.chatQuery || '';
+  const { data } = await api('/admin/conversations' + (q ? `?q=${encodeURIComponent(q)}` : ''));
+  const convs = data.conversations || [];
+  return `
+    <div class="muted small" style="margin-bottom:10px">Read-only monitor — you can watch every conversation. Pause any chat with ⏸. Messages auto-delete after 7 days (SlutCamp notices and chats tied to an open dispute are kept).</div>
+    <div class="row" style="margin-bottom:10px;gap:8px;align-items:center">
+      <input id="chat-search" class="input" type="search" placeholder="🔎 Search by model or fan name…" value="${esc(q)}" style="flex:1">
+      <button class="btn small ghost" id="chat-search-clear">✕ Clear</button>
+      <button class="btn small ghost" id="chat-cleanup">🧹 Clean up now</button>
+    </div>
+    <div id="chat-list">${chatCardsHTML(convs)}</div>`;
+}
+
+/* Chats monitor wiring: server-side search (debounced — typing a
+   model name re-queries and swaps only the list, so the input keeps
+   focus), a clear button, and the manual 🧹 retention sweep. */
+function wireChatListButtons() {
+  document.querySelectorAll('#chat-list [data-viewchat]').forEach((b) => {
+    b.onclick = () => M.openPeek(parseInt(b.dataset.viewchat));
+  });
+  document.querySelectorAll('#chat-list [data-pause]').forEach((b) => {
+    b.onclick = async () => { await api(`/admin/conversations/${b.dataset.pause}/pause`, { method: 'POST' }); M.reload(); };
+  });
+  document.querySelectorAll('#chat-list [data-resume]').forEach((b) => {
+    b.onclick = async () => { await api(`/admin/conversations/${b.dataset.resume}/resume`, { method: 'POST' }); M.reload(); };
+  });
+}
+function wireChats() {
+  wireChatListButtons();
+  const cleanup = document.getElementById('chat-cleanup');
+  if (cleanup) cleanup.onclick = async () => {
+    if (!confirm('Delete all chat messages older than 7 days now? SlutCamp notices and chats tied to an open dispute are kept.')) return;
+    const { status, data } = await api('/admin/conversations/cleanup', { method: 'POST' });
+    if (status === 200 && data) {
+      toast(`🧹 Removed ${data.messages_deleted} old message${data.messages_deleted === 1 ? '' : 's'}${data.conversations_deleted ? ` and ${data.conversations_deleted} empty chat${data.conversations_deleted === 1 ? '' : 's'}` : ''}.`);
+    } else toast('Cleanup failed — try again.');
+    M.reload();
+  };
+  const input = document.getElementById('chat-search');
+  if (!input) return;
+  let timer = null;
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      M.chatQuery = input.value.trim();
+      const { data } = await api('/admin/conversations' + (M.chatQuery ? `?q=${encodeURIComponent(M.chatQuery)}` : ''));
+      const list = document.getElementById('chat-list');
+      if (list) { list.innerHTML = chatCardsHTML((data && data.conversations) || []); wireChatListButtons(); }
+    }, 250);
+  });
+  const clear = document.getElementById('chat-search-clear');
+  if (clear) clear.onclick = () => {
+    M.chatQuery = '';
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    input.focus();
+  };
 }
 
 async function adminSafetyBody() {
@@ -2196,7 +2262,7 @@ async function peekBody() {
     ${(p.messages || []).map((m) => `
       <div class="card" style="padding:9px 12px;margin-bottom:6px">
         <b class="small">${esc(m.sender_name || '')}</b>
-        <span class="small muted">${timeHM(m.created_at)}</span>
+        <span class="small muted">${fmtDT(m.created_at)}</span>
         <div style="white-space:pre-wrap;font-size:14px">${m.body ? esc(m.body) : `<i class="muted">📎 ${(m.media && m.media.kind) || m.media_kind || 'media'}</i>`}</div>
       </div>`).join('') || '<div class="empty">No messages yet.</div>'}`;
 }
@@ -2243,6 +2309,7 @@ M.render = async () => {
   app.innerHTML = `<div class="mgr-h">${NAV.find((n) => n[0] === M.screen)?.[1] || ''}</div>` + (await bodyFn(s));
   wireAdminBody(M.screen);
   if (M.screen === 'dash') startPresence();
+  if (M.screen === 'chats') wireChats();
   if (M.screen === 'peek') wirePeek();
   if (M.screen === 'watch') wireWatch();
 };
