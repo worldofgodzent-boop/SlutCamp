@@ -121,6 +121,19 @@ const I18N = {
     free3_title: '🎁 First 3 messages FREE',
     free3_sub: 'with every model you try. No account needed to start.',
     login_signup: 'Log in / Sign up',
+    signin_have_account: 'Already have an account? Sign in:',
+    signin_as_fan: 'Sign in as a fan',
+    signin_as_model: 'Sign in as a model',
+    signin_as_affiliate: 'Sign in as an affiliate',
+    signin_h_fan: 'Fan sign in',
+    signin_h_model: 'Model sign in',
+    signin_h_affiliate: 'Affiliate sign in',
+    signin_join_q: 'New to SlutCamp?',
+    signin_join_free: 'Join free →',
+    signin_wrong_role: 'You\'re signed in 💋 — this is a {role} account.',
+    role_word_fan: 'fan',
+    role_word_model: 'model',
+    role_word_affiliate: 'affiliate',
     share_app: '📤 Share SlutCamp',
     ath_card_t: 'Put SlutCamp on your home screen',
     ath_card_sub: 'Opens like a real app, one tap.',
@@ -737,6 +750,19 @@ const I18N = {
     free3_title: '🎁 Primeros 3 mensajes GRATIS',
     free3_sub: 'con cada modelo que pruebes. No necesitas cuenta para empezar.',
     login_signup: 'Iniciar sesión / Registrarse',
+    signin_have_account: '¿Ya tienes una cuenta? Inicia sesión:',
+    signin_as_fan: 'Iniciar sesión como fan',
+    signin_as_model: 'Iniciar sesión como modelo',
+    signin_as_affiliate: 'Iniciar sesión como afiliado',
+    signin_h_fan: 'Acceso para fans',
+    signin_h_model: 'Acceso para modelos',
+    signin_h_affiliate: 'Acceso para afiliados',
+    signin_join_q: '¿Nuevo en SlutCamp?',
+    signin_join_free: 'Únete gratis →',
+    signin_wrong_role: 'Ya iniciaste sesión 💋 — esta es una cuenta de {role}.',
+    role_word_fan: 'fan',
+    role_word_model: 'modelo',
+    role_word_affiliate: 'afiliado',
     share_app: '📤 Compartir SlutCamp',
     ath_card_t: 'Pon SlutCamp en tu pantalla de inicio',
     ath_card_sub: 'Se abre como una app real, con un toque.',
@@ -1353,6 +1379,19 @@ const I18N = {
     free3_title: '🎁 Primeiras 3 mensagens GRÁTIS',
     free3_sub: 'com cada modelo que você testar. Não precisa de conta para começar.',
     login_signup: 'Entrar / Cadastrar',
+    signin_have_account: 'Já tem uma conta? Entre:',
+    signin_as_fan: 'Entrar como fã',
+    signin_as_model: 'Entrar como modelo',
+    signin_as_affiliate: 'Entrar como afiliado',
+    signin_h_fan: 'Acesso de fã',
+    signin_h_model: 'Acesso de modelo',
+    signin_h_affiliate: 'Acesso de afiliado',
+    signin_join_q: 'Novo no SlutCamp?',
+    signin_join_free: 'Entre grátis →',
+    signin_wrong_role: 'Você entrou 💋 — esta é uma conta de {role}.',
+    role_word_fan: 'fã',
+    role_word_model: 'modelo',
+    role_word_affiliate: 'afiliado',
     share_app: '📤 Compartilhar o SlutCamp',
     ath_card_t: 'Coloque o SlutCamp na sua tela inicial',
     ath_card_sub: 'Abre como um app de verdade, com um toque.',
@@ -1969,6 +2008,19 @@ const I18N = {
     free3_title: '🎁 3 premiers messages GRATUITS',
     free3_sub: 'avec chaque modèle que vous essayez. Aucun compte nécessaire pour commencer.',
     login_signup: 'Se connecter / S\'inscrire',
+    signin_have_account: 'Vous avez déjà un compte ? Connectez-vous :',
+    signin_as_fan: 'Se connecter comme fan',
+    signin_as_model: 'Se connecter comme modèle',
+    signin_as_affiliate: 'Se connecter comme affilié',
+    signin_h_fan: 'Connexion fan',
+    signin_h_model: 'Connexion modèle',
+    signin_h_affiliate: 'Connexion affilié',
+    signin_join_q: 'Nouveau sur SlutCamp ?',
+    signin_join_free: 'Inscription gratuite →',
+    signin_wrong_role: 'Vous êtes connecté 💋 — ceci est un compte {role}.',
+    role_word_fan: 'fan',
+    role_word_model: 'modèle',
+    role_word_affiliate: 'affilié',
     share_app: '📤 Partager SlutCamp',
     ath_card_t: 'Mettez SlutCamp sur votre écran d\'accueil',
     ath_card_sub: 'S\'ouvre comme une vraie appli, en un toucher.',
@@ -2585,6 +2637,19 @@ const I18N = {
     free3_title: '🎁 Erste 3 Nachrichten KOSTENLOS',
     free3_sub: 'bei jedem Model, das du ausprobierst. Kein Account nötig zum Starten.',
     login_signup: 'Anmelden / Registrieren',
+    signin_have_account: 'Du hast schon ein Konto? Melde dich an:',
+    signin_as_fan: 'Als Fan anmelden',
+    signin_as_model: 'Als Model anmelden',
+    signin_as_affiliate: 'Als Affiliate anmelden',
+    signin_h_fan: 'Fan-Anmeldung',
+    signin_h_model: 'Model-Anmeldung',
+    signin_h_affiliate: 'Affiliate-Anmeldung',
+    signin_join_q: 'Neu bei SlutCamp?',
+    signin_join_free: 'Kostenlos registrieren →',
+    signin_wrong_role: 'Du bist angemeldet 💋 — das ist ein {role}-Konto.',
+    role_word_fan: 'Fan',
+    role_word_model: 'Model',
+    role_word_affiliate: 'Affiliate',
     share_app: '📤 SlutCamp teilen',
     ath_card_t: 'SlutCamp auf deinen Startbildschirm legen',
     ath_card_sub: 'Öffnet sich wie eine echte App, mit einem Tipp.',
@@ -3201,6 +3266,19 @@ const I18N = {
     free3_title: '🎁 Первые 3 сообщения БЕСПЛАТНО',
     free3_sub: 'с каждой моделью, которую вы попробуете. Для начала аккаунт не нужен.',
     login_signup: 'Войти / Зарегистрироваться',
+    signin_have_account: 'Уже есть аккаунт? Войдите:',
+    signin_as_fan: 'Войти как фанат',
+    signin_as_model: 'Войти как модель',
+    signin_as_affiliate: 'Войти как партнёр',
+    signin_h_fan: 'Вход для фанатов',
+    signin_h_model: 'Вход для моделей',
+    signin_h_affiliate: 'Вход для партнёров',
+    signin_join_q: 'Впервые на SlutCamp?',
+    signin_join_free: 'Регистрация бесплатно →',
+    signin_wrong_role: 'Вы вошли 💋 — это аккаунт {role}.',
+    role_word_fan: 'фаната',
+    role_word_model: 'модели',
+    role_word_affiliate: 'партнёра',
     share_app: '📤 Поделиться SlutCamp',
     ath_card_t: 'Добавьте SlutCamp на главный экран',
     ath_card_sub: 'Открывается как настоящее приложение, одним касанием.',
@@ -3817,6 +3895,19 @@ const I18N = {
     free3_title: '🎁 最初の3通は無料',
     free3_sub: '試すモデルごとに適用。まずはアカウントなしで始められるよ。',
     login_signup: 'ログイン / 新規登録',
+    signin_have_account: 'もうアカウントをお持ちですか？ログイン：',
+    signin_as_fan: 'ファンとしてログイン',
+    signin_as_model: 'モデルとしてログイン',
+    signin_as_affiliate: 'アフィリエイトとしてログイン',
+    signin_h_fan: 'ファン ログイン',
+    signin_h_model: 'モデル ログイン',
+    signin_h_affiliate: 'アフィリエイト ログイン',
+    signin_join_q: 'SlutCampは初めて？',
+    signin_join_free: '無料で登録 →',
+    signin_wrong_role: 'ログインしました 💋 — これは{role}のアカウントです。',
+    role_word_fan: 'ファン',
+    role_word_model: 'モデル',
+    role_word_affiliate: 'アフィリエイト',
     share_app: '📤 SlutCampをシェア',
     ath_card_t: 'SlutCampをホーム画面に追加',
     ath_card_sub: 'ワンタップで本物のアプリみたいに開けるよ。',
@@ -4433,6 +4524,19 @@ const I18N = {
     free3_title: '🎁 前 3 条消息免费',
     free3_sub: '每位你尝试的模特都免费。无需账号即可开始。',
     login_signup: '登录 / 注册',
+    signin_have_account: '已有账号？直接登录：',
+    signin_as_fan: '以粉丝身份登录',
+    signin_as_model: '以模特身份登录',
+    signin_as_affiliate: '以推广伙伴身份登录',
+    signin_h_fan: '粉丝登录',
+    signin_h_model: '模特登录',
+    signin_h_affiliate: '推广伙伴登录',
+    signin_join_q: '第一次来 SlutCamp？',
+    signin_join_free: '免费加入 →',
+    signin_wrong_role: '你已登录 💋 — 这是一个{role}账号。',
+    role_word_fan: '粉丝',
+    role_word_model: '模特',
+    role_word_affiliate: '推广伙伴',
     share_app: '📤 分享 SlutCamp',
     ath_card_t: '把 SlutCamp 放到你的主屏幕',
     ath_card_sub: '像真正的应用一样打开，一点即达。',
@@ -5049,6 +5153,19 @@ const I18N = {
     free3_title: '🎁 첫 3개 메시지 무료',
     free3_sub: '시도하는 모든 모델과 무료로 이용할 수 있습니다. 시작하는 데 계정이 필요 없습니다.',
     login_signup: '로그인 / 회원가입',
+    signin_have_account: '이미 계정이 있나요? 로그인:',
+    signin_as_fan: '팬으로 로그인',
+    signin_as_model: '모델로 로그인',
+    signin_as_affiliate: '제휴 파트너로 로그인',
+    signin_h_fan: '팬 로그인',
+    signin_h_model: '모델 로그인',
+    signin_h_affiliate: '제휴 파트너 로그인',
+    signin_join_q: 'SlutCamp이 처음이신가요?',
+    signin_join_free: '무료로 가입 →',
+    signin_wrong_role: '로그인되었습니다 💋 — 이 계정은 {role} 계정입니다.',
+    role_word_fan: '팬',
+    role_word_model: '모델',
+    role_word_affiliate: '제휴 파트너',
     share_app: '📤 SlutCamp 공유하기',
     ath_card_t: '홈 화면에 SlutCamp 추가하기',
     ath_card_sub: '한 번의 탭으로 실제 앱처럼 열립니다.',
@@ -5665,6 +5782,19 @@ const I18N = {
     free3_title: '🎁 Primi 3 messaggi GRATUITI',
     free3_sub: 'con ogni modella che provi. Non serve un account per iniziare.',
     login_signup: 'Accedi / Registrati',
+    signin_have_account: 'Hai già un account? Accedi:',
+    signin_as_fan: 'Accedi come fan',
+    signin_as_model: 'Accedi come modella',
+    signin_as_affiliate: 'Accedi come affiliato',
+    signin_h_fan: 'Accesso fan',
+    signin_h_model: 'Accesso modella',
+    signin_h_affiliate: 'Accesso affiliato',
+    signin_join_q: 'Nuovo su SlutCamp?',
+    signin_join_free: 'Iscriviti gratis →',
+    signin_wrong_role: 'Hai effettuato l\'accesso 💋 — questo è un account {role}.',
+    role_word_fan: 'fan',
+    role_word_model: 'modella',
+    role_word_affiliate: 'affiliato',
     share_app: '📤 Condividi SlutCamp',
     ath_card_t: 'Metti SlutCamp sulla tua schermata home',
     ath_card_sub: 'Si apre come una vera app, con un tocco.',
@@ -6281,6 +6411,19 @@ const I18N = {
     free3_title: '🎁 Pierwsze 3 wiadomości ZA DARMO',
     free3_sub: 'z każdą modelką, którą wypróbujesz. Nie potrzebujesz konta, aby zacząć.',
     login_signup: 'Zaloguj się / Zarejestruj się',
+    signin_have_account: 'Masz już konto? Zaloguj się:',
+    signin_as_fan: 'Zaloguj się jako fan',
+    signin_as_model: 'Zaloguj się jako modelka',
+    signin_as_affiliate: 'Zaloguj się jako afiliant',
+    signin_h_fan: 'Logowanie fana',
+    signin_h_model: 'Logowanie modelki',
+    signin_h_affiliate: 'Logowanie afilianta',
+    signin_join_q: 'Nowy na SlutCamp?',
+    signin_join_free: 'Dołącz za darmo →',
+    signin_wrong_role: 'Jesteś zalogowany 💋 — to jest konto: {role}.',
+    role_word_fan: 'fan',
+    role_word_model: 'modelka',
+    role_word_affiliate: 'afiliant',
     share_app: '📤 Udostępnij SlutCamp',
     ath_card_t: 'Umieść SlutCamp na ekranie głównym',
     ath_card_sub: 'Otwiera się jak prawdziwa aplikacja, jednym dotknięciem.',
@@ -6897,6 +7040,19 @@ const I18N = {
     free3_title: '🎁 Eerste 3 berichten GRATIS',
     free3_sub: 'bij elk model dat je probeert. Geen account nodig om te beginnen.',
     login_signup: 'Inloggen / Aanmelden',
+    signin_have_account: 'Heb je al een account? Log in:',
+    signin_as_fan: 'Inloggen als fan',
+    signin_as_model: 'Inloggen als model',
+    signin_as_affiliate: 'Inloggen als affiliate',
+    signin_h_fan: 'Fan inloggen',
+    signin_h_model: 'Model inloggen',
+    signin_h_affiliate: 'Affiliate inloggen',
+    signin_join_q: 'Nieuw bij SlutCamp?',
+    signin_join_free: 'Gratis aanmelden →',
+    signin_wrong_role: 'Je bent ingelogd 💋 — dit is een {role}-account.',
+    role_word_fan: 'fan',
+    role_word_model: 'model',
+    role_word_affiliate: 'affiliate',
     share_app: '📤 Deel SlutCamp',
     ath_card_t: 'Zet SlutCamp op je startscherm',
     ath_card_sub: 'Opent als een echte app, met één tik.',
@@ -7513,6 +7669,19 @@ const I18N = {
     free3_title: '🎁 İlk 3 mesaj ÜCRETSİZ',
     free3_sub: 'denediğin her modelde. Başlamak için hesap gerekmez.',
     login_signup: 'Giriş yap / Kaydol',
+    signin_have_account: 'Zaten hesabın var mı? Giriş yap:',
+    signin_as_fan: 'Hayran olarak giriş yap',
+    signin_as_model: 'Model olarak giriş yap',
+    signin_as_affiliate: 'Ortak olarak giriş yap',
+    signin_h_fan: 'Hayran girişi',
+    signin_h_model: 'Model girişi',
+    signin_h_affiliate: 'Ortak girişi',
+    signin_join_q: 'SlutCamp\'te yeni misin?',
+    signin_join_free: 'Ücretsiz katıl →',
+    signin_wrong_role: 'Giriş yaptın 💋 — bu bir {role} hesabı.',
+    role_word_fan: 'hayran',
+    role_word_model: 'model',
+    role_word_affiliate: 'ortak',
     share_app: '📤 SlutCamp\'i Paylaş',
     ath_card_t: 'SlutCamp\'i ana ekranına koy',
     ath_card_sub: 'Gerçek bir uygulama gibi açılır, tek dokunuşla.',
@@ -9210,15 +9379,20 @@ async function vLanding() {
         <div style="font-size:20px;font-weight:800">${t('free3_title')}</div>
         <div class="muted small" style="margin-top:4px">${t('free3_sub')}</div>
       </div>
+      ${S.user ? '' : `
+      <div class="card" style="text-align:center">
+        <div style="font-size:18px;font-weight:800">${t('signin_have_account')}</div>
+        <button class="btn" id="si-fan" style="width:100%;margin-top:12px">😍 ${t('signin_as_fan')}</button>
+        <button class="btn" id="si-model" style="width:100%;margin-top:8px">💃 ${t('signin_as_model')}</button>
+        <button class="btn" id="si-aff" style="width:100%;margin-top:8px">🤝 ${t('signin_as_affiliate')}</button>
+        <div class="muted small" style="margin-top:12px">${t('signin_join_q')} <a href="javascript:void(0)" id="si-join" style="color:var(--pink);font-weight:700">${t('signin_join_free')}</a></div>
+      </div>`}
       ${discoveryBarHTML(models)}
       ${newModelsRailHTML(models, heartFor)}
       ${!models.length
         ? `<div class="empty"><div class="big">😴</div>${t('no_models')}</div>`
         : shown.length ? homeTilesHTML(shown, heartFor, { crown: !discActive(disc), rankBadges: !discActive(disc) })
         : `<div class="empty"><div class="big">🔍</div>${t('no_matches')}</div>`}
-      <div style="text-align:center;margin-top:14px">
-        ${S.user ? '' : `<button class="btn ghost" id="go-login">${t('login_signup')}</button>`}
-      </div>
       <div style="text-align:center;margin-top:10px">
         <button class="btn ghost" id="share-app" style="border-color:var(--pink);color:var(--pink)">${t('share_app')}</button>
       </div>
@@ -9254,8 +9428,18 @@ async function vLanding() {
     };
   });
   wireDiscovery('landing');
-  const gl = $('#go-login');
-  if (gl) gl.onclick = () => show('auth', {});
+  // Role sign-in block (owner, Oct 17 2026): three big buttons, one
+  // per role, straight to the login form carrying that role — the
+  // old single "Log in / Sign up" button left returning users unsure
+  // where to sign in. Joining lives in the same card as a quiet link.
+  const siFan = $('#si-fan');
+  if (siFan) siFan.onclick = () => show('auth', { mode: 'login', role: 'fan' });
+  const siModel = $('#si-model');
+  if (siModel) siModel.onclick = () => show('auth', { mode: 'login', role: 'model' });
+  const siAff = $('#si-aff');
+  if (siAff) siAff.onclick = () => show('auth', { mode: 'login', role: 'affiliate' });
+  const siJoin = $('#si-join');
+  if (siJoin) siJoin.onclick = () => show('auth', { mode: 'signup' });
   const lv = $('#go-lives');
   if (lv) lv.onclick = () => show('lives', {});
   const sh = $('#share-app');
@@ -9302,9 +9486,16 @@ async function openChatWithModel(modelId) {
 function vAuth(params) {
   const mode = (params && params.mode) || 'login';
   const role = (params && params.role) || 'fan';
+  // Sign-in role context (owner, Oct 17 2026): set when she arrived
+  // via a "Sign in as a …" button or picked her role above the login
+  // form. It labels the form ("Model sign in") and nothing more —
+  // the account's stored role still decides where she lands. A bare
+  // login visit carries none (null), and signup keeps its own role.
+  const loginRole = mode === 'login' && ['fan', 'model', 'affiliate'].includes(params && params.role)
+    ? params.role : null;
   app.innerHTML = `
     <div class="header"><h1>Slut<span class="logo">Camp</span></h1>
-      <div class="sub">${mode === 'login' ? t('welcome_back') : t('create_account_h')}</div></div>
+      <div class="sub">${mode === 'login' ? (loginRole ? t('signin_h_' + loginRole) : t('welcome_back')) : t('create_account_h')}</div></div>
     <div class="screen">
       <div class="tabs">
         <button id="t-login" class="${mode === 'login' ? 'active' : ''}">${t('log_in')}</button>
@@ -9314,16 +9505,21 @@ function vAuth(params) {
       ${mode === 'login' ? `<div class="lang-row" style="margin-top:14px">${langPillsHTML()}</div>` : ''}
       <button class="btn ghost" id="back-browse" style="margin-top:16px">${t('keep_browsing')}</button>
     </div>`;
-  $('#t-login').onclick = () => show('auth', { mode: 'login' });
+  $('#t-login').onclick = () => show('auth', { mode: 'login', role });
   $('#t-signup').onclick = () => show('auth', { mode: 'signup', role });
   $('#back-browse').onclick = () => show('landing', {});
-  renderAuthBody(mode, role);
+  renderAuthBody(mode, role, loginRole);
 }
 
-function renderAuthBody(mode, role) {
+function renderAuthBody(mode, role, loginRole) {
   const body = $('#auth-body');
   if (mode === 'login') {
     body.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+        <button class="btn ${loginRole === 'fan' ? '' : 'ghost'}" data-si-role="fan">😍 ${t('signin_as_fan')}</button>
+        <button class="btn ${loginRole === 'model' ? '' : 'ghost'}" data-si-role="model">💃 ${t('signin_as_model')}</button>
+        <button class="btn ${loginRole === 'affiliate' ? '' : 'ghost'}" data-si-role="affiliate">🤝 ${t('signin_as_affiliate')}</button>
+      </div>
       <label class="field">${t('username')}<input class="input" id="a-user" autocomplete="username"></label>
       <label class="field">${t('password')}${pwField('a-pass', 'current-password')}</label>
       <button class="btn" id="a-go">${t('log_in')}</button>
@@ -9331,6 +9527,9 @@ function renderAuthBody(mode, role) {
       <button class="btn ghost" id="a-faceid" style="width:100%;margin-top:10px">🔐 Sign in with Face ID</button>
       <div class="small muted" id="pk-login-msg" style="margin-top:8px;text-align:center"></div>` : ''}`;
     $('#a-go').onclick = doLogin;
+    body.querySelectorAll('[data-si-role]').forEach((b) => {
+      b.onclick = () => show('auth', { mode: 'login', role: b.dataset.siRole });
+    });
     const fidBtn = $('#a-faceid');
     if (fidBtn) fidBtn.onclick = doPasskeyLogin;
   } else {
@@ -9420,13 +9619,21 @@ async function doAffiliateSignup() {
   toast(msgs[data.error] || t('err_signup_failed'));
 }
 
+/* The role the visitor picked on a "Sign in as a …" button, if any —
+ * read from the current auth view params. It only drives the gentle
+ * wrong-role note after sign-in; routing never depends on it. */
+function pickedLoginRole() {
+  const r = S.viewParams && S.viewParams.role;
+  return ['fan', 'model', 'affiliate'].includes(r) ? r : null;
+}
+
 async function doLogin() {
   const username = $('#a-user').value.trim(), password = $('#a-pass').value;
   if (!username || !password) return toast(t('enter_user_pass'));
   const { status, data } = await api('/auth/login', {
     method: 'POST', body: JSON.stringify({ username, password, guest_token: S.guestToken }),
   });
-  if (status === 200) return afterLogin(data);
+  if (status === 200) return afterLogin(data, { roleHint: pickedLoginRole() });
   toast(data.error === 'banned' ? t('account_banned') : t('login_failed'));
 }
 
@@ -9559,7 +9766,7 @@ async function doPasskeyLogin() {
     const v = await api('/auth/passkey/login-verify', {
       method: 'POST', body: JSON.stringify({ username, response: pkCredJson(cred) }),
     });
-    if (v.status === 200) return afterLogin(v.data); // same flow as password login
+    if (v.status === 200) return afterLogin(v.data, { roleHint: pickedLoginRole() }); // same flow as password login
     say(v.data.error === 'banned' ? 'This account is banned.'
       : "Face ID didn't match — try again, or use your password.");
   } catch (e) {
@@ -10127,7 +10334,7 @@ async function vAffiliateSignup(code) {
   };
 }
 
-async function afterLogin(data) {
+async function afterLogin(data, opts) {
   S.token = data.token;
   localStorage.setItem('wc_token', S.token);
   S.user = data.user;
@@ -10142,7 +10349,17 @@ async function afterLogin(data) {
   }
   else if (S.user.role === 'recruiter') show('recruiter', {});
   else show('fanModels', {});
-  toast(t('welcome_user', { name: S.user.display_name }));
+  // Gentle wrong-door note (owner: sign-in must be foolproof): she
+  // tapped "Sign in as a model" but the account is really a fan (or
+  // the reverse) — she is still signed in and routed by her real
+  // role above; the toast just tells her which account this is.
+  const wantRole = { fan: 'fan', model: 'model', affiliate: 'recruiter' }[(opts && opts.roleHint) || ''];
+  if (wantRole && S.user.role !== wantRole && S.user.role !== 'admin') {
+    const wordKey = { fan: 'role_word_fan', model: 'role_word_model', recruiter: 'role_word_affiliate' }[S.user.role];
+    toast(t('signin_wrong_role', { role: t(wordKey) }));
+  } else {
+    toast(t('welcome_user', { name: S.user.display_name }));
+  }
 }
 
 /* Contract gate: unsigned models get redirected to sign before doing anything */
