@@ -106,7 +106,7 @@ test('affiliate terms: quota placement + numbering are coherent (after §9, disc
     'recruiter agreement has exactly 11 sections');
 });
 
-test('affiliate terms: signup notice exists in all 13 languages and renders at the acceptance point of both forms', () => {
+test('affiliate terms: signup notice exists in all 13 languages and renders at the acceptance point of both forms + the attach view', () => {
   // i18n: the notice key is defined once per locale
   const defs = app.split('aff_quota_notice:').length - 1;
   assert.equal(defs, 13, `aff_quota_notice defined for all 13 languages (found ${defs})`);
@@ -121,9 +121,12 @@ test('affiliate terms: signup notice exists in all 13 languages and renders at t
   assert.ok(en.includes('unless your models have earned SlutCamp significant money, in which case your status is extended until you reach 10'),
     'EN notice: significant-earnings extension until 10');
   assert.ok(en.includes('The full Agreement governs.'), 'EN notice: the full Agreement governs');
-  // rendered via t() at the acceptance point of BOTH signup forms
+  // rendered via t() at the acceptance point of BOTH signup forms —
+  // and, since the one-account update, at the in-app "Become an
+  // affiliate" attach view too: the SAME agreement moment for an
+  // existing account adding the capability, §10 quota included.
   const renders = app.split("t('aff_quota_notice')").length - 1;
-  assert.equal(renders, 2, `notice rendered on both affiliate signup forms (found ${renders})`);
+  assert.equal(renders, 3, `notice rendered on both signup forms + the attach view (found ${renders})`);
   // the shared agreement summary shown on both forms carries the quota too
   assert.ok(app.includes("'9. First-Year Quota — 10 Models in Your First Year'"),
     'signup agreement summary includes the First-Year Quota entry');

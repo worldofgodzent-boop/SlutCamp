@@ -711,6 +711,29 @@ const I18N = {
     rc_copy_link: '📋 Copy link',
     rc_link_note: 'Send this to models — anyone who signs up through it is yours. You earn 20% of everything they make.',
     rc_models_recruited: 'Models recruited',
+    side_model: 'Model',
+    side_fan: 'Fan',
+    side_affiliate: 'Affiliate',
+    rc_quota_line: 'First-year goal: {n}/10 models by {date}',
+    aff_already_account: 'You already have a SlutCamp account 💋 Sign in, then add Affiliate to it in Settings — no second account needed.',
+    aff_card_h: '🤝 Affiliate',
+    aff_card_none_sub: 'Earn 20% by recruiting models with your personal link — right from this account. No second login.',
+    aff_become_btn: 'Become an affiliate',
+    aff_have_btn: 'I already have an affiliate account',
+    aff_on_sub: 'Affiliate is ON for this account — your link, your models and your earnings live in your affiliate dashboard.',
+    aff_open_dash: 'Open affiliate dashboard',
+    aff_merge_prompt: 'You also have an affiliate account — bring it into this one?',
+    aff_merge_btn: 'Bring it in',
+    aff_dismiss: 'Not now',
+    aff_merge_h: 'Bring in your affiliate account',
+    aff_merge_sub: 'Type the username and password of your separate affiliate account. It folds into this account — your link, your models and your earnings all move here, and the old login is retired.',
+    aff_merge_go: 'Bring it in',
+    aff_merge_bad: 'That username or password didn\'t match — nothing was changed.',
+    aff_merge_not_aff: 'That account isn\'t an affiliate account.',
+    aff_merge_done: '✅ Done! Your affiliate account now lives in this one — one login for everything 💋',
+    aff_attach_done: '✅ You\'re an affiliate now — your personal link is live!',
+    aff_attach_h: 'Become an affiliate',
+    aff_switch_note: 'This affiliate account uses the same email as your {role} account @{username}. Sign in with that account and bring this one in from Settings — then one login does everything.',
     rc_total_earned: 'Total earned',
     rc_your_models: '💃 Your models',
     rc_joined: 'Joined',
@@ -1340,6 +1363,29 @@ const I18N = {
     rc_copy_link: '📋 Copiar enlace',
     rc_link_note: 'Envíalo a las modelos — cualquiera que se registre a través de él es tuya. Ganas el 20% de todo lo que ellas ganen.',
     rc_models_recruited: 'Modelos reclutadas',
+    side_model: 'Modelo',
+    side_fan: 'Fan',
+    side_affiliate: 'Afiliada',
+    rc_quota_line: 'Meta del primer año: {n}/10 modelos antes del {date}',
+    aff_already_account: 'Ya tienes una cuenta de SlutCamp 💋 Inicia sesión y agrega Afiliada en Ajustes — no necesitas una segunda cuenta.',
+    aff_card_h: '🤝 Afiliada',
+    aff_card_none_sub: 'Gana el 20% reclutando modelos con tu enlace personal — desde esta misma cuenta. Sin segundo inicio de sesión.',
+    aff_become_btn: 'Hazte afiliada',
+    aff_have_btn: 'Ya tengo una cuenta de afiliada',
+    aff_on_sub: 'Afiliada está ACTIVADA en esta cuenta: tu enlace, tus modelos y tus ganancias están en tu panel de afiliada.',
+    aff_open_dash: 'Abrir panel de afiliada',
+    aff_merge_prompt: 'También tienes una cuenta de afiliada — ¿la traes a esta?',
+    aff_merge_btn: 'Traerla',
+    aff_dismiss: 'Ahora no',
+    aff_merge_h: 'Trae tu cuenta de afiliada',
+    aff_merge_sub: 'Escribe el usuario y la contraseña de tu cuenta de afiliada aparte. Se une a esta cuenta: tu enlace, tus modelos y tus ganancias se mudan aquí, y el acceso viejo se retira.',
+    aff_merge_go: 'Traerla',
+    aff_merge_bad: 'Ese usuario o contraseña no coinciden — no se cambió nada.',
+    aff_merge_not_aff: 'Esa cuenta no es una cuenta de afiliada.',
+    aff_merge_done: '✅ ¡Listo! Tu cuenta de afiliada ahora vive en esta — un solo inicio de sesión para todo 💋',
+    aff_attach_done: '✅ Ya eres afiliada — ¡tu enlace personal está activo!',
+    aff_attach_h: 'Hazte afiliada',
+    aff_switch_note: 'Esta cuenta de afiliada usa el mismo correo que tu cuenta de {role} @{username}. Inicia sesión con esa cuenta y trae esta desde Ajustes — así un solo inicio de sesión hace todo.',
     rc_total_earned: 'Total ganado',
     rc_your_models: '💃 Tus modelos',
     rc_joined: 'Se unió',
@@ -1969,6 +2015,29 @@ const I18N = {
     rc_copy_link: '📋 Copiar link',
     rc_link_note: 'Envie este link para as modelos — quem se cadastrar por ele é sua. Você ganha 20% de tudo o que elas ganharem.',
     rc_models_recruited: 'Modelos recrutadas',
+    side_model: 'Modelo',
+    side_fan: 'Fã',
+    side_affiliate: 'Afiliada',
+    rc_quota_line: 'Meta do primeiro ano: {n}/10 modelos até {date}',
+    aff_already_account: 'Você já tem uma conta SlutCamp 💋 Entre e adicione Afiliada em Configurações — nada de segunda conta.',
+    aff_card_h: '🤝 Afiliada',
+    aff_card_none_sub: 'Ganhe 20% recrutando modelos com seu link pessoal — nesta mesma conta. Sem segundo login.',
+    aff_become_btn: 'Torne-se afiliada',
+    aff_have_btn: 'Já tenho uma conta de afiliada',
+    aff_on_sub: 'Afiliada está ATIVADA nesta conta — seu link, suas modelos e seus ganhos ficam no seu painel de afiliada.',
+    aff_open_dash: 'Abrir painel de afiliada',
+    aff_merge_prompt: 'Você também tem uma conta de afiliada — trazê-la para esta?',
+    aff_merge_btn: 'Trazer',
+    aff_dismiss: 'Agora não',
+    aff_merge_h: 'Traga sua conta de afiliada',
+    aff_merge_sub: 'Digite o usuário e a senha da sua conta de afiliada separada. Ela se junta a esta conta — link, modelos e ganhos vêm para cá, e o login antigo é aposentado.',
+    aff_merge_go: 'Trazer',
+    aff_merge_bad: 'Esse usuário ou senha não conferem — nada foi alterado.',
+    aff_merge_not_aff: 'Essa conta não é uma conta de afiliada.',
+    aff_merge_done: '✅ Pronto! Sua conta de afiliada agora mora nesta — um login para tudo 💋',
+    aff_attach_done: '✅ Você agora é afiliada — seu link pessoal está ativo!',
+    aff_attach_h: 'Torne-se afiliada',
+    aff_switch_note: 'Esta conta de afiliada usa o mesmo e-mail da sua conta de {role} @{username}. Entre com aquela conta e traga esta em Configurações — um login faz tudo.',
     rc_total_earned: 'Total ganho',
     rc_your_models: '💃 Suas modelos',
     rc_joined: 'Entrou em',
@@ -2598,6 +2667,29 @@ const I18N = {
     rc_copy_link: '📋 Copier le lien',
     rc_link_note: 'Envoyez-le aux modèles — toute personne qui s’inscrit via ce lien est à vous. Vous gagnez 20% de tout ce qu’elles gagnent.',
     rc_models_recruited: 'Modèles recrutées',
+    side_model: 'Modèle',
+    side_fan: 'Fan',
+    side_affiliate: 'Affiliée',
+    rc_quota_line: 'Objectif de première année : {n}/10 modèles d\'ici le {date}',
+    aff_already_account: 'Vous avez déjà un compte SlutCamp 💋 Connectez-vous, puis ajoutez Affiliée dans les Paramètres — pas besoin de deuxième compte.',
+    aff_card_h: '🤝 Affiliation',
+    aff_card_none_sub: 'Gagnez 20% en recrutant des modèles avec votre lien personnel — depuis ce même compte. Pas de deuxième connexion.',
+    aff_become_btn: 'Devenir affiliée',
+    aff_have_btn: 'J\'ai déjà un compte affilié',
+    aff_on_sub: 'Affiliée est ACTIVÉE sur ce compte — votre lien, vos modèles et vos gains sont dans votre tableau de bord affiliée.',
+    aff_open_dash: 'Ouvrir le tableau de bord affiliée',
+    aff_merge_prompt: 'Vous avez aussi un compte affilié — le ramener dans celui-ci ?',
+    aff_merge_btn: 'Le ramener',
+    aff_dismiss: 'Pas maintenant',
+    aff_merge_h: 'Ramenez votre compte affilié',
+    aff_merge_sub: 'Entrez le nom d’utilisateur et le mot de passe de votre compte affilié séparé. Il fusionne dans ce compte — lien, modèles et gains déménagent ici, et l’ancienne connexion est retirée.',
+    aff_merge_go: 'Le ramener',
+    aff_merge_bad: 'Ce nom d\'utilisateur ou mot de passe ne correspond pas — rien n\'a été modifié.',
+    aff_merge_not_aff: 'Ce compte n\'est pas un compte affilié.',
+    aff_merge_done: '✅ C’est fait ! Votre compte affilié vit maintenant dans celui-ci — une seule connexion pour tout 💋',
+    aff_attach_done: '✅ Vous êtes affiliée — votre lien personnel est actif !',
+    aff_attach_h: 'Devenir affiliée',
+    aff_switch_note: 'Ce compte affilié utilise le même e-mail que votre compte {role} @{username}. Connectez-vous avec ce compte et ramenez celui-ci depuis les Paramètres — une seule connexion fait tout.',
     rc_total_earned: 'Total gagné',
     rc_your_models: '💃 Vos modèles',
     rc_joined: 'Inscrite',
@@ -3227,6 +3319,29 @@ const I18N = {
     rc_copy_link: '📋 Link kopieren',
     rc_link_note: 'Senden Sie diesen Link an Models — wer sich darüber anmeldet, gehört zu Ihnen. Sie verdienen 20% von allem, was sie verdienen.',
     rc_models_recruited: 'Rekrutierte Models',
+    side_model: 'Model',
+    side_fan: 'Fan',
+    side_affiliate: 'Affiliate',
+    rc_quota_line: 'Ziel im ersten Jahr: {n}/10 Models bis {date}',
+    aff_already_account: 'Du hast schon ein SlutCamp-Konto 💋 Melde dich an und füge Affiliate in den Einstellungen hinzu — kein zweites Konto nötig.',
+    aff_card_h: '🤝 Affiliate',
+    aff_card_none_sub: 'Verdiene 20%, indem du Models mit deinem persönlichen Link wirbst — direkt von diesem Konto. Kein zweiter Login.',
+    aff_become_btn: 'Affiliate werden',
+    aff_have_btn: 'Ich habe schon ein Affiliate-Konto',
+    aff_on_sub: 'Affiliate ist für dieses Konto AN — dein Link, deine Models und deine Einnahmen sind in deinem Affiliate-Dashboard.',
+    aff_open_dash: 'Affiliate-Dashboard öffnen',
+    aff_merge_prompt: 'Du hast auch ein Affiliate-Konto — in dieses hier holen?',
+    aff_merge_btn: 'Hierher holen',
+    aff_dismiss: 'Nicht jetzt',
+    aff_merge_h: 'Hole dein Affiliate-Konto hierher',
+    aff_merge_sub: 'Gib Benutzername und Passwort deines separaten Affiliate-Kontos ein. Es wird in dieses Konto gefaltet — Link, Models und Einnahmen ziehen hierher, der alte Login wird stillgelegt.',
+    aff_merge_go: 'Hierher holen',
+    aff_merge_bad: 'Benutzername oder Passwort stimmen nicht — nichts wurde geändert.',
+    aff_merge_not_aff: 'Das ist kein Affiliate-Konto.',
+    aff_merge_done: '✅ Fertig! Dein Affiliate-Konto lebt jetzt in diesem hier — ein Login für alles 💋',
+    aff_attach_done: '✅ Du bist jetzt Affiliate — dein persönlicher Link ist live!',
+    aff_attach_h: 'Affiliate werden',
+    aff_switch_note: 'Dieses Affiliate-Konto nutzt dieselbe E-Mail wie dein {role}-Konto @{username}. Melde dich mit jenem Konto an und hole dieses in den Einstellungen hierher — dann macht ein Login alles.',
     rc_total_earned: 'Insgesamt verdient',
     rc_your_models: '💃 Ihre Models',
     rc_joined: 'Beigetreten',
@@ -3856,6 +3971,29 @@ const I18N = {
     rc_copy_link: '📋 Копировать ссылку',
     rc_link_note: 'Отправьте её моделям — каждая, кто зарегистрируется по ней, будет вашей. Вы получаете 20% от всего, что они заработают.',
     rc_models_recruited: 'Приглашённые модели',
+    side_model: 'Модель',
+    side_fan: 'Фанат',
+    side_affiliate: 'Партнёр',
+    rc_quota_line: 'Цель на первый год: {n}/10 моделей к {date}',
+    aff_already_account: 'У тебя уже есть аккаунт SlutCamp 💋 Войди и добавь партнёрство в Настройках — второй аккаунт не нужен.',
+    aff_card_h: '🤝 Партнёрство',
+    aff_card_none_sub: 'Зарабатывай 20%, привлекая моделей по своей личной ссылке — прямо с этого аккаунта. Без второго входа.',
+    aff_become_btn: 'Стать партнёром',
+    aff_have_btn: 'У меня уже есть партнёрский аккаунт',
+    aff_on_sub: 'Партнёрство ВКЛЮЧЕНО для этого аккаунта — твоя ссылка, модели и заработок в партнёрской панели.',
+    aff_open_dash: 'Открыть партнёрскую панель',
+    aff_merge_prompt: 'У тебя есть ещё и партнёрский аккаунт — перенести его в этот?',
+    aff_merge_btn: 'Перенести',
+    aff_dismiss: 'Не сейчас',
+    aff_merge_h: 'Перенеси свой партнёрский аккаунт',
+    aff_merge_sub: 'Введи логин и пароль своего отдельного партнёрского аккаунта. Он вольётся в этот аккаунт — ссылка, модели и заработок переедут сюда, а старый вход будет отключён.',
+    aff_merge_go: 'Перенести',
+    aff_merge_bad: 'Логин или пароль не совпали — ничего не изменено.',
+    aff_merge_not_aff: 'Это не партнёрский аккаунт.',
+    aff_merge_done: '✅ Готово! Твой партнёрский аккаунт теперь живёт в этом — один вход для всего 💋',
+    aff_attach_done: '✅ Теперь ты партнёр — твоя личная ссылка активна!',
+    aff_attach_h: 'Стать партнёром',
+    aff_switch_note: 'Этот партнёрский аккаунт использует ту же почту, что и твой аккаунт {role} @{username}. Войди под тем аккаунтом и перенеси этот в Настройках — тогда один вход делает всё.',
     rc_total_earned: 'Всего заработано',
     rc_your_models: '💃 Ваши модели',
     rc_joined: 'Присоединилась',
@@ -4485,6 +4623,29 @@ const I18N = {
     rc_copy_link: '📋 リンクをコピー',
     rc_link_note: 'このリンクをモデルに送ってください — このリンクから登録した人はあなたの紹介となります。彼女たちの収益の20%があなたに入ります。',
     rc_models_recruited: '紹介したモデル',
+    side_model: 'モデル',
+    side_fan: 'ファン',
+    side_affiliate: 'アフィリエイト',
+    rc_quota_line: '初年度の目標：{date}までに{n}/10人',
+    aff_already_account: 'すでにSlutCampのアカウントがあります 💋 ログインして、設定でアフィリエイトを追加してね — 2つ目のアカウントは不要です。',
+    aff_card_h: '🤝 アフィリエイト',
+    aff_card_none_sub: 'あなたのリンクでモデルを募集して20%稼げます — このアカウントのままで。2つ目のログインは不要。',
+    aff_become_btn: 'アフィリエイトになる',
+    aff_have_btn: 'すでにアフィリエイトアカウントがあります',
+    aff_on_sub: 'このアカウントでアフィリエイトがONになっています — リンク、モデル、収益はアフィリエイトダッシュボードにあります。',
+    aff_open_dash: 'アフィリエイトダッシュボードを開く',
+    aff_merge_prompt: 'アフィリエイトアカウントも持っています — このアカウントにまとめますか？',
+    aff_merge_btn: 'まとめる',
+    aff_dismiss: '今はしない',
+    aff_merge_h: 'アフィリエイトアカウントをまとめる',
+    aff_merge_sub: '別のアフィリエイトアカウントのユーザー名とパスワードを入力してね。そのアカウントはこのアカウントに統合されます — リンク、モデル、収益はすべてここに移り、古いログインは使えなくなります。',
+    aff_merge_go: 'まとめる',
+    aff_merge_bad: 'ユーザー名かパスワードが一致しません — 何も変更されていません。',
+    aff_merge_not_aff: 'そのアカウントはアフィリエイトアカウントではありません。',
+    aff_merge_done: '✅ 完了！アフィリエイトアカウントがこのアカウントに統合されました — ログインは1つだけ 💋',
+    aff_attach_done: '✅ アフィリエイトになりました — あなたのリンクが有効です！',
+    aff_attach_h: 'アフィリエイトになる',
+    aff_switch_note: 'このアフィリエイトアカウントは、あなたの{role}アカウント @{username} と同じメールアドレスです。そのアカウントでログインし、設定からこれをまとめてね — ログイン1つで全部できます。',
     rc_total_earned: '累計収益',
     rc_your_models: '💃 あなたのモデル',
     rc_joined: '登録日',
@@ -5114,6 +5275,29 @@ const I18N = {
     rc_copy_link: '📋 复制链接',
     rc_link_note: '将此链接发送给模特 — 任何通过它注册的人都归您招募。您可获得她们全部收入的 20%。',
     rc_models_recruited: '已招募模特',
+    side_model: '模特',
+    side_fan: '粉丝',
+    side_affiliate: '推广伙伴',
+    rc_quota_line: '第一年目标：在{date}前达到{n}/10位模特',
+    aff_already_account: '你已经有 SlutCamp 账号了 💋 登录后在设置里添加推广伙伴即可 — 不需要第二个账号。',
+    aff_card_h: '🤝 推广伙伴',
+    aff_card_none_sub: '用你的个人链接招募模特即可赚20% — 就在这个账号里，无需第二个登录。',
+    aff_become_btn: '成为推广伙伴',
+    aff_have_btn: '我已经有推广伙伴账号了',
+    aff_on_sub: '此账号已开启推广伙伴 — 你的链接、模特和收益都在推广伙伴面板里。',
+    aff_open_dash: '打开推广伙伴面板',
+    aff_merge_prompt: '你还有一个推广伙伴账号 — 把它并入这个账号吗？',
+    aff_merge_btn: '并入',
+    aff_dismiss: '以后再说',
+    aff_merge_h: '并入你的推广伙伴账号',
+    aff_merge_sub: '输入你那个单独推广伙伴账号的用户名和密码。它将并入这个账号 — 链接、模特和收益都会移到这里，旧登录将被停用。',
+    aff_merge_go: '并入',
+    aff_merge_bad: '用户名或密码不正确 — 没有做任何更改。',
+    aff_merge_not_aff: '那个账号不是推广伙伴账号。',
+    aff_merge_done: '✅ 完成！你的推广伙伴账号已并入这个账号 — 一个登录搞定一切 💋',
+    aff_attach_done: '✅ 你已成为推广伙伴 — 你的个人链接已生效！',
+    aff_attach_h: '成为推广伙伴',
+    aff_switch_note: '此推广伙伴账号与你的{role}账号 @{username} 使用同一邮箱。用那个账号登录，在设置里把这个并入 — 一个登录搞定一切。',
     rc_total_earned: '总收益',
     rc_your_models: '💃 您的模特',
     rc_joined: '加入时间',
@@ -5743,6 +5927,29 @@ const I18N = {
     rc_copy_link: '📋 링크 복사',
     rc_link_note: '모델에게 이 링크를 보내세요 — 이 링크로 가입한 사람은 모두 내 모델이 됩니다. 그들이 버는 모든 수익의 20%를 받습니다.',
     rc_models_recruited: '모집한 모델',
+    side_model: '모델',
+    side_fan: '팬',
+    side_affiliate: '제휴',
+    rc_quota_line: '첫해 목표: {date}까지 {n}/10명',
+    aff_already_account: '이미 SlutCamp 계정이 있어요 💋 로그인한 뒤 설정에서 제휴를 추가하세요 — 두 번째 계정은 필요 없어요.',
+    aff_card_h: '🤝 제휴',
+    aff_card_none_sub: '개인 링크로 모델을 모집해 20%를 버세요 — 이 계정에서 바로. 두 번째 로그인 불필요.',
+    aff_become_btn: '제휴 시작하기',
+    aff_have_btn: '이미 제휴 계정이 있어요',
+    aff_on_sub: '이 계정에서 제휴가 켜져 있어요 — 링크, 모델, 수익은 제휴 대시보드에 있어요.',
+    aff_open_dash: '제휴 대시보드 열기',
+    aff_merge_prompt: '제휴 계정도 있어요 — 이 계정으로 가져올까요?',
+    aff_merge_btn: '가져오기',
+    aff_dismiss: '나중에',
+    aff_merge_h: '제휴 계정 가져오기',
+    aff_merge_sub: '별도 제휴 계정의 아이디와 비밀번호를 입력하세요. 그 계정은 이 계정으로 합쳐져요 — 링크, 모델, 수익이 모두 여기로 오고 예전 로그인은 중단돼요.',
+    aff_merge_go: '가져오기',
+    aff_merge_bad: '아이디나 비밀번호가 맞지 않아요 — 아무것도 바뀌지 않았어요.',
+    aff_merge_not_aff: '그 계정은 제휴 계정이 아니에요.',
+    aff_merge_done: '✅ 완료! 제휴 계정이 이 계정으로 합쳐졌어요 — 로그인 하나로 전부 💋',
+    aff_attach_done: '✅ 이제 제휴 파트너예요 — 개인 링크가 활성화됐어요!',
+    aff_attach_h: '제휴 시작하기',
+    aff_switch_note: '이 제휴 계정은 {role} 계정 @{username}와 같은 이메일을 써요. 그 계정으로 로그인한 뒤 설정에서 이 계정을 가져오세요 — 로그인 하나로 전부 해결돼요.',
     rc_total_earned: '총 수익',
     rc_your_models: '💃 내 모델',
     rc_joined: '가입일',
@@ -6372,6 +6579,29 @@ const I18N = {
     rc_copy_link: '📋 Copia link',
     rc_link_note: 'Invialo alle modelle — chiunque si iscriva tramite questo link è tua. Guadagni il 20% di tutto ciò che guadagnano.',
     rc_models_recruited: 'Modelle reclutate',
+    side_model: 'Modella',
+    side_fan: 'Fan',
+    side_affiliate: 'Affiliata',
+    rc_quota_line: 'Obiettivo del primo anno: {n}/10 modelle entro il {date}',
+    aff_already_account: 'Hai già un account SlutCamp 💋 Accedi e aggiungi Affiliata nelle Impostazioni — niente secondo account.',
+    aff_card_h: '🤝 Affiliazione',
+    aff_card_none_sub: 'Guadagna il 20% reclutando modelle con il tuo link personale — da questo stesso account. Niente secondo accesso.',
+    aff_become_btn: 'Diventa affiliata',
+    aff_have_btn: 'Ho già un account affiliata',
+    aff_on_sub: 'Affiliata è ATTIVA su questo account: link, modelle e guadagni sono nella tua dashboard affiliata.',
+    aff_open_dash: 'Apri la dashboard affiliata',
+    aff_merge_prompt: 'Hai anche un account affiliata — portarlo in questo?',
+    aff_merge_btn: 'Portalo qui',
+    aff_dismiss: 'Non ora',
+    aff_merge_h: 'Porta qui il tuo account affiliata',
+    aff_merge_sub: 'Scrivi nome utente e password del tuo account affiliata separato. Si unisce a questo account: link, modelle e guadagni si spostano qui, e il vecchio accesso viene ritirato.',
+    aff_merge_go: 'Portalo qui',
+    aff_merge_bad: 'Nome utente o password non corrispondono — non è cambiato nulla.',
+    aff_merge_not_aff: 'Quell’account non è un account affiliata.',
+    aff_merge_done: '✅ Fatto! Il tuo account affiliata ora vive in questo — un solo accesso per tutto 💋',
+    aff_attach_done: '✅ Ora sei affiliata — il tuo link personale è attivo!',
+    aff_attach_h: 'Diventa affiliata',
+    aff_switch_note: 'Questo account affiliata usa la stessa email del tuo account {role} @{username}. Accedi con quell’account e porta questo dalle Impostazioni — un solo accesso fa tutto.',
     rc_total_earned: 'Totale guadagnato',
     rc_your_models: '💃 Le tue modelle',
     rc_joined: 'Iscritta il',
@@ -7001,6 +7231,29 @@ const I18N = {
     rc_copy_link: '📋 Kopiuj link',
     rc_link_note: 'Wyślij go modelkom — każda, która zarejestruje się przez ten link, jest Twoja. Zarabiasz 20% od wszystkiego, co zarobią.',
     rc_models_recruited: 'Zrekrutowane modelki',
+    side_model: 'Modelka',
+    side_fan: 'Fan',
+    side_affiliate: 'Partnerka',
+    rc_quota_line: 'Cel na pierwszy rok: {n}/10 modelek do {date}',
+    aff_already_account: 'Masz już konto SlutCamp 💋 Zaloguj się i dodaj Partnerkę w Ustawieniach — bez drugiego konta.',
+    aff_card_h: '🤝 Partnerstwo',
+    aff_card_none_sub: 'Zarabiaj 20%, rekrutując modelki swoim osobistym linkiem — z tego samego konta. Bez drugiego logowania.',
+    aff_become_btn: 'Zostań partnerką',
+    aff_have_btn: 'Mam już konto partnerskie',
+    aff_on_sub: 'Partnerstwo jest WŁĄCZONE na tym koncie — twój link, modelki i zarobki są w panelu partnerskim.',
+    aff_open_dash: 'Otwórz panel partnerski',
+    aff_merge_prompt: 'Masz też konto partnerskie — przenieść je tutaj?',
+    aff_merge_btn: 'Przenieś',
+    aff_dismiss: 'Nie teraz',
+    aff_merge_h: 'Przenieś swoje konto partnerskie',
+    aff_merge_sub: 'Wpisz nazwę użytkownika i hasło swojego osobnego konta partnerskiego. Połączy się z tym kontem — link, modelki i zarobki przeniosą się tutaj, a stary login zostanie wycofany.',
+    aff_merge_go: 'Przenieś',
+    aff_merge_bad: 'Ta nazwa użytkownika lub hasło nie pasują — nic nie zostało zmienione.',
+    aff_merge_not_aff: 'To konto nie jest kontem partnerskim.',
+    aff_merge_done: '✅ Gotowe! Twoje konto partnerskie mieszka teraz w tym — jedno logowanie do wszystkiego 💋',
+    aff_attach_done: '✅ Jesteś teraz partnerką — twój osobisty link działa!',
+    aff_attach_h: 'Zostań partnerką',
+    aff_switch_note: 'To konto partnerskie używa tego samego e-maila co twoje konto {role} @{username}. Zaloguj się na tamto konto i przenieś to w Ustawieniach — jedno logowanie robi wszystko.',
     rc_total_earned: 'Zarobiono łącznie',
     rc_your_models: '💃 Twoje modelki',
     rc_joined: 'Dołączyła',
@@ -7630,6 +7883,29 @@ const I18N = {
     rc_copy_link: '📋 Link kopiëren',
     rc_link_note: 'Stuur deze naar modellen — iedereen die zich via deze link aanmeldt, is van jou. Je verdient 20% van alles wat zij verdienen.',
     rc_models_recruited: 'Geworven modellen',
+    side_model: 'Model',
+    side_fan: 'Fan',
+    side_affiliate: 'Affiliate',
+    rc_quota_line: 'Doel eerste jaar: {n}/10 modellen vóór {date}',
+    aff_already_account: 'Je hebt al een SlutCamp-account 💋 Log in en voeg Affiliate toe in Instellingen — geen tweede account nodig.',
+    aff_card_h: '🤝 Affiliate',
+    aff_card_none_sub: 'Verdien 20% door modellen te werven met je persoonlijke link — gewoon vanaf dit account. Geen tweede login.',
+    aff_become_btn: 'Word affiliate',
+    aff_have_btn: 'Ik heb al een affiliate-account',
+    aff_on_sub: 'Affiliate staat AAN voor dit account — je link, je modellen en je inkomsten staan in je affiliate-dashboard.',
+    aff_open_dash: 'Open affiliate-dashboard',
+    aff_merge_prompt: 'Je hebt ook een affiliate-account — naar dit account halen?',
+    aff_merge_btn: 'Haal het hierheen',
+    aff_dismiss: 'Niet nu',
+    aff_merge_h: 'Haal je affiliate-account hierheen',
+    aff_merge_sub: 'Typ de gebruikersnaam en het wachtwoord van je aparte affiliate-account. Het vouwt in dit account — je link, modellen en inkomsten verhuizen hierheen en de oude login wordt stopgezet.',
+    aff_merge_go: 'Haal het hierheen',
+    aff_merge_bad: 'Die gebruikersnaam of dat wachtwoord klopt niet — er is niets gewijzigd.',
+    aff_merge_not_aff: 'Dat account is geen affiliate-account.',
+    aff_merge_done: '✅ Klaar! Je affiliate-account leeft nu in dit account — één login voor alles 💋',
+    aff_attach_done: '✅ Je bent nu affiliate — je persoonlijke link is live!',
+    aff_attach_h: 'Word affiliate',
+    aff_switch_note: 'Dit affiliate-account gebruikt dezelfde e-mail als je {role}-account @{username}. Log in met dat account en haal dit account binnen via Instellingen — dan doet één login alles.',
     rc_total_earned: 'Totaal verdiend',
     rc_your_models: '💃 Jouw modellen',
     rc_joined: 'Aangemeld',
@@ -8259,6 +8535,29 @@ const I18N = {
     rc_copy_link: '📋 Bağlantıyı kopyala',
     rc_link_note: 'Bunu modellere gönder — bu bağlantıyla kaydolan herkes senin olur. Kazandıkları her şeyin %20\'sini kazanırsın.',
     rc_models_recruited: 'Davet edilen modeller',
+    side_model: 'Model',
+    side_fan: 'Hayran',
+    side_affiliate: 'İş Ortağı',
+    rc_quota_line: 'İlk yıl hedefi: {date} tarihine kadar {n}/10 model',
+    aff_already_account: 'Zaten bir SlutCamp hesabın var 💋 Giriş yap ve Ayarlar’dan İş Ortağı’nı ekle — ikinci hesaba gerek yok.',
+    aff_card_h: '🤝 İş Ortaklığı',
+    aff_card_none_sub: 'Kişisel bağlantınla model davet ederek %20 kazan — bu hesaptan. İkinci giriş yok.',
+    aff_become_btn: 'İş ortağı ol',
+    aff_have_btn: 'Zaten bir iş ortağı hesabım var',
+    aff_on_sub: 'İş Ortaklığı bu hesapta AÇIK — bağlantın, modellerin ve kazançların iş ortağı panelinde.',
+    aff_open_dash: 'İş ortağı panelini aç',
+    aff_merge_prompt: 'Bir iş ortağı hesabın da var — onu bu hesaba getirelim mi?',
+    aff_merge_btn: 'Getir',
+    aff_dismiss: 'Şimdi değil',
+    aff_merge_h: 'İş ortağı hesabını getir',
+    aff_merge_sub: 'Ayrı iş ortağı hesabının kullanıcı adını ve şifresini yaz. O hesap bu hesaba katlanır — bağlantın, modellerin ve kazançların buraya taşınır, eski giriş emekliye ayrılır.',
+    aff_merge_go: 'Getir',
+    aff_merge_bad: 'Kullanıcı adı veya şifre eşleşmedi — hiçbir şey değişmedi.',
+    aff_merge_not_aff: 'O hesap bir iş ortağı hesabı değil.',
+    aff_merge_done: '✅ Tamam! İş ortağı hesabın artık bu hesapta yaşıyor — her şey için tek giriş 💋',
+    aff_attach_done: '✅ Artık iş ortağısın — kişisel bağlantın yayında!',
+    aff_attach_h: 'İş ortağı ol',
+    aff_switch_note: 'Bu iş ortağı hesabı, {role} hesabın @{username} ile aynı e-postayı kullanıyor. O hesapla giriş yap ve bunu Ayarlar’dan getir — tek giriş her şeyi halleder.',
     rc_total_earned: 'Toplam kazanç',
     rc_your_models: '💃 Modellerin',
     rc_joined: 'Katıldı',
@@ -9063,6 +9362,7 @@ function show(view, params) {
     bookings: vBookings, terms: vTerms, privacy: vPrivacy, billing: vBilling, statement2257: vStatement2257,
     managerGate: vManagerGate, modelContract: vModelContract,
     recruiter: vRecruiter, notifications: vNotifications, dmca: vDmca,
+    affiliateAttach: vAffiliateAttach, affiliateMerge: vAffiliateMerge,
   };
   // Fan-preview placeholders: chats/bookings/wallet run on a fan's own data
   // and would 403 for an admin token — show the friendly note instead.
@@ -9614,6 +9914,10 @@ async function doAffiliateSignup() {
     body: JSON.stringify({ username, password, display_name, agreed: true }),
   });
   if (status === 200) return afterLogin(data);
+  if (status === 409 && data.error === 'already_have_account') {
+    toast(t('aff_already_account'));
+    return show('auth', { mode: 'login', role: 'affiliate' });
+  }
   const msgs = { username_taken: t('err_username_taken'),
     must_agree: t('aff_must_agree'), missing_fields: t('fill_all_fields') };
   toast(msgs[data.error] || t('err_signup_failed'));
@@ -10328,6 +10632,10 @@ async function vAffiliateSignup(code) {
       body: JSON.stringify({ username, password, display_name, agreed: true }),
     });
     if (status === 200) return afterLogin(data);
+    if (status === 409 && data.error === 'already_have_account') {
+      toast(t('aff_already_account'));
+      return show('auth', { mode: 'login', role: 'affiliate' });
+    }
     const msgs = { username_taken: t('err_username_taken'), bad_invite: t('err_invite_invalid'),
       expired: t('err_invite_expired'), must_agree: t('aff_must_agree'), missing_fields: t('fill_all_fields') };
     toast(msgs[data.error] || t('err_signup_failed'));
@@ -10342,7 +10650,12 @@ async function afterLogin(data, opts) {
   await refreshMe();
   renderBell();
   subscribePush();
+  // One-account tie-in (PR #44 plumbing): she entered via "Sign in
+  // as an affiliate" and this ONE account holds the capability —
+  // land her on the affiliate side, no wrong-role toast.
+  const wantAff = (opts && opts.roleHint) === 'affiliate' && !!S.user.is_affiliate && S.user.role !== 'recruiter';
   if (S.user.role === 'admin') show('managerGate', {});
+  else if (wantAff) show('recruiter', {});
   else if (S.user.role === 'model') {
     await checkContractGate();
     show('modelChats', {});
@@ -10354,7 +10667,7 @@ async function afterLogin(data, opts) {
   // the reverse) — she is still signed in and routed by her real
   // role above; the toast just tells her which account this is.
   const wantRole = { fan: 'fan', model: 'model', affiliate: 'recruiter' }[(opts && opts.roleHint) || ''];
-  if (wantRole && S.user.role !== wantRole && S.user.role !== 'admin') {
+  if (wantRole && S.user.role !== wantRole && S.user.role !== 'admin' && !wantAff) {
     const wordKey = { fan: 'role_word_fan', model: 'role_word_model', recruiter: 'role_word_affiliate' }[S.user.role];
     toast(t('signin_wrong_role', { role: t(wordKey) }));
   } else {
@@ -10627,6 +10940,7 @@ async function vFanModels() {
         ? '<span class="balance-pill">👀 Browsing the home screen</span>'
         : `<span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span>`}</div></div>
     <div class="screen">
+      ${sideSwitchHTML('main')}
       ${officialCardHTML(official)}
       ${athCardHTML()}
       ${livesBtnHTML(models)}
@@ -10642,6 +10956,7 @@ async function vFanModels() {
   // Pinned official card: LIVE → join the stream exactly like a live
   // model tile; quiet → its look-only profile page. Model viewers and
   // the admin fan-preview stay look-only in both states (the grid rule).
+  wireSideSwitch();
   app.querySelectorAll('[data-official]').forEach((b) => {
     b.onclick = () => {
       if (!official) return;
@@ -10807,6 +11122,7 @@ async function vChatList(role) {
       <button class="btn ghost hidden" id="back-live-btn" style="margin-top:8px">${t('back_live')}</button>` : ''}
     </div>
     <div class="screen" style="padding:8px">
+      ${sideSwitchHTML('main')}
       ${convs.map((c) => `
         <button class="list-item" data-conv="${c.id}">
           ${avatarHTML(c.other.display_name, 'sm', c.other.photo_url)}
@@ -10837,6 +11153,7 @@ async function vChatList(role) {
       }
     }).catch(() => {});
   }
+  wireSideSwitch();
   app.querySelectorAll('[data-conv]').forEach((b) => {
     b.onclick = async () => {
       const c = convs.find((x) => x.id === parseInt(b.dataset.conv));
@@ -11053,6 +11370,7 @@ async function vWallet() {
       <div class="card" style="text-align:center">
         <div class="muted small">${t('credit_note')}</div>
       </div>
+      <div id="affiliate-prompt"></div>
       <div id="spend-card"></div>
       ${pkgs.map((p) => `
         <button class="pkg" data-pkg="${p.id}">
@@ -11096,6 +11414,7 @@ async function vWallet() {
       <div id="pk-card"></div>
       <div id="pw-card"></div>
       <div id="contact-card"></div>
+      <div id="affiliate-card"></div>
       <div id="suggest-card"></div>
       ${langCardHTML()}
       <button class="btn ghost" id="w-logout">${t('log_out')}</button>
@@ -11229,6 +11548,7 @@ async function vWallet() {
   renderPkSettingsCard();
   renderPwSettingsCard();
   renderContactSettingsCard();
+  renderAffiliateCard();
   renderSuggestionCard();
   $('#w-logout').onclick = () => logout();
 }
@@ -11911,7 +12231,149 @@ async function vAffiliateAgreement(contract) {
   };
 }
 
+/* ── ONE ACCOUNT FOR BOTH (2026-10-17) ─────────────────────────
+   Affiliate as a capability on a fan/model account: the server-side
+   recruiters row IS the capability; /api/me exposes is_affiliate +
+   affiliate_merge_offer. Owner spec: the top two-label switch shows
+   ONLY when this one account holds BOTH sides — single-side users
+   see nothing new. "Become an affiliate" stays a quiet Settings
+   item; the merge prompt targets email-matched pairs only. */
+function sideSwitchHTML(active) {
+  if (!S.user || !S.user.is_affiliate) return '';
+  if (S.user.role !== 'fan' && S.user.role !== 'model') return '';
+  const mainLabel = S.user.role === 'model' ? t('side_model') : t('side_fan');
+  return `<div class="side-switch"><button type="button" class="${active === 'main' ? 'on' : ''}" id="sw-main">${esc(mainLabel)}</button><button type="button" class="${active === 'aff' ? 'on' : ''}" id="sw-aff">${t('side_affiliate')}</button></div>`;
+}
+function wireSideSwitch() {
+  const m = $('#sw-main'), a = $('#sw-aff');
+  if (m) m.onclick = () => show(S.user.role === 'model' ? 'modelChats' : 'fanModels', {});
+  if (a) a.onclick = () => show('recruiter', {});
+}
+function affMergeDismissed() {
+  try { return localStorage.getItem('aff_merge_dismissed_' + (S.user && S.user.id)) === '1'; } catch (e) { return false; }
+}
+function affiliateMergePromptHTML() {
+  const offer = S.user && S.user.affiliate_merge_offer;
+  if (!offer || offer.direction !== 'bring_in' || affMergeDismissed()) return '';
+  return `<div class="card" style="border-color:var(--gold)">
+    <div style="font-weight:800;margin-bottom:8px">🤝 ${t('aff_merge_prompt')}</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" id="aff-prompt-go" style="flex:1">${t('aff_merge_btn')}</button>
+      <button class="btn ghost" id="aff-prompt-no" style="flex:1">${t('aff_dismiss')}</button>
+    </div>
+  </div>`;
+}
+function affiliateSwitchNoteHTML() {
+  // Shown on the affiliate side when THIS account's email matches a
+  // fan/model account: the merge happens from that side's Settings.
+  const offer = S.user && S.user.affiliate_merge_offer;
+  if (!offer || offer.direction !== 'switch_account') return '';
+  return `<div class="card" style="border-color:var(--gold)"><div class="small">🤝 ${t('aff_switch_note', { role: t(offer.other_role === 'model' ? 'role_word_model' : 'role_word_fan'), username: offer.other_username })}</div></div>`;
+}
+function affiliateCardHTML() {
+  if (!S.user || (S.user.role !== 'fan' && S.user.role !== 'model')) return '';
+  if (S.user.is_affiliate) {
+    return `<div class="card">
+      <div style="font-weight:800;margin-bottom:6px">${t('aff_card_h')}</div>
+      <div class="muted small" style="margin-bottom:10px">${t('aff_on_sub')}</div>
+      <button class="btn" id="aff-open" style="width:100%">${t('aff_open_dash')}</button>
+      <button class="btn ghost" id="aff-have" style="width:100%;margin-top:6px">${t('aff_have_btn')}</button>
+    </div>`;
+  }
+  return `<div class="card">
+    <div style="font-weight:800;margin-bottom:6px">${t('aff_card_h')}</div>
+    <div class="muted small" style="margin-bottom:10px">${t('aff_card_none_sub')}</div>
+    <button class="btn" id="aff-become" style="width:100%">${t('aff_become_btn')}</button>
+    <button class="btn ghost" id="aff-have" style="width:100%;margin-top:6px">${t('aff_have_btn')}</button>
+  </div>`;
+}
+function wireAffiliateCard() {
+  const go = $('#aff-prompt-go'), no = $('#aff-prompt-no');
+  if (go) go.onclick = () => show('affiliateMerge', {});
+  if (no) no.onclick = () => {
+    try { localStorage.setItem('aff_merge_dismissed_' + S.user.id, '1'); } catch (e) {}
+    const c = no.closest('.card'); if (c) c.remove();
+  };
+  const open = $('#aff-open'); if (open) open.onclick = () => show('recruiter', {});
+  const become = $('#aff-become'); if (become) become.onclick = () => show('affiliateAttach', {});
+  const have = $('#aff-have'); if (have) have.onclick = () => show('affiliateMerge', {});
+}
+function renderAffiliateCard() {
+  // Fan wallet hosts (the model Settings render the same pieces inline).
+  const host = document.getElementById('affiliate-card');
+  if (host) host.innerHTML = affiliateCardHTML();
+  const phost = document.getElementById('affiliate-prompt');
+  if (phost) phost.innerHTML = affiliateMergePromptHTML();
+  wireAffiliateCard();
+}
+function affSettingsBack() {
+  return S.user && S.user.role === 'model' ? 'modelSettings' : 'wallet';
+}
+async function vAffiliateAttach() {
+  const app = $('#app');
+  app.innerHTML = `
+    <div class="screen narrow">
+      ${hdrPublic('SlutCamp 🤝')}
+      <div class="card">
+        <h2 style="margin:0 0 6px">${t('aff_attach_h')}</h2>
+        <div class="muted small" style="margin-bottom:10px">${t('aff_sub')}</div>
+        <div class="aff-agreement" style="max-height:300px;overflow:auto">${affAgreementSections()}</div>
+      </div>
+      <div class="card" style="border-color:var(--gold)">
+        <div style="font-weight:800;margin-bottom:4px">📋 ${t('aff_quota_title')}</div>
+        <div class="small">${t('aff_quota_notice')}</div>
+      </div>
+      <label class="field">${t('aff_sign_name_label')}<input class="input" id="aa-name" autocomplete="name" placeholder="${t('aff_sign_name_ph')}"></label>
+      <label class="checkline"><input type="checkbox" id="aa-agree"> <span>${t('aff_agree')}</span></label>
+      <button class="btn" id="aa-go" style="width:100%">${t('aff_sign_go')}</button>
+      <button class="btn ghost" id="aa-back" style="width:100%;margin-top:8px">${t('back')}</button>
+    </div>`;
+  entryRerender = vAffiliateAttach;
+  renderHeader();
+  $('#aa-back').onclick = () => show(affSettingsBack(), {});
+  $('#aa-go').onclick = async () => {
+    const display_name = $('#aa-name').value.trim();
+    const agreed = $('#aa-agree').checked;
+    if (display_name.length < 2) return toast(t('aff_err_name'));
+    if (!agreed) return toast(t('aff_err_agree'));
+    const { status, data } = await api('/affiliate/attach', {
+      method: 'POST', body: JSON.stringify({ display_name, agreed }) });
+    if (status === 200) { toast(t('aff_attach_done')); await refreshMe(); return show('recruiter', {}); }
+    if (data && data.error === 'already_affiliate') { await refreshMe(); return show('recruiter', {}); }
+    toast(t('something_wrong'));
+  };
+}
+async function vAffiliateMerge() {
+  const app = $('#app');
+  app.innerHTML = `
+    <div class="screen narrow">
+      ${hdrPublic('SlutCamp 🤝')}
+      <div class="card">
+        <h2 style="margin:0 0 6px">${t('aff_merge_h')}</h2>
+        <div class="muted small" style="margin-bottom:10px">${t('aff_merge_sub')}</div>
+        <label class="field">${t('username')}<input class="input" id="am-user" autocomplete="username"></label>
+        <label class="field">${t('password')}${pwField('am-pass', 'current-password')}</label>
+        <button class="btn" id="am-go" style="width:100%">${t('aff_merge_go')}</button>
+        <button class="btn ghost" id="am-back" style="width:100%;margin-top:8px">${t('back')}</button>
+      </div>
+    </div>`;
+  entryRerender = vAffiliateMerge;
+  renderHeader();
+  $('#am-back').onclick = () => show(affSettingsBack(), {});
+  $('#am-go').onclick = async () => {
+    const username = $('#am-user').value.trim(), password = $('#am-pass').value;
+    if (!username || !password) return toast(t('enter_user_pass'));
+    const { status, data } = await api('/affiliate/merge', {
+      method: 'POST', body: JSON.stringify({ username, password }) });
+    if (status === 200) { toast(t('aff_merge_done')); await refreshMe(); return show('recruiter', {}); }
+    if (status === 401) return toast(t('aff_merge_bad'));
+    if (data && data.error === 'not_affiliate_account') return toast(t('aff_merge_not_aff'));
+    toast(t('something_wrong'));
+  };
+}
+
 async function vRecruiter() {
+  if (S.user && S.user.is_affiliate === undefined) await refreshMe();
   // Agreement gate: unsigned affiliates see ONLY the agreement
   try {
     const { status, data } = await api('/recruiter/contract');
@@ -11934,6 +12396,8 @@ async function vRecruiter() {
       <div class="sub" style="color:#d4a843">${esc(r.name)}${r.city ? ` · ${esc(r.city)}` : ''}</div>
     </div>
     <div class="screen">
+      ${sideSwitchHTML('aff')}
+      ${affiliateSwitchNoteHTML()}
       <div class="card" style="background:linear-gradient(135deg,#2a2208,#1a1405);border-color:var(--gold);text-align:center">
         <div style="font-size:13px;color:#d4a843;font-weight:700;letter-spacing:1px">${t('rc_earnings_h')}</div>
         <div style="font-size:42px;font-weight:800;color:var(--green);margin:4px 0">${fmt(data.available_cents)}</div>
@@ -11950,6 +12414,7 @@ async function vRecruiter() {
         <div class="stat"><div class="n">${data.model_count}</div><div class="l">${t('rc_models_recruited')}</div></div>
         <div class="stat"><div class="n" style="color:var(--green)">${fmt(data.earnings_cents)}</div><div class="l">${t('rc_total_earned')}</div></div>
       </div>
+      ${data.quota_year_end ? `<div class="muted small" style="text-align:center;margin:6px 0 2px">${t('rc_quota_line', { n: data.model_count, date: new Date(data.quota_year_end).toLocaleDateString(LANG) })}</div>` : ''}
       <div class="card" style="margin-top:12px">
         <div style="font-weight:800;margin-bottom:8px">${t('rc_your_models')}</div>
         ${models.map((m) => `
@@ -12037,6 +12502,7 @@ async function vRecruiter() {
       wdGo.disabled = false;
     }
   };
+  wireSideSwitch();
   renderTaxCard('tax-card');
 }
 
@@ -12439,6 +12905,7 @@ async function vModelSettings() {
   app.innerHTML = `
     <div class="header"><h1>${t('settings_h')}</h1></div>
     <div class="screen">
+      ${affiliateMergePromptHTML()}
       ${idvBanner}
       <button class="btn" id="goto-home" style="width:100%;padding:16px;font-size:17px;font-weight:800;margin-bottom:12px;background:linear-gradient(135deg,var(--pink),#ff8fab);box-shadow:0 6px 22px rgba(255,92,158,.35)">🏠 Home Screen — see the girls 🔥</button>
       ${langCardHTML()}
@@ -12563,6 +13030,7 @@ async function vModelSettings() {
           ${m.public_photo_url ? `<button class="btn ghost small danger" id="s-public-remove" style="margin-top:6px;margin-left:6px">${t('public_photo_remove')}</button>` : ''}
         </div>
       </div>
+      ${affiliateCardHTML()}
       <div class="card" id="tax-card"><div class="muted small">Loading tax info…</div></div>
       <div id="pk-card"></div>
       <div id="pw-card"></div>
@@ -12970,6 +13438,7 @@ async function vModelSettings() {
     };
   });
   renderTaxCard('tax-card');
+  wireAffiliateCard();
   // 💰 Tip menu CRUD
   async function loadTipMenu() {
     const { data } = await api(`/models/${S.user.id}/tip-menu`);
