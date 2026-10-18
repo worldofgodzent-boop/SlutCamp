@@ -492,8 +492,8 @@ test('pins: route, attribution source, nav + screen wiring exist', () => {
   // Overview bubble: payload + tile. The count predicate is the
   // one-account capability predicate (PR #45 extension): live
   // accounts that are recruiter-role OR hold a recruiters row.
-  assert.ok(serverSrc.includes("u.merged_into IS NULL\n        AND (u.role = 'recruiter' OR EXISTS (SELECT 1 FROM recruiters r WHERE r.user_id = u.id))) AS affiliates"),
-    'overview payload carries the capability-aware affiliates count');
+  assert.ok(serverSrc.includes("u.merged_into IS NULL\n        AND (u.role = 'recruiter' OR EXISTS (SELECT 1 FROM recruiters r WHERE r.user_id = u.id)) AND u.status != 'deleted') AS affiliates"),
+    'overview payload carries the capability-aware affiliates count (admin-deleted retirees excluded — Affiliates Delete, Oct 18 2026)');
   assert.ok(managerSrc.includes('${o.affiliates ?? \'—\'}</div><div class="l">Affiliates</div>'),
     'overview grid renders an Affiliates stat bubble');
   // Username/password reset actions (refinement #2).
@@ -516,4 +516,19 @@ test('pins: route, attribution source, nav + screen wiring exist', () => {
   assert.ok(managerSrc.includes("out.textContent = 'Username is taken'"), 'UI surfaces the plain "Username is taken" refusal');
   assert.ok(managerSrc.includes('data-aff-pw="'), 'password button on the affiliate card');
   assert.ok(managerSrc.includes("if (tab === 'affiliates')"), 'affiliates wiring registered in wireAdminBody');
+  // Editor Cancel buttons (owner, Oct 18 2026): both inline editors
+  // can be backed out of — Cancel collapses the editor and discards
+  // the typed input with NO api call (the handler only clears the
+  // editor box; it never reaches the save paths).
+  assert.ok(managerSrc.includes('id="afu-cancel-${id}">Cancel</button>'), 'username editor has a Cancel button beside Save');
+  assert.ok(managerSrc.includes('id="afp-cancel-${id}">Cancel</button>'), 'password editor has a Cancel button');
+  assert.ok(managerSrc.includes("$('#afu-cancel-' + id).onclick = () => { box.innerHTML = ''; };"),
+    'username Cancel collapses the editor, discarding input');
+  assert.ok(managerSrc.includes("$('#afp-cancel-' + id).onclick = () => { box.innerHTML = ''; };"),
+    'password Cancel collapses the editor, discarding input');
+  // 🗑 Delete confirm (Affiliates Delete, Oct 18 2026): the confirm
+  // step's Cancel aborts before any DELETE call is made.
+  assert.ok(managerSrc.includes('if (!confirm(msg)) return;'), 'delete confirm Cancel aborts the action');
+  assert.ok(managerSrc.indexOf('if (!confirm(msg)) return;') < managerSrc.indexOf("method: 'DELETE'"),
+    'the DELETE api call sits behind the confirm guard');
 });

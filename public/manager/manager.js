@@ -776,8 +776,12 @@ async function adminBookingsBody() {
    reset (owner requests, Oct 17 2026: "add a Affiliate section that
    keep track of how many affiliate signed up" + "a section like this
    for affiliate, so that I can reset their user name and password if
-   needed... small and neat, like notification boxes"). Compact cards;
-   create/remove stays on the Partners screen. */
+   needed... small and neat, like notification boxes"). Compact cards.
+   Delete lives on the card too (owner, Oct 18 2026: "I need a delete
+   button for the ones I revoke or refresh/renew") — standalone
+   accounts retire fully (login + links die, username freed for a
+   fresh signup); for a fan/model who is also an affiliate it strips
+   ONLY the affiliate side. */
 async function adminAffiliatesBody() {
   const { data } = await api('/admin/affiliates');
   const s = (data && data.stats) || {};
@@ -809,6 +813,7 @@ async function adminAffiliatesBody() {
         <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
           <button class="btn small ghost" data-aff-user="${a.user_id}" data-aff-name="${esc(a.recruiter_name || a.display_name)}" data-aff-username="${esc(a.username)}">✏️ Username</button>
           <button class="btn small ghost" data-aff-pw="${a.user_id}" data-aff-name="${esc(a.recruiter_name || a.display_name)}">🔑 Password</button>
+          <button class="btn small ghost" data-aff-del="${a.user_id}" data-aff-name="${esc(a.recruiter_name || a.display_name)}" data-aff-role="${esc(a.role || '')}">🗑 Delete</button>
         </div>
         <div id="aff-edit-${a.user_id}"></div>
       </div>`;
@@ -1224,10 +1229,14 @@ function wireAdminBody(tab) {
             <div class="row" style="gap:6px;flex-wrap:wrap">
               <input class="input" id="afu-${id}" type="text" autocomplete="off" value="${esc(b.dataset.affUsername || '')}" style="margin-top:0;flex:1;min-width:180px">
               <button class="btn small" id="afu-set-${id}">Save username</button>
+              <button class="btn small ghost" id="afu-cancel-${id}">Cancel</button>
             </div>
             <div class="small" id="afu-out-${id}" style="margin-top:6px"></div>
           </div>`;
         const out = $('#afu-out-' + id);
+        // Cancel backs out cleanly: collapse the editor and discard
+        // whatever was typed — no API call, nothing changes.
+        $('#afu-cancel-' + id).onclick = () => { box.innerHTML = ''; };
         $('#afu-set-' + id).onclick = async () => {
           const v = $('#afu-' + id).value.trim();
           if (!v) { out.textContent = 'Username cannot be empty.'; return; }
@@ -1254,10 +1263,14 @@ function wireAdminBody(tab) {
               <input class="input" id="afp-${id}" type="text" autocomplete="off" placeholder="New password (min 6 characters)" style="margin-top:0;flex:1;min-width:180px">
               <button class="btn small" id="afp-set-${id}">Set password</button>
               <button class="btn small ghost" id="afp-gen-${id}">🎲 Generate one</button>
+              <button class="btn small ghost" id="afp-cancel-${id}">Cancel</button>
             </div>
             <div class="small" id="afp-out-${id}" style="margin-top:6px"></div>
           </div>`;
         const out = $('#afp-out-' + id);
+        // Cancel backs out cleanly: collapse the editor and discard
+        // whatever was typed — no API call, nothing changes.
+        $('#afp-cancel-' + id).onclick = () => { box.innerHTML = ''; };
         const submit = async (password) => {
           const { status, data: r } = await api(`/admin/affiliates/${id}/password`, {
             method: 'POST', body: JSON.stringify({ password }) });
@@ -1280,6 +1293,29 @@ function wireAdminBody(tab) {
           if (!confirm(`Generate a new temporary password for ${name}? She'll be signed out everywhere.`)) return;
           submit('');
         };
+      };
+    });
+    // 🗑 Delete — standalone accounts retire fully; a fan/model who
+    // is also an affiliate loses ONLY the affiliate side (the
+    // server picks the branch by role and says which in `mode`).
+    document.querySelectorAll('[data-aff-del]').forEach((b) => {
+      b.onclick = async () => {
+        const id = b.dataset.affDel;
+        const name = b.dataset.affName || 'her';
+        const standalone = b.dataset.affRole === 'recruiter';
+        const msg = standalone
+          ? `Delete ${name}'s affiliate account for good?\n\n• Her affiliate link stops working\n• Her models keep their accounts (they just stop being attributed to her)\n• She is signed out and can never log in with this account again\n• Her username is freed, so she can sign up fresh later\n\nThis cannot be undone.`
+          : `Remove ${name}'s affiliate side only?\n\n• Her affiliate link stops working and her models detach\n• Her ${b.dataset.affRole === 'model' ? 'model' : 'fan'} account, earnings and login stay exactly as they are\n\nThis cannot be undone.`;
+        if (!confirm(msg)) return;
+        const { status, data: r } = await api(`/admin/affiliates/${id}`, { method: 'DELETE' });
+        if (status === 200 && r && r.ok) {
+          toast(r.mode === 'account_retired'
+            ? `🗑 ${name}'s affiliate account is deleted`
+            : `🗑 ${name}'s affiliate side is removed`);
+          M.render();
+        } else {
+          toast((r && r.message) || 'Could not delete her — try again.');
+        }
       };
     });
   }
