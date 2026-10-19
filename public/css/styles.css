@@ -1907,6 +1907,26 @@ body.in-home:has(> #phone > .sc-theme-promo):not(:has(> #phone > .sc-theme-banne
 .lang-check { color: var(--pink); }
 .lang-row { display: flex; justify-content: center; margin-top: 12px; }
 
+/* Storefront section tabs (owner pivot, Oct 18 2026): ONE slim row at
+   the top of the home/directory — Female / Male / Couples / All.
+   Scrolls horizontally on narrow screens rather than wrapping. */
+.sec-tabs {
+  display: flex; gap: 6px; margin-bottom: 12px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.sec-tabs::-webkit-scrollbar { display: none; }
+.sec-tab {
+  flex: 1 0 auto; padding: 8px 14px; border-radius: 999px;
+  background: rgba(139,92,246,.08); color: var(--text, #fff);
+  border: 1px solid rgba(139,92,246,.25);
+  font-size: 14px; font-weight: 700; font-family: inherit;
+  cursor: pointer; white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.sec-tab:active { transform: scale(.97); }
+.sec-tab.on { border-color: var(--pink); background: rgba(255,92,158,.16); color: var(--pink); }
+
 /* New-model welcome celebration — one-time overlay after signup */
 .model-welcome {
   position: fixed; inset: 0; z-index: 210;

@@ -43,8 +43,13 @@ function occurrences(haystack, needle) {
   return haystack.split(needle).length - 1;
 }
 
-test('governing law: Model Agreement §14 carries the Texas clause; version bumped to 1.4', () => {
-  assert.ok(server.includes("const CONTRACT_VERSION = '1.4';"), 'model contract version is 1.4 (forces re-sign of the new text)');
+test('governing law: Model Agreement §14 carries the Texas clause; version pin tracks v1.5', () => {
+  // The version pin tracks the CURRENT version, per this suite's own
+  // convention: v1.5 (the §15 section & who-may-appear clause)
+  // superseded the v1.4 text this test originally pinned — the Texas
+  // clause itself is unchanged and still §14.
+  assert.ok(server.includes("const CONTRACT_VERSION = '1.5';"), 'model contract version is 1.5 (forces re-sign of the new text)');
+  assert.ok(!server.includes("const CONTRACT_VERSION = '1.4';"), 'old model version 1.4 is gone');
   assert.ok(!server.includes("const CONTRACT_VERSION = '1.3';"), 'old model version 1.3 is gone');
   assert.ok(server.includes("title: '14. Governing Law & Venue'"), 'model §14 is Governing Law & Venue');
   assert.ok(server.includes(AGREEMENT_LAW_SENTENCE), 'model clause: Texas governing law, no conflict-of-laws rules');
@@ -52,9 +57,11 @@ test('governing law: Model Agreement §14 carries the Texas clause; version bump
   assert.ok(server.includes(CARVE_OUT), 'model clause: non-waivable home-state rights carve-out present');
   const i13 = server.indexOf('13. Payout Holds, Chargeback Reversals & Fraud');
   const i14 = server.indexOf('14. Governing Law & Venue');
-  const i15 = server.indexOf('15. Plain-Language Disclaimer');
-  assert.ok(i13 !== -1 && i14 > i13 && i15 > i14, 'model clause sits after §13 and before the disclaimer');
+  const i15 = server.indexOf('15. Your Section & Who May Appear');
+  const i16 = server.indexOf('16. Plain-Language Disclaimer');
+  assert.ok(i13 !== -1 && i14 > i13 && i15 > i14 && i16 > i15, 'model clause sits after §13, before the section clause and the disclaimer');
   assert.ok(!server.includes('14. Plain-Language Disclaimer'), 'model disclaimer no longer numbered 14');
+  assert.ok(!server.includes('15. Plain-Language Disclaimer'), 'model disclaimer renumbered to 16 by the v1.5 section clause');
 });
 
 test('governing law: Recruiter Agreement §9 carries the Texas clause; version pin tracks the R1.3 quota bump', () => {
@@ -98,5 +105,11 @@ test('governing law: exactly one clause per document; agreement dates unchanged'
   assert.equal(occurrences(app, LAW), 1, 'app.js carries the governing-law sentence exactly once (fan Terms)');
   assert.equal(occurrences(server, CARVE_OUT), 2, 'the carve-out appears in both agreements');
   assert.equal(occurrences(app, CARVE_OUT), 1, 'the carve-out appears in the fan Terms');
-  assert.equal(occurrences(server, "updated: 'October 16, 2026'"), 2, 'both agreements remain dated October 16, 2026');
+  // The governing-law build itself redated nothing. The Recruiter
+  // Agreement still carries October 16, 2026; the Model Agreement was
+  // legitimately redated to October 18, 2026 by the v1.5
+  // sections-clause bump (version bumps move the date —
+  // the v1.2→v1.4 bumps did the same).
+  assert.equal(occurrences(server, "updated: 'October 16, 2026'"), 1, 'the recruiter agreement remains dated October 16, 2026');
+  assert.equal(occurrences(server, "updated: 'October 18, 2026'"), 1, 'the model agreement is dated October 18, 2026 (v1.5)');
 });
