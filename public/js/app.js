@@ -11242,7 +11242,7 @@ async function vFanModels() {
         ? '<span class="balance-pill">👀 Browsing the home screen</span>'
         : `<span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span>`}</div></div>
     <div class="screen">
-      ${isModelViewer ? '' : sectionTabsHTML()}
+      ${sectionTabsHTML()}
       ${isModelViewer ? '' : houseBannerHTML(house)}
       ${sideSwitchHTML('main')}
       ${officialCardHTML(official)}
@@ -11258,7 +11258,11 @@ async function vFanModels() {
   wireAthCard();
   wireHouseBanner();
   wireDiscovery('fanModels');
-  if (!isModelViewer) wireSectionTabs(() => show('fanModels', {}));
+  // The section strip is wired for EVERY home viewer, models included
+  // (owner ruling, Oct 19 2026: "I don't see sections" — a model's
+  // home is a front page too, lands on Female, and her tab taps
+  // re-filter her grid + New Models rail in place, same as a fan's).
+  wireSectionTabs(() => show('fanModels', {}));
   // Pinned official card: LIVE → join the stream exactly like a live
   // model tile; quiet → its look-only profile page. Model viewers and
   // the admin fan-preview stay look-only in both states (the grid rule).

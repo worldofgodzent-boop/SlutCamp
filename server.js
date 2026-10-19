@@ -2589,11 +2589,18 @@ function viewerRoleOf(req) {
  * FOUR tabs — Female / Male / Couples / All — and the client passes
  * the active tab as ?tab= on directory requests; tab state is
  * per-session client state, never stored. Entry ALWAYS lands on the
- * Female tab — every fan and guest, every visit — so no tab specified
- * means the Female set (female + couples; couples sit on BOTH the
- * Male and the Female storefronts, and the Couples tab is couples
- * only). Models and admins browse unfiltered (null) — the same
- * exemption region blocking uses. */
+ * Female tab — every viewer, every visit — so no tab specified means
+ * the Female set (female + couples; couples sit on BOTH the Male and
+ * the Female storefronts, and the Couples tab is couples only).
+ * The tab filter applies to EVERY viewer of these public directory
+ * surfaces — guest, fan, model, and an app-side admin token alike
+ * (owner ruling, Oct 19 2026: a model's home IS a front page — "I
+ * don't want males on my store front", "I don't see sections" — which
+ * supersedes the Phase 1 "models/admins browse unfiltered" exemption
+ * after a male-section model leaked onto the house model's home
+ * grid). The ONLY unfiltered roster left is the Manager's own
+ * /api/admin/* surface (X-Manager + admin role), which never comes
+ * through this helper. */
 const SECTION_SETS = {
   female: ['female', 'couple'],
   male: ['male', 'couple'],
@@ -2602,8 +2609,6 @@ const SECTION_SETS = {
 };
 const DEFAULT_BROWSE_SET = SECTION_SETS.female;
 function effectiveBrowseSet(req) {
-  const role = viewerRoleOf(req);
-  if (role === 'admin' || role === 'model') return null;
   return SECTION_SETS[String((req.query && req.query.tab) || '')] || DEFAULT_BROWSE_SET;
 }
 
@@ -5021,12 +5026,13 @@ app.get('/api/models', (req, res) => {
   // own home screen.
   const houseRow = houseId ? (rows.find((r) => r.id === houseId) || null) : null;
   if (houseId) visible = visible.filter((r) => r.id !== houseId);
-  // Storefront sections: a fan/guest only ever browses the sections
-  // his active tab opens onto (?tab=, default the Female tab — entry
-  // always lands on Female). Rank positions above were computed over
-  // the FULL roster on purpose: a model's rank is her standing on the
-  // whole platform, not inside one tab. Models/admins are unfiltered
-  // (effectiveBrowseSet returns null for them).
+  // Storefront sections: EVERY viewer of this directory only ever
+  // browses the sections his active tab opens onto (?tab=, default
+  // the Female tab — entry always lands on Female) — models and
+  // app-side admins included (owner ruling, Oct 19 2026; the Manager's
+  // /api/admin/* roster is the only unfiltered one). Rank positions
+  // above were computed over the FULL roster on purpose: a model's
+  // rank is her standing on the whole platform, not inside one tab.
   const bset = effectiveBrowseSet(req);
   if (bset) visible = visible.filter((r) => bset.includes(r.section || 'female'));
   // Pre-purchase shield: a model's looping preview video is explicit-
@@ -10701,8 +10707,10 @@ app.get('/api/live', (req, res) => {
     FROM live_sessions ls JOIN users u ON u.id = ls.model_id
     LEFT JOIN models mo ON mo.user_id = u.id
     WHERE ls.status = 'live' AND u.banned = 0 AND COALESCE(mo.is_hidden, 0) = 0`).all();
-  // Storefront sections + region blocking: a fan/guest sees only the
-  // lives his active tab opens onto, and never a region-blocked model.
+  // Storefront sections + region blocking: every viewer sees only the
+  // lives his active tab opens onto (owner ruling, Oct 19 2026 — the
+  // tab filter binds models/app-side admins too), and fan/guest
+  // viewers never see a region-blocked model.
   let out = rows;
   const bset = effectiveBrowseSet(req);
   if (bset) out = out.filter((r) => bset.includes(r.model_section || 'female'));
