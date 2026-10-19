@@ -32,8 +32,12 @@
  *     Effective sets: female {female,couple} · male {male,couple} ·
  *     couples {couple} · all {female,male,couple} · no tab = Female.
  *     Filtering holds on /api/models, /api/live, /api/live/schedule;
- *     models/admins unfiltered; the official house object travels as
- *     before. HARD INVARIANT (owner: "I don't want males on my store
+ *     models/admins unfiltered [SUPERSEDED Oct 19 2026 — see the two
+ *     pin corrections below: the owner ruled a model's home IS a
+ *     front page, so EVERY viewer of these public surfaces is
+ *     tab-filtered now; only the Manager's /api/admin/* roster stays
+ *     unfiltered]; the official house object travels as before.
+ *     HARD INVARIANT (owner: "I don't want males on my store
  *     front"): default/guest payloads, the landing and every public/
  *     SEO surface contain ZERO solo male models — a male-section
  *     model is reachable only behind an explicit Male/All tab tap.
@@ -327,7 +331,15 @@ test('filtering: the server-side section map is exactly the spec map, default is
   }, 'tab → sections map (couples ride BOTH the Female and Male storefronts)');
   assert.ok(serverSrc.includes('const DEFAULT_BROWSE_SET = SECTION_SETS.female;'), 'no tab specified = the Female set');
   const eff = sliceFn(serverSrc, 'function effectiveBrowseSet', '\n}\n');
-  assert.ok(eff.includes("if (role === 'admin' || role === 'model') return null;"), 'models/admins browse unfiltered');
+  // PIN CORRECTION (Oct 19 2026, owner's explicit ruling — supersedes
+  // the Phase 1 pin "models/admins browse unfiltered"): after a
+  // male-section model leaked onto the house model's home grid, the
+  // owner ruled his model home IS a front page ("I don't want males
+  // on my store front" / "I don't see sections"). The helper now
+  // filters EVERY viewer; the regression suite is
+  // tests/model-home-section-filter.test.js.
+  assert.ok(!eff.includes('return null'), 'no unfiltered return — every viewer is tab-filtered (owner ruling, Oct 19 2026)');
+  assert.ok(!eff.includes('viewerRoleOf'), 'the browse set no longer depends on the viewer role');
   assert.ok(eff.includes('req.query.tab'), 'the tab comes from the request — nothing is stored or remembered');
   const models = sliceFn(serverSrc, "app.get('/api/models',", '// Fan likes/unlikes a model');
   assert.ok(models.includes('m.section,'), 'roster query carries the section');
@@ -591,11 +603,27 @@ test('live: filtering matrix — tabs, roles, the storefront invariant, lives, s
     assert.ok(!names(j).includes('secguym'), 'fan entry view: zero solo males (lands on Female)');
     j = await roster('/api/models?tab=male', fanTok);
     assert.ok(names(j).includes('secguym'), 'fan behind an explicit Male tap sees the male section');
-    // --- models + admins browse unfiltered ---
+    // --- models + app-side admins: SAME tab filter as fans ---
+    // PIN CORRECTION (Oct 19 2026, owner's explicit ruling —
+    // supersedes the Phase 1 "models + admins browse unfiltered"
+    // assertions that stood here): a male-section model leaked onto
+    // the house model's home grid + New Models rail, and the owner
+    // ruled his model home IS a front page ("I don't want males on
+    // my store front"). Every viewer of /api/models is tab-filtered;
+    // the only unfiltered roster left is the Manager's /api/admin/*
+    // (X-Manager) surface. Guest/fan/SEO invariants above are
+    // unchanged and unweakened.
     j = await roster('/api/models', galTok);
-    assert.deepEqual(sectionsOf(j), ['couple', 'female', 'male'], 'model viewer: unfiltered roster');
+    assert.deepEqual(sectionsOf(j), ['couple', 'female'], 'model viewer, no tab: the Female set — zero solo males on her home');
+    assert.ok(!names(j).includes('secguym'), 'model viewer default: the male model is NOT in her payload');
+    j = await roster('/api/models?tab=male', galTok);
+    assert.deepEqual(sectionsOf(j), ['couple', 'male'], 'model viewer behind an explicit Male tap: male + couple');
+    j = await roster('/api/models?tab=all', galTok);
+    assert.deepEqual(sectionsOf(j), ['couple', 'female', 'male'], 'model viewer behind an explicit All tap: everything');
     j = await roster('/api/models', adminTok);
-    assert.deepEqual(sectionsOf(j), ['couple', 'female', 'male'], 'admin viewer: unfiltered roster');
+    assert.deepEqual(sectionsOf(j), ['couple', 'female'], 'app-side admin token, no tab: the Female set on the public directory');
+    j = await roster('/api/models?tab=all', adminTok);
+    assert.deepEqual(sectionsOf(j), ['couple', 'female', 'male'], 'app-side admin token behind All: everything');
 
     // --- lives follow the same sets ---
     // Going live requires an approved ID verification (the platform's
