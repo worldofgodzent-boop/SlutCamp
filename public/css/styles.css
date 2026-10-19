@@ -1468,6 +1468,12 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 .disc-row { display: flex; gap: 8px; margin-bottom: 8px; }
 .disc-search { flex: 1; min-width: 0; }
 .disc-sort { flex: 0 0 auto; width: auto; max-width: 46%; }
+/* Tag dropdown (home tidy, Oct 19 2026): fills its row like the search
+   box, with a guaranteed ▾ — native select arrows vanish under some
+   mobile browser styling, so the wrap draws its own. */
+.disc-selectwrap { position: relative; }
+.disc-selectwrap::after { content: '▾'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; opacity: .7; }
+.disc-tagpick { flex: 1; width: 100%; max-width: none; appearance: none; -webkit-appearance: none; padding-right: 28px; }
 .disc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .disc-chip {
   padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 700;
