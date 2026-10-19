@@ -680,6 +680,7 @@ const I18N = {
     pk_default_name: 'Passkey',
     remove_btn: 'Remove',
     pk_setup: 'Set up Face ID on this device',
+    pk_working: 'Waiting for Face ID…',
     pk_confirm_remove: 'Remove Face ID for this device? You can set it up again anytime.',
     pk_on_toast: '✅ Face ID is on for this device',
     pk_removed_toast: 'Face ID removed',
@@ -1359,6 +1360,7 @@ const I18N = {
     pk_default_name: 'Passkey',
     remove_btn: 'Quitar',
     pk_setup: 'Configurar Face ID en este dispositivo',
+    pk_working: 'Esperando Face ID…',
     pk_confirm_remove: '¿Quitar Face ID de este dispositivo? Puedes configurarlo de nuevo cuando quieras.',
     pk_on_toast: '✅ Face ID está activado en este dispositivo',
     pk_removed_toast: 'Face ID eliminado',
@@ -2038,6 +2040,7 @@ const I18N = {
     pk_default_name: 'Chave de acesso',
     remove_btn: 'Remover',
     pk_setup: 'Configurar o Face ID neste aparelho',
+    pk_working: 'Aguardando o Face ID…',
     pk_confirm_remove: 'Remover o Face ID deste aparelho? Você pode configurar de novo quando quiser.',
     pk_on_toast: '✅ Face ID ativado neste aparelho',
     pk_removed_toast: 'Face ID removido',
@@ -2717,6 +2720,7 @@ const I18N = {
     pk_default_name: 'Passkey',
     remove_btn: 'Retirer',
     pk_setup: 'Configurer Face ID sur cet appareil',
+    pk_working: 'En attente de Face ID…',
     pk_confirm_remove: 'Retirer Face ID pour cet appareil ? Vous pourrez le reconfigurer à tout moment.',
     pk_on_toast: '✅ Face ID est activé pour cet appareil',
     pk_removed_toast: 'Face ID retiré',
@@ -3396,6 +3400,7 @@ const I18N = {
     pk_default_name: 'Passkey',
     remove_btn: 'Entfernen',
     pk_setup: 'Face ID auf diesem Gerät einrichten',
+    pk_working: 'Warte auf Face ID…',
     pk_confirm_remove: 'Face ID für dieses Gerät entfernen? Du kannst es jederzeit wieder einrichten.',
     pk_on_toast: '✅ Face ID ist für dieses Gerät aktiviert',
     pk_removed_toast: 'Face ID entfernt',
@@ -4075,6 +4080,7 @@ const I18N = {
     pk_default_name: 'Ключ доступа',
     remove_btn: 'Убрать',
     pk_setup: 'Настроить Face ID на этом устройстве',
+    pk_working: 'Ожидание Face ID…',
     pk_confirm_remove: 'Убрать Face ID для этого устройства? Вы можете настроить его снова в любое время.',
     pk_on_toast: '✅ Face ID включён для этого устройства',
     pk_removed_toast: 'Face ID удалён',
@@ -4754,6 +4760,7 @@ const I18N = {
     pk_default_name: 'パスキー',
     remove_btn: '削除',
     pk_setup: 'このデバイスでFace IDを設定',
+    pk_working: 'Face IDを待っています…',
     pk_confirm_remove: 'このデバイスのFace IDを削除しますか？いつでも再設定できます。',
     pk_on_toast: '✅ このデバイスでFace IDがオンになりました',
     pk_removed_toast: 'Face IDを削除しました',
@@ -5433,6 +5440,7 @@ const I18N = {
     pk_default_name: 'Passkey',
     remove_btn: '移除',
     pk_setup: '在此设备上设置 Face ID',
+    pk_working: '正在等待 Face ID…',
     pk_confirm_remove: '移除此设备的 Face ID 吗？你可以随时重新设置。',
     pk_on_toast: '✅ 此设备已开启 Face ID',
     pk_removed_toast: 'Face ID 已移除',
@@ -6112,6 +6120,7 @@ const I18N = {
     pk_default_name: '패스키',
     remove_btn: '제거',
     pk_setup: '이 기기에 Face ID 설정하기',
+    pk_working: 'Face ID 대기 중…',
     pk_confirm_remove: '이 기기의 Face ID를 제거하시겠습니까? 언제든지 다시 설정할 수 있습니다.',
     pk_on_toast: '✅ 이 기기에 Face ID가 켜졌습니다',
     pk_removed_toast: 'Face ID가 제거되었습니다',
@@ -6791,6 +6800,7 @@ const I18N = {
     pk_default_name: 'Passkey',
     remove_btn: 'Rimuovi',
     pk_setup: 'Configura Face ID su questo dispositivo',
+    pk_working: 'In attesa di Face ID…',
     pk_confirm_remove: 'Rimuovere Face ID per questo dispositivo? Puoi configurarlo di nuovo in qualsiasi momento.',
     pk_on_toast: '✅ Face ID è attivo per questo dispositivo',
     pk_removed_toast: 'Face ID rimosso',
@@ -7470,6 +7480,7 @@ const I18N = {
     pk_default_name: 'Passkey',
     remove_btn: 'Usuń',
     pk_setup: 'Skonfiguruj Face ID na tym urządzeniu',
+    pk_working: 'Oczekiwanie na Face ID…',
     pk_confirm_remove: 'Usunąć Face ID dla tego urządzenia? Możesz je skonfigurować ponownie w każdej chwili.',
     pk_on_toast: '✅ Face ID jest włączone dla tego urządzenia',
     pk_removed_toast: 'Face ID usunięte',
@@ -8149,6 +8160,7 @@ const I18N = {
     pk_default_name: 'Passkey',
     remove_btn: 'Verwijderen',
     pk_setup: 'Face ID instellen op dit apparaat',
+    pk_working: 'Wachten op Face ID…',
     pk_confirm_remove: 'Face ID voor dit apparaat verwijderen? Je kunt het op elk moment opnieuw instellen.',
     pk_on_toast: '✅ Face ID staat aan voor dit apparaat',
     pk_removed_toast: 'Face ID verwijderd',
@@ -8828,6 +8840,7 @@ const I18N = {
     pk_default_name: 'Geçiş anahtarı',
     remove_btn: 'Kaldır',
     pk_setup: 'Bu cihazda Face ID\'yi kur',
+    pk_working: 'Face ID bekleniyor…',
     pk_confirm_remove: 'Bu cihaz için Face ID kaldırılsın mı? İstediğin zaman tekrar kurabilirsin.',
     pk_on_toast: '✅ Face ID bu cihaz için açık',
     pk_removed_toast: 'Face ID kaldırıldı',
@@ -10521,6 +10534,35 @@ function pkErrText(e) {
   return t('pk_err_generic');
 }
 
+/* Runs one WebAuthn ceremony call (create/get) under a watchdog.
+ * Field report (Oct 19 2026): in the installed-app context on some
+ * phones the ceremony promise NEVER settles — the platform sheet
+ * can't present, and the browser neither resolves nor rejects, so
+ * the tap looked completely dead: no prompt, no error, nothing.
+ * The watchdog aborts the ceremony (AbortController, where the
+ * platform supports it) and rejects as NotAllowedError, which the
+ * callers already translate into the visible "cancelled — try
+ * again, or use your password" message. 60s matches the timeout
+ * the server already puts in the ceremony options. */
+const PK_CEREMONY_TIMEOUT_MS = 60000;
+async function pkCeremony(run) {
+  const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  let timer = null;
+  const watchdog = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      if (ctrl) { try { ctrl.abort(); } catch (e) { /* ignore */ } }
+      const err = new Error('passkey ceremony timed out');
+      err.name = 'NotAllowedError';
+      reject(err);
+    }, PK_CEREMONY_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([run(ctrl ? ctrl.signal : undefined), watchdog]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 /* Login screen: Face ID sign-in with the username typed in the form. */
 async function doPasskeyLogin() {
   const msg = $('#pk-login-msg');
@@ -10545,7 +10587,8 @@ async function doPasskeyLogin() {
           : 'Face ID sign-in is not available right now — use your password.');
       return;
     }
-    const cred = await navigator.credentials.get({ publicKey: pkRequestOptions(data) });
+    const cred = await pkCeremony((signal) => navigator.credentials.get(
+      { publicKey: pkRequestOptions(data), ...(signal ? { signal } : {}) }));
     if (!cred) { say('Face ID was cancelled.'); return; }
     const v = await api('/auth/passkey/login-verify', {
       method: 'POST', body: JSON.stringify({ username, response: pkCredJson(cred) }),
@@ -10562,15 +10605,30 @@ async function doPasskeyLogin() {
 async function renderPkSettingsCard() {
   const host = document.getElementById('pk-card');
   if (!host) return;
-  if (!pkSupported()) {
+  const renderUnsupported = () => {
     host.innerHTML = `
       <div class="card">
         <div style="font-weight:800;margin-bottom:6px">${t('pk_h')}</div>
         <div class="muted small">${t('pk_unsupported')}</div>
       </div>`;
-    return;
-  }
+  };
+  if (!pkSupported()) { renderUnsupported(); return; }
+  // pkSupported() only proves the API surface exists. In the
+  // installed-app context it can exist while NO platform
+  // authenticator is actually usable — the setup button then led
+  // nowhere (field report, Oct 19 2026). Ask the platform itself;
+  // only a definitive "no" swaps in the unsupported note — a flaky
+  // or missing check must never block a working setup.
+  let uvpaa = null;
+  try {
+    if (window.PublicKeyCredential &&
+        typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
+      uvpaa = await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    }
+  } catch (e) { uvpaa = null; }
+  if (uvpaa === false) { renderUnsupported(); return; }
   const { data } = await api('/auth/passkey/list').catch(() => ({ data: {} }));
+  if (host.isConnected === false) return; // the view moved on mid-load
   const creds = (data && data.credentials) || [];
   host.innerHTML = `
     <div class="card">
@@ -10584,22 +10642,43 @@ async function renderPkSettingsCard() {
       <button class="btn" id="pk-setup" style="width:100%;margin-top:6px">${t('pk_setup')}</button>
       <div class="muted small" id="pk-msg" style="margin-top:6px"></div>
     </div>`;
-  $('#pk-setup').onclick = async () => {
+  const setupBtn = $('#pk-setup');
+  if (setupBtn) setupBtn.onclick = async () => {
     const m = $('#pk-msg');
+    // Busy state FIRST. Before this fix the tap gave zero feedback
+    // for the whole options fetch (up to the 15s api timeout) and
+    // for the entire platform ceremony — it read as a dead button
+    // (field report, Oct 19 2026).
+    const label = setupBtn.textContent;
+    setupBtn.disabled = true;
+    setupBtn.textContent = t('pk_working');
+    if (m) m.textContent = t('pk_working');
     try {
       const { status, data } = await api('/auth/passkey/register-options', { method: 'POST', body: '{}' });
       if (status !== 200) throw new Error(data.error || 'options_failed');
-      const cred = await navigator.credentials.create({ publicKey: pkCreateOptions(data) });
-      if (!cred) throw new Error('cancelled');
+      const cred = await pkCeremony((signal) => navigator.credentials.create(
+        { publicKey: pkCreateOptions(data), ...(signal ? { signal } : {}) }));
+      if (!cred) { const ce = new Error('cancelled'); ce.name = 'NotAllowedError'; throw ce; }
       const v = await api('/auth/passkey/register-verify', {
         method: 'POST',
         body: JSON.stringify({ response: pkCredJson(cred), label: pkDeviceLabel() }),
       });
       if (v.status !== 200) throw new Error(v.data.error || 'verify_failed');
+      if (m) m.textContent = '';
       toast(t('pk_on_toast'));
       renderPkSettingsCard();
     } catch (e) {
-      if (m) m.textContent = pkErrText(e);
+      // Silence was the bug: EVERY failure lands in the card AND in
+      // a toast (the app's loud channel) — never nowhere.
+      const txt = pkErrText(e);
+      if (m) m.textContent = txt;
+      toast(txt);
+    } finally {
+      // On success the card re-rendered above, so this button is
+      // detached and restoring it is a no-op. On failure it makes
+      // the button tappable again under its proper label.
+      setupBtn.disabled = false;
+      setupBtn.textContent = label;
     }
   };
   host.querySelectorAll('[data-pk-del]').forEach((b) => {
@@ -11133,7 +11212,10 @@ async function vAffiliateSignup(code) {
 
 async function afterLogin(data, opts) {
   S.token = data.token;
-  localStorage.setItem('wc_token', S.token);
+  // A storage-blocked WebView must not fail a sign-in the server
+  // already accepted: the in-memory token still signs this session
+  // in; only the cross-reload persistence is lost.
+  try { localStorage.setItem('wc_token', S.token); } catch (e) { /* in-memory token still works */ }
   S.user = data.user;
   wsConnect();
   await refreshMe();
@@ -19432,8 +19514,19 @@ async function routeInitial() {
       if (window.__payInvoice && S.user.role === 'fan') return show('wallet', {});
       return show('fanModels', {});
     }
-    S.token = null;
-    localStorage.removeItem('wc_token');
+    // Only a DEFINITIVE refusal (401 = the session is gone server-
+    // side, 403 = banned/frozen) may destroy the stored token. A
+    // transient failure — offline, a server hiccup, the api timeout
+    // (status 0 / 5xx) — used to delete a perfectly valid session
+    // right here, so the next open treated the user as signed out
+    // and greeted her with the age gate: the "it kicks me back to
+    // age verification every time" field report (Oct 19 2026).
+    // Keeping the token lets the next load retry: a still-valid
+    // session signs straight back in, no age gate, no re-login.
+    if (status === 401 || status === 403) {
+      S.token = null;
+      localStorage.removeItem('wc_token');
+    }
   }
   await ensureGuest();
   wsConnect();
