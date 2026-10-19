@@ -6,7 +6,8 @@
  * drops two chip groups and reshapes a third:
  *
  *   - the small 🔴 Live chip is GONE — the big Lives button already
- *     goes to lives; the 🟢 Online chip stays, alone in its row.
+ *     goes to lives; the 🟢 Online chip stays (round 2 moves the tag
+ *     dropdown up beside it — see the round-2 note below).
  *   - the $ / $$ / $$$ price-band chips are GONE — price ordering lives
  *     in the sort select, whose option list is pinned UNCHANGED
  *     (top, liked, online, price_low, price_high, newest).
@@ -17,6 +18,16 @@
  *     applyDiscovery composes with search/sort/Online/section exactly
  *     as before (that composition is pinned in tests/discovery.test.js;
  *     here we pin the CONTROL and its rendering).
+ *
+ * Round 2 (owner, later Oct 19 2026 — annotated screenshot of the live
+ * home: "cut the tag button and bring it up beside the live button…
+ * bring the New Models up more underneath the tabs, so there's not a
+ * big gap"): the dropdown leaves its own full-width row and rides the
+ * 🟢 Online row — [Online] [dropdown flex-filling the rest] [✖ Clear
+ * when active], one row that never wraps — and the bar's bottom
+ * spacing tightens so the "🆕 New models you may like" rail sits
+ * neatly right under the controls. Same control, same state, same
+ * options; only the layout moved.
  *
  * Pins are static (source shape) + a render simulation: the real
  * discoveryBarHTML is extracted from app.js and executed in a vm
@@ -54,6 +65,29 @@ test('tidy pins: tags are one dropdown writing the same disc.tag state', () => {
   assert.ok(wireBody.includes('disc.tag = tg.value'), 'picking writes disc.tag — same state the chips wrote');
   assert.ok(!wireBody.includes('data-disc-price'), 'price-chip click wiring removed with the chips');
   assert.ok(!wireBody.includes('data-disc-tag'), 'tag-chip click wiring removed with the chips');
+  /* Round 2 pin update (Oct 19 2026): the dropdown no longer renders
+   * as its own full-width row — it is an inline wrap inside the chips
+   * row, and the whole bar is exactly two rows. */
+  assert.ok(barBody.includes('<span class="disc-selectwrap">'), 'round 2: dropdown is an inline wrap on the Online row');
+  assert.ok(!barBody.includes('<div class="disc-row disc-selectwrap">'), 'round 2: the old full-width dropdown row is gone');
+  assert.equal(barBody.split('class="disc-row').length - 1, 2,
+    'round 2: the bar is exactly two rows (search/sort, then Online + tags + clear)');
+});
+
+test('tidy round 2 pins: single-row CSS + tightened bar-to-rail spacing', () => {
+  assert.match(css, /\.disc-selectwrap\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-width:\s*0;/,
+    'the tag wrap flex-fills the Online row beside the chip and may shrink');
+  assert.match(css, /\.disc-chips\s*\{[^}]*flex-wrap:\s*nowrap;/,
+    'the Online row never wraps to a second line');
+  assert.match(css, /\.disc-chips \.disc-chip\s*\{[^}]*flex:\s*0 0 auto;[^}]*white-space:\s*nowrap;/,
+    'the chips hold their size on the shared row');
+  assert.match(css, /\.disc-bar\s*\{\s*margin-bottom:\s*10px;/,
+    'bar bottom margin tightened (was 14px) so the rail pulls up');
+  assert.match(css, /\.disc-bar \.disc-row:last-child\s*\{\s*margin-bottom:\s*0;/,
+    'the last row adds no margin of its own — the bar margin is the only gap above the rail');
+  assert.ok(css.includes('.new-rail-wrap { margin-bottom: 14px; }')
+    && css.includes('.new-rail-title { font-weight: 800; margin: 2px 0 8px; }'),
+    'rail-side spacing untouched — the tightening came from the bar side only');
 });
 
 test('tidy pins: sort options are exactly the pre-tidy list, unchanged', () => {
@@ -132,6 +166,16 @@ test('render: default bar — Online only, no Live/price chips, dropdown lists u
   assert.ok(html.includes('<option value="Curvy"') && !html.includes('<option value="Curvy" selected'),
     'used tag Curvy offered, unselected');
   assert.ok(!html.includes('value="Gaming"'), 'unused catalogue tags are NOT offered (same list the chips showed)');
+  /* Round 2: Online and the dropdown share ONE row — the rendered bar
+   * has exactly two .disc-row containers (round 1 rendered three),
+   * with the Online chip before the dropdown inside the chips row. */
+  assert.equal(html.split('class="disc-row').length - 1, 2,
+    'round 2: rendered bar is two rows — no separate dropdown row');
+  const chipsAt = html.indexOf('disc-row disc-chips');
+  assert.ok(chipsAt >= 0
+    && html.indexOf('data-disc-toggle="online"', chipsAt) >= 0
+    && html.indexOf('data-disc-toggle="online"', chipsAt) < html.indexOf('id="disc-tag"', chipsAt),
+    'round 2: Online chip and tag dropdown sit in the same row, Online first');
 });
 
 test('render: the dropdown shows the selected tag; the filter survives a section with no users of it', () => {
@@ -144,10 +188,11 @@ test('render: the dropdown shows the selected tag; the filter survives a section
   assert.ok(html.includes('<option value="Latina" selected>Latina</option>'), 'active tag still listed and selected');
 });
 
-test('render: no tags anywhere and none selected — no dropdown row at all (as with the chips)', () => {
+test('render: no tags anywhere and none selected — no dropdown at all; the Online row renders as before', () => {
   resetDisc({});
   const html = sim.discoveryBarHTML([{ username: 'a', tags: [] }, { username: 'b', tags: [] }]);
-  assert.ok(!html.includes('id="disc-tag"'), 'dropdown row omitted when there is nothing to pick');
+  assert.ok(!html.includes('id="disc-tag"'), 'dropdown omitted when there is nothing to pick');
+  assert.ok(html.includes('data-disc-toggle="online"'), 'the Online chip row still renders on its own');
 });
 
 test('render: Online on-state + clear chip; sort select carries all six options in order', () => {
@@ -155,6 +200,14 @@ test('render: Online on-state + clear chip; sort select carries all six options 
   const html = sim.discoveryBarHTML(ROSTER);
   assert.ok(html.includes('disc-chip on" data-disc-toggle="online"'), 'Online chip shows its on state');
   assert.ok(html.includes('id="disc-clear"'), 'clear chip appears once a filter is active');
+  /* Round 2: with Clear showing, the row order is Online, dropdown,
+   * Clear — all inside the one chips-row container. */
+  const chipsAt = html.indexOf('disc-row disc-chips');
+  const onAt = html.indexOf('data-disc-toggle="online"', chipsAt);
+  const tagAt = html.indexOf('id="disc-tag"', chipsAt);
+  const clearAt = html.indexOf('id="disc-clear"', chipsAt);
+  assert.ok(chipsAt >= 0 && onAt >= 0 && tagAt > onAt && clearAt > tagAt,
+    'round 2 row order: Online, tag dropdown, Clear — all on the one row');
   const sortHtml = html.slice(html.indexOf('id="disc-sort"'), html.indexOf('</select>', html.indexOf('id="disc-sort"')));
   const order = ['top', 'liked', 'online', 'price_low', 'price_high', 'newest'];
   let at = -1;
