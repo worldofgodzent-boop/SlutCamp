@@ -211,7 +211,7 @@ test('affiliates delete: standalone recruiter retires fully and frees her userna
     assert.equal((await req(h.base, 'GET', '/api/referral/delalias1')).json.valid, false, 'alias link dead');
     const joinOld = await req(h.base, 'POST', '/api/auth/signup', {
       body: { username: 'del_newmodel', password: 'newmodel-pass-1', role: 'model',
-        display_name: 'New Model', dob: '1999-06-15', agree18: true, referral_code: 'delcode1' },
+        display_name: 'New Model', dob: '1999-06-15', agree18: true, section: 'female', referral_code: 'delcode1' },
     });
     assert.equal(joinOld.status, 400, 'signup through a dead link refused');
     assert.equal(joinOld.json.error, 'bad_referral');

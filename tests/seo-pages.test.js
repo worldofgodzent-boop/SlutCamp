@@ -160,7 +160,7 @@ test.before(async () => {
   const mkModel = async (name, display, profile) => {
     const username = name + suffix;
     const s = await req('POST', '/api/auth/signup', {
-      body: { username, password: 'seo-pass-123', role: 'model', display_name: display, dob: '1996-04-12', agree18: true },
+      body: { username, password: 'seo-pass-123', role: 'model', display_name: display, dob: '1996-04-12', agree18: true, section: 'female' },
     });
     assert.equal(s.status, 200, `signup ${username} failed: ${s.text}`);
     if (profile) {
@@ -396,7 +396,7 @@ test('public photo: writes are owner-only — fans and guests refused, another m
   assert.equal(noFile.json.error, 'no_photo');
   // Another model writing HER public photo must land on her own row only.
   const other = await req('POST', '/api/auth/signup', {
-    body: { username: 'seoother' + sfx, password: 'seo-pass-123', role: 'model', display_name: 'Seo Other', dob: '1996-04-12', agree18: true },
+    body: { username: 'seoother' + sfx, password: 'seo-pass-123', role: 'model', display_name: 'Seo Other', dob: '1996-04-12', agree18: true, section: 'female' },
   });
   assert.equal(other.status, 200, other.text);
   const otherUp = await uploadMultipart('/api/model/public-photo', other.json.token);

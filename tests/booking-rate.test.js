@@ -53,7 +53,7 @@ test('pins: schema, pricing fallback, payload resolution, settings save', () => 
     'bookings-availability rate_cents is the effective booking rate');
   // /api/models payload resolves the rate in shapeRow (raw column rides
   // the SELECT; the published value is resolved, never the raw NULL).
-  assert.ok(serverSrc.includes('m.booking_rate_cents, m.is_online'), 'roster SELECT carries the column');
+  assert.ok(serverSrc.includes('m.booking_rate_cents, m.section, m.is_online'), 'roster SELECT carries the column');
   assert.ok(serverSrc.includes('pub.booking_rate_cents = r.booking_rate_cents ?? r.per_minute_cents;'),
     'roster payload resolves booking_rate_cents');
   // Conversation payload (the chat booking sheet's source) resolves too.

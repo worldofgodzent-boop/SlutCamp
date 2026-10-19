@@ -238,7 +238,7 @@ test('functional: 10-picture cap (11th rejected), gallery add/remove, video 2 li
     const sfx = Math.random().toString(36).slice(2, 8);
     const mk = async (name, role) => {
       const s = await req(h.base, 'POST', '/api/auth/signup', {
-        body: { username: name + sfx, password: 'media-pass-123', role, display_name: name, dob: '1996-04-12', agree18: true },
+        body: { username: name + sfx, password: 'media-pass-123', role, display_name: name, dob: '1996-04-12', agree18: true, ...(role === 'model' ? { section: 'female' } : {}) },
       });
       assert.equal(s.status, 200, `signup ${name} failed: ${s.text}`);
       return { id: s.json.user.id, token: s.json.token };

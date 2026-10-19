@@ -277,8 +277,8 @@ test('agreements: model + recruiter contracts served per-language, versions unch
     await req(h.base, 'PATCH', '/api/me/language', { body: { language: 'fr' }, token: mTok });
     const mc = await req(h.base, 'GET', '/api/model/contract', { token: mTok });
     assert.equal(mc.status, 200);
-    assert.equal(mc.json.version, '1.4', 'model agreement version unchanged');
-    assert.equal(mc.json.sections.length, 15, 'all 15 sections served');
+    assert.equal(mc.json.version, '1.5', 'model agreement serves the current version (v1.5 added the section clause)');
+    assert.equal(mc.json.sections.length, 16, 'all 16 sections served');
     assert.ok(mc.json.governs_note && mc.json.governs_note.length > 10, 'governs note present for fr');
     assert.ok(mc.json.sections[1].body.includes('CONTRAT') || mc.json.sections[1].body.length > 50, 'fr body served');
     assert.notEqual(mc.json.sections[1].body, 'You are an INDEPENDENT CONTRACTOR, not an employee of the Company. Nothing in this Agreement creates an employment, partnership, or agency relationship. You are responsible for your own taxes, insurance, and business expenses. The Company will not withhold taxes from your payouts, and you agree to report all income as required by law.', 'fr body is not the EN text');

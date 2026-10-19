@@ -274,7 +274,7 @@ test('purge guards: pictures, ID-verification and password fingerprint each save
 
   const bunnySignup = await req(h.base, 'POST', '/api/auth/signup', {
     body: { username: 'Bunny', password: 'real-bunny-pass', role: 'model',
-            display_name: 'Bunny', dob: '1999-04-04', agree18: true },
+            display_name: 'Bunny', dob: '1999-04-04', agree18: true, section: 'female' },
   });
   assert.equal(bunnySignup.status, 200, 'a real model registers the name Bunny');
   const bunnyId = bunnySignup.json.user.id;
@@ -282,7 +282,7 @@ test('purge guards: pictures, ID-verification and password fingerprint each save
 
   const bellaSignup = await req(h.base, 'POST', '/api/auth/signup', {
     body: { username: 'Bella', password: 'real-bella-pass', role: 'model',
-            display_name: 'Bella', dob: '1998-08-08', agree18: true },
+            display_name: 'Bella', dob: '1998-08-08', agree18: true, section: 'female' },
   });
   assert.equal(bellaSignup.status, 200, 'a real model registers the name Bella');
   const bellaId = bellaSignup.json.user.id;

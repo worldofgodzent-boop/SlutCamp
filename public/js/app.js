@@ -269,6 +269,15 @@ const I18N = {
     age18_line: 'You must be 18 or older to use SlutCamp.',
     fan_age_line: 'Fans confirm 18+ here — that\'s all we ask. Simple.',
     confirm18: 'I confirm I am <b>18 years or older</b>.',
+    sec_title: 'Joining as',
+    sec_female: 'Female',
+    sec_male: 'Male',
+    sec_couple: 'Couple',
+    err_must_declare_section: 'Pick your section (Female, Male or Couple) to continue.',
+    sf_female: 'Female',
+    sf_male: 'Male',
+    sf_couples: 'Couples',
+    sf_all: 'All',
     create_account_btn: 'Create account',
     keep_browsing: '← Keep browsing free',
     enter_user_pass: 'Enter username + password',
@@ -926,6 +935,15 @@ const I18N = {
     age18_line: 'Debes tener 18 años o más para usar SlutCamp.',
     fan_age_line: 'Los fans confirman aquí que tienen 18+ — es todo lo que pedimos. Simple.',
     confirm18: 'Confirmo que tengo <b>18 años o más</b>.',
+    sec_title: 'Te unes como',
+    sec_female: 'Mujer',
+    sec_male: 'Hombre',
+    sec_couple: 'Pareja',
+    err_must_declare_section: 'Elige tu sección (Mujer, Hombre o Pareja) para continuar.',
+    sf_female: 'Femenina',
+    sf_male: 'Masculina',
+    sf_couples: 'Parejas',
+    sf_all: 'Todo',
     create_account_btn: 'Crear cuenta',
     keep_browsing: '← Seguir explorando gratis',
     enter_user_pass: 'Ingresa usuario y contraseña',
@@ -1583,6 +1601,15 @@ const I18N = {
     age18_line: 'Você deve ter 18 anos ou mais para usar o SlutCamp.',
     fan_age_line: 'Fãs confirmam aqui que têm 18+ — é tudo o que pedimos. Simples.',
     confirm18: 'Confirmo que tenho <b>18 anos ou mais</b>.',
+    sec_title: 'Entrando como',
+    sec_female: 'Mulher',
+    sec_male: 'Homem',
+    sec_couple: 'Casal',
+    err_must_declare_section: 'Escolha sua seção (Mulher, Homem ou Casal) para continuar.',
+    sf_female: 'Feminina',
+    sf_male: 'Masculina',
+    sf_couples: 'Casais',
+    sf_all: 'Tudo',
     create_account_btn: 'Criar conta',
     keep_browsing: '← Continuar explorando grátis',
     enter_user_pass: 'Digite usuário e senha',
@@ -2240,6 +2267,15 @@ const I18N = {
     age18_line: 'Vous devez avoir 18 ans ou plus pour utiliser SlutCamp.',
     fan_age_line: 'Les fans confirment avoir 18+ ici — c\'est tout ce que nous demandons. Simple.',
     confirm18: 'Je confirme avoir <b>18 ans ou plus</b>.',
+    sec_title: 'Vous rejoignez en tant que',
+    sec_female: 'Femme',
+    sec_male: 'Homme',
+    sec_couple: 'Couple',
+    err_must_declare_section: 'Choisissez votre section (Femme, Homme ou Couple) pour continuer.',
+    sf_female: 'Femmes',
+    sf_male: 'Hommes',
+    sf_couples: 'Couples',
+    sf_all: 'Tout',
     create_account_btn: 'Créer un compte',
     keep_browsing: '← Continuer à parcourir gratuitement',
     enter_user_pass: 'Saisissez nom d\'utilisateur + mot de passe',
@@ -2897,6 +2933,15 @@ const I18N = {
     age18_line: 'Du musst 18 oder älter sein, um SlutCamp zu nutzen.',
     fan_age_line: 'Fans bestätigen hier 18+ — mehr verlangen wir nicht. Einfach.',
     confirm18: 'Ich bestätige, dass ich <b>18 Jahre oder älter</b> bin.',
+    sec_title: 'Beitreten als',
+    sec_female: 'Frau',
+    sec_male: 'Mann',
+    sec_couple: 'Paar',
+    err_must_declare_section: 'Wähle deine Sektion (Frau, Mann oder Paar), um fortzufahren.',
+    sf_female: 'Frauen',
+    sf_male: 'Männer',
+    sf_couples: 'Paare',
+    sf_all: 'Alle',
     create_account_btn: 'Account erstellen',
     keep_browsing: '← Weiter kostenlos stöbern',
     enter_user_pass: 'Benutzername + Passwort eingeben',
@@ -3554,6 +3599,15 @@ const I18N = {
     age18_line: 'Вам должно быть 18 лет или больше, чтобы пользоваться SlutCamp.',
     fan_age_line: 'Фанаты подтверждают 18+ здесь — это всё, что мы просим. Просто.',
     confirm18: 'Я подтверждаю, что мне <b>18 лет или больше</b>.',
+    sec_title: 'Вы присоединяетесь как',
+    sec_female: 'Женщина',
+    sec_male: 'Мужчина',
+    sec_couple: 'Пара',
+    err_must_declare_section: 'Выберите свой раздел (Женщины, Мужчины или Пары), чтобы продолжить.',
+    sf_female: 'Женщины',
+    sf_male: 'Мужчины',
+    sf_couples: 'Пары',
+    sf_all: 'Все',
     create_account_btn: 'Создать аккаунт',
     keep_browsing: '← Продолжить бесплатный просмотр',
     enter_user_pass: 'Введите имя пользователя + пароль',
@@ -4211,6 +4265,15 @@ const I18N = {
     age18_line: 'SlutCampを使うには18歳以上でなければなりません。',
     fan_age_line: 'ファンはここで18歳以上を確認するだけ — それだけ。シンプルでしょ。',
     confirm18: '私は<b>18歳以上</b>であることを確認します。',
+    sec_title: '参加区分',
+    sec_female: '女性',
+    sec_male: '男性',
+    sec_couple: 'カップル',
+    err_must_declare_section: '続けるにはセクション（女性・男性・カップル）を選んでください。',
+    sf_female: '女性',
+    sf_male: '男性',
+    sf_couples: 'カップル',
+    sf_all: 'すべて',
     create_account_btn: 'アカウントを作成',
     keep_browsing: '← 無料で閲覧を続ける',
     enter_user_pass: 'ユーザー名とパスワードを入力してね',
@@ -4868,6 +4931,15 @@ const I18N = {
     age18_line: '你必须年满 18 岁才能使用 SlutCamp。',
     fan_age_line: '粉丝在这里确认年满 18 岁 — 我们只问这一点。很简单。',
     confirm18: '我确认我已年满 <b>18 岁</b>。',
+    sec_title: '以什么身份加入',
+    sec_female: '女性',
+    sec_male: '男性',
+    sec_couple: '情侣',
+    err_must_declare_section: '请选择你的板块（女性、男性或情侣）以继续。',
+    sf_female: '女性',
+    sf_male: '男性',
+    sf_couples: '情侣',
+    sf_all: '全部',
     create_account_btn: '创建账号',
     keep_browsing: '← 继续免费浏览',
     enter_user_pass: '输入用户名 + 密码',
@@ -5525,6 +5597,15 @@ const I18N = {
     age18_line: 'SlutCamp를 이용하려면 18세 이상이어야 합니다.',
     fan_age_line: '팬은 여기서 18세 이상임을 확인합니다 — 그게 전부입니다. 간단하죠.',
     confirm18: '<b>18세 이상</b>임을 확인합니다.',
+    sec_title: '가입 유형',
+    sec_female: '여성',
+    sec_male: '남성',
+    sec_couple: '커플',
+    err_must_declare_section: '계속하려면 섹션(여성, 남성 또는 커플)을 선택하세요.',
+    sf_female: '여성',
+    sf_male: '남성',
+    sf_couples: '커플',
+    sf_all: '전체',
     create_account_btn: '계정 만들기',
     keep_browsing: '← 무료로 계속 둘러보기',
     enter_user_pass: '사용자 이름 + 비밀번호를 입력하세요',
@@ -6182,6 +6263,15 @@ const I18N = {
     age18_line: 'Devi avere 18 anni o più per usare SlutCamp.',
     fan_age_line: 'I fan confermano 18+ qui — è tutto ciò che chiediamo. Semplice.',
     confirm18: 'Confermo di avere <b>18 anni o più</b>.',
+    sec_title: 'Ti unisci come',
+    sec_female: 'Donna',
+    sec_male: 'Uomo',
+    sec_couple: 'Coppia',
+    err_must_declare_section: 'Scegli la tua sezione (Donna, Uomo o Coppia) per continuare.',
+    sf_female: 'Donne',
+    sf_male: 'Uomini',
+    sf_couples: 'Coppie',
+    sf_all: 'Tutto',
     create_account_btn: 'Crea account',
     keep_browsing: '← Continua a navigare gratis',
     enter_user_pass: 'Inserisci nome utente + password',
@@ -6839,6 +6929,15 @@ const I18N = {
     age18_line: 'Musisz mieć 18 lat lub więcej, aby korzystać ze SlutCamp.',
     fan_age_line: 'Fani potwierdzają tutaj 18+ — tylko o to prosimy. Proste.',
     confirm18: 'Potwierdzam, że mam <b>18 lat lub więcej</b>.',
+    sec_title: 'Dołączasz jako',
+    sec_female: 'Kobieta',
+    sec_male: 'Mężczyzna',
+    sec_couple: 'Para',
+    err_must_declare_section: 'Wybierz swoją sekcję (Kobieta, Mężczyzna lub Para), aby kontynuować.',
+    sf_female: 'Kobiety',
+    sf_male: 'Mężczyźni',
+    sf_couples: 'Pary',
+    sf_all: 'Wszystko',
     create_account_btn: 'Utwórz konto',
     keep_browsing: '← Przeglądaj dalej za darmo',
     enter_user_pass: 'Wpisz nazwę użytkownika + hasło',
@@ -7496,6 +7595,15 @@ const I18N = {
     age18_line: 'Je moet 18 jaar of ouder zijn om SlutCamp te gebruiken.',
     fan_age_line: 'Fans bevestigen hier 18+ — dat is alles wat we vragen. Simpel.',
     confirm18: 'Ik bevestig dat ik <b>18 jaar of ouder</b> ben.',
+    sec_title: 'Je meldt je aan als',
+    sec_female: 'Vrouw',
+    sec_male: 'Man',
+    sec_couple: 'Stel',
+    err_must_declare_section: 'Kies je sectie (Vrouw, Man of Stel) om door te gaan.',
+    sf_female: 'Vrouwen',
+    sf_male: 'Mannen',
+    sf_couples: 'Stellen',
+    sf_all: 'Alles',
     create_account_btn: 'Account aanmaken',
     keep_browsing: '← Blijf gratis browsen',
     enter_user_pass: 'Voer gebruikersnaam + wachtwoord in',
@@ -8153,6 +8261,15 @@ const I18N = {
     age18_line: 'SlutCamp\'i kullanmak için 18 yaşında veya daha büyük olmalısın.',
     fan_age_line: 'Hayranlar burada 18+ olduğunu onaylar — tek istediğimiz bu. Basit.',
     confirm18: '<b>18 yaşında veya daha büyük</b> olduğumu onaylıyorum.',
+    sec_title: 'Katılma şeklin',
+    sec_female: 'Kadın',
+    sec_male: 'Erkek',
+    sec_couple: 'Çift',
+    err_must_declare_section: 'Devam etmek için bölümünü seç (Kadın, Erkek veya Çift).',
+    sf_female: 'Kadın',
+    sf_male: 'Erkek',
+    sf_couples: 'Çift',
+    sf_all: 'Tümü',
     create_account_btn: 'Hesap oluştur',
     keep_browsing: '← Ücretsiz gezinmeye devam et',
     enter_user_pass: 'Kullanıcı adı + şifre gir',
@@ -8840,6 +8957,14 @@ const NSFW = {
 
 async function api(path, opts) {
   opts = opts || {};
+  // Storefront tabs (owner pivot, Oct 18 2026): directory reads carry
+  // the active section tab; the server filters by it. Entry always
+  // starts on the Female tab (browseTab's initial value) — the tab is
+  // per-session state, never stored, never asked.
+  if ((!opts.method || opts.method === 'GET') &&
+      (path === '/models' || path === '/live' || path === '/live/schedule')) {
+    path += '?tab=' + browseTab;
+  }
   const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
   if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
   else if (S.guestToken) headers['X-Guest-Token'] = S.guestToken;
@@ -9520,6 +9645,28 @@ const DISCOVERY_TAGS = [
 ];
 const disc = { q: '', online: false, live: false, price: 'any', tag: '', sort: 'top' };
 
+/* Storefront section tabs (owner pivot, final simplification
+ * Oct 18 2026): a slim strip at the top of the home/directory —
+ * Female / Male / Couples / All. Entry ALWAYS lands on Female, every
+ * visit: browseTab is per-session state that starts at 'female' and
+ * is never stored or asked. Tapping a tab re-filters the directory
+ * (and lives, which read the same state) in place. */
+let browseTab = 'female';
+const BROWSE_TABS = ['female', 'male', 'couples', 'all'];
+function sectionTabsHTML() {
+  return `<div class="sec-tabs" role="tablist">${BROWSE_TABS.map((tb) =>
+    `<button type="button" class="sec-tab${browseTab === tb ? ' on' : ''}" data-sectab="${tb}">${t('sf_' + tb)}</button>`).join('')}</div>`;
+}
+function wireSectionTabs(rerender) {
+  app.querySelectorAll('[data-sectab]').forEach((b) => {
+    b.onclick = () => {
+      if (browseTab === b.dataset.sectab) return;
+      browseTab = b.dataset.sectab;
+      rerender();
+    };
+  });
+}
+
 /* Per-message price bands: $ = ≤$2, $$ = ≤$5, $$$ = above. */
 function discPriceBand(cents) {
   const c = Number(cents) || 0;
@@ -9744,6 +9891,7 @@ async function vLanding() {
       <div class="sub">${t('home_sub')}</div>
     </div>
     <div class="screen">
+      ${sectionTabsHTML()}
       ${livesBtnHTML(models)}
       <div class="card" style="text-align:center;background:linear-gradient(135deg,#3b1d6e,#1a0f2e)">
         <div style="font-size:20px;font-weight:800">${t('free3_title')}</div>
@@ -9769,6 +9917,7 @@ async function vLanding() {
       <div class="lang-row">${langPillsHTML()}</div>
       <p class="muted small" style="text-align:center;margin-top:16px">${t('terms_line')} <a href="javascript:void(0)" id="go-terms" style="color:var(--pink)">${t('terms')}</a> · <a href="javascript:void(0)" id="go-privacy" style="color:var(--pink)">Privacy</a> · <a href="javascript:void(0)" id="go-billing" style="color:var(--pink)">Billing & Refunds</a> · <a href="javascript:void(0)" id="go-2257" style="color:var(--pink)">2257 Statement</a> · <a href="javascript:void(0)" id="go-dmca" style="color:var(--pink)">DMCA</a>.</p>
     </div>`;
+  wireSectionTabs(() => show('landing', {}));
   app.querySelectorAll('[data-model]').forEach((b) => {
     b.onclick = () => {
       const liveId = b.dataset.live;
@@ -9853,6 +10002,39 @@ async function openChatWithModel(modelId) {
 
 /* ---------------- AUTH ---------------- */
 
+/* ------------------------------------------------------------------ */
+/* Section router (owner pivot, Oct 18 2026): the FIRST step of every */
+/* model join is one neat step — a box asking "Joining as" with       */
+/* Female / Male / Couple — before any signup form, at all three      */
+/* model doors (front door, Manager invite link, affiliate link).     */
+/* Every pick proceeds into the model signup carrying its section;    */
+/* the server refuses a model register without a valid section and    */
+/* records the attestation, so the router cannot be bypassed by       */
+/* calling the API directly.                                          */
+/* ------------------------------------------------------------------ */
+let modelSectionPick = null;
+
+function vSectionGate(resume) {
+  entryRerender = () => vSectionGate(resume);
+  app.innerHTML = `
+    <div class="header"><h1>Slut<span class="logo">Camp</span></h1>
+      <div class="sub">${t('create_account_h')}</div></div>
+    <div class="screen">
+      <div class="card" style="text-align:center">
+        <div style="font-size:18px;font-weight:800">${t('sec_title')}</div>
+        <button class="btn" id="sec-female" style="width:100%;margin-top:14px">${t('sec_female')}</button>
+        <button class="btn" id="sec-male" style="width:100%;margin-top:8px">${t('sec_male')}</button>
+        <button class="btn" id="sec-couple" style="width:100%;margin-top:8px">${t('sec_couple')}</button>
+      </div>
+      <div class="lang-row">${langPillsHTML()}</div>
+      <button class="btn ghost" id="sec-back" style="margin-top:12px">${t('back')}</button>
+    </div>`;
+  $('#sec-female').onclick = () => { modelSectionPick = 'female'; resume(); };
+  $('#sec-male').onclick = () => { modelSectionPick = 'male'; resume(); };
+  $('#sec-couple').onclick = () => { modelSectionPick = 'couple'; resume(); };
+  $('#sec-back').onclick = () => show('landing', {});
+}
+
 function vAuth(params) {
   const mode = (params && params.mode) || 'login';
   const role = (params && params.role) || 'fan';
@@ -9922,8 +10104,16 @@ function renderAuthBody(mode, role, loginRole) {
       renderSignupFields(r);
     };
     $('#r-fan').onclick = () => { r = 'fan'; paint(); };
-    $('#r-model').onclick = () => { r = 'model'; paint(); };
+    $('#r-model').onclick = () => {
+      // Section router (owner pivot, Oct 18 2026): the "Joining as"
+      // pick comes FIRST — the model form never renders before it.
+      if (!modelSectionPick) return vSectionGate(() => show('auth', { mode: 'signup', role: 'model' }));
+      r = 'model'; paint();
+    };
     $('#r-aff').onclick = () => { r = 'affiliate'; paint(); };
+    // Arriving with the model role pre-picked is routed the same way.
+    if (r === 'model' && !modelSectionPick)
+      return vSectionGate(() => show('auth', { mode: 'signup', role: 'model' }));
     paint();
   }
 }
@@ -10025,10 +10215,11 @@ async function doSignup(role) {
   if (!agree18) return toast(t('must_confirm_18'));
   const { status, data } = await api('/auth/signup', {
     method: 'POST',
-    body: JSON.stringify({ username, password, role, display_name, dob, agree18, guest_token: S.guestToken, language: LANG, ...(email ? { email } : {}) }),
+    body: JSON.stringify({ username, password, role, display_name, dob, agree18, guest_token: S.guestToken, language: LANG, ...(role === 'model' ? { section: modelSectionPick } : {}), ...(email ? { email } : {}) }),
   });
   if (status === 200) return afterLogin(data);
   const msgs = { username_taken: t('err_username_taken'), must_be_18: t('err_must_be_18'),
+    must_declare_section: t('err_must_declare_section'),
     password_too_short: t('err_password_short'), bad_email: t('err_bad_email') };
   toast(msgs[data.error] || t('err_signup_failed'));
 }
@@ -10339,6 +10530,9 @@ function renderSuggestionCard() {
 /* ---------------- MODEL INVITE SIGNUP (?invite=CODE) ---------------- */
 
 async function vInviteSignup(code) {
+  // Section router FIRST (owner pivot, Oct 18 2026): the "Joining as"
+  // pick precedes the form; it rides into the register call.
+  if (!modelSectionPick) return vSectionGate(() => vInviteSignup(code));
   // Language switches redraw this form (it isn't a show() view).
   entryRerender = () => vInviteSignup(code);
   // Validate the code first
@@ -10393,11 +10587,12 @@ async function vInviteSignup(code) {
     if (!agree18) return toast(t('must_confirm_18'));
     const { status, data } = await api('/auth/signup', {
       method: 'POST',
-      body: JSON.stringify({ username, password, role: 'model', display_name, dob, agree18,
+      body: JSON.stringify({ username, password, role: 'model', display_name, dob, agree18, section: modelSectionPick,
         guest_token: S.guestToken, invite_code: code, language: LANG }),
     });
     if (status === 200) return afterLogin(data);
     const msgs = { username_taken: t('err_username_taken'), must_be_18: t('err_must_be_18'),
+      must_declare_section: t('err_must_declare_section'),
       password_too_short: t('err_password_short'),
       bad_invite: t('err_bad_invite'), invite_used: t('err_invite_used') };
     toast(msgs[data.error] || data.message || t('err_signup_failed'));
@@ -10406,6 +10601,10 @@ async function vInviteSignup(code) {
 
 /* Partner referral signup: model joins through a recruiter's link */
 async function vRecruiterSignup(code) {
+  // Section router FIRST (owner pivot, Oct 18 2026): the "Joining as"
+  // pick precedes the form; it rides into the register call and the
+  // referral_code below still attributes her to the recruiter.
+  if (!modelSectionPick) return vSectionGate(() => vRecruiterSignup(code));
   // Language switches redraw this form (it isn't a show() view).
   entryRerender = () => vRecruiterSignup(code);
   let valid = false, recruiterName = '';
@@ -10459,11 +10658,12 @@ async function vRecruiterSignup(code) {
     if (!agree18) return toast(t('must_confirm_18'));
     const { status, data } = await api('/auth/signup', {
       method: 'POST',
-      body: JSON.stringify({ username, password, role: 'model', display_name, dob, agree18,
+      body: JSON.stringify({ username, password, role: 'model', display_name, dob, agree18, section: modelSectionPick,
         guest_token: S.guestToken, referral_code: code, language: LANG }),
     });
     if (status === 200) return afterLogin(data);
     const msgs = { username_taken: t('err_username_taken'), must_be_18: t('err_must_be_18'),
+      must_declare_section: t('err_must_declare_section'),
       password_too_short: t('err_password_short'),
       bad_referral: t('err_bad_referral') };
     toast(msgs[data.error] || data.message || t('err_signup_failed'));
@@ -11010,6 +11210,7 @@ async function vFanModels() {
         ? '<span class="balance-pill">👀 Browsing the home screen</span>'
         : `<span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span>`}</div></div>
     <div class="screen">
+      ${isModelViewer ? '' : sectionTabsHTML()}
       ${sideSwitchHTML('main')}
       ${officialCardHTML(official)}
       ${athCardHTML()}
@@ -11023,6 +11224,7 @@ async function vFanModels() {
     </div>`;
   wireAthCard();
   wireDiscovery('fanModels');
+  if (!isModelViewer) wireSectionTabs(() => show('fanModels', {}));
   // Pinned official card: LIVE → join the stream exactly like a live
   // model tile; quiet → its look-only profile page. Model viewers and
   // the admin fan-preview stay look-only in both states (the grid rule).
@@ -16867,6 +17069,19 @@ async function vNotifications() {
     const cm = /^\/?#chat\/(\d+)$/.exec(link);
     if (cm && typeof openNotifThread === 'function') {
       openNotifThread(parseInt(cm[1]), role);
+      return true;
+    }
+    // A bell about a specific model (e.g. the admins' new-model bell)
+    // links at her profile: '/#m/<username>' resolves her in the
+    // roster and opens her in-app profile card (look-only peek).
+    const mm = /^\/?#m\/([a-zA-Z0-9_]+)$/.exec(link);
+    if (mm && typeof openModelPeek === 'function') {
+      api('/models').then(({ data }) => {
+        const models = (data && data.models) || [];
+        const target = models.find((x) => (x.username || '').toLowerCase() === mm[1].toLowerCase());
+        if (target) openModelPeek(target, models);
+        else show('fanModels', {});
+      }).catch(() => show('fanModels', {}));
       return true;
     }
     const ftm = /^\/?#ft\/(\d+)$/.exec(link);

@@ -227,7 +227,7 @@ test('live: deploy announcement creates one official thread per user, bell opens
   const suffix = Math.random().toString(36).slice(2, 8);
   const signup = async (username, role, display) => {
     const s = await req('POST', '/api/auth/signup', {
-      body: { username, password: 'notices-pass-1', role, display_name: display, dob: '1997-05-20', agree18: true },
+      body: { username, password: 'notices-pass-1', role, display_name: display, dob: '1997-05-20', agree18: true, ...(role === 'model' ? { section: 'female' } : {}) },
     });
     assert.equal(s.status, 200, `${role} signup (${username}) failed: ${s.text}`);
     return { token: s.json.token, id: s.json.user.id, username };
@@ -252,6 +252,9 @@ test('live: deploy announcement creates one official thread per user, bell opens
   // into the same official threads — stamp it as already sent so this
   // scenario measures the launch announcement alone.
   dbExec("UPDATE platform_stats SET chat_retention_announced_at = datetime('now') WHERE id = 1");
+  // Same for the storefront-tabs announcement (fans' official
+  // threads, storefront sections Phase 1) — a separate broadcast.
+  dbExec("UPDATE platform_stats SET storefront_announced_at = datetime('now') WHERE id = 1");
   await stop();
   await boot();
 

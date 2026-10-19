@@ -246,7 +246,7 @@ const seoDesc = (bio, name) => {
 function seoPublicModels() {
   const rows = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.presence_override, u.created_at,
-           m.bio, m.per_message_cents, m.public_photo_url, m.tags, m.is_featured, m.is_online,
+           m.bio, m.per_message_cents, m.public_photo_url, m.tags, m.is_featured, m.is_online, m.section,
            ls.id AS live_session_id
     FROM users u JOIN models m ON m.user_id = u.id
     LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live'
@@ -273,6 +273,7 @@ function seoPublicModels() {
     per_message_cents: r.per_message_cents,
     public_photo_url: r.public_photo_url || '',
     tags: parseModelTags(r.tags),
+    section: r.section || 'female',
     is_online: effectiveOnline(r.presence_override, r.is_online),
     is_live: !!r.live_session_id,
     rank_position: rankPos.get(r.id) || null,
@@ -406,8 +407,11 @@ ${seoFooter}
 });
 
 // GET /models — the crawlable hub every other page points to.
+// Storefront sections (Phase 1): the public index lists the Female +
+// Couple sections only — Male-section models stay out of the public
+// index/sitemap for now; their individual pages are unchanged.
 app.get('/models', (req, res) => {
-  const models = seoPublicModels();
+  const models = seoPublicModels().filter((m) => m.section !== 'male');
   const url = SEO_ORIGIN + '/models';
   res.type('html').set('Cache-Control', 'public, max-age=300').send(`<!DOCTYPE html>
 <html lang="en">
@@ -471,7 +475,7 @@ ${seoFooter}
 // GET /payouts — the published payout promise (owner, Oct 16 2026).
 // A plain-language, PUBLIC summary of how models get paid, readable
 // BEFORE signup. Every mechanic stated here is drawn from the shipped
-// Model Agreement (v1.4: section 4 split, section 5 payouts, section
+// Model Agreement (v1.5: section 4 split, section 5 payouts, section
 // 13 hold / chargeback order / fraud) — this page publishes the
 // mechanics, nothing more: it deliberately does NOT promise that the
 // platform absorbs chargebacks. The Agreement governs; the version
@@ -517,7 +521,10 @@ ${seoFooter}
 // neither models nor users carries a real updated_at, and a faked
 // lastmod is worse than none.
 app.get('/sitemap.xml', (req, res) => {
-  const models = seoPublicModels();
+  // Same public-index scope as GET /models: Female + Couple sections
+  // only (Male-section models are out of the public index in Phase 1;
+  // their individual pages still serve, they are just not listed).
+  const models = seoPublicModels().filter((m) => m.section !== 'male');
   const liveTags = seoLiveTags(models);
   const entry = (loc, freq, pri) =>
     `  <url>\n    <loc>${seoEsc(loc)}</loc>\n    <changefreq>${freq}</changefreq>\n    <priority>${pri}</priority>\n  </url>`;
@@ -1273,6 +1280,14 @@ addColumnIfMissing('models', 'bookings_week_cap', 'INTEGER');
 // separately. NULL = not set: pricing falls back to per_minute_cents, so
 // nothing changes for a model until she sets this in Settings.
 addColumnIfMissing('models', 'booking_rate_cents', 'INTEGER');
+// Storefront sections (owner pivot, Oct 18 2026): every model account
+// lives in ONE section — 'female' | 'male' | 'couple' — declared at
+// signup and recorded on her model row. Fans browse by section tab
+// (see effectiveBrowseSet) and the storefront never shows a solo male
+// model unless the Male or All tab was explicitly tapped. Every
+// pre-sections row is 'female' — the only section that existed when
+// they joined.
+addColumnIfMissing('models', 'section', "TEXT NOT NULL DEFAULT 'female'");
 addColumnIfMissing('bookings', 'kind', "TEXT NOT NULL DEFAULT 'request'");
 addColumnIfMissing('bookings', 'model_present', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('bookings', 'fan_present', 'INTEGER NOT NULL DEFAULT 0');
@@ -1441,6 +1456,8 @@ addColumnIfMissing('platform_stats', 'one_account_announced_at', 'TEXT'); // one
 addColumnIfMissing('platform_stats', 'official_inbox_announced_at', 'TEXT'); // one-time "SlutCamp notices thread" broadcast stamp
 addColumnIfMissing('platform_stats', 'chat_retention_announced_at', 'TEXT'); // one-time "chats auto-clean after 7 days" broadcast stamp
 addColumnIfMissing('platform_stats', 'booking_rate_announced_at', 'TEXT'); // one-time "dedicated 1-on-1 booking rate" broadcast stamp (models only)
+addColumnIfMissing('platform_stats', 'agreement_15_announced_at', 'TEXT'); // one-time "agreement v1.5 (sections + who may appear)" broadcast stamp
+addColumnIfMissing('platform_stats', 'storefront_announced_at', 'TEXT'); // one-time "pick your storefront" fan broadcast stamp
 addColumnIfMissing('conversations', 'is_official', 'INTEGER NOT NULL DEFAULT 0'); // the pinned read-only SlutCamp notices thread
 
 /* The recruiters row IS the affiliate capability (see above). */
@@ -2567,6 +2584,29 @@ function viewerRoleOf(req) {
   return u ? u.role : null;
 }
 
+/* Storefront tabs (owner pivot, final simplification Oct 18 2026):
+ * which model SECTIONS a viewer may browse. The home/directory carries
+ * FOUR tabs — Female / Male / Couples / All — and the client passes
+ * the active tab as ?tab= on directory requests; tab state is
+ * per-session client state, never stored. Entry ALWAYS lands on the
+ * Female tab — every fan and guest, every visit — so no tab specified
+ * means the Female set (female + couples; couples sit on BOTH the
+ * Male and the Female storefronts, and the Couples tab is couples
+ * only). Models and admins browse unfiltered (null) — the same
+ * exemption region blocking uses. */
+const SECTION_SETS = {
+  female: ['female', 'couple'],
+  male: ['male', 'couple'],
+  couples: ['couple'],
+  all: ['female', 'male', 'couple'],
+};
+const DEFAULT_BROWSE_SET = SECTION_SETS.female;
+function effectiveBrowseSet(req) {
+  const role = viewerRoleOf(req);
+  if (role === 'admin' || role === 'model') return null;
+  return SECTION_SETS[String((req.query && req.query.tab) || '')] || DEFAULT_BROWSE_SET;
+}
+
 function identMiddleware(req, res, next) {
   const ident = getIdentity(req);
   if (!ident) return res.status(401).json({ error: 'not_logged_in' });
@@ -2866,6 +2906,13 @@ const SRV = {
   ann_profile_media_bell_title: { en: '📸 NEW UPDATE: 10 pictures + 2 videos on your profile!', es: '📸 NUEVA ACTUALIZACIÓN: ¡10 fotos + 2 videos en tu perfil!', pt: '📸 NOVA ATUALIZAÇÃO: 10 fotos + 2 vídeos no seu perfil!', fr: '📸 NOUVELLE MISE À JOUR : 10 photos + 2 vidéos sur ton profil !', de: '📸 NEUES UPDATE: 10 Bilder + 2 Videos auf deinem Profil!', ru: '📸 НОВОЕ ОБНОВЛЕНИЕ: 10 фото + 2 видео в твоём профиле!', ja: '📸 新しいアップデート：プロフィールに写真10枚＋動画2本！', zh: '📸 新更新：你的主页有 10 张照片 + 2 段视频！', ko: '📸 새 업데이트: 프로필에 사진 10장 + 영상 2개!', it: '📸 NUOVO AGGIORNAMENTO: 10 foto + 2 video sul tuo profilo!', pl: '📸 NOWA AKTUALIZACJA: 10 zdjęć + 2 filmy na Twoim profilu!', nl: '📸 NIEUWE UPDATE: 10 foto\'s + 2 video\'s op je profiel!', tr: '📸 YENİ GÜNCELLEME: Profilinde 10 fotoğraf + 2 video!' },
   ann_profile_media_bell_body: { en: 'Fans see up to 10 pictures and both your profile videos. Add yours in Settings 💋', es: 'Los fans ven hasta 10 fotos y tus dos videos de perfil. Agrega los tuyos en Ajustes 💋', pt: 'Os fãs veem até 10 fotos e os seus dois vídeos de perfil. Adicione os seus em Configurações 💋', fr: 'Les fans voient jusqu\'à 10 photos et tes deux vidéos de profil. Ajoute les tiennes dans Paramètres 💋', de: 'Fans sehen bis zu 10 Bilder und beide deiner Profilvideos. Füge deine in den Einstellungen hinzu 💋', ru: 'Фанаты видят до 10 фото и оба твоих видео профиля. Добавь свои в Настройках 💋', ja: 'ファンには写真が最大10枚とプロフィール動画2本の両方が表示されます。設定で追加してね 💋', zh: '粉丝能看到多达 10 张照片和你的两段主页视频。在设置中添加 💋', ko: '팬들은 사진 최대 10장과 프로필 영상 두 개를 모두 봐요. 설정에서 추가하세요 💋', it: 'I fan vedono fino a 10 foto ed entrambi i tuoi video profilo. Aggiungi i tuoi in Impostazioni 💋', pl: 'Fani widzą do 10 zdjęć i oba Twoje filmy profilowe. Dodaj swoje w Ustawieniach 💋', nl: 'Fans zien tot 10 foto\'s en allebei je profielvideo\'s. Voeg de jouwe toe in Instellingen 💋', tr: 'Hayranlar 10 fotoğrafını ve iki profil videonu da görüyor. Seninkileri Ayarlar\'dan ekle 💋' },
   suggest_admin_title: { en: '💡 New suggestion from {username}', es: '💡 Nueva sugerencia de {username}', pt: '💡 Nova sugestão de {username}', fr: '💡 Nouvelle suggestion de {username}', de: '💡 Neuer Vorschlag von {username}', ru: '💡 Новое предложение от {username}', ja: '💡 {username} さんからの新しい提案', zh: '💡 来自 {username} 的新建议', ko: '💡 {username}님의 새 건의', it: '💡 Nuovo suggerimento da {username}', pl: '💡 Nowa sugestia od {username}', nl: '💡 Nieuwe suggestie van {username}', tr: '💡 {username} kullanıcısından yeni öneri' },
+  bell_new_model_title: { en: '🆕 New model joined', es: '🆕 Nueva modelo registrada', pt: '🆕 Nova modelo cadastrada', fr: '🆕 Nouveau modèle inscrit', de: '🆕 Neues Model registriert', ru: '🆕 Новая модель присоединилась', ja: '🆕 新しいモデルが参加しました', zh: '🆕 新模特加入', ko: '🆕 새 모델이 가입했어요', it: '🆕 Nuova modella registrata', pl: '🆕 Nowa modelka dołączyła', nl: '🆕 Nieuw model aangemeld', tr: '🆕 Yeni model katıldı' },
+  bell_section_female: { en: 'Female', es: 'Femenina', pt: 'Feminina', fr: 'Femmes', de: 'Frauen', ru: 'Женщины', ja: '女性', zh: '女性', ko: '여성', it: 'Donne', pl: 'Kobiety', nl: 'Vrouwen', tr: 'Kadın' },
+  bell_section_male: { en: 'Male', es: 'Masculina', pt: 'Masculina', fr: 'Hommes', de: 'Männer', ru: 'Мужчины', ja: '男性', zh: '男性', ko: '남성', it: 'Uomini', pl: 'Mężczyźni', nl: 'Mannen', tr: 'Erkek' },
+  bell_section_couple: { en: 'Couple', es: 'Parejas', pt: 'Casais', fr: 'Couples', de: 'Paare', ru: 'Пары', ja: 'カップル', zh: '情侣', ko: '커플', it: 'Coppie', pl: 'Pary', nl: 'Stellen', tr: 'Çift' },
+  bell_new_model_body_direct: { en: '@{username} ({name}) joined the {section} section directly', es: '@{username} ({name}) se unió directamente a la sección {section}', pt: '@{username} ({name}) entrou diretamente na seção {section}', fr: '@{username} ({name}) a rejoint directement la section {section}', de: '@{username} ({name}) hat sich direkt registriert — Sektion {section}', ru: '@{username} ({name}) зарегистрировалась напрямую — раздел {section}', ja: '@{username}（{name}）が「{section}」セクションに直接登録しました', zh: '@{username}（{name}）直接注册加入「{section}」板块', ko: '@{username} ({name})님이 {section} 섹션에 직접 가입했어요', it: '@{username} ({name}) si è registrata direttamente nella sezione {section}', pl: '@{username} ({name}) zarejestrowała się bezpośrednio — sekcja {section}', nl: '@{username} ({name}) heeft zich direct aangemeld — sectie {section}', tr: '@{username} ({name}) doğrudan {section} bölümüne katıldı' },
+  bell_new_model_body_invite: { en: '@{username} ({name}) joined the {section} section via invite link', es: '@{username} ({name}) se unió a la sección {section} con un enlace de invitación', pt: '@{username} ({name}) entrou na seção {section} por link de convite', fr: '@{username} ({name}) a rejoint la section {section} via un lien d\'invitation', de: '@{username} ({name}) hat sich über einen Einladungslink registriert — Sektion {section}', ru: '@{username} ({name}) зарегистрировалась по ссылке-приглашению — раздел {section}', ja: '@{username}（{name}）が招待リンクから「{section}」セクションに登録しました', zh: '@{username}（{name}）通过邀请链接注册加入「{section}」板块', ko: '@{username} ({name})님이 초대 링크로 {section} 섹션에 가입했어요', it: '@{username} ({name}) si è registrata nella sezione {section} tramite link di invito', pl: '@{username} ({name}) zarejestrowała się z linku zaproszenia — sekcja {section}', nl: '@{username} ({name}) heeft zich aangemeld via een uitnodigingslink — sectie {section}', tr: '@{username} ({name}) davet bağlantısıyla {section} bölümüne katıldı' },
+  bell_new_model_body_referral: { en: '@{username} ({name}) joined the {section} section via {recruiter_name} (@{recruiter_username})\'s link', es: '@{username} ({name}) se unió a la sección {section} con el enlace de {recruiter_name} (@{recruiter_username})', pt: '@{username} ({name}) entrou na seção {section} pelo link de {recruiter_name} (@{recruiter_username})', fr: '@{username} ({name}) a rejoint la section {section} via le lien de {recruiter_name} (@{recruiter_username})', de: '@{username} ({name}) hat sich über den Link von {recruiter_name} (@{recruiter_username}) registriert — Sektion {section}', ru: '@{username} ({name}) зарегистрировалась по ссылке {recruiter_name} (@{recruiter_username}) — раздел {section}', ja: '@{username}（{name}）が {recruiter_name}（@{recruiter_username}）のリンクから「{section}」セクションに登録しました', zh: '@{username}（{name}）通过 {recruiter_name}（@{recruiter_username}）的链接注册加入「{section}」板块', ko: '@{username} ({name})님이 {recruiter_name} (@{recruiter_username})님의 링크로 {section} 섹션에 가입했어요', it: '@{username} ({name}) si è registrata nella sezione {section} tramite il link di {recruiter_name} (@{recruiter_username})', pl: '@{username} ({name}) zarejestrowała się z linku {recruiter_name} (@{recruiter_username}) — sekcja {section}', nl: '@{username} ({name}) heeft zich aangemeld via de link van {recruiter_name} (@{recruiter_username}) — sectie {section}', tr: '@{username} ({name}), {recruiter_name} (@{recruiter_username}) bağlantısıyla {section} bölümüne katıldı' },
   ann_lang_fan_title: { en: '🌍 NEW: SlutCamp speaks YOUR language!', es: '🌍 NUEVO: ¡SlutCamp habla TU idioma!', pt: '🌍 NOVIDADE: a SlutCamp fala SEU idioma!', fr: '🌍 NOUVEAU : SlutCamp parle VOTRE langue !', de: '🌍 NEU: SlutCamp spricht DEINE Sprache!', ru: '🌍 НОВОЕ: SlutCamp говорит на ВАШЕМ языке!', ja: '🌍 新機能：SlutCampはあなたの言語に対応！', zh: '🌍 新功能：SlutCamp 说你的语言！', ko: '🌍 새 소식: SlutCamp가 당신의 언어를 지원합니다!', it: '🌍 NOVITÀ: SlutCamp parla la TUA lingua!', pl: '🌍 NOWOŚĆ: SlutCamp mówi w TWOIM języku!', nl: '🌍 NIEUW: SlutCamp spreekt JOUW taal!', tr: '🌍 YENİ: SlutCamp SENİN dilini konuşuyor!' },
   ann_lang_fan_body: { en: 'The whole app now speaks 13 languages — switch anytime in Settings: buttons, messages and agreements included 💋', es: 'Toda la app ahora habla 13 idiomas — cámbialo cuando quieras en Ajustes: botones, mensajes y acuerdos incluidos 💋', pt: 'O app inteiro agora fala 13 idiomas — troque quando quiser em Configurações: botões, mensagens e contratos incluídos 💋', fr: 'Toute l\'appli parle maintenant 13 langues — changez à tout moment dans Paramètres : boutons, messages et contrats inclus 💋', de: 'Die ganze App spricht jetzt 13 Sprachen — stelle jederzeit in den Einstellungen um: Schaltflächen, Nachrichten und Vereinbarungen inklusive 💋', ru: 'Всё приложение теперь говорит на 13 языках — переключайте в любое время в Настройках: кнопки, сообщения и соглашения включены 💋', ja: 'アプリ全体が13言語に対応しました — 設定でいつでも切り替え可能：ボタン、メッセージ、契約も含まれます 💋', zh: '整个应用现在支持 13 种语言 — 随时在设置中切换：包括按钮、消息和协议 💋', ko: '이제 앱 전체가 13개 언어를 지원합니다 — 설정에서 언제든지 바꾸세요: 버튼, 메시지, 계약까지 포함됩니다 💋', it: 'L\'intera app ora parla 13 lingue — cambia in qualsiasi momento in Impostazioni: pulsanti, messaggi e contratti inclusi 💋', pl: 'Cała aplikacja mówi teraz w 13 językach — przełącz w każdej chwili w Ustawieniach: przyciski, wiadomości i umowy w zestawie 💋', nl: 'De hele app spreekt nu 13 talen — schakel op elk moment in Instellingen: knoppen, berichten en overeenkomsten inbegrepen 💋', tr: 'Tüm uygulama artık 13 dil konuşuyor — Ayarlar\'dan istediğin zaman değiştir: düğmeler, mesajlar ve sözleşmeler dahil 💋' },
   ann_role_signin_dm: { en: '🔑 NEW UPDATE: Signing in is simpler now! There\'s a big “Sign in as a model” button right on the front page — tap it, enter your username and password, and you\'re in. No more hunting around 💋', es: '🔑 NUEVA ACTUALIZACIÓN: ¡Iniciar sesión ahora es más simple! Hay un botón grande de “Iniciar sesión como modelo” justo en la página principal: tócalo, escribe tu usuario y contraseña, y ya estás dentro. Sin más vueltas 💋', pt: '🔑 NOVA ATUALIZAÇÃO: Entrar ficou mais simples! Agora há um botão grande “Entrar como modelo” bem na página inicial — toque nele, digite seu usuário e senha, e pronto. Sem complicação 💋', fr: '🔑 NOUVELLE MISE À JOUR : Se connecter est plus simple ! Il y a maintenant un gros bouton « Se connecter comme modèle » sur la page d\'accueil — touchez-le, entrez votre identifiant et votre mot de passe, et vous êtes dedans. Fini de chercher 💋', de: '🔑 NEUES UPDATE: Anmelden ist jetzt einfacher! Auf der Startseite gibt es jetzt einen großen Button „Als Model anmelden“ — antippen, Benutzername und Passwort eingeben, und du bist drin. Kein Suchen mehr 💋', ru: '🔑 НОВОЕ ОБНОВЛЕНИЕ: Входить стало проще! Теперь на главной странице есть большая кнопка «Войти как модель» — нажми её, введи логин и пароль, и ты внутри. Больше не надо искать 💋', ja: '🔑 新しいアップデート：ログインがもっと簡単になりました！トップページに大きな「モデルとしてログイン」ボタンができました — タップして、ユーザー名とパスワードを入れるだけ。もう迷いません 💋', zh: '🔑 新更新：登录变得更简单了！主页上现在有一个大大的“以模特身份登录”按钮 — 点它，输入用户名和密码，就进来了。不用再找来找去 💋', ko: '🔑 새 업데이트: 로그인이 더 간단해졌어요! 이제 메인 페이지에 큰 “모델로 로그인” 버튼이 있어요 — 탭하고, 아이디와 비밀번호를 입력하면 끝. 더 이상 헤매지 마세요 💋', it: '🔑 NUOVO AGGIORNAMENTO: Accedere ora è più semplice! Sulla pagina principale c\'è un grande pulsante “Accedi come modella” — toccalo, inserisci nome utente e password, e sei dentro. Niente più ricerche 💋', pl: '🔑 NOWA AKTUALIZACJA: Logowanie jest teraz prostsze! Na stronie głównej jest teraz duży przycisk „Zaloguj się jako modelka” — dotknij go, wpisz nazwę użytkownika i hasło, i jesteś w środku. Koniec szukania 💋', nl: '🔑 NIEUWE UPDATE: Inloggen is nu eenvoudiger! Op de voorpagina staat nu een grote knop “Inloggen als model” — tik erop, vul je gebruikersnaam en wachtwoord in, en je bent binnen. Niet meer zoeken 💋', tr: '🔑 YENİ GÜNCELLEME: Giriş yapmak artık daha basit! Ana sayfada artık büyük bir “Model olarak giriş yap” düğmesi var — dokun, kullanıcı adını ve şifreni yaz, içeridesin. Aramak yok 💋' },
@@ -2884,6 +2931,12 @@ const SRV = {
   ann_booking_rate_dm: { en: '📅 NEW: Your 1-on-1 bookings now have their OWN rate! A booked 1-on-1 used to be priced off your per-minute video rate — now there\'s a separate 1-on-1 booking rate in Settings → My Rates. It starts at your current video rate, so nothing changes until you set it yourself. Bookings run long — price them your way 💋', es: '📅 NUEVO: ¡Tus reservas 1 a 1 ahora tienen su PROPIA tarifa! Antes, una reserva 1 a 1 se cobraba según tu tarifa de video por minuto — ahora hay una tarifa de reserva 1 a 1 separada en Ajustes → Mis tarifas. Empieza con tu tarifa de video actual, así que nada cambia hasta que tú la ajustes. Las reservas son largas — ponles tu precio 💋', pt: '📅 NOVO: Suas reservas individuais agora têm sua PRÓPRIA tarifa! Antes, uma reserva individual era cobrada pela sua tarifa de vídeo por minuto — agora há uma tarifa de reserva individual separada em Configurações → Minhas tarifas. Ela começa com sua tarifa de vídeo atual, então nada muda até você mesma ajustar. Reservas são longas — defina seu preço 💋', fr: '📅 NOUVEAU : Vos réservations privées ont maintenant leur PROPRE tarif ! Avant, une réservation privée était facturée selon votre tarif vidéo par minute — il y a maintenant un tarif de réservation privée séparé dans Paramètres → Mes tarifs. Il démarre à votre tarif vidéo actuel, donc rien ne change tant que vous ne le modifiez pas. Les réservations sont longues — fixez votre prix 💋', de: '📅 NEU: Deine 1-zu-1-Buchungen haben jetzt ihren EIGENEN Preis! Bisher wurde eine 1-zu-1-Buchung über deinen Video-Minutenpreis abgerechnet — jetzt gibt es einen separaten 1-zu-1-Buchungspreis unter Einstellungen → Meine Preise. Er startet bei deinem aktuellen Videopreis, es ändert sich also nichts, bis du ihn selbst anpasst. Buchungen dauern lange — setze deinen Preis 💋', ru: '📅 НОВОЕ: У ваших личных бронирований теперь СВОЯ ставка! Раньше личная бронь оплачивалась по вашей поминутной ставке видео — теперь в Настройки → Мои ставки есть отдельная ставка личной брони. Она начинается с вашей текущей ставки видео, так что ничего не изменится, пока вы сами её не настроите. Бронирования долгие — ставьте свою цену 💋', ja: '📅 新機能：1対1予約に専用の料金ができました！これまで1対1予約はビデオの分単価で計算されていましたが、今は「設定 → 料金」に別の1対1予約料金があります。最初は今のビデオ料金と同じなので、自分で変えるまで何も変わりません。予約は長めの時間です — 料金はあなたの自由に 💋', zh: '📅 新功能：你的一对一预约现在有自己的专属价格了！以前一对一预约按你的视频每分钟价格计算 — 现在「设置 → 我的价格」里多了一个单独的一对一预约价格。它以你当前的视频价格为起点，所以在你自己修改之前一切不变。预约时间长 — 价格由你定 💋', ko: '📅 새 기능: 이제 1:1 예약에 전용 요금이 생겼어요! 이전에는 1:1 예약이 영상 분당 요금으로 계산됐지만, 이제 설정 → 내 요금에 별도의 1:1 예약 요금이 있습니다. 현재 영상 요금으로 시작하니 직접 바꾸기 전까지는 아무것도 변하지 않아요. 예약은 긴 시간이에요 — 가격은 당신이 정하세요 💋', it: '📅 NOVITÀ: Le tue prenotazioni 1 a 1 ora hanno la loro tariffa PERSONALE! Prima una prenotazione 1 a 1 era calcolata con la tua tariffa video al minuto — ora c\'è una tariffa prenotazione 1 a 1 separata in Impostazioni → Le mie tariffe. Parte dalla tua attuale tariffa video, quindi non cambia nulla finché non la imposti tu. Le prenotazioni sono lunghe — decidi tu il prezzo 💋', pl: '📅 NOWOŚĆ: Twoje rezerwacje 1 na 1 mają teraz WŁASNĄ stawkę! Wcześniej rezerwacja 1 na 1 była liczona według Twojej stawki wideo za minutę — teraz w Ustawienia → Moje stawki jest osobna stawka rezerwacji 1 na 1. Zaczyna się od Twojej obecnej stawki wideo, więc nic się nie zmieni, dopóki sama jej nie ustawisz. Rezerwacje są długie — cena należy do Ciebie 💋', nl: '📅 NIEUW: Je 1-op-1 boekingen hebben nu hun EIGEN tarief! Eerder werd een 1-op-1 boeking berekend met je videotarief per minuut — nu is er een apart 1-op-1 boekingstarief in Instellingen → Mijn tarieven. Het begint bij je huidige videotarief, dus er verandert niets totdat je het zelf aanpast. Boekingen duren lang — bepaal je eigen prijs 💋', tr: '📅 YENİ: Bire bir rezervasyonlarının artık KENDİ ücreti var! Önceden bire bir rezervasyon, video dakika ücretin üzerinden hesaplanıyordu — şimdi Ayarlar → Ücretlerim bölümünde ayrı bir bire bir rezervasyon ücreti var. Mevcut video ücretinle başlıyor, yani sen değiştirene kadar hiçbir şey değişmiyor. Rezervasyonlar uzun sürer — fiyatı sen belirle 💋' },
   ann_booking_rate_bell_title: { en: '📅 New: separate 1-on-1 booking rate', es: '📅 Nuevo: tarifa separada para reservas 1 a 1', pt: '📅 Novo: tarifa separada para reservas individuais', fr: '📅 Nouveau : tarif séparé pour les réservations privées', de: '📅 Neu: eigener Preis für 1-zu-1-Buchungen', ru: '📅 Новое: отдельная ставка для личных бронирований', ja: '📅 新機能：1対1予約の専用料金', zh: '📅 新功能：一对一预约专属价格', ko: '📅 새 기능: 1:1 예약 전용 요금', it: '📅 Novità: tariffa separata per le prenotazioni 1 a 1', pl: '📅 Nowość: osobna stawka rezerwacji 1 na 1', nl: '📅 Nieuw: apart tarief voor 1-op-1 boekingen', tr: '📅 Yeni: bire bir rezervasyonlar için ayrı ücret' },
   ann_booking_rate_bell_body: { en: 'Your booked 1-on-1s now price off their own rate in Settings — it defaults to your video rate until you change it 💋', es: 'Tus reservas 1 a 1 ahora se cobran con su propia tarifa en Ajustes — usa tu tarifa de video hasta que la cambies 💋', pt: 'Suas reservas individuais agora usam a própria tarifa em Configurações — o padrão é sua tarifa de vídeo até você mudar 💋', fr: 'Vos réservations privées utilisent désormais leur propre tarif dans Paramètres — votre tarif vidéo par défaut jusqu\'à ce que vous le changiez 💋', de: 'Deine 1-zu-1-Buchungen laufen jetzt über ihren eigenen Preis in den Einstellungen — Standard ist dein Videopreis, bis du ihn änderst 💋', ru: 'Ваши личные бронирования теперь оплачиваются по собственной ставке в Настройках — по умолчанию это ваша ставка видео, пока вы её не измените 💋', ja: '1対1予約は設定の専用料金で計算されるようになりました — 変更するまではビデオ料金がデフォルトです 💋', zh: '你的一对一预约现在按设置中的专属价格计费 — 在你更改之前，默认使用你的视频价格 💋', ko: '이제 1:1 예약은 설정의 전용 요금으로 계산돼요 — 바꾸기 전까지 기본값은 영상 요금입니다 💋', it: 'Le tue prenotazioni 1 a 1 ora usano la loro tariffa in Impostazioni — predefinita la tua tariffa video finché non la cambi 💋', pl: 'Twoje rezerwacje 1 na 1 są teraz liczone według własnej stawki w Ustawieniach — domyślnie Twoja stawka wideo, dopóki jej nie zmienisz 💋', nl: 'Je 1-op-1 boekingen gebruiken nu hun eigen tarief in Instellingen — standaard je videotarief totdat je het wijzigt 💋', tr: 'Bire bir rezervasyonların artık Ayarlar\'daki kendi ücretiyle hesaplanıyor — sen değiştirene kadar varsayılan video ücretin 💋' },
+  ann_agreement_15_dm: { en: '📄 Our Model Agreement is now v1.5 — please open the app, read the new version and tap to sign — it takes 20 seconds. Until you sign, going live and earning stay paused. What\'s new: SlutCamp now has Female, Male and Couple sections — your account is in the Female section — and only you and your ID-verified co-performers may appear on camera with you. 💋', es: '📄 Nuestro Acuerdo de Modelo ahora es la v1.5 — abre la app, lee la nueva versión y toca para firmar — toma 20 segundos. Hasta que firmes, salir en vivo y ganar quedan en pausa. Novedad: SlutCamp ahora tiene secciones Femenina, Masculina y de Parejas — tu cuenta está en la sección Femenina — y solo tú y tus co-intérpretes verificados con ID pueden aparecer en cámara contigo. 💋', pt: '📄 Nosso Acordo de Modelo agora é a v1.5 — abra o app, leia a nova versão e toque para assinar — leva 20 segundos. Até você assinar, entrar ao vivo e ganhar ficam pausados. Novidade: a SlutCamp agora tem seções Feminina, Masculina e de Casais — sua conta está na seção Feminina — e só você e seus co-intérpretes verificados com documento podem aparecer na câmera com você. 💋', fr: '📄 Notre Accord de Modèle passe en v1.5 — ouvrez l\'app, lisez la nouvelle version et touchez pour signer — cela prend 20 secondes. Tant que vous n\'avez pas signé, passer en direct et gagner restent en pause. Nouveauté : SlutCamp a maintenant des sections Femmes, Hommes et Couples — votre compte est dans la section Femmes — et seuls vous et vos partenaires vérifiés par pièce d\'identité pouvez apparaître à la caméra avec vous. 💋', de: '📄 Unsere Modellvereinbarung ist jetzt v1.5 — öffne die App, lies die neue Version und tippe zum Unterschreiben — es dauert 20 Sekunden. Bis du unterschreibst, bleiben Livegehen und Verdienen pausiert. Neu: SlutCamp hat jetzt die Sektionen Frauen, Männer und Paare — dein Konto ist in der Sektion Frauen — und nur du und deine per Ausweis verifizierten Co-Performer dürfen mit dir vor der Kamera erscheinen. 💋', ru: '📄 Наше Модельное соглашение обновлено до версии 1.5 — откройте приложение, прочитайте новую версию и нажмите, чтобы подписать — это займёт 20 секунд. Пока вы не подпишете, эфиры и заработок остаются на паузе. Что нового: на SlutCamp теперь есть разделы «Женщины», «Мужчины» и «Пары» — ваш аккаунт находится в разделе «Женщины» — и перед камерой с вами могут появляться только вы и ваши партнёры, подтвердившие личность документом. 💋', ja: '📄 モデル契約がv1.5になりました — アプリを開いて新しい版を読み、タップして署名してください — 20秒で終わります。署名するまで、ライブ配信と収益は一時停止のままです。新機能：SlutCampに女性・男性・カップルのセクションができました — あなたのアカウントは女性セクションです — カメラに映れるのはあなたと身分証で確認済みの共演者だけです。💋', zh: '📄 我们的模特协议已更新到 v1.5 — 请打开应用，阅读新版本并点击签署 — 只需 20 秒。在您签署之前，直播和赚钱功能将保持暂停。新变化：SlutCamp 现在有女性、男性和情侣板块 — 您的账户在女性板块 — 只有您和经过身份证验证的合作表演者可以和您一起出镜。💋', ko: '📄 모델 계약이 v1.5로 업데이트되었습니다 — 앱을 열고 새 버전을 읽은 뒤 탭해서 서명해 주세요 — 20초면 됩니다. 서명하기 전까지는 라이브와 수익이 일시 중지 상태로 유지됩니다. 새로운 점: 이제 SlutCamp에는 여성, 남성, 커플 섹션이 있습니다 — 당신의 계정은 여성 섹션에 있습니다 — 카메라에 함께 나올 수 있는 사람은 당신과 신분증 인증을 마친 공동 출연자뿐입니다. 💋', it: '📄 Il nostro Accordo per Modelli è ora alla v1.5 — apri l\'app, leggi la nuova versione e tocca per firmare — ci vogliono 20 secondi. Finché non firmi, andare in diretta e guadagnare restano in pausa. Novità: SlutCamp ora ha le sezioni Donne, Uomini e Coppie — il tuo account è nella sezione Donne — e solo tu e i tuoi co-protagonisti verificati con documento possono apparire in camera con te. 💋', pl: '📄 Nasza Umowa Modelki ma teraz wersję 1.5 — otwórz aplikację, przeczytaj nową wersję i dotknij, aby podpisać — zajmie to 20 sekund. Dopóki nie podpiszesz, transmisje na żywo i zarobki pozostają wstrzymane. Nowość: SlutCamp ma teraz sekcje Kobiety, Mężczyźni i Pary — Twoje konto jest w sekcji Kobiety — a przed kamerą mogą pojawiać się z Tobą tylko Ty i Twoi zweryfikowani dokumentem współwykonawcy. 💋', nl: '📄 Onze Modelovereenkomst is nu v1.5 — open de app, lees de nieuwe versie en tik om te ondertekenen — het duurt 20 seconden. Tot je ondertekent, blijven live gaan en verdienen gepauzeerd. Nieuw: SlutCamp heeft nu de secties Vrouwen, Mannen en Stellen — jouw account staat in de sectie Vrouwen — en alleen jij en je met ID geverifieerde mede-performers mogen met je voor de camera verschijnen. 💋', tr: '📄 Model Sözleşmemiz artık v1.5 — lütfen uygulamayı açın, yeni sürümü okuyun ve imzalamak için dokunun — 20 saniye sürer. Siz imzalayana kadar canlı yayın ve kazanç duraklatılmış olarak kalır. Yenilik: SlutCamp\'ta artık Kadın, Erkek ve Çift bölümleri var — hesabınız Kadın bölümünde — ve kamerada sizinle yalnızca siz ve kimliği doğrulanmış ortak performansçılarınız görünebilir. 💋' },
+  ann_agreement_15_bell_title: { en: '📄 Model Agreement v1.5 — please read & sign', es: '📄 Acuerdo de Modelo v1.5 — léelo y fírmalo', pt: '📄 Acordo de Modelo v1.5 — leia e assine', fr: '📄 Accord de Modèle v1.5 — à lire et signer', de: '📄 Modellvereinbarung v1.5 — bitte lesen & unterschreiben', ru: '📄 Модельное соглашение v1.5 — прочитайте и подпишите', ja: '📄 モデル契約 v1.5 — 読んで署名してください', zh: '📄 模特协议 v1.5 — 请阅读并签署', ko: '📄 모델 계약 v1.5 — 읽고 서명해 주세요', it: '📄 Accordo per Modelli v1.5 — leggi e firma', pl: '📄 Umowa Modelki v1.5 — przeczytaj i podpisz', nl: '📄 Modelovereenkomst v1.5 — lees & onderteken', tr: '📄 Model Sözleşmesi v1.5 — lütfen okuyup imzalayın' },
+  ann_agreement_15_bell_body: { en: 'Agreement v1.5 is ready — open the app to read and sign 💋', es: 'El Acuerdo v1.5 está listo — abre la app para leerlo y firmarlo 💋', pt: 'O Acordo v1.5 está pronto — abra o app para ler e assinar 💋', fr: 'L\'accord v1.5 est prêt — ouvrez l\'app pour le lire et le signer 💋', de: 'Vereinbarung v1.5 ist bereit — öffne die App zum Lesen und Unterschreiben 💋', ru: 'Соглашение v1.5 готово — откройте приложение, чтобы прочитать и подписать 💋', ja: '契約v1.5の準備ができました — アプリを開いて読んで署名してね 💋', zh: '协议 v1.5 已准备好 — 打开应用阅读并签署 💋', ko: '계약 v1.5가 준비됐어요 — 앱을 열어 읽고 서명하세요 💋', it: 'L\'accordo v1.5 è pronto — apri l\'app per leggerlo e firmarlo 💋', pl: 'Umowa v1.5 jest gotowa — otwórz aplikację, aby przeczytać i podpisać 💋', nl: 'Overeenkomst v1.5 staat klaar — open de app om te lezen en te ondertekenen 💋', tr: 'Sözleşme v1.5 hazır — okuyup imzalamak için uygulamayı açın 💋' },
+  ann_storefront_dm: { en: '🆕 NEW: SlutCamp now has sections! Look at the tabs at the top of your home — Female, Male, Couples and All. The store always opens on Female; tap a tab anytime to see more. 💋', es: '🆕 NUEVO: ¡SlutCamp ahora tiene secciones! Mira las pestañas en la parte superior de tu inicio — Femenina, Masculina, Parejas y Todo. La tienda siempre abre en Femenina; toca una pestaña cuando quieras para ver más. 💋', pt: '🆕 NOVO: A SlutCamp agora tem seções! Veja as abas no topo da sua página inicial — Feminina, Masculina, Casais e Tudo. A loja sempre abre na Feminina; toque em uma aba quando quiser para ver mais. 💋', fr: '🆕 NOUVEAU : SlutCamp a maintenant des sections ! Regardez les onglets en haut de votre accueil — Femmes, Hommes, Couples et Tout. La boutique s\'ouvre toujours sur Femmes ; touchez un onglet à tout moment pour en voir plus. 💋', de: '🆕 NEU: SlutCamp hat jetzt Sektionen! Sieh dir die Tabs oben auf deiner Startseite an — Frauen, Männer, Paare und Alle. Der Shop öffnet immer bei Frauen; tippe jederzeit auf einen Tab, um mehr zu sehen. 💋', ru: '🆕 НОВОЕ: На SlutCamp теперь есть разделы! Посмотрите на вкладки вверху вашей главной страницы — Женщины, Мужчины, Пары и Все. Магазин всегда открывается на разделе «Женщины»; коснитесь вкладки в любое время, чтобы увидеть больше. 💋', ja: '🆕 新機能：SlutCampにセクションができました！ホーム上部のタブを見てね — 女性・男性・カップル・すべて。ストアはいつも女性から開きます；もっと見たいときはいつでもタブをタップしてね。💋', zh: '🆕 新功能：SlutCamp 现在有板块了！看看你主页顶部的标签 — 女性、男性、情侣和全部。商店始终从女性板块打开；随时点击标签查看更多。💋', ko: '🆕 새 소식: 이제 SlutCamp에 섹션이 생겼어요! 홈 상단의 탭을 보세요 — 여성, 남성, 커플, 전체. 스토어는 항상 여성에서 열립니다; 더 보고 싶을 땐 언제든 탭을 눌러 보세요. 💋', it: '🆕 NOVITÀ: SlutCamp ora ha le sezioni! Guarda le schede in alto nella tua home — Donne, Uomini, Coppie e Tutto. Il negozio si apre sempre su Donne; tocca una scheda quando vuoi per vedere di più. 💋', pl: '🆕 NOWOŚĆ: SlutCamp ma teraz sekcje! Spójrz na karty u góry strony głównej — Kobiety, Mężczyźni, Pary i Wszystko. Sklep zawsze otwiera się na Kobietach; dotknij karty w każdej chwili, aby zobaczyć więcej. 💋', nl: '🆕 NIEUW: SlutCamp heeft nu secties! Kijk naar de tabs bovenaan je home — Vrouwen, Mannen, Stellen en Alles. De winkel opent altijd op Vrouwen; tik op elk moment op een tab om meer te zien. 💋', tr: '🆕 YENİ: SlutCamp\'ta artık bölümler var! Ana sayfanın üstündeki sekmelere bak — Kadın, Erkek, Çift ve Tümü. Mağaza her zaman Kadın bölümünde açılır; daha fazlasını görmek için istediğin zaman bir sekmeye dokun. 💋' },
+  ann_storefront_bell_title: { en: '🆕 New: storefront tabs', es: '🆕 Nuevo: pestañas de secciones', pt: '🆕 Novo: abas de seções', fr: '🆕 Nouveau : onglets de sections', de: '🆕 Neu: Sektion-Tabs', ru: '🆕 Новое: вкладки разделов', ja: '🆕 新機能：セクションタブ', zh: '🆕 新功能：板块标签', ko: '🆕 새 소식: 섹션 탭', it: '🆕 Novità: schede delle sezioni', pl: '🆕 Nowość: karty sekcji', nl: '🆕 Nieuw: sectietabs', tr: '🆕 Yeni: bölüm sekmeleri' },
+  ann_storefront_bell_body: { en: 'Female, Male, Couples or All — the tabs at the top of your home 💋', es: 'Femenina, Masculina, Parejas o Todo — las pestañas en la parte superior de tu inicio 💋', pt: 'Feminina, Masculina, Casais ou Tudo — as abas no topo da sua página inicial 💋', fr: 'Femmes, Hommes, Couples ou Tout — les onglets en haut de votre accueil 💋', de: 'Frauen, Männer, Paare oder Alle — die Tabs oben auf deiner Startseite 💋', ru: 'Женщины, Мужчины, Пары или Все — вкладки вверху вашей главной страницы 💋', ja: '女性・男性・カップル・すべて — ホーム上部のタブだよ 💋', zh: '女性、男性、情侣或全部 — 就在你主页顶部的标签 💋', ko: '여성, 남성, 커플 또는 전체 — 홈 상단의 탭이에요 💋', it: 'Donne, Uomini, Coppie o Tutto — le schede in alto nella tua home 💋', pl: 'Kobiety, Mężczyźni, Pary lub Wszystko — karty u góry strony głównej 💋', nl: 'Vrouwen, Mannen, Stellen of Alles — de tabs bovenaan je home 💋', tr: 'Kadın, Erkek, Çift veya Tümü — ana sayfanın üstündeki sekmeler 💋' },
 };
 
 function srv(key, lang, vars) {
@@ -4087,6 +4140,89 @@ function announceBookingRate() {
   return sent;
 }
 
+/* ------------------------------------------------------------------ */
+/* Model Agreement v1.5 — ONE-TIME announcement (stamp                */
+/* agreement_15_announced_at on platform_stats). v1.5 carries the     */
+/* sections clause (§15: she performs in the section she declared at  */
+/* signup, and only she and her ID-verified co-performers may appear  */
+/* on camera; breaching it is grounds for termination). Every model   */
+/* hears it once — DM + bell in her                               */
+/* official SlutCamp thread, copy in her stored language via the SRV  */
+/* table — and the version-aware contract status pauses her earning  */
+/* until she re-signs. Models only: fans and affiliates hold no model  */
+/* agreement and get nothing. Same house-account discipline as        */
+/* announceChatRetention: no house account → no official thread →     */
+/* the stamp stays unset and a later boot retries.                    */
+/* ------------------------------------------------------------------ */
+function announceAgreement15ToModels() {
+  const st = db.prepare('SELECT agreement_15_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.agreement_15_announced_at) return 0;
+  const hid = houseAccountId();
+  if (!hid) return 0;
+  const people = db.prepare(
+    "SELECT id, language FROM users WHERE banned = 0 AND role = 'model' AND id != ?")
+    .all(hid);
+  let sent = 0;
+  for (const p of people) {
+    try {
+      const conv = officialThreadFor(p.id);
+      if (!conv) continue;
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, hid, srv('ann_agreement_15_dm', p.language));
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(p.id, 'agreement_15', srv('ann_agreement_15_bell_title', p.language),
+          srv('ann_agreement_15_bell_body', p.language), `/#chat/${conv.id}`);
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest */ }
+  }
+  if (sent > 0 || people.length === 0) {
+    db.prepare("UPDATE platform_stats SET agreement_15_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
+/* ------------------------------------------------------------------ */
+/* Storefront sections — ONE-TIME announcement to FANS (stamp         */
+/* storefront_announced_at on platform_stats). The home directory     */
+/* gained section tabs (Female / Male / Couples / All) and the store  */
+/* always opens on Female — fans hear it once: DM + bell in his       */
+/* official SlutCamp thread, copy in his stored language via the SRV  */
+/* table. Fans only: models live in the sections, they don't browse   */
+/* them. Same house-account discipline as announceAgreement15ToModels */
+/* — no house account → the stamp stays unset and a later boot        */
+/* retries.                                                           */
+/* ------------------------------------------------------------------ */
+function announceStorefrontToFans() {
+  const st = db.prepare('SELECT storefront_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.storefront_announced_at) return 0;
+  const hid = houseAccountId();
+  if (!hid) return 0;
+  const people = db.prepare(
+    "SELECT id, language FROM users WHERE banned = 0 AND role = 'fan' AND id != ?")
+    .all(hid);
+  let sent = 0;
+  for (const p of people) {
+    try {
+      const conv = officialThreadFor(p.id);
+      if (!conv) continue;
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, hid, srv('ann_storefront_dm', p.language));
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(p.id, 'storefront', srv('ann_storefront_bell_title', p.language),
+          srv('ann_storefront_bell_body', p.language), `/#chat/${conv.id}`);
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest */ }
+  }
+  if (sent > 0 || people.length === 0) {
+    db.prepare("UPDATE platform_stats SET storefront_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
 /* Fan blast — ONE-TIME bell + Web Push to every fan (stamp           */
 /* fan_preview_announced_at on platform_stats). Fans have no email or */
 /* text channel today (no provider; users held no contact info until  */
@@ -4265,6 +4401,8 @@ try { const n = announceSuggestionBoxToFans(); if (n) console.log(`[suggest] Sug
 try { const n = announceOfficialInbox(); if (n) console.log(`[inbox] SlutCamp notices thread announced to ${n} users.`); } catch (e) { /* retry next boot */ }
 try { const n = announceChatRetention(); if (n) console.log(`[retention] Chat auto-clean announced to ${n} users.`); } catch (e) { /* retry next boot */ }
 try { const n = announceBookingRate(); if (n) console.log(`[booking-rate] Dedicated 1-on-1 booking rate announced to ${n} models.`); } catch (e) { /* retry next boot */ }
+try { const n = announceAgreement15ToModels(); if (n) console.log(`[contract] Agreement v1.5 announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
+try { const n = announceStorefrontToFans(); if (n) console.log(`[storefront] Storefront tabs announced to ${n} fans.`); } catch (e) { /* retry next boot */ }
 
 // One-time grandfathering for payout protection (Oct 16, 2026): every
 // earning recorded BEFORE this feature existed counts as fully matured —
@@ -4816,7 +4954,7 @@ app.get('/api/models', (req, res) => {
   const houseId = houseAccountId();
   const rows = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.presence_override, u.created_at, m.bio, m.per_message_cents,
-           m.per_minute_cents, m.per_voice_cents, m.booking_rate_cents, m.is_online, m.photo_url, m.public_photo_url, m.tags,
+           m.per_minute_cents, m.per_voice_cents, m.booking_rate_cents, m.section, m.is_online, m.photo_url, m.public_photo_url, m.tags,
            m.preview_video_url, m.preview_video_url_2, m.gallery_photos, m.is_featured, m.rank_score,
            ls.id AS live_session_id, ls.explicit_rate_cents AS live_explicit_rate_cents,
            (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS live_viewers,
@@ -4876,6 +5014,14 @@ app.get('/api/models', (req, res) => {
   // own home screen.
   const houseRow = houseId ? (rows.find((r) => r.id === houseId) || null) : null;
   if (houseId) visible = visible.filter((r) => r.id !== houseId);
+  // Storefront sections: a fan/guest only ever browses the sections
+  // his active tab opens onto (?tab=, default the Female tab — entry
+  // always lands on Female). Rank positions above were computed over
+  // the FULL roster on purpose: a model's rank is her standing on the
+  // whole platform, not inside one tab. Models/admins are unfiltered
+  // (effectiveBrowseSet returns null for them).
+  const bset = effectiveBrowseSet(req);
+  if (bset) visible = visible.filter((r) => bset.includes(r.section || 'female'));
   // Pre-purchase shield: a model's looping preview video is explicit-
   // capable storefront media with no lock of its own, so for a shielded
   // viewer (unverified fan or guest in a regulated/unknown location,
@@ -4964,6 +5110,21 @@ function recordAgeAttestation(userId, req) {
     .run(String(clientIp(req) || '').slice(0, 60), userId);
 }
 
+/* Section attestation record (owner pivot, Oct 18 2026): a model
+ * signup declares her storefront SECTION — 'female' | 'male' |
+ * 'couple' — at the door (enforced in POST /api/auth/signup); like
+ * the 18+ attestation, what is stored is what actually happened —
+ * she declared it, when, and from what IP. The declared value itself
+ * lands on models.section. Fans and affiliates never declare a
+ * section and their rows stay NULL. */
+const MODEL_SECTIONS = ['female', 'male', 'couple'];
+addColumnIfMissing('users', 'section_attested_at', 'TEXT');
+addColumnIfMissing('users', 'section_attested_ip', 'TEXT');
+function recordSectionAttestation(userId, req) {
+  db.prepare('UPDATE users SET section_attested_at = datetime(\'now\'), section_attested_ip = ? WHERE id = ?')
+    .run(String(clientIp(req) || '').slice(0, 60), userId);
+}
+
 /* Age verification (lib/av.js) — PROOF-ONLY columns. fan_state is the
  * fan's US state (2-letter code) resolved from IP at signup and
  * refreshed at purchase time; av_verified_at / av_method /
@@ -4983,10 +5144,53 @@ function recordFanState(userId, req) {
   }
 }
 
+/* New-model bell for the admins (owner, Oct 18 2026): the moment a
+ * MODEL account is created, every admin gets ONE bell naming her,
+ * WHICH SECTION she joined, and HOW she arrived — the owner is the
+ * whole moderation team, and a model signup he doesn't see is a door
+ * left unwatched. The section and the route are read back from what
+ * the signup itself recorded — her models.section and her
+ * models.recruiter_id when an affiliate's link brought her (so the
+ * bell can never disagree with the recorded books), the invite flag
+ * for Manager invite links, direct otherwise. Mirrors the Suggestion
+ * Box admin bell: every role='admin' user, each in his own stored
+ * language, linked at her in-app profile (/#m/<username>), wrapped
+ * so a bell failure can never fail a signup. When there is no admin
+ * account the loop is empty — a safe no-op (seed/test boots). */
+function bellAdminsNewModel(modelUserId, username, displayName, viaInvite) {
+  try {
+    let bodyKey = 'bell_new_model_body_direct';
+    const vars = { username, name: displayName };
+    const mrow = db.prepare('SELECT recruiter_id, section FROM models WHERE user_id = ?').get(modelUserId);
+    const section = (mrow && MODEL_SECTIONS.includes(mrow.section)) ? mrow.section : 'female';
+    if (mrow && mrow.recruiter_id) {
+      const rec = db.prepare(
+        `SELECT u.display_name AS dn, u.username AS un FROM recruiters r
+         JOIN users u ON u.id = r.user_id WHERE r.id = ?`).get(mrow.recruiter_id);
+      if (rec) {
+        bodyKey = 'bell_new_model_body_referral';
+        vars.recruiter_name = rec.dn;
+        vars.recruiter_username = rec.un;
+      }
+    } else if (viaInvite) {
+      bodyKey = 'bell_new_model_body_invite';
+    }
+    const admins = db.prepare("SELECT id, language FROM users WHERE role = 'admin'").all();
+    for (const a of admins) {
+      try {
+        notifyUser(a.id, 'new_model',
+          srv('bell_new_model_title', a.language),
+          srv(bodyKey, a.language, { ...vars, section: srv('bell_section_' + section, a.language) }),
+          `/#m/${username}`);
+      } catch (e) { /* one admin's bell must not block the others */ }
+    }
+  } catch (e) { /* bells are a bonus; the signup is the deliverable */ }
+}
+
 // POST /api/auth/signup — optional guest_token migrates guest chats/trials
 // Optional invite_code: model invite link — forces role='model', tags the invite as used.
 app.post('/api/auth/signup', (req, res) => {
-  const { username, password, role, display_name, dob, agree18, guest_token, invite_code } = req.body || {};
+  const { username, password, role, display_name, dob, agree18, section, guest_token, invite_code } = req.body || {};
   if (!username || !password || !display_name || !dob)
     return res.status(400).json({ error: 'missing_fields' });
   if (String(password).length < 6) return res.status(400).json({ error: 'password_too_short' });
@@ -5013,6 +5217,13 @@ app.post('/api/auth/signup', (req, res) => {
   }
   if (!['fan', 'model'].includes(finalRole)) return res.status(400).json({ error: 'bad_role' });
   if (!agree18 || !isAdult(dob)) return res.status(400).json({ error: 'must_be_18' });
+  // Storefront sections (owner pivot, Oct 18 2026): a MODEL account —
+  // whether she picked the role herself or an invite/referral link
+  // forced it — must declare its SECTION ('female' | 'male' |
+  // 'couple') at the door, refused exactly like the 18+ attestation
+  // above. Fans never declare one.
+  if (finalRole === 'model' && !MODEL_SECTIONS.includes(section))
+    return res.status(400).json({ error: 'must_declare_section' });
   if (db.prepare('SELECT id FROM users WHERE username = ?').get(username.trim()))
     return res.status(409).json({ error: 'username_taken' });
 
@@ -5025,6 +5236,12 @@ app.post('/api/auth/signup', (req, res) => {
   const id = createUser(username.trim(), password, finalRole, display_name.trim().slice(0, 40), dob, signupLanguage(req));
   if (contact.email) db.prepare('UPDATE users SET email = ? WHERE id = ?').run(contact.email, id);
   recordAgeAttestation(id, req);
+  if (finalRole === 'model') {
+    recordSectionAttestation(id, req);
+    // Her declared section lands on her model row (createUser leaves
+    // the 'female' default; the declaration is the source of truth).
+    db.prepare('UPDATE models SET section = ? WHERE user_id = ?').run(section, id);
+  }
   if (finalRole === 'fan') recordFanState(id, req);
 
   // Mark the invite as used by this model
@@ -5036,6 +5253,14 @@ app.post('/api/auth/signup', (req, res) => {
   // Attribute the model to her recruiter (null = Corry's own)
   if (recruiterId && finalRole === 'model') {
     db.prepare('UPDATE models SET recruiter_id = ? WHERE user_id = ?').run(recruiterId, id);
+  }
+
+  // Bell the admins: a new model just walked in — exactly one bell
+  // per created model account, fired only after her attribution is
+  // recorded so the bell's route line matches the books. Fan and
+  // affiliate signups never reach this line.
+  if (finalRole === 'model') {
+    bellAdminsNewModel(id, username.trim(), display_name.trim().slice(0, 40), !!invite);
   }
 
   // Migrate guest history → new account (chats, free-trial counts, strikes)
@@ -6944,10 +7169,10 @@ function logPurchaseAttempt(userId, pkg, amountCents, cardFingerprint, ip, statu
 }
 
 // Model independent-contractor agreement (served to models for signing)
-const CONTRACT_VERSION = '1.4';
+const CONTRACT_VERSION = '1.5';
 const MODEL_CONTRACT = {
   version: CONTRACT_VERSION,
-  updated: 'October 16, 2026',
+  updated: 'October 18, 2026',
   sections: [
     {
       title: '1. Parties',
@@ -7006,7 +7231,11 @@ const MODEL_CONTRACT = {
       body: 'This Agreement is governed by the laws of the State of Texas, without regard to its conflict-of-laws rules. Any dispute arising out of or relating to this Agreement must be brought in the state or federal courts located in Texas, and you and the Company consent to the personal jurisdiction and venue of those courts. Nothing in this section waives or limits any right your home state gives you that cannot legally be waived.',
     },
     {
-      title: '15. Plain-Language Disclaimer',
+      title: '15. Your Section & Who May Appear',
+      body: 'You perform in the section you declared when you created your account (Female, Male, or Couple). Only you — the account holder — and your ID-verified co-performers may appear on camera in your content, chats, calls, and live streams. Performing in a different section than the one you declared, or appearing on camera with anyone who is not your ID-verified co-performer, breaches this Agreement, and the Company may terminate your account immediately.',
+    },
+    {
+      title: '16. Plain-Language Disclaimer',
       body: 'This is a plain-language summary written for clarity — it is NOT legal advice, and it has not been reviewed by an attorney. The Company strongly recommends you have your own attorney review this Agreement before signing. If any part of this Agreement is found unenforceable, the rest still applies.',
     },
   ],
@@ -7131,7 +7360,11 @@ const MODEL_CONTRACT_I18N = {
     "body": "Este Acuerdo se rige por las leyes del Estado de Texas, sin tener en cuenta sus normas sobre conflicto de leyes. Cualquier disputa que surja de este Acuerdo o se relacione con él debe presentarse ante los tribunales estatales o federales ubicados en Texas, y tú y la Compañía aceptan la jurisdicción personal y la competencia de esos tribunales. Nada en esta sección renuncia ni limita ningún derecho que tu estado de residencia te otorgue y que legalmente no pueda renunciarse."
    },
    {
-    "title": "15. Aviso sobre lenguaje sencillo",
+    "title": "15. Tu sección y quién puede aparecer",
+    "body": "Actúas en la sección que declaraste cuando creaste tu cuenta (Femenina, Masculina o Parejas). Solo tú — la titular de la cuenta — y tus co-intérpretes verificados con ID pueden aparecer en cámara en tu contenido, chats, llamadas y transmisiones en vivo. Actuar en una sección distinta de la que declaraste, o aparecer en cámara con alguien que no sea tu co-intérprete verificado con ID, incumple este Acuerdo, y la Compañía puede cancelar tu cuenta de inmediato."
+   },
+   {
+    "title": "16. Aviso sobre lenguaje sencillo",
     "body": "Este es un resumen en lenguaje sencillo redactado para mayor claridad — NO es asesoramiento legal y no ha sido revisado por un abogado. La Compañía te recomienda encarecidamente que tu propio abogado revise este Acuerdo antes de firmarlo. Si alguna parte de este Acuerdo se considera inaplicable, el resto seguirá vigente."
    }
   ]
@@ -7196,7 +7429,11 @@ const MODEL_CONTRACT_I18N = {
     "body": "Este Contrato é regido pelas leis do Estado do Texas, independentemente de suas regras de conflito de leis. Qualquer disputa decorrente deste Contrato ou a ele relacionada deve ser levada aos tribunais estaduais ou federais localizados no Texas, e você e a Empresa consentem com a jurisdição pessoal e o foro desses tribunais. Nada nesta seção renuncia ou limita qualquer direito que seu estado de origem lhe conceda e que não possa ser legalmente renunciado."
    },
    {
-    "title": "15. Aviso de Linguagem Simples",
+    "title": "15. Sua seção e quem pode aparecer",
+    "body": "Você atua na seção que declarou quando criou sua conta (Feminina, Masculina ou Casais). Somente você — a titular da conta — e seus co-intérpretes verificados com documento podem aparecer na câmera no seu conteúdo, chats, chamadas e transmissões ao vivo. Atuar em uma seção diferente da que você declarou, ou aparecer na câmera com alguém que não seja seu co-intérprete verificado com documento, viola este Acordo, e a Empresa poderá encerrar sua conta imediatamente."
+   },
+   {
+    "title": "16. Aviso de Linguagem Simples",
     "body": "Este é um resumo em linguagem simples, redigido para maior clareza — ele NÃO é aconselhamento jurídico e não foi revisado por um advogado. A Empresa recomenda enfaticamente que você peça ao seu próprio advogado para revisar este Contrato antes de assinar. Se qualquer parte deste Contrato for considerada inexequível, o restante continua válido."
    }
   ]
@@ -7261,7 +7498,11 @@ const MODEL_CONTRACT_I18N = {
     "body": "Le présent Contrat est régi par les lois de l'État du Texas, sans égard à ses règles de conflit de lois. Tout litige découlant du présent Contrat ou s'y rapportant doit être porté devant les tribunaux d'État ou fédéraux situés au Texas, et vous et la Société consentez à la compétence personnelle et à la juridiction de ces tribunaux. Rien dans cette section ne renonce ni ne limite un droit que votre État d'origine vous accorde et qui ne peut légalement faire l'objet d'une renonciation."
    },
    {
-    "title": "15. Avertissement en langage clair",
+    "title": "15. Votre section et qui peut apparaître",
+    "body": "Vous performez dans la section que vous avez déclarée lors de la création de votre compte (Femmes, Hommes ou Couples). Seuls vous — la titulaire du compte — et vos partenaires vérifiés par pièce d\'identité peuvent apparaître à la caméra dans vos contenus, chats, appels et diffusions en direct. Performer dans une section différente de celle déclarée, ou apparaître à la caméra avec une personne qui n\'est pas votre partenaire vérifié par pièce d\'identité, constitue une violation de cet Accord, et la Société peut résilier votre compte immédiatement."
+   },
+   {
+    "title": "16. Avertissement en langage clair",
     "body": "Ceci est un résumé en langage clair rédigé pour plus de clarté — ce n'est PAS un avis juridique, et il n'a pas été examiné par un avocat. La Société vous recommande vivement de faire examiner le présent Contrat par votre propre avocat avant de signer. Si une partie du présent Contrat est jugée inapplicable, le reste continue de s'appliquer."
    }
   ]
@@ -7326,7 +7567,11 @@ const MODEL_CONTRACT_I18N = {
     "body": "Diese Vereinbarung unterliegt den Gesetzen des Bundesstaates Texas, ohne Rücksicht auf seine Kollisionsnormen. Jeder Streit, der aus dieser Vereinbarung entsteht oder damit zusammenhängt, muss vor den staatlichen oder bundesstaatlichen Gerichten in Texas gebracht werden, und Sie und das Unternehmen stimmen der persönlichen Gerichtsbarkeit und dem Gerichtsstand dieser Gerichte zu. Nichts in diesem Abschnitt verzichtet auf oder beschränkt ein Recht, das Ihnen Ihr Heimatstaat gibt und das gesetzlich nicht verzichtet werden kann."
    },
    {
-    "title": "15. Haftungsausschluss in einfacher Sprache",
+    "title": "15. Deine Sektion & wer auftreten darf",
+    "body": "Du trittst in der Sektion auf, die du bei der Erstellung deines Kontos angegeben hast (Frauen, Männer oder Paare). Nur du — die Kontoinhaberin — und deine per Ausweis verifizierten Co-Performer dürfen in deinen Inhalten, Chats, Anrufen und Livestreams vor der Kamera erscheinen. In einer anderen Sektion als der angegebenen aufzutreten oder mit jemandem vor der Kamera zu erscheinen, der nicht dein per Ausweis verifizierter Co-Performer ist, verstößt gegen diese Vereinbarung, und das Unternehmen kann dein Konto sofort kündigen."
+   },
+   {
+    "title": "16. Haftungsausschluss in einfacher Sprache",
     "body": "Dies ist eine Zusammenfassung in einfacher Sprache, die der Klarheit dient — sie ist KEINE Rechtsberatung und wurde nicht von einem Anwalt überprüft. Das Unternehmen empfiehlt Ihnen dringend, diese Vereinbarung vor der Unterzeichnung von Ihrem eigenen Anwalt überprüfen zu lassen. Wenn ein Teil dieser Vereinbarung für nicht durchsetzbar befunden wird, gilt der Rest weiterhin."
    }
   ]
@@ -7391,7 +7636,11 @@ const MODEL_CONTRACT_I18N = {
     "body": "Настоящее Соглашение регулируется законами штата Техас, без учёта его коллизионных норм. Любой спор, возникающий из настоящего Соглашения или связанный с ним, должен подаваться в суды штата или федеральные суды, расположенные в Техасе, и вы и Компания соглашаетесь с персональной юрисдикцией и местом рассмотрения этих судов. Ничто в этом разделе не отменяет и не ограничивает какое-либо право, предоставляемое вам вашим родным штатом, которое не может быть юридически отменено."
    },
    {
-    "title": "15. Отказ от ответственности, изложенный простым языком",
+    "title": "15. Ваш раздел и кто может появляться",
+    "body": "Вы выступаете в том разделе, который указали при создании аккаунта («Женщины», «Мужчины» или «Пары»). Перед камерой в вашем контенте, чатах, звонках и прямых эфирах могут появляться только вы — владелец аккаунта — и ваши партнёры, подтвердившие личность документом. Выступление в разделе, отличном от указанного, или появление перед камерой с кем-либо, кто не является вашим партнёром, подтвердившим личность документом, нарушает это Соглашение, и Компания может немедленно прекратить действие вашего аккаунта."
+   },
+   {
+    "title": "16. Отказ от ответственности, изложенный простым языком",
     "body": "Это краткое изложение простым языком, написанное для ясности — это НЕ юридическая консультация, и оно не было проверено адвокатом. Компания настоятельно рекомендует вам попросить вашего собственного адвоката проверить настоящее Соглашение перед подписанием. Если какая-либо часть настоящего Соглашения будет признана неисполнимой, остальная часть по-прежнему применяется."
    }
   ]
@@ -7456,7 +7705,11 @@ const MODEL_CONTRACT_I18N = {
     "body": "本契約は、抵触法の規則にかかわらず、テキサス州の法律に準拠します。本契約に起因または関連する紛争は、テキサス州に所在する州裁判所または連邦裁判所に提起しなければならず、あなたと当社は、それらの裁判所の対人管轄権および裁判地に同意します。本条のいかなる規定も、法的に放棄できないあなたの居住州が与える権利を放棄または制限するものではありません。"
    },
    {
-    "title": "15. 平易な言葉による免責事項",
+    "title": "15. あなたのセクションと出演できる人",
+    "body": "あなたは、アカウント作成時に宣言したセクション（女性・男性・カップル）でパフォーマンスを行います。あなたのコンテンツ、チャット、通話、ライブ配信でカメラに映れるのは、あなた（アカウント所有者）と、身分証で確認済みの共演者だけです。宣言したセクション以外でパフォーマンスをしたり、身分証で確認済みの共演者ではない人とカメラに映ったりすることは本契約違反となり、会社はあなたのアカウントを直ちに終了できます。"
+   },
+   {
+    "title": "16. 平易な言葉による免責事項",
     "body": "本書は、明確さのために書かれた平易な言葉による要約です。法的助言ではなく、弁護士によるレビューも受けていません。当社は、署名する前にあなた自身の弁護士に本契約をレビューしてもらうことを強く推奨します。本契約の一部が執行不能と判断された場合でも、残りの部分は引き続き適用されます。"
    }
   ]
@@ -7521,7 +7774,11 @@ const MODEL_CONTRACT_I18N = {
     "body": "本协议受德克萨斯州法律管辖，不考虑其法律冲突规则。因本协议引起或与之相关的任何争议必须提交位于德克萨斯州的州法院或联邦法院，你和公司同意接受这些法院的属人管辖权和审判地。本节中的任何内容均不放弃或限制你所在州依法不可放弃的任何权利。"
    },
    {
-    "title": "15. 通俗语言免责声明",
+    "title": "15. 您的板块与谁可以出镜",
+    "body": "您在创建账户时声明的板块（女性、男性或情侣）中进行表演。只有您——账户持有人——和经过身份证验证的合作表演者可以在您的内容、聊天、通话和直播中出镜。在与您声明的板块不同的板块中表演，或与未经过身份证验证的合作表演者以外的人一起出镜，均违反本协议，公司可立即终止您的账户。"
+   },
+   {
+    "title": "16. 通俗语言免责声明",
     "body": "这是一份为清晰起见而编写的通俗语言摘要 — 它不是法律建议，也未经律师审查。公司强烈建议你在签署前请你自己的律师审查本协议。如果本协议的任何部分被认定不可执行，其余部分仍然适用。"
    }
   ]
@@ -7586,7 +7843,11 @@ const MODEL_CONTRACT_I18N = {
     "body": "본 계약은 텍사스주 법률의 저촉법 규칙과 관계없이 텍사스주 법률에 따라 규율됩니다. 본 계약에서 발생하거나 본 계약과 관련된 모든 분쟁은 텍사스에 위치한 주 또는 연방 법원에 제기해야 하며, 귀하와 회사는 해당 법원의 대인 관할권과 재판지에 동의합니다. 본 조항의 어떤 내용도 법적으로 포기할 수 없는, 거주 주가 귀하에게 부여하는 권리를 포기하거나 제한하지 않습니다."
    },
    {
-    "title": "15. 쉬운 말 면책 조항",
+    "title": "15. 당신의 섹션과 출연할 수 있는 사람",
+    "body": "당신은 계정을 만들 때 선언한 섹션(여성, 남성 또는 커플)에서 활동합니다. 당신의 콘텐츠, 채팅, 통화, 라이브 방송에서 카메라에 나올 수 있는 사람은 당신(계정 소유자)과 신분증 인증을 마친 공동 출연자뿐입니다. 선언한 섹션과 다른 섹션에서 활동하거나, 신분증 인증을 마친 공동 출연자가 아닌 사람과 함께 카메라에 나오는 것은 본 계약 위반이며, 회사는 귀하의 계정을 즉시 종료할 수 있습니다."
+   },
+   {
+    "title": "16. 쉬운 말 면책 조항",
     "body": "이것은 명확성을 위해 쉬운 말로 쓴 요약입니다 — 법률 자문이 아니며, 변호사의 검토를 받지 않았습니다. 회사는 서명하기 전에 본인의 변호사에게 본 계약을 검토받으실 것을 강력히 권장합니다. 본 계약의 일부가 집행 불가능하다고 판정되더라도 나머지는 계속 적용됩니다."
    }
   ]
@@ -7651,7 +7912,11 @@ const MODEL_CONTRACT_I18N = {
     "body": "Il presente Contratto è governato dalle leggi dello Stato del Texas, senza riguardo alle sue norme sul conflitto di leggi. Qualsiasi controversia derivante da o relativa al presente Contratto deve essere portata davanti ai tribunali statali o federali situati in Texas, e tu e la Società acconsentite alla giurisdizione personale e alla sede di quei tribunali. Nulla in questa sezione rinuncia o limita qualsiasi diritto che il tuo stato di residenza ti concede e che non può essere legalmente oggetto di rinuncia."
    },
    {
-    "title": "15. Avvertenza in linguaggio semplice",
+    "title": "15. La tua sezione e chi può apparire",
+    "body": "Ti esibisci nella sezione che hai dichiarato quando hai creato il tuo account (Donne, Uomini o Coppie). Solo tu — la titolare dell\'account — e i tuoi co-protagonisti verificati con documento possono apparire in camera nei tuoi contenuti, chat, chiamate e dirette. Esibirti in una sezione diversa da quella dichiarata, o apparire in camera con qualcuno che non sia un tuo co-protagonista verificato con documento, viola questo Accordo, e la Società può chiudere il tuo account immediatamente."
+   },
+   {
+    "title": "16. Avvertenza in linguaggio semplice",
     "body": "Questo è un riepilogo in linguaggio semplice scritto per chiarezza — NON è una consulenza legale, e non è stato revisionato da un avvocato. La Società raccomanda vivamente di far revisionare il presente Contratto dal tuo avvocato prima di firmarlo. Se qualsiasi parte del presente Contratto viene ritenuta inapplicabile, il resto continua ad applicarsi."
    }
   ]
@@ -7716,7 +7981,11 @@ const MODEL_CONTRACT_I18N = {
     "body": "Niniejsza Umowa podlega prawu stanu Teksas, bez względu na jego przepisy kolizyjne. Wszelkie spory wynikające z niniejszej Umowy lub jej dotyczące muszą być wnoszone do sądów stanowych lub federalnych znajdujących się w Teksasie, a Ty i Spółka wyrażacie zgodę na właściwość osobistą i miejsce postępowania tych sądów. Żadne postanowienie niniejszej sekcji nie zrzeka się ani nie ogranicza żadnego prawa, które przyznaje Ci Twój stan zamieszkania, a którego nie można zgodnie z prawem się zrzec."
    },
    {
-    "title": "15. Zastrzeżenie dotyczące prostego języka",
+    "title": "15. Twoja sekcja i kto może się pojawiać",
+    "body": "Występujesz w sekcji, którą zadeklarowałaś przy zakładaniu konta (Kobiety, Mężczyźni lub Pary). Przed kamerą w Twoich treściach, czatach, rozmowach i transmisjach na żywo mogą pojawiać się tylko Ty — właścicielka konta — oraz Twoi zweryfikowani dokumentem współwykonawcy. Występowanie w innej sekcji niż zadeklarowana albo pojawianie się przed kamerą z kimkolwiek, kto nie jest Twoim zweryfikowanym dokumentem współwykonawcą, narusza tę Umowę, a Spółka może natychmiast zamknąć Twoje konto."
+   },
+   {
+    "title": "16. Zastrzeżenie dotyczące prostego języka",
     "body": "Jest to streszczenie w prostym języku, napisane dla jasności — NIE jest to porada prawna i nie zostało sprawdzone przez prawnika. Spółka stanowczo zaleca, abyś przed podpisaniem zleciła własnemu prawnikowi sprawdzenie niniejszej Umowy. Jeśli jakakolwiek część niniejszej Umowy zostanie uznana za niewykonalną, pozostała część nadal obowiązuje."
    }
   ]
@@ -7781,7 +8050,11 @@ const MODEL_CONTRACT_I18N = {
     "body": "Deze Overeenkomst wordt beheerst door de wetten van de Staat Texas, zonder rekening te houden met haar regels inzake wetsconflicten. Elk geschil dat voortvloeit uit of verband houdt met deze Overeenkomst moet worden voorgelegd aan de staats- of federale rechtbanken in Texas, en jij en het Bedrijf stemmen in met de persoonlijke jurisdictie en rechtsplaats van die rechtbanken. Niets in deze sectie doet afstand van of beperkt enig recht dat je thuisstaat je geeft dat wettelijk niet kan worden opgegeven."
    },
    {
-    "title": "15. Disclaimer in Begrijpelijke Taal",
+    "title": "15. Jouw sectie & wie mag verschijnen",
+    "body": "Je treedt op in de sectie die je hebt opgegeven toen je je account aanmaakte (Vrouwen, Mannen of Stellen). Alleen jij — de accounthouder — en je met ID geverifieerde mede-performers mogen voor de camera verschijnen in je content, chats, gesprekken en livestreams. Optreden in een andere sectie dan opgegeven, of voor de camera verschijnen met iemand die niet je met ID geverifieerde mede-performer is, schendt deze Overeenkomst, en het Bedrijf kan je account onmiddellijk beëindigen."
+   },
+   {
+    "title": "16. Disclaimer in Begrijpelijke Taal",
     "body": "Dit is een samenvatting in begrijpelijke taal, geschreven voor duidelijkheid — het is GEEN juridisch advies, en het is niet beoordeeld door een advocaat. Het Bedrijf raadt je ten zeerste aan om je eigen advocaat deze Overeenkomst te laten beoordelen voordat je tekent. Als enig deel van deze Overeenkomst niet-afdwingbaar wordt bevonden, blijft de rest van toepassing."
    }
   ]
@@ -7846,7 +8119,11 @@ const MODEL_CONTRACT_I18N = {
     "body": "Bu Sözleşme, kanunlar ihtilafı kurallarına bakılmaksızın, Teksas Eyaleti yasalarına tabidir. Bu Sözleşmeden doğan veya onunla ilgili herhangi bir uyuşmazlık, Teksas'ta bulunan eyalet veya federal mahkemelerde açılmalıdır ve sen ve Şirket, o mahkemelerin kişisel yargı yetkisini ve yerini kabul edersiniz. Bu bölümdeki hiçbir şey, kendi eyaletinin sana verdiği ve yasal olarak feragat edilemeyen herhangi bir hakkı feragat ettirmez veya sınırlamaz."
    },
    {
-    "title": "15. Sade Dil Feragatnamesi",
+    "title": "15. Bölümünüz ve kimler görünebilir",
+    "body": "Hesabınızı oluştururken beyan ettiğiniz bölümde (Kadın, Erkek veya Çift) performans sergilersiniz. İçeriklerinizde, sohbetlerinizde, aramalarınızda ve canlı yayınlarınızda kamerada yalnızca siz — hesap sahibi — ve kimliği doğrulanmış ortak performansçılarınız görünebilir. Beyan ettiğinizden farklı bir bölümde performans sergilemek veya kimliği doğrulanmış ortak performansçınız olmayan biriyle kamerada görünmek bu Sözleşmeyi ihlal eder ve Şirket hesabınızı derhal sonlandırabilir."
+   },
+   {
+    "title": "16. Sade Dil Feragatnamesi",
     "body": "Bu, netlik için yazılmış sade dille bir özettir — hukuki tavsiye DEĞİLDİR ve bir avukat tarafından incelenmemiştir. Şirket, imzalamadan önce kendi avukatının bu Sözleşmeyi incelemesini şiddetle tavsiye eder. Bu Sözleşmenin herhangi bir kısmı uygulanamaz bulunursa, geri kalanı hâlâ geçerlidir."
    }
   ]
@@ -10268,7 +10545,7 @@ app.get('/api/live/schedule', (req, res) => {
   const TZ = 'America/Chicago';
   const rows = db.prepare(`
     SELECT s.model_id, s.day_of_week, s.start_time, s.title,
-           u.display_name AS model_name, m.photo_url
+           u.display_name AS model_name, m.photo_url, m.section AS model_section
     FROM live_schedule s
     JOIN users u ON u.id = s.model_id
     JOIN models m ON m.user_id = u.id
@@ -10304,11 +10581,14 @@ app.get('/api/live/schedule', (req, res) => {
     }
   }
   upcoming.sort((a, b) => a.starts_at - b.starts_at);
+  const sectionOf = new Map(rows.map((r) => [r.model_id, r.model_section || 'female']));
   const vRoleS = viewerRoleOf(req);
   let visUpcoming = upcoming;
+  const bsetS = effectiveBrowseSet(req);
+  if (bsetS) visUpcoming = visUpcoming.filter((u) => bsetS.includes(sectionOf.get(u.model_id) || 'female'));
   if (vRoleS !== 'model' && vRoleS !== 'admin') {
     const blockedS = blockedModelIds(geoOfReq(req));
-    if (blockedS.size) visUpcoming = upcoming.filter((u) => !blockedS.has(u.model_id));
+    if (blockedS.size) visUpcoming = visUpcoming.filter((u) => !blockedS.has(u.model_id));
   }
   res.json({ upcoming: visUpcoming.slice(0, 20) });
 });
@@ -10377,18 +10657,23 @@ app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
 app.get('/api/live', (req, res) => {
   const rows = db.prepare(`
     SELECT ls.id AS session_id, ls.title, ls.explicit_rate_cents, ls.started_at, ls.brb,
-           u.id AS model_id, u.display_name AS model_name, mo.photo_url AS model_photo_url,
+           u.id AS model_id, u.display_name AS model_name, mo.photo_url AS model_photo_url, mo.section AS model_section,
            (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS viewers,
            (SELECT COALESCE(SUM(gross_cents),0) FROM gift_events WHERE session_id = ls.id) AS gift_cents
     FROM live_sessions ls JOIN users u ON u.id = ls.model_id
     LEFT JOIN models mo ON mo.user_id = u.id
     WHERE ls.status = 'live' AND u.banned = 0 AND COALESCE(mo.is_hidden, 0) = 0`).all();
+  // Storefront sections + region blocking: a fan/guest sees only the
+  // lives his active tab opens onto, and never a region-blocked model.
+  let out = rows;
+  const bset = effectiveBrowseSet(req);
+  if (bset) out = out.filter((r) => bset.includes(r.model_section || 'female'));
   const vRole = viewerRoleOf(req);
   if (vRole !== 'model' && vRole !== 'admin') {
     const blocked = blockedModelIds(geoOfReq(req));
-    if (blocked.size) return res.json({ live: rows.filter((r) => !blocked.has(r.model_id)) });
+    if (blocked.size) out = out.filter((r) => !blocked.has(r.model_id));
   }
-  res.json({ live: rows });
+  res.json({ live: out });
 });
 
 // Fan joins as a free viewer (SFW preview)
