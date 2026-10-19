@@ -390,9 +390,10 @@ test('pins: discovery bar renders in BOTH directory views and both apply the fil
   assert.ok(app.includes("wireDiscovery('fanModels')"), 'fan view wires the controls');
   assert.ok(app.includes('id="disc-q"'), 'search input exists');
   assert.ok(app.includes('id="disc-sort"'), 'sort control exists');
-  assert.ok(app.includes('data-disc-toggle="online"') && app.includes('data-disc-toggle="live"'),
-    'online + live toggles exist');
-  assert.ok(app.includes('data-disc-tag='), 'directory tag row exists');
+  assert.ok(app.includes('data-disc-toggle="online"'), 'online toggle exists');
+  assert.ok(!app.includes('data-disc-toggle="live"'),
+    'no Live chip — the big Lives button covers it (home tidy, Oct 19 2026)');
+  assert.ok(app.includes('id="disc-tag"'), 'directory tag dropdown exists');
 });
 
 test('pins: tiles show tag chips; the peek carries tags + the More-like-her rail', () => {

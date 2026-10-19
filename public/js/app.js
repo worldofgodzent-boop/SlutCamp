@@ -155,6 +155,7 @@ const I18N = {
     disc_band1: '$',
     disc_band2: '$$',
     disc_band3: '$$$',
+    disc_tag_any: '🏷️ All tags',
     sort_top: '👑 Top ranked',
     sort_liked: '⭐ Most liked',
     sort_online: '🟢 Online first',
@@ -823,6 +824,7 @@ const I18N = {
     disc_band1: '$',
     disc_band2: '$$',
     disc_band3: '$$$',
+    disc_tag_any: '🏷️ Todas las etiquetas',
     sort_top: '👑 Mejor clasificadas',
     sort_liked: '⭐ Más gustadas',
     sort_online: '🟢 En línea primero',
@@ -1491,6 +1493,7 @@ const I18N = {
     disc_band1: '$',
     disc_band2: '$$',
     disc_band3: '$$$',
+    disc_tag_any: '🏷️ Todas as etiquetas',
     sort_top: '👑 Topo do ranking',
     sort_liked: '⭐ Mais curtidas',
     sort_online: '🟢 Online primeiro',
@@ -2159,6 +2162,7 @@ const I18N = {
     disc_band1: '$',
     disc_band2: '$$',
     disc_band3: '$$$',
+    disc_tag_any: '🏷️ Tous les tags',
     sort_top: '👑 Mieux classées',
     sort_liked: '⭐ Plus aimées',
     sort_online: '🟢 En ligne d\'abord',
@@ -2827,6 +2831,7 @@ const I18N = {
     disc_band1: '$',
     disc_band2: '$$',
     disc_band3: '$$$',
+    disc_tag_any: '🏷️ Alle Tags',
     sort_top: '👑 Top-bewertet',
     sort_liked: '⭐ Am meisten geliked',
     sort_online: '🟢 Online zuerst',
@@ -3495,6 +3500,7 @@ const I18N = {
     disc_band1: '$',
     disc_band2: '$$',
     disc_band3: '$$$',
+    disc_tag_any: '🏷️ Все теги',
     sort_top: '👑 Топ рейтинга',
     sort_liked: '⭐ Самые любимые',
     sort_online: '🟢 Сначала онлайн',
@@ -4163,6 +4169,7 @@ const I18N = {
     disc_band1: '$',
     disc_band2: '$$',
     disc_band3: '$$$',
+    disc_tag_any: '🏷️ すべてのタグ',
     sort_top: '👑 ランキング上位',
     sort_liked: '⭐ いいねが多い順',
     sort_online: '🟢 オンライン優先',
@@ -4831,6 +4838,7 @@ const I18N = {
     disc_band1: '$',
     disc_band2: '$$',
     disc_band3: '$$$',
+    disc_tag_any: '🏷️ 所有标签',
     sort_top: '👑 排名最高',
     sort_liked: '⭐ 最受欢迎',
     sort_online: '🟢 在线优先',
@@ -5499,6 +5507,7 @@ const I18N = {
     disc_band1: '$',
     disc_band2: '$$',
     disc_band3: '$$$',
+    disc_tag_any: '🏷️ 모든 태그',
     sort_top: '👑 인기 순위순',
     sort_liked: '⭐ 좋아요 많은 순',
     sort_online: '🟢 온라인 우선',
@@ -6167,6 +6176,7 @@ const I18N = {
     disc_band1: '$',
     disc_band2: '$$',
     disc_band3: '$$$',
+    disc_tag_any: '🏷️ Tutti i tag',
     sort_top: '👑 Più votate',
     sort_liked: '⭐ Più apprezzate',
     sort_online: '🟢 Prima le online',
@@ -6835,6 +6845,7 @@ const I18N = {
     disc_band1: '$',
     disc_band2: '$$',
     disc_band3: '$$$',
+    disc_tag_any: '🏷️ Wszystkie tagi',
     sort_top: '👑 Najwyżej oceniane',
     sort_liked: '⭐ Najbardziej lubiane',
     sort_online: '🟢 Najpierw online',
@@ -7503,6 +7514,7 @@ const I18N = {
     disc_band1: '$',
     disc_band2: '$$',
     disc_band3: '$$$',
+    disc_tag_any: '🏷️ Alle tags',
     sort_top: '👑 Hoogst gerangschikt',
     sort_liked: '⭐ Meest geliket',
     sort_online: '🟢 Eerst online',
@@ -8171,6 +8183,7 @@ const I18N = {
     disc_band1: '$',
     disc_band2: '$$',
     disc_band3: '$$$',
+    disc_tag_any: '🏷️ Tüm etiketler',
     sort_top: '👑 En üst sıralama',
     sort_liked: '⭐ En çok beğenilen',
     sort_online: '🟢 Önce çevrimiçi',
@@ -9787,8 +9800,20 @@ function newModelsRailHTML(models, heartFor) {
   </div>`;
 }
 
+/* Home controls tidy (owner design, Oct 19 2026 — "make it neat, too
+ * much going on"): the bar carries ONLY Search + sort, one 🟢 Online
+ * chip, and one tag dropdown. The small 🔴 Live chip is gone (the big
+ * Lives button already goes to lives) and the $ / $$ / $$$ price-band
+ * chips are gone (price ordering lives in the sort select, whose option
+ * list is unchanged). The tag chips became a single dropdown that shows
+ * the selected tag (or "All tags") and picks from the same used-tags
+ * list the chips showed — it writes the very same disc.tag state, so
+ * applyDiscovery composes exactly as before. */
 function discoveryBarHTML(models) {
   const usedTags = DISCOVERY_TAGS.filter((tg) => (models || []).some((m) => (m.tags || []).includes(tg)));
+  /* The selected tag stays listed even when the current section's
+   * payload uses it on nobody — the control never vanishes mid-filter. */
+  const tagOptions = disc.tag && !usedTags.includes(disc.tag) ? [...usedTags, disc.tag] : usedTags;
   return `
   <div class="disc-bar">
     <div class="disc-row">
@@ -9799,11 +9824,12 @@ function discoveryBarHTML(models) {
     </div>
     <div class="disc-row disc-chips">
       <button class="disc-chip ${disc.online ? 'on' : ''}" data-disc-toggle="online">${t('disc_online')}</button>
-      <button class="disc-chip ${disc.live ? 'on' : ''}" data-disc-toggle="live">${t('disc_live')}</button>
-      ${[1, 2, 3].map((b) => `<button class="disc-chip ${String(disc.price) === String(b) ? 'on' : ''}" data-disc-price="${b}">${t('disc_band' + b)}</button>`).join('')}
       ${discActive(disc) ? `<button class="disc-chip clear" id="disc-clear">${t('clear_filters')}</button>` : ''}
     </div>
-    ${usedTags.length ? `<div class="disc-row disc-chips">${usedTags.map((tg) => `<button class="disc-chip ${disc.tag === tg ? 'on' : ''}" data-disc-tag="${esc(tg)}">${esc(tg)}</button>`).join('')}</div>` : ''}
+    ${tagOptions.length ? `<div class="disc-row disc-selectwrap"><select class="input disc-sort disc-tagpick" id="disc-tag" aria-label="${t('disc_tag_any')}">
+        <option value="" ${disc.tag ? '' : 'selected'}>${t('disc_tag_any')}</option>
+        ${tagOptions.map((tg) => `<option value="${esc(tg)}" ${disc.tag === tg ? 'selected' : ''}>${esc(tg)}</option>`).join('')}
+      </select></div>` : ''}
   </div>`;
 }
 
@@ -9818,12 +9844,8 @@ function wireDiscovery(viewName) {
   app.querySelectorAll('[data-disc-toggle]').forEach((b) => {
     b.onclick = () => apply(() => { disc[b.dataset.discToggle] = !disc[b.dataset.discToggle]; });
   });
-  app.querySelectorAll('[data-disc-price]').forEach((b) => {
-    b.onclick = () => apply(() => { disc.price = String(disc.price) === b.dataset.discPrice ? 'any' : b.dataset.discPrice; });
-  });
-  app.querySelectorAll('[data-disc-tag]').forEach((b) => {
-    b.onclick = () => apply(() => { disc.tag = disc.tag === b.dataset.discTag ? '' : b.dataset.discTag; });
-  });
+  const tg = $('#disc-tag');
+  if (tg) tg.addEventListener('change', () => apply(() => { disc.tag = tg.value; }));
   const cl = $('#disc-clear');
   if (cl) cl.onclick = () => apply(() => {
     disc.q = ''; disc.online = false; disc.live = false;
