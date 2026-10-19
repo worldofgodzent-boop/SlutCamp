@@ -1927,6 +1927,23 @@ body.in-home:has(> #phone > .sc-theme-promo):not(:has(> #phone > .sc-theme-banne
 .sec-tab:active { transform: scale(.97); }
 .sec-tab.on { border-color: var(--pink); background: rgba(255,92,158,.16); color: var(--pink); }
 
+/* House-live banner (owner, Oct 18 2026): the official account's
+   schedule broadcast at the head of the app — one slim strip, gold
+   when a show is coming, red when SlutCamp is live right now. */
+.house-banner {
+  display: block; width: 100%; margin-bottom: 12px; padding: 10px 14px;
+  border-radius: 12px; cursor: pointer; text-align: center;
+  background: linear-gradient(135deg, rgba(245,198,107,.22), rgba(255,92,158,.14));
+  border: 1px solid var(--gold, #f5c66b); color: var(--text, #fff);
+  font-size: 14.5px; font-weight: 800; font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.house-banner:active { transform: scale(.99); }
+.house-banner.live {
+  background: linear-gradient(135deg, rgba(239,68,68,.4), rgba(255,92,158,.25));
+  border-color: var(--red, #ef4444);
+}
+
 /* New-model welcome celebration — one-time overlay after signup */
 .model-welcome {
   position: fixed; inset: 0; z-index: 210;

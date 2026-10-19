@@ -278,6 +278,8 @@ const I18N = {
     sf_male: 'Male',
     sf_couples: 'Couples',
     sf_all: 'All',
+    house_next_live: '📅 SlutCamp Live{title} · {day} {time} CT · starts {countdown}',
+    house_live_now: '🔴 SlutCamp is LIVE now — tap to watch',
     create_account_btn: 'Create account',
     keep_browsing: '← Keep browsing free',
     enter_user_pass: 'Enter username + password',
@@ -944,6 +946,8 @@ const I18N = {
     sf_male: 'Masculina',
     sf_couples: 'Parejas',
     sf_all: 'Todo',
+    house_next_live: '📅 SlutCamp en directo{title} · {day} {time} CT · empieza {countdown}',
+    house_live_now: '🔴 SlutCamp está EN VIVO ahora — toca para verlo',
     create_account_btn: 'Crear cuenta',
     keep_browsing: '← Seguir explorando gratis',
     enter_user_pass: 'Ingresa usuario y contraseña',
@@ -1610,6 +1614,8 @@ const I18N = {
     sf_male: 'Masculina',
     sf_couples: 'Casais',
     sf_all: 'Tudo',
+    house_next_live: '📅 SlutCamp ao vivo{title} · {day} {time} CT · começa {countdown}',
+    house_live_now: '🔴 SlutCamp está AO VIVO agora — toque para assistir',
     create_account_btn: 'Criar conta',
     keep_browsing: '← Continuar explorando grátis',
     enter_user_pass: 'Digite usuário e senha',
@@ -2276,6 +2282,8 @@ const I18N = {
     sf_male: 'Hommes',
     sf_couples: 'Couples',
     sf_all: 'Tout',
+    house_next_live: '📅 SlutCamp en direct{title} · {day} {time} CT · commence {countdown}',
+    house_live_now: '🔴 SlutCamp est EN DIRECT — touchez pour regarder',
     create_account_btn: 'Créer un compte',
     keep_browsing: '← Continuer à parcourir gratuitement',
     enter_user_pass: 'Saisissez nom d\'utilisateur + mot de passe',
@@ -2942,6 +2950,8 @@ const I18N = {
     sf_male: 'Männer',
     sf_couples: 'Paare',
     sf_all: 'Alle',
+    house_next_live: '📅 SlutCamp Live{title} · {day} {time} CT · startet {countdown}',
+    house_live_now: '🔴 SlutCamp ist jetzt LIVE — tippen zum Zuschauen',
     create_account_btn: 'Account erstellen',
     keep_browsing: '← Weiter kostenlos stöbern',
     enter_user_pass: 'Benutzername + Passwort eingeben',
@@ -3608,6 +3618,8 @@ const I18N = {
     sf_male: 'Мужчины',
     sf_couples: 'Пары',
     sf_all: 'Все',
+    house_next_live: '📅 SlutCamp Live{title} · {day} {time} CT · старт: {countdown}',
+    house_live_now: '🔴 SlutCamp сейчас В ЭФИРЕ — нажмите, чтобы смотреть',
     create_account_btn: 'Создать аккаунт',
     keep_browsing: '← Продолжить бесплатный просмотр',
     enter_user_pass: 'Введите имя пользователя + пароль',
@@ -4274,6 +4286,8 @@ const I18N = {
     sf_male: '男性',
     sf_couples: 'カップル',
     sf_all: 'すべて',
+    house_next_live: '📅 SlutCampライブ{title} · {day} {time} CT · 開始まで{countdown}',
+    house_live_now: '🔴 SlutCampがライブ配信中 — タップして視聴',
     create_account_btn: 'アカウントを作成',
     keep_browsing: '← 無料で閲覧を続ける',
     enter_user_pass: 'ユーザー名とパスワードを入力してね',
@@ -4940,6 +4954,8 @@ const I18N = {
     sf_male: '男性',
     sf_couples: '情侣',
     sf_all: '全部',
+    house_next_live: '📅 SlutCamp直播{title} · {day} {time} CT · {countdown}开始',
+    house_live_now: '🔴 SlutCamp正在直播 — 点击观看',
     create_account_btn: '创建账号',
     keep_browsing: '← 继续免费浏览',
     enter_user_pass: '输入用户名 + 密码',
@@ -5606,6 +5622,8 @@ const I18N = {
     sf_male: '남성',
     sf_couples: '커플',
     sf_all: '전체',
+    house_next_live: '📅 SlutCamp 라이브{title} · {day} {time} CT · {countdown} 시작',
+    house_live_now: '🔴 SlutCamp 지금 라이브 중 — 탭하여 시청',
     create_account_btn: '계정 만들기',
     keep_browsing: '← 무료로 계속 둘러보기',
     enter_user_pass: '사용자 이름 + 비밀번호를 입력하세요',
@@ -6272,6 +6290,8 @@ const I18N = {
     sf_male: 'Uomini',
     sf_couples: 'Coppie',
     sf_all: 'Tutto',
+    house_next_live: '📅 SlutCamp Live{title} · {day} {time} CT · inizia {countdown}',
+    house_live_now: '🔴 SlutCamp è IN DIRETTA ora — tocca per guardare',
     create_account_btn: 'Crea account',
     keep_browsing: '← Continua a navigare gratis',
     enter_user_pass: 'Inserisci nome utente + password',
@@ -6938,6 +6958,8 @@ const I18N = {
     sf_male: 'Mężczyźni',
     sf_couples: 'Pary',
     sf_all: 'Wszystko',
+    house_next_live: '📅 SlutCamp Live{title} · {day} {time} CT · start: {countdown}',
+    house_live_now: '🔴 SlutCamp jest teraz NA ŻYWO — dotknij, aby oglądać',
     create_account_btn: 'Utwórz konto',
     keep_browsing: '← Przeglądaj dalej za darmo',
     enter_user_pass: 'Wpisz nazwę użytkownika + hasło',
@@ -7604,6 +7626,8 @@ const I18N = {
     sf_male: 'Mannen',
     sf_couples: 'Stellen',
     sf_all: 'Alles',
+    house_next_live: '📅 SlutCamp Live{title} · {day} {time} CT · start: {countdown}',
+    house_live_now: '🔴 SlutCamp is nu LIVE — tik om te kijken',
     create_account_btn: 'Account aanmaken',
     keep_browsing: '← Blijf gratis browsen',
     enter_user_pass: 'Voer gebruikersnaam + wachtwoord in',
@@ -8270,6 +8294,8 @@ const I18N = {
     sf_male: 'Erkek',
     sf_couples: 'Çift',
     sf_all: 'Tümü',
+    house_next_live: '📅 SlutCamp Canlı{title} · {day} {time} CT · {countdown} başlıyor',
+    house_live_now: '🔴 SlutCamp şimdi CANLI — izlemek için dokun',
     create_account_btn: 'Hesap oluştur',
     keep_browsing: '← Ücretsiz gezinmeye devam et',
     enter_user_pass: 'Kullanıcı adı + şifre gir',
@@ -9879,6 +9905,8 @@ function officialCardHTML(official) {
 async function vLanding() {
   const { data } = await api('/models');
   const models = data.models || [];
+  const { data: schedData } = await api('/live/schedule');
+  const house = (schedData && schedData.house) || null;
   const shown = applyDiscovery(models, disc);
   const heartFor = (m) => `
             <span class="model-likes tile-heart" data-like="${m.id}">
@@ -9891,6 +9919,7 @@ async function vLanding() {
       <div class="sub">${t('home_sub')}</div>
     </div>
     <div class="screen">
+      ${houseBannerHTML(house)}
       ${sectionTabsHTML()}
       ${livesBtnHTML(models)}
       <div class="card" style="text-align:center;background:linear-gradient(135deg,#3b1d6e,#1a0f2e)">
@@ -9918,6 +9947,7 @@ async function vLanding() {
       <p class="muted small" style="text-align:center;margin-top:16px">${t('terms_line')} <a href="javascript:void(0)" id="go-terms" style="color:var(--pink)">${t('terms')}</a> · <a href="javascript:void(0)" id="go-privacy" style="color:var(--pink)">Privacy</a> · <a href="javascript:void(0)" id="go-billing" style="color:var(--pink)">Billing & Refunds</a> · <a href="javascript:void(0)" id="go-2257" style="color:var(--pink)">2257 Statement</a> · <a href="javascript:void(0)" id="go-dmca" style="color:var(--pink)">DMCA</a>.</p>
     </div>`;
   wireSectionTabs(() => show('landing', {}));
+  wireHouseBanner();
   app.querySelectorAll('[data-model]').forEach((b) => {
     b.onclick = () => {
       const liveId = b.dataset.live;
@@ -11190,6 +11220,8 @@ async function vFanModels() {
   const { data } = await api('/models');
   const models = data.models || [];
   const official = data.official || null;
+  const { data: schedData } = await api('/live/schedule');
+  const house = (schedData && schedData.house) || null;
   await refreshMe();
   const inPreview = isFanPreview();
   const isModelViewer = !!(S.user && (S.user.role === 'model' || inPreview));
@@ -11211,6 +11243,7 @@ async function vFanModels() {
         : `<span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span>`}</div></div>
     <div class="screen">
       ${isModelViewer ? '' : sectionTabsHTML()}
+      ${isModelViewer ? '' : houseBannerHTML(house)}
       ${sideSwitchHTML('main')}
       ${officialCardHTML(official)}
       ${athCardHTML()}
@@ -11223,6 +11256,7 @@ async function vFanModels() {
         : `<div class="empty"><div class="big">🔍</div>${t('no_matches')}</div>`}
     </div>`;
   wireAthCard();
+  wireHouseBanner();
   wireDiscovery('fanModels');
   if (!isModelViewer) wireSectionTabs(() => show('fanModels', {}));
   // Pinned official card: LIVE → join the stream exactly like a live
@@ -11283,12 +11317,14 @@ async function vFanLive() {
   }
   const { data: schedData } = await api('/live/schedule');
   const upcoming = (schedData.upcoming || []).slice(0, 10);
+  const house = (schedData && schedData.house) || null;
   app.innerHTML = `
     <div class="header"><h1>${t('fanlive_h')}</h1>
       <div>${inPreview
         ? '<span class="balance-pill">👁 Previewing as fan</span>'
         : `<span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span>`}</div></div>
     <div class="screen">
+      ${inPreview ? '' : houseBannerHTML(house)}
       ${streams.map((s) => `
         <button class="list-item" data-stream="${s.session_id}" data-model="${s.model_id}" style="background:var(--card);border-radius:14px;margin-bottom:10px;border:1px solid rgba(239,68,68,.35)">
           <span class="avatar-wrap">${avatarHTML(s.model_name, '', s.model_photo_url)}<span class="online-dot"></span></span>
@@ -11314,6 +11350,7 @@ async function vFanLive() {
           </span>
         </div>`).join('')}` : ''}
     </div>`;
+  if (!inPreview) wireHouseBanner();
   app.querySelectorAll('[data-stream]').forEach((b) => {
     b.onclick = () => {
       if (inPreview) {
@@ -12814,6 +12851,31 @@ function bookingCountdown(at) {
   return `in ${Math.floor(h / 24)}d ${h % 24}h`;
 }
 
+/* House-live banner (owner, Oct 18 2026: "the schedule broadcast on
+   the head of the app") — a slim strip at the head of fan home, the
+   guest landing and the Live tab, fed by the `house` field of
+   GET /api/live/schedule. LIVE → red, tap enters the stream; a slot
+   is coming → the schedule line, tap opens the Live tab; neither →
+   no banner at all. */
+function houseBannerHTML(house) {
+  if (!house) return '';
+  if (house.live_session_id) {
+    return `<button class="house-banner live" data-house-live="${house.live_session_id}">${t('house_live_now')}</button>`;
+  }
+  if (house.next) {
+    const n = house.next;
+    const title = n.title ? ` — ${esc(n.title)}` : '';
+    return `<button class="house-banner" data-house-upcoming="1">${t('house_next_live', { title, day: n.day_label, time: n.time_label, countdown: bookingCountdown(n.starts_at) })}</button>`;
+  }
+  return '';
+}
+function wireHouseBanner() {
+  const lb = document.querySelector('[data-house-live]');
+  if (lb) lb.onclick = () => watchLive(parseInt(lb.dataset.houseLive));
+  const ub = document.querySelector('[data-house-upcoming]');
+  if (ub) ub.onclick = () => show('lives', {});
+}
+
 function bookingWhen(at) {
   const d = new Date(at);
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
@@ -13185,7 +13247,10 @@ async function vModelSettings() {
   const { data: idvData } = await api('/model/id-verification');
   const idv = (idvData && idvData.verification) || null;
   const idvStatus = idv ? idv.status : 'none';
-  const idvBanner = idvStatus === 'approved'
+  // The house account's own Settings carry NO ID Verification card at
+  // all (owner, Oct 18 2026) — server-driven via the `house` flag.
+  const idvBanner = (idvData && idvData.house) ? ''
+    : idvStatus === 'approved'
     ? `<div class="card" style="border-color:var(--green)"><div style="font-weight:800;color:var(--green)">${t('id_verified')}</div><div class="small muted">${t('id_verified_sub')}</div></div>`
     : idvStatus === 'pending'
     ? `<div class="card" style="border-color:var(--yellow)"><div style="font-weight:800;color:var(--yellow)">${t('id_pending')}</div><div class="small muted">Submitted ${esc(idv.submitted_at || '')}. SlutCamp will review it soon — you can't chat or go live until it's approved.</div></div>`

@@ -455,6 +455,12 @@ async function adminModelsBody() {
             <button class="btn small ghost" data-m-toggle="${m.id}">${m.banned ? "✅ Reactivate" : "⏸️ Deactivate"}</button>
             <button class="btn small danger" data-m-del="${m.id}">Remove</button>
           </div>
+          <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center">
+            <span class="small muted">🎪 Section:</span>
+            <button class="btn small ${m.section === 'male' || m.section === 'couple' ? 'ghost' : ''}" data-m-section="${m.id}" data-section="female">Female</button>
+            <button class="btn small ${m.section === 'male' ? '' : 'ghost'}" data-m-section="${m.id}" data-section="male">Male</button>
+            <button class="btn small ${m.section === 'couple' ? '' : 'ghost'}" data-m-section="${m.id}" data-section="couple">Couple</button>
+          </div>
           ${m.is_featured ? '' : `<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center">
             <span class="small muted">👁 Fans see her as:</span>
             <button class="btn small ${!presForced(m) ? '' : 'ghost'}" data-m-pres="${m.id}" data-mode="auto">Auto</button>
@@ -1804,6 +1810,22 @@ function wireAdminBody(tab) {
       });
       toast(data.presence_override === 'auto' ? '👁 Presence: Auto — her app decides'
         : data.presence_override === 'on' ? '👁 Fans now see her Online' : '👁 Fans now see her Offline');
+    };
+  });
+  document.querySelectorAll('[data-m-section]').forEach((b) => {
+    b.onclick = async () => {
+      const id = b.dataset.mSection;
+      const section = b.dataset.section;
+      const { status, data } = await api(`/admin/models/${id}/section`, {
+        method: 'PATCH', body: JSON.stringify({ section }) });
+      if (status !== 200 || !data || data.error) {
+        toast('⚠️ ' + ((data && data.message) || 'Could not update section'));
+        return;
+      }
+      document.querySelectorAll(`[data-m-section="${id}"]`).forEach((x) => {
+        x.classList.toggle('ghost', x.dataset.section !== data.section);
+      });
+      toast('🎪 Section: ' + data.section);
     };
   });
   document.querySelectorAll('[data-m-del]').forEach((b) => {
