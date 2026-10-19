@@ -441,7 +441,7 @@ const I18N = {
     enter: 'Enter 🔥',
     settings_h: 'Settings ⚙️',
     id_verified: '✅ ID Verified',
-    id_verified_sub: 'Your identity is verified. You\'re cleared to chat and go live.',
+    id_verified_sub: 'Your identity is verified. You\'re cleared to go live and cash out.',
     id_pending: '⏳ ID Under Review',
     my_rates: '💵 My Rates',
     rates_note: 'What fans pay for 1-on-1 with you. You set these — SlutCamp can also adjust them.',
@@ -1109,7 +1109,7 @@ const I18N = {
     enter: 'Entrar 🔥',
     settings_h: 'Ajustes ⚙️',
     id_verified: '✅ Identidad verificada',
-    id_verified_sub: 'Tu identidad está verificada. Ya puedes chatear y transmitir en vivo.',
+    id_verified_sub: 'Tu identidad está verificada. Ya puedes transmitir en vivo y retirar tu dinero.',
     id_pending: '⏳ Identidad en revisión',
     my_rates: '💵 Mis tarifas',
     rates_note: 'Lo que pagan los fans por el 1 a 1 contigo. Tú las fijas — SlutCamp también puede ajustarlas.',
@@ -1777,7 +1777,7 @@ const I18N = {
     enter: 'Entrar 🔥',
     settings_h: 'Configurações ⚙️',
     id_verified: '✅ Identidade verificada',
-    id_verified_sub: 'Sua identidade está verificada. Você já pode conversar e entrar ao vivo.',
+    id_verified_sub: 'Sua identidade está verificada. Você já pode entrar ao vivo e sacar seus ganhos.',
     id_pending: '⏳ Identidade em análise',
     my_rates: '💵 Minhas tarifas',
     rates_note: 'O que os fãs pagam pelo 1 a 1 com você. Você define — a SlutCamp também pode ajustar.',
@@ -2445,7 +2445,7 @@ const I18N = {
     enter: 'Entrer 🔥',
     settings_h: 'Paramètres ⚙️',
     id_verified: '✅ Identité vérifiée',
-    id_verified_sub: 'Votre identité est vérifiée. Vous êtes autorisée à discuter et à passer en direct.',
+    id_verified_sub: 'Votre identité est vérifiée. Vous êtes autorisée à passer en direct et à retirer vos gains.',
     id_pending: '⏳ Identité en cours d\'examen',
     my_rates: '💵 Mes tarifs',
     rates_note: 'Ce que les fans paient pour un 1-à-1 avec vous. C\'est vous qui les définissez — SlutCamp peut aussi les ajuster.',
@@ -3113,7 +3113,7 @@ const I18N = {
     enter: 'Eintreten 🔥',
     settings_h: 'Einstellungen ⚙️',
     id_verified: '✅ Ausweis verifiziert',
-    id_verified_sub: 'Deine Identität ist verifiziert. Du bist freigegeben zum Chatten und Live-Gehen.',
+    id_verified_sub: 'Deine Identität ist verifiziert. Du bist freigegeben zum Live-Gehen und Abheben.',
     id_pending: '⏳ Ausweis wird überprüft',
     my_rates: '💵 Meine Preise',
     rates_note: 'Was Fans für 1-zu-1 mit dir zahlen. Du legst diese fest — SlutCamp kann sie auch anpassen.',
@@ -3781,7 +3781,7 @@ const I18N = {
     enter: 'Войти 🔥',
     settings_h: 'Настройки ⚙️',
     id_verified: '✅ Удостоверение подтверждено',
-    id_verified_sub: 'Ваша личность подтверждена. Вам разрешено общаться и выходить в эфир.',
+    id_verified_sub: 'Ваша личность подтверждена. Вам разрешено выходить в эфир и выводить деньги.',
     id_pending: '⏳ Удостоверение на проверке',
     my_rates: '💵 Мои тарифы',
     rates_note: 'Сколько фанаты платят за 1-на-1 с вами. Вы устанавливаете их — SlutCamp также может их корректировать.',
@@ -4449,7 +4449,7 @@ const I18N = {
     enter: '入る 🔥',
     settings_h: '設定 ⚙️',
     id_verified: '✅ 身分証確認済み',
-    id_verified_sub: '本人確認が完了しました。チャットとライブ配信の準備ができています。',
+    id_verified_sub: '本人確認が完了しました。ライブ配信と出金の準備ができています。',
     id_pending: '⏳ 身分証審査中',
     my_rates: '💵 私の料金',
     rates_note: 'ファンがあなたとの1対1に支払う金額です。あなたが設定します — SlutCampが調整することもあります。',
@@ -5117,7 +5117,7 @@ const I18N = {
     enter: '进入 🔥',
     settings_h: '设置 ⚙️',
     id_verified: '✅ 身份已验证',
-    id_verified_sub: '你的身份已验证。你可以聊天和开播了。',
+    id_verified_sub: '你的身份已验证。你可以开播和提现了。',
     id_pending: '⏳ 身份审核中',
     my_rates: '💵 我的费率',
     rates_note: '粉丝与你一对一时支付的价格。由你设定 — SlutCamp 也可以调整它们。',
@@ -5785,7 +5785,7 @@ const I18N = {
     enter: '입장하기 🔥',
     settings_h: '설정 ⚙️',
     id_verified: '✅ 신분증 인증 완료',
-    id_verified_sub: '신원이 인증되었습니다. 채팅과 라이브를 할 수 있습니다.',
+    id_verified_sub: '신원이 인증되었습니다. 라이브와 출금을 할 수 있습니다.',
     id_pending: '⏳ 신분증 검토 중',
     my_rates: '💵 내 요금',
     rates_note: '팬이 1:1로 지불하는 금액입니다. 본인이 설정합니다 — SlutCamp도 조정할 수 있습니다.',
@@ -6453,7 +6453,7 @@ const I18N = {
     enter: 'Entra 🔥',
     settings_h: 'Impostazioni ⚙️',
     id_verified: '✅ Documento verificato',
-    id_verified_sub: 'La tua identità è verificata. Sei autorizzata a chattare e andare live.',
+    id_verified_sub: 'La tua identità è verificata. Sei autorizzata ad andare in diretta e a prelevare i tuoi guadagni.',
     id_pending: '⏳ Documento in revisione',
     my_rates: '💵 Le mie tariffe',
     rates_note: 'Ciò che i fan pagano per l\'1-a-1 con te. Le imposti tu — SlutCamp può anche modificarle.',
@@ -7121,7 +7121,7 @@ const I18N = {
     enter: 'Wejdź 🔥',
     settings_h: 'Ustawienia ⚙️',
     id_verified: '✅ Tożsamość zweryfikowana',
-    id_verified_sub: 'Twoja tożsamość jest zweryfikowana. Masz zgodę na czatowanie i transmisje na żywo.',
+    id_verified_sub: 'Twoja tożsamość jest zweryfikowana. Masz zgodę na transmisje na żywo i wypłatę środków.',
     id_pending: '⏳ Dokument w trakcie sprawdzania',
     my_rates: '💵 Moje stawki',
     rates_note: 'Ile fani płacą za 1 na 1 z Tobą. Ty je ustawiasz — SlutCamp może je również dostosować.',
@@ -7789,7 +7789,7 @@ const I18N = {
     enter: 'Binnenkomen 🔥',
     settings_h: 'Instellingen ⚙️',
     id_verified: '✅ ID Geverifieerd',
-    id_verified_sub: 'Je identiteit is geverifieerd. Je bent klaar om te chatten en live te gaan.',
+    id_verified_sub: 'Je identiteit is geverifieerd. Je bent klaar om live te gaan en geld op te nemen.',
     id_pending: '⏳ ID In Beoordeling',
     my_rates: '💵 Mijn Tarieven',
     rates_note: 'Wat fans betalen voor 1-op-1 met jou. Jij stelt deze in — SlutCamp kan ze ook aanpassen.',
@@ -8457,7 +8457,7 @@ const I18N = {
     enter: 'Gir 🔥',
     settings_h: 'Ayarlar ⚙️',
     id_verified: '✅ Kimlik Doğrulandı',
-    id_verified_sub: 'Kimliğin doğrulandı. Sohbet etmeye ve canlıya geçmeye hazırsın.',
+    id_verified_sub: 'Kimliğin doğrulandı. Canlıya geçmeye ve para çekmeye hazırsın.',
     id_pending: '⏳ Kimlik İnceleniyor',
     my_rates: '💵 Ücretlerim',
     rates_note: 'Hayranların seninle bire bir için ödediği. Bunları sen belirlersin — SlutCamp de ayarlayabilir.',
@@ -12371,6 +12371,10 @@ async function vModelEarnings() {
   const { data } = await api('/model/earnings');
   const { data: acctData } = await api('/model/payout-account');
   const { data: wdData } = await api('/model/withdrawals');
+  // Cashing out needs an approved ID (owner policy, Oct 18 2026) —
+  // the payouts card below says so up front, in the same muted-line
+  // style as the hold notes, instead of only failing at the button.
+  const { data: idvData } = await api('/model/id-verification');
   const acct = acctData.account;
   const wds = wdData.withdrawals || [];
   const wdBadge = (s) => s === 'pending' ? t('wd_pending') : s === 'paid' ? t('wd_paid') : t('wd_rejected');
@@ -12444,7 +12448,8 @@ async function vModelEarnings() {
           <div class="muted small" style="margin-top:6px">${t('avail_withdraw')} <b style="color:var(--green)">${fmt(wdData.available_cents)}</b></div>
           <div class="muted small" style="margin-top:2px">${t('hold_note')}</div>${wdData.holding_cents > 0 ? `
           <div class="muted small" style="margin-top:2px">${t('holding_now')} <b>${fmt(wdData.holding_cents)}</b></div>` : ''}${wdData.negative_adjustment_cents > 0 ? `
-          <div class="muted small" style="margin-top:2px">${t('neg_adj')} <b style="color:var(--red)">${fmt(wdData.negative_adjustment_cents)}</b></div>` : ''}
+          <div class="muted small" style="margin-top:2px">${t('neg_adj')} <b style="color:var(--red)">${fmt(wdData.negative_adjustment_cents)}</b></div>` : ''}${idvData && !idvData.verified ? `
+          <div class="muted small" style="margin-top:2px">🪪 ID verification required to cash out — upload your ID in Settings → ID Verification.</div>` : ''}
         ` : ''}
         <div id="bank-form" class="${acct ? 'hidden' : ''}" style="margin-top:8px">
           <div style="font-weight:700;margin-bottom:6px">${acct ? t('update_bank') : t('add_bank')}</div>
@@ -12494,12 +12499,15 @@ async function vModelEarnings() {
       method: 'POST', body: JSON.stringify({ amount_cents }) });
     if (status === 200) { toast('⏳ Withdrawal requested — SlutCamp will send it soon'); show('modelEarnings', {}); }
     else {
-      toast(status === 400 && wd.error === 'insufficient_funds'
+      toast(status === 403 && wd.error === 'id_verification_required'
+        ? '🪪 ID verification required — upload your ID in Settings → ID Verification to cash out.'
+        : status === 400 && wd.error === 'insufficient_funds'
         ? `Not enough available (${fmt(wd.available_cents || 0)})`
         : status === 400 && wd.error === 'no_tax_info'
         ? '🧾 Add your tax info in Settings to withdraw — required by the IRS for payouts.'
         : 'Could not request withdrawal');
-      if (status === 400 && wd.error === 'no_tax_info') show('modelSettings', {});
+      if ((status === 400 && wd.error === 'no_tax_info') ||
+          (status === 403 && wd.error === 'id_verification_required')) show('modelSettings', {});
       wdGo.disabled = false;
     }
   };
@@ -12823,7 +12831,9 @@ async function vRecruiter() {
       method: 'POST', body: JSON.stringify({ amount_cents }) });
     if (status === 200) { toast('⏳ Withdrawal requested — SlutCamp will send it soon'); show('recruiter', {}); }
     else {
-      toast(status === 400 && wd.error === 'insufficient_funds'
+      toast(status === 403 && wd.error === 'id_verification_required'
+        ? '🪪 ID verification required — upload your ID in Settings → ID Verification to cash out.'
+        : status === 400 && wd.error === 'insufficient_funds'
         ? `Not enough available (${fmt(wd.available_cents || 0)})`
         : status === 400 && wd.error === 'no_tax_info'
         ? '🧾 Add your tax info below to withdraw — required by the IRS for payouts.'
@@ -13253,11 +13263,11 @@ async function vModelSettings() {
     : idvStatus === 'approved'
     ? `<div class="card" style="border-color:var(--green)"><div style="font-weight:800;color:var(--green)">${t('id_verified')}</div><div class="small muted">${t('id_verified_sub')}</div></div>`
     : idvStatus === 'pending'
-    ? `<div class="card" style="border-color:var(--yellow)"><div style="font-weight:800;color:var(--yellow)">${t('id_pending')}</div><div class="small muted">Submitted ${esc(idv.submitted_at || '')}. SlutCamp will review it soon — you can't chat or go live until it's approved.</div></div>`
+    ? `<div class="card" style="border-color:var(--yellow)"><div style="font-weight:800;color:var(--yellow)">${t('id_pending')}</div><div class="small muted">Submitted ${esc(idv.submitted_at || '')}. SlutCamp will review it soon — you can't go live or cash out until it's approved.</div></div>`
     : `<div class="card" style="border-color:var(--red)">
         <div style="font-weight:800;margin-bottom:6px">🪪 ID Verification ${idvStatus === 'rejected' ? '<span style="color:var(--red)">— Action Needed</span>' : '<span style="color:var(--red)">— Required</span>'}</div>
         ${idvStatus === 'rejected' ? `<div class="small" style="color:var(--red);margin-bottom:8px">Rejected${idv.reviewer_note ? `: ${esc(idv.reviewer_note)}` : ''} — please resubmit.</div>` : ''}
-        <div class="muted small" style="margin-bottom:10px">Federal law (18 U.S.C. §2257) requires us to verify your identity and age before you can chat with fans or go live. Upload a clear photo of:<br>1️⃣ Government ID — <b>front</b><br>2️⃣ Government ID — <b>back</b><br>3️⃣ A <b>selfie of you holding the ID</b> next to your face<br>Your documents are kept private and only reviewed by SlutCamp.</div>
+        <div class="muted small" style="margin-bottom:10px">Federal law (18 U.S.C. §2257) requires us to verify your identity and age before you can go live or cash out. Upload a clear photo of:<br>1️⃣ Government ID — <b>front</b><br>2️⃣ Government ID — <b>back</b><br>3️⃣ A <b>selfie of you holding the ID</b> next to your face<br>Your documents are kept private and only reviewed by SlutCamp.</div>
         <label class="field">ID front<input class="input" type="file" id="idv-front" accept="image/*"></label>
         <label class="field">ID back<input class="input" type="file" id="idv-back" accept="image/*"></label>
         <label class="field">Selfie holding ID<input class="input" type="file" id="idv-selfie" accept="image/*"></label>
