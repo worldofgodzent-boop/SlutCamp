@@ -1467,17 +1467,25 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 .tile-heart:active { transform: scale(1.12); }
 
 /* ---------- Discovery 2.0: directory search / filters / tags ---------- */
-.disc-bar { margin-bottom: 14px; }
+.disc-bar { margin-bottom: 10px; }
 .disc-row { display: flex; gap: 8px; margin-bottom: 8px; }
+/* The bar's own margin is the only gap below it — rows space each
+   other, the last one adds nothing (round 2: the New Models rail sits
+   neatly right under the controls, no big gap). */
+.disc-bar .disc-row:last-child { margin-bottom: 0; }
 .disc-search { flex: 1; min-width: 0; }
 .disc-sort { flex: 0 0 auto; width: auto; max-width: 46%; }
-/* Tag dropdown (home tidy, Oct 19 2026): fills its row like the search
-   box, with a guaranteed ▾ — native select arrows vanish under some
-   mobile browser styling, so the wrap draws its own. */
-.disc-selectwrap { position: relative; }
+/* Tag dropdown (home tidy, Oct 19 2026; round 2 the same day): rides
+   the 🟢 Online row, flex-filling the width beside the chip, with a
+   guaranteed ▾ — native select arrows vanish under some mobile
+   browser styling, so the wrap draws its own. */
+.disc-selectwrap { position: relative; flex: 1 1 auto; min-width: 0; display: flex; }
 .disc-selectwrap::after { content: '▾'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; opacity: .7; }
 .disc-tagpick { flex: 1; width: 100%; max-width: none; appearance: none; -webkit-appearance: none; padding-right: 28px; }
-.disc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* One row, never wraps (round 2): the chips hold their size and the
+   tag dropdown absorbs whatever width is left. */
+.disc-chips { display: flex; flex-wrap: nowrap; gap: 6px; }
+.disc-chips .disc-chip { flex: 0 0 auto; white-space: nowrap; }
 .disc-chip {
   padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 700;
   background: rgba(255,255,255,.06); color: var(--text, #fff);

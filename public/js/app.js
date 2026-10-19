@@ -9808,7 +9808,11 @@ function newModelsRailHTML(models, heartFor) {
  * list is unchanged). The tag chips became a single dropdown that shows
  * the selected tag (or "All tags") and picks from the same used-tags
  * list the chips showed — it writes the very same disc.tag state, so
- * applyDiscovery composes exactly as before. */
+ * applyDiscovery composes exactly as before.
+ * Round 2 (owner, later Oct 19 2026 — annotated screenshot of the live
+ * home): the dropdown rides UP onto the Online row — [🟢 Online]
+ * [tag dropdown filling the rest] [✖ Clear when active], all one row —
+ * and the bar sits tighter over the "New models" rail (no big gap). */
 function discoveryBarHTML(models) {
   const usedTags = DISCOVERY_TAGS.filter((tg) => (models || []).some((m) => (m.tags || []).includes(tg)));
   /* The selected tag stays listed even when the current section's
@@ -9824,12 +9828,12 @@ function discoveryBarHTML(models) {
     </div>
     <div class="disc-row disc-chips">
       <button class="disc-chip ${disc.online ? 'on' : ''}" data-disc-toggle="online">${t('disc_online')}</button>
-      ${discActive(disc) ? `<button class="disc-chip clear" id="disc-clear">${t('clear_filters')}</button>` : ''}
-    </div>
-    ${tagOptions.length ? `<div class="disc-row disc-selectwrap"><select class="input disc-sort disc-tagpick" id="disc-tag" aria-label="${t('disc_tag_any')}">
+      ${tagOptions.length ? `<span class="disc-selectwrap"><select class="input disc-sort disc-tagpick" id="disc-tag" aria-label="${t('disc_tag_any')}">
         <option value="" ${disc.tag ? '' : 'selected'}>${t('disc_tag_any')}</option>
         ${tagOptions.map((tg) => `<option value="${esc(tg)}" ${disc.tag === tg ? 'selected' : ''}>${esc(tg)}</option>`).join('')}
-      </select></div>` : ''}
+      </select></span>` : ''}
+      ${discActive(disc) ? `<button class="disc-chip clear" id="disc-clear">${t('clear_filters')}</button>` : ''}
+    </div>
   </div>`;
 }
 
