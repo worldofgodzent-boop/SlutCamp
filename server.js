@@ -2751,7 +2751,12 @@ function pushToAdmins(event) {
 // 2257 ID verification: a model must be approved before going live.
 // (Since Oct 15 it no longer gates fan→model texting — owner rule: fans
 // can always text her; the message waits in her inbox.)
+// HOUSE EXEMPTION (owner, Oct 18 2026: "The SlutCamp live is exempt
+// from all that"): the official house account IS the platform — it
+// counts as verified everywhere verification is consulted, with no
+// id_verifications row. Single point: every caller goes through here.
 function isIdVerified(modelUserId) {
+  if (isHouseAccountId(modelUserId)) return true;
   const r = db.prepare('SELECT status FROM id_verifications WHERE model_id = ?').get(modelUserId);
   return !!(r && r.status === 'approved');
 }
@@ -9372,7 +9377,10 @@ app.get('/api/admin/contracts', identMiddleware, requireUser, requireRole('admin
 app.get('/api/model/id-verification', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const v = db.prepare(`SELECT status, submitted_at, reviewed_at, reviewer_note
                         FROM id_verifications WHERE model_id = ?`).get(req.user.id);
-  res.json({ verification: v || null, verified: isIdVerified(req.user.id) });
+  // `house` drives the client: the house account's own Settings never
+  // render the ID Verification card at all (owner, Oct 18 2026).
+  res.json({ verification: v || null, verified: isIdVerified(req.user.id),
+    house: isHouseAccountId(req.user.id) });
 });
 
 // Model: submit ID front + ID back + selfie holding the ID
@@ -10590,7 +10598,21 @@ app.get('/api/live/schedule', (req, res) => {
     const blockedS = blockedModelIds(geoOfReq(req));
     if (blockedS.size) visUpcoming = visUpcoming.filter((u) => !blockedS.has(u.model_id));
   }
-  res.json({ upcoming: visUpcoming.slice(0, 20) });
+  // HOUSE banner data (owner, Oct 18 2026: "the schedule broadcast on
+  // the head of the app"): the official account's next scheduled live
+  // + whether it is live right now. Computed from the UNFILTERED
+  // upcoming list — the house is the platform itself, so section tabs
+  // and geo blocks never hide its banner from anyone.
+  const house = { next: null, live_session_id: null };
+  const hidS = houseAccountId();
+  if (hidS) {
+    const hn = upcoming.find((u) => u.model_id === hidS);
+    if (hn) house.next = { title: hn.title, starts_at: hn.starts_at,
+      day_label: hn.day_label, time_label: hn.time_label };
+    const hs = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`).get(hidS);
+    if (hs) house.live_session_id = hs.id;
+  }
+  res.json({ upcoming: visUpcoming.slice(0, 20), house });
 });
 
 app.get('/api/live/:id', identMiddleware, requireUser, (req, res) => {
@@ -12891,7 +12913,7 @@ app.post('/api/admin/safety/ban-guest', ...adminOnly, (req, res) => {
 app.get('/api/admin/models', ...adminOnly, (req, res) => {
   res.json({ models: db.prepare(`
     SELECT u.id, u.username, u.display_name, u.banned, u.created_at, u.presence_override,
-           m.bio, m.per_message_cents, m.per_minute_cents, m.is_online, m.photo_url, m.is_hidden, m.is_featured,
+           m.bio, m.per_message_cents, m.per_minute_cents, m.section, m.is_online, m.photo_url, m.is_hidden, m.is_featured,
            r.name AS recruiter_name,
            w.earnings_cents, w.paid_out_cents,
            (w.earnings_cents - w.paid_out_cents) AS pending_cents
@@ -12961,6 +12983,20 @@ app.post('/api/admin/models/:id/presence', ...adminOnly, (req, res) => {
     return res.status(400).json({ error: 'featured_account', message: 'The featured system account has no presence control.' });
   db.prepare('UPDATE users SET presence_override = ? WHERE id = ?').run(mode, u.id);
   res.json({ id: u.id, presence_override: mode, online: effectiveOnline(mode, u.is_online) });
+});
+
+// Admin: move a model to another storefront section — one tap in the
+// Manager for anyone who "slips through the cracks" (owner,
+// Oct 18 2026). Takes effect immediately: every fan tab payload,
+// the lives list and the schedule read models.section live.
+app.patch('/api/admin/models/:id/section', ...adminOnly, (req, res) => {
+  const section = req.body && req.body.section;
+  if (!MODEL_SECTIONS.includes(section))
+    return res.status(400).json({ error: 'bad_section', message: "section must be 'female', 'male' or 'couple'." });
+  const m = db.prepare('SELECT user_id FROM models WHERE user_id = ?').get(req.params.id);
+  if (!m) return res.status(404).json({ error: 'not_found' });
+  db.prepare('UPDATE models SET section = ? WHERE user_id = ?').run(section, req.params.id);
+  res.json({ ok: true, section });
 });
 
 app.post('/api/admin/models', ...adminOnly, (req, res) => {
