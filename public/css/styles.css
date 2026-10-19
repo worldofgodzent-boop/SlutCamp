@@ -86,18 +86,21 @@ html, body {
    black. Scoped by body.in-home (set by show() for the fanModels
    view only). The layer paints above the header's own plum wash and
    below its content (z-index: -1 inside the header's stacking
-   context), sized to 150% of the band height so the lips fill it,
-   parked right-of-center where the dead space was, at half strength
-   — a watermark-with-glow: the wordmark, balance pill and Log out
-   stay perfectly readable above it, and pointer-events: none keeps
-   every tap target clean. */
+   context), at half strength — a watermark-with-glow: the wordmark,
+   balance pill and Log out stay perfectly readable above it, and
+   pointer-events: none keeps every tap target clean. Owner follow-up
+   (2026-10-18): ZOOMED to fill the band — background-size: cover with
+   the frame centered on the smile/teeth (the mouth sits a touch
+   above the artwork's middle, hence the 45% vertical anchor), so the
+   lips span the header edge-to-edge instead of sitting small at the
+   right. */
 body.in-home .header::before {
   content: '';
   position: absolute; inset: 0; z-index: -1;
   background-image: url(/img/lips-logo.png);
   background-repeat: no-repeat;
-  background-position: right 96px center;
-  background-size: auto 150%;
+  background-position: center 45%;
+  background-size: cover;
   opacity: .5;
   pointer-events: none;
 }
