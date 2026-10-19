@@ -7231,12 +7231,20 @@ app.post('/api/models/:id/tip', identMiddleware, requireUser, requireRole('fan')
   const model = db.prepare('SELECT * FROM users WHERE id = ? AND role = ?').get(modelId, 'model');
   if (!model) return res.status(404).json({ error: 'model_not_found' });
   if (modelRegionBlocked(modelId, geoOfReq(req))) return regionBlocked(res);
+  // Validate the payload before anything reaches the DB layer: menu_id must be
+  // present and a scalar id (a 'default-N' string, a custom-item id string, or
+  // a number). A missing/null/object/array value used to sail straight into
+  // the tip_menus lookup and detonate as an unhandled 500 (unbound SQLite
+  // parameter) instead of a clean client error.
+  const menuId = req.body ? req.body.menu_id : undefined;
+  if ((typeof menuId !== 'string' && typeof menuId !== 'number') || String(menuId).trim() === '')
+    return res.status(400).json({ error: 'menu_id_required' });
   let item = db.prepare('SELECT * FROM tip_menus WHERE id = ? AND model_id = ?')
-    .get(req.body.menu_id, modelId);
-  if (!item && String(req.body.menu_id).startsWith('default-')) {
-    const idx = parseInt(String(req.body.menu_id).replace('default-', ''));
+    .get(menuId, modelId);
+  if (!item && String(menuId).startsWith('default-')) {
+    const idx = parseInt(String(menuId).replace('default-', ''));
     const d = DEFAULT_TIP_MENU[idx];
-    if (d) item = { id: req.body.menu_id, model_id: modelId, ...d };
+    if (d) item = { id: menuId, model_id: modelId, ...d };
   }
   if (!item) return res.status(404).json({ error: 'menu_item_not_found' });
   const context = ['live', 'chat', 'profile'].includes(req.body.context) ? req.body.context : 'profile';
