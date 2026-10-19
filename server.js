@@ -2748,7 +2748,9 @@ function pushToAdmins(event) {
   for (const a of admins) pushToUser(a.id, event);
 }
 
-// 2257 ID verification: a model must be approved before going live.
+// 2257 ID verification: a model must be approved before going live
+// AND before cashing out (POST /api/model/withdrawals gates on this
+// too — owner policy, Oct 18 2026).
 // (Since Oct 15 it no longer gates fan→model texting — owner rule: fans
 // can always text her; the message waits in her inbox.)
 // HOUSE EXEMPTION (owner, Oct 18 2026: "The SlutCamp live is exempt
@@ -9672,6 +9674,20 @@ app.get('/api/model/withdrawals', identMiddleware, requireUser, requireRoleOrAff
 // Request a withdrawal (pending until Asce marks it paid)
 app.post('/api/model/withdrawals', identMiddleware, requireUser, requireRoleOrAffiliate('model', 'recruiter'), (req, res) => {
   const amount = parseInt(req.body.amount_cents);
+  // ID GATE (owner policy, Oct 18 2026: "profile and chatting stay
+  // open, but going live AND cashing out both need your approval of
+  // her ID"): a MODEL may not request a withdrawal until her ID is
+  // approved — the same isIdVerified() the live gate consults, house
+  // exemption included. Models only: ID verification is a model flow,
+  // so pure affiliates/recruiters have no way to submit one, and their
+  // commission is not 2257 performer earnings — their path is
+  // unchanged. Checked FIRST, before the bank/tax completeness
+  // refusals below, mirroring /api/live/start: eligibility precedes
+  // setup. An unverified model gets the one instruction that matters
+  // instead of a walkthrough toward a payout she cannot receive yet.
+  if (req.user.role === 'model' && !isIdVerified(req.user.id))
+    return res.status(403).json({ error: 'id_verification_required',
+      message: '🪪 ID verification required — upload your ID in Settings → ID Verification to cash out.' });
   const acct = db.prepare('SELECT id FROM payout_accounts WHERE model_id = ?').get(req.user.id);
   if (!acct) return res.status(400).json({ error: 'no_bank_account' });
   // IRS: W-9 info required before any payout can be issued

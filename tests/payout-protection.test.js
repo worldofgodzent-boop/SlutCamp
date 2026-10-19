@@ -147,6 +147,16 @@ async function setupPayout(base, model) {
       address_line1: '1 Main St', city: 'Dallas', state: 'TX', zip: '75001' } });
   assert.equal(tp.status, 200, `tax profile: ${tp.text}`);
 }
+// ID GATE (owner policy, Oct 18 2026): a model may not request a
+// withdrawal until her ID is approved. These payout scenarios predate
+// the gate, so the fixture models get an approved id_verifications
+// row directly in the DB (the same surgery other suites perform) —
+// setup-only; the payout behavior under test is unchanged.
+function approveId(dir, modelId) {
+  const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+  db.prepare("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved') ON CONFLICT(model_id) DO UPDATE SET status = 'approved'").run(modelId);
+  db.close();
+}
 const modelWithdrawals = (base, model) => req(base, 'GET', '/api/model/withdrawals', { token: model.token });
 const adminPayoutRow = async (base, mgr, modelId) => {
   const r = await req(base, 'GET', '/api/admin/payouts', mgr);
@@ -204,6 +214,7 @@ test('A2: maturity — new earnings are held, not withdrawable, on BOTH the mode
   assert.equal(wd.json.hold_days, 7);
   assert.equal(wd.json.negative_adjustment_cents, 0);
   await setupPayout(base, S.modelA);
+  approveId(A.dir, S.modelA.id); // ID gate: approved, so the refusal below is the funds check, not the ID check
   const ask = await req(base, 'POST', '/api/model/withdrawals', { token: S.modelA.token, body: { amount_cents: 100 } });
   assert.equal(ask.status, 400, 'model cannot request held money');
   assert.equal(ask.json.error, 'insufficient_funds');
@@ -376,6 +387,8 @@ test('A9: matured earnings become withdrawable; a clawback that eats the balance
   db.prepare(`INSERT INTO transactions (fan_id, model_id, type, gross_cents, model_cents, platform_cents, available_at)
               VALUES (?, ?, 'tip', 2000, 1200, 800, NULL)`).run(S.fan4.id, S.modelB.id);
   db.prepare('UPDATE wallets SET earnings_cents = earnings_cents + 1200 WHERE user_id = ?').run(S.modelB.id);
+  // ID gate: B must be ID-approved before her withdrawal request below.
+  db.prepare("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved') ON CONFLICT(model_id) DO UPDATE SET status = 'approved'").run(S.modelB.id);
   db.close();
   const a2 = await boot(dir);
   t.after(async () => { await a2.kill(); fs.rmSync(dir, { recursive: true, force: true }); });
@@ -485,6 +498,10 @@ test('B: already-withdrawn earnings — the shortfall becomes debt and future ea
     db.close();
   };
   matureE();
+  // ID gate: E must be ID-approved before she withdraws everything below.
+  { const db = new DatabaseSync(dbPath);
+    db.prepare("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved') ON CONFLICT(model_id) DO UPDATE SET status = 'approved'").run(E.id);
+    db.close(); }
   b = await boot(dir);
   await setupPayout(b.base, E);
   const ask = await req(b.base, 'POST', '/api/model/withdrawals', { token: E.token, body: { amount_cents: 3600 } });

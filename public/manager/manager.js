@@ -791,7 +791,7 @@ async function adminIdChecksBody() {
   const badge = (s) => ({ pending: '⏳ Pending', approved: '✅ Approved', rejected: '❌ Rejected' }[s] || s);
   return `
     <div style="font-weight:800;margin-bottom:10px">🪪 Model ID verification <span class="small muted">(18 U.S.C. §2257)</span></div>
-    <div class="small muted" style="margin-bottom:12px">Models cannot chat with fans or go live until you approve their ID. Photos are private — only visible here.</div>
+    <div class="small muted" style="margin-bottom:12px">Models cannot go live or cash out until you approve their ID — chatting with fans is never gated. Photos are private — only visible here.</div>
     ${pending.length ? `
       <h3 style="color:var(--yellow)">⏳ Awaiting review (${pending.length})</h3>
       ${pending.map((r) => `
