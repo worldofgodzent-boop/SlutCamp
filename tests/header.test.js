@@ -96,6 +96,10 @@ test('fan-home header carries the lips backdrop (static mark, behind content)', 
   // animated welcome asset (logo-lips-anim.webp) is welcome-screen-
   // only by product rule and must never be referenced here.
   assert.match(styles, /body\.in-home \.header::before\s*\{[^}]*background-image:\s*url\(\/img\/lips-logo\.png\)/);
+  // Owner (2026-10-18): zoomed to fill the band, centered on the
+  // smile/teeth — cover sizing with the 45% vertical anchor.
+  assert.match(styles, /body\.in-home \.header::before\s*\{[^}]*background-size:\s*cover/);
+  assert.match(styles, /body\.in-home \.header::before\s*\{[^}]*background-position:\s*center 45%/);
   assert.match(styles, /body\.in-home \.header::before\s*\{[^}]*opacity:\s*\.5/);
   assert.match(styles, /body\.in-home \.header::before\s*\{[^}]*pointer-events:\s*none/);
   assert.doesNotMatch(styles, /body\.in-home \.header::before\s*\{[^}]*logo-lips-anim/);
