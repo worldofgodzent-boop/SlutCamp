@@ -454,6 +454,36 @@ const I18N = {
     id_verified: '✅ ID Verified',
     id_verified_sub: 'Your identity is verified. You\'re cleared to go live and cash out.',
     id_pending: '⏳ ID Under Review',
+    coperf_h: '👥 My Co-Performers',
+    coperf_note: 'Anyone on camera with you must be registered here and ID-verified before they can join your live.',
+    coperf_empty: 'No co-performers yet.',
+    coperf_name: 'Partner name',
+    coperf_gender: 'Gender',
+    coperf_gender_f: 'Female',
+    coperf_gender_m: 'Male',
+    coperf_dob: 'Date of birth',
+    coperf_consent: 'I confirm my partner is 18 or older and consents to appear on camera with me.',
+    coperf_add: 'Add co-performer',
+    coperf_st_pending: '⏳ Pending verification',
+    coperf_st_approved: '✅ Verified — cleared for camera',
+    coperf_st_rejected: '❌ Rejected',
+    coperf_st_none: 'No ID submitted yet',
+    coperf_upload_id: 'Upload ID',
+    coperf_id_note: 'Partner\'s ID front, ID back, and a selfie of your partner holding the ID.',
+    coperf_save: 'Save changes',
+    coperf_remove: 'Remove',
+    coperf_remove_confirm: 'Remove this co-performer?',
+    coperf_added: '👥 Co-performer added — upload their ID to get them verified.',
+    coperf_saved: '✅ Saved',
+    coperf_removed: 'Co-performer removed.',
+    coperf_id_sent: '✅ ID submitted! SlutCamp will review it soon.',
+    coperf_attach3: 'Please attach all 3 photos.',
+    coperf_cam_h: 'Who\'s on camera?',
+    coperf_cam_note: 'Check everyone appearing on camera with you.',
+    coperf_cam_me: 'Just me',
+    coperf_cam_go: '🔴 Go live',
+    coperf_signup_h: '👥 Your partner',
+    coperf_signup_note: 'Joining as a couple? Add your partner now — they must be ID-verified before appearing on camera. You can also add them later in Settings.',
     my_rates: '💵 My Rates',
     rates_note: 'What fans pay for 1-on-1 with you. You set these — SlutCamp can also adjust them.',
     per_text: '💬 Per text:',
@@ -1134,6 +1164,36 @@ const I18N = {
     id_verified: '✅ Identidad verificada',
     id_verified_sub: 'Tu identidad está verificada. Ya puedes transmitir en vivo y retirar tu dinero.',
     id_pending: '⏳ Identidad en revisión',
+    coperf_h: '👥 Mis co-intérpretes',
+    coperf_note: 'Toda persona que salga en cámara contigo debe estar registrada aquí y verificada con su ID antes de unirse a tu directo.',
+    coperf_empty: 'Aún no tienes co-intérpretes.',
+    coperf_name: 'Nombre de la pareja',
+    coperf_gender: 'Género',
+    coperf_gender_f: 'Femenino',
+    coperf_gender_m: 'Masculino',
+    coperf_dob: 'Fecha de nacimiento',
+    coperf_consent: 'Confirmo que mi pareja tiene 18 años o más y acepta aparecer en cámara conmigo.',
+    coperf_add: 'Añadir co-intérprete',
+    coperf_st_pending: '⏳ Verificación pendiente',
+    coperf_st_approved: '✅ Verificado — autorizado para cámara',
+    coperf_st_rejected: '❌ Rechazado',
+    coperf_st_none: 'Aún no se envió el ID',
+    coperf_upload_id: 'Subir ID',
+    coperf_id_note: 'Frente y reverso del ID de tu pareja, y una selfie de tu pareja sosteniendo el ID.',
+    coperf_save: 'Guardar cambios',
+    coperf_remove: 'Eliminar',
+    coperf_remove_confirm: '¿Eliminar a este co-intérprete?',
+    coperf_added: '👥 Co-intérprete añadido — sube su ID para verificarlo.',
+    coperf_saved: '✅ Guardado',
+    coperf_removed: 'Co-intérprete eliminado.',
+    coperf_id_sent: '✅ ¡ID enviado! SlutCamp lo revisará pronto.',
+    coperf_attach3: 'Adjunta las 3 fotos.',
+    coperf_cam_h: '¿Quién sale en cámara?',
+    coperf_cam_note: 'Marca a todas las personas que saldrán en cámara contigo.',
+    coperf_cam_me: 'Solo yo',
+    coperf_cam_go: '🔴 Salir en vivo',
+    coperf_signup_h: '👥 Tu pareja',
+    coperf_signup_note: '¿Te unes como pareja? Añade a tu pareja ahora — debe verificar su ID antes de salir en cámara. También puedes añadirla luego en Ajustes.',
     my_rates: '💵 Mis tarifas',
     rates_note: 'Lo que pagan los fans por el 1 a 1 contigo. Tú las fijas — SlutCamp también puede ajustarlas.',
     per_text: '💬 Por mensaje:',
@@ -1814,6 +1874,36 @@ const I18N = {
     id_verified: '✅ Identidade verificada',
     id_verified_sub: 'Sua identidade está verificada. Você já pode entrar ao vivo e sacar seus ganhos.',
     id_pending: '⏳ Identidade em análise',
+    coperf_h: '👥 Meus parceiros de cena',
+    coperf_note: 'Qualquer pessoa que apareça na câmera com você deve estar registrada aqui e verificada com documento antes de entrar na sua live.',
+    coperf_empty: 'Ainda não há parceiros de cena.',
+    coperf_name: 'Nome do parceiro',
+    coperf_gender: 'Gênero',
+    coperf_gender_f: 'Feminino',
+    coperf_gender_m: 'Masculino',
+    coperf_dob: 'Data de nascimento',
+    coperf_consent: 'Confirmo que meu parceiro tem 18 anos ou mais e consente em aparecer na câmera comigo.',
+    coperf_add: 'Adicionar parceiro de cena',
+    coperf_st_pending: '⏳ Verificação pendente',
+    coperf_st_approved: '✅ Verificado — liberado para a câmera',
+    coperf_st_rejected: '❌ Rejeitado',
+    coperf_st_none: 'Nenhum documento enviado ainda',
+    coperf_upload_id: 'Enviar documento',
+    coperf_id_note: 'Frente e verso do documento do parceiro e uma selfie dele segurando o documento.',
+    coperf_save: 'Salvar alterações',
+    coperf_remove: 'Remover',
+    coperf_remove_confirm: 'Remover este parceiro de cena?',
+    coperf_added: '👥 Parceiro adicionado — envie o documento dele para verificação.',
+    coperf_saved: '✅ Salvo',
+    coperf_removed: 'Parceiro de cena removido.',
+    coperf_id_sent: '✅ Documento enviado! A SlutCamp vai analisá-lo em breve.',
+    coperf_attach3: 'Anexe as 3 fotos.',
+    coperf_cam_h: 'Quem está na câmera?',
+    coperf_cam_note: 'Marque todos que aparecerão na câmera com você.',
+    coperf_cam_me: 'Só eu',
+    coperf_cam_go: '🔴 Entrar ao vivo',
+    coperf_signup_h: '👥 Seu parceiro',
+    coperf_signup_note: 'Entrando como casal? Adicione seu parceiro agora — ele precisa ter o documento verificado antes de aparecer na câmera. Você também pode adicioná-lo depois em Configurações.',
     my_rates: '💵 Minhas tarifas',
     rates_note: 'O que os fãs pagam pelo 1 a 1 com você. Você define — a SlutCamp também pode ajustar.',
     per_text: '💬 Por mensagem:',
@@ -2494,6 +2584,36 @@ const I18N = {
     id_verified: '✅ Identité vérifiée',
     id_verified_sub: 'Votre identité est vérifiée. Vous êtes autorisée à passer en direct et à retirer vos gains.',
     id_pending: '⏳ Identité en cours d\'examen',
+    coperf_h: '👥 Mes partenaires de scène',
+    coperf_note: 'Toute personne à la caméra avec vous doit être enregistrée ici et vérifiée par pièce d’identité avant de rejoindre votre live.',
+    coperf_empty: 'Aucun partenaire de scène pour le moment.',
+    coperf_name: 'Nom du partenaire',
+    coperf_gender: 'Genre',
+    coperf_gender_f: 'Femme',
+    coperf_gender_m: 'Homme',
+    coperf_dob: 'Date de naissance',
+    coperf_consent: 'Je confirme que mon partenaire a 18 ans ou plus et consent à apparaître à la caméra avec moi.',
+    coperf_add: 'Ajouter un partenaire',
+    coperf_st_pending: '⏳ Vérification en attente',
+    coperf_st_approved: '✅ Vérifié — autorisé à la caméra',
+    coperf_st_rejected: '❌ Rejeté',
+    coperf_st_none: 'Aucune pièce d’identité envoyée',
+    coperf_upload_id: 'Téléverser la pièce d’identité',
+    coperf_id_note: 'Recto et verso de la pièce d’identité de votre partenaire, et un selfie de votre partenaire la tenant.',
+    coperf_save: 'Enregistrer',
+    coperf_remove: 'Retirer',
+    coperf_remove_confirm: 'Retirer ce partenaire de scène ?',
+    coperf_added: '👥 Partenaire ajouté — téléversez sa pièce d’identité pour le vérifier.',
+    coperf_saved: '✅ Enregistré',
+    coperf_removed: 'Partenaire de scène retiré.',
+    coperf_id_sent: '✅ Pièce envoyée ! SlutCamp la vérifiera bientôt.',
+    coperf_attach3: 'Veuillez joindre les 3 photos.',
+    coperf_cam_h: 'Qui est à la caméra ?',
+    coperf_cam_note: 'Cochez toutes les personnes qui apparaîtront à la caméra avec vous.',
+    coperf_cam_me: 'Juste moi',
+    coperf_cam_go: '🔴 Passer en direct',
+    coperf_signup_h: '👥 Votre partenaire',
+    coperf_signup_note: 'Vous vous inscrivez en couple ? Ajoutez votre partenaire maintenant — il doit être vérifié par pièce d’identité avant d’apparaître à la caméra. Vous pouvez aussi le faire plus tard dans les Paramètres.',
     my_rates: '💵 Mes tarifs',
     rates_note: 'Ce que les fans paient pour un 1-à-1 avec vous. C\'est vous qui les définissez — SlutCamp peut aussi les ajuster.',
     per_text: '💬 Par message :',
@@ -3174,6 +3294,36 @@ const I18N = {
     id_verified: '✅ Ausweis verifiziert',
     id_verified_sub: 'Deine Identität ist verifiziert. Du bist freigegeben zum Live-Gehen und Abheben.',
     id_pending: '⏳ Ausweis wird überprüft',
+    coperf_h: '👥 Meine Co-Performer',
+    coperf_note: 'Jede Person, die mit dir vor der Kamera ist, muss hier registriert und per Ausweis verifiziert sein, bevor sie in deinen Stream darf.',
+    coperf_empty: 'Noch keine Co-Performer.',
+    coperf_name: 'Name des Partners',
+    coperf_gender: 'Geschlecht',
+    coperf_gender_f: 'Weiblich',
+    coperf_gender_m: 'Männlich',
+    coperf_dob: 'Geburtsdatum',
+    coperf_consent: 'Ich bestätige, dass mein Partner mindestens 18 Jahre alt ist und einwilligt, mit mir vor der Kamera zu erscheinen.',
+    coperf_add: 'Co-Performer hinzufügen',
+    coperf_st_pending: '⏳ Überprüfung ausstehend',
+    coperf_st_approved: '✅ Verifiziert — für die Kamera freigegeben',
+    coperf_st_rejected: '❌ Abgelehnt',
+    coperf_st_none: 'Noch kein Ausweis eingereicht',
+    coperf_upload_id: 'Ausweis hochladen',
+    coperf_id_note: 'Ausweis deines Partners (Vorder- und Rückseite) und ein Selfie, auf dem dein Partner den Ausweis hält.',
+    coperf_save: 'Änderungen speichern',
+    coperf_remove: 'Entfernen',
+    coperf_remove_confirm: 'Diesen Co-Performer entfernen?',
+    coperf_added: '👥 Co-Performer hinzugefügt — lade seinen Ausweis hoch, um ihn zu verifizieren.',
+    coperf_saved: '✅ Gespeichert',
+    coperf_removed: 'Co-Performer entfernt.',
+    coperf_id_sent: '✅ Ausweis eingereicht! SlutCamp prüft ihn in Kürze.',
+    coperf_attach3: 'Bitte alle 3 Fotos anhängen.',
+    coperf_cam_h: 'Wer ist vor der Kamera?',
+    coperf_cam_note: 'Markiere alle, die mit dir vor der Kamera sind.',
+    coperf_cam_me: 'Nur ich',
+    coperf_cam_go: '🔴 Live gehen',
+    coperf_signup_h: '👥 Dein Partner',
+    coperf_signup_note: 'Als Paar dabei? Füge deinen Partner jetzt hinzu — er muss per Ausweis verifiziert sein, bevor er vor die Kamera darf. Geht auch später in den Einstellungen.',
     my_rates: '💵 Meine Preise',
     rates_note: 'Was Fans für 1-zu-1 mit dir zahlen. Du legst diese fest — SlutCamp kann sie auch anpassen.',
     per_text: '💬 Pro Text:',
@@ -3854,6 +4004,36 @@ const I18N = {
     id_verified: '✅ Удостоверение подтверждено',
     id_verified_sub: 'Ваша личность подтверждена. Вам разрешено выходить в эфир и выводить деньги.',
     id_pending: '⏳ Удостоверение на проверке',
+    coperf_h: '👥 Мои партнёры по сцене',
+    coperf_note: 'Любой человек в кадре с вами должен быть зарегистрирован здесь и подтверждён по документу, прежде чем выходить в ваш эфир.',
+    coperf_empty: 'Партнёров по сцене пока нет.',
+    coperf_name: 'Имя партнёра',
+    coperf_gender: 'Пол',
+    coperf_gender_f: 'Женский',
+    coperf_gender_m: 'Мужской',
+    coperf_dob: 'Дата рождения',
+    coperf_consent: 'Я подтверждаю, что моему партнёру есть 18 лет и он согласен появляться со мной в кадре.',
+    coperf_add: 'Добавить партнёра',
+    coperf_st_pending: '⏳ Ожидает проверки',
+    coperf_st_approved: '✅ Подтверждено — допуск в кадр есть',
+    coperf_st_rejected: '❌ Отклонено',
+    coperf_st_none: 'Документ ещё не отправлен',
+    coperf_upload_id: 'Загрузить документ',
+    coperf_id_note: 'Документ партнёра (лицевая и обратная сторона) и селфи партнёра с документом в руке.',
+    coperf_save: 'Сохранить изменения',
+    coperf_remove: 'Удалить',
+    coperf_remove_confirm: 'Удалить этого партнёра по сцене?',
+    coperf_added: '👥 Партнёр добавлен — загрузите его документ для проверки.',
+    coperf_saved: '✅ Сохранено',
+    coperf_removed: 'Партнёр по сцене удалён.',
+    coperf_id_sent: '✅ Документ отправлен! SlutCamp скоро его проверит.',
+    coperf_attach3: 'Прикрепите все 3 фотографии.',
+    coperf_cam_h: 'Кто в кадре?',
+    coperf_cam_note: 'Отметьте всех, кто будет с вами в кадре.',
+    coperf_cam_me: 'Только я',
+    coperf_cam_go: '🔴 Выйти в эфир',
+    coperf_signup_h: '👥 Ваш партнёр',
+    coperf_signup_note: 'Регистрируетесь как пара? Добавьте партнёра сейчас — он должен пройти проверку по документу, прежде чем появляться в кадре. Это можно сделать и позже в Настройках.',
     my_rates: '💵 Мои тарифы',
     rates_note: 'Сколько фанаты платят за 1-на-1 с вами. Вы устанавливаете их — SlutCamp также может их корректировать.',
     per_text: '💬 За сообщение:',
@@ -4534,6 +4714,36 @@ const I18N = {
     id_verified: '✅ 身分証確認済み',
     id_verified_sub: '本人確認が完了しました。ライブ配信と出金の準備ができています。',
     id_pending: '⏳ 身分証審査中',
+    coperf_h: '👥 共演者',
+    coperf_note: 'あなたと一緒にカメラに映る人は全員、ここで登録し、身分証の確認が完了してからでないとライブに参加できません。',
+    coperf_empty: '共演者はまだいません。',
+    coperf_name: 'パートナー名',
+    coperf_gender: '性別',
+    coperf_gender_f: '女性',
+    coperf_gender_m: '男性',
+    coperf_dob: '生年月日',
+    coperf_consent: 'パートナーが18歳以上であり、私と一緒にカメラに映ることに同意していることを確認します。',
+    coperf_add: '共演者を追加',
+    coperf_st_pending: '⏳ 確認待ち',
+    coperf_st_approved: '✅ 確認済み — 出演可能',
+    coperf_st_rejected: '❌ 却下されました',
+    coperf_st_none: '身分証はまだ提出されていません',
+    coperf_upload_id: '身分証をアップロード',
+    coperf_id_note: 'パートナーの身分証の表と裏、そして身分証を持ったパートナーの自撮り写真。',
+    coperf_save: '変更を保存',
+    coperf_remove: '削除',
+    coperf_remove_confirm: 'この共演者を削除しますか？',
+    coperf_added: '👥 共演者を追加しました — 確認のために身分証をアップロードしてください。',
+    coperf_saved: '✅ 保存しました',
+    coperf_removed: '共演者を削除しました。',
+    coperf_id_sent: '✅ 身分証を提出しました！まもなくSlutCampが確認します。',
+    coperf_attach3: '3枚すべての写真を添付してください。',
+    coperf_cam_h: 'カメラに映るのは誰ですか？',
+    coperf_cam_note: 'あなたと一緒にカメラに映る人を全員チェックしてください。',
+    coperf_cam_me: '私だけ',
+    coperf_cam_go: '🔴 ライブ開始',
+    coperf_signup_h: '👥 パートナー',
+    coperf_signup_note: 'カップルで参加しますか？今すぐパートナーを追加してください — カメラに映る前に身分証の確認が必要です。後で設定から追加することもできます。',
     my_rates: '💵 私の料金',
     rates_note: 'ファンがあなたとの1対1に支払う金額です。あなたが設定します — SlutCampが調整することもあります。',
     per_text: '💬 テキスト1通あたり：',
@@ -5214,6 +5424,36 @@ const I18N = {
     id_verified: '✅ 身份已验证',
     id_verified_sub: '你的身份已验证。你可以开播和提现了。',
     id_pending: '⏳ 身份审核中',
+    coperf_h: '👥 我的搭档演员',
+    coperf_note: '任何与你一起出镜的人都必须先在这里注册并通过身份证验证，才能加入你的直播。',
+    coperf_empty: '暂无搭档演员。',
+    coperf_name: '搭档姓名',
+    coperf_gender: '性别',
+    coperf_gender_f: '女性',
+    coperf_gender_m: '男性',
+    coperf_dob: '出生日期',
+    coperf_consent: '我确认我的搭档年满18岁，并且同意与我一起出镜。',
+    coperf_add: '添加搭档演员',
+    coperf_st_pending: '⏳ 待验证',
+    coperf_st_approved: '✅ 已验证 — 可以出镜',
+    coperf_st_rejected: '❌ 已拒绝',
+    coperf_st_none: '尚未提交身份证',
+    coperf_upload_id: '上传身份证',
+    coperf_id_note: '搭档身份证的正反面，以及搭档手持身份证的自拍照。',
+    coperf_save: '保存更改',
+    coperf_remove: '移除',
+    coperf_remove_confirm: '要移除这名搭档演员吗？',
+    coperf_added: '👥 搭档演员已添加 — 上传其身份证以完成验证。',
+    coperf_saved: '✅ 已保存',
+    coperf_removed: '搭档演员已移除。',
+    coperf_id_sent: '✅ 身份证已提交！SlutCamp会尽快审核。',
+    coperf_attach3: '请附上全部3张照片。',
+    coperf_cam_h: '谁会出镜？',
+    coperf_cam_note: '勾选所有会与你一起出镜的人。',
+    coperf_cam_me: '只有我',
+    coperf_cam_go: '🔴 开始直播',
+    coperf_signup_h: '👥 你的搭档',
+    coperf_signup_note: '以情侣身份加入？现在就添加你的搭档 — 他们必须先通过身份证验证才能出镜。之后也可以在设置中添加。',
     my_rates: '💵 我的费率',
     rates_note: '粉丝与你一对一时支付的价格。由你设定 — SlutCamp 也可以调整它们。',
     per_text: '💬 每条短信：',
@@ -5894,6 +6134,36 @@ const I18N = {
     id_verified: '✅ 신분증 인증 완료',
     id_verified_sub: '신원이 인증되었습니다. 라이브와 출금을 할 수 있습니다.',
     id_pending: '⏳ 신분증 검토 중',
+    coperf_h: '👥 내 공연 파트너',
+    coperf_note: '당신과 함께 카메라에 나오는 사람은 모두 여기에 등록하고 신분증 인증을 완료해야 라이브에 참여할 수 있습니다.',
+    coperf_empty: '아직 공연 파트너가 없습니다.',
+    coperf_name: '파트너 이름',
+    coperf_gender: '성별',
+    coperf_gender_f: '여성',
+    coperf_gender_m: '남성',
+    coperf_dob: '생년월일',
+    coperf_consent: '파트너가 만 18세 이상이며 나와 함께 카메라에 출연하는 데 동의함을 확인합니다.',
+    coperf_add: '공연 파트너 추가',
+    coperf_st_pending: '⏳ 인증 대기 중',
+    coperf_st_approved: '✅ 인증 완료 — 출연 가능',
+    coperf_st_rejected: '❌ 거부됨',
+    coperf_st_none: '아직 신분증을 제출하지 않았습니다',
+    coperf_upload_id: '신분증 업로드',
+    coperf_id_note: '파트너 신분증 앞면과 뒷면, 그리고 신분증을 들고 있는 파트너의 셀카.',
+    coperf_save: '변경사항 저장',
+    coperf_remove: '삭제',
+    coperf_remove_confirm: '이 공연 파트너를 삭제할까요?',
+    coperf_added: '👥 공연 파트너가 추가되었습니다 — 인증을 위해 신분증을 업로드하세요.',
+    coperf_saved: '✅ 저장되었습니다',
+    coperf_removed: '공연 파트너가 삭제되었습니다.',
+    coperf_id_sent: '✅ 신분증이 제출되었습니다! 곧 검토될 예정입니다.',
+    coperf_attach3: '사진 3장을 모두 첨부해주세요.',
+    coperf_cam_h: '카메라에 누가 나오나요?',
+    coperf_cam_note: '당신과 함께 출연하는 사람을 모두 선택하세요.',
+    coperf_cam_me: '나 혼자',
+    coperf_cam_go: '🔴 라이브 시작',
+    coperf_signup_h: '👥 당신의 파트너',
+    coperf_signup_note: '커플로 가입하시나요? 지금 파트너를 추가하세요 — 카메라에 출연하기 전에 신분증 인증이 필요합니다. 나중에 설정에서도 추가할 수 있습니다.',
     my_rates: '💵 내 요금',
     rates_note: '팬이 1:1로 지불하는 금액입니다. 본인이 설정합니다 — SlutCamp도 조정할 수 있습니다.',
     per_text: '💬 문자 1개당:',
@@ -6574,6 +6844,36 @@ const I18N = {
     id_verified: '✅ Documento verificato',
     id_verified_sub: 'La tua identità è verificata. Sei autorizzata ad andare in diretta e a prelevare i tuoi guadagni.',
     id_pending: '⏳ Documento in revisione',
+    coperf_h: '👥 I miei partner di scena',
+    coperf_note: 'Chiunque appaia in camera con te deve essere registrato qui e verificato con documento prima di unirsi alla tua live.',
+    coperf_empty: 'Ancora nessun partner di scena.',
+    coperf_name: 'Nome del partner',
+    coperf_gender: 'Genere',
+    coperf_gender_f: 'Femmina',
+    coperf_gender_m: 'Maschio',
+    coperf_dob: 'Data di nascita',
+    coperf_consent: 'Confermo che il mio partner ha 18 anni o più e acconsente ad apparire in camera con me.',
+    coperf_add: 'Aggiungi partner',
+    coperf_st_pending: '⏳ Verifica in sospeso',
+    coperf_st_approved: '✅ Verificato — autorizzato per la camera',
+    coperf_st_rejected: '❌ Rifiutato',
+    coperf_st_none: 'Nessun documento inviato',
+    coperf_upload_id: 'Carica documento',
+    coperf_id_note: 'Fronte e retro del documento del partner e un selfie del partner che lo tiene in mano.',
+    coperf_save: 'Salva modifiche',
+    coperf_remove: 'Rimuovi',
+    coperf_remove_confirm: 'Rimuovere questo partner di scena?',
+    coperf_added: '👥 Partner aggiunto — carica il suo documento per verificarlo.',
+    coperf_saved: '✅ Salvato',
+    coperf_removed: 'Partner di scena rimosso.',
+    coperf_id_sent: '✅ Documento inviato! SlutCamp lo esaminerà a breve.',
+    coperf_attach3: 'Allega tutte e 3 le foto.',
+    coperf_cam_h: 'Chi è in camera?',
+    coperf_cam_note: 'Seleziona tutti coloro che appariranno in camera con te.',
+    coperf_cam_me: 'Solo io',
+    coperf_cam_go: '🔴 Vai in diretta',
+    coperf_signup_h: '👥 Il tuo partner',
+    coperf_signup_note: 'Ti unisci come coppia? Aggiungi ora il tuo partner — deve essere verificato con documento prima di apparire in camera. Puoi aggiungerlo anche dopo nelle Impostazioni.',
     my_rates: '💵 Le mie tariffe',
     rates_note: 'Ciò che i fan pagano per l\'1-a-1 con te. Le imposti tu — SlutCamp può anche modificarle.',
     per_text: '💬 Per messaggio:',
@@ -7254,6 +7554,36 @@ const I18N = {
     id_verified: '✅ Tożsamość zweryfikowana',
     id_verified_sub: 'Twoja tożsamość jest zweryfikowana. Masz zgodę na transmisje na żywo i wypłatę środków.',
     id_pending: '⏳ Dokument w trakcie sprawdzania',
+    coperf_h: '👥 Moi współwykonawcy',
+    coperf_note: 'Każda osoba, która występuje z tobą przed kamerą, musi być tu zarejestrowana i zweryfikowana dokumentem, zanim dołączy do twojej transmisji.',
+    coperf_empty: 'Brak współwykonawców.',
+    coperf_name: 'Imię partnera',
+    coperf_gender: 'Płeć',
+    coperf_gender_f: 'Kobieta',
+    coperf_gender_m: 'Mężczyzna',
+    coperf_dob: 'Data urodzenia',
+    coperf_consent: 'Potwierdzam, że mój partner ma ukończone 18 lat i zgadza się występować ze mną przed kamerą.',
+    coperf_add: 'Dodaj współwykonawcę',
+    coperf_st_pending: '⏳ Oczekuje na weryfikację',
+    coperf_st_approved: '✅ Zweryfikowano — dopuszczony do kamery',
+    coperf_st_rejected: '❌ Odrzucono',
+    coperf_st_none: 'Nie przesłano jeszcze dokumentu',
+    coperf_upload_id: 'Prześlij dokument',
+    coperf_id_note: 'Przód i tył dokumentu partnera oraz selfie partnera trzymającego dokument.',
+    coperf_save: 'Zapisz zmiany',
+    coperf_remove: 'Usuń',
+    coperf_remove_confirm: 'Usunąć tego współwykonawcę?',
+    coperf_added: '👥 Dodano współwykonawcę — prześlij jego dokument, aby go zweryfikować.',
+    coperf_saved: '✅ Zapisano',
+    coperf_removed: 'Usunięto współwykonawcę.',
+    coperf_id_sent: '✅ Przesłano dokument! SlutCamp wkrótce go sprawdzi.',
+    coperf_attach3: 'Załącz wszystkie 3 zdjęcia.',
+    coperf_cam_h: 'Kto jest przed kamerą?',
+    coperf_cam_note: 'Zaznacz wszystkich, którzy wystąpią z tobą przed kamerą.',
+    coperf_cam_me: 'Tylko ja',
+    coperf_cam_go: '🔴 Na żywo',
+    coperf_signup_h: '👥 Twój partner',
+    coperf_signup_note: 'Dołączasz jako para? Dodaj partnera teraz — musi zostać zweryfikowany dokumentem, zanim wystąpi przed kamerą. Możesz to zrobić także później w Ustawieniach.',
     my_rates: '💵 Moje stawki',
     rates_note: 'Ile fani płacą za 1 na 1 z Tobą. Ty je ustawiasz — SlutCamp może je również dostosować.',
     per_text: '💬 Za wiadomość:',
@@ -7934,6 +8264,36 @@ const I18N = {
     id_verified: '✅ ID Geverifieerd',
     id_verified_sub: 'Je identiteit is geverifieerd. Je bent klaar om live te gaan en geld op te nemen.',
     id_pending: '⏳ ID In Beoordeling',
+    coperf_h: '👥 Mijn mede-performers',
+    coperf_note: 'Iedereen die met jou in beeld is, moet hier geregistreerd en ID-geverifieerd zijn voordat ze aan je live mogen deelnemen.',
+    coperf_empty: 'Nog geen mede-performers.',
+    coperf_name: 'Naam partner',
+    coperf_gender: 'Geslacht',
+    coperf_gender_f: 'Vrouw',
+    coperf_gender_m: 'Man',
+    coperf_dob: 'Geboortedatum',
+    coperf_consent: 'Ik bevestig dat mijn partner 18 jaar of ouder is en ermee instemt om met mij in beeld te verschijnen.',
+    coperf_add: 'Mede-performer toevoegen',
+    coperf_st_pending: '⏳ Verificatie in afwachting',
+    coperf_st_approved: '✅ Geverifieerd — mag in beeld',
+    coperf_st_rejected: '❌ Geweigerd',
+    coperf_st_none: 'Nog geen ID ingediend',
+    coperf_upload_id: 'ID uploaden',
+    coperf_id_note: 'Voor- en achterkant van het ID van je partner en een selfie van je partner met het ID.',
+    coperf_save: 'Wijzigingen opslaan',
+    coperf_remove: 'Verwijderen',
+    coperf_remove_confirm: 'Deze mede-performer verwijderen?',
+    coperf_added: '👥 Mede-performer toegevoegd — upload hun ID om ze te verifiëren.',
+    coperf_saved: '✅ Opgeslagen',
+    coperf_removed: 'Mede-performer verwijderd.',
+    coperf_id_sent: '✅ ID ingediend! SlutCamp beoordeelt het binnenkort.',
+    coperf_attach3: 'Voeg alle 3 foto’s toe.',
+    coperf_cam_h: 'Wie is er in beeld?',
+    coperf_cam_note: 'Vink iedereen aan die met jou in beeld komt.',
+    coperf_cam_me: 'Alleen ik',
+    coperf_cam_go: '🔴 Ga live',
+    coperf_signup_h: '👥 Je partner',
+    coperf_signup_note: 'Doe je mee als koppel? Voeg je partner nu toe — ze moeten ID-geverifieerd zijn voordat ze in beeld mogen. Later toevoegen via Instellingen kan ook.',
     my_rates: '💵 Mijn Tarieven',
     rates_note: 'Wat fans betalen voor 1-op-1 met jou. Jij stelt deze in — SlutCamp kan ze ook aanpassen.',
     per_text: '💬 Per sms:',
@@ -8614,6 +8974,36 @@ const I18N = {
     id_verified: '✅ Kimlik Doğrulandı',
     id_verified_sub: 'Kimliğin doğrulandı. Canlıya geçmeye ve para çekmeye hazırsın.',
     id_pending: '⏳ Kimlik İnceleniyor',
+    coperf_h: '👥 Sahne Partnerlerim',
+    coperf_note: 'Seninle birlikte kamerada yer alan herkesin burada kayıtlı olması ve canlı yayınına katılmadan önce kimlik doğrulamasından geçmesi gerekir.',
+    coperf_empty: 'Henüz sahne partneri yok.',
+    coperf_name: 'Partner adı',
+    coperf_gender: 'Cinsiyet',
+    coperf_gender_f: 'Kadın',
+    coperf_gender_m: 'Erkek',
+    coperf_dob: 'Doğum tarihi',
+    coperf_consent: 'Partnerimin 18 yaşında veya daha büyük olduğunu ve benimle birlikte kamerada yer almayı kabul ettiğini onaylıyorum.',
+    coperf_add: 'Sahne partneri ekle',
+    coperf_st_pending: '⏳ Doğrulama bekliyor',
+    coperf_st_approved: '✅ Doğrulandı — kameraya çıkabilir',
+    coperf_st_rejected: '❌ Reddedildi',
+    coperf_st_none: 'Henüz kimlik gönderilmedi',
+    coperf_upload_id: 'Kimlik yükle',
+    coperf_id_note: 'Partnerinizin kimliğinin önü ve arkası ile partnerinizin kimliği tutarken çekilmiş bir selfiesi.',
+    coperf_save: 'Değişiklikleri kaydet',
+    coperf_remove: 'Kaldır',
+    coperf_remove_confirm: 'Bu sahne partneri kaldırılsın mı?',
+    coperf_added: '👥 Sahne partneri eklendi — doğrulanması için kimliğini yükleyin.',
+    coperf_saved: '✅ Kaydedildi',
+    coperf_removed: 'Sahne partneri kaldırıldı.',
+    coperf_id_sent: '✅ Kimlik gönderildi! SlutCamp yakında inceleyecek.',
+    coperf_attach3: 'Lütfen 3 fotoğrafın tamamını ekleyin.',
+    coperf_cam_h: 'Kamerada kim var?',
+    coperf_cam_note: 'Seninle birlikte kamerada yer alacak herkesi işaretle.',
+    coperf_cam_me: 'Sadece ben',
+    coperf_cam_go: '🔴 Canlı yayına geç',
+    coperf_signup_h: '👥 Partneriniz',
+    coperf_signup_note: 'Çift olarak mı katılıyorsunuz? Partnerinizi şimdi ekleyin — kamerada yer almadan önce kimlik doğrulamasından geçmesi gerekir. Daha sonra Ayarlar’dan da ekleyebilirsiniz.',
     my_rates: '💵 Ücretlerim',
     rates_note: 'Hayranların seninle bire bir için ödediği. Bunları sen belirlersin — SlutCamp de ayarlayabilir.',
     per_text: '💬 Metin başına:',
@@ -10388,6 +10778,22 @@ function renderSignupFields(role) {
         ${role === 'model' ? t('model_age_id_note') : t('fan_age_line')}</div>
       <label class="checkbox-row"><input type="checkbox" id="a-18">
         <span>${t('confirm18')}</span></label>
+      ${role === 'model' && modelSectionPick === 'couple' ? `
+      <div class="card" style="margin-top:12px;text-align:left">
+        <div style="font-weight:800;margin-bottom:4px">${t('coperf_signup_h')}</div>
+        <div class="muted small" style="margin-bottom:8px">${t('coperf_signup_note')}</div>
+        <label class="field">${t('coperf_name')}<input class="input" id="a-pname" maxlength="80"></label>
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <label class="field" style="flex:1">${t('coperf_gender')}
+            <select class="input" id="a-pgender">
+              <option value="">—</option>
+              <option value="female">${t('coperf_gender_f')}</option>
+              <option value="male">${t('coperf_gender_m')}</option>
+            </select></label>
+          <label class="field" style="flex:1">${t('coperf_dob')}<input class="input" id="a-pdob" type="date"></label>
+        </div>
+        <label class="checkbox-row"><input type="checkbox" id="a-p18"><span>${t('coperf_consent')}</span></label>
+      </div>` : ''}
       <div class="lang-row">${langPillsHTML()}</div>
       <button class="btn" id="a-go">${t('create_account_btn')}</button>`;
   $('#a-go').onclick = () => doSignup(role);
@@ -10445,9 +10851,18 @@ async function doSignup(role) {
   const email = emailEl ? emailEl.value.trim() : '';
   if (!display_name || !username || !password || !dob) return toast(t('fill_all_fields'));
   if (!agree18) return toast(t('must_confirm_18'));
+  // Couple signup: the partner block rides along when she filled it
+  // in (blank name = skipped; the server never blocks signup over it).
+  const pNameEl = $('#a-pname');
+  const partner = role === 'model' && pNameEl && pNameEl.value.trim() ? {
+    partner_name: pNameEl.value.trim(),
+    partner_gender: $('#a-pgender').value,
+    partner_dob: $('#a-pdob').value,
+    partner_agree18: $('#a-p18').checked,
+  } : {};
   const { status, data } = await api('/auth/signup', {
     method: 'POST',
-    body: JSON.stringify({ username, password, role, display_name, dob, agree18, guest_token: S.guestToken, language: LANG, ...(role === 'model' ? { section: modelSectionPick } : {}), ...(email ? { email } : {}) }),
+    body: JSON.stringify({ username, password, role, display_name, dob, agree18, guest_token: S.guestToken, language: LANG, ...(role === 'model' ? { section: modelSectionPick } : {}), ...partner, ...(email ? { email } : {}) }),
   });
   if (status === 200) return afterLogin(data);
   const msgs = { username_taken: t('err_username_taken'), must_be_18: t('err_must_be_18'),
@@ -13562,6 +13977,7 @@ async function vModelSettings() {
     <div class="screen">
       ${affiliateMergePromptHTML()}
       ${idvBanner}
+      <div id="coperf-card"></div>
       <button class="btn" id="goto-home" style="width:100%;padding:16px;font-size:17px;font-weight:800;margin-bottom:12px;background:linear-gradient(135deg,var(--pink),#ff8fab);box-shadow:0 6px 22px rgba(255,92,158,.35)">🏠 Home Screen — see the girls 🔥</button>
       ${langCardHTML()}
       <div class="card">
@@ -14246,6 +14662,131 @@ async function vModelSettings() {
       show('modelSettings', {});
     } else toast(data.message || 'Upload failed — try again.');
   };
+  // 👥 Co-Performers card (async fill; the house account's is empty)
+  renderCoPerfCard();
+}
+
+/* ---------------- CO-PERFORMERS (model Settings card) ---------------- */
+// Lists her registered partners with their verification status, the
+// add-partner form, per-partner edit (pending/rejected only — the
+// server freezes approved rows), delete, and the partner ID upload
+// (same 3-photo ceremony as her own ID, posted to the partner route).
+async function renderCoPerfCard() {
+  const box = document.getElementById('coperf-card');
+  if (!box) return;
+  const { status, data } = await api('/model/co-performers');
+  if (status !== 200 || !data || data.house) { box.innerHTML = ''; return; }
+  const partners = data.co_performers || [];
+  const stLine = (p) => p.status === 'approved'
+    ? `<span style="color:var(--green)">${t('coperf_st_approved')}</span>`
+    : p.status === 'rejected'
+      ? `<span style="color:var(--red)">${t('coperf_st_rejected')}</span>`
+      : p.verification_status
+        ? `<span style="color:var(--yellow)">${t('coperf_st_pending')}</span>`
+        : `<span class="muted">${t('coperf_st_none')}</span>`;
+  box.innerHTML = `
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">${t('coperf_h')}</div>
+      <div class="muted small" style="margin-bottom:10px">${t('coperf_note')}</div>
+      ${partners.length ? partners.map((p) => `
+        <div style="border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:10px">
+          <div class="row" style="align-items:center;gap:8px">
+            <b class="grow">${esc(p.display_name)}</b><span class="small">${stLine(p)}</span>
+          </div>
+          ${p.status !== 'approved' ? `
+          <label class="field">${t('coperf_name')}<input class="input" id="cp-name-${p.id}" value="${esc(p.display_name)}" maxlength="80"></label>
+          <div class="row" style="gap:8px;flex-wrap:wrap">
+            <label class="field" style="flex:1">${t('coperf_gender')}
+              <select class="input" id="cp-gender-${p.id}">
+                <option value="">—</option>
+                <option value="female" ${p.gender === 'female' ? 'selected' : ''}>${t('coperf_gender_f')}</option>
+                <option value="male" ${p.gender === 'male' ? 'selected' : ''}>${t('coperf_gender_m')}</option>
+              </select></label>
+            <label class="field" style="flex:1">${t('coperf_dob')}<input class="input" id="cp-dob-${p.id}" type="date" value="${esc(p.dob || '')}"></label>
+          </div>
+          <button class="btn ghost small" data-cp-save="${p.id}">${t('coperf_save')}</button>` : ''}
+          <button class="btn ghost small danger" data-cp-del="${p.id}">${t('coperf_remove')}</button>
+          ${p.status !== 'approved' ? `
+          <div style="margin-top:10px">
+            <div class="muted small" style="margin-bottom:6px">🪪 ${t('coperf_id_note')}</div>
+            <label class="field">ID front<input class="input" type="file" id="cp-front-${p.id}" accept="image/*"></label>
+            <label class="field">ID back<input class="input" type="file" id="cp-back-${p.id}" accept="image/*"></label>
+            <label class="field">Selfie holding ID<input class="input" type="file" id="cp-selfie-${p.id}" accept="image/*"></label>
+            <button class="btn small" data-cp-upload="${p.id}">🪪 ${t('coperf_upload_id')}</button>
+          </div>` : ''}
+        </div>`).join('') : `<div class="muted small" style="margin-bottom:10px">${t('coperf_empty')}</div>`}
+      <div style="border-top:1px solid var(--border);padding-top:10px">
+        <label class="field">${t('coperf_name')}<input class="input" id="cp-new-name" maxlength="80"></label>
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <label class="field" style="flex:1">${t('coperf_gender')}
+            <select class="input" id="cp-new-gender">
+              <option value="">—</option>
+              <option value="female">${t('coperf_gender_f')}</option>
+              <option value="male">${t('coperf_gender_m')}</option>
+            </select></label>
+          <label class="field" style="flex:1">${t('coperf_dob')}<input class="input" id="cp-new-dob" type="date"></label>
+        </div>
+        <label class="checkbox-row"><input type="checkbox" id="cp-new-18"><span>${t('coperf_consent')}</span></label>
+        <button class="btn" id="cp-add" style="margin-top:8px">${t('coperf_add')}</button>
+      </div>
+    </div>`;
+  $('#cp-add').onclick = async () => {
+    const body = {
+      display_name: $('#cp-new-name').value.trim(),
+      gender: $('#cp-new-gender').value,
+      dob: $('#cp-new-dob').value || undefined,
+      agree18: $('#cp-new-18').checked,
+    };
+    const { status, data } = await api('/model/co-performers', { method: 'POST', body: JSON.stringify(body) });
+    if (status === 200) { toast(t('coperf_added')); renderCoPerfCard(); }
+    else toast((data && data.message) || t('couldnt_save'));
+  };
+  box.querySelectorAll('[data-cp-save]').forEach((b) => {
+    b.onclick = async () => {
+      const id = b.dataset.cpSave;
+      const body = {
+        display_name: $(`#cp-name-${id}`).value.trim(),
+        gender: $(`#cp-gender-${id}`).value,
+        dob: $(`#cp-dob-${id}`).value,
+      };
+      const { status, data } = await api(`/model/co-performers/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+      if (status === 200) { toast(t('coperf_saved')); renderCoPerfCard(); }
+      else toast((data && data.message) || t('couldnt_save'));
+    };
+  });
+  box.querySelectorAll('[data-cp-del]').forEach((b) => {
+    b.onclick = async () => {
+      if (!confirm(t('coperf_remove_confirm'))) return;
+      const { status } = await api(`/model/co-performers/${b.dataset.cpDel}`, { method: 'DELETE' });
+      if (status === 200) { toast(t('coperf_removed')); renderCoPerfCard(); }
+    };
+  });
+  box.querySelectorAll('[data-cp-upload]').forEach((b) => {
+    b.onclick = async () => {
+      const id = b.dataset.cpUpload;
+      const front = $(`#cp-front-${id}`).files[0], back = $(`#cp-back-${id}`).files[0],
+        selfie = $(`#cp-selfie-${id}`).files[0];
+      if (!front || !back || !selfie) return toast(t('coperf_attach3'));
+      for (const f of [front, back, selfie]) {
+        if (!/^image\/(jpeg|png|webp)$/.test(f.type)) return toast('Photos must be JPG or PNG.');
+        if (f.size > 8 * 1024 * 1024) return toast('Each photo must be under 8MB.');
+      }
+      b.disabled = true;
+      const fd = new FormData();
+      fd.append('id_front', front); fd.append('id_back', back); fd.append('selfie', selfie);
+      const headers = {};
+      if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
+      let status = 0, data = {};
+      try {
+        const r = await fetch(`/api/model/co-performers/${id}/id-verification`, { method: 'POST', headers, body: fd });
+        status = r.status;
+        try { data = await r.json(); } catch (e) { /* non-JSON */ }
+      } catch (e) { /* network */ }
+      b.disabled = false;
+      if (status === 200 && data.ok) { toast(t('coperf_id_sent')); renderCoPerfCard(); }
+      else toast(data.message || 'Upload failed — try again.');
+    };
+  });
 }
 
 /* ---------------- W-9 TAX INFO (models + partners, shared) ---------------- */
@@ -16465,11 +17006,53 @@ async function rejoinLiveBroadcast(sessionId) {
   }
 }
 
+/* "Who's on camera?" — the go-live checklist of her APPROVED
+ * co-performers (Sections Phase 2). Resolves the picked partner ids,
+ * or null when she backs out. She herself is always on her own
+ * camera (checked + disabled row). */
+function pickLiveParticipants(partners) {
+  return new Promise((resolve) => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+    wrap.innerHTML = `
+      <div class="card" style="max-width:420px;width:100%">
+        <div style="font-weight:800;margin-bottom:6px">${t('coperf_cam_h')}</div>
+        <div class="muted small" style="margin-bottom:10px">${t('coperf_cam_note')}</div>
+        <label class="checkbox-row"><input type="checkbox" checked disabled><span>${t('coperf_cam_me')}</span></label>
+        ${partners.map((p) => `<label class="checkbox-row"><input type="checkbox" data-cam-pick="${p.id}"><span>${esc(p.display_name)}</span></label>`).join('')}
+        <button class="btn" id="cam-go" style="width:100%;margin-top:12px">${t('coperf_cam_go')}</button>
+        <button class="btn ghost" id="cam-cancel" style="width:100%;margin-top:8px">${t('cancel')}</button>
+      </div>`;
+    document.body.appendChild(wrap);
+    const done = (v) => { wrap.remove(); resolve(v); };
+    wrap.querySelector('#cam-cancel').onclick = () => done(null);
+    wrap.querySelector('#cam-go').onclick = () => {
+      done([...wrap.querySelectorAll('[data-cam-pick]:checked')].map((c) => Number(c.dataset.camPick)));
+    };
+  });
+}
+
 async function startLiveBroadcast() {
   const title = prompt('Stream title (shown to fans):', 'Come hang out 😈💦');
   if (title === null) return; // cancelled
+  // Co-performers: with APPROVED partners on file, the checklist
+  // decides who joins her; the picked set rides along as participants
+  // for the server-side camera rule. No approved partners = solo,
+  // exactly as before (no participants field sent).
+  let participants;
+  try {
+    const cpRes = await api('/model/co-performers');
+    const approvedPartners = ((cpRes.data && cpRes.data.co_performers) || [])
+      .filter((p) => p.status === 'approved');
+    if (approvedPartners.length) {
+      const picked = await pickLiveParticipants(approvedPartners);
+      if (picked === null) return; // backed out of going live
+      participants = [S.user.id, ...picked];
+    }
+  } catch (e) { /* checklist is best-effort; solo start still works */ }
   const { status, data } = await api('/live/start', {
-    method: 'POST', body: JSON.stringify({ title: (title || '').trim() }) });
+    method: 'POST', body: JSON.stringify({ title: (title || '').trim(),
+      ...(participants ? { participants } : {}) }) });
   if (status !== 200) {
     if (data.error === 'already_live' && data.session_id) {
       // She got disconnected but the session is still live — offer to rejoin
@@ -16480,6 +17063,8 @@ async function startLiveBroadcast() {
     }
     if (data.error === 'id_verification_required')
       return toast('🪪 ID verification required — upload your ID in Settings → ID Verification first.');
+    if (data.error === 'unapproved_participants')
+      return toast(data.message || '👥 Everyone on camera must be ID-verified first.');
     return toast('Could not go live.');
   }
   let stream;
