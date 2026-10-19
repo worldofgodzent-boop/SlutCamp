@@ -166,6 +166,16 @@ const I18N = {
     clear_filters: '✖ Clear filters',
     more_like_her: '💋 More like her',
     ranked_n: '🏆 Ranked #{n}',
+    rank_queen: 'Queen',
+    rank_princess: 'Princess',
+    rank_duchess: 'Duchess',
+    rank_king: 'King',
+    rank_prince: 'Prince',
+    rank_duke: 'Duke',
+    rank_royal_couple: 'Royal Couple',
+    rank_prince_princess: 'Prince & Princess',
+    rank_power_couple: 'Power Couple',
+    ranked_title_line: '{title} — #{n} in {section}',
     tap_for_sound: 'Tap for sound',
     msg_her_btn: '💬 Message her',
     msg_her_join_btn: '💬 Join free to message her',
@@ -835,6 +845,16 @@ const I18N = {
     clear_filters: '✖ Quitar filtros',
     more_like_her: '💋 Más como ella',
     ranked_n: '🏆 En el puesto #{n}',
+    rank_queen: 'Reina',
+    rank_princess: 'Princesa',
+    rank_duchess: 'Duquesa',
+    rank_king: 'Rey',
+    rank_prince: 'Príncipe',
+    rank_duke: 'Duque',
+    rank_royal_couple: 'Pareja Real',
+    rank_prince_princess: 'Príncipe y Princesa',
+    rank_power_couple: 'Pareja Poderosa',
+    ranked_title_line: '{title} — #{n} en {section}',
     tap_for_sound: 'Toca para escuchar',
     msg_her_btn: '💬 Escríbele',
     msg_her_join_btn: '💬 Únete gratis para escribirle',
@@ -1504,6 +1524,16 @@ const I18N = {
     clear_filters: '✖ Limpar filtros',
     more_like_her: '💋 Mais como ela',
     ranked_n: '🏆 Posição #{n}',
+    rank_queen: 'Rainha',
+    rank_princess: 'Princesa',
+    rank_duchess: 'Duquesa',
+    rank_king: 'Rei',
+    rank_prince: 'Príncipe',
+    rank_duke: 'Duque',
+    rank_royal_couple: 'Casal Real',
+    rank_prince_princess: 'Príncipe e Princesa',
+    rank_power_couple: 'Casal Poderoso',
+    ranked_title_line: '{title} — #{n} em {section}',
     tap_for_sound: 'Toque para ouvir',
     msg_her_btn: '💬 Fale com ela',
     msg_her_join_btn: '💬 Entre grátis para falar com ela',
@@ -2173,6 +2203,16 @@ const I18N = {
     clear_filters: '✖ Effacer les filtres',
     more_like_her: '💋 Plus comme elle',
     ranked_n: '🏆 Classée #{n}',
+    rank_queen: 'Reine',
+    rank_princess: 'Princesse',
+    rank_duchess: 'Duchesse',
+    rank_king: 'Roi',
+    rank_prince: 'Prince',
+    rank_duke: 'Duc',
+    rank_royal_couple: 'Couple Royal',
+    rank_prince_princess: 'Prince et Princesse',
+    rank_power_couple: 'Couple Puissant',
+    ranked_title_line: '{title} — #{n} dans {section}',
     tap_for_sound: 'Touchez pour le son',
     msg_her_btn: '💬 Lui écrire',
     msg_her_join_btn: '💬 Inscris-toi gratuitement pour lui écrire',
@@ -2842,6 +2882,16 @@ const I18N = {
     clear_filters: '✖ Filter löschen',
     more_like_her: '💋 Mehr wie sie',
     ranked_n: '🏆 Platz #{n}',
+    rank_queen: 'Königin',
+    rank_princess: 'Prinzessin',
+    rank_duchess: 'Herzogin',
+    rank_king: 'König',
+    rank_prince: 'Prinz',
+    rank_duke: 'Herzog',
+    rank_royal_couple: 'Königspaar',
+    rank_prince_princess: 'Prinz & Prinzessin',
+    rank_power_couple: 'Power-Paar',
+    ranked_title_line: '{title} — #{n} in {section}',
     tap_for_sound: 'Für Ton tippen',
     msg_her_btn: '💬 Schreib ihr',
     msg_her_join_btn: '💬 Gratis anmelden, um ihr zu schreiben',
@@ -3511,6 +3561,16 @@ const I18N = {
     clear_filters: '✖ Сбросить фильтры',
     more_like_her: '💋 Похожие на неё',
     ranked_n: '🏆 Место #{n} в рейтинге',
+    rank_queen: 'Королева',
+    rank_princess: 'Принцесса',
+    rank_duchess: 'Герцогиня',
+    rank_king: 'Король',
+    rank_prince: 'Принц',
+    rank_duke: 'Герцог',
+    rank_royal_couple: 'Королевская пара',
+    rank_prince_princess: 'Принц и Принцесса',
+    rank_power_couple: 'Сильная пара',
+    ranked_title_line: '{title} — #{n} в разделе {section}',
     tap_for_sound: 'Нажмите для звука',
     msg_her_btn: '💬 Написать ей',
     msg_her_join_btn: '💬 Зарегистрируйся бесплатно, чтобы написать ей',
@@ -4180,6 +4240,16 @@ const I18N = {
     clear_filters: '✖ フィルターを解除',
     more_like_her: '💋 彼女に似たモデル',
     ranked_n: '🏆 ランキング #{n}位',
+    rank_queen: 'クイーン',
+    rank_princess: 'プリンセス',
+    rank_duchess: '公爵夫人',
+    rank_king: 'キング',
+    rank_prince: 'プリンス',
+    rank_duke: '公爵',
+    rank_royal_couple: 'ロイヤルカップル',
+    rank_prince_princess: 'プリンス＆プリンセス',
+    rank_power_couple: 'パワーカップル',
+    ranked_title_line: '{title} — {section}の#{n}',
     tap_for_sound: 'タップで音声オン',
     msg_her_btn: '💬 彼女にメッセージ',
     msg_her_join_btn: '💬 無料登録して彼女にメッセージ',
@@ -4849,6 +4919,16 @@ const I18N = {
     clear_filters: '✖ 清除筛选',
     more_like_her: '💋 更多像她这样的',
     ranked_n: '🏆 排名 #{n}',
+    rank_queen: '女王',
+    rank_princess: '公主',
+    rank_duchess: '公爵夫人',
+    rank_king: '国王',
+    rank_prince: '王子',
+    rank_duke: '公爵',
+    rank_royal_couple: '皇家情侣',
+    rank_prince_princess: '王子与公主',
+    rank_power_couple: '实力情侣',
+    ranked_title_line: '{title} — {section}第#{n}名',
     tap_for_sound: '点击开启声音',
     msg_her_btn: '💬 给她发消息',
     msg_her_join_btn: '💬 免费加入，给她发消息',
@@ -5518,6 +5598,16 @@ const I18N = {
     clear_filters: '✖ 필터 지우기',
     more_like_her: '💋 그녀와 비슷한 모델',
     ranked_n: '🏆 순위 #{n}위',
+    rank_queen: '여왕',
+    rank_princess: '공주',
+    rank_duchess: '공작부인',
+    rank_king: '왕',
+    rank_prince: '왕자',
+    rank_duke: '공작',
+    rank_royal_couple: '로열 커플',
+    rank_prince_princess: '왕자와 공주',
+    rank_power_couple: '파워 커플',
+    ranked_title_line: '{title} — {section} #{n}위',
     tap_for_sound: '탭하면 소리가 켜집니다',
     msg_her_btn: '💬 그녀에게 메시지',
     msg_her_join_btn: '💬 무료로 가입하고 그녀에게 메시지 보내기',
@@ -6187,6 +6277,16 @@ const I18N = {
     clear_filters: '✖ Cancella filtri',
     more_like_her: '💋 Altre come lei',
     ranked_n: '🏆 Posizione #{n}',
+    rank_queen: 'Regina',
+    rank_princess: 'Principessa',
+    rank_duchess: 'Duchessa',
+    rank_king: 'Re',
+    rank_prince: 'Principe',
+    rank_duke: 'Duca',
+    rank_royal_couple: 'Coppia Reale',
+    rank_prince_princess: 'Principe e Principessa',
+    rank_power_couple: 'Coppia Potente',
+    ranked_title_line: '{title} — #{n} in {section}',
     tap_for_sound: 'Tocca per l\'audio',
     msg_her_btn: '💬 Scrivile',
     msg_her_join_btn: '💬 Iscriviti gratis per scriverle',
@@ -6856,6 +6956,16 @@ const I18N = {
     clear_filters: '✖ Wyczyść filtry',
     more_like_her: '💋 Więcej takich jak ona',
     ranked_n: '🏆 Miejsce #{n} w rankingu',
+    rank_queen: 'Królowa',
+    rank_princess: 'Księżniczka',
+    rank_duchess: 'Księżna',
+    rank_king: 'Król',
+    rank_prince: 'Książę',
+    rank_duke: 'Książę',
+    rank_royal_couple: 'Królewska Para',
+    rank_prince_princess: 'Książę i Księżniczka',
+    rank_power_couple: 'Silna Para',
+    ranked_title_line: '{title} — #{n} w {section}',
     tap_for_sound: 'Dotknij, aby włączyć dźwięk',
     msg_her_btn: '💬 Napisz do niej',
     msg_her_join_btn: '💬 Dołącz za darmo i napisz do niej',
@@ -7525,6 +7635,16 @@ const I18N = {
     clear_filters: '✖ Filters wissen',
     more_like_her: '💋 Meer zoals zij',
     ranked_n: '🏆 Gerangschikt #{n}',
+    rank_queen: 'Koningin',
+    rank_princess: 'Prinses',
+    rank_duchess: 'Hertogin',
+    rank_king: 'Koning',
+    rank_prince: 'Prins',
+    rank_duke: 'Hertog',
+    rank_royal_couple: 'Koninklijk Koppel',
+    rank_prince_princess: 'Prins & Prinses',
+    rank_power_couple: 'Powerkoppel',
+    ranked_title_line: '{title} — #{n} in {section}',
     tap_for_sound: 'Tik voor geluid',
     msg_her_btn: '💬 Stuur haar een bericht',
     msg_her_join_btn: '💬 Meld je gratis aan om haar een bericht te sturen',
@@ -8194,6 +8314,16 @@ const I18N = {
     clear_filters: '✖ Filtreleri temizle',
     more_like_her: '💋 Ona benzer daha fazlası',
     ranked_n: '🏆 Sıralama #{n}',
+    rank_queen: 'Kraliçe',
+    rank_princess: 'Prenses',
+    rank_duchess: 'Düşes',
+    rank_king: 'Kral',
+    rank_prince: 'Prens',
+    rank_duke: 'Dük',
+    rank_royal_couple: 'Kraliyet Çifti',
+    rank_prince_princess: 'Prens ve Prenses',
+    rank_power_couple: 'Güçlü Çift',
+    ranked_title_line: '{title} — {section} sıralamasında #{n}',
     tap_for_sound: 'Ses için dokun',
     msg_her_btn: '💬 Ona mesaj at',
     msg_her_join_btn: '💬 Ona mesaj atmak için ücretsiz katıl',
@@ -9618,14 +9748,42 @@ function tileGradient(name) {
   return `linear-gradient(135deg,hsl(${h[0]},70%,55%),hsl(${h[1]},65%,50%))`;
 }
 
-/* Visible rank labels (owner, Oct 16 2026): a model's tile badge number
- * is her TRUE position in the composite rank order (rank_position from
+/* Visible rank labels (owner, Oct 16 2026; per-section ladders, owner
+ * ruling Oct 19 2026): a model's tile badge number is her TRUE position
+ * in the composite rank order OF HER OWN SECTION (rank_position from
  * /api/models — never her index in the payload, which floats the
  * featured model to the top). Only positions 1–10 are labeled. Pure —
  * unit-tested. */
 function rankBadgeFor(m) {
   const n = m && m.rank_position;
   return Number.isInteger(n) && n >= 1 && n <= 10 ? n : 0;
+}
+
+/* Rank TITLES (owner, Oct 19 2026 — "We gotta make them feel super
+ * special. Work for that spot."): the top 3 of EACH section's own
+ * ladder wear a title on their badge instead of a bare number —
+ * Female 👸 Queen / 👸 Princess / 🫅 Duchess, Male 🤴 King / 🤴 Prince
+ * / 🫅 Duke, Couple 👸🤴 Royal Couple / 🤴👸 Prince & Princess /
+ * 🫅 Power Couple. Positions 4–10 keep the plain #N badge. The title
+ * derives from (her section, her per-section rank_position) — both
+ * already in the payload — so a model shows the title from HER ladder
+ * on every tab. Pure spec (no t() call) so it stays unit-testable;
+ * rankTitleText renders it. */
+const RANK_TITLES = {
+  female: { 1: ['👸', 'rank_queen'], 2: ['👸', 'rank_princess'], 3: ['🫅', 'rank_duchess'] },
+  male: { 1: ['🤴', 'rank_king'], 2: ['🤴', 'rank_prince'], 3: ['🫅', 'rank_duke'] },
+  couple: { 1: ['👸🤴', 'rank_royal_couple'], 2: ['🤴👸', 'rank_prince_princess'], 3: ['🫅', 'rank_power_couple'] },
+};
+function rankTitleSpec(m) {
+  const n = m && m.rank_position;
+  if (!Number.isInteger(n) || n < 1 || n > 3) return null;
+  const byPos = RANK_TITLES[m.section || 'female'];
+  const hit = byPos && byPos[n];
+  return hit ? { n, emoji: hit[0], key: hit[1] } : null;
+}
+function rankTitleText(m) {
+  const spec = rankTitleSpec(m);
+  return spec ? `${spec.emoji} ${t(spec.key)} #${spec.n}` : null;
 }
 
 function modelTileHTML(m, opts) {
@@ -9640,6 +9798,11 @@ function modelTileHTML(m, opts) {
     : m.is_online
       ? `<span style="color:#6ee7b7;font-weight:700">${t('online_now')}</span>`
       : `<span style="color:rgba(255,245,247,.6)">${t('offline')}</span>`;
+  // A top-3 title rides the rank badge (same suppression rules — it IS
+  // the badge), and where a tile carries a title the 👑 Top Model crown
+  // pill steps aside for it (owner, Oct 19 2026: the title replaces
+  // the crown on the #1 tile; never stack both).
+  const titleSpec = opts.rankBadge ? rankTitleSpec(m) : null;
   return `
     <button class="model-tile${opts.hero ? ' hero' : ''}" data-model="${m.id}" data-live="${m.live_session_id || ''}">
       ${media}
@@ -9647,9 +9810,9 @@ function modelTileHTML(m, opts) {
       ${m.is_live
         ? `<span class="tile-live-pill">● LIVE</span><span class="tile-viewers">👁 ${t('watching', { n: m.live_viewers || 0 })}</span>`
         : m.is_featured ? `<span class="tile-featured-pill">${t('featured')}</span>` : ''}
-      ${opts.crown ? `<span class="tile-top-pill${m.is_live ? ' below-live' : ''}">${t('top_model')}</span>` : ''}
+      ${opts.crown && !titleSpec ? `<span class="tile-top-pill${m.is_live ? ' below-live' : ''}">${t('top_model')}</span>` : ''}
       ${opts.isNew ? `<span class="tile-new-pill${m.is_live ? ' below-viewers' : ''}">${t('new_badge')}</span>` : ''}
-      ${opts.rankBadge ? `<span class="tile-rank-badge${opts.isNew ? ' below-new' : ''}${m.is_live ? ' below-viewers' : ''}">#${opts.rankBadge}</span>` : ''}
+      ${opts.rankBadge ? `<span class="tile-rank-badge${titleSpec ? ' rank-title' : ''}${opts.isNew ? ' below-new' : ''}${m.is_live ? ' below-viewers' : ''}">${titleSpec ? esc(rankTitleText(m)) : '#' + opts.rankBadge}</span>` : ''}
       ${opts.heartHTML || ''}
       <span class="tile-info">
         <span class="tile-name">${esc(m.display_name)}</span>
@@ -11073,13 +11236,22 @@ function logout(msg) {
    (status, home rank, rates) — look-only, no fan actions. */
 function openModelPeek(m, models) {
   const isMe = !!(S.user && S.user.id === m.id);
-  // Her rank line states her TRUE composite position (rank_position from
-  // the server) — never her index in this payload, which floats the
-  // featured model to the top. Top 10 only; a featured model outside
-  // the top 10 keeps the pinned note instead.
-  const rankLine = rankBadgeFor(m)
-    ? t('ranked_n', { n: m.rank_position })
-    : m.is_featured ? '⭐ Featured — pinned at the top' : '';
+  // Her rank line states her TRUE composite position on her own
+  // section's ladder (rank_position from the server) — never her index
+  // in this payload, which floats the featured model to the top. Top
+  // 10 only; a featured model outside the top 10 keeps the pinned
+  // note instead. Top-3 positions carry their ladder TITLE here too
+  // (owner, Oct 19 2026), e.g. "👸 Queen — #1 in Female".
+  const titleSpec = rankTitleSpec(m);
+  const rankLine = titleSpec
+    ? t('ranked_title_line', {
+      title: `${titleSpec.emoji} ${t(titleSpec.key)}`,
+      n: m.rank_position,
+      section: t(m.section === 'couple' ? 'sf_couples' : 'sf_' + (m.section || 'female')),
+    })
+    : rankBadgeFor(m)
+      ? t('ranked_n', { n: m.rank_position })
+      : m.is_featured ? '⭐ Featured — pinned at the top' : '';
   const status = m.is_live
     ? `🔴 LIVE now — ${m.live_viewers || 0} watching`
     : m.is_online ? '🟢 Online now' : '⚫ Offline';

@@ -325,6 +325,7 @@ test('purge guards: pictures, ID-verification and password fingerprint each save
      verification: an APPROVED id_verifications row (the ID guard
      reads status only). Between them, every guard gets exercised. */
   const fix = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+  fix.exec('PRAGMA busy_timeout = 10000');
   try {
     fix.prepare(`INSERT INTO media_items (conversation_id, sender_id, kind, mime, file_path, price_cents)
                  VALUES (?,?, 'ppv_image', 'image/jpeg', '/uploads/bunny-fixture.jpg', 500)`)

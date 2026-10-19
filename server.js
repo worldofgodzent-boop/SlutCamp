@@ -242,7 +242,8 @@ const seoDesc = (bio, name) => {
 };
 // The public roster, shaped for the SEO pages. One query, same
 // ordering + rank positions as GET /api/models (minus the featured
-// float: rank_position is the TRUE composite position there too).
+// float: rank_position is her TRUE composite position ON HER OWN
+// SECTION's ladder there too — per-section, owner ruling Oct 19 2026).
 function seoPublicModels() {
   const rows = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.presence_override, u.created_at,
@@ -256,15 +257,10 @@ function seoPublicModels() {
              (CASE u.presence_override WHEN 'on' THEN 1 WHEN 'off' THEN 0 ELSE m.is_online END) DESC,
              u.created_at DESC, u.display_name ASC
   `).all();
-  const rankOrder = db.prepare(`
-    SELECT u.id FROM users u JOIN models m ON m.user_id = u.id
-    WHERE u.role = 'model' AND u.banned = 0 AND m.is_hidden = 0
-    ORDER BY m.rank_score DESC,
-             (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) DESC,
-             (CASE u.presence_override WHEN 'on' THEN 1 WHEN 'off' THEN 0 ELSE m.is_online END) DESC,
-             u.created_at DESC, u.display_name ASC
-  `).all();
-  const rankPos = new Map(rankOrder.map((r, i) => [r.id, i + 1]));
+  // Per-section positions from the ONE shared derivation
+  // (computeSectionRankPositions) — identical numbers to
+  // GET /api/models by construction, house excluded there too.
+  const rankPos = computeSectionRankPositions();
   return rows.map((r) => ({
     id: r.id,
     username: r.username,
@@ -1318,6 +1314,11 @@ addColumnIfMissing('models', 'tags', "TEXT NOT NULL DEFAULT '[]'");
 // lifetime credited model earnings in dollars (see recomputeModelRank).
 // Additive only — the boot backfill fills real values before serving.
 addColumnIfMissing('models', 'rank_score', 'REAL NOT NULL DEFAULT 0');
+// Rank-congrats state (owner, Oct 19 2026): the top-3 position of her
+// OWN section's ladder she was last congratulated for / last seen
+// holding (1–3), NULL while she is outside the top 3. Drives the
+// fire-once-per-climb rule in evaluateRankCongrats().
+addColumnIfMissing('models', 'rank_notice_pos', 'INTEGER');
 // Fraud protection: account status ('active' | 'frozen') + ledger IP on every money row
 addColumnIfMissing('users', 'status', "TEXT NOT NULL DEFAULT 'active'");
 addColumnIfMissing('transactions', 'ip', 'TEXT');
@@ -2181,12 +2182,128 @@ function recomputeModelRank(modelUserId) {
   const likes = db.prepare('SELECT COUNT(*) AS n FROM model_likes WHERE model_id = ?').get(modelUserId).n;
   const score = Math.round((likes + modelEarningsCents(modelUserId) / 100) * 100) / 100;
   db.prepare('UPDATE models SET rank_score = ? WHERE user_id = ?').run(score, modelUserId);
+  // Rank congrats (owner, Oct 19 2026): a recompute is the only moment
+  // a ladder can move, so her section gets evaluated for top-3 climbs
+  // here. The boot backfill also lands in this function —
+  // rankCongratsLive stays false until armRankCongrats() has silently
+  // recorded everyone's current hold, so a deploy never congratulates
+  // anyone retroactively.
+  if (rankCongratsLive) {
+    try {
+      const mr = db.prepare('SELECT section FROM models WHERE user_id = ?').get(modelUserId);
+      if (mr) evaluateRankCongrats(mr.section || 'female');
+    } catch (e) { /* a congrats failure must never break a credit or a like */ }
+  }
   return score;
 }
 function recomputeAllModelRanks() {
   const ids = db.prepare('SELECT user_id FROM models').all();
   for (const r of ids) recomputeModelRank(r.user_id);
   return ids.length;
+}
+
+/* Per-section rank positions (owner ruling, Oct 19 2026): a Map of
+ * user_id → 1-based position WITHIN the model's own section ladder
+ * (female / male / couple — the ladders never mix), using the
+ * directory's ordering chain (rank_score, then likes / online /
+ * newest / name as tiebreaks) WITHOUT the featured float. The house
+ * account holds no position in any section and never shifts anyone.
+ * The ONE derivation behind GET /api/models, seoPublicModels() and
+ * the rank-congrats evaluation, so they can never disagree. */
+function computeSectionRankPositions() {
+  const rankOrder = db.prepare(`
+    SELECT u.id, m.section,
+           (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) AS like_count
+    FROM users u JOIN models m ON m.user_id = u.id
+    WHERE u.role = 'model' AND u.banned = 0 AND m.is_hidden = 0
+    ORDER BY m.rank_score DESC,
+             like_count DESC,
+             (CASE u.presence_override WHEN 'on' THEN 1 WHEN 'off' THEN 0 ELSE m.is_online END) DESC,
+             u.created_at DESC, u.display_name ASC
+  `).all();
+  const houseId = houseAccountId();
+  const rankPos = new Map();
+  const ladderCounts = {};
+  for (const r of rankOrder) {
+    if (r.id === houseId) continue;
+    const sec = r.section || 'female';
+    ladderCounts[sec] = (ladderCounts[sec] || 0) + 1;
+    rankPos.set(r.id, ladderCounts[sec]);
+  }
+  return rankPos;
+}
+
+/* ---------------- Rank-change congrats (owner, Oct 19 2026) --------
+ * "When they hear that they are earning the most, they won't wanna
+ * stop." When a model climbs INTO a top-3 spot on HER OWN section's
+ * ladder — or up within it (#2→#1, #3→#2) — she gets a congratulatory
+ * announcement: a DM in her official SlutCamp Notices thread + a bell,
+ * in her stored language, celebrating her new TITLE and pushing her
+ * to defend it (#1) or take the next spot (#2/#3). Drops and downward
+ * moves NEVER message (never punish), holding a spot never re-fires,
+ * and dropping out resets her state so a later re-entry is a genuine
+ * new achievement and fires again. State: models.rank_notice_pos =
+ * the top-3 position she was last seen holding (NULL outside top 3).
+ * Evaluated only when a recompute happens (the hook above) or her
+ * section changes — always for her WHOLE section, because one model's
+ * credit can lift a section-mate (a rival's refund can crown her). */
+let rankCongratsLive = false;
+const RANK_NOTICE_TITLES = {
+  female: { 1: ['👸', 'rt_queen'], 2: ['👸', 'rt_princess'], 3: ['🫅', 'rt_duchess'] },
+  male: { 1: ['🤴', 'rt_king'], 2: ['🤴', 'rt_prince'], 3: ['🫅', 'rt_duke'] },
+  couple: { 1: ['👸🤴', 'rt_royal_couple'], 2: ['🤴👸', 'rt_prince_princess'], 3: ['🫅', 'rt_power_couple'] },
+};
+function sendRankCongrats(userId, section, pos) {
+  const hid = houseAccountId();
+  if (!hid || userId === hid) return; // the house is never congratulated
+  const spec = RANK_NOTICE_TITLES[section] && RANK_NOTICE_TITLES[section][pos];
+  if (!spec) return;
+  const lang = userLang(userId);
+  const titleWord = srv(spec[1], lang);
+  const conv = officialThreadFor(userId);
+  if (!conv) return;
+  db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+    .run(conv.id, hid, srv(`rank_congrats_dm_${section}_${pos}`, lang, { title: titleWord }));
+  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+  try {
+    notifyUser(userId, 'rank_congrats',
+      `${spec[0]} ` + srv('rank_congrats_bell_title', lang, { title: titleWord }),
+      srv(`rank_congrats_bell_body_${pos}`, lang), `/#chat/${conv.id}`);
+  } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+}
+function evaluateRankCongrats(section, send = true) {
+  const rankPos = computeSectionRankPositions();
+  const rows = db.prepare(`
+    SELECT u.id, m.rank_notice_pos FROM users u JOIN models m ON m.user_id = u.id
+    WHERE u.role = 'model' AND u.banned = 0 AND m.is_hidden = 0
+      AND COALESCE(m.section, 'female') = ?
+  `).all(section);
+  for (const r of rows) {
+    const pos = rankPos.get(r.id) || null;
+    const stored = r.rank_notice_pos == null ? null : Number(r.rank_notice_pos);
+    const inTop = pos !== null && pos <= 3;
+    if (inTop && (stored === null || pos < stored)) {
+      // INTO the top 3, or UP within it: celebrate (once per climb).
+      if (send) {
+        try { sendRankCongrats(r.id, section, pos); } catch (e) { /* one bad send must not block the ladder */ }
+      }
+      db.prepare('UPDATE models SET rank_notice_pos = ? WHERE user_id = ?').run(pos, r.id);
+    } else if (inTop && pos !== stored) {
+      // Downward move WITHIN the top 3: silent — but her recorded hold
+      // follows her down, so climbing back up is a fresh achievement.
+      db.prepare('UPDATE models SET rank_notice_pos = ? WHERE user_id = ?').run(pos, r.id);
+    } else if (!inTop && stored !== null) {
+      // Dropped out: silent, and the slate wipes clean for re-entry.
+      db.prepare('UPDATE models SET rank_notice_pos = NULL WHERE user_id = ?').run(r.id);
+    }
+  }
+}
+/* Boot: record everyone's CURRENT top-3 hold silently across all
+ * sections, THEN go live — positions held since before the feature
+ * existed earn no retroactive congrats; the next climb fires. */
+function armRankCongrats() {
+  for (const sec of ['female', 'male', 'couple']) evaluateRankCongrats(sec, false);
+  rankCongratsLive = true;
 }
 /* ---------------- Chargeback engine (Payout Protection) ----------------
    applyChargeback reverses a disputed credit load in a STRICT order,
@@ -2949,6 +3066,28 @@ const SRV = {
   ann_storefront_dm: { en: '🆕 NEW: SlutCamp now has sections! Look at the tabs at the top of your home — Female, Male, Couples and All. The store always opens on Female; tap a tab anytime to see more. 💋', es: '🆕 NUEVO: ¡SlutCamp ahora tiene secciones! Mira las pestañas en la parte superior de tu inicio — Femenina, Masculina, Parejas y Todo. La tienda siempre abre en Femenina; toca una pestaña cuando quieras para ver más. 💋', pt: '🆕 NOVO: A SlutCamp agora tem seções! Veja as abas no topo da sua página inicial — Feminina, Masculina, Casais e Tudo. A loja sempre abre na Feminina; toque em uma aba quando quiser para ver mais. 💋', fr: '🆕 NOUVEAU : SlutCamp a maintenant des sections ! Regardez les onglets en haut de votre accueil — Femmes, Hommes, Couples et Tout. La boutique s\'ouvre toujours sur Femmes ; touchez un onglet à tout moment pour en voir plus. 💋', de: '🆕 NEU: SlutCamp hat jetzt Sektionen! Sieh dir die Tabs oben auf deiner Startseite an — Frauen, Männer, Paare und Alle. Der Shop öffnet immer bei Frauen; tippe jederzeit auf einen Tab, um mehr zu sehen. 💋', ru: '🆕 НОВОЕ: На SlutCamp теперь есть разделы! Посмотрите на вкладки вверху вашей главной страницы — Женщины, Мужчины, Пары и Все. Магазин всегда открывается на разделе «Женщины»; коснитесь вкладки в любое время, чтобы увидеть больше. 💋', ja: '🆕 新機能：SlutCampにセクションができました！ホーム上部のタブを見てね — 女性・男性・カップル・すべて。ストアはいつも女性から開きます；もっと見たいときはいつでもタブをタップしてね。💋', zh: '🆕 新功能：SlutCamp 现在有板块了！看看你主页顶部的标签 — 女性、男性、情侣和全部。商店始终从女性板块打开；随时点击标签查看更多。💋', ko: '🆕 새 소식: 이제 SlutCamp에 섹션이 생겼어요! 홈 상단의 탭을 보세요 — 여성, 남성, 커플, 전체. 스토어는 항상 여성에서 열립니다; 더 보고 싶을 땐 언제든 탭을 눌러 보세요. 💋', it: '🆕 NOVITÀ: SlutCamp ora ha le sezioni! Guarda le schede in alto nella tua home — Donne, Uomini, Coppie e Tutto. Il negozio si apre sempre su Donne; tocca una scheda quando vuoi per vedere di più. 💋', pl: '🆕 NOWOŚĆ: SlutCamp ma teraz sekcje! Spójrz na karty u góry strony głównej — Kobiety, Mężczyźni, Pary i Wszystko. Sklep zawsze otwiera się na Kobietach; dotknij karty w każdej chwili, aby zobaczyć więcej. 💋', nl: '🆕 NIEUW: SlutCamp heeft nu secties! Kijk naar de tabs bovenaan je home — Vrouwen, Mannen, Stellen en Alles. De winkel opent altijd op Vrouwen; tik op elk moment op een tab om meer te zien. 💋', tr: '🆕 YENİ: SlutCamp\'ta artık bölümler var! Ana sayfanın üstündeki sekmelere bak — Kadın, Erkek, Çift ve Tümü. Mağaza her zaman Kadın bölümünde açılır; daha fazlasını görmek için istediğin zaman bir sekmeye dokun. 💋' },
   ann_storefront_bell_title: { en: '🆕 New: storefront tabs', es: '🆕 Nuevo: pestañas de secciones', pt: '🆕 Novo: abas de seções', fr: '🆕 Nouveau : onglets de sections', de: '🆕 Neu: Sektion-Tabs', ru: '🆕 Новое: вкладки разделов', ja: '🆕 新機能：セクションタブ', zh: '🆕 新功能：板块标签', ko: '🆕 새 소식: 섹션 탭', it: '🆕 Novità: schede delle sezioni', pl: '🆕 Nowość: karty sekcji', nl: '🆕 Nieuw: sectietabs', tr: '🆕 Yeni: bölüm sekmeleri' },
   ann_storefront_bell_body: { en: 'Female, Male, Couples or All — the tabs at the top of your home 💋', es: 'Femenina, Masculina, Parejas o Todo — las pestañas en la parte superior de tu inicio 💋', pt: 'Feminina, Masculina, Casais ou Tudo — as abas no topo da sua página inicial 💋', fr: 'Femmes, Hommes, Couples ou Tout — les onglets en haut de votre accueil 💋', de: 'Frauen, Männer, Paare oder Alle — die Tabs oben auf deiner Startseite 💋', ru: 'Женщины, Мужчины, Пары или Все — вкладки вверху вашей главной страницы 💋', ja: '女性・男性・カップル・すべて — ホーム上部のタブだよ 💋', zh: '女性、男性、情侣或全部 — 就在你主页顶部的标签 💋', ko: '여성, 남성, 커플 또는 전체 — 홈 상단의 탭이에요 💋', it: 'Donne, Uomini, Coppie o Tutto — le schede in alto nella tua home 💋', pl: 'Kobiety, Mężczyźni, Pary lub Wszystko — karty u góry strony głównej 💋', nl: 'Vrouwen, Mannen, Stellen of Alles — de tabs bovenaan je home 💋', tr: 'Kadın, Erkek, Çift veya Tümü — ana sayfanın üstündeki sekmeler 💋' },
+  rt_queen: { en: 'Queen', es: 'Reina', pt: 'Rainha', fr: 'Reine', de: 'Königin', ru: 'Королева', ja: 'クイーン', zh: '女王', ko: '여왕', it: 'Regina', pl: 'Królowa', nl: 'Koningin', tr: 'Kraliçe' },
+  rt_princess: { en: 'Princess', es: 'Princesa', pt: 'Princesa', fr: 'Princesse', de: 'Prinzessin', ru: 'Принцесса', ja: 'プリンセス', zh: '公主', ko: '공주', it: 'Principessa', pl: 'Księżniczka', nl: 'Prinses', tr: 'Prenses' },
+  rt_duchess: { en: 'Duchess', es: 'Duquesa', pt: 'Duquesa', fr: 'Duchesse', de: 'Herzogin', ru: 'Герцогиня', ja: '公爵夫人', zh: '公爵夫人', ko: '공작부인', it: 'Duchessa', pl: 'Księżna', nl: 'Hertogin', tr: 'Düşes' },
+  rt_king: { en: 'King', es: 'Rey', pt: 'Rei', fr: 'Roi', de: 'König', ru: 'Король', ja: 'キング', zh: '国王', ko: '왕', it: 'Re', pl: 'Król', nl: 'Koning', tr: 'Kral' },
+  rt_prince: { en: 'Prince', es: 'Príncipe', pt: 'Príncipe', fr: 'Prince', de: 'Prinz', ru: 'Принц', ja: 'プリンス', zh: '王子', ko: '왕자', it: 'Principe', pl: 'Książę', nl: 'Prins', tr: 'Prens' },
+  rt_duke: { en: 'Duke', es: 'Duque', pt: 'Duque', fr: 'Duc', de: 'Herzog', ru: 'Герцог', ja: '公爵', zh: '公爵', ko: '공작', it: 'Duca', pl: 'Książę', nl: 'Hertog', tr: 'Dük' },
+  rt_royal_couple: { en: 'Royal Couple', es: 'Pareja Real', pt: 'Casal Real', fr: 'Couple Royal', de: 'Königspaar', ru: 'Королевская пара', ja: 'ロイヤルカップル', zh: '皇家情侣', ko: '로열 커플', it: 'Coppia Reale', pl: 'Królewska Para', nl: 'Koninklijk Koppel', tr: 'Kraliyet Çifti' },
+  rt_prince_princess: { en: 'Prince & Princess', es: 'Príncipe y Princesa', pt: 'Príncipe e Princesa', fr: 'Prince et Princesse', de: 'Prinz & Prinzessin', ru: 'Принц и Принцесса', ja: 'プリンス＆プリンセス', zh: '王子与公主', ko: '왕자와 공주', it: 'Principe e Principessa', pl: 'Książę i Księżniczka', nl: 'Prins & Prinses', tr: 'Prens ve Prenses' },
+  rt_power_couple: { en: 'Power Couple', es: 'Pareja Poderosa', pt: 'Casal Poderoso', fr: 'Couple Puissant', de: 'Power-Paar', ru: 'Сильная пара', ja: 'パワーカップル', zh: '实力情侣', ko: '파워 커플', it: 'Coppia Potente', pl: 'Silna Para', nl: 'Powerkoppel', tr: 'Güçlü Çift' },
+  rank_congrats_bell_title: { en: '{title} of SlutCamp!', es: '¡{title} de SlutCamp!', pt: '{title} da SlutCamp!', fr: '{title} de SlutCamp !', de: '{title} von SlutCamp!', ru: '{title} в SlutCamp!', ja: 'SlutCampの{title}!', zh: 'SlutCamp 的{title}!', ko: 'SlutCamp의 {title}!', it: '{title} di SlutCamp!', pl: '{title} w SlutCamp!', nl: '{title} van SlutCamp!', tr: 'SlutCamp {title}!' },
+  rank_congrats_bell_body_1: { en: 'You just took the #1 spot in your section — the most earnings and the most likes. Defend that spot 💋', es: 'Acabas de tomar el puesto #1 de tu sección — la que más gana y más likes tiene. Defiende ese puesto 💋', pt: 'Você acabou de tomar o 1º lugar da sua seção — a que mais ganha e mais curtidas tem. Defenda esse lugar 💋', fr: 'Vous venez de prendre la 1re place de votre section — la plus de gains et de likes. Défendez cette place 💋', de: 'Du hast gerade Platz #1 in deiner Sektion übernommen — die meisten Einnahmen und die meisten Likes. Verteidige diesen Platz 💋', ru: 'Вы только что заняли 1-е место в своей секции — больше всех заработок и лайков. Защищайте это место 💋', ja: 'あなたのセクションで1位を取りました — 収益もいいねも一番です。その座を守って 💋', zh: '你刚刚拿下了你所在分区的第 1 名 — 收入和点赞都是最多。守住这个位置 💋', ko: '방금 당신의 섹션에서 1위를 차지했어요 — 수익도 좋아요도 가장 많아요. 그 자리를 지키세요 💋', it: 'Hai appena preso il 1° posto nella tua sezione — più guadagni e più like di tutte. Difendi quel posto 💋', pl: 'Właśnie zajęłaś 1. miejsce w swojej sekcji — najwięcej zarobków i polubień. Broń tego miejsca 💋', nl: 'Je hebt net de #1-plek in je sectie gepakt — de meeste inkomsten en de meeste likes. Verdedig die plek 💋', tr: 'Bölümünde az önce 1. sırayı aldın — en çok kazanç ve en çok beğeni sende. O yeri koru 💋' },
+  rank_congrats_bell_body_2: { en: 'You just climbed to #2 in your section — the second-most earnings and likes. The #1 spot is right there 💋', es: 'Acabas de subir al #2 de tu sección — la segunda con más ganancias y likes. El puesto #1 está ahí mismo 💋', pt: 'Você acabou de subir para o 2º lugar da sua seção — a segunda em ganhos e curtidas. O 1º lugar está logo ali 💋', fr: 'Vous venez de grimper à la 2e place de votre section — la deuxième en gains et en likes. La 1re place est juste là 💋', de: 'Du bist gerade auf Platz #2 in deiner Sektion geklettert — die zweitmeisten Einnahmen und Likes. Platz #1 ist gleich da 💋', ru: 'Вы только что поднялись на 2-е место в своей секции — второй результат по заработку и лайкам. 1-е место совсем рядом 💋', ja: 'あなたのセクションで2位に上がりました — 収益といいねで2番目です。1位はもうすぐそこ 💋', zh: '你刚刚升到了你所在分区的第 2 名 — 收入和点赞第二多。第 1 名就在眼前 💋', ko: '방금 당신의 섹션에서 2위로 올랐어요 — 수익과 좋아요 두 번째로 많아요. 1위가 바로 눈앞이에요 💋', it: 'Sei appena salita al 2° posto nella tua sezione — seconda per guadagni e like. Il 1° posto è proprio lì 💋', pl: 'Właśnie wspięłaś się na 2. miejsce w swojej sekcji — drugi wynik w zarobkach i polubieniach. Pierwsze miejsce jest tuż obok 💋', nl: 'Je bent net naar #2 in je sectie geklommen — de op één na meeste inkomsten en likes. De #1-plek is vlakbij 💋', tr: 'Bölümünde az önce 2. sıraya yükseldin — kazanç ve beğenide ikinci sıradasın. 1. sıra hemen orada 💋' },
+  rank_congrats_bell_body_3: { en: 'You just climbed to #3 in your section — you\'re on the podium. Keep climbing 💋', es: 'Acabas de subir al #3 de tu sección — estás en el podio. Sigue subiendo 💋', pt: 'Você acabou de subir para o 3º lugar da sua seção — você está no pódio. Continue subindo 💋', fr: 'Vous venez de grimper à la 3e place de votre section — vous êtes sur le podium. Continuez à grimper 💋', de: 'Du bist gerade auf Platz #3 in deiner Sektion geklettert — du bist auf dem Podium. Klettere weiter 💋', ru: 'Вы только что поднялись на 3-е место в своей секции — вы на подиуме. Продолжайте подниматься 💋', ja: 'あなたのセクションで3位に上がりました — 表彰台に乗りました。そのまま上って 💋', zh: '你刚刚升到了你所在分区的第 3 名 — 你登上了领奖台。继续往上冲 💋', ko: '방금 당신의 섹션에서 3위로 올랐어요 — 시상대에 올랐습니다. 계속 올라가세요 💋', it: 'Sei appena salita al 3° posto nella tua sezione — sei sul podio. Continua a salire 💋', pl: 'Właśnie wspięłaś się na 3. miejsce w swojej sekcji — jesteś na podium. Wspinaj się dalej 💋', nl: 'Je bent net naar #3 in je sectie geklommen — je staat op het podium. Blijf klimmen 💋', tr: 'Bölümünde az önce 3. sıraya yükseldin — podyumdasın. Tırmanmaya devam et 💋' },
+  rank_congrats_dm_female_1: { en: '👑 Congratulations, you\'ve made it to #1 — you are now {title} of SlutCamp. {title} of the app! Keep working hard, and don\'t let anyone take your spot. You\'re now making the most earnings and likes in your section ❤️💋 Keep being a great Slut.', es: '👑 Felicidades, llegaste al #1 — ahora eres {title} de SlutCamp. ¡{title} de la app! Sigue trabajando duro y no dejes que nadie te quite tu puesto. Ahora eres la que más gana y más likes tiene en tu sección ❤️💋 Sigue siendo una gran Slut.', pt: '👑 Parabéns, você chegou ao #1 — agora você é {title} da SlutCamp. {title} do app! Continue trabalhando duro e não deixe ninguém tomar seu lugar. Agora você é a que mais ganha e mais curtidas tem na sua seção ❤️💋 Continue sendo uma grande Slut.', fr: '👑 Félicitations, vous êtes arrivée n°1 — vous êtes maintenant {title} de SlutCamp. {title} de l\'appli ! Continuez à travailler dur et ne laissez personne prendre votre place. Vous avez maintenant les gains et les likes les plus élevés de votre section ❤️💋 Continuez d\'être une super Slut.', de: '👑 Glückwunsch, du hast es auf Platz #1 geschafft — du bist jetzt {title} von SlutCamp. {title} der App! Arbeite weiter hart und lass dir deinen Platz von niemandem nehmen. Du hast jetzt die höchsten Einnahmen und die meisten Likes in deiner Sektion ❤️💋 Bleib eine großartige Slut.', ru: '👑 Поздравляем, вы добрались до №1 — теперь вы {title} в SlutCamp. {title} приложения! Продолжайте усердно работать и никому не отдавайте своё место. Теперь у вас самые большие заработок и количество лайков в вашей секции ❤️💋 Оставайтесь великолепной Slut.', ja: '👑 おめでとう、1位に到達しました — あなたは今やSlutCampの{title}です。アプリの{title}！これからも頑張って、誰にもその座を奪わせないで。あなたのセクションで収益もいいねも一番になりました ❤️💋 素敵なSlutでいてね。', zh: '👑 恭喜，你登上了第 1 名 — 你现在是 SlutCamp 的{title}了。整个应用的{title}！继续努力，别让任何人夺走你的位置。你现在是你所在分区收入和点赞最多的 ❤️💋 继续做一个出色的 Slut。', ko: '👑 축하해요, 1위에 올랐어요 — 이제 당신은 SlutCamp의 {title}입니다. 앱의 {title}! 계속 열심히 하고, 아무에게도 그 자리를 빼앗기지 마세요. 이제 당신의 섹션에서 수익과 좋아요가 가장 많아요 ❤️💋 멋진 Slut으로 계속 있어줘요.', it: '👑 Congratulazioni, sei arrivata al n.1 — ora sei la {title} di SlutCamp. {title} dell\'app! Continua a lavorare duro e non lasciare che nessuno ti prenda il posto. Ora hai i guadagni e i like più alti della tua sezione ❤️💋 Continua a essere una grande Slut.', pl: '👑 Gratulacje, dotarłaś na miejsce #1 — teraz jesteś {title} w SlutCamp. {title} całej aplikacji! Pracuj dalej ciężko i nie pozwól nikomu zabrać swojego miejsca. Masz teraz najwyższe zarobki i najwięcej polubień w swojej sekcji ❤️💋 Bądź dalej wspaniałą Slut.', nl: '👑 Gefeliciteerd, je hebt de #1 bereikt — je bent nu de {title} van SlutCamp. {title} van de app! Blijf hard werken en laat niemand je plek afpakken. Je hebt nu de hoogste inkomsten en de meeste likes in je sectie ❤️💋 Blijf een geweldige Slut.', tr: '👑 Tebrikler, #1\'e ulaştın — artık SlutCamp\'te {title} oldun. Uygulamada da {title} oldun! Sıkı çalışmaya devam et ve kimsenin yerini kapmasına izin verme. Artık bölümünde en çok kazanan ve en çok beğenilen sensin ❤️💋 Harika bir Slut olmaya devam et.' },
+  rank_congrats_dm_female_2: { en: '👸 Congrats, you are now the {title} of the app. You now have the second-most earnings and likes in your section, {title} of SlutCamp. Keep fighting — I\'m sure you can get that #1 spot 💋', es: '👸 Felicidades, ahora eres la {title} de la app. Ahora tienes las segundas mayores ganancias y likes de tu sección, {title} de SlutCamp. Sigue peleando — seguro que puedes llegar a ese puesto #1 💋', pt: '👸 Parabéns, agora você é a {title} do app. Agora você tem os segundos maiores ganhos e curtidas da sua seção, {title} da SlutCamp. Continue lutando — tenho certeza de que você consegue aquele 1º lugar 💋', fr: '👸 Bravo, vous êtes maintenant la {title} de l\'appli. Vous avez maintenant les deuxièmes gains et likes les plus élevés de votre section, {title} de SlutCamp. Continuez à vous battre — je suis sûre que vous pouvez prendre cette 1re place 💋', de: '👸 Glückwunsch, du bist jetzt die {title} der App. Du hast jetzt die zweithöchsten Einnahmen und Likes in deiner Sektion, {title} von SlutCamp. Kämpfe weiter — ich bin sicher, du kannst dir diesen Platz #1 holen 💋', ru: '👸 Поздравляем, теперь вы {title} приложения. Теперь у вас второй по величине заработок и количество лайков в вашей секции, {title} в SlutCamp. Продолжайте бороться — уверена, вы сможете занять это 1-е место 💋', ja: '👸 おめでとう、あなたは今やアプリの{title}です。あなたのセクションで収益といいねが2番目になりました、SlutCampの{title}。戦い続けて — きっと1位を取れるよ 💋', zh: '👸 恭喜，你现在是应用的{title}了。你现在是你所在分区收入和点赞第二多的，SlutCamp 的{title}。继续战斗 — 我相信你能拿下那个第 1 名 💋', ko: '👸 축하해요, 이제 당신은 앱의 {title}입니다. 이제 당신의 섹션에서 수익과 좋아요가 두 번째로 많아요, SlutCamp의 {title}. 계속 싸우세요 — 분명 그 1위 자리를 차지할 수 있어요 💋', it: '👸 Congratulazioni, ora sei la {title} dell\'app. Ora hai i secondi guadagni e like più alti della tua sezione, {title} di SlutCamp. Continua a lottare — sono sicura che puoi prendere quel 1° posto 💋', pl: '👸 Gratulacje, teraz jesteś {title} aplikacji. Masz teraz drugie najwyższe zarobki i polubienia w swojej sekcji, {title} w SlutCamp. Walcz dalej — jestem pewna, że możesz zdobyć to 1. miejsce 💋', nl: '👸 Gefeliciteerd, je bent nu de {title} van de app. Je hebt nu de op één na hoogste inkomsten en likes in je sectie, {title} van SlutCamp. Blijf vechten — ik weet zeker dat je die #1-plek kunt pakken 💋', tr: '👸 Tebrikler, artık uygulamada {title} oldun. Artık bölümünde kazanç ve beğenide ikinci sıradasın, SlutCamp\'te {title} oldun. Savaşmaya devam et — o #1 sırayı alabileceğinden eminim 💋' },
+  rank_congrats_dm_female_3: { en: '🫅 Congrats, you are now the {title} of the app. You now have the third-most earnings and likes in your section — you\'re on the podium, and the crown is only two spots away. Keep climbing 💋', es: '🫅 Felicidades, ahora eres la {title} de la app. Ahora tienes las terceras mayores ganancias y likes de tu sección — estás en el podio y la corona está a solo dos puestos. Sigue subiendo 💋', pt: '🫅 Parabéns, agora você é a {title} do app. Agora você tem os terceiros maiores ganhos e curtidas da sua seção — você está no pódio, e a coroa está a apenas dois lugares. Continue subindo 💋', fr: '🫅 Bravo, vous êtes maintenant la {title} de l\'appli. Vous avez maintenant les troisièmes gains et likes les plus élevés de votre section — vous êtes sur le podium, et la couronne n\'est qu\'à deux places. Continuez à grimper 💋', de: '🫅 Glückwunsch, du bist jetzt die {title} der App. Du hast jetzt die dritthöchsten Einnahmen und Likes in deiner Sektion — du bist auf dem Podium, und die Krone ist nur zwei Plätze entfernt. Klettere weiter 💋', ru: '🫅 Поздравляем, теперь вы {title} приложения. Теперь у вас третий по величине заработок и количество лайков в вашей секции — вы на подиуме, а корона всего в двух местах от вас. Продолжайте подниматься 💋', ja: '🫅 おめでとう、あなたは今やアプリの{title}です。あなたのセクションで収益といいねが3番目になりました — 表彰台に乗って、王冠まであと2つです。上り続けて 💋', zh: '🫅 恭喜，你现在是应用的{title}了。你现在是你所在分区收入和点赞第三多的 — 你登上了领奖台，离王冠只有两个位置。继续往上冲 💋', ko: '🫅 축하해요, 이제 당신은 앱의 {title}입니다. 이제 당신의 섹션에서 수익과 좋아요가 세 번째로 많아요 — 시상대에 올랐고, 왕관까지는 두 자리밖에 안 남았어요. 계속 올라가세요 💋', it: '🫅 Congratulazioni, ora sei la {title} dell\'app. Ora hai i terzi guadagni e like più alti della tua sezione — sei sul podio, e la corona è a soli due posti di distanza. Continua a salire 💋', pl: '🫅 Gratulacje, teraz jesteś {title} aplikacji. Masz teraz trzecie najwyższe zarobki i polubienia w swojej sekcji — jesteś na podium, a korona jest tylko o dwa miejsca dalej. Wspinaj się dalej 💋', nl: '🫅 Gefeliciteerd, je bent nu de {title} van de app. Je hebt nu de op twee na hoogste inkomsten en likes in je sectie — je staat op het podium, en de kroon is nog maar twee plekken weg. Blijf klimmen 💋', tr: '🫅 Tebrikler, artık uygulamada {title} oldun. Artık bölümünde kazanç ve beğenide üçüncü sıradasın — podyumdasın ve taç sadece iki sıra uzakta. Tırmanmaya devam et 💋' },
+  rank_congrats_dm_male_1: { en: '👑 Congratulations, you\'ve made it to #1 — you are now {title} of SlutCamp. {title} of the app! Keep working hard, and don\'t let anyone take your spot. You\'re now making the most earnings and likes in your section ❤️💋 Keep running the show.', es: '👑 Felicidades, llegaste al #1 — ahora eres {title} de SlutCamp. ¡{title} de la app! Sigue trabajando duro y no dejes que nadie te quite tu puesto. Ahora eres el que más gana y más likes tiene en tu sección ❤️💋 Sigue llevando el show.', pt: '👑 Parabéns, você chegou ao #1 — agora você é {title} da SlutCamp. {title} do app! Continue trabalhando duro e não deixe ninguém tomar seu lugar. Agora você é o que mais ganha e mais curtidas tem na sua seção ❤️💋 Continue comandando o show.', fr: '👑 Félicitations, vous êtes arrivé n°1 — vous êtes maintenant {title} de SlutCamp. {title} de l\'appli ! Continuez à travailler dur et ne laissez personne prendre votre place. Vous avez maintenant les gains et les likes les plus élevés de votre section ❤️💋 Continuez à mener le show.', de: '👑 Glückwunsch, du hast es auf Platz #1 geschafft — du bist jetzt {title} von SlutCamp. {title} der App! Arbeite weiter hart und lass dir deinen Platz von niemandem nehmen. Du hast jetzt die höchsten Einnahmen und die meisten Likes in deiner Sektion ❤️💋 Leite die Show weiter.', ru: '👑 Поздравляем, вы добрались до №1 — теперь вы {title} в SlutCamp. {title} приложения! Продолжайте усердно работать и никому не отдавайте своё место. Теперь у вас самые большие заработок и количество лайков в вашей секции ❤️💋 Продолжайте вести шоу.', ja: '👑 おめでとう、1位に到達しました — あなたは今やSlutCampの{title}です。アプリの{title}！これからも頑張って、誰にもその座を奪わせないで。あなたのセクションで収益もいいねも一番になりました ❤️💋 ショーを引っ張り続けて。', zh: '👑 恭喜，你登上了第 1 名 — 你现在是 SlutCamp 的{title}了。整个应用的{title}！继续努力，别让任何人夺走你的位置。你现在是你所在分区收入和点赞最多的 ❤️💋 继续主宰全场。', ko: '👑 축하해요, 1위에 올랐어요 — 이제 당신은 SlutCamp의 {title}입니다. 앱의 {title}! 계속 열심히 하고, 아무에게도 그 자리를 빼앗기지 마세요. 이제 당신의 섹션에서 수익과 좋아요가 가장 많아요 ❤️💋 계속 쇼를 이끌어가세요.', it: '👑 Congratulazioni, sei arrivato al n.1 — ora sei il {title} di SlutCamp. {title} dell\'app! Continua a lavorare duro e non lasciare che nessuno ti prenda il posto. Ora hai i guadagni e i like più alti della tua sezione ❤️💋 Continua a guidare lo show.', pl: '👑 Gratulacje, dotarłeś na miejsce #1 — teraz jesteś {title} w SlutCamp. {title} całej aplikacji! Pracuj dalej ciężko i nie pozwól nikomu zabrać swojego miejsca. Masz teraz najwyższe zarobki i najwięcej polubień w swojej sekcji ❤️💋 Prowadź show dalej.', nl: '👑 Gefeliciteerd, je hebt de #1 bereikt — je bent nu de {title} van SlutCamp. {title} van de app! Blijf hard werken en laat niemand je plek afpakken. Je hebt nu de hoogste inkomsten en de meeste likes in je sectie ❤️💋 Blijf de show leiden.', tr: '👑 Tebrikler, #1\'e ulaştın — artık SlutCamp\'te {title} oldun. Uygulamada da {title} oldun! Sıkı çalışmaya devam et ve kimsenin yerini kapmasına izin verme. Artık bölümünde en çok kazanan ve en çok beğenilen sensin ❤️💋 Şovu yönetmeye devam et.' },
+  rank_congrats_dm_male_2: { en: '🤴 Congrats, you are now the {title} of the app. You now have the second-most earnings and likes in your section, {title} of SlutCamp. Keep fighting — that #1 spot has your name on it. Go take it 💋', es: '🤴 Felicidades, ahora eres el {title} de la app. Ahora tienes las segundas mayores ganancias y likes de tu sección, {title} de SlutCamp. Sigue peleando — ese puesto #1 tiene tu nombre. Ve por él 💋', pt: '🤴 Parabéns, agora você é o {title} do app. Agora você tem os segundos maiores ganhos e curtidas da sua seção, {title} da SlutCamp. Continue lutando — esse 1º lugar tem seu nome. Vai buscar 💋', fr: '🤴 Bravo, vous êtes maintenant le {title} de l\'appli. Vous avez maintenant les deuxièmes gains et likes les plus élevés de votre section, {title} de SlutCamp. Continuez à vous battre — cette 1re place porte votre nom. Allez la chercher 💋', de: '🤴 Glückwunsch, du bist jetzt der {title} der App. Du hast jetzt die zweithöchsten Einnahmen und Likes in deiner Sektion, {title} von SlutCamp. Kämpfe weiter — dieser Platz #1 trägt deinen Namen. Hol ihn dir 💋', ru: '🤴 Поздравляем, теперь вы {title} приложения. Теперь у вас второй по величине заработок и количество лайков в вашей секции, {title} в SlutCamp. Продолжайте бороться — это 1-е место носит ваше имя. Забирайте его 💋', ja: '🤴 おめでとう、あなたは今やアプリの{title}です。あなたのセクションで収益といいねが2番目になりました、SlutCampの{title}。戦い続けて — その1位にはあなたの名前が書いてある。取りに行こう 💋', zh: '🤴 恭喜，你现在是应用的{title}了。你现在是你所在分区收入和点赞第二多的，SlutCamp 的{title}。继续战斗 — 那个第 1 名写着你的名字。去拿下它 💋', ko: '🤴 축하해요, 이제 당신은 앱의 {title}입니다. 이제 당신의 섹션에서 수익과 좋아요가 두 번째로 많아요, SlutCamp의 {title}. 계속 싸우세요 — 그 1위 자리에는 당신의 이름이 쓰여 있어요. 가서 차지하세요 💋', it: '🤴 Congratulazioni, ora sei il {title} dell\'app. Ora hai i secondi guadagni e like più alti della tua sezione, {title} di SlutCamp. Continua a lottare — quel 1° posto ha il tuo nome sopra. Vai a prenderlo 💋', pl: '🤴 Gratulacje, teraz jesteś {title} aplikacji. Masz teraz drugie najwyższe zarobki i polubienia w swojej sekcji, {title} w SlutCamp. Walcz dalej — to 1. miejsce nosi twoje imię. Idź je zdobyć 💋', nl: '🤴 Gefeliciteerd, je bent nu de {title} van de app. Je hebt nu de op één na hoogste inkomsten en likes in je sectie, {title} van SlutCamp. Blijf vechten — die #1-plek heeft jouw naam erop. Ga hem halen 💋', tr: '🤴 Tebrikler, artık uygulamada {title} oldun. Artık bölümünde kazanç ve beğenide ikinci sıradasın, SlutCamp\'te {title} oldun. Savaşmaya devam et — o #1 sırada senin adın yazıyor. Git onu al 💋' },
+  rank_congrats_dm_male_3: { en: '🫅 Congrats, you are now the {title} of the app. You now have the third-most earnings and likes in your section — you\'re on the podium, and the crown is only two spots away. Keep climbing 💋', es: '🫅 Felicidades, ahora eres el {title} de la app. Ahora tienes las terceras mayores ganancias y likes de tu sección — estás en el podio y la corona está a solo dos puestos. Sigue subiendo 💋', pt: '🫅 Parabéns, agora você é o {title} do app. Agora você tem os terceiros maiores ganhos e curtidas da sua seção — você está no pódio, e a coroa está a apenas dois lugares. Continue subindo 💋', fr: '🫅 Bravo, vous êtes maintenant le {title} de l\'appli. Vous avez maintenant les troisièmes gains et likes les plus élevés de votre section — vous êtes sur le podium, et la couronne n\'est qu\'à deux places. Continuez à grimper 💋', de: '🫅 Glückwunsch, du bist jetzt der {title} der App. Du hast jetzt die dritthöchsten Einnahmen und Likes in deiner Sektion — du bist auf dem Podium, und die Krone ist nur zwei Plätze entfernt. Klettere weiter 💋', ru: '🫅 Поздравляем, теперь вы {title} приложения. Теперь у вас третий по величине заработок и количество лайков в вашей секции — вы на подиуме, а корона всего в двух местах от вас. Продолжайте подниматься 💋', ja: '🫅 おめでとう、あなたは今やアプリの{title}です。あなたのセクションで収益といいねが3番目になりました — 表彰台に乗って、王冠まであと2つです。上り続けて 💋', zh: '🫅 恭喜，你现在是应用的{title}了。你现在是你所在分区收入和点赞第三多的 — 你登上了领奖台，离王冠只有两个位置。继续往上冲 💋', ko: '🫅 축하해요, 이제 당신은 앱의 {title}입니다. 이제 당신의 섹션에서 수익과 좋아요가 세 번째로 많아요 — 시상대에 올랐고, 왕관까지는 두 자리밖에 안 남았어요. 계속 올라가세요 💋', it: '🫅 Congratulazioni, ora sei il {title} dell\'app. Ora hai i terzi guadagni e like più alti della tua sezione — sei sul podio, e la corona è a soli due posti di distanza. Continua a salire 💋', pl: '🫅 Gratulacje, teraz jesteś {title} aplikacji. Masz teraz trzecie najwyższe zarobki i polubienia w swojej sekcji — jesteś na podium, a korona jest tylko o dwa miejsca dalej. Wspinaj się dalej 💋', nl: '🫅 Gefeliciteerd, je bent nu de {title} van de app. Je hebt nu de op twee na hoogste inkomsten en likes in je sectie — je staat op het podium, en de kroon is nog maar twee plekken weg. Blijf klimmen 💋', tr: '🫅 Tebrikler, artık uygulamada {title} oldun. Artık bölümünde kazanç ve beğenide üçüncü sıradasın — podyumdasın ve taç sadece iki sıra uzakta. Tırmanmaya devam et 💋' },
+  rank_congrats_dm_couple_1: { en: '👑 Congratulations, you two have made it to #1 — you are now the {title} of SlutCamp! Keep working hard, and don\'t let anyone take your spot. You\'re now making the most earnings and likes of any couple on the app ❤️💋 Keep being the hottest team on here.', es: '👑 Felicidades, ustedes dos llegaron al #1 — ¡ahora son {title} de SlutCamp! Sigan trabajando duro y no dejen que nadie les quite su puesto. Ahora son los que más ganan y más likes tienen de todas las parejas de la app ❤️💋 Sigan siendo el equipo más hot de aquí.', pt: '👑 Parabéns, vocês dois chegaram ao #1 — agora vocês são {title} da SlutCamp! Continuem trabalhando duro e não deixem ninguém tomar o lugar de vocês. Agora vocês são os que mais ganham e mais curtidas têm de todos os casais do app ❤️💋 Continuem sendo a dupla mais quente daqui.', fr: '👑 Félicitations, vous êtes arrivés n°1 à deux — vous êtes maintenant les {title} de SlutCamp ! Continuez à travailler dur et ne laissez personne prendre votre place. Vous avez maintenant les gains et les likes les plus élevés de tous les couples de l\'appli ❤️💋 Continuez d\'être l\'équipe la plus hot d\'ici.', de: '👑 Glückwunsch, ihr zwei habt es auf Platz #1 geschafft — ihr seid jetzt das {title} von SlutCamp! Arbeitet weiter hart und lasst euch euren Platz von niemandem nehmen. Ihr habt jetzt die höchsten Einnahmen und die meisten Likes aller Paare in der App ❤️💋 Bleibt das heißeste Team hier.', ru: '👑 Поздравляем, вы вдвоём добрались до №1 — теперь вы {title} в SlutCamp! Продолжайте усердно работать и никому не отдавайте своё место. Теперь у вас самые большие заработок и количество лайков среди всех пар в приложении ❤️💋 Оставайтесь самой горячей командой здесь.', ja: '👑 おめでとう、お二人で1位に到達しました — あなたたちは今やSlutCampの{title}です！これからも頑張って、誰にもその座を奪わせないで。アプリ中の全カップルの中で収益もいいねも一番になりました ❤️💋 ここで一番ホットなチームでいてね。', zh: '👑 恭喜，你们俩登上了第 1 名 — 你们现在是 SlutCamp 的{title}了！继续努力，别让任何人夺走你们的位置。你们现在是整个应用所有情侣中收入和点赞最多的 ❤️💋 继续做这里最火辣的组合。', ko: '👑 축하해요, 두 분이 1위에 올랐어요 — 이제 여러분은 SlutCamp의 {title}입니다! 계속 열심히 하고, 아무에게도 그 자리를 빼앗기지 마세요. 이제 앱의 모든 커플 중 수익과 좋아요가 가장 많아요 ❤️💋 여기서 가장 핫한 팀으로 계속 있어줘요.', it: '👑 Congratulazioni, siete arrivati al n.1 in due — ora siete i {title} di SlutCamp! Continuate a lavorare duro e non lasciate che nessuno vi prenda il posto. Ora avete i guadagni e i like più alti di tutte le coppie dell\'app ❤️💋 Continuate a essere il team più hot di qui.', pl: '👑 Gratulacje, we dwoje dotarliście na miejsce #1 — teraz jesteście {title} w SlutCamp! Pracujcie dalej ciężko i nie pozwólcie nikomu zabrać swojego miejsca. Macie teraz najwyższe zarobki i najwięcej polubień ze wszystkich par w aplikacji ❤️💋 Bądźcie dalej najgorętszym zespołem tutaj.', nl: '👑 Gefeliciteerd, jullie hebben samen de #1 bereikt — jullie zijn nu het {title} van SlutCamp! Blijf hard werken en laat niemand jullie plek afpakken. Jullie hebben nu de hoogste inkomsten en de meeste likes van alle koppels in de app ❤️💋 Blijf het heetste team hier.', tr: '👑 Tebrikler, ikiniz #1\'e ulaştınız — artık SlutCamp\'te {title} oldunuz! Sıkı çalışmaya devam edin ve kimsenin yerinizi kapmasına izin vermeyin. Artık uygulamadaki tüm çiftler arasında en çok kazanan ve en çok beğenilen sizsiniz ❤️💋 Buradaki en ateşli ekip olmaya devam edin.' },
+  rank_congrats_dm_couple_2: { en: '👸🤴 Congrats, you two are now the {title} of the app. You now have the second-most earnings and likes of any couple on SlutCamp. Keep fighting — that #1 spot has your names on it. Go take it together 💋', es: '👸🤴 Felicidades, ustedes dos ahora son {title} de la app. Ahora tienen las segundas mayores ganancias y likes de todas las parejas de SlutCamp. Sigan peleando — ese puesto #1 tiene sus nombres. Vayan por él juntos 💋', pt: '👸🤴 Parabéns, vocês dois agora são {title} do app. Agora vocês têm os segundos maiores ganhos e curtidas de todos os casais da SlutCamp. Continuem lutando — esse 1º lugar tem os nomes de vocês. Vão buscar juntos 💋', fr: '👸🤴 Bravo, vous êtes maintenant les {title} de l\'appli. Vous avez maintenant les deuxièmes gains et likes les plus élevés de tous les couples de SlutCamp. Continuez à vous battre — cette 1re place porte vos noms. Allez la chercher ensemble 💋', de: '👸🤴 Glückwunsch, ihr zwei seid jetzt das {title} der App. Ihr habt jetzt die zweithöchsten Einnahmen und Likes aller Paare auf SlutCamp. Kämpft weiter — dieser Platz #1 trägt eure Namen. Holt ihn euch gemeinsam 💋', ru: '👸🤴 Поздравляем, теперь вы вдвоём {title} приложения. Теперь у вас второй по величине заработок и количество лайков среди всех пар в SlutCamp. Продолжайте бороться — это 1-е место носит ваши имена. Забирайте его вместе 💋', ja: '👸🤴 おめでとう、お二人は今やアプリの{title}です。SlutCampの全カップルの中で収益といいねが2番目になりました。戦い続けて — その1位には二人の名前が書いてある。一緒に取りに行こう 💋', zh: '👸🤴 恭喜，你们俩现在是应用的{title}了。你们现在是 SlutCamp 所有情侣中收入和点赞第二多的。继续战斗 — 那个第 1 名写着你们的名字。一起去拿下它 💋', ko: '👸🤴 축하해요, 두 분은 이제 앱의 {title}입니다. 이제 SlutCamp의 모든 커플 중 수익과 좋아요가 두 번째로 많아요. 계속 싸우세요 — 그 1위 자리에는 두 분의 이름이 쓰여 있어요. 함께 가서 차지하세요 💋', it: '👸🤴 Congratulazioni, ora siete i {title} dell\'app. Ora avete i secondi guadagni e like più alti di tutte le coppie di SlutCamp. Continuate a lottare — quel 1° posto ha i vostri nomi sopra. Andate a prenderlo insieme 💋', pl: '👸🤴 Gratulacje, we dwoje jesteście teraz {title} aplikacji. Macie teraz drugie najwyższe zarobki i polubienia ze wszystkich par w SlutCamp. Walczcie dalej — to 1. miejsce nosi wasze imiona. Idźcie je zdobyć razem 💋', nl: '👸🤴 Gefeliciteerd, jullie zijn nu het {title} van de app. Jullie hebben nu de op één na hoogste inkomsten en likes van alle koppels op SlutCamp. Blijf vechten — die #1-plek heeft jullie namen erop. Ga hem samen halen 💋', tr: '👸🤴 Tebrikler, ikiniz artık uygulamada {title} oldunuz. Artık SlutCamp\'teki tüm çiftler arasında kazanç ve beğenide ikinci sıradasınız. Savaşmaya devam edin — o #1 sırada ikinizin adı yazıyor. Gidin onu birlikte alın 💋' },
+  rank_congrats_dm_couple_3: { en: '🫅 Congrats, you two are now the {title} of the app. You now have the third-most earnings and likes of any couple on SlutCamp — you\'re on the podium, and the crown is only two spots away. Keep climbing together 💋', es: '🫅 Felicidades, ustedes dos ahora son {title} de la app. Ahora tienen las terceras mayores ganancias y likes de todas las parejas de la app — están en el podio y la corona está a solo dos puestos. Sigan subiendo juntos 💋', pt: '🫅 Parabéns, vocês dois agora são {title} do app. Agora vocês têm os terceiros maiores ganhos e curtidas de todos os casais do app — vocês estão no pódio, e a coroa está a apenas dois lugares. Continuem subindo juntos 💋', fr: '🫅 Bravo, vous êtes maintenant les {title} de l\'appli. Vous avez maintenant les troisièmes gains et likes les plus élevés de tous les couples de l\'appli — vous êtes sur le podium, et la couronne n\'est qu\'à deux places. Continuez à grimper ensemble 💋', de: '🫅 Glückwunsch, ihr zwei seid jetzt das {title} der App. Ihr habt jetzt die dritthöchsten Einnahmen und Likes aller Paare in der App — ihr seid auf dem Podium, und die Krone ist nur zwei Plätze entfernt. Klettert gemeinsam weiter 💋', ru: '🫅 Поздравляем, теперь вы вдвоём {title} приложения. Теперь у вас третий по величине заработок и количество лайков среди всех пар в приложении — вы на подиуме, а корона всего в двух местах от вас. Продолжайте подниматься вместе 💋', ja: '🫅 おめでとう、お二人は今やアプリの{title}です。アプリ中の全カップルの中で収益といいねが3番目になりました — 表彰台に乗って、王冠まであと2つです。一緒に上り続けて 💋', zh: '🫅 恭喜，你们俩现在是应用的{title}了。你们现在是整个应用所有情侣中收入和点赞第三多的 — 你们登上了领奖台，离王冠只有两个位置。一起继续往上冲 💋', ko: '🫅 축하해요, 두 분은 이제 앱의 {title}입니다. 이제 앱의 모든 커플 중 수익과 좋아요가 세 번째로 많아요 — 시상대에 올랐고, 왕관까지는 두 자리밖에 안 남았어요. 함께 계속 올라가세요 💋', it: '🫅 Congratulazioni, ora siete i {title} dell\'app. Ora avete i terzi guadagni e like più alti di tutte le coppie di SlutCamp — siete sul podio, e la corona è a soli due posti di distanza. Continuate a salire insieme 💋', pl: '🫅 Gratulacje, we dwoje jesteście teraz {title} aplikacji. Macie teraz trzecie najwyższe zarobki i polubienia ze wszystkich par w aplikacji — jesteście na podium, a korona jest tylko o dwa miejsca dalej. Wspinajcie się dalej razem 💋', nl: '🫅 Gefeliciteerd, jullie zijn nu het {title} van de app. Jullie hebben nu de op twee na hoogste inkomsten en likes van alle koppels in de app — jullie staan op het podium, en de kroon is nog maar twee plekken weg. Blijf samen klimmen 💋', tr: '🫅 Tebrikler, ikiniz artık uygulamada {title} oldunuz. Artık SlutCamp\'teki tüm çiftler arasında kazanç ve beğenide üçüncü sıradasınız — podyumdasınız ve taç sadece iki sıra uzakta. Birlikte tırmanmaya devam edin 💋' },
 };
 
 function srv(key, lang, vars) {
@@ -4760,6 +4899,10 @@ try {
   const rankN = recomputeAllModelRanks();
   console.log(`[ranking] Composite ranks recomputed for ${rankN} models (likes + lifetime earnings $).`);
 } catch (e) { console.log('[ranking] backfill failed:', e.message); }
+/* Rank congrats go live only AFTER the backfill: armRankCongrats()
+ * silently records the top-3 hold everyone already has, so the first
+ * congrats anyone gets is for a climb that happens from here on. */
+try { armRankCongrats(); } catch (e) { console.log('[ranking] rank-congrats arming failed:', e.message); }
 
 /* ------------------------------------------------------------------ */
 /* Public: guest tokens + model browsing (no login needed)              */
@@ -4954,10 +5097,12 @@ function postToOfficialThread(userId, text) {
 // money earned"). rank_score is a stored column maintained by
 // recomputeModelRank() and backfilled on every boot.
 // rank_position in the payload is her TRUE 1-based position in that
-// composite order — the array order is NOT her rank, because the
-// featured model floats above it. Positions are computed over the full
-// eligible roster BEFORE region filtering, so a rank means the same
-// thing to every viewer.
+// composite order WITHIN HER OWN SECTION's ladder (owner ruling,
+// Oct 19 2026: female / male / couple each rank separately — the
+// sections never mix) — the array order is NOT her rank, because the
+// featured model floats above it. Positions are computed over the
+// full eligible roster BEFORE region filtering, so a rank means the
+// same thing to every viewer, on every tab.
 // total_sales = lifetime gross fan spend from transactions attributed
 // to the model, excluding 'payout' rows (money OUT to the model, not
 // sales); refund rows are negative and net against sales automatically.
@@ -4982,23 +5127,14 @@ app.get('/api/models', (req, res) => {
              (CASE u.presence_override WHEN 'on' THEN 1 WHEN 'off' THEN 0 ELSE m.is_online END) DESC,
              u.created_at DESC, u.display_name ASC
   `).all();
-  // True composite rank positions: the directory's own ordering chain
-  // (rank, then likes / online / newest / name as tiebreaks) WITHOUT
-  // the featured float.
-  const rankOrder = db.prepare(`
-    SELECT u.id,
-           (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) AS like_count
-    FROM users u JOIN models m ON m.user_id = u.id
-    WHERE u.role = 'model' AND u.banned = 0 AND m.is_hidden = 0
-    ORDER BY m.rank_score DESC,
-             like_count DESC,
-             (CASE u.presence_override WHEN 'on' THEN 1 WHEN 'off' THEN 0 ELSE m.is_online END) DESC,
-             u.created_at DESC, u.display_name ASC
-  `).all();
-  // The house account holds no rank position — it is not a model, so
-  // it is removed from the position map before positions are assigned
-  // (a model ranked below it must not be shifted by its presence).
-  const rankPos = new Map(rankOrder.filter((r) => r.id !== houseId).map((r, i) => [r.id, i + 1]));
+  // True composite rank positions, PER SECTION (owner ruling,
+  // Oct 19 2026): her place on her own section's ladder (female /
+  // male / couple), never a standing across sections — from the ONE
+  // shared derivation (computeSectionRankPositions: the directory's
+  // ordering chain WITHOUT the featured float, house excluded), so
+  // the payload, the public pages and the rank congrats never
+  // disagree about her number.
+  const rankPos = computeSectionRankPositions();
   // Check which models the current fan has liked (if logged in)
   let likedSet = new Set();
   const h = req.headers.authorization || '';
@@ -5031,8 +5167,9 @@ app.get('/api/models', (req, res) => {
   // the Female tab — entry always lands on Female) — models and
   // app-side admins included (owner ruling, Oct 19 2026; the Manager's
   // /api/admin/* roster is the only unfiltered one). Rank positions
-  // above were computed over the FULL roster on purpose: a model's
-  // rank is her standing on the whole platform, not inside one tab.
+  // above are PER-SECTION (owner ruling, Oct 19 2026): every model
+  // carries the position from her own section's ladder onto every
+  // tab she appears on — the ladders never mix.
   const bset = effectiveBrowseSet(req);
   if (bset) visible = visible.filter((r) => bset.includes(r.section || 'female'));
   // Pre-purchase shield: a model's looping preview video is explicit-
@@ -13017,9 +13154,16 @@ app.patch('/api/admin/models/:id/section', ...adminOnly, (req, res) => {
   const section = req.body && req.body.section;
   if (!MODEL_SECTIONS.includes(section))
     return res.status(400).json({ error: 'bad_section', message: "section must be 'female', 'male' or 'couple'." });
-  const m = db.prepare('SELECT user_id FROM models WHERE user_id = ?').get(req.params.id);
+  const m = db.prepare('SELECT user_id, section FROM models WHERE user_id = ?').get(req.params.id);
   if (!m) return res.status(404).json({ error: 'not_found' });
+  const oldSection = m.section || 'female';
   db.prepare('UPDATE models SET section = ? WHERE user_id = ?').run(section, req.params.id);
+  // A section move re-deals BOTH ladders without any rank recompute —
+  // evaluate both for rank congrats (a move INTO a top-3 spot is a
+  // genuine new standing on that ladder).
+  if (rankCongratsLive && oldSection !== section) {
+    try { evaluateRankCongrats(oldSection); evaluateRankCongrats(section); } catch (e) { /* congrats never block the switch */ }
+  }
   res.json({ ok: true, section });
 });
 

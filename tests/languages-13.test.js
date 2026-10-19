@@ -318,6 +318,7 @@ test('broadcasts: languages announcement lands in each user\u2019s stored langua
     // Surgery: give seed users other languages, reset the lang stamps,
     // and clear boot-1 language announcements so boot 2 re-fires them.
     const wdb = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+    wdb.exec('PRAGMA busy_timeout = 10000');
     wdb.prepare("UPDATE users SET language = 'fr' WHERE username = 'bunny'").run();
     wdb.prepare("UPDATE users SET language = 'ja' WHERE username = 'stacey'").run();
     wdb.prepare("UPDATE users SET language = 'de' WHERE username = 'fandemo'").run();

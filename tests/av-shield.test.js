@@ -211,6 +211,7 @@ async function stopServer() {
  * stamp them exactly as that build will). */
 function dbExec(sql, params = []) {
   const db = new DatabaseSync(path.join(tmpDir, 'wogent-chat.db'));
+  db.exec('PRAGMA busy_timeout = 10000');
   try {
     db.exec('PRAGMA busy_timeout = 5000');
     db.prepare(sql).run(...params);

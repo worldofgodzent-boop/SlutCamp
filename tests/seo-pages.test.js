@@ -196,6 +196,7 @@ test.before(async () => {
   // Surgery: hide one model, ban the other. No public API does either.
   await killServer();
   const db = new DatabaseSync(path.join(tmpDir, 'wogent-chat.db'));
+  db.exec('PRAGMA busy_timeout = 10000');
   db.prepare('UPDATE models SET is_hidden = 1 WHERE user_id = ?').run(F.hidden.id);
   db.prepare('UPDATE users SET banned = 1 WHERE id = ?').run(F.banned.id);
   db.close();

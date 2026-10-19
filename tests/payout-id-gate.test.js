@@ -165,7 +165,9 @@ async function req(base, method, p, { body, token, headers } = {}) {
   return { status: r.status, text, json };
 }
 function openDb(dir, readOnly = true) {
-  return new DatabaseSync(path.join(dir, 'wogent-chat.db'), readOnly ? { readOnly: true } : {});
+  const __db = new DatabaseSync(path.join(dir, 'wogent-chat.db'), readOnly ? { readOnly: true } : {});
+  __db.exec('PRAGMA busy_timeout = 10000');
+  return __db;
 }
 
 test('live: unverified models are refused, approved models withdraw as before, house + affiliate pass the ID check', { timeout: 300000 }, async () => {

@@ -158,7 +158,9 @@ async function req(base, method, p, { body, token, headers } = {}) {
   return { status: r.status, text, json };
 }
 function openDb(dir, readOnly = true) {
-  return new DatabaseSync(path.join(dir, 'wogent-chat.db'), readOnly ? { readOnly: true } : {});
+  const __db = new DatabaseSync(path.join(dir, 'wogent-chat.db'), readOnly ? { readOnly: true } : {});
+  __db.exec('PRAGMA busy_timeout = 10000');
+  return __db;
 }
 const signupModel = (base, username, display, extra = {}) => req(base, 'POST', '/api/auth/signup', {
   body: { username, password: 'hunter22', role: 'model', display_name: display, dob: '1996-03-03', agree18: true, ...extra },
