@@ -118,6 +118,7 @@ function stampPlayMoney(db) {
    attributed model, one ledger row paying her 300¢. */
 function seedStandalone(dir) {
   const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+  db.exec('PRAGMA busy_timeout = 10000');
   try {
     stampPlayMoney(db);
     const fan = db.prepare("SELECT id FROM users WHERE username = 'fandemo'").get();
@@ -258,6 +259,7 @@ test('affiliates delete: standalone recruiter retires fully and frees her userna
    earnings that must survive, one attributed recruit. */
 function seedCapability(dir) {
   const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+  db.exec('PRAGMA busy_timeout = 10000');
   try {
     stampPlayMoney(db);
     const fan = db.prepare("SELECT id FROM users WHERE username = 'fandemo'").get();
@@ -354,6 +356,7 @@ test('affiliates delete: the lingering "removed" card (no recruiters row) retire
   // old Partners remove, recruiters row already gone — yet the card
   // still surfaces on the roster with no link.
   const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+  db.exec('PRAGMA busy_timeout = 10000');
   let goneId;
   try {
     stampPlayMoney(db);
@@ -397,6 +400,7 @@ test('affiliates delete: the lingering "removed" card (no recruiters row) retire
    (non-affiliates), and a recruiter with a PENDING withdrawal. */
 function seedRefusals(dir) {
   const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+  db.exec('PRAGMA busy_timeout = 10000');
   try {
     stampPlayMoney(db);
     const insUser = db.prepare(
@@ -477,6 +481,7 @@ test('affiliates delete: refusals — protected, merged duplicate, pending withd
     assert.equal((await req(h.base, 'GET', '/api/referral/pendcode1')).json.valid, true, 'refused delete leaves her link live');
 
     const dbw = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+    dbw.exec('PRAGMA busy_timeout = 10000');
     dbw.prepare("UPDATE withdrawals SET status = 'rejected' WHERE model_id = ?").run(seeded.pendId);
     dbw.close();
     const afterResolve = await del(seeded.pendId);

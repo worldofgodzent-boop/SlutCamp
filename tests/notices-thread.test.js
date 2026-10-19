@@ -137,6 +137,7 @@ async function req(method, p, { body, token } = {}) {
 
 function dbExec(sql, params = []) {
   const db = new DatabaseSync(path.join(tmpDir, 'wogent-chat.db'));
+  db.exec('PRAGMA busy_timeout = 10000');
   try { db.prepare(sql).run(...params); } finally { db.close(); }
 }
 function dbAll(sql, params = []) {

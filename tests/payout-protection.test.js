@@ -154,6 +154,7 @@ async function setupPayout(base, model) {
 // setup-only; the payout behavior under test is unchanged.
 function approveId(dir, modelId) {
   const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+  db.exec('PRAGMA busy_timeout = 10000');
   db.prepare("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved') ON CONFLICT(model_id) DO UPDATE SET status = 'approved'").run(modelId);
   db.close();
 }
@@ -383,6 +384,7 @@ test('A9: matured earnings become withdrawable; a clawback that eats the balance
   // legacy row with available_at NULL (pre-feature shape) must count as
   // matured too — grandfathering can never trap an existing balance.
   const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+  db.exec('PRAGMA busy_timeout = 10000');
   db.prepare("UPDATE transactions SET available_at = '2020-01-01 00:00:00' WHERE model_id = ?").run(S.modelB.id);
   db.prepare(`INSERT INTO transactions (fan_id, model_id, type, gross_cents, model_cents, platform_cents, available_at)
               VALUES (?, ?, 'tip', 2000, 1200, 800, NULL)`).run(S.fan4.id, S.modelB.id);
@@ -452,6 +454,7 @@ test('C: grandfathering IIFE matures pre-feature rows; stamps honor the setting 
   // Simulate a pre-feature database: row 1 loses its stamp and the
   // marker is cleared, as if the feature had never run on this DB.
   db = new DatabaseSync(dbPath);
+  db.exec('PRAGMA busy_timeout = 10000');
   db.prepare('UPDATE transactions SET available_at = NULL WHERE id = ?').run(rows[0].id);
   db.prepare('UPDATE platform_stats SET payout_protection_at = NULL WHERE id = 1').run();
   db.close();
@@ -494,12 +497,14 @@ test('B: already-withdrawn earnings — the shortfall becomes debt and future ea
   const dbPath = path.join(dir, 'wogent-chat.db');
   const matureE = () => {
     const db = new DatabaseSync(dbPath);
+    db.exec('PRAGMA busy_timeout = 10000');
     db.prepare("UPDATE transactions SET available_at = '2020-01-01 00:00:00' WHERE model_id = ? AND type = 'tip_menu'").run(E.id);
     db.close();
   };
   matureE();
   // ID gate: E must be ID-approved before she withdraws everything below.
   { const db = new DatabaseSync(dbPath);
+  db.exec('PRAGMA busy_timeout = 10000');
     db.prepare("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved') ON CONFLICT(model_id) DO UPDATE SET status = 'approved'").run(E.id);
     db.close(); }
   b = await boot(dir);

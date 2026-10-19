@@ -295,6 +295,7 @@ test('backfill: a pre-existing ledger + likes recompute on boot; payout and test
   await stopServer();
   const dbPath = path.join(tmpDir, 'wogent-chat.db');
   const db = new DatabaseSync(dbPath);
+  db.exec('PRAGMA busy_timeout = 10000');
   const stacey = db.prepare("SELECT id FROM users WHERE username = 'stacey'").get();
   assert.ok(stacey, 'seeded stacey must exist');
   const fans = db.prepare("SELECT id FROM users WHERE role = 'fan' ORDER BY id LIMIT 3").all();

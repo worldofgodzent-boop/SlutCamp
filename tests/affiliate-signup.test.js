@@ -93,7 +93,9 @@ async function req(base, method, p, { body, token } = {}) {
 }
 
 function readDb(dir, readOnly = true) {
-  return new DatabaseSync(path.join(dir, 'wogent-chat.db'), { readOnly });
+  const __db = new DatabaseSync(path.join(dir, 'wogent-chat.db'), { readOnly });
+  __db.exec('PRAGMA busy_timeout = 10000');
+  return __db;
 }
 
 test('source pins: Affiliate role card + form wired to POST /api/affiliate/signup', () => {

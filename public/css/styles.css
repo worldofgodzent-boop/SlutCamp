@@ -1439,6 +1439,15 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
   font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums;
   padding: 4px 9px; border-radius: 999px;
 }
+/* Top-3 rank TITLE badge (owner, Oct 19 2026): the worded pill (👸
+   Queen #1 etc.) — gold like the crown it replaces on the #1 tile,
+   slightly smaller type so the longest titles stay on one line. */
+.tile-rank-badge.rank-title {
+  background: linear-gradient(135deg, rgba(255,209,102,.94), rgba(245,158,11,.94));
+  border-color: rgba(255,209,102,.9); color: #231303;
+  font-size: 11px; letter-spacing: .2px; white-space: nowrap;
+  max-width: calc(100% - 20px); overflow: hidden; text-overflow: ellipsis;
+}
 .tile-rank-badge.below-viewers { top: 42px; }
 /* Both NEW pill and rank badge on one tile: the badge steps down past her. */
 .tile-rank-badge.below-new { top: 42px; }

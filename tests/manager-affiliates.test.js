@@ -120,6 +120,7 @@ const sqlTs = (d) => d.toISOString().slice(0, 19).replace('T', ' ');
    Beta  — signed up 5 days ago, 0 models, no earnings, banned (removed). */
 function seedAffiliates(dir) {
   const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+  db.exec('PRAGMA busy_timeout = 10000');
   try {
     // The one-time play-money cleanup already ran in production; make
     // sure its boot stamp is set so later boots never re-audit these
@@ -388,6 +389,7 @@ test('affiliates actions: username + password reset (recruiter-only, attribution
    attribution/ledger were repointed to the survivor at merge). */
 function seedCapabilityPair(dir) {
   const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+  db.exec('PRAGMA busy_timeout = 10000');
   try {
     db.prepare(`UPDATE platform_stats SET play_money_zeroed_at = datetime('now')
                 WHERE id = 1 AND play_money_zeroed_at IS NULL`).run();

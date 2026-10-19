@@ -178,6 +178,7 @@ const NOW = new Date().toISOString().slice(0, 19).replace('T', ' ');
    delivers the retention announcement to these users. */
 function seedChats(dir) {
   const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+  db.exec('PRAGMA busy_timeout = 10000');
   try {
     db.prepare(`UPDATE platform_stats SET official_inbox_announced_at = NULL,
                 chat_retention_announced_at = NULL WHERE id = 1`).run();
@@ -247,6 +248,7 @@ test('live: search + dates + protected 7-day sweep + announcement', async () => 
 
     /* --- announcement: delivered once, localized, stamp set --- */
     const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+    db.exec('PRAGMA busy_timeout = 10000');
     const stamp = db.prepare('SELECT chat_retention_announced_at AS s FROM platform_stats WHERE id = 1').get().s;
     assert.ok(stamp, 'retention announcement stamp set at boot');
     const frankDm = db.prepare(`SELECT body FROM messages WHERE conversation_id = ?
@@ -326,6 +328,7 @@ test('live: search + dates + protected 7-day sweep + announcement', async () => 
     assert.equal(dAfter.message_count, 2, 'open-dispute conversation untouched');
 
     const db2 = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+    db2.exec('PRAGMA busy_timeout = 10000');
     const ancient = db2.prepare('SELECT COUNT(*) AS n FROM messages WHERE conversation_id = ? AND body = ?')
       .get(S.convOff, 'ancient official notice').n;
     assert.equal(ancient, 1, '30-day-old official notice survived the sweep');

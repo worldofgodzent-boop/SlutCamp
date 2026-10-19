@@ -238,6 +238,7 @@ test('live: bookings charge the booking rate when set, the FaceTime rate when NU
   // Seed between boots: a rich fan + bunny bookable every weekday.
   {
     const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+    db.exec('PRAGMA busy_timeout = 10000');
     try {
       const fan = db.prepare("SELECT id FROM users WHERE username = 'fandemo'").get();
       const bunny = db.prepare("SELECT id FROM users WHERE username = 'bunny'").get();
@@ -258,6 +259,7 @@ test('live: bookings charge the booking rate when set, the FaceTime rate when NU
 
     const bookRow = (id) => {
       const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+      db.exec('PRAGMA busy_timeout = 10000');
       try { return db.prepare('SELECT * FROM bookings WHERE id = ?').get(id); }
       finally { db.close(); }
     };
@@ -283,6 +285,7 @@ test('live: bookings charge the booking rate when set, the FaceTime rate when NU
     // and the payloads resolve to it too.
     {
       const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+      db.exec('PRAGMA busy_timeout = 10000');
       try { db.prepare('UPDATE models SET booking_rate_cents = NULL WHERE user_id = ?').run(bunny.id); }
       finally { db.close(); }
     }
@@ -318,6 +321,7 @@ test('live: announcement — models only, localized, stamp-guarded, fires once',
   let bkFan = null;
   {
     const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+    db.exec('PRAGMA busy_timeout = 10000');
     try {
       db.prepare(`UPDATE platform_stats SET official_inbox_announced_at = NULL,
                   chat_retention_announced_at = NULL,
@@ -334,6 +338,7 @@ test('live: announcement — models only, localized, stamp-guarded, fires once',
   }
   const countDms = () => {
     const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+    db.exec('PRAGMA busy_timeout = 10000');
     try {
       const modelDm = db.prepare(`SELECT COUNT(*) AS n FROM messages m
         JOIN conversations c ON c.id = m.conversation_id

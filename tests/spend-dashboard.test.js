@@ -324,6 +324,7 @@ test('B1: month aggregation across every type, with exclusions, via ledger surge
   const nowStr = dt(now);
 
   const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+  db.exec('PRAGMA busy_timeout = 10000');
   const ins = db.prepare(`INSERT INTO transactions
     (fan_id, model_id, type, gross_cents, model_cents, platform_cents, note, created_at, is_test)
     VALUES (?,?,?,?,?,0,'surgery',?,?)`);

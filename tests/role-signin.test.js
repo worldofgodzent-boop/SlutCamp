@@ -303,6 +303,7 @@ test('announcement: every model DMd + belled exactly once, in her language; stam
     // Localization: switch one model to Spanish, clear the stamp and
     // the first round, boot again — she gets the Spanish copy.
     const wdb = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+    wdb.exec('PRAGMA busy_timeout = 10000');
     wdb.prepare("UPDATE users SET language = 'es' WHERE username = 'bunny'").run();
     wdb.prepare('UPDATE platform_stats SET role_signin_announced_at = NULL WHERE id = 1').run();
     wdb.prepare("DELETE FROM notifications WHERE type = 'role_signin'").run();
