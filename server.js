@@ -14582,6 +14582,27 @@ app.post('/api/admin/chargebacks', ...adminOnly, (req, res) => {
     fan_id: fanId, load_ref: req.body.load_ref ?? null, amount_cents: amount,
     reason: req.body.reason || null, recorded_by: req.user.id });
   if (r.error) return res.status(400).json({ error: r.error });
+  // Chargeback↔dispute linkage (2026-10-19 CCBill-readiness audit): a
+  // recorded chargeback IS an open dispute — open the sweep-visible
+  // disputes row so the retention sweep keeps the fan's chats as evidence
+  // while the case is live (its guard keys on disputes.status='open' for
+  // either participant). Guarded: at most one open dispute per fan — a
+  // fan who already has one keeps it, and a duplicate chargeback (the
+  // engine no-op above) never opens a second row either.
+  if (!r.duplicate) {
+    const open = db.prepare(`SELECT id FROM disputes WHERE user_id = ? AND status = 'open'`).get(fanId);
+    if (open) {
+      r.dispute_id = open.id;
+    } else {
+      const cbReason = req.body.reason ? String(req.body.reason).slice(0, 200) : null;
+      const reason = (`Chargeback ${String(req.body.source || 'manual')}:${externalId}`
+        + (cbReason ? ` — ${cbReason}` : '')).slice(0, 300);
+      const info = db.prepare(`INSERT INTO disputes
+        (user_id, transaction_ref, amount_cents, reason, status) VALUES (?,?,?,?, 'open')`)
+        .run(fanId, externalId.slice(0, 120), amount, reason);
+      r.dispute_id = Number(info.lastInsertRowid);
+    }
+  }
   res.json(r);
 });
 

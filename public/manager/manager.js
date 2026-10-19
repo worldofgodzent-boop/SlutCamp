@@ -1118,7 +1118,7 @@ async function adminDisputesBody() {
     </div>
     <div class="card">
       <div style="font-weight:800;margin-bottom:6px">↩️ Record chargeback (payout protection)</div>
-      <div class="muted small" style="margin-bottom:8px">Runs the clawback engine in order: the fan's unspent credits from the load → the models' unpaid earnings from that fan (held first) → any remainder as a negative adjustment against the model. Recording the same processor reference twice is a safe no-op. This does NOT ban or freeze anyone — that's your call, above.</div>
+      <div class="muted small" style="margin-bottom:8px">Runs the clawback engine in order: the fan's unspent credits from the load → the models' unpaid earnings from that fan (held first) → any remainder as a negative adjustment against the model. Recording the same processor reference twice is a safe no-op. Recording one also opens a dispute for the fan (below), which keeps their chats as evidence until you close it. This does NOT ban or freeze anyone — that's your call, above.</div>
       <label class="field">Fan user ID<input class="input" id="cb-user" type="number" min="1"></label>
       <label class="field">Amount $<input class="input" id="cb-amount" type="number" step="0.01" min="0.01"></label>
       <label class="field">Processor reference (required — idempotency key)<input class="input" id="cb-ref" maxlength="120" placeholder="e.g. CCBill chargeback / txn id"></label>
