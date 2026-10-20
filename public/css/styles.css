@@ -2171,7 +2171,7 @@ body.in-home:has(> #phone > .sc-theme-promo):not(:has(> #phone > .sc-theme-banne
     width: 100vh;   /* landscape's short side = the portrait width  */
     height: 100vw;  /* landscape's long side  = the portrait height */
     transform-origin: 0 0;
-    transform: rotate(90deg) translateY(-100%);
+    transform: rotate(-90deg) translateX(-100%);
   }
   /* dvh units still measure the LANDSCAPE viewport (the short side)
      inside the rotated frame — the two full-height shells must take

@@ -374,7 +374,7 @@ label.field { display: block; margin-top: 14px; font-size: 14px; font-weight: 60
     height: 100vw;  /* landscape's long side  = the portrait height */
     overflow-y: auto;
     transform-origin: 0 0;
-    transform: rotate(90deg) translateY(-100%);
+    transform: rotate(-90deg) translateX(-100%);
   }
   .mgr-login-wrap { min-height: 100%; }
 }
