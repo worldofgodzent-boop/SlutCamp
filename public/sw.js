@@ -21,8 +21,8 @@ const CACHE = 'slutcamp-__BUILD__';
 const SHELL = [
   '/',
   '/index.html',
-  '/css/styles.css',
-  '/js/app.js',
+  '/css/styles.css?v=__BUILD__',
+  '/js/app.js?v=__BUILD__',
   '/manifest.json',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
