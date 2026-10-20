@@ -152,10 +152,14 @@ async function setupPayout(base, model) {
 // the gate, so the fixture models get an approved id_verifications
 // row directly in the DB (the same surgery other suites perform) —
 // setup-only; the payout behavior under test is unchanged.
+// (Sections Phase 2 note: id_verifications' one-own-row rule is now
+// a PARTIAL unique index — partner rows share model_id — so the
+// upsert arbiter carries its WHERE co_performer_id IS NULL
+// predicate; fixture semantics identical.)
 function approveId(dir, modelId) {
   const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
   db.exec('PRAGMA busy_timeout = 10000');
-  db.prepare("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved') ON CONFLICT(model_id) DO UPDATE SET status = 'approved'").run(modelId);
+  db.prepare("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved') ON CONFLICT(model_id) WHERE co_performer_id IS NULL DO UPDATE SET status = 'approved'").run(modelId);
   db.close();
 }
 const modelWithdrawals = (base, model) => req(base, 'GET', '/api/model/withdrawals', { token: model.token });
@@ -390,7 +394,7 @@ test('A9: matured earnings become withdrawable; a clawback that eats the balance
               VALUES (?, ?, 'tip', 2000, 1200, 800, NULL)`).run(S.fan4.id, S.modelB.id);
   db.prepare('UPDATE wallets SET earnings_cents = earnings_cents + 1200 WHERE user_id = ?').run(S.modelB.id);
   // ID gate: B must be ID-approved before her withdrawal request below.
-  db.prepare("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved') ON CONFLICT(model_id) DO UPDATE SET status = 'approved'").run(S.modelB.id);
+  db.prepare("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved') ON CONFLICT(model_id) WHERE co_performer_id IS NULL DO UPDATE SET status = 'approved'").run(S.modelB.id);
   db.close();
   const a2 = await boot(dir);
   t.after(async () => { await a2.kill(); fs.rmSync(dir, { recursive: true, force: true }); });
@@ -505,7 +509,7 @@ test('B: already-withdrawn earnings — the shortfall becomes debt and future ea
   // ID gate: E must be ID-approved before she withdraws everything below.
   { const db = new DatabaseSync(dbPath);
   db.exec('PRAGMA busy_timeout = 10000');
-    db.prepare("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved') ON CONFLICT(model_id) DO UPDATE SET status = 'approved'").run(E.id);
+    db.prepare("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved') ON CONFLICT(model_id) WHERE co_performer_id IS NULL DO UPDATE SET status = 'approved'").run(E.id);
     db.close(); }
   b = await boot(dir);
   await setupPayout(b.base, E);

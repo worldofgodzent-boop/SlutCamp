@@ -1166,6 +1166,8 @@ addColumnIfMissing('calls', 'prepaid_min', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('calls', 'is_explicit', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('calls', 'explicit_pending', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('calls', 'facetime_req_id', 'INTEGER');
+addColumnIfMissing('models', 'coperf_attested_at', 'TEXT'); // co-performer 18+ consent attestation (when)
+addColumnIfMissing('models', 'coperf_attested_ip', 'TEXT'); // co-performer 18+ consent attestation (from what IP)
 addColumnIfMissing('models', 'per_voice_cents', 'INTEGER NOT NULL DEFAULT 299');
 addColumnIfMissing('models', 'explicit_rate_cents', 'INTEGER NOT NULL DEFAULT 499');
 addColumnIfMissing('models', 'photo_url', "TEXT NOT NULL DEFAULT ''");
@@ -1567,6 +1569,68 @@ try {
   db.prepare(`UPDATE users SET display_name = 'Asce (Admin)' WHERE username = 'admin' AND display_name = 'Corry (Admin)'`).run();
 } catch (e) { /* already renamed */ }
 
+/* One-time migration (Sections Phase 2): id_verifications shipped
+   with model_id UNIQUE — one row per model, forever — which makes
+   co-performer (partner) verification rows impossible. Rebuild the
+   table without it (every existing row copied verbatim; partner rows
+   key off the new co_performer_id column, and the one-own-row rule
+   survives as a partial unique index). Runs only while the stored
+   DDL still carries the old shape.
+   ORDERING (production crash, Oct 19 2026): this MUST run BEFORE the
+   schema block below — that block creates the partial unique index
+   `... WHERE co_performer_id IS NULL`, and on a database created by
+   pre-Phase-2 code the CREATE TABLE IF NOT EXISTS above it is a
+   no-op, so the column exists only once this rebuild has run. When
+   the migration sat after the block, the index statement died with
+   "no such column: co_performer_id" and the boot crashed before the
+   migration was ever reached. Fresh databases skip the migration
+   (no table yet) and take the new DDL from the block itself.
+   The rebuild itself also runs with foreign_keys OFF (the
+   allowRecruiterRole rebuild's pattern): the row copy INSERTs into
+   a table whose co_performer_id references co_performers — a table
+   the schema block creates only AFTER this migration runs — and
+   with FK on, that INSERT dies with "no such table:
+   main.co_performers" even though every copied value is NULL. */
+try {
+  const ddl = db.prepare(`SELECT sql FROM sqlite_master
+    WHERE type = 'table' AND name = 'id_verifications'`).get();
+  if (ddl && /model_id\s+INTEGER\s+NOT\s+NULL\s+UNIQUE/i.test(ddl.sql || '')
+      && !/co_performer_id/i.test(ddl.sql || '')) {
+    db.exec('PRAGMA foreign_keys=OFF');
+    try {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        db.exec('DROP TABLE IF EXISTS id_verifications_partner');
+        db.exec(`CREATE TABLE id_verifications_partner (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          model_id INTEGER NOT NULL REFERENCES users(id),
+          co_performer_id INTEGER REFERENCES co_performers(id),
+          id_front_path TEXT,
+          id_back_path TEXT,
+          selfie_path TEXT,
+          status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
+          submitted_at TEXT NOT NULL DEFAULT (datetime('now')),
+          reviewed_at TEXT,
+          reviewer_note TEXT NOT NULL DEFAULT ''
+        )`);
+        db.exec(`INSERT INTO id_verifications_partner
+          (id, model_id, id_front_path, id_back_path, selfie_path, status,
+           submitted_at, reviewed_at, reviewer_note)
+          SELECT id, model_id, id_front_path, id_back_path, selfie_path, status,
+           submitted_at, reviewed_at, reviewer_note FROM id_verifications`);
+        db.exec('DROP TABLE id_verifications');
+        db.exec('ALTER TABLE id_verifications_partner RENAME TO id_verifications');
+        db.exec('CREATE INDEX IF NOT EXISTS idx_id_verifications_status ON id_verifications(status)');
+        db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_id_verifications_own
+          ON id_verifications(model_id) WHERE co_performer_id IS NULL`);
+        db.exec('COMMIT');
+      } catch (e) { db.exec('ROLLBACK'); throw e; }
+    } finally {
+      db.exec('PRAGMA foreign_keys=ON');
+    }
+  }
+} catch (e) { console.log('[migrate] id_verifications partner rebuild skipped:', e.message); }
+
 // Model contract signatures (independent-contractor agreement).
 // History-preserving since v1.2 (Oct 15, 2026): one row PER SIGNING, so
 // re-signing a new version never overwrites the old record — readers
@@ -1586,7 +1650,8 @@ CREATE INDEX IF NOT EXISTS idx_contract_signatures_user ON contract_signatures(u
 -- ID images are sensitive PII stored in private/id_verification/ (never served statically).
 CREATE TABLE IF NOT EXISTS id_verifications (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  model_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
+  model_id INTEGER NOT NULL REFERENCES users(id),
+  co_performer_id INTEGER REFERENCES co_performers(id),
   id_front_path TEXT,
   id_back_path TEXT,
   selfie_path TEXT,
@@ -1596,6 +1661,29 @@ CREATE TABLE IF NOT EXISTS id_verifications (
   reviewer_note TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_id_verifications_status ON id_verifications(status);
+-- A model has ONE own verification row (co_performer_id IS NULL);
+-- partner rows (co_performer_id set, model_id = the account owner)
+-- are exempt from that uniqueness.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_id_verifications_own
+  ON id_verifications(model_id) WHERE co_performer_id IS NULL;
+
+-- Co-performers (Sections Phase 2, owner Oct 18 2026): anyone who
+-- appears on a model's camera besides the account owner must be
+-- registered here and ID-verified first (Model Agreement v1.5 §15).
+-- A couple account = one owner (the paid party) + partner rows.
+-- status mirrors the partner's id_verifications row; the Manager
+-- approve/reject flips both in one transaction.
+CREATE TABLE IF NOT EXISTS co_performers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_model_id INTEGER NOT NULL REFERENCES users(id),
+  display_name TEXT NOT NULL,
+  gender TEXT NOT NULL DEFAULT '',
+  dob TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_co_performers_owner ON co_performers(owner_model_id);
 
 -- Follows: fans follow models to get "she's live" notifications
 CREATE TABLE IF NOT EXISTS follows (
@@ -2881,8 +2969,32 @@ function pushToAdmins(event) {
 // id_verifications row. Single point: every caller goes through here.
 function isIdVerified(modelUserId) {
   if (isHouseAccountId(modelUserId)) return true;
-  const r = db.prepare('SELECT status FROM id_verifications WHERE model_id = ?').get(modelUserId);
+  // Her OWN row only (co_performer_id IS NULL): a partner's
+  // verification row carries model_id = the owner too, and a
+  // partner's approval must never mark the owner verified (or the
+  // owner's row hide behind a partner's pending one).
+  const r = db.prepare('SELECT status FROM id_verifications WHERE model_id = ? AND co_performer_id IS NULL').get(modelUserId);
   return !!(r && r.status === 'approved');
+}
+
+/* Camera rule (Sections Phase 2; Model Agreement v1.5 §15): the set
+ * of ids allowed on a model's camera = her own user id (only while
+ * her own ID is approved — isIdVerified carries the house
+ * short-circuit) + the co_performers ids of her APPROVED partners.
+ * Pending and rejected partners are never on camera. The house
+ * account is exempt, as everywhere: its set is just itself. */
+function cameraAllowedIds(modelUserId) {
+  if (isHouseAccountId(modelUserId)) {
+    const hid = houseAccountId();
+    return hid ? [hid] : [];
+  }
+  const ids = [];
+  if (isIdVerified(modelUserId)) ids.push(modelUserId);
+  const partners = db.prepare(
+    "SELECT id FROM co_performers WHERE owner_model_id = ? AND status = 'approved' ORDER BY id")
+    .all(modelUserId);
+  for (const p of partners) ids.push(p.id);
+  return ids;
 }
 
 /* ------------------------------------------------------------------ */
@@ -5275,6 +5387,32 @@ function recordSectionAttestation(userId, req) {
     .run(String(clientIp(req) || '').slice(0, 60), userId);
 }
 
+/* Co-performer attestation record (Sections Phase 2): when a model
+ * registers a partner — at couple signup or later in Settings — she
+ * attests the partner is 18+ and consents to appear on camera with
+ * her (Agreement v1.5 §15). Like the age/section attestations, what
+ * is stored is what actually happened: the attestation, when, and
+ * from what IP — stamped on her models row. */
+function recordCoPerfAttestation(modelUserId, req) {
+  db.prepare('UPDATE models SET coperf_attested_at = datetime(\'now\'), coperf_attested_ip = ? WHERE user_id = ?')
+    .run(String(clientIp(req) || '').slice(0, 60), modelUserId);
+}
+
+/* Create the ONE pending co-performer row a couple signup declares.
+ * Best-effort by design: partner data problems must NEVER fail or
+ * block the signup itself — a missing/blank partner name simply
+ * means no row (she can add her partner later in Settings). */
+function createSignupCoPerformer(modelUserId, body, req) {
+  const name = String((body && (body.partner_name || body.partner_display_name)) || '').trim().slice(0, 80);
+  if (!name) return null;
+  const gender = ['female', 'male'].includes(body.partner_gender) ? body.partner_gender : '';
+  const dob = /^\d{4}-\d{2}-\d{2}$/.test(String(body.partner_dob || '')) ? String(body.partner_dob) : null;
+  const info = db.prepare(`INSERT INTO co_performers (owner_model_id, display_name, gender, dob, status)
+                           VALUES (?, ?, ?, ?, 'pending')`).run(modelUserId, name, gender, dob);
+  if (body.partner_agree18 || body.partner_consent) recordCoPerfAttestation(modelUserId, req);
+  return Number(info.lastInsertRowid);
+}
+
 /* Age verification (lib/av.js) — PROOF-ONLY columns. fan_state is the
  * fan's US state (2-letter code) resolved from IP at signup and
  * refreshed at purchase time; av_verified_at / av_method /
@@ -5391,6 +5529,14 @@ app.post('/api/auth/signup', (req, res) => {
     // Her declared section lands on her model row (createUser leaves
     // the 'female' default; the declaration is the source of truth).
     db.prepare('UPDATE models SET section = ? WHERE user_id = ?').run(section, id);
+    // Couple accounts (Sections Phase 2): a 'couple' signup also
+    // declares her partner (name / gender / DOB + her 18+ consent
+    // attestation for them) → ONE pending co_performers row. Wrapped
+    // so partner data can never fail or block the signup itself.
+    if (section === 'couple') {
+      try { createSignupCoPerformer(id, req.body || {}, req); }
+      catch (e) { console.log('[signup] co-performer create failed:', e.message); }
+    }
   }
   if (finalRole === 'fan') recordFanState(id, req);
 
@@ -9543,7 +9689,7 @@ app.get('/api/admin/contracts', identMiddleware, requireUser, requireRole('admin
 // Model: check her own verification status
 app.get('/api/model/id-verification', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const v = db.prepare(`SELECT status, submitted_at, reviewed_at, reviewer_note
-                        FROM id_verifications WHERE model_id = ?`).get(req.user.id);
+                        FROM id_verifications WHERE model_id = ? AND co_performer_id IS NULL`).get(req.user.id);
   // `house` drives the client: the house account's own Settings never
   // render the ID Verification card at all (owner, Oct 18 2026).
   res.json({ verification: v || null, verified: isIdVerified(req.user.id),
@@ -9570,39 +9716,47 @@ app.post('/api/model/id-verification', identMiddleware, requireUser, requireRole
         return res.status(400).json({ error: 'missing_files',
           message: 'ID front, ID back, and a selfie holding your ID are all required.' });
       }
-      // Resubmits replace the previous submission's files
-      const prev = db.prepare(`SELECT id_front_path, id_back_path, selfie_path
-                               FROM id_verifications WHERE model_id = ?`).get(req.user.id);
+      // Resubmits replace the previous submission's files. Her OWN
+      // row only (co_performer_id IS NULL) — partner rows share
+      // model_id = her id and are written by the co-performer flow.
+      const prev = db.prepare(`SELECT id, id_front_path, id_back_path, selfie_path
+                               FROM id_verifications WHERE model_id = ? AND co_performer_id IS NULL`).get(req.user.id);
       if (prev) [prev.id_front_path, prev.id_back_path, prev.selfie_path]
         .forEach((p) => { if (p) fs.unlink(p, () => {}); });
-      db.prepare(`INSERT INTO id_verifications (model_id, id_front_path, id_back_path, selfie_path,
-                    status, submitted_at, reviewed_at, reviewer_note)
-                  VALUES (?, ?, ?, ?, 'pending', datetime('now'), NULL, '')
-                  ON CONFLICT(model_id) DO UPDATE SET
-                    id_front_path = excluded.id_front_path,
-                    id_back_path = excluded.id_back_path,
-                    selfie_path = excluded.selfie_path,
-                    status = 'pending',
-                    submitted_at = excluded.submitted_at,
-                    reviewed_at = NULL,
-                    reviewer_note = ''`)
-        .run(req.user.id, front.path, back.path, selfie.path);
+      if (prev) {
+        db.prepare(`UPDATE id_verifications SET id_front_path = ?, id_back_path = ?, selfie_path = ?,
+                      status = 'pending', submitted_at = datetime('now'), reviewed_at = NULL,
+                      reviewer_note = '' WHERE id = ?`)
+          .run(front.path, back.path, selfie.path, prev.id);
+      } else {
+        db.prepare(`INSERT INTO id_verifications (model_id, id_front_path, id_back_path, selfie_path,
+                      status, submitted_at, reviewed_at, reviewer_note)
+                    VALUES (?, ?, ?, ?, 'pending', datetime('now'), NULL, '')`)
+          .run(req.user.id, front.path, back.path, selfie.path);
+      }
       pushToAdmins({ type: 'id_verification:submitted', model_id: req.user.id,
         model_name: req.user.display_name });
       res.json({ ok: true, status: 'pending' });
     });
   });
 
-// Admin: list all ID verifications (pending first)
+// Admin: list all ID verifications (pending first). Partner
+// submissions (Sections Phase 2) ride the SAME queue: their row
+// carries co_performer_id, the displayed name is the PARTNER's, and
+// username stays the account owner's — the Manager renders them
+// labeled as co-performers of @owner so the two kinds never blur.
 app.get('/api/admin/id-verifications', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
   const rows = db.prepare(`
-    SELECT v.id, v.model_id, v.status, v.submitted_at, v.reviewed_at, v.reviewer_note,
-           u.display_name, u.username
+    SELECT v.id, v.model_id, v.co_performer_id, v.status, v.submitted_at, v.reviewed_at, v.reviewer_note,
+           CASE WHEN v.co_performer_id IS NOT NULL THEN cp.display_name ELSE u.display_name END AS display_name,
+           u.display_name AS owner_name, u.username,
+           cp.display_name AS partner_name
     FROM id_verifications v JOIN users u ON u.id = v.model_id
+    LEFT JOIN co_performers cp ON cp.id = v.co_performer_id
     ORDER BY CASE v.status WHEN 'pending' THEN 0 WHEN 'rejected' THEN 1 ELSE 2 END,
              v.submitted_at DESC
   `).all();
-  res.json({ verifications: rows });
+  res.json({ verifications: rows.map((r) => ({ ...r, is_partner: r.co_performer_id ? 1 : 0 })) });
 });
 
 // Short-lived photo tokens so <img> tags can load ID photos without a Bearer
@@ -9652,12 +9806,21 @@ app.get('/api/admin/id-verifications/:id/photo/:which', (req, res) => {
   fs.createReadStream(p).pipe(res);
 });
 
-// Admin: approve an ID verification
+// Admin: approve an ID verification. A partner row flips BOTH the
+// id_verifications row and its co_performers row in ONE transaction
+// (Sections Phase 2) — the camera rule reads co_performers.status,
+// the queue reads id_verifications.status, and they must never
+// disagree.
 app.post('/api/admin/id-verifications/:id/approve', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
   const v = db.prepare('SELECT * FROM id_verifications WHERE id = ?').get(req.params.id);
   if (!v) return res.status(404).json({ error: 'not_found' });
-  db.prepare(`UPDATE id_verifications SET status = 'approved', reviewed_at = datetime('now'),
-              reviewer_note = '' WHERE id = ?`).run(v.id);
+  txn(() => {
+    db.prepare(`UPDATE id_verifications SET status = 'approved', reviewed_at = datetime('now'),
+                reviewer_note = '' WHERE id = ?`).run(v.id);
+    if (v.co_performer_id)
+      db.prepare(`UPDATE co_performers SET status = 'approved', updated_at = datetime('now')
+                  WHERE id = ?`).run(v.co_performer_id);
+  });
   pushToSubject(`u:${v.model_id}`, { type: 'id_verified', status: 'approved' });
   res.json({ ok: true });
 });
@@ -9667,8 +9830,13 @@ app.post('/api/admin/id-verifications/:id/reject', identMiddleware, requireUser,
   const v = db.prepare('SELECT * FROM id_verifications WHERE id = ?').get(req.params.id);
   if (!v) return res.status(404).json({ error: 'not_found' });
   const note = String(req.body.note || '').trim().slice(0, 300);
-  db.prepare(`UPDATE id_verifications SET status = 'rejected', reviewed_at = datetime('now'),
-              reviewer_note = ? WHERE id = ?`).run(note, v.id);
+  txn(() => {
+    db.prepare(`UPDATE id_verifications SET status = 'rejected', reviewed_at = datetime('now'),
+                reviewer_note = ? WHERE id = ?`).run(note, v.id);
+    if (v.co_performer_id)
+      db.prepare(`UPDATE co_performers SET status = 'rejected', updated_at = datetime('now')
+                  WHERE id = ?`).run(v.co_performer_id);
+  });
   pushToSubject(`u:${v.model_id}`, { type: 'id_verified', status: 'rejected', note });
   res.json({ ok: true });
 });
@@ -9712,11 +9880,185 @@ app.get('/api/admin/id-verifications/:id/2257', identMiddleware, requireUser, re
       signed_at: sig.signed_at, signed_from_ip: sig.ip,
     } : null,
   };
+  if (v.co_performer_id) {
+    const cp = db.prepare('SELECT * FROM co_performers WHERE id = ?').get(v.co_performer_id);
+    if (cp) packet.co_performer = {
+      co_performer_id: cp.id, name: cp.display_name, gender: cp.gender,
+      date_of_birth_on_file: cp.dob, status: cp.status,
+      account_owner: { user_id: u.id, username: u.username },
+      note: "Co-performer of the account above; the ID document images in this record are the co-performer's.",
+    };
+  }
   const fname = `2257-record-${u.username}-u${u.id}.json`;
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
   res.send(JSON.stringify(packet, null, 2));
 });
+
+/* ------------------------------------------------------------------ */
+/* Co-performers (Sections Phase 2) — model Settings API.             */
+/* Owner-only: a model sees and touches ONLY her own partner rows;    */
+/* anyone else's row id reads as not_found. An APPROVED row is        */
+/* delete-only — its verified facts are frozen (PATCH refuses).       */
+/* ------------------------------------------------------------------ */
+
+function coPerformerRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id, display_name: row.display_name, gender: row.gender || '',
+    dob: row.dob || null, status: row.status,
+    verification_status: row.verification_status || null,
+    created_at: row.created_at, updated_at: row.updated_at,
+  };
+}
+function ownCoPerformer(req, id) {
+  return db.prepare(`SELECT cp.*, v.status AS verification_status
+                     FROM co_performers cp
+                     LEFT JOIN id_verifications v ON v.co_performer_id = cp.id
+                     WHERE cp.id = ? AND cp.owner_model_id = ?`).get(id, req.user.id);
+}
+
+// Model: list her own co-performers (+ the house flag, mirroring the
+// ID-verification status route: the house Settings hide the card).
+app.get('/api/model/co-performers', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const rows = db.prepare(`SELECT cp.*, v.status AS verification_status
+                           FROM co_performers cp
+                           LEFT JOIN id_verifications v ON v.co_performer_id = cp.id
+                           WHERE cp.owner_model_id = ? ORDER BY cp.id`).all(req.user.id);
+  res.json({ co_performers: rows.map(coPerformerRow),
+    house: isHouseAccountId(req.user.id),
+    camera_allowed_ids: cameraAllowedIds(req.user.id) });
+});
+
+// Shared partner-field validation for POST/PATCH. Returns cleaned
+// fields or an { error } refusal. A stated DOB must make the partner
+// an adult; the 18+ consent attestation is required to ADD a partner.
+function cleanPartnerFields(body, { partial = false } = {}) {
+  const out = {};
+  if (!partial || body.display_name !== undefined) {
+    const name = String(body.display_name || '').trim().slice(0, 80);
+    if (!name) return { error: 'partner_name_required' };
+    out.display_name = name;
+  }
+  if (body.gender !== undefined)
+    out.gender = ['female', 'male'].includes(body.gender) ? body.gender : '';
+  if (body.dob !== undefined) {
+    const dob = String(body.dob || '');
+    if (dob && !/^\d{4}-\d{2}-\d{2}$/.test(dob)) return { error: 'bad_dob' };
+    if (dob && !isAdult(dob)) return { error: 'partner_must_be_18' };
+    out.dob = dob || null;
+  }
+  return out;
+}
+
+// Model: register a co-performer (starts pending; ID upload is the
+// next step, verification is the Manager's call).
+app.post('/api/model/co-performers', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  if (!((req.body || {}).agree18 === true || (req.body || {}).partner_agree18 === true))
+    return res.status(400).json({ error: 'partner_must_be_18',
+      message: 'Confirm your partner is 18 or older and consents to appear on camera with you.' });
+  const f = cleanPartnerFields(req.body || {});
+  if (f.error) return res.status(400).json({ error: f.error });
+  const info = db.prepare(`INSERT INTO co_performers (owner_model_id, display_name, gender, dob, status)
+                           VALUES (?, ?, ?, ?, 'pending')`)
+    .run(req.user.id, f.display_name, f.gender || '', f.dob || null);
+  recordCoPerfAttestation(req.user.id, req);
+  res.json({ ok: true, co_performer: coPerformerRow(ownCoPerformer(req, Number(info.lastInsertRowid))) });
+});
+
+// Model: edit a co-performer. Approved rows are frozen (delete-only).
+app.patch('/api/model/co-performers/:id', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const row = ownCoPerformer(req, req.params.id);
+  if (!row) return res.status(404).json({ error: 'not_found' });
+  if (row.status === 'approved')
+    return res.status(403).json({ error: 'approved_readonly',
+      message: 'An approved co-performer can only be removed, not edited.' });
+  const f = cleanPartnerFields(req.body || {}, { partial: true });
+  if (f.error) return res.status(400).json({ error: f.error });
+  const sets = [], vals = [];
+  for (const k of ['display_name', 'gender', 'dob']) {
+    if (f[k] !== undefined) { sets.push(`${k} = ?`); vals.push(f[k]); }
+  }
+  // Correcting a rejected partner sends the row back to pending for
+  // a fresh look (their ID still needs its own resubmission/review).
+  if (row.status === 'rejected') sets.push("status = 'pending'");
+  sets.push("updated_at = datetime('now')");
+  db.prepare(`UPDATE co_performers SET ${sets.join(', ')} WHERE id = ?`).run(...vals, row.id);
+  res.json({ ok: true, co_performer: coPerformerRow(ownCoPerformer(req, row.id)) });
+});
+
+// Model: remove a co-performer — the row, its verification row, and
+// the private ID files all go (same cleanup discipline as a model
+// ID resubmission replacing files).
+app.delete('/api/model/co-performers/:id', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const row = ownCoPerformer(req, req.params.id);
+  if (!row) return res.status(404).json({ error: 'not_found' });
+  const v = db.prepare('SELECT id_front_path, id_back_path, selfie_path FROM id_verifications WHERE co_performer_id = ?')
+    .get(row.id);
+  if (v) [v.id_front_path, v.id_back_path, v.selfie_path]
+    .forEach((p) => { if (p) fs.unlink(p, () => {}); });
+  txn(() => {
+    db.prepare('DELETE FROM id_verifications WHERE co_performer_id = ?').run(row.id);
+    db.prepare('DELETE FROM co_performers WHERE id = ?').run(row.id);
+  });
+  res.json({ ok: true });
+});
+
+// Model: submit a partner's ID (front + back + selfie holding the ID)
+// through the SAME private machinery as her own ID — same private
+// dir, same upload limits; the submission is an id_verifications row
+// carrying co_performer_id, which is what lands it in the Manager's
+// 🪪 ID Checks queue labeled as a partner.
+app.post('/api/model/co-performers/:id/id-verification', identMiddleware, requireUser, requireRole('model'),
+  (req, res) => {
+    const row = ownCoPerformer(req, req.params.id);
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    if (row.status === 'approved')
+      return res.status(409).json({ error: 'already_verified',
+        message: 'This co-performer is already verified.' });
+    idUpload.fields([
+      { name: 'id_front', maxCount: 1 },
+      { name: 'id_back', maxCount: 1 },
+      { name: 'selfie', maxCount: 1 },
+    ])(req, res, (err) => {
+      if (err) return res.status(400).json({ error: 'bad_file',
+        message: 'Use JPG/PNG photos under 8MB each.' });
+      const f = req.files || {};
+      const front = f.id_front && f.id_front[0];
+      const back = f.id_back && f.id_back[0];
+      const selfie = f.selfie && f.selfie[0];
+      const cleanup = () => [front, back, selfie].forEach((x) => { if (x) fs.unlink(x.path, () => {}); });
+      if (!front || !back || !selfie) {
+        cleanup();
+        return res.status(400).json({ error: 'missing_files',
+          message: 'ID front, ID back, and a selfie holding the ID are all required.' });
+      }
+      const prev = db.prepare(`SELECT id, id_front_path, id_back_path, selfie_path
+                               FROM id_verifications WHERE co_performer_id = ?`).get(row.id);
+      if (prev) [prev.id_front_path, prev.id_back_path, prev.selfie_path]
+        .forEach((p) => { if (p) fs.unlink(p, () => {}); });
+      txn(() => {
+        if (prev) {
+          db.prepare(`UPDATE id_verifications SET id_front_path = ?, id_back_path = ?, selfie_path = ?,
+                        status = 'pending', submitted_at = datetime('now'), reviewed_at = NULL,
+                        reviewer_note = '' WHERE id = ?`)
+            .run(front.path, back.path, selfie.path, prev.id);
+        } else {
+          db.prepare(`INSERT INTO id_verifications (model_id, co_performer_id, id_front_path, id_back_path,
+                        selfie_path, status, submitted_at, reviewed_at, reviewer_note)
+                      VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'), NULL, '')`)
+            .run(req.user.id, row.id, front.path, back.path, selfie.path);
+        }
+        // A resubmission after rejection puts the partner back in line.
+        if (row.status === 'rejected')
+          db.prepare(`UPDATE co_performers SET status = 'pending', updated_at = datetime('now')
+                      WHERE id = ?`).run(row.id);
+      });
+      pushToAdmins({ type: 'id_verification:submitted', model_id: req.user.id,
+        model_name: req.user.display_name, co_performer_id: row.id, partner_name: row.display_name });
+      res.json({ ok: true, status: 'pending' });
+    });
+  });
 
 /* ------------------------------------------------------------------ */
 /* Admin: W-9 / 1099 tax dashboard + CSV export (no tax IDs in export) */
@@ -10665,6 +11007,19 @@ app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), 
   if (!isIdVerified(req.user.id))
     return res.status(403).json({ error: 'id_verification_required',
       message: '🪪 ID verification required — upload your ID in Settings → ID Verification to go live.' });
+  // Co-performers (Sections Phase 2; Agreement v1.5 §15): a declared
+  // participants list (the "Who's on camera?" checklist — her own id
+  // and/or co_performers ids) must be a subset of cameraAllowedIds:
+  // only she and her APPROVED partners may be on her camera. No list
+  // (or an empty one) = solo, gated by her own approval just above.
+  const declared = Array.isArray(req.body && req.body.participants)
+    ? req.body.participants.map(Number).filter((n) => Number.isInteger(n) && n > 0) : [];
+  if (declared.length) {
+    const allowed = new Set(cameraAllowedIds(req.user.id));
+    if (declared.some((p) => p !== req.user.id && !allowed.has(p)))
+      return res.status(403).json({ error: 'unapproved_participants',
+        message: '👥 Everyone on camera must be ID-verified first — add co-performers in Settings → My Co-Performers.' });
+  }
   const existing = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`)
     .get(req.user.id);
   if (existing) return res.status(409).json({ error: 'already_live', session_id: existing.id });
