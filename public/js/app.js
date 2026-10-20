@@ -637,6 +637,39 @@ const I18N = {
     say_fans_ph: 'Say something to your fans…',
     explicit_rate_note: 'Explicit rate: {price}/min · Your preview is never blurred',
     game_category: 'Game Category',
+    battle: '⚔️ Battle',
+    battle_money_rule: 'House takes its standard cut first — the rest splits 60% to the winner, 40% to the loser. Tie = 50/50. Forfeit = loser, whatever the score.',
+    battle_invite_from: '{name} wants to battle you!',
+    battle_minutes: '{n}-minute battle',
+    battle_accept: '✅ Accept',
+    battle_ready: '✅ I\'m Ready',
+    battle_waiting_opp: 'Waiting for {name}…',
+    battle_waiting_live: 'Both models must be live before the clock can start',
+    battle_tip_her: '💰 Tip {name}',
+    battle_games_her: '🎲 {name}\'s Games',
+    battle_you_won: '🏆 YOU WON!',
+    battle_you_lost: '⚔️ {name} takes this one — good game!',
+    battle_tied: '🤝 It\'s a tie!',
+    battle_wins: '🏆 {name} wins!',
+    battle_rematch: '🔁 Rematch',
+    battle_open_invites: '⚔️ Open to battle invites',
+    battle_open_invites_note: 'Off hides you from battle pickers — you can still invite and schedule yourself.',
+    battle_random: '🎲 Random Battle',
+    battle_schedule: '📅 Schedule a Showdown',
+    battle_looking: '⚔️ Looking for a battle',
+    battle_in_battle: '⚔️ IN A BATTLE',
+    battle_forfeited: 'Forfeit — a side\'s live ended',
+    battle_you_earned: 'You earned {amount}',
+    battle_enter_pool: 'Enter the pool',
+    battle_leave_pool: 'Leave pool',
+    battle_pool_waiting: 'In the pool — matching you with a rival…',
+    battle_pick_rival: 'Pick your rival',
+    battle_chat_ph: 'Battle chat…',
+    battle_history: '⚔️ Battle history',
+    battle_vs_line: '⚔️ vs {name}',
+    battle_remind: '🔔 Remind me',
+    battle_reminded: '✓ Reminder set',
+    battle_pot: 'Pot',
     game_btn: '🎲 Game',
     game_regular: 'Regular',
     game_explicit: 'Explicit 🔞',
@@ -1352,6 +1385,39 @@ const I18N = {
     say_fans_ph: 'Di algo a tus fans…',
     explicit_rate_note: 'Tarifa explícita: {price}/min · Tu vista previa nunca se difumina',
     game_category: 'Game Category',
+    battle: '⚔️ Batalla',
+    battle_money_rule: 'La casa toma primero su comisión estándar — el resto se reparte 60% para la ganadora y 40% para la perdedora. Empate = 50/50. Abandonar = perder, sin importar el marcador.',
+    battle_invite_from: '¡{name} quiere batallar contigo!',
+    battle_minutes: 'Batalla de {n} minutos',
+    battle_accept: '✅ Aceptar',
+    battle_ready: '✅ Estoy lista',
+    battle_waiting_opp: 'Esperando a {name}…',
+    battle_waiting_live: 'Ambas modelos deben estar en vivo para que empiece el reloj',
+    battle_tip_her: '💰 Propina a {name}',
+    battle_games_her: '🎲 Juegos de {name}',
+    battle_you_won: '🏆 ¡GANASTE!',
+    battle_you_lost: '⚔️ {name} se lleva esta — ¡buen juego!',
+    battle_tied: '🤝 ¡Es un empate!',
+    battle_wins: '🏆 ¡{name} gana!',
+    battle_rematch: '🔁 Revancha',
+    battle_open_invites: '⚔️ Abierta a invitaciones de batalla',
+    battle_open_invites_note: 'Desactivado te oculta de la lista de batallas — igual puedes invitar y programar tú.',
+    battle_random: '🎲 Batalla aleatoria',
+    battle_schedule: '📅 Programar un duelo',
+    battle_looking: '⚔️ Buscando una batalla',
+    battle_in_battle: '⚔️ EN BATALLA',
+    battle_forfeited: 'Abandono — un lado terminó su en vivo',
+    battle_you_earned: 'Ganaste {amount}',
+    battle_enter_pool: 'Entrar al grupo',
+    battle_leave_pool: 'Salir del grupo',
+    battle_pool_waiting: 'En el grupo — buscándote una rival…',
+    battle_pick_rival: 'Elige a tu rival',
+    battle_chat_ph: 'Chat de batalla…',
+    battle_history: '⚔️ Historial de batallas',
+    battle_vs_line: '⚔️ contra {name}',
+    battle_remind: '🔔 Recuérdame',
+    battle_reminded: '✓ Recordatorio activado',
+    battle_pot: 'Bote',
     game_btn: '🎲 Juego',
     game_regular: 'Regular',
     game_explicit: 'Explícito 🔞',
@@ -2067,6 +2133,39 @@ const I18N = {
     say_fans_ph: 'Diga algo aos seus fãs…',
     explicit_rate_note: 'Tarifa explícita: {price}/min · Sua prévia nunca fica borrada',
     game_category: 'Game Category',
+    battle: '⚔️ Batalha',
+    battle_money_rule: 'A casa tira primeiro sua comissão padrão — o restante se divide 60% para a vencedora e 40% para a perdedora. Empate = 50/50. Desistir = perder, seja qual for o placar.',
+    battle_invite_from: '{name} quer batalhar com você!',
+    battle_minutes: 'Batalha de {n} minutos',
+    battle_accept: '✅ Aceitar',
+    battle_ready: '✅ Estou pronta',
+    battle_waiting_opp: 'Esperando {name}…',
+    battle_waiting_live: 'As duas modelos precisam estar ao vivo para o relógio começar',
+    battle_tip_her: '💰 Gorjeta para {name}',
+    battle_games_her: '🎲 Jogos de {name}',
+    battle_you_won: '🏆 VOCÊ VENCEU!',
+    battle_you_lost: '⚔️ {name} levou essa — bom jogo!',
+    battle_tied: '🤝 É um empate!',
+    battle_wins: '🏆 {name} venceu!',
+    battle_rematch: '🔁 Revanche',
+    battle_open_invites: '⚔️ Aberta a convites de batalha',
+    battle_open_invites_note: 'Desligado esconde você das listas de batalha — você ainda pode convidar e agendar.',
+    battle_random: '🎲 Batalha aleatória',
+    battle_schedule: '📅 Agendar um duelo',
+    battle_looking: '⚔️ Procurando uma batalha',
+    battle_in_battle: '⚔️ EM BATALHA',
+    battle_forfeited: 'Desistência — um lado encerrou a live',
+    battle_you_earned: 'Você ganhou {amount}',
+    battle_enter_pool: 'Entrar no grupo',
+    battle_leave_pool: 'Sair do grupo',
+    battle_pool_waiting: 'No grupo — procurando uma rival para você…',
+    battle_pick_rival: 'Escolha sua rival',
+    battle_chat_ph: 'Chat da batalha…',
+    battle_history: '⚔️ Histórico de batalhas',
+    battle_vs_line: '⚔️ vs {name}',
+    battle_remind: '🔔 Me lembre',
+    battle_reminded: '✓ Lembrete ativado',
+    battle_pot: 'Pote',
     game_btn: '🎲 Jogo',
     game_regular: 'Regular',
     game_explicit: 'Explícito 🔞',
@@ -2782,6 +2881,39 @@ const I18N = {
     say_fans_ph: 'Dites quelque chose à vos fans…',
     explicit_rate_note: 'Tarif explicite : {price}/min · Votre aperçu n\'est jamais flouté',
     game_category: 'Catégorie de jeu',
+    battle: '⚔️ Bataille',
+    battle_money_rule: 'La maison prend d\'abord sa commission standard — le reste se partage 60 % pour la gagnante, 40 % pour la perdante. Égalité = 50/50. Abandon = défaite, quel que soit le score.',
+    battle_invite_from: '{name} veut vous affronter !',
+    battle_minutes: 'Bataille de {n} minutes',
+    battle_accept: '✅ Accepter',
+    battle_ready: '✅ Je suis prête',
+    battle_waiting_opp: 'En attente de {name}…',
+    battle_waiting_live: 'Les deux modèles doivent être en direct pour lancer le chrono',
+    battle_tip_her: '💰 Pourboire à {name}',
+    battle_games_her: '🎲 Jeux de {name}',
+    battle_you_won: '🏆 VOUS AVEZ GAGNÉ !',
+    battle_you_lost: '⚔️ {name} remporte celle-ci — beau match !',
+    battle_tied: '🤝 Égalité !',
+    battle_wins: '🏆 {name} gagne !',
+    battle_rematch: '🔁 Revanche',
+    battle_open_invites: '⚔️ Ouverte aux invitations de bataille',
+    battle_open_invites_note: 'Désactivé vous cache des listes de bataille — vous pouvez toujours inviter et programmer.',
+    battle_random: '🎲 Bataille aléatoire',
+    battle_schedule: '📅 Programmer un duel',
+    battle_looking: '⚔️ Cherche une bataille',
+    battle_in_battle: '⚔️ EN BATAILLE',
+    battle_forfeited: 'Forfait — un côté a terminé son direct',
+    battle_you_earned: 'Vous avez gagné {amount}',
+    battle_enter_pool: 'Entrer dans la file',
+    battle_leave_pool: 'Quitter la file',
+    battle_pool_waiting: 'Dans la file — on vous cherche une rivale…',
+    battle_pick_rival: 'Choisissez votre rivale',
+    battle_chat_ph: 'Chat de bataille…',
+    battle_history: '⚔️ Historique des batailles',
+    battle_vs_line: '⚔️ contre {name}',
+    battle_remind: '🔔 Me rappeler',
+    battle_reminded: '✓ Rappel activé',
+    battle_pot: 'Pot',
     game_btn: '🎲 Jeu',
     game_regular: 'Normal',
     game_explicit: 'Explicite 🔞',
@@ -3497,6 +3629,39 @@ const I18N = {
     say_fans_ph: 'Sag etwas zu deinen Fans…',
     explicit_rate_note: 'Expliziter Preis: {price}/Min. · Deine Vorschau ist nie verwischt',
     game_category: 'Spielkategorie',
+    battle: '⚔️ Battle',
+    battle_money_rule: 'Das Haus nimmt zuerst seine übliche Provision — der Rest teilt sich 60 % für die Gewinnerin, 40 % für die Verliererin. Gleichstand = 50/50. Aufgeben = verloren, egal bei welchem Stand.',
+    battle_invite_from: '{name} will gegen dich battlen!',
+    battle_minutes: '{n}-Minuten-Battle',
+    battle_accept: '✅ Annehmen',
+    battle_ready: '✅ Ich bin bereit',
+    battle_waiting_opp: 'Warte auf {name}…',
+    battle_waiting_live: 'Beide Models müssen live sein, damit die Zeit startet',
+    battle_tip_her: '💰 Trinkgeld für {name}',
+    battle_games_her: '🎲 Spiele von {name}',
+    battle_you_won: '🏆 DU HAST GEWONNEN!',
+    battle_you_lost: '⚔️ {name} holt sich diese Runde — gutes Spiel!',
+    battle_tied: '🤝 Unentschieden!',
+    battle_wins: '🏆 {name} gewinnt!',
+    battle_rematch: '🔁 Rückkampf',
+    battle_open_invites: '⚔️ Offen für Battle-Einladungen',
+    battle_open_invites_note: 'Aus blendet dich aus den Battle-Listen aus — einladen und planen kannst du weiterhin selbst.',
+    battle_random: '🎲 Zufalls-Battle',
+    battle_schedule: '📅 Showdown planen',
+    battle_looking: '⚔️ Auf Battle-Suche',
+    battle_in_battle: '⚔️ IM BATTLE',
+    battle_forfeited: 'Aufgabe — eine Seite hat ihren Live beendet',
+    battle_you_earned: 'Du hast {amount} verdient',
+    battle_enter_pool: 'In den Pool',
+    battle_leave_pool: 'Pool verlassen',
+    battle_pool_waiting: 'Im Pool — wir suchen eine Rivalin für dich…',
+    battle_pick_rival: 'Wähl deine Rivalin',
+    battle_chat_ph: 'Battle-Chat…',
+    battle_history: '⚔️ Battle-Verlauf',
+    battle_vs_line: '⚔️ gegen {name}',
+    battle_remind: '🔔 Erinnere mich',
+    battle_reminded: '✓ Erinnerung gesetzt',
+    battle_pot: 'Pot',
     game_btn: '🎲 Spiel',
     game_regular: 'Regulär',
     game_explicit: 'Explizit 🔞',
@@ -4212,6 +4377,39 @@ const I18N = {
     say_fans_ph: 'Скажите что-нибудь вашим фанатам…',
     explicit_rate_note: 'Тариф откровенного: {price}/мин · Ваш предпросмотр никогда не размывается',
     game_category: 'Категория игры',
+    battle: '⚔️ Баттл',
+    battle_money_rule: 'Платформа сначала берёт свою стандартную комиссию — остальное делится 60% победительнице и 40% проигравшей. Ничья = 50/50. Сдаться = проиграть, при любом счёте.',
+    battle_invite_from: '{name} вызывает вас на баттл!',
+    battle_minutes: 'Баттл на {n} минут',
+    battle_accept: '✅ Принять',
+    battle_ready: '✅ Я готова',
+    battle_waiting_opp: 'Ждём {name}…',
+    battle_waiting_live: 'Обе модели должны быть в эфире, чтобы запустить отсчёт',
+    battle_tip_her: '💰 Чаевые для {name}',
+    battle_games_her: '🎲 Игры — {name}',
+    battle_you_won: '🏆 ВЫ ВЫИГРАЛИ!',
+    battle_you_lost: '⚔️ {name} забирает эту победу — хорошая игра!',
+    battle_tied: '🤝 Ничья!',
+    battle_wins: '🏆 {name} побеждает!',
+    battle_rematch: '🔁 Реванш',
+    battle_open_invites: '⚔️ Открыта для приглашений на баттл',
+    battle_open_invites_note: 'Выключено — вы скрыты из списков баттлов, но сами приглашать и планировать можете.',
+    battle_random: '🎲 Случайный баттл',
+    battle_schedule: '📅 Запланировать поединок',
+    battle_looking: '⚔️ Ищет баттл',
+    battle_in_battle: '⚔️ В БАТТЛЕ',
+    battle_forfeited: 'Сдача — одна из сторон завершила эфир',
+    battle_you_earned: 'Вы заработали {amount}',
+    battle_enter_pool: 'Войти в пул',
+    battle_leave_pool: 'Покинуть пул',
+    battle_pool_waiting: 'В пуле — ищем вам соперницу…',
+    battle_pick_rival: 'Выберите соперницу',
+    battle_chat_ph: 'Чат баттла…',
+    battle_history: '⚔️ История баттлов',
+    battle_vs_line: '⚔️ против {name}',
+    battle_remind: '🔔 Напомнить мне',
+    battle_reminded: '✓ Напоминание установлено',
+    battle_pot: 'Банк',
     game_btn: '🎲 Игра',
     game_regular: 'Обычная',
     game_explicit: 'Откровенная 🔞',
@@ -4927,6 +5125,39 @@ const I18N = {
     say_fans_ph: 'ファンに何か言ってね…',
     explicit_rate_note: '露骨料金：{price}/分 · あなたのプレビューは決してぼかされません',
     game_category: 'ゲームカテゴリ',
+    battle: '⚔️ バトル',
+    battle_money_rule: 'まずプラットフォームが通常の手数料を引きます — 残りは勝者60％／敗者40％に分配。引き分け＝50/50。途中終了した側はスコアに関係なく敗北です。',
+    battle_invite_from: '{name}がバトルを申し込んでいます！',
+    battle_minutes: '{n}分のバトル',
+    battle_accept: '✅ 受ける',
+    battle_ready: '✅ 準備OK',
+    battle_waiting_opp: '{name}を待っています…',
+    battle_waiting_live: 'カウントダウン開始には両モデルの配信が必要です',
+    battle_tip_her: '💰 {name}にチップ',
+    battle_games_her: '🎲 {name}のゲーム',
+    battle_you_won: '🏆 あなたの勝利！',
+    battle_you_lost: '⚔️ 今回は{name}の勝ち — ナイスゲーム！',
+    battle_tied: '🤝 引き分け！',
+    battle_wins: '🏆 {name}の勝利！',
+    battle_rematch: '🔁 再戦',
+    battle_open_invites: '⚔️ バトルの招待を受ける',
+    battle_open_invites_note: 'オフにするとバトルの一覧に表示されません — 自分から招待や予約はできます。',
+    battle_random: '🎲 ランダムバトル',
+    battle_schedule: '📅 対決を予約',
+    battle_looking: '⚔️ バトル相手募集中',
+    battle_in_battle: '⚔️ バトル中',
+    battle_forfeited: '不戦敗 — 片方の配信が終了しました',
+    battle_you_earned: '{amount}を獲得しました',
+    battle_enter_pool: 'プールに入る',
+    battle_leave_pool: 'プールを出る',
+    battle_pool_waiting: 'プール内 — ライバルをマッチング中…',
+    battle_pick_rival: 'ライバルを選んでね',
+    battle_chat_ph: 'バトルチャット…',
+    battle_history: '⚔️ バトル履歴',
+    battle_vs_line: '⚔️ vs {name}',
+    battle_remind: '🔔 リマインドする',
+    battle_reminded: '✓ リマインダー設定済み',
+    battle_pot: 'ポット',
     game_btn: '🎲 ゲーム',
     game_regular: '通常',
     game_explicit: '露骨 🔞',
@@ -5642,6 +5873,39 @@ const I18N = {
     say_fans_ph: '对你的粉丝说点什么…',
     explicit_rate_note: '露骨费率：{price}/分钟 · 你的预览永不模糊',
     game_category: '游戏类别',
+    battle: '⚔️ 对战',
+    battle_money_rule: '平台先扣除标准佣金 — 剩余部分按赢家 60% / 输家 40% 分配。平局 = 50/50。提前结束直播的一方判负，不论分数。',
+    battle_invite_from: '{name} 想和你对战！',
+    battle_minutes: '{n} 分钟对战',
+    battle_accept: '✅ 接受',
+    battle_ready: '✅ 我准备好了',
+    battle_waiting_opp: '等待 {name}…',
+    battle_waiting_live: '两位模特都必须开播才能开始计时',
+    battle_tip_her: '💰 打赏 {name}',
+    battle_games_her: '🎲 {name} 的游戏',
+    battle_you_won: '🏆 你赢了！',
+    battle_you_lost: '⚔️ 这次 {name} 赢了 — 比赛精彩！',
+    battle_tied: '🤝 平局！',
+    battle_wins: '🏆 {name} 获胜！',
+    battle_rematch: '🔁 再来一局',
+    battle_open_invites: '⚔️ 接受对战邀请',
+    battle_open_invites_note: '关闭后你不会出现在对战名单中 — 但你仍可主动邀请和预约。',
+    battle_random: '🎲 随机对战',
+    battle_schedule: '📅 预约对决',
+    battle_looking: '⚔️ 寻找对战',
+    battle_in_battle: '⚔️ 对战中',
+    battle_forfeited: '判负 — 一方结束了直播',
+    battle_you_earned: '你获得了 {amount}',
+    battle_enter_pool: '加入匹配池',
+    battle_leave_pool: '离开匹配池',
+    battle_pool_waiting: '已在池中 — 正在为你匹配对手…',
+    battle_pick_rival: '选择你的对手',
+    battle_chat_ph: '对战聊天…',
+    battle_history: '⚔️ 对战历史',
+    battle_vs_line: '⚔️ 对战 {name}',
+    battle_remind: '🔔 提醒我',
+    battle_reminded: '✓ 已设置提醒',
+    battle_pot: '奖池',
     game_btn: '🎲 游戏',
     game_regular: '常规',
     game_explicit: '露骨 🔞',
@@ -6357,6 +6621,39 @@ const I18N = {
     say_fans_ph: '팬들에게 한마디 하세요…',
     explicit_rate_note: '선정적 요금: {price}/분 · 미리보기는 절대 흐려지지 않습니다',
     game_category: '게임 카테고리',
+    battle: '⚔️ 배틀',
+    battle_money_rule: '플랫폼이 먼저 표준 수수료를 떼고, 나머지는 승자 60% / 패자 40%로 나뉩니다. 무승부 = 50/50. 중간에 라이브를 끝내면 점수와 관계없이 패배예요.',
+    battle_invite_from: '{name}님이 배틀을 신청했어요!',
+    battle_minutes: '{n}분 배틀',
+    battle_accept: '✅ 수락',
+    battle_ready: '✅ 준비됐어요',
+    battle_waiting_opp: '{name}님을 기다리는 중…',
+    battle_waiting_live: '두 모델 모두 라이브 중이어야 타이머가 시작돼요',
+    battle_tip_her: '💰 {name}님에게 팁',
+    battle_games_her: '🎲 {name}님의 게임',
+    battle_you_won: '🏆 승리했어요!',
+    battle_you_lost: '⚔️ 이번엔 {name}님이 이겼어요 — 좋은 경기였어요!',
+    battle_tied: '🤝 무승부예요!',
+    battle_wins: '🏆 {name}님 승리!',
+    battle_rematch: '🔁 리매치',
+    battle_open_invites: '⚔️ 배틀 초대 받기',
+    battle_open_invites_note: '끄면 배틀 목록에서 숨겨져요 — 직접 초대하고 예약하는 건 계속 가능해요.',
+    battle_random: '🎲 랜덤 배틀',
+    battle_schedule: '📅 대결 예약하기',
+    battle_looking: '⚔️ 배틀 상대 찾는 중',
+    battle_in_battle: '⚔️ 배틀 중',
+    battle_forfeited: '기권 — 한쪽이 라이브를 종료했어요',
+    battle_you_earned: '{amount}을(를) 벌었어요',
+    battle_enter_pool: '풀에 들어가기',
+    battle_leave_pool: '풀 나가기',
+    battle_pool_waiting: '풀에 있어요 — 라이벌을 매칭 중…',
+    battle_pick_rival: '라이벌을 고르세요',
+    battle_chat_ph: '배틀 채팅…',
+    battle_history: '⚔️ 배틀 기록',
+    battle_vs_line: '⚔️ vs {name}',
+    battle_remind: '🔔 알림 받기',
+    battle_reminded: '✓ 알림 설정됨',
+    battle_pot: '팟',
     game_btn: '🎲 게임',
     game_regular: '일반',
     game_explicit: '선정적 🔞',
@@ -7072,6 +7369,39 @@ const I18N = {
     say_fans_ph: 'Di\' qualcosa ai tuoi fan…',
     explicit_rate_note: 'Tariffa esplicita: {price}/min · La tua anteprima non è mai sfocata',
     game_category: 'Categoria gioco',
+    battle: '⚔️ Battaglia',
+    battle_money_rule: 'La piattaforma prende prima la sua commissione standard — il resto si divide 60% alla vincitrice e 40% alla perdente. Pareggio = 50/50. Chi abbandona perde, qualunque sia il punteggio.',
+    battle_invite_from: '{name} vuole sfidarti!',
+    battle_minutes: 'Battaglia da {n} minuti',
+    battle_accept: '✅ Accetta',
+    battle_ready: '✅ Sono pronta',
+    battle_waiting_opp: 'In attesa di {name}…',
+    battle_waiting_live: 'Entrambe le modelle devono essere live per far partire il timer',
+    battle_tip_her: '💰 Mancia a {name}',
+    battle_games_her: '🎲 Giochi di {name}',
+    battle_you_won: '🏆 HAI VINTO!',
+    battle_you_lost: '⚔️ Questa la vince {name} — bella partita!',
+    battle_tied: '🤝 È un pareggio!',
+    battle_wins: '🏆 Vince {name}!',
+    battle_rematch: '🔁 Rivincita',
+    battle_open_invites: '⚔️ Aperta agli inviti di battaglia',
+    battle_open_invites_note: 'Disattivato ti nasconde dagli elenchi di battaglia — puoi comunque invitare e programmare tu.',
+    battle_random: '🎲 Battaglia casuale',
+    battle_schedule: '📅 Programma una sfida',
+    battle_looking: '⚔️ In cerca di battaglia',
+    battle_in_battle: '⚔️ IN BATTAGLIA',
+    battle_forfeited: 'Forfait — un lato ha chiuso la live',
+    battle_you_earned: 'Hai guadagnato {amount}',
+    battle_enter_pool: 'Entra nel pool',
+    battle_leave_pool: 'Esci dal pool',
+    battle_pool_waiting: 'Nel pool — ti stiamo abbinando a una rivale…',
+    battle_pick_rival: 'Scegli la tua rivale',
+    battle_chat_ph: 'Chat della battaglia…',
+    battle_history: '⚔️ Storico battaglie',
+    battle_vs_line: '⚔️ contro {name}',
+    battle_remind: '🔔 Ricordamelo',
+    battle_reminded: '✓ Promemoria impostato',
+    battle_pot: 'Montepremi',
     game_btn: '🎲 Gioco',
     game_regular: 'Normale',
     game_explicit: 'Esplicito 🔞',
@@ -7787,6 +8117,39 @@ const I18N = {
     say_fans_ph: 'Powiedz coś swoim fanom…',
     explicit_rate_note: 'Stawka erotyczna: {price}/min · Twój podgląd nigdy nie jest zamazany',
     game_category: 'Kategoria gry',
+    battle: '⚔️ Bitwa',
+    battle_money_rule: 'Platforma najpierw pobiera swoją standardową prowizję — reszta dzieli się 60% dla zwyciężczyni i 40% dla przegranej. Remis = 50/50. Opuszczenie transmisji = przegrana, niezależnie od wyniku.',
+    battle_invite_from: '{name} chce walczyć z Tobą!',
+    battle_minutes: 'Bitwa na {n} minut',
+    battle_accept: '✅ Akceptuję',
+    battle_ready: '✅ Jestem gotowa',
+    battle_waiting_opp: 'Czekam na {name}…',
+    battle_waiting_live: 'Obie modelki muszą być na żywo, aby ruszył zegar',
+    battle_tip_her: '💰 Napiwek dla {name}',
+    battle_games_her: '🎲 Gry — {name}',
+    battle_you_won: '🏆 WYGRAŁAŚ!',
+    battle_you_lost: '⚔️ Tę rundę bierze {name} — dobra gra!',
+    battle_tied: '🤝 Remis!',
+    battle_wins: '🏆 {name} wygrywa!',
+    battle_rematch: '🔁 Rewanż',
+    battle_open_invites: '⚔️ Otwarta na zaproszenia do bitew',
+    battle_open_invites_note: 'Wyłączone ukrywa Cię na listach bitew — nadal możesz sama zapraszać i planować.',
+    battle_random: '🎲 Losowa bitwa',
+    battle_schedule: '📅 Zaplanuj pojedynek',
+    battle_looking: '⚔️ Szuka bitwy',
+    battle_in_battle: '⚔️ W BITWIE',
+    battle_forfeited: 'Walkower — jedna strona zakończyła transmisję',
+    battle_you_earned: 'Zarobiłaś {amount}',
+    battle_enter_pool: 'Wejdź do puli',
+    battle_leave_pool: 'Opuść pulę',
+    battle_pool_waiting: 'W puli — dobieramy Ci rywalkę…',
+    battle_pick_rival: 'Wybierz rywalkę',
+    battle_chat_ph: 'Czat bitwy…',
+    battle_history: '⚔️ Historia bitew',
+    battle_vs_line: '⚔️ kontra {name}',
+    battle_remind: '🔔 Przypomnij mi',
+    battle_reminded: '✓ Przypomnienie ustawione',
+    battle_pot: 'Pula',
     game_btn: '🎲 Gra',
     game_regular: 'Zwykła',
     game_explicit: 'Erotyczna 🔞',
@@ -8502,6 +8865,39 @@ const I18N = {
     say_fans_ph: 'Zeg iets tegen je fans…',
     explicit_rate_note: 'Expliciet tarief: {price}/min · Je preview wordt nooit vervaagd',
     game_category: 'Spelcategorie',
+    battle: '⚔️ Battle',
+    battle_money_rule: 'Het platform neemt eerst zijn standaardcommissie — de rest wordt 60% voor de winnaar en 40% voor de verliezer verdeeld. Gelijkspel = 50/50. Stoppen = verliezen, wat de score ook is.',
+    battle_invite_from: '{name} wil tegen je battelen!',
+    battle_minutes: 'Battle van {n} minuten',
+    battle_accept: '✅ Accepteren',
+    battle_ready: '✅ Ik ben er klaar voor',
+    battle_waiting_opp: 'Wachten op {name}…',
+    battle_waiting_live: 'Beide modellen moeten live zijn voordat de klok kan starten',
+    battle_tip_her: '💰 Fooi voor {name}',
+    battle_games_her: '🎲 Spellen van {name}',
+    battle_you_won: '🏆 JE HEBT GEWONNEN!',
+    battle_you_lost: '⚔️ {name} pakt deze — goed gespeeld!',
+    battle_tied: '🤝 Gelijkspel!',
+    battle_wins: '🏆 {name} wint!',
+    battle_rematch: '🔁 Rematch',
+    battle_open_invites: '⚔️ Open voor battle-uitnodigingen',
+    battle_open_invites_note: 'Uit verbergt je in battle-lijsten — zelf uitnodigen en plannen kan nog steeds.',
+    battle_random: '🎲 Willekeurige battle',
+    battle_schedule: '📅 Plan een showdown',
+    battle_looking: '⚔️ Zoekt een battle',
+    battle_in_battle: '⚔️ IN EEN BATTLE',
+    battle_forfeited: 'Opgave — een kant beëindigde haar live',
+    battle_you_earned: 'Je verdiende {amount}',
+    battle_enter_pool: 'Doe mee in de pool',
+    battle_leave_pool: 'Verlaat de pool',
+    battle_pool_waiting: 'In de pool — we zoeken een rivaal voor je…',
+    battle_pick_rival: 'Kies je rivaal',
+    battle_chat_ph: 'Battlechat…',
+    battle_history: '⚔️ Battle-geschiedenis',
+    battle_vs_line: '⚔️ tegen {name}',
+    battle_remind: '🔔 Herinner mij',
+    battle_reminded: '✓ Herinnering ingesteld',
+    battle_pot: 'Pot',
     game_btn: '🎲 Spel',
     game_regular: 'Regulier',
     game_explicit: 'Expliciet 🔞',
@@ -9217,6 +9613,39 @@ const I18N = {
     say_fans_ph: 'Hayranlarına bir şey söyle…',
     explicit_rate_note: 'Müstehcen ücret: {price}/dk · Ön izlemen asla bulanıklaştırılmaz',
     game_category: 'Oyun Kategorisi',
+    battle: '⚔️ Savaş',
+    battle_money_rule: 'Platform önce standart komisyonunu alır — kalan kazanan %60 / kaybeden %40 olarak bölünür. Beraberlik = 50/50. Yayını erken bitiren, skor ne olursa olsun kaybeder.',
+    battle_invite_from: '{name} seninle savaşmak istiyor!',
+    battle_minutes: '{n} dakikalık savaş',
+    battle_accept: '✅ Kabul et',
+    battle_ready: '✅ Hazırım',
+    battle_waiting_opp: '{name} bekleniyor…',
+    battle_waiting_live: 'Sürenin başlaması için iki modelin de yayında olması gerekir',
+    battle_tip_her: '💰 {name} için bahşiş',
+    battle_games_her: '🎲 {name} Oyunları',
+    battle_you_won: '🏆 KAZANDIN!',
+    battle_you_lost: '⚔️ Bu sefer {name} kazandı — güzel oyundu!',
+    battle_tied: '🤝 Berabere!',
+    battle_wins: '🏆 {name} kazandı!',
+    battle_rematch: '🔁 Rövanş',
+    battle_open_invites: '⚔️ Savaş davetlerine açık',
+    battle_open_invites_note: 'Kapalı, savaş listelerinde seni gizler — kendin davet edip planlayabilirsin.',
+    battle_random: '🎲 Rastgele Savaş',
+    battle_schedule: '📅 Kapışma planla',
+    battle_looking: '⚔️ Savaş arıyor',
+    battle_in_battle: '⚔️ SAVAŞTA',
+    battle_forfeited: 'Hükmen — bir taraf yayınını bitirdi',
+    battle_you_earned: '{amount} kazandın',
+    battle_enter_pool: 'Havuza gir',
+    battle_leave_pool: 'Havuzdan çık',
+    battle_pool_waiting: 'Havuzdasın — sana bir rakip eşleştiriyoruz…',
+    battle_pick_rival: 'Rakibini seç',
+    battle_chat_ph: 'Savaş sohbeti…',
+    battle_history: '⚔️ Savaş geçmişi',
+    battle_vs_line: '⚔️ vs {name}',
+    battle_remind: '🔔 Bana hatırlat',
+    battle_reminded: '✓ Hatırlatma kuruldu',
+    battle_pot: 'Pot',
     game_btn: '🎲 Oyun',
     game_regular: 'Normal',
     game_explicit: 'Müstehcen 🔞',
@@ -9873,8 +10302,19 @@ function handleWS(m) {
   } else if (m.type === 'media:unlocked' && S.view === 'chat' && S.conv && m.conversation_id === S.conv.id) {
     toast(`💰 ${fmt(m.amount_cents)} unlock! Nice!`);
     if (S.user && S.user.role === 'model') refreshMe();
+  } else if (m.type === 'battle:invite') {
+    onBattleInvite(m.battle);
+  } else if (m.type === 'battle:update') {
+    onBattleUpdate(m.battle);
+  } else if (m.type === 'battle:finished') {
+    onBattleFinished(m.battle, m.your_cents);
+  } else if (m.type === 'battle:chat') {
+    onBattleChatMsg(m.message);
+  } else if (m.type === 'battle:due') {
+    toast('⚔️ ' + t('battle_schedule') + ' — ' + t('battle_ready'), 5000);
+    onBattleUpdate(m.battle);
   } else if (m.type === 'live-signal') {
-    handleLiveSignal(m);
+    if (!routeBattleSignal(m)) handleLiveSignal(m);
   } else if (m.type === 'live:viewer-joined' && S.live && S.live.role === 'model' && m.session_id === S.live.sessionId) {
     liveModelAddViewer(m.fan_id);
   } else if (m.type === 'live:viewer-left' && S.live && S.live.role === 'model' && m.session_id === S.live.sessionId) {
@@ -10190,7 +10630,7 @@ function show(view, params) {
     fanModels: vFanModels, fanLive: vFanLive, lives: vLives, fanChats: vFanChats, wallet: vWallet, quickSignup: vQuickSignup,
     modelChats: vModelChats, modelEarnings: vModelEarnings, modelSettings: vModelSettings,
     chat: vChat,
-    liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch,
+    liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch, battleStage: vBattleStage,
     bookings: vBookings, terms: vTerms, privacy: vPrivacy, billing: vBilling, statement2257: vStatement2257,
     managerGate: vManagerGate, modelContract: vModelContract,
     recruiter: vRecruiter, notifications: vNotifications, dmca: vDmca,
@@ -10202,7 +10642,7 @@ function show(view, params) {
     ? vPreviewPlaceholder
     : (VIEWS[view] || vLanding);
   viewFn(params || {});
-  if (view === 'liveBroadcast' || view === 'liveWatch') tabbar.classList.add('hidden');
+  if (view === 'liveBroadcast' || view === 'liveWatch' || view === 'battleStage') tabbar.classList.add('hidden');
   else if (S.user) refreshTabBadges();
 }
 
@@ -11868,6 +12308,7 @@ function openModelPeek(m, models) {
       <div class="peek-row"><span>Video calls</span><b>${fmt(m.per_minute_cents)} / min</b></div>
       ${m.schedule_summary ? `<div class="peek-row"><span>Usually live</span><b>${esc(m.schedule_summary)}</b></div>` : ''}
     </div>
+    <div id="peek-battles"></div>
     ${m.bio ? `<div class="muted small" style="margin-top:10px">${esc(m.bio)}</div>` : ''}
     ${(m.tags && m.tags.length) ? `<div class="peek-tags">${m.tags.map((tg) => `<button class="disc-chip" data-peek-tag="${esc(tg)}">${esc(tg)}</button>`).join('')}</div>` : ''}
     ${similarModels(m, models).length ? `
@@ -11909,6 +12350,29 @@ function openModelPeek(m, models) {
         sheet.remove();
         openChatWithModel(id);
       };
+    }
+    // Phase 6: her confirmed scheduled showdowns ("⚔️ vs @name — Fri 8 PM")
+    // + a fan reminder toggle. Unconfirmed events never render here —
+    // the server only returns confirmed ones.
+    const pb = sheet.querySelector('#peek-battles');
+    if (pb && !isOfficial) {
+      api(`/models/${m.id}/battle-events`).then(({ data }) => {
+        const events = (data && data.events) || [];
+        if (!events.length || !document.getElementById('peek-battles')) return;
+        pb.innerHTML = events.map((ev) => {
+          const when = new Date(String(ev.starts_at).replace(' ', 'T') + 'Z');
+          const label = when.toLocaleDateString(undefined, { weekday: 'short' }) + ' ' +
+            when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+          return `<div class="peek-row"><span>${t('battle_vs_line', { name: '@' + ev.opponent.username })}</span><b>${esc(label)}</b></div>
+            ${S.user && S.user.role === 'fan' ? `<button class="btn small ghost" data-battle-remind="${ev.id}" style="width:100%;margin-top:6px">${t('battle_remind')}</button>` : ''}`;
+        }).join('');
+        pb.querySelectorAll('[data-battle-remind]').forEach((btn) => {
+          btn.onclick = async () => {
+            const { data } = await api(`/battles/${btn.dataset.battleRemind}/remind`, { method: 'POST' });
+            btn.textContent = data && data.reminded ? t('battle_reminded') : t('battle_remind');
+          };
+        });
+      }).catch(() => {});
     }
     // Guest bar: no conversation is started — the tap closes her
     // page and lands on the auth view to join / log in, the same
@@ -12090,10 +12554,10 @@ async function vFanLive() {
     <div class="screen">
       ${inPreview ? '' : houseBannerHTML(house)}
       ${streams.map((s) => `
-        <button class="list-item" data-stream="${s.session_id}" data-model="${s.model_id}" style="background:var(--card);border-radius:14px;margin-bottom:10px;border:1px solid rgba(239,68,68,.35)">
+        <button class="list-item" data-stream="${s.session_id}" data-model="${s.model_id}" data-battle="${s.battle_id || ''}" style="background:var(--card);border-radius:14px;margin-bottom:10px;border:1px solid rgba(239,68,68,.35)">
           <span class="avatar-wrap">${avatarHTML(s.model_name, '', s.model_photo_url)}<span class="online-dot"></span></span>
           <span class="grow">
-            <span class="title">${esc(s.model_name)} <span class="live-badge">🔴 LIVE</span></span><br>
+            <span class="title">${esc(s.model_name)} <span class="live-badge">🔴 LIVE</span>${s.battle_id ? ` <span class="live-badge" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">${t('battle_in_battle')}</span>` : ''}${s.battle_looking ? ` <span class="live-badge" style="background:#7c3aed">${t('battle_looking')}</span>` : ''}</span><br>
             ${s.title ? `<span class="preview" style="font-weight:700;color:#fff">${esc(s.title)}</span><br>` : ''}
             <span class="small muted">${t('watching_gifts', { v: s.viewers, g: fmt(s.gift_cents || 0) })}</span><br>
             <span class="small" style="color:#f87171;font-weight:800">${t('join_free_line')}</span>
@@ -12123,6 +12587,8 @@ async function vFanLive() {
         else toast('👁 Preview mode — joining a live is fan-only');
         return;
       }
+      // A battling model's row opens the battle stage, not her solo stream.
+      if (b.dataset.battle) return openBattleStage(parseInt(b.dataset.battle));
       watchLive(parseInt(b.dataset.stream));
     };
   });
@@ -13161,6 +13627,19 @@ async function vModelEarnings() {
           <b style="color:var(--green)">${fmt(data.gifts_cents)}</b></div>
         <div class="muted small" style="margin-top:4px">${t('gifts_cut_note')}</div>
       </div>` : ''}
+      ${(data.battles && data.battles.length) ? `
+      <div class="card" style="margin-top:12px">
+        <div style="font-weight:800;margin-bottom:8px">${t('battle_history')}</div>
+        ${data.battles.map((b) => `
+        <div style="padding:8px 0;border-top:1px solid rgba(139,92,246,.12)">
+          <div class="row" style="align-items:center">
+            <span class="grow"><b>${b.result === 'won' ? '🏆' : b.result === 'tie' ? '🤝' : '⚔️'} ${t('battle_vs_line', { name: esc(b.opponent_name) })}</b>
+              <br><span class="muted small">${b.your_score_cents != null ? `${fmt(b.your_score_cents)} — ${fmt(b.opponent_score_cents)}` : ''}${b.forfeit ? ' · ' + t('battle_forfeited') : ''}</span></span>
+            <b style="color:var(--green)">${fmt(b.your_cents)}</b>
+          </div>
+          <div class="muted small" style="margin-top:2px">${t('battle_pot')}: ${fmt(b.gross_cents)} · 🏠 ${fmt(b.house_cents)} · 🏆 ${fmt(b.winner_cents)} / ${fmt(b.loser_cents)}</div>
+        </div>`).join('')}
+      </div>` : ''}
       <div class="card" style="margin-top:12px">
         <div style="font-weight:800;margin-bottom:8px">${t('revenue_breakdown')}</div>
         ${(() => {
@@ -14051,6 +14530,14 @@ async function vModelSettings() {
       <button class="btn" id="goto-home" style="width:100%;padding:16px;font-size:17px;font-weight:800;margin-bottom:12px;background:linear-gradient(135deg,var(--pink),#ff8fab);box-shadow:0 6px 22px rgba(255,92,158,.35)">🏠 Home Screen — see the girls 🔥</button>
       ${langCardHTML()}
       <div class="card">
+        <div style="font-weight:800;margin-bottom:6px">${t('battle')}</div>
+        <div class="row" style="gap:10px;align-items:center">
+          <button class="toggle ${m.battle_invites_open === 0 ? '' : 'on'}" id="battle-invites-toggle" aria-label="${t('battle_open_invites')}"></button>
+          <span style="font-weight:700">${t('battle_open_invites')}</span>
+        </div>
+        <div class="muted small" style="margin-top:6px">${t('battle_open_invites_note')}</div>
+      </div>
+      <div class="card">
         <div style="font-weight:800;margin-bottom:6px">${t('my_rates')}</div>
         <div class="muted small" style="margin-bottom:10px">${t('rates_note')}</div>
         <label class="field">${t('per_text')} <b id="s-msg-label">${fmt(m.per_message_cents || 149)}</b>
@@ -14212,6 +14699,17 @@ async function vModelSettings() {
         <button class="btn" id="rb-add" style="margin-top:8px">${t('rb_add')}</button>
       </div>
     </div>`;
+  const battleInvitesToggle = $('#battle-invites-toggle');
+  if (battleInvitesToggle) battleInvitesToggle.onclick = async () => {
+    const next = S.model.battle_invites_open === 0 ? 1 : 0;
+    const { status } = await api('/model/profile', {
+      method: 'PUT', body: JSON.stringify({ battle_invites_open: next }) });
+    if (status === 200) {
+      S.model.battle_invites_open = next;
+      battleInvitesToggle.classList.toggle('on', !!next);
+      toast(next ? '⚔️ Battle invites ON' : '⚔️ Battle invites OFF');
+    }
+  };
   $('#s-save').onclick = async () => {
     const per_message_cents = parseInt($('#s-msg').value);
     const per_minute_cents = parseInt($('#s-min').value);
@@ -17805,11 +18303,17 @@ function vLiveBroadcast() {
           </div>
           <div class="muted small" style="text-align:center;margin-top:6px">${t('explicit_rate_note', { price: fmt(L.explicitRate) })}</div>
           <button class="btn small ghost" id="game-panel-btn" style="width:100%;margin-top:8px">🎲 ${t('game_category')} <span id="game-queue-badge" class="hidden" style="background:var(--pink);color:#fff;border-radius:999px;padding:1px 8px;font-weight:800"></span></button>
+          <button class="btn small ghost" id="battle-open-btn" style="width:100%;margin-top:8px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;font-weight:800">⚔️ ${t('battle')}</button>
+          <div id="battle-panel"></div>
         </div>
       </div>
     </div>`;
   $('#live-local').srcObject = L.stream;
   $('#game-panel-btn').onclick = openGamePanel;
+  const battleOpenBtn = $('#battle-open-btn');
+  if (battleOpenBtn) battleOpenBtn.onclick = openBattleSheet;
+  renderBattlePanel();
+  refreshMyBattle();
   refreshGameBadge();
   $('#live-explicit-btn').onclick = liveToggleExplicit;
   $('#live-pause-btn').onclick = liveToggleBrb;
@@ -19358,6 +19862,768 @@ function stopStageStream() {
   hideStageBanner();
 }
 
+/* ================= LIVE BATTLES (Phase 6) =================
+ * Fan stage + battler panel + invite/ready/result cards + the battle
+ * sheet (invite / random pool / schedule). Battle viewers hold one
+ * RTCPeerConnection per session in battlePCs; live-signal routing
+ * checks that registry before the normal single-live handler, so a
+ * battler's cross-connection and a fan's two stage connections never
+ * fight S.live. Scores/state ride WS battle:update pushes with a 4s
+ * poll as fallback. */
+
+let battlePCs = new Map();       // sessionId -> RTCPeerConnection (viewer side)
+let battleView = null;           // fan stage: { id, battle, chat: [] }
+let battleMine = null;           // battler: latest battleOut involving me
+let battleChatMsgs = [];         // shared battle chat (stage + panel)
+let battlePollInt = null;
+let battleMinePollInt = null;
+let battleClockInt = null;
+let battleCardTimer = null;
+let battlePickMinutes = 10;
+let battleSchedFor = null;
+
+function battleMakeViewerPC(sessionId, modelId, videoElId) {
+  battleCloseViewerPC(sessionId);
+  const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  pc.onicecandidate = (e) => {
+    if (e.candidate) liveSignal(modelId, sessionId, { kind: 'ice', candidate: e.candidate });
+  };
+  pc.ontrack = (e) => {
+    const v = document.getElementById(videoElId);
+    if (v) {
+      v.srcObject = e.streams[0];
+      e.streams[0].getAudioTracks().forEach((tr) => { tr.enabled = true; });
+      v.play().catch(() => {});
+    }
+  };
+  battlePCs.set(sessionId, pc);
+  return pc;
+}
+function battleCloseViewerPC(sessionId) {
+  const pc = battlePCs.get(sessionId);
+  if (pc) { try { pc.close(); } catch (e) {} battlePCs.delete(sessionId); }
+}
+function closeAllBattlePCs() {
+  for (const sid of [...battlePCs.keys()]) battleCloseViewerPC(sid);
+}
+function routeBattleSignal(m) {
+  const pc = battlePCs.get(m.session_id);
+  if (!pc) return false;
+  const p = m.payload || {};
+  (async () => {
+    try {
+      if (p.kind === 'offer') {
+        await pc.setRemoteDescription(new RTCSessionDescription(p.sdp));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        liveSignal(m.from, m.session_id, { kind: 'answer', sdp: answer });
+      } else if (p.kind === 'ice') {
+        await pc.addIceCandidate(new RTCIceCandidate(p.candidate));
+      }
+    } catch (e) { /* stale signaling */ }
+  })();
+  return true;
+}
+function battleClientTeardown() {
+  closeAllBattlePCs();
+  stopBattlePoll();
+  stopBattleMinePoll();
+  stopBattleClock();
+}
+function stopBattlePoll() { if (battlePollInt) { clearInterval(battlePollInt); battlePollInt = null; } }
+function stopBattleMinePoll() { if (battleMinePollInt) { clearInterval(battleMinePollInt); battleMinePollInt = null; } }
+function stopBattleClock() { if (battleClockInt) { clearInterval(battleClockInt); battleClockInt = null; } }
+function startBattleClock(endsAt) {
+  stopBattleClock();
+  if (!endsAt) return;
+  const endsMs = new Date(String(endsAt).replace(' ', 'T') + 'Z').getTime();
+  const tick = () => {
+    const left = Math.max(0, Math.round((endsMs - Date.now()) / 1000));
+    const label = `⏱ ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+    document.querySelectorAll('[data-battle-clock]').forEach((el) => { el.textContent = label; });
+  };
+  tick();
+  battleClockInt = setInterval(tick, 1000);
+}
+
+function battleScoreHTML(b) {
+  const total = (b.host_score_cents || 0) + (b.guest_score_cents || 0);
+  const lead = total ? Math.round((b.host_score_cents / total) * 100) : 50;
+  return `
+    <div class="battle-scorebar" style="display:flex;gap:10px;align-items:center;background:rgba(0,0,0,.45);border-radius:12px;padding:8px 12px;margin:6px 0">
+      <div style="flex:1;text-align:center">
+        <div style="font-weight:800;font-size:13px">${esc(b.host.display_name)}</div>
+        <div style="font-weight:900;font-size:19px;color:#fda4af">${fmt(b.host_score_cents)}</div>
+      </div>
+      <div style="text-align:center;min-width:86px">
+        <div data-battle-clock style="font-weight:900;font-size:16px">⏱ --:--</div>
+        <div style="height:6px;border-radius:99px;background:#7c3aed;overflow:hidden;margin:4px 0"><div style="height:100%;width:${lead}%;background:linear-gradient(90deg,#ff5c9e,#f59e0b)"></div></div>
+        <div class="muted small">${t('battle_pot')}: ${fmt(total)}</div>
+      </div>
+      <div style="flex:1;text-align:center">
+        <div style="font-weight:800;font-size:13px">${esc(b.guest.display_name)}</div>
+        <div style="font-weight:900;font-size:19px;color:#93c5fd">${fmt(b.guest_score_cents)}</div>
+      </div>
+    </div>`;
+}
+function paintBattleScores() {
+  const b = (battleView && battleView.battle) || battleMine;
+  const sb = document.getElementById('battle-scorebar');
+  if (sb && b) sb.innerHTML = battleScoreHTML(b);
+}
+
+/* ---------------- fan stage ---------------- */
+
+async function openBattleStage(battleId) {
+  if (!S.user) {
+    toast('Sign up free to watch live 🔴');
+    return show('auth', { mode: 'signup', role: 'fan' });
+  }
+  if (S.user.role !== 'fan') return toast('Fans only.');
+  battleClientTeardown();
+  battleView = { id: battleId, battle: null };
+  battleChatMsgs = [];
+  show('battleStage', { battleId });
+}
+
+async function vBattleStage(params) {
+  const battleId = params && params.battleId;
+  app.innerHTML = `<div class="live-wrap" id="battle-stage"><div class="muted" style="padding:40px;text-align:center">⚔️…</div></div>`;
+  const { status, data } = await api(`/battles/${battleId}`);
+  if (status !== 200 || !data.battle || data.battle.status !== 'live') {
+    toast('⚔️ That battle is not live.');
+    return show('fanLive', {});
+  }
+  const b = data.battle;
+  battleView = { id: battleId, battle: b };
+  // Peers first (so both models' offers find a connection waiting),
+  // then enter — the server pushes viewer-joined to both models.
+  battleMakeViewerPC(b.host_session_id, b.host.id, 'battle-vid-a');
+  battleMakeViewerPC(b.guest_session_id, b.guest.id, 'battle-vid-b');
+  await api(`/battles/${battleId}/enter`, { method: 'POST' });
+  renderBattleStage();
+  loadBattleChat();
+  startBattleClock(b.ends_at);
+  stopBattlePoll();
+  battlePollInt = setInterval(async () => {
+    if (!document.getElementById('battle-stage')) { battleClientTeardown(); return; }
+    const r = await api(`/battles/${battleId}`);
+    if (r.status === 200 && r.data.battle) {
+      battleView.battle = r.data.battle;
+      paintBattleScores();
+      if (r.data.battle.status !== 'live') stopBattlePoll();
+    }
+  }, 4000);
+}
+
+function renderBattleStage() {
+  const wrap = document.getElementById('battle-stage');
+  const bv = battleView;
+  if (!wrap || !bv || !bv.battle) return;
+  const b = bv.battle;
+  wrap.innerHTML = `
+    <div class="split-pane">
+      <video id="battle-vid-a" autoplay playsinline muted style="width:100%;max-height:34vh;object-fit:cover;background:#000"></video>
+      <div class="split-name">${esc(b.host.display_name)}</div>
+    </div>
+    <div id="battle-scorebar"></div>
+    <div class="split-pane">
+      <video id="battle-vid-b" autoplay playsinline muted style="width:100%;max-height:34vh;object-fit:cover;background:#000"></video>
+      <div class="split-name">${esc(b.guest.display_name)}</div>
+    </div>
+    <button id="battle-unmute" class="btn small ghost" style="margin:6px auto;display:block">🔊 Tap for sound</button>
+    <div class="row" style="gap:8px;padding:0 10px">
+      <div style="flex:1">
+        <button class="btn" id="battle-tip-a" style="width:100%">${t('battle_tip_her', { name: esc(b.host.display_name) })}</button>
+        <button class="btn ghost" id="battle-game-a" style="width:100%;margin-top:6px">${t('battle_games_her', { name: esc(b.host.display_name) })}</button>
+      </div>
+      <div style="flex:1">
+        <button class="btn" id="battle-tip-b" style="width:100%">${t('battle_tip_her', { name: esc(b.guest.display_name) })}</button>
+        <button class="btn ghost" id="battle-game-b" style="width:100%;margin-top:6px">${t('battle_games_her', { name: esc(b.guest.display_name) })}</button>
+      </div>
+    </div>
+    <div class="muted small" style="text-align:center;padding:8px 14px">🏆 ${t('battle_money_rule')}</div>
+    <div id="battle-chat" class="stream-chat" style="max-height:170px"></div>
+    <div class="stream-chat-input live-typing-bubble">
+      <input id="battle-chat-box" class="input" placeholder="${t('battle_chat_ph')}" maxlength="500" autocomplete="off">
+      <button class="btn small" id="battle-chat-send" style="margin:0">➤</button>
+    </div>
+    <button class="btn ghost" id="battle-leave" style="margin:10px">← Leave</button>`;
+  paintBattleScores();
+  renderBattleChat();
+  $('#battle-unmute').onclick = () => {
+    for (const id of ['battle-vid-a', 'battle-vid-b']) {
+      const v = document.getElementById(id);
+      if (v) { v.muted = false; v.removeAttribute('muted'); v.play().catch(() => {}); }
+    }
+    const ub = $('#battle-unmute');
+    if (ub) ub.classList.add('hidden');
+  };
+  $('#battle-tip-a').onclick = () => openBattleTipSheet(b.host);
+  $('#battle-tip-b').onclick = () => openBattleTipSheet(b.guest);
+  $('#battle-game-a').onclick = () => openBattleGameSheet(b.host_session_id, b.host.display_name);
+  $('#battle-game-b').onclick = () => openBattleGameSheet(b.guest_session_id, b.guest.display_name);
+  const sendIt = () => {
+    const box = $('#battle-chat-box');
+    const v = box.value.trim();
+    if (v) { sendBattleChat(v); box.value = ''; }
+  };
+  $('#battle-chat-send').onclick = sendIt;
+  $('#battle-chat-box').onkeydown = (e) => { if (e.key === 'Enter') sendIt(); };
+  $('#battle-leave').onclick = () => {
+    battleClientTeardown();
+    battleView = null;
+    show('fanLive', {});
+  };
+}
+
+/* Battle tip sheet — her own tip menu, bought into escrow through
+ * the battle endpoint so the spend tags to her side. */
+async function openBattleTipSheet(side) {
+  if (!battleView) return;
+  const { data } = await api(`/models/${side.id}/tip-menu`);
+  const items = (data && data.items) || [];
+  let sheet = $('#tip-sheet');
+  if (sheet) sheet.remove();
+  sheet = document.createElement('div');
+  sheet.id = 'tip-sheet';
+  sheet.className = 'sheet-backdrop';
+  sheet.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-title">💰 ${esc(side.display_name)}'s Tip Menu
+        <span class="muted small">· ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span></div>
+      <div class="muted small" style="margin-bottom:10px">⚔️ ${t('battle_money_rule')}</div>
+      <div class="tip-list">
+        ${items.map((it) => `
+          <button class="tip-item" data-btip="${it.id}">
+            <span class="tip-emoji">${it.emoji}</span>
+            <span class="grow"><span class="title">${esc(it.label)}</span></span>
+            <span class="tip-price">${fmt(it.price_cents)}</span>
+          </button>`).join('') || '<div class="muted">—</div>'}
+      </div>
+      <button class="btn ghost" id="tip-close" style="margin-top:10px">Close</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  $('#tip-close').onclick = () => sheet.remove();
+  sheet.onclick = (e) => { if (e.target === sheet) sheet.remove(); };
+  sheet.querySelectorAll('[data-btip]').forEach((btn) => {
+    btn.onclick = async () => {
+      const raw = btn.dataset.btip;
+      const menuId = /^\d+$/.test(raw) ? Number(raw) : raw;
+      sheet.remove();
+      const { status, data } = await api(`/battles/${battleView.id}/tip`, {
+        method: 'POST', body: JSON.stringify({ side_model_id: side.id, menu_id: menuId }) });
+      if (status === 200) {
+        if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
+        if (data.battle) { battleView.battle = data.battle; paintBattleScores(); }
+        toast('💰 Sent!', 2500);
+      } else if (status === 402) {
+        if (!spendCapToast(data)) { toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500); showBuyCredits(data.needed_cents); }
+      } else {
+        toast("Hmm — that one didn't go through.");
+      }
+    };
+  });
+}
+
+/* Battle Game Category sheet (owner add-on): EITHER model's own game
+ * list, her own prices, opened from the battle stage. Buys ride the
+ * normal per-session game-buy endpoint — the server escrows them
+ * into the pot and tags them to that model's side. */
+async function openBattleGameSheet(sessionId, modelName) {
+  let sheet = $('#game-sheet');
+  if (sheet) sheet.remove();
+  sheet = document.createElement('div');
+  sheet.id = 'game-sheet';
+  sheet.className = 'sheet-backdrop';
+  sheet.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-title">🎲 ${t('game_category')} · ${esc(modelName)}
+        <span class="muted small">· ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span></div>
+      <div id="battle-game-body"><div class="muted" style="text-align:center;padding:14px">…</div></div>
+      <button class="btn ghost" id="game-close" style="margin-top:10px">Close</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  $('#game-close').onclick = () => sheet.remove();
+  sheet.onclick = (e) => { if (e.target === sheet) sheet.remove(); };
+  renderBattleGameBody(sessionId);
+}
+
+async function renderBattleGameBody(sessionId) {
+  const body = $('#battle-game-body');
+  if (!body) return;
+  const { status, data } = await api(`/live/${sessionId}/game-menu`);
+  if (!$('#battle-game-body')) return; // sheet closed mid-fetch
+  if (status !== 200 || !data) {
+    body.innerHTML = '<div class="muted" style="text-align:center;padding:14px">—</div>';
+    return;
+  }
+  if (!data.game_on) {
+    body.innerHTML = `<div class="muted" style="text-align:center;padding:18px 6px">${t('game_off_msg')}</div>`;
+    return;
+  }
+  const secs = [['regular', t('game_regular')], ['explicit', t('game_explicit')], ['special', t('game_specials')]];
+  body.innerHTML = secs.map(([key, title]) => {
+    const items = (data.sections && data.sections[key]) || [];
+    if (!items.length) return '';
+    return `<div class="game-sec-h">${title}</div>` + items.map((it) => {
+      const locked = key === 'explicit' && !data.is_explicit;
+      const resting = key === 'special' && !it.special_ready;
+      const dur = it.duration_sec ? ` <span class="muted small">· ${it.duration_sec}s</span>` : '';
+      const right = resting
+        ? `<span class="muted small">${t('game_resting')}</span>`
+        : `<span class="tip-price">${fmt(it.price_cents)}</span>${locked ? ' <span>🔒</span>' : ''}`;
+      return `<button class="game-row${locked ? ' locked' : ''}${resting ? ' resting' : ''}" data-bgame-buy="${it.id}" ${locked || resting ? 'disabled' : ''}>
+        <span class="grow"><span class="title">${esc(it.label)}</span>${dur}
+        ${locked ? `<div class="muted small">🔒 ${t('game_unlocks_explicit')}</div>` : ''}</span>
+        <span class="game-row-right">${right}</span>
+      </button>`;
+    }).join('');
+  }).join('') || '<div class="muted" style="text-align:center;padding:14px">—</div>';
+  body.querySelectorAll('[data-bgame-buy]').forEach((b) => {
+    b.onclick = () => buyBattleGameItem(sessionId, parseInt(b.dataset.bgameBuy));
+  });
+}
+
+async function buyBattleGameItem(sessionId, itemId) {
+  const { status, data } = await api(`/live/${sessionId}/game-buy`, {
+    method: 'POST', body: JSON.stringify({ item_id: itemId }) });
+  if (status === 200) {
+    if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
+    toast('🎲 Sent! Watch her screen 🔥', 3000);
+    renderBattleGameBody(sessionId); // a bought special flips to Resting
+  } else if (status === 402) {
+    if (!spendCapToast(data)) { toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500); showBuyCredits(data.needed_cents); }
+  } else if (status === 403 && data.error === 'explicit_locked') {
+    toast(`🔒 ${t('game_unlocks_explicit')}`, 3000);
+    renderBattleGameBody(sessionId);
+  } else if (status === 409) {
+    toast(t('game_resting'), 2500);
+    renderBattleGameBody(sessionId);
+  } else if (status === 423) {
+    toast(t('game_off_msg'), 3000);
+    renderBattleGameBody(sessionId);
+  } else {
+    toast("Hmm — that one didn't go through.");
+  }
+}
+
+/* ---------------- shared battle chat ---------------- */
+
+async function loadBattleChat() {
+  const id = (battleView && battleView.id) || (battleMine && battleMine.id);
+  if (!id) return;
+  const { data } = await api(`/battles/${id}/chat`);
+  if (data && data.messages) {
+    battleChatMsgs = data.messages;
+    renderBattleChat();
+  }
+}
+function renderBattleChat() {
+  const html = battleChatMsgs.map((msg) => `
+    <div class="stream-msg${msg.sender_role === 'model' ? ' from-model' : ''}"><b>${esc(msg.sender_name)}</b> ${esc(msg.body)}</div>`).join('');
+  for (const id of ['battle-chat', 'battle-panel-chat']) {
+    const box = document.getElementById(id);
+    if (box) { box.innerHTML = html; box.scrollTop = box.scrollHeight; }
+  }
+}
+async function sendBattleChat(text) {
+  const id = (battleView && battleView.id) || (battleMine && battleMine.id);
+  if (!id) return;
+  const { status, data } = await api(`/battles/${id}/chat`, {
+    method: 'POST', body: JSON.stringify({ body: text }) });
+  if (status === 200 && data.message) {
+    battleChatMsgs.push(data.message);
+    renderBattleChat();
+  } else if (status === 423) {
+    toast(data.error === 'stream_killed' ? '🛑 Battle ended by the safety bot.' : '⚠️ Message blocked', 4000);
+  }
+}
+function onBattleChatMsg(msg) {
+  if (!msg) return;
+  const id = (battleView && battleView.id) || (battleMine && battleMine.id);
+  if (!id) return;
+  if (battleChatMsgs.some((x) => x.id === msg.id)) return; // own echo
+  battleChatMsgs.push(msg);
+  renderBattleChat();
+}
+
+/* ---------------- battler: sheet, cards, panel ---------------- */
+
+async function battleAction(id, action) {
+  const { status, data } = await api(`/battles/${id}/${action}`, { method: 'POST' });
+  if (status !== 200) {
+    toast((data && (data.message || data.error)) || '⚔️ That did not work.', 3500);
+    return null;
+  }
+  if (data.battle) {
+    battleMine = data.battle;
+    onBattleUpdate(data.battle);
+  }
+  return data;
+}
+
+async function refreshMyBattle() {
+  if (!S.user || S.user.role !== 'model') return;
+  const { data } = await api('/battles/mine');
+  if (!data) return;
+  const incoming = (data.pending || []).find((b) => b.status === 'invited'
+    && (b.kind === 'random' || b.guest.id === S.user.id)
+    && !(b.kind === 'random' && ((b.host.id === S.user.id && b.host_accepted) || (b.guest.id === S.user.id && b.guest_accepted))));
+  if (incoming) { battleMine = incoming; showBattleInviteCard(incoming); return; }
+  const ready = (data.pending || []).find((b) => b.status === 'ready_check');
+  if (ready) { battleMine = ready; renderBattlePanel(); }
+}
+
+function battleOppOf(b) {
+  if (!S.user) return b.guest;
+  return b.host.id === S.user.id ? b.guest : b.host;
+}
+
+function showBattleInviteCard(b) {
+  if (!b || !S.user) return;
+  // Door 1/random: only the side who still owes an answer gets the card.
+  if (b.kind === 'scheduled' && b.guest.id !== S.user.id) return;
+  if ((b.kind === 'invite' || b.kind === 'rematch') && b.guest.id !== S.user.id) return;
+  closeBattleCard();
+  const opp = battleOppOf(b);
+  const card = document.createElement('div');
+  card.id = 'battle-card';
+  card.className = 'sheet-backdrop';
+  const when = b.kind === 'scheduled' && b.starts_at
+    ? new Date(String(b.starts_at).replace(' ', 'T') + 'Z') : null;
+  card.innerHTML = `
+    <div class="sheet" style="text-align:center">
+      ${avatarHTML(opp.display_name, 'xl', opp.photo_url)}
+      <div class="sheet-title" style="margin-top:8px">${t('battle_invite_from', { name: esc(opp.display_name) })}</div>
+      <div class="muted">${t('battle_minutes', { n: b.minutes })}</div>
+      ${when ? `<div class="muted">📅 ${esc(when.toLocaleDateString(undefined, { weekday: 'short' }) + ' ' + when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))}</div>` : ''}
+      <div class="muted small" style="margin:10px 0">🏆 ${t('battle_money_rule')}</div>
+      <div id="battle-card-count" style="font-weight:900;font-size:18px;margin-bottom:8px"></div>
+      <button class="btn" id="battle-card-accept" style="width:100%">${t('battle_accept')}</button>
+      <button class="btn ghost" id="battle-card-decline" style="width:100%;margin-top:8px">${t('decline')}</button>
+    </div>`;
+  document.body.appendChild(card);
+  $('#battle-card-accept').onclick = async () => { closeBattleCard(); await battleAction(b.id, 'accept'); };
+  $('#battle-card-decline').onclick = async () => { closeBattleCard(); await battleAction(b.id, 'decline'); };
+  if (b.expires_at) {
+    const endsMs = new Date(String(b.expires_at).replace(' ', 'T') + 'Z').getTime();
+    const tick = () => {
+      const el = document.getElementById('battle-card-count');
+      if (!el) { stopBattleCardTimer(); return; }
+      const left = Math.max(0, Math.round((endsMs - Date.now()) / 1000));
+      el.textContent = `⏱ ${left}s`;
+      if (left <= 0) closeBattleCard();
+    };
+    tick();
+    battleCardTimer = setInterval(tick, 500);
+  }
+}
+function stopBattleCardTimer() {
+  if (battleCardTimer) { clearInterval(battleCardTimer); battleCardTimer = null; }
+}
+function closeBattleCard() {
+  stopBattleCardTimer();
+  const c = document.getElementById('battle-card');
+  if (c) c.remove();
+}
+
+function onBattleInvite(b) {
+  if (!b || !S.user || S.user.role !== 'model') return;
+  battleMine = b;
+  showBattleInviteCard(b);
+  renderBattleSheetBody();
+}
+
+function onBattleUpdate(b) {
+  if (!b) return;
+  if (battleView && battleView.id === b.id) {
+    battleView.battle = b;
+    paintBattleScores();
+  }
+  if (!S.user || (b.host.id !== S.user.id && b.guest.id !== S.user.id)) return;
+  battleMine = b;
+  if (b.status === 'ready_check') {
+    closeBattleCard();
+    renderBattlePanel();
+    renderBattleSheetBody();
+    if (S.view !== 'liveBroadcast') toast('⚔️ Battle ready — open your live to tap Ready!', 4500);
+  } else if (b.status === 'live') {
+    closeBattleCard();
+    renderBattlePanel();
+    battleBattlerConnect(b);
+    startBattleClock(b.ends_at);
+    startBattleMinePoll();
+    loadBattleChat();
+  } else if (['declined', 'expired', 'cancelled'].includes(b.status)) {
+    closeBattleCard();
+    renderBattlePanel();
+    renderBattleSheetBody();
+  }
+}
+
+async function battleBattlerConnect(b) {
+  if (!S.user) return;
+  const oppSession = b.host.id === S.user.id ? b.guest_session_id : b.host_session_id;
+  const opp = battleOppOf(b);
+  if (!oppSession || battlePCs.has(oppSession)) return;
+  battleMakeViewerPC(oppSession, opp.id, 'battle-remote');
+  await api(`/battles/${b.id}/enter`, { method: 'POST' });
+}
+
+function startBattleMinePoll() {
+  if (battleMinePollInt) return;
+  battleMinePollInt = setInterval(async () => {
+    if (!battleMine || battleMine.status !== 'live') { stopBattleMinePoll(); return; }
+    const r = await api(`/battles/${battleMine.id}`);
+    if (r.status === 200 && r.data.battle) {
+      battleMine = r.data.battle;
+      paintBattleScores();
+    }
+  }, 4000);
+}
+
+function renderBattlePanel() {
+  const panel = document.getElementById('battle-panel');
+  if (!panel) return;
+  const b = battleMine;
+  if (!b || !S.user || (b.host.id !== S.user.id && b.guest.id !== S.user.id)) {
+    panel.innerHTML = '';
+    return;
+  }
+  const opp = battleOppOf(b);
+  if (b.status === 'ready_check') {
+    const mine = b.host.id === S.user.id ? b.host_ready : b.guest_ready;
+    const theirs = b.host.id === S.user.id ? b.guest_ready : b.host_ready;
+    panel.innerHTML = `
+      <div class="card" style="margin-top:10px;border-color:#f59e0b">
+        <div style="font-weight:800">⚔️ ${t('battle_vs_line', { name: esc(opp.display_name) })}</div>
+        <div class="muted small" style="margin:4px 0">${t('battle_minutes', { n: b.minutes })} · ${t('battle_money_rule')}</div>
+        <button class="btn" id="battle-ready-btn" style="width:100%;margin-top:6px" ${mine ? 'disabled' : ''}>${mine ? '✓ Ready' : t('battle_ready')}</button>
+        <div class="muted small" style="margin-top:6px">${theirs ? `✓ ${esc(opp.display_name)}` : t('battle_waiting_opp', { name: esc(opp.display_name) })}</div>
+      </div>`;
+    const rb = $('#battle-ready-btn');
+    if (rb) rb.onclick = async () => {
+      rb.disabled = true;
+      const data = await battleAction(b.id, 'ready');
+      if (!data) { rb.disabled = false; return; }
+      if (data.started) toast('⚔️ BATTLE ON!', 3000);
+    };
+    return;
+  }
+  if (b.status === 'live') {
+    panel.innerHTML = `
+      <div class="card" style="margin-top:10px;border-color:#ef4444">
+        <div style="font-weight:800">⚔️ ${t('battle_in_battle')} — ${t('battle_vs_line', { name: esc(opp.display_name) })}</div>
+        <div id="battle-scorebar">${battleScoreHTML(b)}</div>
+        <video id="battle-remote" autoplay playsinline style="width:100%;border-radius:12px;margin-top:6px;background:#000"></video>
+        <div id="battle-panel-chat" class="stream-chat" style="max-height:140px;margin-top:8px"></div>
+        <div class="stream-chat-input live-typing-bubble" style="margin-top:6px">
+          <input id="battle-panel-chat-box" class="input" placeholder="${t('battle_chat_ph')}" maxlength="500" autocomplete="off">
+          <button class="btn small" id="battle-panel-chat-send" style="margin:0">➤</button>
+        </div>
+      </div>`;
+    renderBattleChat();
+    const sendIt = () => {
+      const box = $('#battle-panel-chat-box');
+      const v = box.value.trim();
+      if (v) { sendBattleChat(v); box.value = ''; }
+    };
+    $('#battle-panel-chat-send').onclick = sendIt;
+    $('#battle-panel-chat-box').onkeydown = (e) => { if (e.key === 'Enter') sendIt(); };
+    return;
+  }
+  panel.innerHTML = '';
+}
+
+function onBattleFinished(b, yourCents) {
+  if (!b) return;
+  if (battleView && battleView.id === b.id) battleView.battle = b;
+  const involved = !!(S.user && (b.host.id === S.user.id || b.guest.id === S.user.id));
+  if (involved) battleMine = b;
+  stopBattlePoll();
+  stopBattleMinePoll();
+  showBattleResultCard(b, involved ? yourCents : null);
+}
+
+function showBattleResultCard(b, yourCents) {
+  closeBattleCard();
+  const old = document.getElementById('battle-result');
+  if (old) old.remove();
+  const winner = b.winner_id ? (b.winner_id === b.host.id ? b.host : b.guest) : null;
+  const mine = !!(S.user && (b.host.id === S.user.id || b.guest.id === S.user.id));
+  let headline;
+  if (!winner) headline = t('battle_tied');
+  else if (mine && winner.id === S.user.id) headline = t('battle_you_won');
+  else if (mine) headline = t('battle_you_lost', { name: esc(winner.display_name) });
+  else headline = t('battle_wins', { name: esc(winner.display_name) });
+  const card = document.createElement('div');
+  card.id = 'battle-result';
+  card.className = 'sheet-backdrop';
+  card.innerHTML = `
+    <div class="sheet" style="text-align:center">
+      <div style="font-size:44px">${winner && mine && winner.id === S.user.id ? '👑' : '⚔️'}</div>
+      <div class="sheet-title">${headline}</div>
+      <div style="margin:10px 0">${battleScoreHTML(b)}</div>
+      ${b.forfeit_by ? `<div class="muted small">${t('battle_forfeited')}</div>` : ''}
+      <div class="muted small">${t('battle_pot')}: ${fmt(b.gross_cents)} · 🏠 ${fmt(b.house_cents)} · 🏆 ${fmt(b.winner_cents)} / ${fmt(b.loser_cents)}</div>
+      ${yourCents != null ? `<div style="font-weight:800;margin-top:8px;color:var(--green)">${t('battle_you_earned', { amount: fmt(yourCents) })}</div>` : ''}
+      ${mine ? `<button class="btn" id="battle-rematch-btn" style="width:100%;margin-top:12px">${t('battle_rematch')}</button>` : ''}
+      <button class="btn ghost" id="battle-result-close" style="width:100%;margin-top:8px">Close</button>
+    </div>`;
+  document.body.appendChild(card);
+  stopBattleClock();
+  $('#battle-result-close').onclick = () => {
+    card.remove();
+    closeAllBattlePCs();
+    if (battleView) { battleView = null; if (S.user && S.user.role === 'fan') show('fanLive', {}); }
+    if (mine) { battleMine = null; renderBattlePanel(); if (typeof refreshMe === 'function') refreshMe(); }
+  };
+  const rm = $('#battle-rematch-btn');
+  if (rm) rm.onclick = async () => {
+    const { status } = await api(`/battles/${b.id}/rematch`, { method: 'POST' });
+    if (status === 200) { toast('⚔️ Rematch sent!', 3000); card.remove(); battleMine = null; renderBattlePanel(); }
+    else toast('⚔️ Could not send the rematch.', 3000);
+  };
+}
+
+/* The battle sheet: Door 1 picker, Door 3 pool, Door 2 scheduling,
+ * plus my pending + scheduled battles with their actions. */
+async function openBattleSheet() {
+  let sheet = $('#battle-sheet');
+  if (sheet) sheet.remove();
+  sheet = document.createElement('div');
+  sheet.id = 'battle-sheet';
+  sheet.className = 'sheet-backdrop';
+  sheet.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-title">⚔️ ${t('battle')}</div>
+      <div id="battle-sheet-body"><div class="muted" style="text-align:center;padding:14px">…</div></div>
+      <button class="btn ghost" id="battle-sheet-close" style="margin-top:10px">Close</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  $('#battle-sheet-close').onclick = () => sheet.remove();
+  sheet.onclick = (e) => { if (e.target === sheet) sheet.remove(); };
+  renderBattleSheetBody();
+}
+
+function battleMineRowHTML(b) {
+  const opp = battleOppOf(b);
+  const isGuest = S.user && b.guest.id === S.user.id;
+  let actions = '';
+  if (b.status === 'invited' && isGuest)
+    actions = `<button class="btn small" data-bact="accept" data-bid="${b.id}">${t('battle_accept')}</button>
+      <button class="btn small ghost" data-bact="decline" data-bid="${b.id}">${t('decline')}</button>`;
+  else if (b.status === 'invited')
+    actions = `<span class="muted small">${t('battle_waiting_opp', { name: esc(opp.display_name) })}</span>
+      <button class="btn small ghost" data-bact="cancel" data-bid="${b.id}">✕</button>`;
+  else if (b.status === 'ready_check')
+    actions = `<span class="muted small">👇 Ready check is on your live screen</span>
+      <button class="btn small ghost" data-bact="cancel" data-bid="${b.id}">✕</button>`;
+  else if (b.status === 'scheduled' && !b.confirmed && isGuest)
+    actions = `<button class="btn small" data-bact="accept" data-bid="${b.id}">${t('battle_accept')}</button>
+      <button class="btn small ghost" data-bact="decline" data-bid="${b.id}">${t('decline')}</button>`;
+  else if (b.status === 'scheduled' && b.confirmed)
+    actions = `<button class="btn small" data-bact="start" data-bid="${b.id}">▶ Start</button>
+      <button class="btn small ghost" data-bact="cancel" data-bid="${b.id}">✕</button>`;
+  else if (b.status === 'scheduled')
+    actions = `<span class="muted small">${t('battle_waiting_opp', { name: esc(opp.display_name) })}</span>
+      <button class="btn small ghost" data-bact="cancel" data-bid="${b.id}">✕</button>`;
+  const when = b.starts_at
+    ? new Date(String(b.starts_at).replace(' ', 'T') + 'Z').toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '';
+  return `
+    <div class="row" style="align-items:center;padding:7px 0;border-top:1px solid rgba(139,92,246,.12);gap:6px;flex-wrap:wrap">
+      ${avatarHTML(opp.display_name, 'sm', opp.photo_url)}
+      <span class="grow"><b>${esc(opp.display_name)}</b>
+        <br><span class="muted small">${b.kind === 'scheduled' ? '📅 ' + esc(when) + ' · ' : ''}${t('battle_minutes', { n: b.minutes })}</span></span>
+      ${actions}
+    </div>`;
+}
+
+async function renderBattleSheetBody() {
+  const body = $('#battle-sheet-body');
+  if (!body) return;
+  const [{ data: oppData }, { data: mine }] = await Promise.all([
+    api('/battles/opponents'), api('/battles/mine')]);
+  if (!$('#battle-sheet-body')) return;
+  const opps = (oppData && oppData.opponents) || [];
+  const myRows = [...((mine && mine.pending) || []), ...((mine && mine.scheduled) || [])];
+  body.innerHTML = `
+    <div class="muted small" style="margin-bottom:8px">🏆 ${t('battle_money_rule')}</div>
+    ${myRows.length ? myRows.map(battleMineRowHTML).join('') : ''}
+    <div style="font-weight:800;margin:12px 0 6px">${t('battle_pick_rival')}</div>
+    <div class="row" style="gap:8px;margin-bottom:6px">
+      ${[5, 10, 15].map((n) => `<button class="btn small ${n === battlePickMinutes ? '' : 'ghost'}" data-bmin="${n}">${n} min</button>`).join('')}
+    </div>
+    ${opps.map((o) => `
+    <div class="row" style="align-items:center;padding:6px 0;border-top:1px solid rgba(139,92,246,.12)">
+      ${avatarHTML(o.display_name, 'sm', o.photo_url)}
+      <span class="grow" style="margin-left:8px"><b>${esc(o.display_name)}</b> ${o.live_session_id ? '🔴' : o.is_online ? '🟢' : '⚫'}
+        <br><span class="muted small">@${esc(o.username)}</span></span>
+      <button class="btn small" data-binvite="${o.id}" ${o.in_battle ? 'disabled' : ''}>⚔️</button>
+      <button class="btn small ghost" data-bsched="${o.id}">📅</button>
+    </div>`).join('') || '<div class="muted">—</div>'}
+    <div id="battle-sched-form">
+      ${battleSchedFor ? `
+      <div class="card" style="margin-top:10px">
+        <div style="font-weight:800;margin-bottom:6px">${t('battle_schedule')}</div>
+        <input class="input" id="battle-sched-when" type="datetime-local" style="width:100%">
+        <button class="btn" id="battle-sched-create" style="width:100%;margin-top:8px">📅 ${t('battle_schedule')}</button>
+      </div>` : ''}
+    </div>
+    <div style="font-weight:800;margin:14px 0 6px">${t('battle_random')}</div>
+    ${(mine && mine.pool && mine.pool.in_pool) ? `
+      <div class="muted small">${t('battle_pool_waiting')}</div>
+      <label class="checkbox-row" style="margin-top:8px"><input type="checkbox" id="battle-looking" ${mine.pool.looking ? 'checked' : ''}><span>${t('battle_looking')}</span></label>
+      <button class="btn ghost" id="battle-pool-leave" style="width:100%;margin-top:6px">${t('battle_leave_pool')}</button>`
+    : `<button class="btn" id="battle-pool-enter" style="width:100%">${t('battle_enter_pool')}</button>`}`;
+  body.querySelectorAll('[data-bmin]').forEach((b) => {
+    b.onclick = () => { battlePickMinutes = parseInt(b.dataset.bmin); renderBattleSheetBody(); };
+  });
+  body.querySelectorAll('[data-bact]').forEach((b) => {
+    b.onclick = async () => { await battleAction(parseInt(b.dataset.bid), b.dataset.bact); renderBattleSheetBody(); };
+  });
+  body.querySelectorAll('[data-binvite]').forEach((b) => {
+    b.onclick = async () => {
+      const { status, data } = await api('/battles/invite', {
+        method: 'POST', body: JSON.stringify({ opponent_id: parseInt(b.dataset.binvite), minutes: battlePickMinutes }) });
+      if (status === 200) { toast('⚔️ Invite sent!', 3000); renderBattleSheetBody(); }
+      else toast((data && (data.message || data.error)) || '⚔️ Invite failed.', 3500);
+    };
+  });
+  body.querySelectorAll('[data-bsched]').forEach((b) => {
+    b.onclick = () => { battleSchedFor = parseInt(b.dataset.bsched); renderBattleSheetBody(); };
+  });
+  const createBtn = $('#battle-sched-create');
+  if (createBtn) createBtn.onclick = async () => {
+    const when = $('#battle-sched-when').value;
+    if (!when) return toast('Pick a day and time first 📅');
+    const { status, data } = await api('/battles/schedule', {
+      method: 'POST', body: JSON.stringify({ opponent_id: battleSchedFor,
+        starts_at: new Date(when).toISOString(), minutes: battlePickMinutes }) });
+    if (status === 200) { battleSchedFor = null; toast('📅 Showdown proposed!', 3000); renderBattleSheetBody(); }
+    else toast((data && (data.message || data.error)) || '📅 Could not schedule.', 3500);
+  };
+  const enterBtn = $('#battle-pool-enter');
+  if (enterBtn) enterBtn.onclick = async () => {
+    const { status, data } = await api('/battles/pool/enter', { method: 'POST', body: JSON.stringify({}) });
+    if (status === 200) {
+      if (data.battle) { toast('⚔️ Matched!', 3000); onBattleInvite(data.battle); }
+      else toast('🎲 ' + t('battle_pool_waiting'), 3000);
+      renderBattleSheetBody();
+    } else toast((data && (data.message || data.error)) || '🎲 Pool entry failed.', 3500);
+  };
+  const leaveBtn = $('#battle-pool-leave');
+  if (leaveBtn) leaveBtn.onclick = async () => {
+    await api('/battles/pool/leave', { method: 'POST' });
+    renderBattleSheetBody();
+  };
+  const lookingBox = $('#battle-looking');
+  if (lookingBox) lookingBox.onchange = async () => {
+    await api('/battles/pool/looking', { method: 'POST', body: JSON.stringify({ on: lookingBox.checked }) });
+  };
+}
+
 /* --- FAN: watch (group stream) --- */
 
 async function watchLive(sessionId) {
@@ -19864,6 +21130,7 @@ function endLiveView(msg) {
   // or if this is a fan leaving — fans never hold the lock).
   releaseRotationLock();
   stopFaceGuard(); // Phase 4 guard never outlives the live either (no-op if never armed)
+  battleClientTeardown(); // Phase 6: battle peer connections/pollers die with the live too
   const L = S.live;
   if (L) {
     clearInterval(liveMonitorInt);
