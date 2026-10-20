@@ -6109,8 +6109,22 @@ app.get('/api/me', identMiddleware, requireUser, (req, res) => {
   // primary code, and the email-matched merge offer (one account for
   // both) — the client shows dual-account UI ONLY from these flags.
   const out = { user: { ...getUserPublic(req.user), email: req.user.email || '', ...affiliateFlagsFor(req.user) }, wallet };
-  if (req.user.role === 'model')
-    out.model = db.prepare('SELECT * FROM models WHERE user_id = ?').get(req.user.id);
+  if (req.user.role === 'model') {
+    const mrow = db.prepare('SELECT * FROM models WHERE user_id = ?').get(req.user.id);
+    if (mrow) {
+      // Her own app reads the SAME fan-visible truth as everyone else:
+      // the Manager's presence_override is applied to her own status
+      // too (owner field defect, Oct 19 2026: /api/me used to hand back
+      // the raw models row, so a Manager Online/Offline flip never
+      // showed on her own screen — she kept seeing her own toggle's
+      // state even after a manual refresh, while fans saw the flip).
+      // presence_override rides along so her client can tell her the
+      // Manager is holding her status (and leave her toggle alone).
+      mrow.is_online = effectiveOnline(req.user.presence_override, mrow.is_online) ? 1 : 0;
+      mrow.presence_override = req.user.presence_override || 'auto';
+    }
+    out.model = mrow;
+  }
   if (req.user.role === 'admin' || req.user.role === 'model') out.commission_pct = getCommission();
   res.json(out);
 });
@@ -13507,6 +13521,21 @@ app.post('/api/admin/models/:id/presence', ...adminOnly, (req, res) => {
     return res.status(400).json({ error: 'featured_account', message: 'The featured system account has no presence control.' });
   db.prepare('UPDATE users SET presence_override = ? WHERE id = ?').run(mode, u.id);
   res.json({ id: u.id, presence_override: mode, online: effectiveOnline(mode, u.is_online) });
+});
+
+// Admin: bulk presence — "Put everyone online" (owner, Oct 19 2026:
+// launch day he needs every model online in one tap). Sets the SAME
+// durable presence_override = 'on' as the single-model Online button,
+// for the SAME population that button covers: role='model', not
+// banned, and not the featured system account (which has no presence
+// control by design). Online only — there is no bulk-offline.
+app.post('/api/admin/models/presence-all-online', ...adminOnly, (req, res) => {
+  const covered = `role = 'model' AND banned = 0
+    AND id IN (SELECT user_id FROM models WHERE is_featured = 0)`;
+  const total = db.prepare(`SELECT COUNT(*) AS n FROM users WHERE ${covered}`).get().n;
+  const info = db.prepare(
+    `UPDATE users SET presence_override = 'on' WHERE ${covered}`).run();
+  res.json({ ok: true, updated: info.changes, total });
 });
 
 // Admin: move a model to another storefront section — one tap in the

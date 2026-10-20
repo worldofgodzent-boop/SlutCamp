@@ -244,6 +244,7 @@ const I18N = {
     tap_model_start: 'Tap a model to start chatting!',
     you_online: '🟢 You are ONLINE',
     you_offline: '⚫ You are offline',
+    mgr_presence_locked: '🎛 Your manager set your online status — only they can change it right now',
     st_online: '🟢 online',
     st_offline: '⚫ offline',
     st_paused: '⏸ Paused',
@@ -954,6 +955,7 @@ const I18N = {
     tap_model_start: '¡Toca una modelo para empezar a chatear!',
     you_online: '🟢 Estás EN LÍNEA',
     you_offline: '⚫ Estás desconectada',
+    mgr_presence_locked: '🎛 Tu mánager fijó tu estado en línea — solo él puede cambiarlo por ahora',
     st_online: '🟢 en línea',
     st_offline: '⚫ desconectada',
     st_paused: '⏸ Pausado',
@@ -1664,6 +1666,7 @@ const I18N = {
     tap_model_start: 'Toque em uma modelo para começar a conversar!',
     you_online: '🟢 Você está ONLINE',
     you_offline: '⚫ Você está offline',
+    mgr_presence_locked: '🎛 Seu gerente definiu seu status online — só ele pode mudar isso agora',
     st_online: '🟢 online',
     st_offline: '⚫ offline',
     st_paused: '⏸ Pausada',
@@ -2374,6 +2377,7 @@ const I18N = {
     tap_model_start: 'Touchez un modèle pour commencer à discuter !',
     you_online: '🟢 Vous êtes EN LIGNE',
     you_offline: '⚫ Vous êtes hors ligne',
+    mgr_presence_locked: '🎛 Votre manager a défini votre statut en ligne — lui seul peut le changer pour le moment',
     st_online: '🟢 en ligne',
     st_offline: '⚫ hors ligne',
     st_paused: '⏸ En pause',
@@ -3084,6 +3088,7 @@ const I18N = {
     tap_model_start: 'Tippe auf ein Model, um zu chatten!',
     you_online: '🟢 Du bist ONLINE',
     you_offline: '⚫ Du bist offline',
+    mgr_presence_locked: '🎛 Dein Manager hat deinen Online-Status gesetzt — nur er kann ihn gerade ändern',
     st_online: '🟢 online',
     st_offline: '⚫ offline',
     st_paused: '⏸ Pausiert',
@@ -3794,6 +3799,7 @@ const I18N = {
     tap_model_start: 'Нажмите на модель, чтобы начать общение!',
     you_online: '🟢 Вы ОНЛАЙН',
     you_offline: '⚫ Вы не в сети',
+    mgr_presence_locked: '🎛 Ваш онлайн-статус установил менеджер — сейчас изменить его может только он',
     st_online: '🟢 онлайн',
     st_offline: '⚫ не в сети',
     st_paused: '⏸ На паузе',
@@ -4504,6 +4510,7 @@ const I18N = {
     tap_model_start: 'モデルをタップしてチャットを始めてね！',
     you_online: '🟢 あなたはオンラインです',
     you_offline: '⚫ あなたはオフラインです',
+    mgr_presence_locked: '🎛 オンライン状態はマネージャーが設定しています — 変更できるのはマネージャーだけです',
     st_online: '🟢 オンライン',
     st_offline: '⚫ オフライン',
     st_paused: '⏸ 一時停止中',
@@ -5214,6 +5221,7 @@ const I18N = {
     tap_model_start: '点击一位模特开始聊天！',
     you_online: '🟢 你当前在线',
     you_offline: '⚫ 你当前离线',
+    mgr_presence_locked: '🎛 你的在线状态由管理员设置 — 目前只有管理员可以更改',
     st_online: '🟢 在线',
     st_offline: '⚫ 离线',
     st_paused: '⏸ 已暂停',
@@ -5924,6 +5932,7 @@ const I18N = {
     tap_model_start: '모델을 탭하여 채팅을 시작하세요!',
     you_online: '🟢 온라인 상태입니다',
     you_offline: '⚫ 오프라인 상태입니다',
+    mgr_presence_locked: '🎛 온라인 상태는 매니저가 설정했습니다 — 지금은 매니저만 변경할 수 있어요',
     st_online: '🟢 온라인',
     st_offline: '⚫ 오프라인',
     st_paused: '⏸ 일시 중지됨',
@@ -6634,6 +6643,7 @@ const I18N = {
     tap_model_start: 'Tocca una modella per iniziare a chattare!',
     you_online: '🟢 Sei ONLINE',
     you_offline: '⚫ Sei offline',
+    mgr_presence_locked: '🎛 Il tuo stato online è stato impostato dal manager — per ora può cambiarlo solo lui',
     st_online: '🟢 online',
     st_offline: '⚫ offline',
     st_paused: '⏸ In pausa',
@@ -7344,6 +7354,7 @@ const I18N = {
     tap_model_start: 'Dotknij modelki, aby zacząć czat!',
     you_online: '🟢 Jesteś ONLINE',
     you_offline: '⚫ Jesteś offline',
+    mgr_presence_locked: '🎛 Twój status online ustawił menedżer — na razie tylko on może go zmienić',
     st_online: '🟢 online',
     st_offline: '⚫ offline',
     st_paused: '⏸ Wstrzymane',
@@ -8054,6 +8065,7 @@ const I18N = {
     tap_model_start: 'Tik op een model om te beginnen met chatten!',
     you_online: '🟢 Je bent ONLINE',
     you_offline: '⚫ Je bent offline',
+    mgr_presence_locked: '🎛 Je manager heeft je online status ingesteld — alleen hij kan die nu wijzigen',
     st_online: '🟢 online',
     st_offline: '⚫ offline',
     st_paused: '⏸ Gepauzeerd',
@@ -8764,6 +8776,7 @@ const I18N = {
     tap_model_start: 'Sohbet başlatmak için bir modele dokun!',
     you_online: '🟢 ÇEVRİMİÇİSİN',
     you_offline: '⚫ Çevrimdışısın',
+    mgr_presence_locked: '🎛 Çevrimiçi durumunu yöneticin belirledi — şimdilik yalnızca o değiştirebilir',
     st_online: '🟢 çevrimiçi',
     st_offline: '⚫ çevrimdışı',
     st_paused: '⏸ Duraklatıldı',
@@ -12148,6 +12161,11 @@ async function vChatList(role) {
     </div>`;
   const tgl = $('#online-toggle');
   if (tgl) tgl.onclick = async () => {
+    // Manager-held presence (owner rule, Oct 19 2026): while the
+    // Manager has her forced Online/Offline, her own switch must not
+    // silently fight it — she is told, in words, who holds her status.
+    if (S.model.presence_override === 'on' || S.model.presence_override === 'off')
+      return toast(t('mgr_presence_locked'));
     const next = S.model.is_online ? 0 : 1;
     const { status } = await api('/model/profile', {
       method: 'PUT', body: JSON.stringify({ is_online: next }) });
@@ -19844,6 +19862,22 @@ function presenceAnonId() {
   return id;
 }
 
+/* Keep her own Online/Offline switch in step with S.model after a
+   background refreshMe picks up a change (e.g. the Manager flipped
+   her presence): flip the rendered switch + label in place. Never a
+   re-render, never a reload — a status change is a small state
+   update, safe even mid-anything. */
+function syncOnlineToggleUI() {
+  if (!S.model) return;
+  const tgl = document.getElementById('online-toggle');
+  if (!tgl) return;
+  const on = !!S.model.is_online;
+  tgl.classList.toggle('on', on);
+  const row = tgl.parentElement;
+  const label = row && row.querySelector('span');
+  if (label) label.textContent = on ? t('online_caps') : t('offline_caps');
+}
+
 function presencePing() {
   try {
     if (S.token || S.guestToken) {
@@ -19856,6 +19890,13 @@ function presencePing() {
       }).catch(() => {});
     }
   } catch (e) { /* heartbeat must never break the app */ }
+  // Models ride the same 30s heartbeat to pick up presence changes:
+  // when the Manager flips her Online/Offline, /api/me (which applies
+  // the override to her own status) refreshes S.model and her switch
+  // follows on its own — no manual refresh on her end.
+  if (S.token && S.user && S.user.role === 'model') {
+    refreshMe().then(syncOnlineToggleUI).catch(() => {});
+  }
 }
 
 function startPresenceHeartbeat() {

@@ -434,6 +434,13 @@ async function adminModelsBody() {
   const { data } = await api('/admin/models');
   const models = data.models || [];
   return `
+    <div class="card" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div class="grow">
+        <div style="font-weight:800">🚀 Launch day?</div>
+        <div class="small muted">Put every model Online at once — the same switch as each model's Online button below. (Deactivated models and the featured system account aren't touched.)</div>
+      </div>
+      <button class="btn" id="pres-all-online">Put everyone online</button>
+    </div>
     ${models.map((m) => `
       <div class="card model-article">
         ${m.photo_url
@@ -1791,6 +1798,20 @@ function wireAdminBody(tab) {
       M.reload();
     };
   });
+  const presAllBtn = $('#pres-all-online');
+  if (presAllBtn) presAllBtn.onclick = async () => {
+    if (!confirm('Put EVERY model online? Fans will see all models as Online.')) return;
+    presAllBtn.disabled = true;
+    const { status, data } = await api('/admin/models/presence-all-online', {
+      method: 'POST', body: '{}' });
+    if (status === 200 && data && data.ok) {
+      toast(`🚀 Everyone online — ${data.total} model${data.total === 1 ? '' : 's'} set to Online`);
+      M.reload();
+    } else {
+      toast('⚠️ ' + ((data && data.message) || 'Could not put everyone online'));
+      presAllBtn.disabled = false;
+    }
+  };
   document.querySelectorAll('[data-m-pres]').forEach((b) => {
     b.onclick = async () => {
       const id = b.dataset.mPres;
