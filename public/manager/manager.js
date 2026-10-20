@@ -29,6 +29,28 @@ function pwField(id, autocomplete) {
   return `<div class="pw-wrap"><input class="input" id="${id}" type="password" autocomplete="${autocomplete || 'current-password'}">` +
     `<button type="button" class="pw-eye" data-pw="${id}" aria-label="Show password">👁️</button></div>`;
 }
+/* Portrait lock (owner, 2026-10-20 — same rule as the main app:
+   the Manager stays vertical on the phone, never a landscape app).
+   The Manager manifest declares orientation:portrait (installed
+   Android); this asks the Orientation API to hold portrait too.
+   Chrome only grants it from a user gesture in an
+   installed/fullscreen context, so the ask rides the first
+   pointerdown, once. Refusals are silent and final — iOS has no
+   such API, and the counter-rotation layer in manager.css keeps
+   the shell portrait-shaped there. */
+let portraitLockAsked = false;
+function askPortraitLock() {
+  if (portraitLockAsked) return;
+  portraitLockAsked = true;
+  try {
+    if (window.screen && screen.orientation && typeof screen.orientation.lock === 'function') {
+      const p = screen.orientation.lock('portrait');
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    }
+  } catch (e) { /* no API / refused — the CSS layer still holds */ }
+}
+window.addEventListener('pointerdown', askPortraitLock);
+
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-pw]');
   if (!b) return;

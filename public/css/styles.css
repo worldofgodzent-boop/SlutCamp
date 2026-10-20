@@ -2144,3 +2144,38 @@ body.in-home:has(> #phone > .sc-theme-promo):not(:has(> #phone > .sc-theme-banne
   background: linear-gradient(135deg, var(--pink, #ff5c9e), var(--purple, #8b5cf6));
   color: #fff;
 }
+
+/* ---------- Portrait lock — the app NEVER becomes a landscape app
+ * (owner, 2026-10-20: "We need the app to stay stationary. Just like
+ * Instagram. Doesn't matter if you turn the phone or not, it stays
+ * vertical all the time"). Three layers hold it:
+ *   1. the web app manifest declares orientation:portrait (Android
+ *      installed apps obey it at the OS level);
+ *   2. app.js asks the Orientation API to hold portrait (Android);
+ *   3. THIS layer — the only one WebKit leaves us on iOS, which
+ *      ignores 1 and has no API for 2: when a phone is physically
+ *      turned sideways, the whole shell is counter-rotated back into
+ *      a portrait box instead of reflowing into a wide, squashed
+ *      landscape layout. Everything (scroll, taps, fixed overlays,
+ *      calls, live) lives inside <body>, so the rotated frame stays
+ *      fully usable — it is the same portrait app, never a dead-end
+ *      "rotate your phone" veil. Turning the phone upright hands
+ *      back the normal layout untouched.
+ * Scoped to phone-like viewports only (a SHORT landscape screen
+ * with a coarse pointer), so desktop windows and tablets never
+ * see it. */
+@media (orientation: landscape) and (max-height: 540px) and (pointer: coarse) {
+  body {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vh;   /* landscape's short side = the portrait width  */
+    height: 100vw;  /* landscape's long side  = the portrait height */
+    transform-origin: 0 0;
+    transform: rotate(90deg) translateY(-100%);
+  }
+  /* dvh units still measure the LANDSCAPE viewport (the short side)
+     inside the rotated frame — the two full-height shells must take
+     the rotated frame's height instead. */
+  #phone { height: 100%; }
+  .live-wrap { height: 100%; }
+}

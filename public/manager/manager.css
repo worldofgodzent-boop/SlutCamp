@@ -355,3 +355,26 @@ label.field { display: block; margin-top: 14px; font-size: 14px; font-weight: 60
 @media (prefers-reduced-motion: reduce) {
   #mgr-content > *, .btn, #mgr-nav button, .mgr-top-btn { animation: none; transition: none; }
 }
+
+/* ---------- Portrait lock (owner, 2026-10-20 — same rule as the
+ * main app: the Manager stays vertical on the phone, never a
+ * landscape app). The Manager manifest declares
+ * orientation:portrait and manager.js asks the Orientation API to
+ * hold it (Android); this is the iOS layer WebKit leaves us —
+ * counter-rotate the shell into a portrait box on phone-like
+ * landscape viewports, fully usable, instead of reflowing
+ * sideways. Desktop is never touched (the Manager is desk-first;
+ * the query additionally requires a coarse pointer and a short
+ * landscape screen, i.e. a phone held sideways). */
+@media (orientation: landscape) and (max-height: 540px) and (pointer: coarse) {
+  body {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vh;   /* landscape's short side = the portrait width  */
+    height: 100vw;  /* landscape's long side  = the portrait height */
+    overflow-y: auto;
+    transform-origin: 0 0;
+    transform: rotate(90deg) translateY(-100%);
+  }
+  .mgr-login-wrap { min-height: 100%; }
+}
