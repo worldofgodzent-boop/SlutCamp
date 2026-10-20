@@ -1569,6 +1569,68 @@ try {
   db.prepare(`UPDATE users SET display_name = 'Asce (Admin)' WHERE username = 'admin' AND display_name = 'Corry (Admin)'`).run();
 } catch (e) { /* already renamed */ }
 
+/* One-time migration (Sections Phase 2): id_verifications shipped
+   with model_id UNIQUE — one row per model, forever — which makes
+   co-performer (partner) verification rows impossible. Rebuild the
+   table without it (every existing row copied verbatim; partner rows
+   key off the new co_performer_id column, and the one-own-row rule
+   survives as a partial unique index). Runs only while the stored
+   DDL still carries the old shape.
+   ORDERING (production crash, Oct 19 2026): this MUST run BEFORE the
+   schema block below — that block creates the partial unique index
+   `... WHERE co_performer_id IS NULL`, and on a database created by
+   pre-Phase-2 code the CREATE TABLE IF NOT EXISTS above it is a
+   no-op, so the column exists only once this rebuild has run. When
+   the migration sat after the block, the index statement died with
+   "no such column: co_performer_id" and the boot crashed before the
+   migration was ever reached. Fresh databases skip the migration
+   (no table yet) and take the new DDL from the block itself.
+   The rebuild itself also runs with foreign_keys OFF (the
+   allowRecruiterRole rebuild's pattern): the row copy INSERTs into
+   a table whose co_performer_id references co_performers — a table
+   the schema block creates only AFTER this migration runs — and
+   with FK on, that INSERT dies with "no such table:
+   main.co_performers" even though every copied value is NULL. */
+try {
+  const ddl = db.prepare(`SELECT sql FROM sqlite_master
+    WHERE type = 'table' AND name = 'id_verifications'`).get();
+  if (ddl && /model_id\s+INTEGER\s+NOT\s+NULL\s+UNIQUE/i.test(ddl.sql || '')
+      && !/co_performer_id/i.test(ddl.sql || '')) {
+    db.exec('PRAGMA foreign_keys=OFF');
+    try {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        db.exec('DROP TABLE IF EXISTS id_verifications_partner');
+        db.exec(`CREATE TABLE id_verifications_partner (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          model_id INTEGER NOT NULL REFERENCES users(id),
+          co_performer_id INTEGER REFERENCES co_performers(id),
+          id_front_path TEXT,
+          id_back_path TEXT,
+          selfie_path TEXT,
+          status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
+          submitted_at TEXT NOT NULL DEFAULT (datetime('now')),
+          reviewed_at TEXT,
+          reviewer_note TEXT NOT NULL DEFAULT ''
+        )`);
+        db.exec(`INSERT INTO id_verifications_partner
+          (id, model_id, id_front_path, id_back_path, selfie_path, status,
+           submitted_at, reviewed_at, reviewer_note)
+          SELECT id, model_id, id_front_path, id_back_path, selfie_path, status,
+           submitted_at, reviewed_at, reviewer_note FROM id_verifications`);
+        db.exec('DROP TABLE id_verifications');
+        db.exec('ALTER TABLE id_verifications_partner RENAME TO id_verifications');
+        db.exec('CREATE INDEX IF NOT EXISTS idx_id_verifications_status ON id_verifications(status)');
+        db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_id_verifications_own
+          ON id_verifications(model_id) WHERE co_performer_id IS NULL`);
+        db.exec('COMMIT');
+      } catch (e) { db.exec('ROLLBACK'); throw e; }
+    } finally {
+      db.exec('PRAGMA foreign_keys=ON');
+    }
+  }
+} catch (e) { console.log('[migrate] id_verifications partner rebuild skipped:', e.message); }
+
 // Model contract signatures (independent-contractor agreement).
 // History-preserving since v1.2 (Oct 15, 2026): one row PER SIGNING, so
 // re-signing a new version never overwrites the old record — readers
@@ -1697,47 +1759,6 @@ CREATE TABLE IF NOT EXISTS tip_sends (
 );
 CREATE INDEX IF NOT EXISTS idx_tipsends_model ON tip_sends(model_id, id);
 `);
-
-/* One-time migration (Sections Phase 2): id_verifications shipped
-   with model_id UNIQUE — one row per model, forever — which makes
-   co-performer (partner) verification rows impossible. Rebuild the
-   table without it (every existing row copied verbatim; partner rows
-   key off the new co_performer_id column, and the one-own-row rule
-   survives as a partial unique index). Runs only while the stored
-   DDL still carries the old shape. */
-try {
-  const ddl = db.prepare(`SELECT sql FROM sqlite_master
-    WHERE type = 'table' AND name = 'id_verifications'`).get();
-  if (ddl && /model_id\s+INTEGER\s+NOT\s+NULL\s+UNIQUE/i.test(ddl.sql || '')
-      && !/co_performer_id/i.test(ddl.sql || '')) {
-    db.exec('BEGIN IMMEDIATE');
-    try {
-      db.exec(`CREATE TABLE id_verifications_partner (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        model_id INTEGER NOT NULL REFERENCES users(id),
-        co_performer_id INTEGER REFERENCES co_performers(id),
-        id_front_path TEXT,
-        id_back_path TEXT,
-        selfie_path TEXT,
-        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
-        submitted_at TEXT NOT NULL DEFAULT (datetime('now')),
-        reviewed_at TEXT,
-        reviewer_note TEXT NOT NULL DEFAULT ''
-      )`);
-      db.exec(`INSERT INTO id_verifications_partner
-        (id, model_id, id_front_path, id_back_path, selfie_path, status,
-         submitted_at, reviewed_at, reviewer_note)
-        SELECT id, model_id, id_front_path, id_back_path, selfie_path, status,
-         submitted_at, reviewed_at, reviewer_note FROM id_verifications`);
-      db.exec('DROP TABLE id_verifications');
-      db.exec('ALTER TABLE id_verifications_partner RENAME TO id_verifications');
-      db.exec('CREATE INDEX IF NOT EXISTS idx_id_verifications_status ON id_verifications(status)');
-      db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_id_verifications_own
-        ON id_verifications(model_id) WHERE co_performer_id IS NULL`);
-      db.exec('COMMIT');
-    } catch (e) { db.exec('ROLLBACK'); throw e; }
-  }
-} catch (e) { console.log('[migrate] id_verifications partner rebuild skipped:', e.message); }
 
 /* One-time migration (Oct 15, 2026): contract_signatures shipped with a
    UNIQUE(user_id) constraint — one signature per user, forever — which
