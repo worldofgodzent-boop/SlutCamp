@@ -79,6 +79,10 @@ let BUILD_ID = null;
 try { BUILD_ID = resolveBuildId(); } catch (e) { BUILD_ID = null; }
 const BUILD_TIME = new Date().toISOString();
 const SW_CACHE_NAME = BUILD_ID ? `slutcamp-${BUILD_ID}` : 'slutcamp-v4';
+/* The token stamped into shell asset URLs (index.html / manager shell /
+   sw.js SHELL list) and the value the static middleware accepts as a
+   cache-forever stamp. Mirrors the /sw.js route's fallback expression. */
+const BUILD_STAMP = BUILD_ID || 'v4';
 if (BUILD_ID) console.log(`[build] deploy build id: ${BUILD_ID} (sw cache: ${SW_CACHE_NAME})`);
 else console.warn('[build] ⚠️  no build id available (no RENDER_GIT_COMMIT, no git) — sw cache stays ' + SW_CACHE_NAME);
 
@@ -143,7 +147,11 @@ function indexHtml() {
   if (st.mtimeMs !== _indexCache.mtimeMs) {
     _indexCache = { mtimeMs: st.mtimeMs, html: fs.readFileSync(INDEX_HTML_PATH, 'utf8') };
   }
-  return _indexCache.html;
+  /* Stamp the '__BUILD__' tokens in the shell's asset URLs with this
+     deploy's build id (same mechanism as /sw.js): the stamped URLs are
+     what the static middleware serves as immutable, and every deploy
+     changes them, so a cached-forever asset can never go stale. */
+  return _indexCache.html.split('__BUILD__').join(BUILD_STAMP);
 }
 function inviteMeta(html, meta) {
   let out = html
@@ -203,6 +211,39 @@ app.get('/sw.js', (req, res) => {
     _swSource = null;
     return res.sendFile(swPath);
   }
+});
+
+/* App shells, served stamped + never cached (bandwidth fix, Oct 19
+   2026 — ~/workspace/projects/bandwidth-followups-2026-10-19.md §1–2).
+   express.static would serve index.html / the Manager shell VERBATIM,
+   with the literal '__BUILD__' token still in their asset URLs, so —
+   exactly like /sw.js above — the shells are intercepted BEFORE the
+   static middleware and sent through the stamping readers. The HTML
+   itself keeps 'public, max-age=0': a deploy must reach every phone
+   immediately (the forced-refresh rule); only the stamped asset URLs
+   it points at are cache-forever. The invite middleware registered
+   above still wins for /?invite=… and /affiliate/:code — it responds
+   without calling next(), so plain '/' lands here. */
+const MANAGER_INDEX_PATH = path.join(__dirname, 'public', 'manager', 'index.html');
+let _mgrIndexCache = { mtimeMs: 0, html: '' };
+function managerIndexHtml() {
+  const st = fs.statSync(MANAGER_INDEX_PATH);
+  if (st.mtimeMs !== _mgrIndexCache.mtimeMs) {
+    _mgrIndexCache = { mtimeMs: st.mtimeMs, html: fs.readFileSync(MANAGER_INDEX_PATH, 'utf8') };
+  }
+  return _mgrIndexCache.html.split('__BUILD__').join(BUILD_STAMP);
+}
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  if (req.path === '/' || req.path === '/index.html') {
+    return res.type('html').set('Cache-Control', 'public, max-age=0').send(indexHtml());
+  }
+  if (req.path === '/manager' || req.path === '/manager/' || req.path === '/manager/index.html') {
+    try {
+      return res.type('html').set('Cache-Control', 'public, max-age=0').send(managerIndexHtml());
+    } catch (err) { return next(); }
+  }
+  return next();
 });
 
 /* ------------------------------------------------------------------ */
@@ -536,7 +577,40 @@ app.get('/sitemap.xml', (req, res) => {
     .send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`);
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+/* Static assets (bandwidth fix, Oct 19 2026 — follow-ups §1): origin
+   used to send 'public, max-age=0' on EVERYTHING, so Cloudflare cached
+   nothing and every app open re-pulled the whole shell over Render's
+   metered egress. Two serving passes now:
+     1. A request whose ?v= carries the current build stamp is served
+        immutable for a year — the URL is versioned by the deploy, so
+        the bytes at that URL can never change (a deploy mints new
+        URLs). Cloudflare's cache rules respect these origin headers.
+     2. Everything else keeps today's max-age=0, EXCEPT /img/ and
+        /icons/ (logo, icons, announcement art), which are immutable
+        unstamped too: their filenames only change when the asset is
+        replaced, and the shells above re-stamp on every deploy.
+   HTML, /sw.js and /api/* are never cached — handled by their own
+   routes/middleware above and below, not by this pair. */
+const PUBLIC_DIR = path.join(__dirname, 'public');
+const IMMUTABLE_CC = 'public, max-age=31536000, immutable';
+const stampedStatic = express.static(PUBLIC_DIR, {
+  setHeaders: (res) => { res.setHeader('Cache-Control', IMMUTABLE_CC); },
+});
+app.use((req, res, next) => {
+  if ((req.method === 'GET' || req.method === 'HEAD') &&
+      req.query && req.query.v === BUILD_STAMP) {
+    return stampedStatic(req, res, next);
+  }
+  return next();
+});
+app.use(express.static(PUBLIC_DIR, {
+  setHeaders: (res, filePath) => {
+    const rel = path.relative(PUBLIC_DIR, filePath).split(path.sep).join('/');
+    if (rel.startsWith('img/') || rel.startsWith('icons/')) {
+      res.setHeader('Cache-Control', IMMUTABLE_CC);
+    }
+  },
+}));
 
 /* ------------------------------------------------------------------ */
 /* Slut Manager gate (defense in depth). Every /api/admin/* endpoint    */
@@ -574,7 +648,14 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 app.use('/uploads', (req, res, next) => {
   if (/^\/(?:photo-[a-f0-9]+\.(?:jpg|png|webp)|preview-[a-f0-9]+\.mp4)$/.test(req.path)) return next();
   return res.status(404).end();
-}, express.static(UPLOAD_DIR));
+}, express.static(UPLOAD_DIR, {
+  /* Whitelisted upload names are crypto-random (multer storage above:
+     photo-<randomBytes hex> / preview-<hex>), i.e. content-addressed —
+     a re-upload always lands under a NEW name, so the bytes at a given
+     URL never change and immutable caching can never serve a stale
+     photo or preview video (follow-ups §1). */
+  setHeaders: (res) => { res.setHeader('Cache-Control', IMMUTABLE_CC); },
+}));
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -15150,7 +15231,9 @@ app.get(['/manager', '/manager/'], (req, res) => {
 });
 
 app.get(/^\/(?!api\/).*/, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  /* Same stamped shell as the '/' route above (was sendFile of the raw
+     file, which carried the unstamped '__BUILD__' token). */
+  res.type('html').set('Cache-Control', 'public, max-age=0').send(indexHtml());
 });
 
 /* ------------------------------------------------------------------ */
@@ -15174,8 +15257,11 @@ app.get(/^\/(?!api\/).*/, (req, res) => {
 /* deleted too — an empty shell whose messages were its only content  */
 /* — and so are long-empty shells untouched past the window, unless   */
 /* an open dispute touches them. Reactions and edit history cascade   */
-/* with their messages (ON DELETE CASCADE, foreign_keys ON). Freed    */
-/* SQLite pages are reused by future writes; no vacuum, by design.    */
+/* with their messages (ON DELETE CASCADE, foreign_keys ON). Media    */
+/* attached to swept messages (media_items rows + files) expires in   */
+/* the same pass, under the same two protections (step 2 below).      */
+/* Freed SQLite pages are reused by future writes; no vacuum, by      */
+/* design.                                                            */
 /* ------------------------------------------------------------------ */
 const CHAT_RETENTION_DAYS = 7;
 
@@ -15205,7 +15291,38 @@ function sweepChatRetention(retentionDays = CHAT_RETENTION_DAYS) {
     if (countLeft.get(c.id).n === 0) emptied.push(c.id);
   }
 
-  // 2. Long-empty shells: no messages at all, untouched past the window.
+  // 2. Media pass (owner, Oct 19 2026): the media behind chat messages
+  // (media_items rows + their files on disk) expires on the SAME
+  // retention rhythm as the text — before this, a swept message's
+  // photo/video/voice file lingered until the biweekly 14-day pass,
+  // which is exactly the re-usable-content window the owner wants
+  // closed ("keep them spending and wanting more"). Same protections,
+  // no exceptions added: official notices threads and conversations
+  // touching an open dispute keep their media whole, and media a
+  // surviving message still points at is never touched (defensive:
+  // media and its message are created together, so their ages match —
+  // the reference check keeps any legacy mismatch safe). Unlock rows
+  // cascade with the media row.
+  const agedMedia = db.prepare(`
+    SELECT mi.id, mi.file_path, c.fan_id, c.model_id, c.is_official
+    FROM media_items mi JOIN conversations c ON c.id = mi.conversation_id
+    WHERE mi.created_at < ${cutoff}`).all();
+  const mediaStillReferenced = db.prepare(
+    'SELECT COUNT(*) AS n FROM messages WHERE media_id = ?');
+  const delMedia = db.prepare('DELETE FROM media_items WHERE id = ?');
+  let mediaDeleted = 0;
+  for (const m of agedMedia) {
+    if (isProtected(m)) continue;
+    if (mediaStillReferenced.get(m.id).n > 0) continue;
+    try {
+      const fp = path.isAbsolute(m.file_path) ? m.file_path
+        : path.join(__dirname, m.file_path);
+      if (fs.existsSync(fp)) fs.unlinkSync(fp);
+    } catch (e) { /* file already gone — the row still goes */ }
+    mediaDeleted += delMedia.run(m.id).changes;
+  }
+
+  // 3. Long-empty shells: no messages at all, untouched past the window.
   const shells = db.prepare(`
     SELECT c.id, c.fan_id, c.model_id, c.is_official FROM conversations c
     WHERE c.updated_at < ${cutoff}
@@ -15216,7 +15333,7 @@ function sweepChatRetention(retentionDays = CHAT_RETENTION_DAYS) {
   const delConv = db.prepare('DELETE FROM conversations WHERE id = ?');
   for (const id of new Set(emptied)) { delConv.run(id); conversationsDeleted++; }
 
-  return { messages_deleted: messagesDeleted,
+  return { messages_deleted: messagesDeleted, media_deleted: mediaDeleted,
            conversations_deleted: conversationsDeleted, retention_days: days };
 }
 
