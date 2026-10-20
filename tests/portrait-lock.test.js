@@ -148,7 +148,7 @@ test('CSS layer: shells counter-rotate into a portrait box on phone landscape', 
     assert.match(block, /width: 100vh/, `${name}: portrait width = landscape short side`);
     assert.match(block, /height: 100vw/, `${name}: portrait height = landscape long side`);
     assert.match(block, /transform-origin: 0 0/, `${name}: rotation origin pinned`);
-    assert.match(block, /transform: rotate\(90deg\) translateY\(-100%\)/, `${name}: counter-rotation applied`);
+    assert.match(block, /transform: rotate\(-90deg\) translateX\(-100%\)/, `${name}: counter-rotation applied`);
     assert.match(block, /position: fixed/, `${name}: shell taken out of the rotated flow`);
   }
   // Inside the rotated frame, dvh still measures the landscape
