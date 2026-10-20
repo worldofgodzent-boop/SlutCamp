@@ -797,7 +797,8 @@ async function adminIdChecksBody() {
       ${pending.map((r) => `
         <div class="card" style="padding:12px;margin-bottom:10px;border-color:var(--yellow)">
           <div class="row" style="align-items:center;margin-bottom:8px">
-            <span class="grow"><b>${esc(r.display_name)}</b> <span class="small muted">@${esc(r.username)}</span><br>
+            <span class="grow"><b>${esc(r.display_name)}</b> <span class="small muted">@${esc(r.username)}</span>
+              ${r.is_partner ? '<span class="small" style="color:var(--purple)">👥 Co-performer</span>' : ''}<br>
               <span class="small muted">Submitted ${esc(r.submitted_at || '')}</span></span>
           </div>
           <div class="row" style="gap:8px;margin-bottom:10px">
@@ -816,7 +817,8 @@ async function adminIdChecksBody() {
       <h3>Reviewed (${decided.length})</h3>
       ${decided.map((r) => `
         <div class="card" style="padding:10px;margin-bottom:8px">
-          <b>${esc(r.display_name)}</b> <span class="small muted">@${esc(r.username)}</span><br>
+          <b>${esc(r.display_name)}</b> <span class="small muted">@${esc(r.username)}</span>
+          ${r.is_partner ? '<span class="small" style="color:var(--purple)">👥 Co-performer</span>' : ''}<br>
           <span class="small">${badge(r.status)}</span>
           <span class="small muted"> · reviewed ${esc(r.reviewed_at || '')}</span>
           ${r.reviewer_note ? `<br><span class="small muted">Note: ${esc(r.reviewer_note)}</span>` : ''}
