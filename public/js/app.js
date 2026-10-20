@@ -252,6 +252,8 @@ const I18N = {
     book_1on1: '📅 Book 1-on-1',
     book_title: 'Book a private 1-on-1 live',
     chat_paused_banner: '⚠️ This chat is paused by the safety monitor.',
+    safety_blocked_info: 'That message wasn\'t sent 💋 Personal contact info (phone numbers, emails, socials) can\'t be shared on SlutCamp — keep the conversation here, where you\'re both protected.',
+    bio_not_allowed_info: 'That bio couldn\'t be saved 💋 Bios can\'t mention other websites, platforms, link pages, payment apps, or contact info — SlutCamp is your whole storefront, and everything here stays protected.',
     sharing_not_allowed: 'Sharing contact info is not allowed.',
     msgs_cost: 'Messages cost {price} each',
     free_msgs_left: '🎁 {n} FREE messages left — then sign up to continue',
@@ -967,6 +969,8 @@ const I18N = {
     book_1on1: '📅 Reservar 1 a 1',
     book_title: 'Reserva un en vivo privado 1 a 1',
     chat_paused_banner: '⚠️ Este chat fue pausado por el monitor de seguridad.',
+    safety_blocked_info: 'Ese mensaje no se envió 💋 La información de contacto personal (números de teléfono, correos, redes sociales) no se puede compartir en SlutCamp — mantén la conversación aquí, donde ambos están protegidos.',
+    bio_not_allowed_info: 'Esa biografía no se pudo guardar 💋 Las biografías no pueden mencionar otros sitios web, plataformas, páginas de enlaces, apps de pago ni información de contacto — SlutCamp es todo tu escaparate, y todo aquí permanece protegido.',
     sharing_not_allowed: 'No está permitido compartir datos de contacto.',
     msgs_cost: 'Cada mensaje cuesta {price}',
     free_msgs_left: '🎁 Te quedan {n} mensajes GRATIS — luego regístrate para seguir',
@@ -1682,6 +1686,8 @@ const I18N = {
     book_1on1: '📅 Reservar 1 a 1',
     book_title: 'Reserve uma live privada 1 a 1',
     chat_paused_banner: '⚠️ Esta conversa foi pausada pelo monitor de segurança.',
+    safety_blocked_info: 'Essa mensagem não foi enviada 💋 Informações de contato pessoais (telefones, e-mails, redes sociais) não podem ser compartilhadas no SlutCamp — mantenham a conversa aqui, onde vocês dois estão protegidos.',
+    bio_not_allowed_info: 'Essa bio não pôde ser salva 💋 Bios não podem mencionar outros sites, plataformas, páginas de links, apps de pagamento ou informações de contato — a SlutCamp é toda a sua vitrine, e tudo aqui fica protegido.',
     sharing_not_allowed: 'Não é permitido compartilhar informações de contato.',
     msgs_cost: 'Cada mensagem custa {price}',
     free_msgs_left: '🎁 Restam {n} mensagens GRÁTIS — depois cadastre-se para continuar',
@@ -2397,6 +2403,8 @@ const I18N = {
     book_1on1: '📅 Réserver un 1-à-1',
     book_title: 'Réserver un direct privé en 1-à-1',
     chat_paused_banner: '⚠️ Cette discussion est mise en pause par le moniteur de sécurité.',
+    safety_blocked_info: 'Ce message n\'a pas été envoyé 💋 Les coordonnées personnelles (numéros de téléphone, e-mails, réseaux sociaux) ne peuvent pas être partagées sur SlutCamp — gardez la conversation ici, où vous êtes tous les deux protégés.',
+    bio_not_allowed_info: 'Cette bio n\'a pas pu être enregistrée 💋 Les bios ne peuvent pas mentionner d\'autres sites web, plateformes, pages de liens, applications de paiement ni coordonnées — SlutCamp est toute votre vitrine, et tout reste protégé ici.',
     sharing_not_allowed: 'Le partage de coordonnées n\'est pas autorisé.',
     msgs_cost: 'Les messages coûtent {price} chacun',
     free_msgs_left: '🎁 {n} messages GRATUITS restants — puis inscrivez-vous pour continuer',
@@ -3112,6 +3120,8 @@ const I18N = {
     book_1on1: '📅 1-zu-1 buchen',
     book_title: 'Privates 1-zu-1 Live buchen',
     chat_paused_banner: '⚠️ Dieser Chat wurde vom Sicherheitsmonitor pausiert.',
+    safety_blocked_info: 'Diese Nachricht wurde nicht gesendet 💋 Persönliche Kontaktdaten (Telefonnummern, E-Mails, Social Media) dürfen auf SlutCamp nicht geteilt werden — behalte das Gespräch hier, wo ihr beide geschützt seid.',
+    bio_not_allowed_info: 'Diese Bio konnte nicht gespeichert werden 💋 Bios dürfen keine anderen Websites, Plattformen, Linkseiten, Zahlungs-Apps oder Kontaktdaten erwähnen — SlutCamp ist deine gesamte Verkaufsfläche, und hier bleibt alles geschützt.',
     sharing_not_allowed: 'Das Teilen von Kontaktdaten ist nicht erlaubt.',
     msgs_cost: 'Nachrichten kosten jeweils {price}',
     free_msgs_left: '🎁 {n} KOSTENLOSE Nachrichten übrig — dann registriere dich, um fortzufahren',
@@ -3827,6 +3837,8 @@ const I18N = {
     book_1on1: '📅 Забронировать 1-на-1',
     book_title: 'Забронировать приватный эфир 1-на-1',
     chat_paused_banner: '⚠️ Этот чат приостановлен монитором безопасности.',
+    safety_blocked_info: 'Это сообщение не было отправлено 💋 Личные контакты (номера телефонов, e-mail, соцсети) нельзя передавать на SlutCamp — оставьте разговор здесь, где вы оба защищены.',
+    bio_not_allowed_info: 'Не удалось сохранить описание 💋 В описании нельзя упоминать другие сайты, платформы, страницы ссылок, платёжные приложения или контакты — SlutCamp — это вся ваша витрина, и здесь всё остаётся под защитой.',
     sharing_not_allowed: 'Обмен контактной информацией запрещён.',
     msgs_cost: 'Сообщения стоят {price} каждое',
     free_msgs_left: '🎁 Осталось {n} БЕСПЛАТНЫХ сообщений — затем зарегистрируйтесь, чтобы продолжить',
@@ -4542,6 +4554,8 @@ const I18N = {
     book_1on1: '📅 1対1を予約',
     book_title: 'プライベート1対1ライブを予約',
     chat_paused_banner: '⚠️ このチャットは安全モニターにより一時停止されています。',
+    safety_blocked_info: 'このメッセージは送信されませんでした 💋 個人の連絡先（電話番号、メール、SNS）はSlutCampで共有できません — 会話はここで続けましょう。ここなら二人とも守られます。',
+    bio_not_allowed_info: 'このプロフィールは保存できませんでした 💋 プロフィールには他のウェブサイト、プラットフォーム、リンクページ、支払いアプリ、連絡先を記載できません — SlutCampがあなたのすべての店舗であり、ここではすべてが保護されます。',
     sharing_not_allowed: '連絡先の共有は禁止されています。',
     msgs_cost: 'メッセージは1通 {price} です',
     free_msgs_left: '🎁 無料メッセージ残り {n}通 — その後は登録して続けてね',
@@ -5257,6 +5271,8 @@ const I18N = {
     book_1on1: '📅 预约一对一',
     book_title: '预约一对一私密直播',
     chat_paused_banner: '⚠️ 此聊天已被安全监控暂停。',
+    safety_blocked_info: '这条消息没有发送出去 💋 个人联系方式（电话号码、电子邮件、社交账号）不能在 SlutCamp 上分享 — 把对话留在这里，在这里你们双方都受到保护。',
+    bio_not_allowed_info: '这条简介无法保存 💋 简介不能提及其他网站、平台、链接页、支付应用或联系方式 — SlutCamp 就是你的整个店面，这里的一切都受到保护。',
     sharing_not_allowed: '不允许分享联系方式。',
     msgs_cost: '每条消息收费 {price}',
     free_msgs_left: '🎁 还剩 {n} 条免费消息 — 之后请注册继续',
@@ -5972,6 +5988,8 @@ const I18N = {
     book_1on1: '📅 1:1 예약하기',
     book_title: '프라이빗 1:1 라이브 예약하기',
     chat_paused_banner: '⚠️ 이 채팅은 안전 모니터에 의해 일시 중지되었습니다.',
+    safety_blocked_info: '이 메시지는 전송되지 않았어요 💋 개인 연락처(전화번호, 이메일, SNS)는 SlutCamp에서 공유할 수 없어요 — 대화는 여기에서 이어가세요. 여기서는 두 분 모두 보호받습니다.',
+    bio_not_allowed_info: '이 소개글은 저장되지 않았어요 💋 소개글에는 다른 웹사이트, 플랫폼, 링크 페이지, 결제 앱, 연락처를 언급할 수 없어요 — SlutCamp가 당신의 전체 매장이며, 여기서는 모든 것이 보호됩니다.',
     sharing_not_allowed: '연락처 공유는 허용되지 않습니다.',
     msgs_cost: '메시지 1개당 {price}가 듭니다',
     free_msgs_left: '🎁 무료 메시지 {n}개 남음 — 이후 계속하려면 가입하세요',
@@ -6687,6 +6705,8 @@ const I18N = {
     book_1on1: '📅 Prenota 1-a-1',
     book_title: 'Prenota una live privata 1-a-1',
     chat_paused_banner: '⚠️ Questa chat è in pausa dal monitoraggio di sicurezza.',
+    safety_blocked_info: 'Quel messaggio non è stato inviato 💋 I contatti personali (numeri di telefono, e-mail, social) non possono essere condivisi su SlutCamp — tieni la conversazione qui, dove siete entrambi protetti.',
+    bio_not_allowed_info: 'Impossibile salvare quella bio 💋 Le bio non possono menzionare altri siti web, piattaforme, pagine di link, app di pagamento o contatti — SlutCamp è tutta la tua vetrina, e qui tutto resta protetto.',
     sharing_not_allowed: 'Condividere informazioni di contatto non è consentito.',
     msgs_cost: 'I messaggi costano {price} l\'uno',
     free_msgs_left: '🎁 {n} messaggi GRATUITI rimasti — poi registrati per continuare',
@@ -7402,6 +7422,8 @@ const I18N = {
     book_1on1: '📅 Zarezerwuj 1 na 1',
     book_title: 'Zarezerwuj prywatną transmisję 1 na 1 na żywo',
     chat_paused_banner: '⚠️ Ten czat został wstrzymany przez monitor bezpieczeństwa.',
+    safety_blocked_info: 'Ta wiadomość nie została wysłana 💋 Osobistych danych kontaktowych (numerów telefonów, e-maili, mediów społecznościowych) nie można udostępniać na SlutCamp — prowadź rozmowę tutaj, gdzie oboje jesteście chronieni.',
+    bio_not_allowed_info: 'Nie udało się zapisać tego opisu 💋 Opisy nie mogą wspominać innych stron, platform, stron z linkami, aplikacji płatniczych ani danych kontaktowych — SlutCamp to cała Twoja witryna, a tutaj wszystko jest chronione.',
     sharing_not_allowed: 'Udostępnianie danych kontaktowych jest niedozwolone.',
     msgs_cost: 'Wiadomości kosztują {price} każda',
     free_msgs_left: '🎁 Pozostało {n} DARMOWYCH wiadomości — potem zarejestruj się, aby kontynuować',
@@ -8117,6 +8139,8 @@ const I18N = {
     book_1on1: '📅 Boek 1-op-1',
     book_title: 'Boek een privé 1-op-1 live',
     chat_paused_banner: '⚠️ Deze chat is gepauzeerd door de veiligheidsmonitor.',
+    safety_blocked_info: 'Dat bericht is niet verzonden 💋 Persoonlijke contactgegevens (telefoonnummers, e-mails, socials) mogen niet worden gedeeld op SlutCamp — houd het gesprek hier, waar jullie allebei beschermd zijn.',
+    bio_not_allowed_info: 'Die bio kon niet worden opgeslagen 💋 Bio\'s mogen geen andere websites, platforms, linkpagina\'s, betaalapps of contactgegevens vermelden — SlutCamp is je hele winkel, en hier blijft alles beschermd.',
     sharing_not_allowed: 'Contactgegevens delen is niet toegestaan.',
     msgs_cost: 'Berichten kosten {price} per stuk',
     free_msgs_left: '🎁 {n} GRATIS berichten over — meld je daarna aan om door te gaan',
@@ -8832,6 +8856,8 @@ const I18N = {
     book_1on1: '📅 Bire Bir Rezervasyon',
     book_title: 'Özel bire bir canlı rezervasyonu yap',
     chat_paused_banner: '⚠️ Bu sohbet güvenlik izleyicisi tarafından duraklatıldı.',
+    safety_blocked_info: 'Bu mesaj gönderilmedi 💋 Kişisel iletişim bilgileri (telefon numaraları, e-postalar, sosyal medya) SlutCamp\'ta paylaşılamaz — sohbeti burada tutun, burada ikiniz de korunursunuz.',
+    bio_not_allowed_info: 'Bu biyografi kaydedilemedi 💋 Biyografilerde başka web siteleri, platformlar, bağlantı sayfaları, ödeme uygulamaları veya iletişim bilgileri yer alamaz — SlutCamp senin tüm vitrinin ve burada her şey korunur.',
     sharing_not_allowed: 'İletişim bilgisi paylaşmak yasaktır.',
     msgs_cost: 'Mesajlar tanesi {price}',
     free_msgs_left: '🎁 {n} ÜCRETSİZ mesaj kaldı — sonra devam etmek için kaydol',
@@ -14230,9 +14256,14 @@ async function vModelSettings() {
   if (sVoice) sVoice.oninput = () => { $('#s-voice-label').textContent = fmt(parseInt(sVoice.value)); };
   if (sBk) sBk.oninput = () => { $('#s-bk-label').textContent = fmt(parseInt(sBk.value)); };
   $('#s-bio-save').onclick = async () => {
-    const { status } = await api('/model/profile', {
+    const { status, data } = await api('/model/profile', {
       method: 'PUT', body: JSON.stringify({ bio: $('#s-bio').value }) });
-    toast(status === 200 ? t('bio_saved') : t('couldnt_save'));
+    if (status === 400 && data && data.error === 'bio_not_allowed') {
+      // The whole save was rejected — explain on screen why.
+      toast(t('bio_not_allowed_info'), 6000);
+    } else {
+      toast(status === 200 ? t('bio_saved') : t('couldnt_save'));
+    }
   };
   // Discovery tags picker — tap to toggle, max 5, saved via the profile PUT
   let selTags = myTags.slice();
@@ -15826,16 +15857,12 @@ async function saveEditMsg(msgId) {
     method: 'POST', body: JSON.stringify({ body: text }),
   });
   const m = S.messages.find((x) => x.id === msgId);
-  if (status === 200 && data.flagged) {
-    // Safety monitor blocked the edit — original text stays, chat paused.
-    // Same toast + paused state as a blocked send (see sendMessage).
+  if (status === 200 && data.blocked) {
+    // Safety hard-block: the edit never landed — original text stays and
+    // the chat keeps flowing (no pause). Explain on screen why.
     editingMsgId = null;
     if (m) updateMessageBubble(m);
-    toast(`⚠️ ${data.strikes >= 3 ? 'FLAGGED FOR REVIEW — ' : ''}Contact sharing is not allowed. Chat paused.`);
-    if (S.conv) {
-      S.conv.is_paused = true;
-      show('chat', { conv: S.conv, keepMessages: true });
-    }
+    toast(t('safety_blocked_info'), 6000);
     return;
   }
   if (status === 200) {
@@ -15963,11 +15990,13 @@ async function sendMessage() {
   const { status, data } = await api('/messages', {
     method: 'POST', body: JSON.stringify({ conversation_id: S.conv.id, body: text }),
   });
-  if (status === 200 && data.flagged) {
-    // Safety monitor blocked it
-    toast(`⚠️ ${data.strikes >= 3 ? 'FLAGGED FOR REVIEW — ' : ''}Contact sharing is not allowed. Chat paused.`);
-    S.conv.is_paused = true;
-    show('chat', { conv: S.conv, keepMessages: true });
+  if (status === 200 && data.blocked) {
+    // Safety hard-block: the message was never sent and nothing was
+    // charged. The chat is NOT paused — explain why on screen and put
+    // the text back so she/he can reword it.
+    toast(t('safety_blocked_info'), 6000);
+    input.value = text;
+    syncChatComposer();
     return;
   }
   if (status === 200) {

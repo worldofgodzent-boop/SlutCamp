@@ -233,7 +233,15 @@ test('pin: the Manager admin→model message bell carries its thread link', () =
   assert.ok(stmt.includes('`/#chat/${conv.id}`'), 'route bell must link to its thread');
 });
 
-test('pin: exactly 25 thread links exist server-side — no more, no fewer', () => {
+test('pin: the Manager admin→fan message bell carries its thread link', () => {
+  const start = server.indexOf("app.post('/api/admin/fans/:id/message'");
+  assert.ok(start >= 0, 'admin→fan message route located');
+  const stmt = notifyStatement(server.slice(start, start + 1600));
+  assert.ok(stmt.startsWith("notifyUser(f.id, 'message'"), 'route bell is the fan message bell');
+  assert.ok(stmt.includes('`/#chat/${conv.id}`'), 'route bell must link to its thread');
+});
+
+test('pin: exactly 27 thread links exist server-side — no more, no fewer', () => {
   // 17 named functions + the Manager route. (The thread-tap broadcast
   // joined the list when it shipped — its bell demonstrates the
   // feature; the 13-languages broadcast joined later the same day;
@@ -256,9 +264,14 @@ test('pin: exactly 25 thread links exist server-side — no more, no fewer', () 
   // sanctioned pattern; the faceguard broadcast joined with the
   // Phase 4 face-count guard announcement — its bell links each
   // model to her official Notices thread, the same sanctioned
-  // pattern.) Any other bell gaining a '/#chat/' link
-  // (or one of the 25 losing it) trips this count.
-  assert.equal(server.split('/#chat/${conv.id}').length - 1, 25);
+  // pattern; the safety hard-block broadcast joined with the Safety
+  // build — its bell links each model to her official Notices
+  // thread, the same sanctioned pattern; and the Manager warn-a-fan
+  // route joined with the same build — its bell links the fan to
+  // his admin thread, an exact mirror of the admin→model message
+  // bell above.) Any other bell gaining a '/#chat/' link
+  // (or one of the 27 losing it) trips this count.
+  assert.equal(server.split('/#chat/${conv.id}').length - 1, 27);
 });
 
 test('pin: non-DM bells keep their links (tip/facetime/live/booking untouched)', () => {

@@ -1543,6 +1543,7 @@ addColumnIfMissing('platform_stats', 'booking_rate_announced_at', 'TEXT'); // on
 addColumnIfMissing('platform_stats', 'agreement_15_announced_at', 'TEXT'); // one-time "agreement v1.5 (sections + who may appear)" broadcast stamp
 addColumnIfMissing('platform_stats', 'storefront_announced_at', 'TEXT'); // one-time "pick your storefront" fan broadcast stamp
 addColumnIfMissing('platform_stats', 'faceguard_announced_at', 'TEXT'); // one-time "face-count guard" model broadcast stamp
+addColumnIfMissing('platform_stats', 'safety_announced_at', 'TEXT'); // one-time "safety hard-block" model broadcast stamp
 addColumnIfMissing('conversations', 'is_official', 'INTEGER NOT NULL DEFAULT 0'); // the pinned read-only SlutCamp notices thread
 
 /* The recruiters row IS the affiliate capability (see above). */
@@ -1890,6 +1891,45 @@ const kwCount = db.prepare('SELECT COUNT(*) AS c FROM safety_keywords').get().c;
 if (kwCount === 0) {
   const ins = db.prepare('INSERT INTO safety_keywords (keyword) VALUES (?)');
   for (const kw of DEFAULT_KEYWORDS) ins.run(kw);
+}
+
+/* ---------------------------------------------------------------------------
+   Promotion blocklist (Safety build addendum — owner-directed 2026-10-20):
+   no off-platform promotion by models — competitor platforms, link
+   aggregators, payment platforms and social off-ramps. The terms are
+   seeded into safety_keywords INSERT-IF-MISSING so databases whose
+   keyword table is already populated get them too, and the Manager can
+   edit or disable them like any keyword. PROMOTION_TERMS is ALSO the
+   code-level floor promotionScan() applies directly (the same "code
+   patterns plus safety_keywords" shape safetyScan uses), so a disabled
+   seed cannot open the door on the paths that scan for promotion.
+   Domains and distinctive names only — no bare plain-English words, so
+   ordinary conversation never trips them.
+   ------------------------------------------------------------------------ */
+const PROMOTION_TERMS = [
+  // Competitor platforms
+  'onlyfans', 'onlyfans.com', 'fansly', 'fansly.com', 'manyvids', 'manyvids.com',
+  'chaturbate', 'chaturbate.com', 'myfreecams', 'stripchat', 'bongacams',
+  'livejasmin', 'streamate', 'cam4', 'camsoda', 'flirt4free', 'jerkmate',
+  'loyalfans', 'fancentro', 'clips4sale', 'iwantclips', 'niteflirt', 'bentbox',
+  'avnstars', 'pocketstars', 'sheer.com', 'sextpanther', 'fambase',
+  'joinfambase.com', 'tfglive', 'tfglive.com', 'pornhub.com', 'xvideos.com',
+  'xhamster.com',
+  // Link aggregators
+  'linktr.ee', 'linktree', 'beacons.ai', 'allmylinks', 'allmylinks.com',
+  'hoo.be', 'campsite.bio', 'lnk.bio', 'direct.me', 'link in bio',
+  // Payment platforms
+  'cash app', 'cashapp', 'venmo', 'paypal', 'zelle', 'wise.com', 'revolut',
+  'apple pay me', 'google pay me',
+  // Social / messaging off-ramps
+  'instagram.com', 'snapchat', 'snapchat.com', 'telegram', 't.me', 'whatsapp',
+  'whatsapp.com', 'kik.com', 'discord.gg', 'discord.com', 'tiktok.com',
+  'facebook.com', 'fb.com', 'x.com', 'twitter.com',
+];
+const PROMOTION_TERM_SET = new Set(PROMOTION_TERMS);
+{
+  const insPromo = db.prepare('INSERT OR IGNORE INTO safety_keywords (keyword) VALUES (?)');
+  for (const kw of PROMOTION_TERMS) insPromo.run(kw);
 }
 
 // Seed the virtual gift catalog (admin can edit prices/add/remove later).
@@ -3086,9 +3126,13 @@ function cameraAllowedIds(modelUserId) {
 function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 // Returns the matched keyword/reason, or null if clean.
-function safetyScan(text) {
+// opts.excludeTerms: a Set of safety_keywords entries to skip (used to keep
+// promotion seeds out of fan-side chat scans — promotion enforcement is
+// model-scoped; fans stay PII-only). Code patterns always apply.
+function safetyScan(text, opts = {}) {
   const kws = db.prepare('SELECT keyword FROM safety_keywords WHERE enabled = 1').all();
   for (const { keyword } of kws) {
+    if (opts.excludeTerms && opts.excludeTerms.has(keyword)) continue;
     // Word-boundary match so 'ig' doesn't flag 'big', 'snap' doesn't flag 'snapshot'.
     const re = new RegExp(`\\b${escapeRegExp(keyword)}\\b`, 'i');
     if (re.test(text)) return keyword;
@@ -3113,6 +3157,60 @@ function safetyScan(text) {
   if (/(^|\s)@[a-zA-Z0-9._]{2,}/.test(text)) return 'social_handle';
   return null;
 }
+
+/* Promotion scan (Safety build addendum): the code-level floor over
+   PROMOTION_TERMS — the same word-boundary matching safetyScan uses.
+   Returns 'promotion_<slug>' (e.g. 'promotion_onlyfans',
+   'promotion_linktr_ee') or null. */
+function promotionScan(text) {
+  const s = String(text || '');
+  for (const term of PROMOTION_TERMS) {
+    const re = new RegExp(`\\b${escapeRegExp(term)}\\b`, 'i');
+    if (re.test(s)) return 'promotion_' + term.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  }
+  return null;
+}
+
+/* True when a safetyScan/promotionScan result is a promotion-class hit:
+   either a promotionScan slug, or a bare keyword that is one of the seeded
+   promotion terms (a safetyScan hit on an enabled seed). */
+function isPromotionMatch(matched) {
+  if (!matched) return false;
+  return matched.startsWith('promotion_') || PROMOTION_TERM_SET.has(matched);
+}
+
+/* Chat-path scan (Safety build): PII detection for everyone; the promotion
+   set applies to MODEL senders only — fan-side scope stays PII-only, so a
+   fan typing another platform's name in conversation is not blocked. */
+function chatScan(text, isModelSender) {
+  const m = safetyScan(text, isModelSender ? {} : { excludeTerms: PROMOTION_TERM_SET });
+  if (m) return m;
+  return isModelSender ? promotionScan(text) : null;
+}
+
+/* Redaction for stored safety-incident text (Safety build): the record
+   keeps the matched category + a redacted body — never usable PII. Digit
+   runs keep at most their last two digits, email local parts keep their
+   first character, $cashtags keep their first letter. Idempotent, so the
+   boot scrub can re-run it on already-redacted rows as a no-op. */
+function redactForIncident(text) {
+  let out = String(text == null ? '' : text);
+  out = out.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, (m) => {
+    const at = m.indexOf('@');
+    return (m[0] || '') + '•••' + m.slice(at);
+  });
+  out = out.replace(/\$[a-zA-Z][a-zA-Z0-9_]{1,}/g, (m) => m.slice(0, 2) + '•••');
+  out = out.replace(/\d[\d\s().-]*\d/g, (m) => {
+    const digits = m.replace(/\D/g, '');
+    if (digits.length < 4) return m;
+    return '•••' + digits.slice(-2);
+  });
+  out = out.replace(/\b\d{4,}\b/g, (m) => '•••' + m.slice(-2));
+  return out;
+}
+
+/* Body that replaces a removed flagged message (Safety build boot scrub). */
+const SAFETY_REMOVED_BODY = '🚫 Message removed by SlutCamp safety';
 
 // Record a strike; returns total strikes. Flags account at 3.
 function addStrike(key) {
@@ -3254,6 +3352,9 @@ const SRV = {
   ann_faceguard_dm: { en: 'Hey loves — quick update 💋\n\nSlutCamp now watches out for you while you\'re live. If you\'re on camera with someone, just declare them before you go live (Settings → My Co-Performers — they must be ID-approved first, same as always).\n\nWhile you\'re live, the app quietly counts faces on YOUR camera only. If an extra person who wasn\'t declared steps into frame, you\'ll get a warning first — and if they stay, the live ends. Nothing is recorded and no pictures leave your phone — it only counts.\n\nSolo lives? Nothing changes at all.\n\nThis protects YOUR account: nobody unverified can appear on your live and put your earnings at risk. 🎥✨', es: 'Hola amores — una novedad rápida 💋\n\nSlutCamp ahora te cuida mientras estás en vivo. Si estás frente a cámara con alguien, solo decláralo antes de salir en vivo (Ajustes → Mis co-intérpretes — primero deben tener su ID aprobada, como siempre).\n\nMientras estás en vivo, la app cuenta en silencio los rostros solo en TU cámara. Si entra en cuadro una persona extra que no fue declarada, primero recibirás un aviso — y si se queda, el en vivo termina. Nada se graba y ninguna foto sale de tu teléfono — solo cuenta.\n\n¿En vivos sola? Nada cambia.\n\nEsto protege TU cuenta: nadie sin verificar puede aparecer en tu en vivo ni poner en riesgo tus ganancias. 🎥✨', pt: 'Oi, amores — uma novidade rápida 💋\n\nA SlutCamp agora cuida de você enquanto você está ao vivo. Se você estiver em frente à câmera com alguém, é só declarar antes de entrar ao vivo (Configurações → Meus parceiros de cena — eles precisam ter o documento aprovado primeiro, como sempre).\n\nEnquanto você está ao vivo, o app conta discretamente os rostos apenas na SUA câmera. Se uma pessoa extra que não foi declarada entrar no quadro, você recebe um aviso primeiro — e se ela ficar, a live termina. Nada é gravado e nenhuma foto sai do seu celular — ele só conta.\n\nLives solo? Nada muda.\n\nIsso protege a SUA conta: ninguém sem verificação pode aparecer na sua live e colocar seus ganhos em risco. 🎥✨', fr: 'Coucou les amours — une petite nouveauté 💋\n\nSlutCamp veille maintenant sur vous pendant vos directs. Si vous êtes à l\'écran avec quelqu\'un, déclarez-le simplement avant de passer en direct (Paramètres → Mes partenaires de scène — leur pièce d\'identité doit d\'abord être approuvée, comme toujours).\n\nPendant votre direct, l\'appli compte discrètement les visages sur VOTRE caméra uniquement. Si une personne supplémentaire non déclarée entre dans le cadre, vous recevez d\'abord un avertissement — et si elle reste, le direct se termine. Rien n\'est enregistré et aucune photo ne quitte votre téléphone — ça compte, c\'est tout.\n\nDes directs en solo ? Rien ne change du tout.\n\nCela protège VOTRE compte : personne sans vérification ne peut apparaître dans votre direct et mettre vos revenus en danger. 🎥✨', de: 'Hey ihr Lieben — ein kurzes Update 💋\n\nSlutCamp passt jetzt auf dich auf, während du live bist. Wenn du mit jemandem vor der Kamera bist, melde ihn einfach an, bevor du live gehst (Einstellungen → Meine Co-Performer — sie müssen zuerst per Ausweis freigegeben sein, wie immer).\n\nWährend du live bist, zählt die App leise die Gesichter — nur auf DEINER Kamera. Kommt eine zusätzliche Person ins Bild, die nicht angemeldet war, bekommst du zuerst eine Warnung — und wenn sie bleibt, endet der Livestream. Nichts wird aufgezeichnet und keine Bilder verlassen dein Handy — es wird nur gezählt.\n\nSolo-Lives? Da ändert sich gar nichts.\n\nDas schützt DEIN Konto: Niemand ohne Verifizierung kann in deinem Live auftauchen und deine Einnahmen gefährden. 🎥✨', ru: 'Привет, любимые — короткое обновление 💋\n\nSlutCamp теперь присматривает за вами, пока вы в эфире. Если вы в кадре с кем-то, просто укажите этого человека перед выходом в эфир (Настройки → Мои партнёры по сцене — сначала нужно одобрение удостоверения личности, как всегда).\n\nПока вы в эфире, приложение тихо считает лица — только на ВАШЕЙ камере. Если в кадр войдёт лишний человек, который не был указан, вы сначала получите предупреждение — а если он останется, эфир завершится. Ничего не записывается, и никакие фото не покидают ваш телефон — приложение только считает.\n\nСольные эфиры? Ничего не меняется.\n\nЭто защищает ВАШ аккаунт: никто без проверки не сможет появиться в вашем эфире и поставить под угрозу ваш заработок. 🎥✨', ja: 'みんな、こんにちは — ちょっとしたアップデートです 💋\n\nSlutCampは、あなたがライブ配信中も見守るようになりました。誰かと一緒にカメラに映る場合は、配信を始める前に申告してください（設定 → 共演者 — これまで通り、最初に身分証の承認が必要です）。\n\n配信中、アプリはあなたのカメラだけの顔の数をそっと数えます。申告されていない人が画面に入ると、まず警告が出ます — それでも残る場合、配信は終了します。何も録画されず、写真があなたのスマホから出ることもありません — 数えるだけです。\n\nソロ配信？何も変わりません。\n\nこれはあなたのアカウントを守ります：未確認の人があなたのライブに現れて、あなたの収入を危険にさらすことはありません。 🎥✨', zh: '亲爱的们 — 一个快速更新 💋\n\nSlutCamp 现在会在你直播时守护你。如果你和别人一起出现在镜头前，只需在开播前申报即可（设置 → 我的搭档演员 — 和以前一样，他们必须先通过身份证审核）。\n\n直播期间，应用会悄悄统计人脸数量 — 只统计你自己的摄像头画面。如果有未申报的人进入画面，你会先收到一个警告 — 如果对方继续停留，直播将结束。不会录制任何内容，也没有任何照片会离开你的手机 — 它只是计数。\n\n单人直播？一切照旧，毫无变化。\n\n这是为了保护你的账户：任何未经验证的人都不能出现在你的直播中，让你的收入面临风险。 🎥✨', ko: '안녕하세요, 여러분 — 빠른 업데이트예요 💋\n\n이제 SlutCamp가 라이브 중에 여러분을 지켜드립니다. 누군가와 함께 카메라 앞에 있다면, 라이브를 시작하기 전에 신고만 해주세요 (설정 → 내 공연 파트너 — 언제나처럼 먼저 신분증 승인이 필요합니다).\n\n라이브 중에는 앱이 당신의 카메라에서만 조용히 얼굴 수를 셉니다. 신고되지 않은 사람이 화면에 들어오면 먼저 경고가 표시되고 — 그래도 남아 있으면 라이브가 종료됩니다. 아무것도 녹화되지 않고 어떤 사진도 휴대폰 밖으로 나가지 않습니다 — 그저 세기만 합니다.\n\n솔로 라이브요? 아무것도 변하지 않습니다.\n\n이것은 당신의 계정을 보호합니다: 인증되지 않은 사람은 누구도 당신의 라이브에 나타나 당신의 수익을 위험에 빠뜨릴 수 없습니다. 🎥✨', it: 'Ciao amori — un aggiornamento veloce 💋\n\nSlutCamp ora veglia su di te mentre sei live. Se sei davanti alla telecamera con qualcuno, dichiaralo semplicemente prima di andare live (Impostazioni → I miei partner di scena — devono prima avere il documento approvato, come sempre).\n\nMentre sei live, l\'app conta discretamente i volti solo sulla TUA telecamera. Se entra nell\'inquadratura una persona in più che non è stata dichiarata, riceverai prima un avviso — e se resta, la live termina. Non viene registrato nulla e nessuna foto lascia il tuo telefono — conta e basta.\n\nLive da sola? Non cambia assolutamente nulla.\n\nQuesto protegge il TUO account: nessuno senza verifica può apparire nella tua live e mettere a rischio i tuoi guadagni. 🎥✨', pl: 'Hej kochane — szybka aktualizacja 💋\n\nSlutCamp teraz czuwa nad Tobą, gdy jesteś na żywo. Jeśli jesteś przed kamerą z kimś, po prostu zadeklaruj tę osobę przed rozpoczęciem transmisji (Ustawienia → Moi współwykonawcy — najpierw muszą mieć zatwierdzony dokument tożsamości, jak zawsze).\n\nPodczas transmisji aplikacja po cichu liczy twarze — tylko na TWOJEJ kamerze. Jeśli w kadr wejdzie dodatkowa osoba, która nie została zadeklarowana, najpierw otrzymasz ostrzeżenie — a jeśli zostanie, transmisja się zakończy. Nic nie jest nagrywane i żadne zdjęcia nie opuszczają Twojego telefonu — aplikacja tylko liczy.\n\nTransmisje solo? Nic się nie zmienia.\n\nTo chroni TWOJE konto: nikt niezweryfikowany nie może pojawić się na Twojej transmisji i narazić Twoich zarobków na ryzyko. 🎥✨', nl: 'Hey lieverds — een snelle update 💋\n\nSlutCamp let nu op je terwijl je live bent. Als je met iemand voor de camera staat, geef die persoon dan gewoon aan voordat je live gaat (Instellingen → Mijn mede-performers — ze moeten eerst hun ID goedgekeurd hebben, zoals altijd).\n\nTerwijl je live bent, telt de app in stilte de gezichten — alleen op JOUW camera. Komt er een extra persoon in beeld die niet is aangegeven, dan krijg je eerst een waarschuwing — en als die persoon blijft, eindigt de live. Er wordt niets opgenomen en er verlaten geen foto\'s je telefoon — de app telt alleen.\n\nSolo-lives? Er verandert helemaal niets.\n\nDit beschermt JOUW account: niemand zonder verificatie kan in je live verschijnen en je inkomsten in gevaar brengen. 🎥✨', tr: 'Selam canlar — hızlı bir güncelleme 💋\n\nSlutCamp artık canlı yayındayken seni koruyor. Kamerada biriyle birlikteysen, canlıya başlamadan önce o kişiyi bildirmen yeterli (Ayarlar → Sahne Partnerlerim — her zamanki gibi önce kimliklerinin onaylanması gerekir).\n\nCanlı yayın sırasında uygulama sessizce yüzleri sayar — yalnızca SENİN kameranda. Bildirilmemiş fazladan bir kişi kadraja girerse önce bir uyarı alırsın — ve kalırsa canlı yayın sona erer. Hiçbir şey kaydedilmez ve hiçbir fotoğraf telefonundan çıkmaz — yalnızca sayar.\n\nTek başına canlı yayınlar mı? Hiçbir şey değişmiyor.\n\nBu, SENİN hesabını korur: doğrulanmamış hiç kimse canlı yayınında görünüp kazancını riske atamaz. 🎥✨' },
   ann_faceguard_bell_title: { en: '📣 New: camera protection for your lives', es: '📣 Nuevo: protección de cámara para tus en vivos', pt: '📣 Novo: proteção de câmera para suas lives', fr: '📣 Nouveau : protection caméra pour vos directs', de: '📣 Neu: Kameraschutz für deine Lives', ru: '📣 Новое: защита камеры для ваших эфиров', ja: '📣 新機能：ライブのカメラ保護', zh: '📣 新功能：直播摄像头保护', ko: '📣 새 기능: 라이브 카메라 보호', it: '📣 Novità: protezione telecamera per le tue live', pl: '📣 Nowość: ochrona kamery na Twoich transmisjach', nl: '📣 Nieuw: camerabescherming voor je lives', tr: '📣 Yeni: canlı yayınların için kamera koruması' },
   ann_faceguard_bell_body: { en: 'SlutCamp now counts faces on your live — declare who\'s on camera. Tap to read 💋', es: 'SlutCamp ahora cuenta los rostros en tu en vivo — declara quién está frente a cámara. Toca para leer 💋', pt: 'A SlutCamp agora conta os rostos na sua live — declare quem está na câmera. Toque para ler 💋', fr: 'SlutCamp compte maintenant les visages dans votre direct — déclarez qui est à l\'écran. Touchez pour lire 💋', de: 'SlutCamp zählt jetzt die Gesichter in deinem Live — melde an, wer vor der Kamera ist. Tippe zum Lesen 💋', ru: 'SlutCamp теперь считает лица в вашем эфире — укажите, кто в кадре. Нажмите, чтобы прочитать 💋', ja: 'SlutCampはあなたのライブで顔の数を数えるようになりました — カメラに映る人を申告してね。タップして読む 💋', zh: 'SlutCamp 现在会统计你直播中的人脸 — 请申报谁在镜头前。点开阅读 💋', ko: '이제 SlutCamp가 라이브에서 얼굴 수를 셉니다 — 카메라 앞에 있는 사람을 신고하세요. 탭해서 읽기 💋', it: 'SlutCamp ora conta i volti nella tua live — dichiara chi è davanti alla telecamera. Tocca per leggere 💋', pl: 'SlutCamp liczy teraz twarze na Twojej transmisji — zadeklaruj, kto jest przed kamerą. Dotknij, aby przeczytać 💋', nl: 'SlutCamp telt nu de gezichten in je live — geef aan wie er voor de camera staat. Tik om te lezen 💋', tr: 'SlutCamp artık canlı yayınında yüzleri sayıyor — kamerada kimin olduğunu bildir. Okumak için dokun 💋' },
+  ann_safety_dm: { en: 'Hey loves — a safety update that protects your money 💋\n\nSlutCamp now BLOCKS messages that contain personal contact info or off-platform links — phone numbers, emails, socials, other platforms, payment apps — before they\'re ever sent. The other person never sees them, your chat keeps flowing, and nobody gets pulled off the app where your earnings (and your safety) aren\'t protected.\n\n🚫 The same goes for profiles: bios can\'t mention other websites, platforms, link pages, or payment services — SlutCamp is your whole storefront, and everything you earn here is protected here.\n\nIf a message of yours gets blocked, the app will tell you why — just reword it and keep the conversation (and the spending 💰) right here.\n\nKeep it on SlutCamp, keep it safe, keep it paid. 💋', es: 'Hola amores — una novedad de seguridad que protege su dinero 💋\n\nSlutCamp ahora BLOQUEA los mensajes que contienen información de contacto personal o enlaces fuera de la plataforma — números de teléfono, correos, redes sociales, otras plataformas, apps de pago — antes de que se envíen. La otra persona nunca los ve, tu chat sigue fluyendo y nadie te saca de la app, donde tus ganancias (y tu seguridad) no están protegidas.\n\n🚫 Lo mismo va para los perfiles: las biografías no pueden mencionar otros sitios web, plataformas, páginas de enlaces ni servicios de pago — SlutCamp es todo tu escaparate, y todo lo que ganas aquí está protegido aquí.\n\nSi un mensaje tuyo es bloqueado, la app te dirá por qué — solo reformúlalo y mantén la conversación (y el gasto 💰) aquí mismo.\n\nManténlo en SlutCamp, manténlo seguro, manténlo pagado. 💋', pt: 'Oi, amores — uma novidade de segurança que protege o seu dinheiro 💋\n\nA SlutCamp agora BLOQUEIA mensagens com informações de contato pessoais ou links para fora da plataforma — telefones, e-mails, redes sociais, outras plataformas, apps de pagamento — antes de serem enviadas. A outra pessoa nunca as vê, seu chat continua fluindo e ninguém te tira do app, onde seus ganhos (e sua segurança) não estão protegidos.\n\n🚫 O mesmo vale para os perfis: bios não podem mencionar outros sites, plataformas, páginas de links ou serviços de pagamento — a SlutCamp é toda a sua vitrine, e tudo o que você ganha aqui está protegido aqui.\n\nSe uma mensagem sua for bloqueada, o app vai te contar o porquê — é só reformular e manter a conversa (e os gastos 💰) aqui mesmo.\n\nMantenha no SlutCamp, mantenha seguro, mantenha pago. 💋', fr: 'Coucou les amours — une nouveauté sécurité qui protège votre argent 💋\n\nSlutCamp BLOQUE désormais les messages contenant des coordonnées personnelles ou des liens hors plateforme — numéros de téléphone, e-mails, réseaux sociaux, autres plateformes, applications de paiement — avant même leur envoi. L\'autre personne ne les voit jamais, votre discussion continue, et personne ne vous entraîne hors de l\'appli, où vos revenus (et votre sécurité) ne sont pas protégés.\n\n🚫 Même règle pour les profils : les bios ne peuvent pas mentionner d\'autres sites web, plateformes, pages de liens ni services de paiement — SlutCamp est toute votre vitrine, et tout ce que vous gagnez ici est protégé ici.\n\nSi l\'un de vos messages est bloqué, l\'appli vous expliquera pourquoi — reformulez-le et gardez la conversation (et les dépenses 💰) ici même.\n\nGardez tout sur SlutCamp : en sécurité, et rémunéré. 💋', de: 'Hey ihr Lieben — ein Sicherheits-Update, das euer Geld schützt 💋\n\nSlutCamp BLOCKIERT jetzt Nachrichten mit persönlichen Kontaktdaten oder Links zu anderen Plattformen — Telefonnummern, E-Mails, Social Media, andere Plattformen, Zahlungs-Apps — bevor sie gesendet werden. Die andere Person sieht sie nie, euer Chat läuft weiter, und niemand lockt euch aus der App, wo eure Einnahmen (und eure Sicherheit) nicht geschützt sind.\n\n🚫 Dasselbe gilt für Profile: Bios dürfen keine anderen Websites, Plattformen, Linkseiten oder Zahlungsdienste erwähnen — SlutCamp ist deine gesamte Verkaufsfläche, und alles, was du hier verdienst, ist hier geschützt.\n\nWird eine deiner Nachrichten blockiert, sagt dir die App warum — formuliere sie einfach um und behalte das Gespräch (und die Ausgaben 💰) hier.\n\nBehalte es auf SlutCamp, behalte es sicher, behalte es bezahlt. 💋', ru: 'Привет, любимые — обновление безопасности, которое защищает ваши деньги 💋\n\nSlutCamp теперь БЛОКИРУЕТ сообщения с личными контактами или ссылками на сторонние платформы — номера телефонов, e-mail, соцсети, другие платформы, платёжные приложения — до того, как они отправятся. Другой человек их никогда не увидит, ваш чат продолжается, и никого не уводят из приложения, где ваш заработок (и ваша безопасность) не защищены.\n\n🚫 То же правило для профилей: в описании нельзя упоминать другие сайты, платформы, страницы ссылок или платёжные сервисы — SlutCamp — это вся ваша витрина, и всё, что вы зарабатываете здесь, защищено здесь.\n\nЕсли ваше сообщение заблокируют, приложение объяснит почему — просто переформулируйте и оставьте разговор (и траты 💰) здесь.\n\nДержите всё на SlutCamp — в безопасности и за деньги. 💋', ja: 'みんな、こんにちは — あなたのお金を守るセキュリティアップデートです 💋\n\nSlutCampは、個人の連絡先やプラットフォーム外のリンクを含むメッセージ（電話番号、メール、SNS、他のプラットフォーム、支払いアプリ）を、送信される前にブロックするようになりました。相手がそれを見ることはなく、チャットはそのまま続き、あなたの収入（と安全）が守られない場所へ誰かが誘い出すこともありません。\n\n🚫 プロフィールも同じです：プロフィールには他のウェブサイト、プラットフォーム、リンクページ、支払いサービスを記載できません — SlutCampがあなたのすべての店舗であり、ここで得たものはここで守られます。\n\nメッセージがブロックされたら、アプリが理由を教えてくれます — 言い方を変えて、会話（とお金💰）はここで続けましょう。\n\nSlutCampに留めて、安全に、しっかり稼ぎましょう。💋', zh: '亲爱的们 — 一个保护你收入的安全更新 💋\n\nSlutCamp 现在会在消息发送之前，拦截包含个人联系方式或站外链接的内容 — 电话号码、电子邮件、社交账号、其他平台、支付应用。对方永远看不到，聊天照常继续，也没人能把你带到没有收入（和安全）保障的地方。\n\n🚫 主页也一样：简介不能提及其他网站、平台、链接页或支付服务 — SlutCamp 就是你的整个店面，你在这里赚到的一切都在这里受到保护。\n\n如果你的消息被拦截，应用会告诉你原因 — 换个说法，把对话（和消费💰）留在这里就好。\n\n留在 SlutCamp，安全又赚钱。💋', ko: '안녕하세요, 여러분 — 여러분의 수익을 지켜주는 보안 업데이트예요 💋\n\n이제 SlutCamp는 개인 연락처나 플랫폼 외부 링크가 포함된 메시지(전화번호, 이메일, SNS, 다른 플랫폼, 결제 앱)를 전송되기 전에 차단합니다. 상대방은 절대 볼 수 없고, 채팅은 그대로 이어지며, 누구도 수익(과 안전)이 보호되지 않는 곳으로 당신을 데려갈 수 없어요.\n\n🚫 프로필도 마찬가지예요: 소개글에는 다른 웹사이트, 플랫폼, 링크 페이지, 결제 서비스를 언급할 수 없어요 — SlutCamp가 당신의 전체 매장이며, 여기서 번 모든 것은 여기서 보호됩니다.\n\n메시지가 차단되면 앱이 이유를 알려줍니다 — 표현만 바꿔서 대화(와 소비💰)를 여기서 이어가세요.\n\nSlutCamp에 머물고, 안전하게, 확실히 버세요. 💋', it: 'Ciao amori — un aggiornamento di sicurezza che protegge i vostri soldi 💋\n\nSlutCamp ora BLOCCA i messaggi che contengono contatti personali o link fuori piattaforma — numeri di telefono, e-mail, social, altre piattaforme, app di pagamento — prima che vengano inviati. L\'altra persona non li vede mai, la chat continua a scorrere e nessuno viene portato fuori dall\'app, dove i vostri guadagni (e la vostra sicurezza) non sono protetti.\n\n🚫 Stessa regola per i profili: le bio non possono menzionare altri siti web, piattaforme, pagine di link o servizi di pagamento — SlutCamp è tutta la tua vetrina, e tutto ciò che guadagni qui è protetto qui.\n\nSe un tuo messaggio viene bloccato, l\'app ti dirà perché — riformulalo e mantieni la conversazione (e la spesa 💰) qui dentro.\n\nTienilo su SlutCamp, tienilo al sicuro, tienilo pagato. 💋', pl: 'Hej kochane — aktualizacja bezpieczeństwa, która chroni Wasze pieniądze 💋\n\nSlutCamp BLOKUJE teraz wiadomości zawierające osobiste dane kontaktowe lub linki poza platformę — numery telefonów, e-maile, media społecznościowe, inne platformy, aplikacje płatnicze — zanim zostaną wysłane. Druga osoba nigdy ich nie widzi, Wasz czat toczy się dalej i nikt nie wyciąga Was z aplikacji tam, gdzie Wasze zarobki (i bezpieczeństwo) nie są chronione.\n\n🚫 Ta sama zasada dotyczy profili: opisy nie mogą wspominać innych stron, platform, stron z linkami ani usług płatniczych — SlutCamp to cała Wasza witryna, a wszystko, co tu zarabiacie, jest tu chronione.\n\nJeśli Twoja wiadomość zostanie zablokowana, aplikacja powie Ci dlaczego — po prostu ją przeformułuj i prowadź rozmowę (oraz wydatki 💰) tutaj.\n\nTrzymaj to na SlutCamp — bezpiecznie i za pieniądze. 💋', nl: 'Hey lieverds — een veiligheidsupdate die je geld beschermt 💋\n\nSlutCamp BLOKKEERT nu berichten met persoonlijke contactgegevens of links naar buiten het platform — telefoonnummers, e-mails, socials, andere platforms, betaalapps — voordat ze worden verzonden. De andere persoon ziet ze nooit, je chat loopt gewoon door en niemand wordt weggelokt uit de app, waar je inkomsten (en je veiligheid) niet beschermd zijn.\n\n🚫 Hetzelfde geldt voor profielen: bio\'s mogen geen andere websites, platforms, linkpagina\'s of betaaldiensten vermelden — SlutCamp is je hele winkel, en alles wat je hier verdient, is hier beschermd.\n\nWordt een bericht van jou geblokkeerd, dan vertelt de app je waarom — herformuleer het en houd het gesprek (en de bestedingen 💰) hier.\n\nHoud het op SlutCamp, houd het veilig, houd het betaald. 💋', tr: 'Selam canlar — paranızı koruyan bir güvenlik güncellemesi 💋\n\nSlutCamp artık kişisel iletişim bilgileri veya platform dışı bağlantılar içeren mesajları — telefon numaraları, e-postalar, sosyal medya, diğer platformlar, ödeme uygulamaları — gönderilmeden önce ENGELLİYOR. Diğer kişi onları asla görmez, sohbetiniz akmaya devam eder ve kimse sizi kazancınızın (ve güvenliğinizin) korunmadığı bir yere çekemez.\n\n🚫 Aynı kural profiller için de geçerli: biyografilerde başka web siteleri, platformlar, bağlantı sayfaları veya ödeme hizmetlerinden bahsedilemez — SlutCamp tüm vitrininizdir ve burada kazandığınız her şey burada korunur.\n\nBir mesajınız engellenirse uygulama size nedenini söyler — sadece yeniden yazın ve sohbeti (ve harcamayı 💰) burada tutun.\n\nSlutCamp\'ta tutun, güvende tutun, kazançlı tutun. 💋' },
+  ann_safety_bell_title: { en: '🛡️ New: off-platform blocking is on', es: '🛡️ Nuevo: bloqueo fuera de la plataforma activado', pt: '🛡️ Novo: bloqueio fora da plataforma ativado', fr: '🛡️ Nouveau : blocage hors plateforme activé', de: '🛡️ Neu: Blockierung außerhalb der Plattform ist aktiv', ru: '🛡️ Новое: блокировка вне платформы включена', ja: '🛡️ 新機能：プラットフォーム外への誘導をブロック', zh: '🛡️ 新功能：站外拦截已开启', ko: '🛡️ 새 기능: 플랫폼 외부 차단이 켜졌어요', it: '🛡️ Novità: blocco fuori piattaforma attivo', pl: '🛡️ Nowość: blokowanie poza platformą włączone', nl: '🛡️ Nieuw: blokkeren buiten het platform staat aan', tr: '🛡️ Yeni: platform dışı engelleme açık' },
+  ann_safety_bell_body: { en: 'Messages and bios that share contact info or promote other platforms are now blocked before they send. Tap to read 💋', es: 'Los mensajes y biografías que comparten información de contacto o promocionan otras plataformas ahora se bloquean antes de enviarse. Toca para leer 💋', pt: 'Mensagens e bios que compartilham informações de contato ou promovem outras plataformas agora são bloqueadas antes do envio. Toque para ler 💋', fr: 'Les messages et bios qui partagent des coordonnées ou font la promotion d\'autres plateformes sont désormais bloqués avant l\'envoi. Touchez pour lire 💋', de: 'Nachrichten und Bios, die Kontaktdaten teilen oder für andere Plattformen werben, werden jetzt vor dem Senden blockiert. Tippe zum Lesen 💋', ru: 'Сообщения и описания, которые делятся контактами или рекламируют другие платформы, теперь блокируются до отправки. Нажмите, чтобы прочитать 💋', ja: '連絡先を共有したり他のプラットフォームを宣伝したりするメッセージやプロフィールは、送信前にブロックされるようになりました。タップして読む 💋', zh: '分享联系方式或推广其他平台的消息和简介现在会在发送前被拦截。点开阅读 💋', ko: '연락처를 공유하거나 다른 플랫폼을 홍보하는 메시지와 소개글은 이제 전송 전에 차단됩니다. 탭해서 읽기 💋', it: 'Messaggi e bio che condividono contatti o promuovono altre piattaforme ora vengono bloccati prima dell\'invio. Tocca per leggere 💋', pl: 'Wiadomości i opisy, które udostępniają dane kontaktowe lub promują inne platformy, są teraz blokowane przed wysłaniem. Dotknij, aby przeczytać 💋', nl: 'Berichten en bio\'s die contactgegevens delen of andere platforms promoten, worden nu geblokkeerd voordat ze worden verzonden. Tik om te lezen 💋', tr: 'İletişim bilgileri paylaşan veya başka platformları tanıtan mesajlar ve biyografiler artık gönderilmeden önce engelleniyor. Okumak için dokun 💋' },
   ann_booking_rate_dm: { en: '📅 NEW: Your 1-on-1 bookings now have their OWN rate! A booked 1-on-1 used to be priced off your per-minute video rate — now there\'s a separate 1-on-1 booking rate in Settings → My Rates. It starts at your current video rate, so nothing changes until you set it yourself. Bookings run long — price them your way 💋', es: '📅 NUEVO: ¡Tus reservas 1 a 1 ahora tienen su PROPIA tarifa! Antes, una reserva 1 a 1 se cobraba según tu tarifa de video por minuto — ahora hay una tarifa de reserva 1 a 1 separada en Ajustes → Mis tarifas. Empieza con tu tarifa de video actual, así que nada cambia hasta que tú la ajustes. Las reservas son largas — ponles tu precio 💋', pt: '📅 NOVO: Suas reservas individuais agora têm sua PRÓPRIA tarifa! Antes, uma reserva individual era cobrada pela sua tarifa de vídeo por minuto — agora há uma tarifa de reserva individual separada em Configurações → Minhas tarifas. Ela começa com sua tarifa de vídeo atual, então nada muda até você mesma ajustar. Reservas são longas — defina seu preço 💋', fr: '📅 NOUVEAU : Vos réservations privées ont maintenant leur PROPRE tarif ! Avant, une réservation privée était facturée selon votre tarif vidéo par minute — il y a maintenant un tarif de réservation privée séparé dans Paramètres → Mes tarifs. Il démarre à votre tarif vidéo actuel, donc rien ne change tant que vous ne le modifiez pas. Les réservations sont longues — fixez votre prix 💋', de: '📅 NEU: Deine 1-zu-1-Buchungen haben jetzt ihren EIGENEN Preis! Bisher wurde eine 1-zu-1-Buchung über deinen Video-Minutenpreis abgerechnet — jetzt gibt es einen separaten 1-zu-1-Buchungspreis unter Einstellungen → Meine Preise. Er startet bei deinem aktuellen Videopreis, es ändert sich also nichts, bis du ihn selbst anpasst. Buchungen dauern lange — setze deinen Preis 💋', ru: '📅 НОВОЕ: У ваших личных бронирований теперь СВОЯ ставка! Раньше личная бронь оплачивалась по вашей поминутной ставке видео — теперь в Настройки → Мои ставки есть отдельная ставка личной брони. Она начинается с вашей текущей ставки видео, так что ничего не изменится, пока вы сами её не настроите. Бронирования долгие — ставьте свою цену 💋', ja: '📅 新機能：1対1予約に専用の料金ができました！これまで1対1予約はビデオの分単価で計算されていましたが、今は「設定 → 料金」に別の1対1予約料金があります。最初は今のビデオ料金と同じなので、自分で変えるまで何も変わりません。予約は長めの時間です — 料金はあなたの自由に 💋', zh: '📅 新功能：你的一对一预约现在有自己的专属价格了！以前一对一预约按你的视频每分钟价格计算 — 现在「设置 → 我的价格」里多了一个单独的一对一预约价格。它以你当前的视频价格为起点，所以在你自己修改之前一切不变。预约时间长 — 价格由你定 💋', ko: '📅 새 기능: 이제 1:1 예약에 전용 요금이 생겼어요! 이전에는 1:1 예약이 영상 분당 요금으로 계산됐지만, 이제 설정 → 내 요금에 별도의 1:1 예약 요금이 있습니다. 현재 영상 요금으로 시작하니 직접 바꾸기 전까지는 아무것도 변하지 않아요. 예약은 긴 시간이에요 — 가격은 당신이 정하세요 💋', it: '📅 NOVITÀ: Le tue prenotazioni 1 a 1 ora hanno la loro tariffa PERSONALE! Prima una prenotazione 1 a 1 era calcolata con la tua tariffa video al minuto — ora c\'è una tariffa prenotazione 1 a 1 separata in Impostazioni → Le mie tariffe. Parte dalla tua attuale tariffa video, quindi non cambia nulla finché non la imposti tu. Le prenotazioni sono lunghe — decidi tu il prezzo 💋', pl: '📅 NOWOŚĆ: Twoje rezerwacje 1 na 1 mają teraz WŁASNĄ stawkę! Wcześniej rezerwacja 1 na 1 była liczona według Twojej stawki wideo za minutę — teraz w Ustawienia → Moje stawki jest osobna stawka rezerwacji 1 na 1. Zaczyna się od Twojej obecnej stawki wideo, więc nic się nie zmieni, dopóki sama jej nie ustawisz. Rezerwacje są długie — cena należy do Ciebie 💋', nl: '📅 NIEUW: Je 1-op-1 boekingen hebben nu hun EIGEN tarief! Eerder werd een 1-op-1 boeking berekend met je videotarief per minuut — nu is er een apart 1-op-1 boekingstarief in Instellingen → Mijn tarieven. Het begint bij je huidige videotarief, dus er verandert niets totdat je het zelf aanpast. Boekingen duren lang — bepaal je eigen prijs 💋', tr: '📅 YENİ: Bire bir rezervasyonlarının artık KENDİ ücreti var! Önceden bire bir rezervasyon, video dakika ücretin üzerinden hesaplanıyordu — şimdi Ayarlar → Ücretlerim bölümünde ayrı bir bire bir rezervasyon ücreti var. Mevcut video ücretinle başlıyor, yani sen değiştirene kadar hiçbir şey değişmiyor. Rezervasyonlar uzun sürer — fiyatı sen belirle 💋' },
   ann_booking_rate_bell_title: { en: '📅 New: separate 1-on-1 booking rate', es: '📅 Nuevo: tarifa separada para reservas 1 a 1', pt: '📅 Novo: tarifa separada para reservas individuais', fr: '📅 Nouveau : tarif séparé pour les réservations privées', de: '📅 Neu: eigener Preis für 1-zu-1-Buchungen', ru: '📅 Новое: отдельная ставка для личных бронирований', ja: '📅 新機能：1対1予約の専用料金', zh: '📅 新功能：一对一预约专属价格', ko: '📅 새 기능: 1:1 예약 전용 요금', it: '📅 Novità: tariffa separata per le prenotazioni 1 a 1', pl: '📅 Nowość: osobna stawka rezerwacji 1 na 1', nl: '📅 Nieuw: apart tarief voor 1-op-1 boekingen', tr: '📅 Yeni: bire bir rezervasyonlar için ayrı ücret' },
   ann_booking_rate_bell_body: { en: 'Your booked 1-on-1s now price off their own rate in Settings — it defaults to your video rate until you change it 💋', es: 'Tus reservas 1 a 1 ahora se cobran con su propia tarifa en Ajustes — usa tu tarifa de video hasta que la cambies 💋', pt: 'Suas reservas individuais agora usam a própria tarifa em Configurações — o padrão é sua tarifa de vídeo até você mudar 💋', fr: 'Vos réservations privées utilisent désormais leur propre tarif dans Paramètres — votre tarif vidéo par défaut jusqu\'à ce que vous le changiez 💋', de: 'Deine 1-zu-1-Buchungen laufen jetzt über ihren eigenen Preis in den Einstellungen — Standard ist dein Videopreis, bis du ihn änderst 💋', ru: 'Ваши личные бронирования теперь оплачиваются по собственной ставке в Настройках — по умолчанию это ваша ставка видео, пока вы её не измените 💋', ja: '1対1予約は設定の専用料金で計算されるようになりました — 変更するまではビデオ料金がデフォルトです 💋', zh: '你的一对一预约现在按设置中的专属价格计费 — 在你更改之前，默认使用你的视频价格 💋', ko: '이제 1:1 예약은 설정의 전용 요금으로 계산돼요 — 바꾸기 전까지 기본값은 영상 요금입니다 💋', it: 'Le tue prenotazioni 1 a 1 ora usano la loro tariffa in Impostazioni — predefinita la tua tariffa video finché non la cambi 💋', pl: 'Twoje rezerwacje 1 na 1 są teraz liczone według własnej stawki w Ustawieniach — domyślnie Twoja stawka wideo, dopóki jej nie zmienisz 💋', nl: 'Je 1-op-1 boekingen gebruiken nu hun eigen tarief in Instellingen — standaard je videotarief totdat je het wijzigt 💋', tr: 'Bire bir rezervasyonların artık Ayarlar\'daki kendi ücretiyle hesaplanıyor — sen değiştirene kadar varsayılan video ücretin 💋' },
@@ -4610,6 +4711,46 @@ function announceFaceguardToModels() {
   return sent;
 }
 
+/* ------------------------------------------------------------------ */
+/* Safety hard-block — ONE-TIME announcement (stamp                    */
+/* safety_announced_at on platform_stats). Personal-info messages are  */
+/* now blocked before they are sent (no row stored, chat never         */
+/* pauses, other side never sees them), and off-platform promotion is   */
+/* blocked in chats, bios and live. Every model hears it once — DM +    */
+/* bell in her announcement thread, copy in her stored language via     */
+/* the SRV table (ann_safety_dm). The DM text is also where the         */
+/* no-off-platform-promotion rule lives model-side (Safety build        */
+/* addendum): it stays in her official thread permanently. Same         */
+/* pattern as the faceguard broadcast (announcementThreadFor + stamp    */
+/* set only after the loop, so a mid-boot failure retries next start).  */
+/* ------------------------------------------------------------------ */
+function announceSafetyToModels() {
+  const st = db.prepare('SELECT safety_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.safety_announced_at) return 0;
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin) return 0;
+  const models = db.prepare("SELECT id, username, language FROM users WHERE role = 'model' AND banned = 0").all();
+  let sent = 0;
+  for (const m of models) {
+    if (m.id === admin.id) continue;
+    try {
+      const conv = announcementThreadFor(m.id, 'model', admin.id);
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, conv.senderId, srv('ann_safety_dm', m.language));
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(m.id, 'safety', srv('ann_safety_bell_title', m.language),
+          srv('ann_safety_bell_body', m.language), `/#chat/${conv.id}`);
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest */ }
+  }
+  if (sent > 0 || models.length === 0) {
+    db.prepare("UPDATE platform_stats SET safety_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
 /* Fan blast — ONE-TIME bell + Web Push to every fan (stamp           */
 /* fan_preview_announced_at on platform_stats). Fans have no email or */
 /* text channel today (no provider; users held no contact info until  */
@@ -4791,6 +4932,26 @@ try { const n = announceBookingRate(); if (n) console.log(`[booking-rate] Dedica
 try { const n = announceAgreement15ToModels(); if (n) console.log(`[contract] Agreement v1.5 announcement sent to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceStorefrontToFans(); if (n) console.log(`[storefront] Storefront tabs announced to ${n} fans.`); } catch (e) { /* retry next boot */ }
 try { const n = announceFaceguardToModels(); if (n) console.log(`[faceguard] Face-count guard announced to ${n} models.`); } catch (e) { /* retry next boot */ }
+try { const n = announceSafetyToModels(); if (n) console.log(`[safety] Safety hard-block announced to ${n} models.`); } catch (e) { /* retry next boot */ }
+
+/* Safety scrub (Safety build, owner-directed 2026-10-20): the messages
+   table no longer stores usable PII. Every boot, any message body still
+   parked in a flagged row from the pre-hard-block era is replaced by the
+   removal notice, and every stored incident text is passed through
+   redactForIncident(). Both operations are idempotent — a second boot
+   finds nothing to change. */
+(function scrubFlaggedContent() {
+  try {
+    db.prepare('UPDATE messages SET body = ? WHERE is_flagged = 1 AND body <> ?')
+      .run(SAFETY_REMOVED_BODY, SAFETY_REMOVED_BODY);
+    const incs = db.prepare('SELECT id, flagged_text FROM safety_incidents').all();
+    const upd = db.prepare('UPDATE safety_incidents SET flagged_text = ? WHERE id = ?');
+    for (const inc of incs) {
+      const r = redactForIncident(inc.flagged_text);
+      if (r !== inc.flagged_text) upd.run(r, inc.id);
+    }
+  } catch (e) { console.log('[safety] flagged-content scrub failed:', e.message); }
+})();
 
 // One-time grandfathering for payout protection (Oct 16, 2026): every
 // earning recorded BEFORE this feature existed counts as fully matured —
@@ -6744,45 +6905,34 @@ app.post('/api/messages', identMiddleware, (req, res) => {
   if (!isModelSender && modelRegionBlocked(conv.model_id, geoOfReq(req)))
     return regionBlocked(res);
 
-  /* --- 1. SAFETY SCAN (before billing — blocked messages are never charged) --- */
-  const matched = safetyScan(text);
+  /* --- 1. SAFETY SCAN (before billing — blocked messages are never charged) ---
+     HARD BLOCK (Safety build, owner-directed 2026-10-20): on a match the
+     message is simply NOT SENT — no message row is stored, the chat is NOT
+     paused, and the other side receives nothing (no warning push, no
+     placeholder). The incident is recorded with REDACTED text only, the
+     strike + admin push still happen, and the sender gets an in-app
+     explanation (client: STR safety_blocked_info). Model senders are
+     additionally scanned for off-platform promotion (chatScan). */
+  const matched = chatScan(text, isModelSender);
   if (matched) {
     const senderId = req.ident.kind === 'user' ? req.ident.user.id : null;
     const senderName = req.ident.kind === 'user' ? req.ident.user.display_name : 'Guest Fan';
     const senderRole = isModelSender ? 'model' : 'fan';
     const key = subjectKey(req.ident);
 
-    const msgId = db.prepare(
-      `INSERT INTO messages (conversation_id, sender_id, guest_token, body, cost_cents, is_flagged)
-       VALUES (?,?,?,?,?,1)`).run(
-      conv.id, senderId, req.ident.kind === 'guest' ? req.ident.token : null, text, 0
-    ).lastInsertRowid;
-
-    db.prepare(`UPDATE conversations SET is_paused = 1, paused_at = datetime('now') WHERE id = ?`).run(conv.id);
     db.prepare(`INSERT INTO safety_incidents
       (conversation_id, sender_id, guest_token, sender_role, sender_name, flagged_text, matched)
       VALUES (?,?,?,?,?,?,?)`).run(
       conv.id, senderId, req.ident.kind === 'guest' ? req.ident.token : null,
-      senderRole, senderName, text, matched);
+      senderRole, senderName, redactForIncident(text), matched);
 
     const totalStrikes = addStrike(key);
     const incident = db.prepare('SELECT * FROM safety_incidents WHERE id = last_insert_rowid()').get();
 
-    const warning = { type: 'chat:paused', conversation_id: conv.id,
-      warning: '⚠️ Sharing personal contact info is not allowed. This chat is paused pending review.',
-      matched, strikes: totalStrikes };
-    // Warn both sides
-    pushToSubject(key, warning);
-    const otherKey = req.ident.kind === 'user'
-      ? (isModelSender
-          ? (conv.fan_id ? `u:${conv.fan_id}` : `g:${conv.guest_token}`)
-          : `u:${conv.model_id}`)
-      : `u:${conv.model_id}`;
-    pushToSubject(otherKey, warning);
-    // Alert admins
+    // Alert admins (unchanged channel — the incident row is the redacted one)
     pushToAdmins({ type: 'safety:incident', incident: { ...incident, total_strikes: totalStrikes } });
 
-    return res.status(200).json({ flagged: true, matched, strikes: totalStrikes,
+    return res.status(200).json({ blocked: true, matched, strikes: totalStrikes,
       auto_flagged: totalStrikes >= 3 });
   }
 
@@ -6917,13 +7067,14 @@ app.post('/api/messages/:id/react', identMiddleware, (req, res) => {
  * (no media, no gift payload, no tip/system message, not safety-flagged).
  * Editing never re-charges, never touches read state or cost_cents; the
  * pre-edit body is preserved in message_edits as an audit trail.
- * The new body runs through safetyScan with the SAME consequences as a
- * fresh send: a hit diverts like a flagged send — the edit never lands
- * (original body stays), the chat pauses, an incident + strike are
- * recorded, both sides are warned, admins are alerted, and the client
- * gets the send path's 200 {flagged:true,...} payload. A rejected edit
- * writes no message_edits row: it changes nothing about the message
- * (the attempt itself lives in the incident's flagged_text, as with sends).
+ * The new body runs through the SAME scan with the SAME consequences as a
+ * fresh send (Safety build hard block): a hit means the edit never lands
+ * (original body stays), an incident with REDACTED text + a strike are
+ * recorded, admins are alerted, and the client gets the send path's
+ * 200 {blocked:true,...} payload. The chat is NOT paused and the other
+ * side is NOT notified. A rejected edit writes no message_edits row: it
+ * changes nothing about the message (the attempt itself lives, redacted,
+ * in the incident's flagged_text, as with sends).
  */
 const EDIT_WINDOW_MS = 5 * 60 * 1000;
 app.post('/api/messages/:id/edit', identMiddleware, (req, res) => {
@@ -6944,37 +7095,26 @@ app.post('/api/messages/:id/edit', identMiddleware, (req, res) => {
 
   const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(msg.conversation_id);
 
-  /* --- SAFETY SCAN — same scan, same consequences as POST /api/messages.
-     A hit diverts exactly like a flagged send (see header comment). --- */
-  const matched = safetyScan(text);
+  /* --- SAFETY SCAN — same scan, same hard-block consequences as
+     POST /api/messages (see header comment): no pause, no other-side
+     notice, incident text stored REDACTED. --- */
+  const matched = chatScan(text, req.ident.user.role === 'model');
   if (matched) {
     const senderRole = req.ident.user.role === 'model' ? 'model' : 'fan';
     const key = subjectKey(req.ident);
 
-    if (conv)
-      db.prepare(`UPDATE conversations SET is_paused = 1, paused_at = datetime('now') WHERE id = ?`).run(conv.id);
     db.prepare(`INSERT INTO safety_incidents
       (conversation_id, sender_id, guest_token, sender_role, sender_name, flagged_text, matched)
       VALUES (?,?,?,?,?,?,?)`).run(
       msg.conversation_id, req.ident.user.id, null,
-      senderRole, req.ident.user.display_name, text, matched);
+      senderRole, req.ident.user.display_name, redactForIncident(text), matched);
 
     const totalStrikes = addStrike(key);
     const incident = db.prepare('SELECT * FROM safety_incidents WHERE id = last_insert_rowid()').get();
 
-    const warning = { type: 'chat:paused', conversation_id: msg.conversation_id,
-      warning: '⚠️ Sharing personal contact info is not allowed. This chat is paused pending review.',
-      matched, strikes: totalStrikes };
-    pushToSubject(key, warning);
-    if (conv) {
-      const otherKey = senderRole === 'model'
-        ? (conv.fan_id ? `u:${conv.fan_id}` : `g:${conv.guest_token}`)
-        : `u:${conv.model_id}`;
-      pushToSubject(otherKey, warning);
-    }
     pushToAdmins({ type: 'safety:incident', incident: { ...incident, total_strikes: totalStrikes } });
 
-    return res.status(200).json({ flagged: true, matched, strikes: totalStrikes,
+    return res.status(200).json({ blocked: true, matched, strikes: totalStrikes,
       auto_flagged: totalStrikes >= 3 });
   }
 
@@ -9210,6 +9350,15 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
       badRate(per_voice_cents, 50, 1000) || badRate(booking_rate_cents, 100, 10000))
     return res.status(400).json({ error: 'bad_rate',
       message: 'Rates out of range.' });
+  // Bio scan (Safety build addendum): a model's public bio may not carry
+  // personal contact info or off-platform promotion (competitor platforms,
+  // link aggregators, payment platforms, socials). A match REJECTS the
+  // whole save — nothing on the profile changes — and the client explains
+  // why on screen (STR bio_not_allowed_info).
+  if (typeof bio === 'string' && bio.trim()) {
+    const bioHit = safetyScan(bio) || promotionScan(bio);
+    if (bioHit) return res.status(400).json({ error: 'bio_not_allowed', matched: bioHit });
+  }
   if (typeof bio === 'string') { updates.push('bio = ?'); params.push(bio.slice(0, 280)); }
   if (rateRange(per_message_cents, 50, 1000)) {
     updates.push('per_message_cents = ?'); params.push(per_message_cents);
@@ -11929,10 +12078,13 @@ app.post('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
   const body = String(req.body.body || '').trim().slice(0, 500);
   if (!body) return res.status(400).json({ error: 'empty_message' });
 
-  const matched = safetyScan(body);
+  // Promotion set applies on live too (Safety build addendum) — same
+  // kill tier as payment info: off-platform promotion is never allowed live.
+  const matched = safetyScan(body) || promotionScan(body);
   if (matched) {
     // Payment info on live = kill the stream immediately (protects models + platform)
-    if (matched.startsWith('payment_')) {
+    if (matched.startsWith('payment_') || isPromotionMatch(matched)) {
+      const promo = isPromotionMatch(matched);
       const key = `u:${req.user.id}`;
       const total = addStrike(key);
       db.prepare(`INSERT INTO stream_flags (session_id, sender_id, sender_name, flagged_text, matched)
@@ -11941,9 +12093,11 @@ app.post('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
       pushToAdmins({ type: 'safety:stream_killed', session_id: sess.id,
         sender_name: req.user.display_name, matched, total_strikes: total,
         exact_words: body.slice(0, 300) });
-      killLiveSession(sess, 'payment_info_shared');
+      killLiveSession(sess, promo ? 'promotion_shared' : 'payment_info_shared');
       pushToUser(req.user.id, { type: 'live:killed',
-        warning: `🛑 Stream ended — payment info is never allowed on live. (${total}/3 strikes)` });
+        warning: promo
+          ? `🛑 Stream ended — promoting other platforms is never allowed on live. (${total}/3 strikes)`
+          : `🛑 Stream ended — payment info is never allowed on live. (${total}/3 strikes)` });
       return res.status(423).json({ error: 'stream_killed', matched, strikes: total });
     }
     // Block the message, count a strike, log the flag — chat stays live for everyone else
@@ -12031,10 +12185,14 @@ app.post('/api/live/:id/audio-chunk', identMiddleware, requireUser,
   res.json({ ok: true, queued: true });
 });
 
-// Shared handler: scan a speech transcript, kill on payment, warn on info/socials
+// Shared handler: scan a speech transcript, kill on payment/promotion,
+// warn on info/socials. The promotion set applies to spoken words too
+// (Safety build addendum) at the same consequence tier as spoken payment
+// info. NOTE: only the broadcasting model reports her own speech, so this
+// path is model-scoped by construction.
 // Returns { action, matched, strikes } or null if clean / session ended.
 function handleSpeechTranscript(sess, user, text, source) {
-  const matched = safetyScan(text);
+  const matched = safetyScan(text) || promotionScan(text);
   if (!matched) return null;
   // Re-check the session is still live (may have ended while transcribing)
   const live = db.prepare("SELECT * FROM live_sessions WHERE id = ? AND status = 'live'").get(sess.id);
@@ -12044,13 +12202,16 @@ function handleSpeechTranscript(sess, user, text, source) {
   db.prepare(`INSERT INTO stream_flags (session_id, sender_id, sender_name, flagged_text, matched)
               VALUES (?,?,?,?,?)`)
     .run(sess.id, user.id, user.display_name, `[SPEECH:${source}] ` + text.slice(0, 270), matched);
-  if (matched.startsWith('payment_')) {
+  if (matched.startsWith('payment_') || isPromotionMatch(matched)) {
+    const promo = isPromotionMatch(matched);
     pushToAdmins({ type: 'safety:stream_killed', session_id: sess.id,
       sender_name: user.display_name, matched, total_strikes: total,
       exact_words: '[SPOKEN] ' + text.slice(0, 300) });
-    killLiveSession(live, 'payment_info_spoken');
+    killLiveSession(live, promo ? 'promotion_spoken' : 'payment_info_spoken');
     pushToUser(user.id, { type: 'live:killed',
-      warning: `🛑 Stream ended — payment info is never allowed on live, spoken or typed. (${total}/3 strikes)` });
+      warning: promo
+        ? `🛑 Stream ended — promoting other platforms is never allowed on live, spoken or typed. (${total}/3 strikes)`
+        : `🛑 Stream ended — payment info is never allowed on live, spoken or typed. (${total}/3 strikes)` });
     return { action: 'killed', matched, strikes: total };
   }
   pushToAdmins({ type: 'safety:speech_flag', session_id: sess.id,
@@ -12297,7 +12458,9 @@ app.post('/api/live/:id/priority', identMiddleware, requireUser, requireRole('fa
   const totalCents = tier.price_cents + (wantVoice ? VOICE_FEE_CENTS : 0);
 
   // SAFETY FIRST — scan BEFORE charging. Blocked = 423 + strike, no charge.
-  const matched = safetyScan(message);
+  // The promotion set is scanned here too (Safety build addendum);
+  // consequences on this path are unchanged (block + strike, no kill).
+  const matched = safetyScan(message) || promotionScan(message);
   if (matched) {
     const key = `u:${req.user.id}`;
     const total = addStrike(key);
@@ -13684,6 +13847,46 @@ app.post('/api/admin/models/:id/message', ...adminOnly, (req, res) => {
     .run(conv.id, req.user.id, body);
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   try { notifyUser(m.id, 'message', '💬 Asce (Admin)', body.slice(0, 90), `/#chat/${conv.id}`); } catch (e) { /* bell is a bonus */ }
+  res.json({ ok: true, conversation_id: conv.id, message_id: Number(info.lastInsertRowid) });
+});
+
+// Admin (moderator) → fan inbox: read the mod thread with one fan.
+// Mirror of the model thread above with the roles swapped: the fan is
+// the fan-side party and the admin is the model-side party — the same
+// conversation shape announcements use for fans (announcementThreadFor).
+// This is the warn-a-fan path (Safety build): guidance and warnings are
+// delivered personally instead of fans only hearing about safety when
+// something gets blocked.
+app.get('/api/admin/fans/:id/thread', ...adminOnly, (req, res) => {
+  const f = db.prepare("SELECT id, display_name FROM users WHERE id = ? AND role = 'fan'").get(req.params.id);
+  if (!f) return res.status(404).json({ error: 'not_found' });
+  const conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(f.id, req.user.id);
+  if (!conv) return res.json({ conversation_id: null, messages: [] });
+  db.prepare('UPDATE messages SET is_read = 1 WHERE conversation_id = ? AND sender_id = ?').run(conv.id, f.id);
+  const messages = db.prepare(`
+    SELECT msg.id, msg.body, msg.created_at, msg.sender_id,
+           CASE WHEN msg.sender_id = ? THEN 'You (Admin)' ELSE ? END AS sender_name
+    FROM messages msg WHERE msg.conversation_id = ? ORDER BY msg.id ASC LIMIT 200`)
+    .all(req.user.id, f.display_name, conv.id);
+  res.json({ conversation_id: conv.id, messages });
+});
+
+// Admin (moderator) → fan inbox: text a fan as Asce (Admin).
+// Lands in his app inbox with a bell notification. Always free.
+app.post('/api/admin/fans/:id/message', ...adminOnly, (req, res) => {
+  const f = db.prepare("SELECT id, display_name FROM users WHERE id = ? AND role = 'fan'").get(req.params.id);
+  if (!f) return res.status(404).json({ error: 'not_found' });
+  const body = String(req.body?.body || '').trim().slice(0, 2000);
+  if (!body) return res.status(400).json({ error: 'empty', message: 'Write a message first.' });
+  let conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(f.id, req.user.id);
+  if (!conv) {
+    const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(f.id, req.user.id);
+    conv = { id: Number(info.lastInsertRowid) };
+  }
+  const info = db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+    .run(conv.id, req.user.id, body);
+  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+  try { notifyUser(f.id, 'message', '💬 Asce (Admin)', body.slice(0, 90), `/#chat/${conv.id}`); } catch (e) { /* bell is a bonus */ }
   res.json({ ok: true, conversation_id: conv.id, message_id: Number(info.lastInsertRowid) });
 });
 
