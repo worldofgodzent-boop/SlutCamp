@@ -1,6 +1,6 @@
 'use strict';
 /*
- * LIVE BATTLES (Phase 6 — owner design Oct 20 2026, incl. the
+ * PUMPUM VERSE (Phase 6 Live Battles — owner design Oct 20 2026, incl. the
  * Game Category add-on the same day).
  *
  * What this pins:
@@ -116,7 +116,8 @@ test('battles: announcement copy exists in all 13 languages + wiring', () => {
       if (lang !== 'en') assert.notEqual(row[lang], row.en, `${key}:${lang} is a real translation`);
     }
   }
-  assert.ok(SRV.ann_battles_dm.en.includes('LIVE BATTLES'), 'EN DM names the feature');
+  assert.ok(SRV.ann_battles_dm.en.includes('PumPum Verse'), 'EN DM headlines the PumPum Verse name');
+  assert.ok(SRV.ann_battles_bell_title.en.includes('PumPum Verse'), 'EN bell title carries the PumPum Verse name');
   assert.ok(SRV.ann_battles_dm.en.includes('60% to the winner'), 'EN DM states the split openly');
   assert.ok(SRV.ann_battles_dm.en.includes('Game Category stays open'), 'EN DM carries the Game Category add-on');
   assert.ok(serverSrc.includes("addColumnIfMissing('platform_stats', 'battles_announced_at', 'TEXT')"),
@@ -132,7 +133,7 @@ test('battles: announcement copy exists in all 13 languages + wiring', () => {
 });
 
 test('battles: client strings exist in all 13 dictionaries + stage wiring', () => {
-  for (const key of ['battle', 'battle_money_rule', 'battle_invite_from', 'battle_accept',
+  for (const key of ['battle', 'battle_brand', 'battle_money_rule', 'battle_invite_from', 'battle_accept',
                      'battle_ready', 'battle_tip_her', 'battle_games_her', 'battle_you_won',
                      'battle_rematch', 'battle_open_invites', 'battle_random', 'battle_schedule',
                      'battle_looking', 'battle_in_battle', 'battle_history']) {
@@ -146,6 +147,24 @@ test('battles: client strings exist in all 13 dictionaries + stage wiring', () =
   assert.ok(appSrc.includes('routeBattleSignal'), 'battle peer connections route their own signals');
   assert.ok(appSrc.includes("id=\"battle-open-btn\""), 'broadcast view carries the Battle button');
   assert.ok(appSrc.includes("id=\"battle-panel\""), 'broadcast view carries the battle panel');
+  // PumPum Verse stage layout (owner design update 2026-10-20): SIDE-BY-SIDE
+  // vertical split — never stacked — with the brand + scoreboard centered.
+  assert.ok(appSrc.includes('class="battle-arena"'), 'stage wraps both videos in the side-by-side arena');
+  const arenaAt = appSrc.indexOf('class="battle-arena"');
+  const vidA = appSrc.indexOf('id="battle-vid-a"', arenaAt);
+  const divider = appSrc.indexOf('class="battle-divider"', arenaAt);
+  const vidB = appSrc.indexOf('id="battle-vid-b"', arenaAt);
+  const center = appSrc.indexOf('class="battle-center"', arenaAt);
+  assert.ok(vidA > arenaAt && divider > vidA && vidB > divider && center > vidB,
+    'arena order: video A | vertical divider | video B, then the center overlay');
+  assert.ok(appSrc.includes("t('battle_brand')"), 'the PumPum Verse name renders on the scoreboard');
+  assert.ok(appSrc.includes('battle-brand'), 'scoreboard carries the centered brand header');
+  assert.ok(!appSrc.includes('max-height:34vh'), 'the old stacked-panels stage markup is gone');
+  const css = fs.readFileSync(path.join(REPO, 'public/css/styles.css'), 'utf8');
+  assert.ok(css.includes('.battle-arena {'), 'arena styles exist');
+  assert.ok(css.includes('.battle-divider {'), 'vertical divider styles exist');
+  assert.ok(css.includes('.battle-center {'), 'center overlay styles exist');
+  assert.ok(/\.battle-center \{[^}]*left: 50%[^}]*top: 50%/.test(css), 'center overlay sits in the middle of the screen');
 });
 
 /* ---------------- boot harness (mirrors face-count-guard) ---------------- */
@@ -790,7 +809,7 @@ test('battles: announcement broadcast — every model DMd once, fans never, stam
     assert.ok(models.length >= 3, 'seed models exist');
     const countFor = (modelId) => db.prepare(
       `SELECT COUNT(*) AS c FROM messages m JOIN conversations c ON c.id = m.conversation_id
-       WHERE c.fan_id = ? AND c.model_id = ? AND m.sender_id = ? AND m.body LIKE '%LIVE BATTLES%'`
+       WHERE c.fan_id = ? AND c.model_id = ? AND m.sender_id = ? AND m.body LIKE '%PumPum Verse%'`
     ).get(admin.id, modelId, admin.id).c;
     for (const m of models) assert.equal(countFor(m.id), 1, `${m.username} got exactly one announcement`);
     const bell = db.prepare("SELECT COUNT(*) AS c FROM notifications WHERE type = 'battles'").get();

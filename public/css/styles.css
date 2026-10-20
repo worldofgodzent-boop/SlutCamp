@@ -1566,6 +1566,16 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 .live-split.has-fan .split-pane { flex: 1; min-height: 180px; }
 .live-split.has-fan .split-pane video { max-height: 240px; }
 
+/* PumPum Verse stage: SIDE-BY-SIDE vertical split (TikTok VS style) inside
+   the portrait frame — left/right videos, vertical divider, and the brand +
+   scoreboard carried in a center overlay in the middle of the screen. */
+.battle-arena { position: relative; display: flex; align-items: stretch; height: 58vh; background: #000; border-radius: 14px; overflow: hidden; }
+.battle-arena .split-pane { flex: 1; min-width: 0; min-height: 0; border-radius: 0; }
+.battle-arena .split-pane video { width: 100%; height: 100%; max-height: none; object-fit: cover; display: block; }
+.battle-divider { flex: 0 0 3px; z-index: 3; background: linear-gradient(180deg, #ff5c9e, #7c3aed, #f59e0b); }
+.battle-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 4; width: min(94%, 360px); pointer-events: none; }
+.battle-brand { text-align: center; font-weight: 900; font-size: 21px; letter-spacing: .5px; color: #fff; text-shadow: 0 2px 14px rgba(255, 92, 158, .9), 0 1px 3px rgba(0, 0, 0, .85); }
+
 /* Range sliders (model explicit stage rates) */
 input[type="range"] { -webkit-appearance: none; appearance: none; height: 8px; border-radius: 4px;
   background: linear-gradient(90deg, #ec4899, #8b5cf6); outline: none; margin: 10px 0; }
