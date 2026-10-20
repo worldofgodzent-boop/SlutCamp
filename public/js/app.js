@@ -17431,6 +17431,31 @@ function untrackLiveBand() {
   kbTrack = null;
 }
 
+/* --- App-wide portrait lock (owner, 2026-10-20: the app "stays
+ * stationary... just like Instagram. Doesn't matter if you turn the
+ * phone or not, it stays vertical all the time"). The manifest has
+ * always declared orientation:portrait (installed Android obeys it
+ * at the OS level); this is the API belt on those suspenders. Chrome
+ * only grants an orientation lock from a real user gesture and only
+ * in an installed/fullscreen context, so the ask rides the first
+ * pointerdown of the session. Every refusal is SILENT and final
+ * (one-shot): desktop browsers refuse, a plain browser tab refuses,
+ * and iOS has no Orientation API at all — there, the counter-
+ * rotation layer at the end of styles.css is what keeps the shell
+ * portrait-shaped. Never a toast, never a dead end. --- */
+let portraitLockAsked = false;
+function askPortraitLock() {
+  if (portraitLockAsked) return;
+  portraitLockAsked = true;
+  try {
+    if (window.screen && screen.orientation && typeof screen.orientation.lock === 'function') {
+      const p = screen.orientation.lock('portrait');
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    }
+  } catch (e) { /* no API / refused — the CSS layer still holds */ }
+}
+window.addEventListener('pointerdown', askPortraitLock);
+
 /* --- Broadcaster rotation lock (owner, 2026-10-18: "Let them be able
  * to lock screen from rotating"). Android Chrome exposes
  * screen.orientation.lock(), which requires fullscreen first; iOS
@@ -17466,8 +17491,15 @@ async function toggleRotationLock() {
       await root.requestFullscreen();
       rotLockFs = true;
     }
-    const type = (screen.orientation && screen.orientation.type) || '';
-    await screen.orientation.lock(type.indexOf('landscape') === 0 ? 'landscape' : 'portrait');
+    // Reconciled with the app-wide portrait lock (owner, 2026-10-20:
+    // the app NEVER leaves portrait): the toggle now holds PORTRAIT
+    // instead of freezing whichever orientation she happened to be
+    // in (the PR #53 behavior) — a landscape freeze would fight the
+    // app lock and the portrait live layout. The toggle itself is
+    // unchanged: fullscreen + OS lock on Android, the honest
+    // Control-Center toast where the API does not exist (iOS), and
+    // the self-view mirror is untouched.
+    await screen.orientation.lock('portrait');
     rotLockOn = true;
   } catch (e) {
     // Lock refused (no fullscreen on a wide screen, desktop browser,
