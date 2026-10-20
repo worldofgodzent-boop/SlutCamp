@@ -483,6 +483,10 @@ const I18N = {
     coperf_cam_note: 'Check everyone appearing on camera with you.',
     coperf_cam_me: 'Just me',
     coperf_cam_go: '🔴 Go live',
+    lineup_note: 'House live: check every ID-verified model appearing on camera with you.',
+    lineup_empty: 'No other ID-verified models are on the roster yet — you can still go live solo.',
+    faceguard_warn: '⚠️ Too many faces on camera! Only {n} people are cleared for this live — anyone extra must step out of frame, or the live will end.',
+    faceguard_cut: '🛑 Live ended — more people were on camera than are cleared for this live.',
     coperf_signup_h: '👥 Your partner',
     coperf_signup_note: 'Joining as a couple? Add your partner now — they must be ID-verified before appearing on camera. You can also add them later in Settings.',
     my_rates: '💵 My Rates',
@@ -1194,6 +1198,10 @@ const I18N = {
     coperf_cam_note: 'Marca a todas las personas que saldrán en cámara contigo.',
     coperf_cam_me: 'Solo yo',
     coperf_cam_go: '🔴 Salir en vivo',
+    lineup_note: 'Directo de la casa: marca a cada modelo verificada con su ID que salga en cámara contigo.',
+    lineup_empty: 'Aún no hay otras modelos verificadas con ID en la lista — aún puedes salir en vivo en solitario.',
+    faceguard_warn: '⚠️ ¡Demasiados rostros en cámara! Solo {n} personas están autorizadas para este directo — quien sobre debe salir del encuadre, o el directo terminará.',
+    faceguard_cut: '🛑 Directo terminado — había más personas en cámara de las autorizadas para este directo.',
     coperf_signup_h: '👥 Tu pareja',
     coperf_signup_note: '¿Te unes como pareja? Añade a tu pareja ahora — debe verificar su ID antes de salir en cámara. También puedes añadirla luego en Ajustes.',
     my_rates: '💵 Mis tarifas',
@@ -1905,6 +1913,10 @@ const I18N = {
     coperf_cam_note: 'Marque todos que aparecerão na câmera com você.',
     coperf_cam_me: 'Só eu',
     coperf_cam_go: '🔴 Entrar ao vivo',
+    lineup_note: 'Live da casa: marque cada modelo verificada com ID que aparecer na câmera com você.',
+    lineup_empty: 'Ainda não há outras modelos verificadas com ID no elenco — você ainda pode entrar ao vivo sozinha.',
+    faceguard_warn: '⚠️ Muitos rostos na câmera! Apenas {n} pessoas estão autorizadas para esta live — quem estiver a mais deve sair do enquadramento, ou a live será encerrada.',
+    faceguard_cut: '🛑 Live encerrada — havia mais pessoas na câmera do que as autorizadas para esta live.',
     coperf_signup_h: '👥 Seu parceiro',
     coperf_signup_note: 'Entrando como casal? Adicione seu parceiro agora — ele precisa ter o documento verificado antes de aparecer na câmera. Você também pode adicioná-lo depois em Configurações.',
     my_rates: '💵 Minhas tarifas',
@@ -2616,6 +2628,10 @@ const I18N = {
     coperf_cam_note: 'Cochez toutes les personnes qui apparaîtront à la caméra avec vous.',
     coperf_cam_me: 'Juste moi',
     coperf_cam_go: '🔴 Passer en direct',
+    lineup_note: 'Live de la maison : cochez chaque modèle dont l\'identité est vérifiée qui apparaît à la caméra avec vous.',
+    lineup_empty: 'Aucune autre modèle à l\'identité vérifiée n\'est encore sur la liste — vous pouvez quand même passer en direct en solo.',
+    faceguard_warn: '⚠️ Trop de visages à la caméra ! Seules {n} personnes sont autorisées pour ce live — toute personne en plus doit sortir du cadre, ou le live prendra fin.',
+    faceguard_cut: '🛑 Live terminé — il y avait plus de personnes à la caméra que celles autorisées pour ce live.',
     coperf_signup_h: '👥 Votre partenaire',
     coperf_signup_note: 'Vous vous inscrivez en couple ? Ajoutez votre partenaire maintenant — il doit être vérifié par pièce d’identité avant d’apparaître à la caméra. Vous pouvez aussi le faire plus tard dans les Paramètres.',
     my_rates: '💵 Mes tarifs',
@@ -3327,6 +3343,10 @@ const I18N = {
     coperf_cam_note: 'Markiere alle, die mit dir vor der Kamera sind.',
     coperf_cam_me: 'Nur ich',
     coperf_cam_go: '🔴 Live gehen',
+    lineup_note: 'Haus-Live: Markiere jedes per Ausweis verifizierte Model, das mit dir vor der Kamera erscheint.',
+    lineup_empty: 'Noch keine weiteren per Ausweis verifizierten Models auf der Liste — du kannst trotzdem solo live gehen.',
+    faceguard_warn: '⚠️ Zu viele Gesichter vor der Kamera! Nur {n} Personen sind für diesen Live freigegeben — wer zusätzlich im Bild ist, muss herausgehen, sonst endet der Live.',
+    faceguard_cut: '🛑 Live beendet — es waren mehr Personen vor der Kamera als für diesen Live freigegeben.',
     coperf_signup_h: '👥 Dein Partner',
     coperf_signup_note: 'Als Paar dabei? Füge deinen Partner jetzt hinzu — er muss per Ausweis verifiziert sein, bevor er vor die Kamera darf. Geht auch später in den Einstellungen.',
     my_rates: '💵 Meine Preise',
@@ -4038,6 +4058,10 @@ const I18N = {
     coperf_cam_note: 'Отметьте всех, кто будет с вами в кадре.',
     coperf_cam_me: 'Только я',
     coperf_cam_go: '🔴 Выйти в эфир',
+    lineup_note: 'Домашний эфир: отметьте каждую модель с подтверждённой личностью, которая появится с вами в кадре.',
+    lineup_empty: 'Других моделей с подтверждённой личностью в списке пока нет — вы всё равно можете выйти в эфир в одиночку.',
+    faceguard_warn: '⚠️ Слишком много лиц в кадре! Для этого эфира допущено только {n} чел. — все лишние должны выйти из кадра, иначе эфир завершится.',
+    faceguard_cut: '🛑 Эфир завершён — в кадре было больше людей, чем допущено для этого эфира.',
     coperf_signup_h: '👥 Ваш партнёр',
     coperf_signup_note: 'Регистрируетесь как пара? Добавьте партнёра сейчас — он должен пройти проверку по документу, прежде чем появляться в кадре. Это можно сделать и позже в Настройках.',
     my_rates: '💵 Мои тарифы',
@@ -4749,6 +4773,10 @@ const I18N = {
     coperf_cam_note: 'あなたと一緒にカメラに映る人を全員チェックしてください。',
     coperf_cam_me: '私だけ',
     coperf_cam_go: '🔴 ライブ開始',
+    lineup_note: 'ハウスライブ：一緒にカメラに映る、本人確認済みのモデル全員にチェックを入れてください。',
+    lineup_empty: '名簿に本人確認済みの他のモデルはまだいません — それでもソロでライブを開始できます。',
+    faceguard_warn: '⚠️ カメラに映っている顔が多すぎます！このライブで許可されているのは{n}人だけです — 余分な人はフレームから外れてください。ライブが終了します。',
+    faceguard_cut: '🛑 ライブ終了 — このライブで許可された人数を超える人がカメラに映っていました。',
     coperf_signup_h: '👥 パートナー',
     coperf_signup_note: 'カップルで参加しますか？今すぐパートナーを追加してください — カメラに映る前に身分証の確認が必要です。後で設定から追加することもできます。',
     my_rates: '💵 私の料金',
@@ -5460,6 +5488,10 @@ const I18N = {
     coperf_cam_note: '勾选所有会与你一起出镜的人。',
     coperf_cam_me: '只有我',
     coperf_cam_go: '🔴 开始直播',
+    lineup_note: '官方直播：勾选每一位与您同框出镜的已通过身份验证的模特。',
+    lineup_empty: '名单上还没有其他已通过身份验证的模特 — 您仍可独自开播。',
+    faceguard_warn: '⚠️ 镜头中的人脸太多！本次直播仅允许{n}人出镜 — 多余的人员必须离开画面，否则直播将结束。',
+    faceguard_cut: '🛑 直播已结束 — 镜头中的人数超过了本次直播允许的人数。',
     coperf_signup_h: '👥 你的搭档',
     coperf_signup_note: '以情侣身份加入？现在就添加你的搭档 — 他们必须先通过身份证验证才能出镜。之后也可以在设置中添加。',
     my_rates: '💵 我的费率',
@@ -6171,6 +6203,10 @@ const I18N = {
     coperf_cam_note: '당신과 함께 출연하는 사람을 모두 선택하세요.',
     coperf_cam_me: '나 혼자',
     coperf_cam_go: '🔴 라이브 시작',
+    lineup_note: '하우스 라이브: 함께 카메라에 출연하는 신원 인증된 모델을 모두 체크하세요.',
+    lineup_empty: '명단에 신원 인증된 다른 모델이 아직 없습니다 — 그래도 솔로로 라이브를 시작할 수 있습니다.',
+    faceguard_warn: '⚠️ 카메라에 얼굴이 너무 많습니다! 이 라이브에서 허용된 인원은 {n}명뿐입니다 — 추가 인원은 화면에서 나가야 하며, 그렇지 않으면 라이브가 종료됩니다.',
+    faceguard_cut: '🛑 라이브 종료 — 이 라이브에서 허용된 인원보다 많은 사람이 카메라에 출연했습니다.',
     coperf_signup_h: '👥 당신의 파트너',
     coperf_signup_note: '커플로 가입하시나요? 지금 파트너를 추가하세요 — 카메라에 출연하기 전에 신분증 인증이 필요합니다. 나중에 설정에서도 추가할 수 있습니다.',
     my_rates: '💵 내 요금',
@@ -6882,6 +6918,10 @@ const I18N = {
     coperf_cam_note: 'Seleziona tutti coloro che appariranno in camera con te.',
     coperf_cam_me: 'Solo io',
     coperf_cam_go: '🔴 Vai in diretta',
+    lineup_note: 'Live della casa: seleziona ogni modella verificata con documento che appare in camera con te.',
+    lineup_empty: 'Nessun\'altra modella verificata con documento è ancora nell\'elenco — puoi comunque andare in diretta da sola.',
+    faceguard_warn: '⚠️ Troppi volti in camera! Solo {n} persone sono autorizzate per questa live — chi è in più deve uscire dall\'inquadratura o la live terminerà.',
+    faceguard_cut: '🛑 Live terminata — c\'erano più persone in camera di quelle autorizzate per questa live.',
     coperf_signup_h: '👥 Il tuo partner',
     coperf_signup_note: 'Ti unisci come coppia? Aggiungi ora il tuo partner — deve essere verificato con documento prima di apparire in camera. Puoi aggiungerlo anche dopo nelle Impostazioni.',
     my_rates: '💵 Le mie tariffe',
@@ -7593,6 +7633,10 @@ const I18N = {
     coperf_cam_note: 'Zaznacz wszystkich, którzy wystąpią z tobą przed kamerą.',
     coperf_cam_me: 'Tylko ja',
     coperf_cam_go: '🔴 Na żywo',
+    lineup_note: 'Transmisja domu: zaznacz każdą modelkę zweryfikowaną dokumentem, która pojawi się z Tobą przed kamerą.',
+    lineup_empty: 'Na liście nie ma jeszcze innych modelek zweryfikowanych dokumentem — nadal możesz nadawać solo.',
+    faceguard_warn: '⚠️ Za dużo twarzy przed kamerą! Tylko {n} osoby są dopuszczone do tej transmisji — dodatkowe osoby muszą wyjść z kadru, inaczej transmisja się zakończy.',
+    faceguard_cut: '🛑 Transmisja zakończona — przed kamerą było więcej osób, niż dopuszczono do tej transmisji.',
     coperf_signup_h: '👥 Twój partner',
     coperf_signup_note: 'Dołączasz jako para? Dodaj partnera teraz — musi zostać zweryfikowany dokumentem, zanim wystąpi przed kamerą. Możesz to zrobić także później w Ustawieniach.',
     my_rates: '💵 Moje stawki',
@@ -8304,6 +8348,10 @@ const I18N = {
     coperf_cam_note: 'Vink iedereen aan die met jou in beeld komt.',
     coperf_cam_me: 'Alleen ik',
     coperf_cam_go: '🔴 Ga live',
+    lineup_note: 'Huis-live: vink elk met ID geverifieerd model aan dat met jou in beeld verschijnt.',
+    lineup_empty: 'Er staan nog geen andere met ID geverifieerde modellen op de lijst — je kunt alsnog solo live gaan.',
+    faceguard_warn: '⚠️ Te veel gezichten in beeld! Slechts {n} mensen zijn goedgekeurd voor deze live — extra personen moeten uit beeld stappen, anders eindigt de live.',
+    faceguard_cut: '🛑 Live beëindigd — er waren meer mensen in beeld dan goedgekeurd voor deze live.',
     coperf_signup_h: '👥 Je partner',
     coperf_signup_note: 'Doe je mee als koppel? Voeg je partner nu toe — ze moeten ID-geverifieerd zijn voordat ze in beeld mogen. Later toevoegen via Instellingen kan ook.',
     my_rates: '💵 Mijn Tarieven',
@@ -9015,6 +9063,10 @@ const I18N = {
     coperf_cam_note: 'Seninle birlikte kamerada yer alacak herkesi işaretle.',
     coperf_cam_me: 'Sadece ben',
     coperf_cam_go: '🔴 Canlı yayına geç',
+    lineup_note: 'Ev yayını: seninle kamerada görünecek, kimliği doğrulanmış her modeli işaretle.',
+    lineup_empty: 'Listede henüz kimliği doğrulanmış başka model yok — yine de tek başına yayına geçebilirsin.',
+    faceguard_warn: '⚠️ Kamerada çok fazla yüz var! Bu yayın için yalnızca {n} kişi onaylı — fazla kişiler kadrajdan çıkmalı, aksi halde yayın sona erecek.',
+    faceguard_cut: '🛑 Yayın sona erdi — bu yayın için onaylanan kişi sayısından fazlası kameradaydı.',
     coperf_signup_h: '👥 Partneriniz',
     coperf_signup_note: 'Çift olarak mı katılıyorsunuz? Partnerinizi şimdi ekleyin — kamerada yer almadan önce kimlik doğrulamasından geçmesi gerekir. Daha sonra Ayarlar’dan da ekleyebilirsiniz.',
     my_rates: '💵 Ücretlerim',
@@ -17010,6 +17062,7 @@ async function rejoinLiveBroadcast(sessionId) {
   S.live = { sessionId, role: 'model', stream,
              explicitRate: data.explicit_rate_cents || 499, isExplicit: !!data.is_explicit,
              brb: false,
+             faceCap: (typeof data.face_cap === 'number' ? data.face_cap : null),
              title: data.title || '', chat: [], gifts: [], leaderboard: [] };
   // If she stepped away before the disconnect, land back on the BRB state
   // (mutes her fresh tracks + stops the safety bots until she resumes).
@@ -17018,6 +17071,7 @@ async function rejoinLiveBroadcast(sessionId) {
   loadStreamChat();
   loadLeaderboard();
   toast('🔴 Back live! Welcome back 🎉');
+  startFaceGuard(sessionId);
   if (!S.live.brb) {
     startSpeechSafetyBot(sessionId);
     startAudioChunkBot(sessionId);
@@ -17028,16 +17082,16 @@ async function rejoinLiveBroadcast(sessionId) {
  * co-performers (Sections Phase 2). Resolves the picked partner ids,
  * or null when she backs out. She herself is always on her own
  * camera (checked + disabled row). */
-function pickLiveParticipants(partners) {
+function pickLiveParticipants(partners, opts) {
   return new Promise((resolve) => {
     const wrap = document.createElement('div');
     wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
     wrap.innerHTML = `
       <div class="card" style="max-width:420px;width:100%">
         <div style="font-weight:800;margin-bottom:6px">${t('coperf_cam_h')}</div>
-        <div class="muted small" style="margin-bottom:10px">${t('coperf_cam_note')}</div>
+        <div class="muted small" style="margin-bottom:10px">${(opts && opts.note) || t('coperf_cam_note')}</div>
         <label class="checkbox-row"><input type="checkbox" checked disabled><span>${t('coperf_cam_me')}</span></label>
-        ${partners.map((p) => `<label class="checkbox-row"><input type="checkbox" data-cam-pick="${p.id}"><span>${esc(p.display_name)}</span></label>`).join('')}
+        ${partners.map((p) => `<label class="checkbox-row"><input type="checkbox" data-cam-pick="${p.id}"><span>${esc(p.cam_label || p.display_name)}</span></label>`).join('')}
         <button class="btn" id="cam-go" style="width:100%;margin-top:12px">${t('coperf_cam_go')}</button>
         <button class="btn ghost" id="cam-cancel" style="width:100%;margin-top:8px">${t('cancel')}</button>
       </div>`;
@@ -17060,12 +17114,28 @@ async function startLiveBroadcast() {
   let participants;
   try {
     const cpRes = await api('/model/co-performers');
-    const approvedPartners = ((cpRes.data && cpRes.data.co_performers) || [])
-      .filter((p) => p.status === 'approved');
-    if (approvedPartners.length) {
-      const picked = await pickLiveParticipants(approvedPartners);
+    if (cpRes.data && cpRes.data.house) {
+      // HOUSE LINEUP (Sections Phase 4): the house has no
+      // co-performers — its "Who's on camera?" checklist is the
+      // roster of ID-verified models from /live/lineup, and the
+      // server validates the picked set against their own approved
+      // ID verifications. The picker shows even with an empty roster
+      // (with the solo note) so the step never looks broken.
+      const luRes = await api('/live/lineup');
+      const roster = ((luRes.data && luRes.data.models) || [])
+        .map((m) => ({ id: m.id, cam_label: `${m.display_name} (@${m.username})` }));
+      const picked = await pickLiveParticipants(roster,
+        { note: roster.length ? t('lineup_note') : t('lineup_empty') });
       if (picked === null) return; // backed out of going live
       participants = [S.user.id, ...picked];
+    } else {
+      const approvedPartners = ((cpRes.data && cpRes.data.co_performers) || [])
+        .filter((p) => p.status === 'approved');
+      if (approvedPartners.length) {
+        const picked = await pickLiveParticipants(approvedPartners);
+        if (picked === null) return; // backed out of going live
+        participants = [S.user.id, ...picked];
+      }
     }
   } catch (e) { /* checklist is best-effort; solo start still works */ }
   const { status, data } = await api('/live/start', {
@@ -17094,6 +17164,7 @@ async function startLiveBroadcast() {
   }
   S.live = { sessionId: data.session_id, role: 'model', stream,
              explicitRate: data.explicit_rate_cents, isExplicit: false, brb: false,
+             faceCap: (typeof data.face_cap === 'number' ? data.face_cap : null),
              title: data.title || '', chat: [], gifts: [], leaderboard: [] };
   show('liveBroadcast', {});
   loadStreamChat();
@@ -17101,6 +17172,7 @@ async function startLiveBroadcast() {
   toast('🔴 You are LIVE! Chat is free for fans — gifts = money 💰');
   startSpeechSafetyBot(data.session_id);
   startAudioChunkBot(data.session_id);
+  startFaceGuard(data.session_id);
 }
 
 /* --- Speech safety bot: transcribes the model's mic, flags personal info/socials --- */
@@ -17213,6 +17285,154 @@ function stopAudioChunkBot() {
     audioChunkRecorder = null;
   }
 }
+
+/* ==== FACE-COUNT GUARD (Sections Phase 4) — BEGIN ==== */
+/* Broadcaster-only, on-device face COUNT guard (owner phasing:
+ * count first, identity later). While she is live, the guard samples
+ * her own self-view (#live-local) every FG_SAMPLE_MS, counts faces
+ * with the vendored pico detector (public/vendor/pico.js + the
+ * facefinder cascade — loaded LAZILY here, never on page load), and
+ * compares the count with the session's face cap (1 + validated
+ * declared participants, from /api/live/start or the rejoin fetch).
+ * Over the cap on one sample = on-screen warning; STILL over on the
+ * next consecutive sample = the live ends through endLiveView. A
+ * sample back at/under the cap clears the warning. COUNT ONLY: no
+ * identity, no image ever leaves the device, nothing is uploaded or
+ * stored. FAILS OPEN everywhere: unknown cap, a detector that will
+ * not load, a missing self-view, any sampling error — the live runs
+ * unguarded and only the console knows. Viewers never run this, and
+ * 1:1 calls are not lives: only startFaceGuard's two call sites (the
+ * model's live start + rejoin) arm it. */
+const FG_SAMPLE_MS = 3000;
+/* Cluster-score floor for counting a detection as a face: pico
+ * clusters sum their member scores, and a real frontal face at
+ * self-view distance sums well past this; isolated false hits do
+ * not. Empirical constant of the facefinder cascade. */
+const FG_SCORE_MIN = 20.0;
+
+/* The enforcement decision, pure (unit-tested in
+ * tests/face-count-guard.test.js): given the previous state, a fresh
+ * face count and the cap, say what happens next. `over` in the
+ * returned state = the last sample was over the cap. */
+function faceGuardStep(state, count, cap) {
+  const wasOver = !!(state && state.over);
+  if (typeof count !== 'number' || !(count > cap))
+    return { over: false, action: wasOver ? 'clear' : 'none' };
+  return wasOver ? { over: true, action: 'cut' } : { over: true, action: 'warn' };
+}
+
+let fgTimer = null;
+let fgSessionId = null;
+let fgState = { over: false };
+let fgClassifierPromise = null;
+let fgCanvas = null;
+
+function fgLoadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('load failed: ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+function fgGetClassifier() {
+  if (!fgClassifierPromise) {
+    fgClassifierPromise = (async () => {
+      if (!window.pico) await fgLoadScript('/vendor/pico.js');
+      if (!window.FACEFINDER_CASCADE_B64) await fgLoadScript('/vendor/facefinder-cascade.js');
+      const bin = window.atob(window.FACEFINDER_CASCADE_B64);
+      const bytes = new Int8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return window.pico.unpack_cascade(bytes);
+    })();
+    // A failed load must not poison later lives: clear the memo so a
+    // later start retries (this live simply runs unguarded).
+    fgClassifierPromise.catch(() => { fgClassifierPromise = null; });
+  }
+  return fgClassifierPromise;
+}
+
+/* One sample: draw the self-view into a small canvas, grayscale it
+ * (pico demo weights), run the cascade, count confident clusters. */
+function fgCountFaces(classify) {
+  const video = document.getElementById('live-local');
+  if (!video || !video.videoWidth || !video.videoHeight)
+    throw new Error('self-view unavailable');
+  const W = 320;
+  const H = Math.max(2, Math.round(W * video.videoHeight / video.videoWidth));
+  if (!fgCanvas) fgCanvas = document.createElement('canvas');
+  fgCanvas.width = W; fgCanvas.height = H;
+  const ctx = fgCanvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, W, H);
+  const rgba = ctx.getImageData(0, 0, W, H).data;
+  const gray = new Uint8Array(W * H);
+  for (let i = 0, j = 0; i < rgba.length; i += 4, j++)
+    gray[j] = (2 * rgba[i] + 7 * rgba[i + 1] + rgba[i + 2]) / 10;
+  const dets = window.pico.run_cascade(
+    { pixels: gray, nrows: H, ncols: W, ldim: W }, classify,
+    { shiftfactor: 0.1, minsize: Math.round(H * 0.12), maxsize: H, scalefactor: 1.1 });
+  const clusters = window.pico.cluster_detections(dets, 0.2);
+  return clusters.filter((d) => d[3] > FG_SCORE_MIN).length;
+}
+
+function fgBanner(show, cap) {
+  let el = document.getElementById('faceguard-warn');
+  if (!show) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'faceguard-warn';
+    el.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top, 0px) + 60px);left:50%;transform:translateX(-50%);z-index:10002;background:#b91c1c;color:#fff;padding:10px 16px;border-radius:12px;font-weight:700;font-size:15px;max-width:92vw;text-align:center;box-shadow:0 4px 18px rgba(0,0,0,.45)';
+    document.body.appendChild(el);
+  }
+  el.textContent = t('faceguard_warn', { n: cap });
+}
+
+function startFaceGuard(sessionId) {
+  stopFaceGuard();
+  const L = S.live;
+  if (!L || L.role !== 'model' || !Number.isInteger(L.faceCap) || L.faceCap < 1) return;
+  fgSessionId = sessionId;
+  fgState = { over: false };
+  fgGetClassifier().then((classify) => {
+    if (fgSessionId !== sessionId) return;
+    const tick = async () => {
+      if (fgSessionId !== sessionId || !S.live || S.live.sessionId !== sessionId) {
+        stopFaceGuard();
+        return;
+      }
+      if (S.live.brb) return; // paused: her tracks are off — resume re-arms sampling
+      let count;
+      try {
+        count = fgCountFaces(classify);
+      } catch (e) {
+        console.log('[faceguard] sampling failed — guard off', e);
+        stopFaceGuard();
+        return;
+      }
+      const r = faceGuardStep(fgState, count, L.faceCap);
+      fgState = { over: r.over };
+      if (r.action === 'cut') {
+        const msg = t('faceguard_cut');
+        stopFaceGuard();
+        endLiveView(msg);
+        return;
+      }
+      fgBanner(r.over, L.faceCap);
+    };
+    tick();
+    fgTimer = setInterval(tick, FG_SAMPLE_MS);
+  }).catch((e) => { console.log('[faceguard] detector unavailable — guard off', e); });
+}
+
+function stopFaceGuard() {
+  if (fgTimer) { clearInterval(fgTimer); fgTimer = null; }
+  fgSessionId = null;
+  fgState = { over: false };
+  fgBanner(false);
+}
+/* ==== FACE-COUNT GUARD (Sections Phase 4) — END ==== */
 
 function liveModelAddViewer(fanId) {
   if (!S.live || S.live.role !== 'model') return;
@@ -19643,6 +19863,7 @@ function endLiveView(msg) {
   // Rotation lock never outlives the broadcast (no-op if never engaged
   // or if this is a fan leaving — fans never hold the lock).
   releaseRotationLock();
+  stopFaceGuard(); // Phase 4 guard never outlives the live either (no-op if never armed)
   const L = S.live;
   if (L) {
     clearInterval(liveMonitorInt);

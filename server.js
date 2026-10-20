@@ -11029,6 +11029,15 @@ app.post('/api/admin/2fa/disable', ...adminOnly, (req, res) => {
 
 const livePayTimers = new Map(); // "sessionId:fanId" -> interval
 
+/* Face-count guard (Sections Phase 4): sessionId -> the session's
+ * face cap (1 + validated declared participants), computed once at
+ * POST /api/live/start and read back by the broadcaster (start
+ * response + GET /api/live/:id for rejoins). In-memory on purpose:
+ * a server restart simply forgets caps, GET then reports null and
+ * the client guard fails open (no cap, no guard) rather than
+ * inventing one. Entries are dropped when the session ends. */
+const liveFaceCaps = new Map();
+
 function liveTimerKey(sessionId, fanId) { return `${sessionId}:${fanId}`; }
 
 function stopLivePayTimer(sessionId, fanId, clearDb = true) {
@@ -11083,6 +11092,29 @@ app.get('/api/live/my-session', identMiddleware, requireUser, requireRole('model
   res.json({ session_id: sess ? sess.id : null });
 });
 
+// House lineup roster (Sections Phase 4): the models the HOUSE may
+// declare on a house live — roster models (role='model', not banned,
+// not the house itself) whose OWN primary ID verification is
+// approved (the same approved row isIdVerified reads: co_performer_id
+// IS NULL + status 'approved'; the house row itself is excluded by
+// the id check, since isIdVerified short-circuits true for it).
+// House-only: models keep their co-performer checklist instead.
+app.get('/api/live/lineup', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  if (!isHouseAccountId(req.user.id))
+    return res.status(403).json({ error: 'house_only',
+      message: 'The live lineup is only for the house account.' });
+  const rows = db.prepare(`
+    SELECT u.id, u.username, u.display_name, m.photo_url
+    FROM users u
+    LEFT JOIN models m ON m.user_id = u.id
+    JOIN id_verifications v ON v.model_id = u.id
+      AND v.co_performer_id IS NULL AND v.status = 'approved'
+    WHERE u.role = 'model' AND u.banned = 0 AND u.id != ?
+    ORDER BY u.display_name COLLATE NOCASE, u.username`).all(req.user.id);
+  res.json({ models: rows.map((r) => ({ id: r.id, username: r.username,
+    display_name: r.display_name, photo_url: r.photo_url || null })) });
+});
+
 // Model starts a live cam session
 app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   if (!isIdVerified(req.user.id))
@@ -11095,11 +11127,36 @@ app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), 
   // (or an empty one) = solo, gated by her own approval just above.
   const declared = Array.isArray(req.body && req.body.participants)
     ? req.body.participants.map(Number).filter((n) => Number.isInteger(n) && n > 0) : [];
+  // Face-count guard (Sections Phase 4): the session's face cap =
+  // 1 (the broadcaster) + the validated declared participants. The
+  // broadcaster's client enforces it on-device; solo is always 1.
+  let faceCap = 1;
   if (declared.length) {
-    const allowed = new Set(cameraAllowedIds(req.user.id));
-    if (declared.some((p) => p !== req.user.id && !allowed.has(p)))
-      return res.status(403).json({ error: 'unapproved_participants',
-        message: '👥 Everyone on camera must be ID-verified first — add co-performers in Settings → My Co-Performers.' });
+    if (isHouseAccountId(req.user.id)) {
+      // HOUSE LINEUP (Phase 4, owner amendment): the house has no
+      // co-performers — cameraAllowedIds(house) is just itself, and
+      // that meaning is unchanged for every other caller. A house
+      // live may instead declare a lineup of roster models, each
+      // cleared by her OWN approved primary ID verification. Any id
+      // that fails (not a model, banned, unverified) is refused with
+      // the same 403 shape as the co-performer rule below; the
+      // house's own id in the list is simply itself (filtered out
+      // above) and never counts as a lineup member.
+      const lineup = [...new Set(declared.filter((p) => p !== req.user.id))];
+      for (const pid of lineup) {
+        const u = db.prepare('SELECT role, banned FROM users WHERE id = ?').get(pid);
+        if (!u || u.role !== 'model' || u.banned || isHouseAccountId(pid) || !isIdVerified(pid))
+          return res.status(403).json({ error: 'unapproved_participants',
+            message: '👥 Everyone on camera must be ID-verified first — add co-performers in Settings → My Co-Performers.' });
+      }
+      faceCap = 1 + lineup.length;
+    } else {
+      const allowed = new Set(cameraAllowedIds(req.user.id));
+      if (declared.some((p) => p !== req.user.id && !allowed.has(p)))
+        return res.status(403).json({ error: 'unapproved_participants',
+          message: '👥 Everyone on camera must be ID-verified first — add co-performers in Settings → My Co-Performers.' });
+      faceCap = 1 + new Set(declared.filter((p) => p !== req.user.id)).size;
+    }
   }
   const existing = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`)
     .get(req.user.id);
@@ -11117,6 +11174,7 @@ app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), 
   const info = db.prepare(
     'INSERT INTO live_sessions (model_id, explicit_rate_cents, title) VALUES (?,?,?)')
     .run(req.user.id, explicit_rate_cents, title);
+  liveFaceCaps.set(Number(info.lastInsertRowid), faceCap);
   db.prepare('UPDATE models SET is_online = 1 WHERE user_id = ?').run(req.user.id);
   // Notify followers: "she's live!" — EXCEPT the official house account
   // (owner, Oct 17 2026): when the app itself goes live, EVERY fan is
@@ -11133,7 +11191,8 @@ app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), 
       title ? srv('bell_live_body_titled', fanLang, { title }) : srv('bell_live_body', fanLang),
       '/#live');
   }
-  res.json({ session_id: Number(info.lastInsertRowid), explicit_rate_cents, title });
+  res.json({ session_id: Number(info.lastInsertRowid), explicit_rate_cents, title,
+    face_cap: faceCap });
 });
 
 // Fan leaves the live view (stops billing, closes model's peer connection)
@@ -11241,7 +11300,11 @@ app.get('/api/live/:id', identMiddleware, requireUser, (req, res) => {
   if (sess.status !== 'live') return res.status(410).json({ error: 'ended' });
   res.json({ session_id: sess.id, title: sess.title,
     explicit_rate_cents: sess.explicit_rate_cents, is_explicit: !!sess.is_explicit,
-    brb: !!sess.brb });
+    brb: !!sess.brb,
+    // Face-count guard (Phase 4): the broadcaster's rejoin path reads
+    // the session's cap here; null when unknown (e.g. server restart)
+    // — the client fails open on null.
+    face_cap: liveFaceCaps.has(sess.id) ? liveFaceCaps.get(sess.id) : null });
 });
 
 // Admin: watch a live session as invisible moderator (not counted as viewer, no paywall)
@@ -11270,6 +11333,7 @@ app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
   if (!sess) return res.status(404).json({ error: 'not_found' });
   if (req.user.role !== 'admin' && sess.model_id !== req.user.id)
     return res.status(403).json({ error: 'forbidden' });
+  liveFaceCaps.delete(sess.id);
   db.prepare(`UPDATE live_sessions SET status = 'ended', ended_at = datetime('now') WHERE id = ?`)
     .run(sess.id);
   const viewers = db.prepare('SELECT fan_id FROM live_viewers WHERE session_id = ?').all(sess.id);
@@ -11793,6 +11857,7 @@ app.get('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
 
 // Force-end a live session (safety kill — payment info shared on live)
 function killLiveSession(sess, reason) {
+  liveFaceCaps.delete(sess.id);
   db.prepare(`UPDATE live_sessions SET status = 'ended', ended_at = datetime('now') WHERE id = ?`)
     .run(sess.id);
   const viewers = db.prepare('SELECT fan_id FROM live_viewers WHERE session_id = ?').all(sess.id);
