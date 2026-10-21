@@ -768,8 +768,10 @@ async function adminFansBody() {
         <div class="row" style="margin-top:8px">
           <input class="input" id="cr-${f.id}" type="number" step="0.01" placeholder="$ credits" style="margin-top:0;max-width:130px">
           <button class="btn small" data-credit="${f.id}">+ Credits</button>
+          <button class="btn small ghost" data-f-msg="${f.id}">💬 Message</button>
           <button class="btn small ${f.banned ? 'success' : 'danger'}" data-ban="${f.id}">${f.banned ? 'Unban' : 'Ban'}</button>
         </div>
+        <div id="fedit-${f.id}"></div>
       </div>`).join('') || '<div class="empty">No fans yet.</div>'}`;
 }
 
@@ -2089,6 +2091,40 @@ function wireAdminBody(tab) {
       const f = (data.fans || []).find((x) => x.id === parseInt(id));
       await api(`/admin/fans/${id}/${f.banned ? 'unban' : 'ban'}`, { method: 'POST' });
       M.reload();
+    };
+  });
+  document.querySelectorAll('[data-f-msg]').forEach((b) => {
+    b.onclick = async () => {
+      const id = b.dataset.fMsg;
+      const box = $('#fedit-' + id);
+      const renderThread = async () => {
+        const { data } = await api(`/admin/fans/${id}/thread`);
+        const msgs = (data && data.messages) || [];
+        box.innerHTML = `
+          <div style="margin-top:10px">
+            <div class="small muted" style="margin-bottom:6px">💬 His admin thread — he sees “Asce (Admin)”. His replies land here too. Use it for guidance and warnings.</div>
+            <div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
+              ${msgs.length ? msgs.map((x) => `<div style="background:rgba(0,0,0,.25);border-radius:10px;padding:7px 9px">
+                <b class="small">${esc(x.sender_name)}</b> <span class="small muted">${timeHM(x.created_at)}</span>
+                <div style="white-space:pre-wrap;font-size:14px">${esc(x.body)}</div></div>`).join('') : '<div class="small muted">No messages yet — say the first word.</div>'}
+            </div>
+            <textarea class="input" id="mf-${id}" rows="2" placeholder="Text him as moderator…"></textarea>
+            <div class="row" style="margin-top:6px;gap:6px">
+              <button class="btn small" id="mf-send-${id}">Send to his inbox</button>
+              <button class="btn small ghost" id="mf-refresh-${id}">↻ Refresh</button>
+            </div>
+          </div>`;
+        $('#mf-send-' + id).onclick = async () => {
+          const body = $('#mf-' + id).value.trim();
+          if (!body) return;
+          const { status } = await api(`/admin/fans/${id}/message`, {
+            method: 'POST', body: JSON.stringify({ body }) });
+          if (status === 200) { toast('💬 Sent to his inbox'); renderThread(); }
+          else toast('Could not send.');
+        };
+        $('#mf-refresh-' + id).onclick = renderThread;
+      };
+      renderThread();
     };
   });
 
