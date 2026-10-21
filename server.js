@@ -402,7 +402,7 @@ function seoModelCard(m) {
   </div></a>`;
 }
 const seoBrand = `<div class="brand"><a href="/">Slut<span class="camp">Camp</span></a><span class="age">18+</span></div>`;
-const seoFooter = `<footer>SlutCamp is an 18+ platform. You must be of legal age in your location to use it.<br><a href="/models">All models</a> · <a href="/join">Become a model</a> · <a href="/">Open the app</a></footer>`;
+const seoFooter = `<footer>SlutCamp is an 18+ platform. You must be of legal age in your location to use it.<br><a href="/models">All models</a> · <a href="/join">Become a model</a> · <a href="/">Open the app</a><br><a href="/#terms">Terms</a> · <a href="/#privacy">Privacy</a> · <a href="/#billing">Billing &amp; Refunds</a> · <a href="/#2257">2257</a> · <a href="/#dmca">DMCA</a><br>Operated by World of Godz Entertainment LLC</footer>`;
 
 // GET /models/:username — her public, crawlable page.
 app.get('/models/:username', (req, res) => {
@@ -500,7 +500,7 @@ ${seoBrand}
   <li><strong>Your earnings are protected</strong> — payouts run on a published weekly cycle, and chargeback handling is written into the Terms you sign, so a fan's bank dispute isn't handled on a whim. <a href="/payouts">Read our payout promise</a></li>
   <li><strong>Face ID sign-in</strong> — your account unlocks with your face. No password to leak, nothing biometric ever leaves your phone.</li>
   <li><strong>You set your prices</strong> — per-message, per-minute, live rates, games and bookings are yours to price and change anytime.</li>
-  <li><strong>ID-verified community</strong> — every model is ID-verified before she can earn, and fans pay through one wallet: no subscription stacking, no games.</li>
+  <li><strong>ID-verified community</strong> — every model is ID-verified before she can go live or cash out, and fans pay through one wallet: no subscription stacking, no games.</li>
 </ul>
 <p style="text-align:center"><a class="cta" href="/">Apply in the app — it's free</a></p>
 <p>Applying takes a few minutes: create your model account, verify your ID, set your prices, and go live. You must be 18+ and able to work legally where you live.</p>
@@ -1510,6 +1510,8 @@ addColumnIfMissing('platform_stats', 'admin_phone', 'TEXT');
 addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'test_money_cleared_at', 'TEXT');
 addColumnIfMissing('platform_stats', 'demo_wipe_2026_10_at', 'TEXT'); // one-time FULL demo-money wipe stamp (Oct 21 2026) — its own marker; the Oct 12 stamp above is already consumed in production
+addColumnIfMissing('platform_stats', 'ccbill_cleanup_2026_10_at', 'TEXT'); // one-time CCBill evaluation cleanup stamp (Oct 21 2026): "FaceTime" wording scrub of model-authored text
+addColumnIfMissing('platform_stats', 'ccbill_username_rename_2026_10_at', 'TEXT'); // one-time username rename stamp (Oct 21 2026): the two models whose username was their Gmail address
 addColumnIfMissing('platform_stats', 'commission_60_40_fixed_at', 'TEXT'); // one-time canonical 60/40 correction stamp
 addColumnIfMissing('platform_stats', 'demo_purge_at', 'TEXT'); // one-time demo-seed purge stamp
 addColumnIfMissing('platform_stats', 'play_money_zeroed_at', 'TEXT'); // one-time play-money totals cleanup stamp (Oct 17 2026)
@@ -5292,6 +5294,89 @@ try { const n = sweepStalePrivateEvents(); if (n) console.log(`[private-room] Sw
   } catch (e) { console.log('[cleanup] demo-money wipe failed:', e.message); }
 })();
 
+// One-time CCBill evaluation cleanup (owner-directed 2026-10-21, ahead
+// of CCBill's website evaluation): four model bios invite fans to "book
+// a private FaceTime" — FaceTime is Apple's product, and on a public
+// profile it reads to a processor reviewer like off-platform contact
+// routing (the very thing the platform prohibits). This pass rewrites
+// every case variant of "FaceTime" in MODEL-AUTHORED text — models.bio,
+// tip_menus.label, game_items.label — to "video call" ("book a private
+// FaceTime" → "book a private video call"). Nothing else is altered:
+// no other bio text, no messages (the Safety build owns those), no
+// purchase-history snapshots (game_requests.label is a bought record,
+// not an authored label). Runs exactly once, in one transaction, under
+// its own marker (ccbill_cleanup_2026_10_at).
+(function ccbillReadinessCleanupOnce() {
+  try {
+    const row = db.prepare('SELECT ccbill_cleanup_2026_10_at FROM platform_stats WHERE id = 1').get();
+    if (!row || row.ccbill_cleanup_2026_10_at) return;
+    const scrub = (s) => (typeof s === 'string' ? s.replace(/facetime/gi, 'video call') : s);
+    let bios = 0, tipLabels = 0, gameLabels = 0;
+    txn(() => {
+      const updBio = db.prepare('UPDATE models SET bio = ? WHERE user_id = ?');
+      for (const m of db.prepare("SELECT user_id, bio FROM models WHERE bio IS NOT NULL AND LOWER(bio) LIKE '%facetime%'").all()) {
+        const next = scrub(m.bio);
+        if (next !== m.bio) { updBio.run(next, m.user_id); bios++; }
+      }
+      const updTip = db.prepare('UPDATE tip_menus SET label = ? WHERE id = ?');
+      for (const it of db.prepare("SELECT id, label FROM tip_menus WHERE LOWER(label) LIKE '%facetime%'").all()) {
+        const next = scrub(it.label);
+        if (next !== it.label) { updTip.run(next, it.id); tipLabels++; }
+      }
+      const updGame = db.prepare('UPDATE game_items SET label = ? WHERE id = ?');
+      for (const it of db.prepare("SELECT id, label FROM game_items WHERE LOWER(label) LIKE '%facetime%'").all()) {
+        const next = scrub(it.label);
+        if (next !== it.label) { updGame.run(next, it.id); gameLabels++; }
+      }
+      db.prepare("UPDATE platform_stats SET ccbill_cleanup_2026_10_at = datetime('now') WHERE id = 1").run();
+    });
+    console.log(`[cleanup] CCBill readiness scrub: "FaceTime" replaced with "video call" in ${bios} model bio(s), ${tipLabels} tip-menu label(s), ${gameLabels} game-item label(s).`);
+  } catch (e) { console.log('[cleanup] CCBill readiness scrub failed:', e.message); }
+})();
+
+// One-time username renames (owner order, 2026-10-21): two launch
+// models signed up with their Gmail address AS their username, which
+// publishes their personal email on every public page. Sign-in
+// resolves by username only, so renaming changes the name they sign
+// in with — both models were emailed their new sign-in name first
+// (password unchanged) and the owner ordered the change anyway ("we
+// change it, so we are in policy"). Guarded per pair: the row must
+// still carry the exact old username AND role 'model', and the
+// target must be free; any guard failure skips that pair (logged),
+// never forces it. Every other account is untouched by construction
+// (exact-match on these two usernames only — the CCBill review
+// account, fandemo and the house account can never be candidates).
+// Runs exactly once, in one transaction, under its own marker
+// (ccbill_username_rename_2026_10_at). The signup guard in
+// POST /api/auth/signup keeps any new model from repeating this.
+(function ccbillUsernameRenameOnce() {
+  try {
+    const row = db.prepare('SELECT ccbill_username_rename_2026_10_at FROM platform_stats WHERE id = 1').get();
+    if (!row || row.ccbill_username_rename_2026_10_at) return;
+    const pairs = [
+      ['krazykatz2022@gmail.com', 'krazykatz2022'],
+      ['shadecas27@gmail.com', 'shadecas27'],
+    ];
+    txn(() => {
+      for (const [oldName, newName] of pairs) {
+        const u = db.prepare('SELECT id, role FROM users WHERE username = ?').get(oldName);
+        if (!u) continue; // already renamed, or never existed on this DB
+        if (u.role !== 'model') {
+          console.log(`[cleanup] username rename SKIPPED for ${oldName}: role is '${u.role}', not 'model'.`);
+          continue;
+        }
+        if (db.prepare('SELECT id FROM users WHERE username = ?').get(newName)) {
+          console.log(`[cleanup] username rename SKIPPED for ${oldName}: target '${newName}' is already taken.`);
+          continue;
+        }
+        db.prepare('UPDATE users SET username = ? WHERE id = ?').run(newName, u.id);
+        console.log(`[cleanup] username renamed: ${oldName} → ${newName} (model sign-in name; password unchanged).`);
+      }
+      db.prepare("UPDATE platform_stats SET ccbill_username_rename_2026_10_at = datetime('now') WHERE id = 1").run();
+    });
+  } catch (e) { console.log('[cleanup] username rename failed:', e.message); }
+})();
+
 // One-time play-money totals cleanup (Asce, Oct 17 2026): every sale on
 // the platform to date is PLAY money — demo/test credits spent by test
 // fan accounts (chiefly fandemo). No real purchase has ever occurred
@@ -6101,6 +6186,15 @@ app.post('/api/auth/signup', (req, res) => {
   // above. Fans never declare one.
   if (finalRole === 'model' && !MODEL_SECTIONS.includes(section))
     return res.status(400).json({ error: 'must_declare_section' });
+  // Signup guard (owner order, Oct 21 2026): a MODEL's username can
+  // never be an email address — it would publish her personal email
+  // on every public page. Two launch models signed up exactly that
+  // way and had to be renamed by the one-time migration; kick it
+  // back at the door so it never happens again. finalRole is the
+  // resolved role (self-picked, invite-forced or referral), so every
+  // model path through this endpoint passes the same gate.
+  if (finalRole === 'model' && String(username).includes('@'))
+    return res.status(400).json({ error: 'username_is_email', message: "Your username can't be an email address — pick a name instead." });
   if (db.prepare('SELECT id FROM users WHERE username = ?').get(username.trim()))
     return res.status(409).json({ error: 'username_taken' });
 
@@ -9646,7 +9740,7 @@ app.post('/api/credits/buy', identMiddleware, requireUser, requireRole('fan'), (
   // 'completed' (and credit the wallet) or 'failed' (card declined).
   logPurchaseAttempt(req.user.id, pkg, pkg.price_cents, cardFingerprint, ip, 'pending', 'processor_not_connected');
   res.status(501).json({ error: 'payment_not_connected',
-    message: 'Payment processor coming soon — CCBill/Segpay will plug in here.',
+    message: 'Card payments are launching soon.',
     descriptor: pkg.descriptor });
 });
 
