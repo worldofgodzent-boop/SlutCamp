@@ -241,7 +241,7 @@ test('pin: the Manager admin→fan message bell carries its thread link', () => 
   assert.ok(stmt.includes('`/#chat/${conv.id}`'), 'route bell must link to its thread');
 });
 
-test('pin: exactly 27 thread links exist server-side — no more, no fewer', () => {
+test('pin: exactly 29 thread links exist server-side — no more, no fewer', () => {
   // 17 named functions + the Manager route. (The thread-tap broadcast
   // joined the list when it shipped — its bell demonstrates the
   // feature; the 13-languages broadcast joined later the same day;
@@ -269,9 +269,14 @@ test('pin: exactly 27 thread links exist server-side — no more, no fewer', () 
   // thread, the same sanctioned pattern; and the Manager warn-a-fan
   // route joined with the same build — its bell links the fan to
   // his admin thread, an exact mirror of the admin→model message
-  // bell above.) Any other bell gaining a '/#chat/' link
-  // (or one of the 27 losing it) trips this count.
-  assert.equal(server.split('/#chat/${conv.id}').length - 1, 27);
+  // bell above; the Phase 5 private-rooms announcement joined with
+  // the Private Room Events build — its bell links each model to her
+  // official Notices thread, the same sanctioned pattern; and the
+  // private-room invite broadcast joined with the same build — its
+  // bell links each invited fan to his DM thread with the model,
+  // where the invite message itself lives.) Any other bell gaining
+  // a '/#chat/' link (or one of the 29 losing it) trips this count.
+  assert.equal(server.split('/#chat/${conv.id}').length - 1, 29);
 });
 
 test('pin: non-DM bells keep their links (tip/facetime/live/booking untouched)', () => {

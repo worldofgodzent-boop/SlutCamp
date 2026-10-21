@@ -291,7 +291,7 @@ function seoPublicModels() {
            m.bio, m.per_message_cents, m.public_photo_url, m.tags, m.is_featured, m.is_online, m.section,
            ls.id AS live_session_id
     FROM users u JOIN models m ON m.user_id = u.id
-    LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live'
+    LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live' AND ls.private_event_id IS NULL
     WHERE u.role = 'model' AND u.banned = 0 AND m.is_hidden = 0
     ORDER BY m.is_featured DESC, m.rank_score DESC,
              (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) DESC,
@@ -1067,6 +1067,43 @@ CREATE TABLE IF NOT EXISTS live_viewers (
   PRIMARY KEY (session_id, fan_id)
 );
 
+-- Private Room events (Sections Phase 5, owner-designed Oct 20 2026):
+-- a model runs a closed live show that only seat-holders can enter.
+-- ADDITIVE ONLY — public lives and the explicit room are untouched;
+-- a private live is a normal live_sessions row whose private_event_id
+-- points here, and every public surface filters those out.
+-- starts_at / invite_window_ends_at are ISO-8601 UTC ('...Z') strings
+-- written by this feature's own code (the rest of the ledger keeps its
+-- SQLite datetime('now') basis; these two columns are only ever read
+-- back through Date.parse in this feature).
+CREATE TABLE IF NOT EXISTS private_events (
+  id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+  model_id              INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title                 TEXT NOT NULL DEFAULT '',
+  starts_at             TEXT NOT NULL,
+  seats_total           INTEGER NOT NULL,
+  seat_price_cents      INTEGER NOT NULL,
+  invite_window_ends_at TEXT NOT NULL,
+  status                TEXT NOT NULL DEFAULT 'scheduled'
+                        CHECK(status IN ('scheduled','live','ended','cancelled')),
+  session_id            INTEGER REFERENCES live_sessions(id),
+  created_at            TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS private_event_invites (
+  event_id   INTEGER NOT NULL REFERENCES private_events(id) ON DELETE CASCADE,
+  fan_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (event_id, fan_id)
+);
+CREATE TABLE IF NOT EXISTS private_event_seats (
+  event_id    INTEGER NOT NULL REFERENCES private_events(id) ON DELETE CASCADE,
+  fan_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  price_cents INTEGER NOT NULL,
+  source      TEXT NOT NULL DEFAULT 'public' CHECK(source IN ('invite','public')),
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (event_id, fan_id)
+);
+
 -- Blur/pay event log for live sessions (admin oversight)
 CREATE TABLE IF NOT EXISTS blur_events (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1260,6 +1297,7 @@ addColumnIfMissing('models', 'public_photo_url', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('live_sessions', 'title', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('live_sessions', 'brb', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_sessions', 'game_on', 'INTEGER NOT NULL DEFAULT 0'); // Game Category live this session
+addColumnIfMissing('live_sessions', 'private_event_id', 'INTEGER'); // Phase 5: set when this session is a Private Room (seat-holders only)
 addColumnIfMissing('platform_stats', 'game_category_announced_at', 'TEXT'); // one-time model broadcast stamp
 addColumnIfMissing('platform_stats', 'agreement_12_announced_at', 'TEXT'); // one-time v1.2 agreement broadcast stamp
 addColumnIfMissing('platform_stats', 'public_photo_announced_at', 'TEXT'); // one-time public-photo (Google pages) broadcast stamp
@@ -1275,6 +1313,7 @@ addColumnIfMissing('live_viewers', 'explicit_paid', 'INTEGER NOT NULL DEFAULT 0'
 addColumnIfMissing('platform_stats', 'explicit_gift_grace_sec', 'INTEGER NOT NULL DEFAULT 180');
 addColumnIfMissing('conversations', 'paused_at', 'TEXT');
 addColumnIfMissing('messages', 'gift_json', 'TEXT'); // TikTok-style gift payload on chat gift messages
+addColumnIfMissing('messages', 'private_event_id', 'INTEGER'); // Phase 5: broadcast invite messages carry their event (client renders the seat card)
 addColumnIfMissing('models', 'preview_video_url', "TEXT NOT NULL DEFAULT ''"); // Loop preview on home screen
 // Profile media expansion (owner, Oct 17 2026): a SECOND main profile
 // video (preview_video_url stays Video 1) + a gallery of extra profile
@@ -1544,6 +1583,8 @@ addColumnIfMissing('platform_stats', 'agreement_15_announced_at', 'TEXT'); // on
 addColumnIfMissing('platform_stats', 'storefront_announced_at', 'TEXT'); // one-time "pick your storefront" fan broadcast stamp
 addColumnIfMissing('platform_stats', 'faceguard_announced_at', 'TEXT'); // one-time "face-count guard" model broadcast stamp
 addColumnIfMissing('platform_stats', 'safety_announced_at', 'TEXT'); // one-time "safety hard-block" model broadcast stamp
+addColumnIfMissing('platform_stats', 'private_room_announced_at', 'TEXT'); // one-time "Private Room" (Phase 5) model broadcast stamp
+addColumnIfMissing('platform_stats', 'private_room_cap', 'INTEGER NOT NULL DEFAULT 2'); // Phase 5: max private rooms per model per week (Manager-adjustable)
 addColumnIfMissing('conversations', 'is_official', 'INTEGER NOT NULL DEFAULT 0'); // the pinned read-only SlutCamp notices thread
 
 /* The recruiters row IS the affiliate capability (see above). */
@@ -3354,6 +3395,20 @@ const SRV = {
   ann_faceguard_bell_body: { en: 'SlutCamp now counts faces on your live — declare who\'s on camera. Tap to read 💋', es: 'SlutCamp ahora cuenta los rostros en tu en vivo — declara quién está frente a cámara. Toca para leer 💋', pt: 'A SlutCamp agora conta os rostos na sua live — declare quem está na câmera. Toque para ler 💋', fr: 'SlutCamp compte maintenant les visages dans votre direct — déclarez qui est à l\'écran. Touchez pour lire 💋', de: 'SlutCamp zählt jetzt die Gesichter in deinem Live — melde an, wer vor der Kamera ist. Tippe zum Lesen 💋', ru: 'SlutCamp теперь считает лица в вашем эфире — укажите, кто в кадре. Нажмите, чтобы прочитать 💋', ja: 'SlutCampはあなたのライブで顔の数を数えるようになりました — カメラに映る人を申告してね。タップして読む 💋', zh: 'SlutCamp 现在会统计你直播中的人脸 — 请申报谁在镜头前。点开阅读 💋', ko: '이제 SlutCamp가 라이브에서 얼굴 수를 셉니다 — 카메라 앞에 있는 사람을 신고하세요. 탭해서 읽기 💋', it: 'SlutCamp ora conta i volti nella tua live — dichiara chi è davanti alla telecamera. Tocca per leggere 💋', pl: 'SlutCamp liczy teraz twarze na Twojej transmisji — zadeklaruj, kto jest przed kamerą. Dotknij, aby przeczytać 💋', nl: 'SlutCamp telt nu de gezichten in je live — geef aan wie er voor de camera staat. Tik om te lezen 💋', tr: 'SlutCamp artık canlı yayınında yüzleri sayıyor — kamerada kimin olduğunu bildir. Okumak için dokun 💋' },
   ann_safety_dm: { en: 'Hey loves — a safety update that protects your money 💋\n\nSlutCamp now BLOCKS messages that contain personal contact info or off-platform links — phone numbers, emails, socials, other platforms, payment apps — before they\'re ever sent. The other person never sees them, your chat keeps flowing, and nobody gets pulled off the app where your earnings (and your safety) aren\'t protected.\n\n🚫 The same goes for profiles: bios can\'t mention other websites, platforms, link pages, or payment services — SlutCamp is your whole storefront, and everything you earn here is protected here.\n\nIf a message of yours gets blocked, the app will tell you why — just reword it and keep the conversation (and the spending 💰) right here.\n\nKeep it on SlutCamp, keep it safe, keep it paid. 💋', es: 'Hola amores — una novedad de seguridad que protege su dinero 💋\n\nSlutCamp ahora BLOQUEA los mensajes que contienen información de contacto personal o enlaces fuera de la plataforma — números de teléfono, correos, redes sociales, otras plataformas, apps de pago — antes de que se envíen. La otra persona nunca los ve, tu chat sigue fluyendo y nadie te saca de la app, donde tus ganancias (y tu seguridad) no están protegidas.\n\n🚫 Lo mismo va para los perfiles: las biografías no pueden mencionar otros sitios web, plataformas, páginas de enlaces ni servicios de pago — SlutCamp es todo tu escaparate, y todo lo que ganas aquí está protegido aquí.\n\nSi un mensaje tuyo es bloqueado, la app te dirá por qué — solo reformúlalo y mantén la conversación (y el gasto 💰) aquí mismo.\n\nManténlo en SlutCamp, manténlo seguro, manténlo pagado. 💋', pt: 'Oi, amores — uma novidade de segurança que protege o seu dinheiro 💋\n\nA SlutCamp agora BLOQUEIA mensagens com informações de contato pessoais ou links para fora da plataforma — telefones, e-mails, redes sociais, outras plataformas, apps de pagamento — antes de serem enviadas. A outra pessoa nunca as vê, seu chat continua fluindo e ninguém te tira do app, onde seus ganhos (e sua segurança) não estão protegidos.\n\n🚫 O mesmo vale para os perfis: bios não podem mencionar outros sites, plataformas, páginas de links ou serviços de pagamento — a SlutCamp é toda a sua vitrine, e tudo o que você ganha aqui está protegido aqui.\n\nSe uma mensagem sua for bloqueada, o app vai te contar o porquê — é só reformular e manter a conversa (e os gastos 💰) aqui mesmo.\n\nMantenha no SlutCamp, mantenha seguro, mantenha pago. 💋', fr: 'Coucou les amours — une nouveauté sécurité qui protège votre argent 💋\n\nSlutCamp BLOQUE désormais les messages contenant des coordonnées personnelles ou des liens hors plateforme — numéros de téléphone, e-mails, réseaux sociaux, autres plateformes, applications de paiement — avant même leur envoi. L\'autre personne ne les voit jamais, votre discussion continue, et personne ne vous entraîne hors de l\'appli, où vos revenus (et votre sécurité) ne sont pas protégés.\n\n🚫 Même règle pour les profils : les bios ne peuvent pas mentionner d\'autres sites web, plateformes, pages de liens ni services de paiement — SlutCamp est toute votre vitrine, et tout ce que vous gagnez ici est protégé ici.\n\nSi l\'un de vos messages est bloqué, l\'appli vous expliquera pourquoi — reformulez-le et gardez la conversation (et les dépenses 💰) ici même.\n\nGardez tout sur SlutCamp : en sécurité, et rémunéré. 💋', de: 'Hey ihr Lieben — ein Sicherheits-Update, das euer Geld schützt 💋\n\nSlutCamp BLOCKIERT jetzt Nachrichten mit persönlichen Kontaktdaten oder Links zu anderen Plattformen — Telefonnummern, E-Mails, Social Media, andere Plattformen, Zahlungs-Apps — bevor sie gesendet werden. Die andere Person sieht sie nie, euer Chat läuft weiter, und niemand lockt euch aus der App, wo eure Einnahmen (und eure Sicherheit) nicht geschützt sind.\n\n🚫 Dasselbe gilt für Profile: Bios dürfen keine anderen Websites, Plattformen, Linkseiten oder Zahlungsdienste erwähnen — SlutCamp ist deine gesamte Verkaufsfläche, und alles, was du hier verdienst, ist hier geschützt.\n\nWird eine deiner Nachrichten blockiert, sagt dir die App warum — formuliere sie einfach um und behalte das Gespräch (und die Ausgaben 💰) hier.\n\nBehalte es auf SlutCamp, behalte es sicher, behalte es bezahlt. 💋', ru: 'Привет, любимые — обновление безопасности, которое защищает ваши деньги 💋\n\nSlutCamp теперь БЛОКИРУЕТ сообщения с личными контактами или ссылками на сторонние платформы — номера телефонов, e-mail, соцсети, другие платформы, платёжные приложения — до того, как они отправятся. Другой человек их никогда не увидит, ваш чат продолжается, и никого не уводят из приложения, где ваш заработок (и ваша безопасность) не защищены.\n\n🚫 То же правило для профилей: в описании нельзя упоминать другие сайты, платформы, страницы ссылок или платёжные сервисы — SlutCamp — это вся ваша витрина, и всё, что вы зарабатываете здесь, защищено здесь.\n\nЕсли ваше сообщение заблокируют, приложение объяснит почему — просто переформулируйте и оставьте разговор (и траты 💰) здесь.\n\nДержите всё на SlutCamp — в безопасности и за деньги. 💋', ja: 'みんな、こんにちは — あなたのお金を守るセキュリティアップデートです 💋\n\nSlutCampは、個人の連絡先やプラットフォーム外のリンクを含むメッセージ（電話番号、メール、SNS、他のプラットフォーム、支払いアプリ）を、送信される前にブロックするようになりました。相手がそれを見ることはなく、チャットはそのまま続き、あなたの収入（と安全）が守られない場所へ誰かが誘い出すこともありません。\n\n🚫 プロフィールも同じです：プロフィールには他のウェブサイト、プラットフォーム、リンクページ、支払いサービスを記載できません — SlutCampがあなたのすべての店舗であり、ここで得たものはここで守られます。\n\nメッセージがブロックされたら、アプリが理由を教えてくれます — 言い方を変えて、会話（とお金💰）はここで続けましょう。\n\nSlutCampに留めて、安全に、しっかり稼ぎましょう。💋', zh: '亲爱的们 — 一个保护你收入的安全更新 💋\n\nSlutCamp 现在会在消息发送之前，拦截包含个人联系方式或站外链接的内容 — 电话号码、电子邮件、社交账号、其他平台、支付应用。对方永远看不到，聊天照常继续，也没人能把你带到没有收入（和安全）保障的地方。\n\n🚫 主页也一样：简介不能提及其他网站、平台、链接页或支付服务 — SlutCamp 就是你的整个店面，你在这里赚到的一切都在这里受到保护。\n\n如果你的消息被拦截，应用会告诉你原因 — 换个说法，把对话（和消费💰）留在这里就好。\n\n留在 SlutCamp，安全又赚钱。💋', ko: '안녕하세요, 여러분 — 여러분의 수익을 지켜주는 보안 업데이트예요 💋\n\n이제 SlutCamp는 개인 연락처나 플랫폼 외부 링크가 포함된 메시지(전화번호, 이메일, SNS, 다른 플랫폼, 결제 앱)를 전송되기 전에 차단합니다. 상대방은 절대 볼 수 없고, 채팅은 그대로 이어지며, 누구도 수익(과 안전)이 보호되지 않는 곳으로 당신을 데려갈 수 없어요.\n\n🚫 프로필도 마찬가지예요: 소개글에는 다른 웹사이트, 플랫폼, 링크 페이지, 결제 서비스를 언급할 수 없어요 — SlutCamp가 당신의 전체 매장이며, 여기서 번 모든 것은 여기서 보호됩니다.\n\n메시지가 차단되면 앱이 이유를 알려줍니다 — 표현만 바꿔서 대화(와 소비💰)를 여기서 이어가세요.\n\nSlutCamp에 머물고, 안전하게, 확실히 버세요. 💋', it: 'Ciao amori — un aggiornamento di sicurezza che protegge i vostri soldi 💋\n\nSlutCamp ora BLOCCA i messaggi che contengono contatti personali o link fuori piattaforma — numeri di telefono, e-mail, social, altre piattaforme, app di pagamento — prima che vengano inviati. L\'altra persona non li vede mai, la chat continua a scorrere e nessuno viene portato fuori dall\'app, dove i vostri guadagni (e la vostra sicurezza) non sono protetti.\n\n🚫 Stessa regola per i profili: le bio non possono menzionare altri siti web, piattaforme, pagine di link o servizi di pagamento — SlutCamp è tutta la tua vetrina, e tutto ciò che guadagni qui è protetto qui.\n\nSe un tuo messaggio viene bloccato, l\'app ti dirà perché — riformulalo e mantieni la conversazione (e la spesa 💰) qui dentro.\n\nTienilo su SlutCamp, tienilo al sicuro, tienilo pagato. 💋', pl: 'Hej kochane — aktualizacja bezpieczeństwa, która chroni Wasze pieniądze 💋\n\nSlutCamp BLOKUJE teraz wiadomości zawierające osobiste dane kontaktowe lub linki poza platformę — numery telefonów, e-maile, media społecznościowe, inne platformy, aplikacje płatnicze — zanim zostaną wysłane. Druga osoba nigdy ich nie widzi, Wasz czat toczy się dalej i nikt nie wyciąga Was z aplikacji tam, gdzie Wasze zarobki (i bezpieczeństwo) nie są chronione.\n\n🚫 Ta sama zasada dotyczy profili: opisy nie mogą wspominać innych stron, platform, stron z linkami ani usług płatniczych — SlutCamp to cała Wasza witryna, a wszystko, co tu zarabiacie, jest tu chronione.\n\nJeśli Twoja wiadomość zostanie zablokowana, aplikacja powie Ci dlaczego — po prostu ją przeformułuj i prowadź rozmowę (oraz wydatki 💰) tutaj.\n\nTrzymaj to na SlutCamp — bezpiecznie i za pieniądze. 💋', nl: 'Hey lieverds — een veiligheidsupdate die je geld beschermt 💋\n\nSlutCamp BLOKKEERT nu berichten met persoonlijke contactgegevens of links naar buiten het platform — telefoonnummers, e-mails, socials, andere platforms, betaalapps — voordat ze worden verzonden. De andere persoon ziet ze nooit, je chat loopt gewoon door en niemand wordt weggelokt uit de app, waar je inkomsten (en je veiligheid) niet beschermd zijn.\n\n🚫 Hetzelfde geldt voor profielen: bio\'s mogen geen andere websites, platforms, linkpagina\'s of betaaldiensten vermelden — SlutCamp is je hele winkel, en alles wat je hier verdient, is hier beschermd.\n\nWordt een bericht van jou geblokkeerd, dan vertelt de app je waarom — herformuleer het en houd het gesprek (en de bestedingen 💰) hier.\n\nHoud het op SlutCamp, houd het veilig, houd het betaald. 💋', tr: 'Selam canlar — paranızı koruyan bir güvenlik güncellemesi 💋\n\nSlutCamp artık kişisel iletişim bilgileri veya platform dışı bağlantılar içeren mesajları — telefon numaraları, e-postalar, sosyal medya, diğer platformlar, ödeme uygulamaları — gönderilmeden önce ENGELLİYOR. Diğer kişi onları asla görmez, sohbetiniz akmaya devam eder ve kimse sizi kazancınızın (ve güvenliğinizin) korunmadığı bir yere çekemez.\n\n🚫 Aynı kural profiller için de geçerli: biyografilerde başka web siteleri, platformlar, bağlantı sayfaları veya ödeme hizmetlerinden bahsedilemez — SlutCamp tüm vitrininizdir ve burada kazandığınız her şey burada korunur.\n\nBir mesajınız engellenirse uygulama size nedenini söyler — sadece yeniden yazın ve sohbeti (ve harcamayı 💰) burada tutun.\n\nSlutCamp\'ta tutun, güvende tutun, kazançlı tutun. 💋' },
   ann_safety_bell_title: { en: '🛡️ New: off-platform blocking is on', es: '🛡️ Nuevo: bloqueo fuera de la plataforma activado', pt: '🛡️ Novo: bloqueio fora da plataforma ativado', fr: '🛡️ Nouveau : blocage hors plateforme activé', de: '🛡️ Neu: Blockierung außerhalb der Plattform ist aktiv', ru: '🛡️ Новое: блокировка вне платформы включена', ja: '🛡️ 新機能：プラットフォーム外への誘導をブロック', zh: '🛡️ 新功能：站外拦截已开启', ko: '🛡️ 새 기능: 플랫폼 외부 차단이 켜졌어요', it: '🛡️ Novità: blocco fuori piattaforma attivo', pl: '🛡️ Nowość: blokowanie poza platformą włączone', nl: '🛡️ Nieuw: blokkeren buiten het platform staat aan', tr: '🛡️ Yeni: platform dışı engelleme açık' },
+  ann_privateroom_dm: { en: '📣 NEW: The Private Room 🔒\n\nYour public room is open to everybody — anyone can join, tip, and have fun. But there are too many fans in there to give all of them real attention.\n\nThe Private Room is different. You set the max number of people allowed in, pick your day, and set your price. It\'s special, because now your top spenders get your real attention — and you can please several of them at once. These are your whales 🐳 — the big-money spenders. The $5 spenders stay outside looking in.\n\nThe rules: max 2 private rooms per week — that\'s what keeps them exclusive. Check your Top Spenders list in the app, pick your guests, and send them the invite before the door closes. 💋', es: '📣 NUEVO: La Sala Privada 🔒\n\nTu sala pública está abierta para todos — cualquiera puede entrar, dar propinas y divertirse. Pero hay demasiados fans ahí para darles a todos tu verdadera atención.\n\nLa Sala Privada es diferente. Tú pones el máximo de personas, eliges tu día y fijas tu precio. Es especial, porque ahora tus mayores gastadores reciben tu verdadera atención — y puedes complacer a varios a la vez. Son tus ballenas 🐳 — los que gastan en grande. Los de $5 se quedan fuera mirando.\n\nLas reglas: máximo 2 salas privadas por semana — eso es lo que las mantiene exclusivas. Revisa tu lista de Mayores Gastadores en la app, elige a tus invitados y envíales la invitación antes de que se cierre la puerta. 💋', pt: '📣 NOVO: A Sala Privada 🔒\n\nSua sala pública é aberta para todo mundo — qualquer um pode entrar, dar gorjetas e se divertir. Mas há fãs demais lá dentro para dar atenção de verdade a todos.\n\nA Sala Privada é diferente. Você define o máximo de pessoas, escolhe o dia e define seu preço. É especial, porque agora seus maiores gastadores ganham sua atenção de verdade — e você pode agradar vários ao mesmo tempo. São suas baleias 🐳 — quem gasta alto. Os de $5 ficam do lado de fora só olhando.\n\nAs regras: no máximo 2 salas privadas por semana — é isso que as mantém exclusivas. Veja sua lista de Maiores Gastadores no app, escolha seus convidados e envie o convite antes que a porta feche. 💋', fr: '📣 NOUVEAU : Le Salon Privé 🔒\n\nTon salon public est ouvert à tout le monde — n\'importe qui peut entrer, donner des pourboires et s\'amuser. Mais il y a trop de fans pour leur donner à tous ta vraie attention.\n\nLe Salon Privé, c\'est différent. Tu fixes le nombre maximum de personnes, tu choisis ton jour et ton prix. C\'est spécial, parce que tes plus gros dépensiers reçoivent enfin ta vraie attention — et tu peux en satisfaire plusieurs à la fois. Ce sont tes baleines 🐳 — ceux qui dépensent gros. Ceux à $5 restent dehors à regarder.\n\nLes règles : maximum 2 salons privés par semaine — c\'est ce qui les garde exclusifs. Regarde ta liste de Meilleurs Dépensiers dans l\'appli, choisis tes invités et envoie-leur l\'invitation avant que la porte se ferme. 💋', de: '📣 NEU: Der Private Raum 🔒\n\nDein öffentlicher Raum ist für alle offen — jeder kann reinkommen, Trinkgeld geben und Spaß haben. Aber es sind zu viele Fans drin, um allen deine echte Aufmerksamkeit zu schenken.\n\nDer Private Raum ist anders. Du legst die maximale Personenanzahl fest, wählst deinen Tag und setzt deinen Preis. Er ist besonders, weil deine Top-Ausgeber jetzt deine echte Aufmerksamkeit bekommen — und du kannst mehrere gleichzeitig verwöhnen. Das sind deine Wale 🐳 — die großen Geldausgeber. Die $5-Leute bleiben draußen und schauen nur zu.\n\nDie Regeln: maximal 2 private Räume pro Woche — das hält sie exklusiv. Schau dir deine Top-Ausgeber-Liste in der App an, wähle deine Gäste und schick ihnen die Einladung, bevor die Tür schließt. 💋', ru: '📣 НОВОЕ: Приватная комната 🔒\n\nТвоя публичная комната открыта для всех — любой может зайти, дать чаевые и повеселиться. Но там слишком много поклонников, чтобы уделить настоящее внимание каждому.\n\nПриватная комната — это другое. Ты сама устанавливаешь максимум гостей, выбираешь день и назначаешь цену. Она особенная: теперь твои самые щедрые поклонники получают твоё настоящее внимание — и ты можешь радовать нескольких сразу. Это твои киты 🐳 — те, кто тратит по-крупному. Те, что по $5, остаются снаружи и только смотрят.\n\nПравила: максимум 2 приватные комнаты в неделю — именно это сохраняет их эксклюзивность. Открой список своих Топ-спонсоров в приложении, выбери гостей и отправь им приглашение, пока дверь не закрылась. 💋', ja: '📣 新機能：プライベートルーム 🔒\n\nあなたの公開ルームは誰でも入れます — 誰でも参加して、チップを渡して、楽しめます。でも、ファンが多すぎて全員に本当の注意を向けることはできません。\n\nプライベートルームは違います。最大人数を決め、日を選び、価格を設定するのはあなた。その特別さは、あなたのトップスペンダーがあなたの本当の注意を受けられること — そして一度に何人も喜ばせられます。彼らはあなたのクジラ 🐳 — 大きく使う人たち。$5の人たちは外から眺めるだけです。\n\nルール：プライベートルームは週に最大2回まで — それが特別感を保ちます。アプリのトップスペンダーリストを確認して、ゲストを選び、ドアが閉まる前に招待を送りましょう。💋', zh: '📣 新功能：私人房间 🔒\n\n你的公开房间对所有人开放 — 任何人都可以进来、打赏、玩得开心。但里面粉丝太多，你没法真正关注每一个人。\n\n私人房间不一样。由你设定最多人数、挑选日子、定下价格。它特别，是因为你消费最高的粉丝能得到你真正的关注 — 你还能同时取悦好几个人。他们是你的鲸鱼 🐳 — 真正的大额消费者。那些花 $5 的人只能在外面看着。\n\n规则：每周最多 2 场私人房间 — 这正是它保持专属的原因。在应用里查看你的顶级消费者名单，挑选客人，在大门关闭前把邀请发给他们。💋', ko: '📣 새 기능: 프라이빗 룸 🔒\n\n당신의 공개 룸은 모두에게 열려 있어요 — 누구나 들어와서 팁을 주고 즐길 수 있죠. 하지만 팬이 너무 많아서 모두에게 진짜 관심을 쏟을 수는 없어요.\n\n프라이빗 룸은 달라요. 최대 인원을 정하고, 날짜를 고르고, 가격을 정하는 건 당신이에요. 특별한 이유는, 당신의 탑 소비자들이 이제 당신의 진짜 관심을 받을 수 있기 때문이에요 — 그리고 한 번에 여러 명을 만족시킬 수 있어요. 그들은 당신의 고래 🐳 — 크게 쓰는 사람들이에요. $5짜리 소비자들은 밖에서 구경만 하죠.\n\n규칙: 프라이빗 룸은 주당 최대 2회 — 그게 바로 특별함을 지키는 방법이에요. 앱에서 탑 소비 목록을 확인하고, 게스트를 고르고, 문이 닫히기 전에 초대를 보내세요. 💋', it: '📣 NOVITÀ: La Stanza Privata 🔒\n\nLa tua stanza pubblica è aperta a tutti — chiunque può entrare, lasciare mance e divertirsi. Ma ci sono troppi fan per dare a tutti la tua vera attenzione.\n\nLa Stanza Privata è diversa. Imposti tu il numero massimo di persone, scegli il giorno e fissi il prezzo. È speciale, perché ora i tuoi maggiori spenditori ricevono la tua vera attenzione — e puoi accontentarne diversi alla volta. Sono le tue balene 🐳 — quelli che spendono tanto. Quelli da $5 restano fuori a guardare.\n\nLe regole: massimo 2 stanze private a settimana — è questo che le mantiene esclusive. Controlla la tua lista dei Maggiori Spenditori nell\'app, scegli i tuoi ospiti e manda loro l\'invito prima che la porta si chiuda. 💋', pl: '📣 NOWOŚĆ: Pokój Prywatny 🔒\n\nTwój pokój publiczny jest otwarty dla wszystkich — każdy może wejść, dać napiwek i dobrze się bawić. Ale jest tam za dużo fanów, by każdemu poświęcić prawdziwą uwagę.\n\nPokój Prywatny jest inny. Sama ustalasz maksymalną liczbę osób, wybierasz dzień i ustalasz cenę. Jest wyjątkowy, bo teraz Twoi najwięksi wydawcy dostają Twoją prawdziwą uwagę — a Ty możesz zadowolić kilku naraz. To Twoje wieloryby 🐳 — ci, którzy wydają dużo. Ci za $5 zostają na zewnątrz i tylko patrzą.\n\nZasady: maksymalnie 2 pokoje prywatne w tygodniu — to właśnie utrzymuje ich ekskluzywność. Sprawdź swoją listę Największych Wydawców w aplikacji, wybierz gości i wyślij im zaproszenie, zanim drzwi się zamkną. 💋', nl: '📣 NIEUW: De Privékamer 🔒\n\nJe openbare kamer is voor iedereen open — iedereen kan binnenkomen, fooien geven en plezier maken. Maar er zijn te veel fans om ze allemaal je echte aandacht te geven.\n\nDe Privékamer is anders. Jij stelt het maximum aantal mensen in, kiest je dag en bepaalt je prijs. Het is bijzonder, want nu krijgen je grootste uitgevers je echte aandacht — en je kunt er meerdere tegelijk plezieren. Dat zijn je walvissen 🐳 — de grote uitgevers. De $5-mensen blijven buiten staan kijken.\n\nDe regels: maximaal 2 privékamers per week — dat houdt ze exclusief. Bekijk je Topuitgeverslijst in de app, kies je gasten en stuur ze de uitnodiging voordat de deur sluit. 💋', tr: '📣 YENİ: Özel Oda 🔒\n\nHerkese açık odan herkese açık — herkes girebilir, bahşiş verebilir ve eğlenebilir. Ama orada herkese gerçek ilgini verebileceğinden çok daha fazla hayran var.\n\nÖzel Oda farklı. Maksimum kişi sayısını sen belirlersin, gününü sen seçersin ve fiyatını sen koyarsın. O özel, çünkü artık en çok harcama yapanların gerçek ilgini alıyor — ve aynı anda birkaçını birden mutlu edebilirsiniz. Onlar sizin balinalarınız 🐳 — büyük harcama yapanlar. $5\'likler dışarıda izlemekle kalır.\n\nKurallar: haftada en fazla 2 özel oda — onları özel kılan da bu. Uygulamadaki En Çok Harcayanlar listene bak, misafirlerini seç ve kapı kapanmadan daveti gönder. 💋' },
+  ann_privateroom_bell_title: { en: '🔒 NEW: The Private Room is here', es: '🔒 NUEVO: La Sala Privada ya está aquí', pt: '🔒 NOVO: A Sala Privada chegou', fr: '🔒 NOUVEAU : Le Salon Privé est là', de: '🔒 NEU: Der Private Raum ist da', ru: '🔒 НОВОЕ: Приватная комната уже здесь', ja: '🔒 新機能：プライベートルームが登場', zh: '🔒 新功能：私人房间来了', ko: '🔒 새 기능: 프라이빗 룸이 왔어요', it: '🔒 NOVITÀ: La Stanza Privata è arrivata', pl: '🔒 NOWOŚĆ: Pokój Prywatny już jest', nl: '🔒 NIEUW: De Privékamer is er', tr: '🔒 YENİ: Özel Oda burada' },
+  ann_privateroom_bell_body: { en: 'Run a closed live show for your top spenders only — you set the seats and the price. Tap to read 💋', es: 'Haz un show en vivo cerrado solo para tus mayores gastadores — tú pones los asientos y el precio. Toca para leer 💋', pt: 'Faça um show ao vivo fechado só para seus maiores gastadores — você define os assentos e o preço. Toque para ler 💋', fr: 'Fais un show en direct fermé rien que pour tes plus gros dépensiers — tu fixes les places et le prix. Touche pour lire 💋', de: 'Mach eine geschlossene Live-Show nur für deine Top-Ausgeber — du legst Plätze und Preis fest. Tippe zum Lesen 💋', ru: 'Проведи закрытое живое шоу только для своих самых щедрых поклонников — места и цену устанавливаешь ты. Нажми, чтобы прочитать 💋', ja: 'トップスペンダーだけの閉じたライブショーを開こう — 席数と価格はあなたが決めます。タップして読む 💋', zh: '为你的顶级消费者办一场封闭直播 — 座位和价格由你决定。点开阅读 💋', ko: '탑 소비자만을 위한 비공개 라이브 쇼를 열어보세요 — 좌석과 가격은 당신이 정해요. 탭해서 읽기 💋', it: 'Fai uno show dal vivo chiuso solo per i tuoi maggiori spenditori — decidi tu posti e prezzo. Tocca per leggere 💋', pl: 'Zrób zamknięty show na żywo tylko dla swoich największych wydawców — Ty ustalasz miejsca i cenę. Dotknij, aby przeczytać 💋', nl: 'Doe een gesloten liveshow alleen voor je grootste uitgevers — jij bepaalt de plekken en de prijs. Tik om te lezen 💋', tr: 'Sadece en çok harcama yapanların için kapalı bir canlı şov yap — koltukları ve fiyatı sen belirlersin. Okumak için dokun 💋' },
+  private_invite_msg: { en: '🔒 You\'re invited to my Private Room, love 💋\n\nI\'m running a closed live show just for my top spenders — {date}. Only {seats} seats at {price} each, and I\'m holding yours first.\n\nTake your seat from this message before the door opens to everyone — once they\'re gone, they\'re gone. 💋', es: '🔒 Estás invitado a mi Sala Privada, amor 💋\n\nVoy a hacer un show en vivo cerrado solo para mis mayores gastadores — {date}. Solo {seats} asientos a {price} cada uno, y el tuyo te lo guardo primero.\n\nToma tu asiento desde este mensaje antes de que la puerta se abra para todos — cuando se acaben, se acaban. 💋', pt: '🔒 Você foi convidado para minha Sala Privada, amor 💋\n\nVou fazer um show ao vivo fechado só para meus maiores gastadores — {date}. Apenas {seats} assentos a {price} cada, e estou segurando o seu primeiro.\n\nGaranta seu assento por esta mensagem antes que a porta abra para todos — quando acabarem, acabaram. 💋', fr: '🔒 Tu es invité dans mon Salon Privé, mon amour 💋\n\nJe fais un show en direct fermé rien que pour mes plus gros dépensiers — {date}. Seulement {seats} places à {price} chacune, et je garde la tienne en premier.\n\nPrends ta place depuis ce message avant que la porte s\'ouvre à tout le monde — quand il n\'y en aura plus, ce sera fini. 💋', de: '🔒 Du bist in meinen Privaten Raum eingeladen, mein Schatz 💋\n\nIch mache eine geschlossene Live-Show nur für meine Top-Ausgeber — {date}. Nur {seats} Plätze zu je {price}, und deinen halte ich zuerst für dich frei.\n\nSichere dir deinen Platz über diese Nachricht, bevor die Tür für alle aufgeht — wenn sie weg sind, sind sie weg. 💋', ru: '🔒 Ты приглашён в мою Приватную комнату, любимый 💋\n\nЯ провожу закрытое живое шоу только для своих самых щедрых поклонников — {date}. Всего {seats} мест по {price}, и твоё я держу первым.\n\nЗайми своё место из этого сообщения, пока дверь не открылась для всех — когда места закончатся, будет поздно. 💋', ja: '🔒 私のプライベートルームに招待します、愛しい人 💋\n\nトップスペンダーのためだけの閉じたライブショーをします — {date}。席は{seats}席だけ、1席{price}、あなたの席をまず確保しています。\n\nドアがみんなに開く前に、このメッセージから席を取ってください — なくなったら終わりです。💋', zh: '🔒 你被邀请进入我的私人房间，亲爱的 💋\n\n我要为我消费最高的粉丝办一场封闭直播 — {date}。只有 {seats} 个座位，每个 {price}，你的座位我先为你留着。\n\n在大门向所有人打开之前，从这条消息里抢下你的座位 — 抢完就没了。💋', ko: '🔒 제 프라이빗 룸에 초대해요, 자기야 💋\n\n탑 소비자만을 위한 비공개 라이브 쇼를 열어요 — {date}. 좌석은 {seats}개뿐, 하나에 {price}이고, 당신 좌석을 먼저 잡아두고 있어요.\n\n문이 모두에게 열리기 전에 이 메시지에서 좌석을 잡으세요 — 다 팔리면 끝이에요. 💋', it: '🔒 Sei invitato nella mia Stanza Privata, amore 💋\n\nFarò uno show dal vivo chiuso solo per i miei maggiori spenditori — {date}. Solo {seats} posti a {price} ciascuno, e il tuo lo tengo da parte per primo.\n\nPrendi il tuo posto da questo messaggio prima che la porta si apra a tutti — quando finiscono, finiscono. 💋', pl: '🔒 Zapraszam Cię do mojego Pokoju Prywatnego, kochanie 💋\n\nRobię zamknięty show na żywo tylko dla moich największych wydawców — {date}. Tylko {seats} miejsc po {price} każde, a Twoje trzymam dla Ciebie jako pierwsze.\n\nWeź swoje miejsce z tej wiadomości, zanim drzwi otworzą się dla wszystkich — jak się skończą, to koniec. 💋', nl: '🔒 Je bent uitgenodigd voor mijn Privékamer, lieverd 💋\n\nIk doe een gesloten liveshow alleen voor mijn grootste uitgevers — {date}. Slechts {seats} plekken à {price} per stuk, en ik hou de jouwe als eerste voor je vast.\n\nPak je plek via dit bericht voordat de deur voor iedereen opengaat — als ze weg zijn, zijn ze weg. 💋', tr: '🔒 Özel Odama davetlisin, aşkım 💋\n\nSadece en çok harcama yapanlarım için kapalı bir canlı şov yapıyorum — {date}. Sadece {seats} koltuk, tanesi {price}, ve seninkini ilk sana ayırıyorum.\n\nKapı herkese açılmadan önce bu mesajdan koltuğunu kap — bitince biter. 💋' },
+  private_invite_bell_title: { en: '🔒 {model} invited you to her Private Room', es: '🔒 {model} te invitó a su Sala Privada', pt: '🔒 {model} te convidou para a Sala Privada dela', fr: '🔒 {model} t\'a invité dans son Salon Privé', de: '🔒 {model} hat dich in ihren Privaten Raum eingeladen', ru: '🔒 {model} пригласила тебя в свою Приватную комнату', ja: '🔒 {model} がプライベートルームに招待しました', zh: '🔒 {model} 邀请你进入她的私人房间', ko: '🔒 {model}님이 프라이빗 룸에 초대했어요', it: '🔒 {model} ti ha invitato nella sua Stanza Privata', pl: '🔒 {model} zaprosiła Cię do swojego Pokoju Prywatnego', nl: '🔒 {model} heeft je uitgenodigd voor haar Privékamer', tr: '🔒 {model} seni Özel Odasına davet etti' },
+  private_invite_bell_body: { en: 'A closed live show for top spenders only — seats are limited. Tap to see 💋', es: 'Un show en vivo cerrado solo para grandes gastadores — los asientos son limitados. Toca para ver 💋', pt: 'Um show ao vivo fechado só para grandes gastadores — os assentos são limitados. Toque para ver 💋', fr: 'Un show en direct fermé pour les gros dépensiers seulement — les places sont limitées. Touche pour voir 💋', de: 'Eine geschlossene Live-Show nur für Top-Ausgeber — die Plätze sind begrenzt. Tippe zum Ansehen 💋', ru: 'Закрытое живое шоу только для самых щедрых — места ограничены. Нажми, чтобы посмотреть 💋', ja: 'トップスペンダーだけの閉じたライブショー — 席数限定。タップして見る 💋', zh: '只为大额消费者开放的封闭直播 — 座位有限。点开查看 💋', ko: '탑 소비자만을 위한 비공개 라이브 쇼 — 좌석 한정. 탭해서 보기 💋', it: 'Uno show dal vivo chiuso solo per grandi spenditori — i posti sono limitati. Tocca per vedere 💋', pl: 'Zamknięty show na żywo tylko dla dużych wydawców — miejsca są ograniczone. Dotknij, aby zobaczyć 💋', nl: 'Een gesloten liveshow alleen voor grote uitgevers — plekken zijn beperkt. Tik om te bekijken 💋', tr: 'Sadece büyük harcama yapanlara özel kapalı canlı şov — koltuklar sınırlı. Görmek için dokun 💋' },
+  private_seat_bell_title: { en: '🔒 A Private Room seat just sold', es: '🔒 Se acaba de vender un asiento de tu Sala Privada', pt: '🔒 Um assento da sua Sala Privada acabou de ser vendido', fr: '🔒 Une place de ton Salon Privé vient d\'être vendue', de: '🔒 Ein Platz in deinem Privaten Raum wurde gerade verkauft', ru: '🔒 Только что продано место в твоей Приватной комнате', ja: '🔒 プライベートルームの席が売れました', zh: '🔒 你的私人房间刚卖出一个座位', ko: '🔒 프라이빗 룸 좌석이 방금 팔렸어요', it: '🔒 Un posto della tua Stanza Privata è stato appena venduto', pl: '🔒 Właśnie sprzedano miejsce w Twoim Pokoju Prywatnym', nl: '🔒 Er is net een plek in je Privékamer verkocht', tr: '🔒 Özel Odanın bir koltuğu az önce satıldı' },
+  private_seat_bell_body: { en: '{fan} took a seat in your Private Room 💋', es: '{fan} tomó un asiento en tu Sala Privada 💋', pt: '{fan} garantiu um assento na sua Sala Privada 💋', fr: '{fan} a pris une place dans ton Salon Privé 💋', de: '{fan} hat einen Platz in deinem Privaten Raum genommen 💋', ru: '{fan} занял место в твоей Приватной комнате 💋', ja: '{fan} がプライベートルームの席を取りました 💋', zh: '{fan} 抢下了你私人房间的一个座位 💋', ko: '{fan}님이 프라이빗 룸 좌석을 잡았어요 💋', it: '{fan} ha preso un posto nella tua Stanza Privata 💋', pl: '{fan} zajął miejsce w Twoim Pokoju Prywatnym 💋', nl: '{fan} heeft een plek in je Privékamer genomen 💋', tr: '{fan} Özel Odanda bir koltuk aldı 💋' },
+  private_live_bell_title: { en: '🔒 {model} is LIVE in her Private Room', es: '🔒 {model} está EN VIVO en su Sala Privada', pt: '🔒 {model} está AO VIVO na Sala Privada dela', fr: '🔒 {model} est EN DIRECT dans son Salon Privé', de: '🔒 {model} ist LIVE in ihrem Privaten Raum', ru: '🔒 {model} В ЭФИРЕ в своей Приватной комнате', ja: '🔒 {model} がプライベートルームでライブ中', zh: '🔒 {model} 正在她的私人房间直播', ko: '🔒 {model}님이 프라이빗 룸에서 라이브 중이에요', it: '🔒 {model} è LIVE nella sua Stanza Privata', pl: '🔒 {model} jest NA ŻYWO w swoim Pokoju Prywatnym', nl: '🔒 {model} is LIVE in haar Privékamer', tr: '🔒 {model} Özel Odasında CANLI' },
+  private_live_bell_body: { en: 'Your seat is waiting — come in 💋', es: 'Tu asiento te espera — entra 💋', pt: 'Seu assento está esperando — entre 💋', fr: 'Ta place t\'attend — entre 💋', de: 'Dein Platz wartet — komm rein 💋', ru: 'Твоё место ждёт — заходи 💋', ja: 'あなたの席が待っています — 入ってきて 💋', zh: '你的座位在等你 — 进来吧 💋', ko: '당신의 좌석이 기다리고 있어요 — 들어오세요 💋', it: 'Il tuo posto ti aspetta — entra 💋', pl: 'Twoje miejsce czeka — wejdź 💋', nl: 'Je plek wacht op je — kom binnen 💋', tr: 'Koltuğun seni bekliyor — gir içeri 💋' },
+  private_cancel_bell_title: { en: '🔒 Private Room cancelled', es: '🔒 Sala Privada cancelada', pt: '🔒 Sala Privada cancelada', fr: '🔒 Salon Privé annulé', de: '🔒 Privater Raum abgesagt', ru: '🔒 Приватная комната отменена', ja: '🔒 プライベートルームはキャンセルされました', zh: '🔒 私人房间已取消', ko: '🔒 프라이빗 룸이 취소되었어요', it: '🔒 Stanza Privata annullata', pl: '🔒 Pokój Prywatny anulowany', nl: '🔒 Privékamer geannuleerd', tr: '🔒 Özel Oda iptal edildi' },
+  private_cancel_bell_body: { en: '{model} cancelled her Private Room — your seat price was refunded in full 💋', es: '{model} canceló su Sala Privada — el precio de tu asiento fue reembolsado por completo 💋', pt: '{model} cancelou a Sala Privada dela — o preço do seu assento foi reembolsado por completo 💋', fr: '{model} a annulé son Salon Privé — le prix de ta place a été entièrement remboursé 💋', de: '{model} hat ihren Privaten Raum abgesagt — dein Platzpreis wurde vollständig erstattet 💋', ru: '{model} отменила свою Приватную комнату — стоимость твоего места возвращена полностью 💋', ja: '{model} がプライベートルームをキャンセルしました — 席料は全額返金されました 💋', zh: '{model} 取消了她的私人房间 — 你的座位费已全额退款 💋', ko: '{model}님이 프라이빗 룸을 취소했어요 — 좌석 요금은 전액 환불되었어요 💋', it: '{model} ha annullato la sua Stanza Privata — il prezzo del tuo posto è stato rimborsato per intero 💋', pl: '{model} anulowała swój Pokój Prywatny — cena Twojego miejsca została w pełni zwrócona 💋', nl: '{model} heeft haar Privékamer geannuleerd — de prijs van je plek is volledig terugbetaald 💋', tr: '{model} Özel Odasını iptal etti — koltuk ücretin tamamen iade edildi 💋' },
+  private_noshow_bell_title: { en: '🔒 Private Room update', es: '🔒 Novedad de la Sala Privada', pt: '🔒 Atualização da Sala Privada', fr: '🔒 Mise à jour du Salon Privé', de: '🔒 Update zum Privaten Raum', ru: '🔒 Обновление Приватной комнаты', ja: '🔒 プライベートルームのお知らせ', zh: '🔒 私人房间动态', ko: '🔒 프라이빗 룸 소식', it: '🔒 Aggiornamento Stanza Privata', pl: '🔒 Aktualizacja Pokoju Prywatnego', nl: '🔒 Update Privékamer', tr: '🔒 Özel Oda güncellemesi' },
+  private_noshow_bell_body: { en: 'The Private Room with {model} didn\'t run — your seat price was refunded in full 💋', es: 'La Sala Privada con {model} no se realizó — el precio de tu asiento fue reembolsado por completo 💋', pt: 'A Sala Privada com {model} não aconteceu — o preço do seu assento foi reembolsado por completo 💋', fr: 'Le Salon Privé avec {model} n\'a pas eu lieu — le prix de ta place a été entièrement remboursé 💋', de: 'Der Private Raum mit {model} fand nicht statt — dein Platzpreis wurde vollständig erstattet 💋', ru: 'Приватная комната с {model} не состоялась — стоимость твоего места возвращена полностью 💋', ja: '{model} のプライベートルームは開催されませんでした — 席料は全額返金されました 💋', zh: '与 {model} 的私人房间未能举行 — 你的座位费已全额退款 💋', ko: '{model}님과의 프라이빗 룸이 열리지 않았어요 — 좌석 요금은 전액 환불되었어요 💋', it: 'La Stanza Privata con {model} non si è tenuta — il prezzo del tuo posto è stato rimborsato per intero 💋', pl: 'Pokój Prywatny z {model} się nie odbył — cena Twojego miejsca została w pełni zwrócona 💋', nl: 'De Privékamer met {model} ging niet door — de prijs van je plek is volledig terugbetaald 💋', tr: '{model} ile Özel Oda gerçekleşmedi — koltuk ücretin tamamen iade edildi 💋' },
   ann_safety_bell_body: { en: 'Messages and bios that share contact info or promote other platforms are now blocked before they send. Tap to read 💋', es: 'Los mensajes y biografías que comparten información de contacto o promocionan otras plataformas ahora se bloquean antes de enviarse. Toca para leer 💋', pt: 'Mensagens e bios que compartilham informações de contato ou promovem outras plataformas agora são bloqueadas antes do envio. Toque para ler 💋', fr: 'Les messages et bios qui partagent des coordonnées ou font la promotion d\'autres plateformes sont désormais bloqués avant l\'envoi. Touchez pour lire 💋', de: 'Nachrichten und Bios, die Kontaktdaten teilen oder für andere Plattformen werben, werden jetzt vor dem Senden blockiert. Tippe zum Lesen 💋', ru: 'Сообщения и описания, которые делятся контактами или рекламируют другие платформы, теперь блокируются до отправки. Нажмите, чтобы прочитать 💋', ja: '連絡先を共有したり他のプラットフォームを宣伝したりするメッセージやプロフィールは、送信前にブロックされるようになりました。タップして読む 💋', zh: '分享联系方式或推广其他平台的消息和简介现在会在发送前被拦截。点开阅读 💋', ko: '연락처를 공유하거나 다른 플랫폼을 홍보하는 메시지와 소개글은 이제 전송 전에 차단됩니다. 탭해서 읽기 💋', it: 'Messaggi e bio che condividono contatti o promuovono altre piattaforme ora vengono bloccati prima dell\'invio. Tocca per leggere 💋', pl: 'Wiadomości i opisy, które udostępniają dane kontaktowe lub promują inne platformy, są teraz blokowane przed wysłaniem. Dotknij, aby przeczytać 💋', nl: 'Berichten en bio\'s die contactgegevens delen of andere platforms promoten, worden nu geblokkeerd voordat ze worden verzonden. Tik om te lezen 💋', tr: 'İletişim bilgileri paylaşan veya başka platformları tanıtan mesajlar ve biyografiler artık gönderilmeden önce engelleniyor. Okumak için dokun 💋' },
   ann_booking_rate_dm: { en: '📅 NEW: Your 1-on-1 bookings now have their OWN rate! A booked 1-on-1 used to be priced off your per-minute video rate — now there\'s a separate 1-on-1 booking rate in Settings → My Rates. It starts at your current video rate, so nothing changes until you set it yourself. Bookings run long — price them your way 💋', es: '📅 NUEVO: ¡Tus reservas 1 a 1 ahora tienen su PROPIA tarifa! Antes, una reserva 1 a 1 se cobraba según tu tarifa de video por minuto — ahora hay una tarifa de reserva 1 a 1 separada en Ajustes → Mis tarifas. Empieza con tu tarifa de video actual, así que nada cambia hasta que tú la ajustes. Las reservas son largas — ponles tu precio 💋', pt: '📅 NOVO: Suas reservas individuais agora têm sua PRÓPRIA tarifa! Antes, uma reserva individual era cobrada pela sua tarifa de vídeo por minuto — agora há uma tarifa de reserva individual separada em Configurações → Minhas tarifas. Ela começa com sua tarifa de vídeo atual, então nada muda até você mesma ajustar. Reservas são longas — defina seu preço 💋', fr: '📅 NOUVEAU : Vos réservations privées ont maintenant leur PROPRE tarif ! Avant, une réservation privée était facturée selon votre tarif vidéo par minute — il y a maintenant un tarif de réservation privée séparé dans Paramètres → Mes tarifs. Il démarre à votre tarif vidéo actuel, donc rien ne change tant que vous ne le modifiez pas. Les réservations sont longues — fixez votre prix 💋', de: '📅 NEU: Deine 1-zu-1-Buchungen haben jetzt ihren EIGENEN Preis! Bisher wurde eine 1-zu-1-Buchung über deinen Video-Minutenpreis abgerechnet — jetzt gibt es einen separaten 1-zu-1-Buchungspreis unter Einstellungen → Meine Preise. Er startet bei deinem aktuellen Videopreis, es ändert sich also nichts, bis du ihn selbst anpasst. Buchungen dauern lange — setze deinen Preis 💋', ru: '📅 НОВОЕ: У ваших личных бронирований теперь СВОЯ ставка! Раньше личная бронь оплачивалась по вашей поминутной ставке видео — теперь в Настройки → Мои ставки есть отдельная ставка личной брони. Она начинается с вашей текущей ставки видео, так что ничего не изменится, пока вы сами её не настроите. Бронирования долгие — ставьте свою цену 💋', ja: '📅 新機能：1対1予約に専用の料金ができました！これまで1対1予約はビデオの分単価で計算されていましたが、今は「設定 → 料金」に別の1対1予約料金があります。最初は今のビデオ料金と同じなので、自分で変えるまで何も変わりません。予約は長めの時間です — 料金はあなたの自由に 💋', zh: '📅 新功能：你的一对一预约现在有自己的专属价格了！以前一对一预约按你的视频每分钟价格计算 — 现在「设置 → 我的价格」里多了一个单独的一对一预约价格。它以你当前的视频价格为起点，所以在你自己修改之前一切不变。预约时间长 — 价格由你定 💋', ko: '📅 새 기능: 이제 1:1 예약에 전용 요금이 생겼어요! 이전에는 1:1 예약이 영상 분당 요금으로 계산됐지만, 이제 설정 → 내 요금에 별도의 1:1 예약 요금이 있습니다. 현재 영상 요금으로 시작하니 직접 바꾸기 전까지는 아무것도 변하지 않아요. 예약은 긴 시간이에요 — 가격은 당신이 정하세요 💋', it: '📅 NOVITÀ: Le tue prenotazioni 1 a 1 ora hanno la loro tariffa PERSONALE! Prima una prenotazione 1 a 1 era calcolata con la tua tariffa video al minuto — ora c\'è una tariffa prenotazione 1 a 1 separata in Impostazioni → Le mie tariffe. Parte dalla tua attuale tariffa video, quindi non cambia nulla finché non la imposti tu. Le prenotazioni sono lunghe — decidi tu il prezzo 💋', pl: '📅 NOWOŚĆ: Twoje rezerwacje 1 na 1 mają teraz WŁASNĄ stawkę! Wcześniej rezerwacja 1 na 1 była liczona według Twojej stawki wideo za minutę — teraz w Ustawienia → Moje stawki jest osobna stawka rezerwacji 1 na 1. Zaczyna się od Twojej obecnej stawki wideo, więc nic się nie zmieni, dopóki sama jej nie ustawisz. Rezerwacje są długie — cena należy do Ciebie 💋', nl: '📅 NIEUW: Je 1-op-1 boekingen hebben nu hun EIGEN tarief! Eerder werd een 1-op-1 boeking berekend met je videotarief per minuut — nu is er een apart 1-op-1 boekingstarief in Instellingen → Mijn tarieven. Het begint bij je huidige videotarief, dus er verandert niets totdat je het zelf aanpast. Boekingen duren lang — bepaal je eigen prijs 💋', tr: '📅 YENİ: Bire bir rezervasyonlarının artık KENDİ ücreti var! Önceden bire bir rezervasyon, video dakika ücretin üzerinden hesaplanıyordu — şimdi Ayarlar → Ücretlerim bölümünde ayrı bir bire bir rezervasyon ücreti var. Mevcut video ücretinle başlıyor, yani sen değiştirene kadar hiçbir şey değişmiyor. Rezervasyonlar uzun sürer — fiyatı sen belirle 💋' },
   ann_booking_rate_bell_title: { en: '📅 New: separate 1-on-1 booking rate', es: '📅 Nuevo: tarifa separada para reservas 1 a 1', pt: '📅 Novo: tarifa separada para reservas individuais', fr: '📅 Nouveau : tarif séparé pour les réservations privées', de: '📅 Neu: eigener Preis für 1-zu-1-Buchungen', ru: '📅 Новое: отдельная ставка для личных бронирований', ja: '📅 新機能：1対1予約の専用料金', zh: '📅 新功能：一对一预约专属价格', ko: '📅 새 기능: 1:1 예약 전용 요금', it: '📅 Novità: tariffa separata per le prenotazioni 1 a 1', pl: '📅 Nowość: osobna stawka rezerwacji 1 na 1', nl: '📅 Nieuw: apart tarief voor 1-op-1 boekingen', tr: '📅 Yeni: bire bir rezervasyonlar için ayrı ücret' },
@@ -4751,6 +4806,55 @@ function announceSafetyToModels() {
   return sent;
 }
 
+/* Phase 5 constants live HERE, above the boot calls: the boot-time
+   stale-event sweep (bottom of the announcement block) reads
+   PRIVATE_ROOM_STALE_MS at module load, and a const declared with the
+   feature core further down would still be in its TDZ at that point
+   (the boot try/catch would swallow the ReferenceError silently). */
+const PRIVATE_ROOM_MAX_SEATS = 20;          // P2P ceiling: her uplink feeds every seat
+const PRIVATE_ROOM_SEAT_MIN_CENTS = 100;    // $1
+const PRIVATE_ROOM_SEAT_MAX_CENTS = 100000; // $1,000
+const PRIVATE_ROOM_INVITE_WINDOW_MS = 24 * 3600 * 1000; // invitees buy first for 24h
+const PRIVATE_ROOM_STALE_MS = 3 * 3600 * 1000;          // no-show sweep: start + 3h
+
+/* ------------------------------------------------------------------ */
+/* Private Room (Sections Phase 5) — ONE-TIME announcement (stamp     */
+/* private_room_announced_at on platform_stats). The penthouse layer  */
+/* is live: she sets the seats and the price, invites from her Top    */
+/* Spenders list, max 2 rooms a week (the Manager-adjustable cap).    */
+/* Same pattern as the safety broadcast (announcementThreadFor +      */
+/* stamp set only after the loop, so a mid-boot failure retries      */
+/* next start). Copy is Asce's own explainer, polished with him       */
+/* 2026-10-20 (phase5-model-announcement.md), in the SRV table        */
+/* (ann_privateroom_dm).                                              */
+/* ------------------------------------------------------------------ */
+function announcePrivateRoomsToModels() {
+  const st = db.prepare('SELECT private_room_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.private_room_announced_at) return 0;
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin) return 0;
+  const models = db.prepare("SELECT id, username, language FROM users WHERE role = 'model' AND banned = 0").all();
+  let sent = 0;
+  for (const m of models) {
+    if (m.id === admin.id) continue;
+    try {
+      const conv = announcementThreadFor(m.id, 'model', admin.id);
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, conv.senderId, srv('ann_privateroom_dm', m.language));
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(m.id, 'private_room', srv('ann_privateroom_bell_title', m.language),
+          srv('ann_privateroom_bell_body', m.language), `/#chat/${conv.id}`);
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest */ }
+  }
+  if (sent > 0 || models.length === 0) {
+    db.prepare("UPDATE platform_stats SET private_room_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
 /* Fan blast — ONE-TIME bell + Web Push to every fan (stamp           */
 /* fan_preview_announced_at on platform_stats). Fans have no email or */
 /* text channel today (no provider; users held no contact info until  */
@@ -4933,6 +5037,8 @@ try { const n = announceAgreement15ToModels(); if (n) console.log(`[contract] Ag
 try { const n = announceStorefrontToFans(); if (n) console.log(`[storefront] Storefront tabs announced to ${n} fans.`); } catch (e) { /* retry next boot */ }
 try { const n = announceFaceguardToModels(); if (n) console.log(`[faceguard] Face-count guard announced to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceSafetyToModels(); if (n) console.log(`[safety] Safety hard-block announced to ${n} models.`); } catch (e) { /* retry next boot */ }
+try { const n = announcePrivateRoomsToModels(); if (n) console.log(`[private-room] Private Room announced to ${n} models.`); } catch (e) { /* retry next boot */ }
+try { const n = sweepStalePrivateEvents(); if (n) console.log(`[private-room] Swept ${n} stale private event(s) with refunds.`); } catch (e) { /* retry next boot */ }
 
 /* Safety scrub (Safety build, owner-directed 2026-10-20): the messages
    table no longer stores usable PII. Every boot, any message body still
@@ -5517,7 +5623,7 @@ app.get('/api/models', (req, res) => {
            (SELECT COALESCE(SUM(gross_cents), 0) FROM transactions
              WHERE model_id = u.id AND type <> 'payout' AND is_test = 0) AS total_sales_cents
     FROM users u JOIN models m ON m.user_id = u.id
-    LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live'
+    LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live' AND ls.private_event_id IS NULL
     WHERE u.role = 'model' AND u.banned = 0 AND m.is_hidden = 0
     ORDER BY m.is_featured DESC,
              m.rank_score DESC,
@@ -11279,6 +11385,357 @@ function pushLiveAll(sessionId, event) {
 }
 
 // Model: check if she has an active live session (for "Back to Live" button)
+/* ================================================================== */
+/* Private Room events (Sections Phase 5, owner-designed Oct 20 2026) */
+/*                                                                    */
+/* The penthouse layer, ADDITIVE ONLY: public lives and the explicit  */
+/* room are untouched. A model schedules a closed live show; her top  */
+/* spenders are invited first (from the tracker below), leftover      */
+/* seats open publicly after the invite window, and at showtime she   */
+/* goes live through the normal /api/live/start with private_event_id */
+/* set — the session is then invisible on every public surface and    */
+/* only seat-holders may join / chat / tip inside. The Phase 4        */
+/* face-count guard rides along unchanged (same start path).          */
+/*                                                                    */
+/* Rules as locked by Asce: weekly cap is PLATFORM-set (platform_     */
+/* stats.private_room_cap, default 2, Manager-adjustable) over the    */
+/* Mon–Sun America/Chicago week of the event's start; she picks the   */
+/* day, the seat count (up to the technical ceiling) and the price.   */
+/* ================================================================== */
+const getPrivateRoomCap = () => {
+  const r = db.prepare('SELECT private_room_cap FROM platform_stats WHERE id = 1').get();
+  const s = r && r.private_room_cap;
+  return Number.isInteger(s) && s >= 1 && s <= 7 ? s : 2;
+};
+
+/* Mon–Sun America/Chicago week of an instant, as the Monday's local
+   date ('YYYY-MM-DD') — the cap counts events by the week of their
+   scheduled start, in the business's home timezone. */
+const CHI_PARTS = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago',
+  year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' });
+function chicagoMondayKey(d) {
+  const parts = {};
+  for (const p of CHI_PARTS.formatToParts(d)) parts[p.type] = p.value;
+  const wd = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }[parts.weekday];
+  const local = new Date(Date.UTC(+parts.year, +parts.month - 1, +parts.day));
+  local.setUTCDate(local.getUTCDate() - wd);
+  return local.toISOString().slice(0, 10);
+}
+const CHI_WHEN = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago',
+  weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const fmtEventWhen = (iso) => CHI_WHEN.format(new Date(iso)) + ' CT';
+
+/* What counts as "spent on her" for the tracker + invite eligibility:
+   exactly the fan-spend ledger types (the SPEND_TYPE_CATEGORY set —
+   charges positive, refunds negative, so the signed sum nets), plus
+   private-room seats and their refunds. is_test never counts (the
+   same exclusion every money display uses). */
+const TRACKER_TYPES_SQL = [...Object.keys(SPEND_TYPE_CATEGORY), 'private_seat', 'private_seat_refund']
+  .map((t) => `'${t}'`).join(',');
+function trackerSpendCents(modelId, fanId) {
+  const r = db.prepare(`SELECT COALESCE(SUM(gross_cents), 0) AS s FROM transactions
+    WHERE model_id = ? AND fan_id = ? AND is_test = 0 AND type IN (${TRACKER_TYPES_SQL})`)
+    .get(modelId, fanId);
+  return r.s;
+}
+
+function privateSeatRow(eventId, fanId) {
+  return db.prepare('SELECT * FROM private_event_seats WHERE event_id = ? AND fan_id = ?')
+    .get(eventId, fanId);
+}
+function privateEventPhase(ev, now = Date.now()) {
+  if (ev.status !== 'scheduled') return ev.status;
+  return now < Date.parse(ev.invite_window_ends_at) ? 'invite' : 'public';
+}
+function serializePrivateEvent(ev, viewer) {
+  const sold = db.prepare('SELECT COUNT(*) AS n FROM private_event_seats WHERE event_id = ?').get(ev.id).n;
+  const out = { id: ev.id, model_id: ev.model_id, title: ev.title || '',
+    starts_at: ev.starts_at, seats_total: ev.seats_total,
+    seat_price_cents: ev.seat_price_cents, seats_sold: sold,
+    seats_left: Math.max(0, ev.seats_total - sold),
+    invite_window_ends_at: ev.invite_window_ends_at,
+    status: ev.status, phase: privateEventPhase(ev),
+    session_id: ev.session_id || null, created_at: ev.created_at };
+  if (ev.model_username !== undefined) {
+    out.model_username = ev.model_username;
+    out.model_name = ev.model_display_name;
+    out.model_photo_url = ev.model_photo_url || null;
+  }
+  if (viewer && viewer.role === 'fan') {
+    out.invited = !!db.prepare('SELECT 1 FROM private_event_invites WHERE event_id = ? AND fan_id = ?')
+      .get(ev.id, viewer.id);
+    out.has_seat = !!privateSeatRow(ev.id, viewer.id);
+    out.can_buy = ev.status === 'scheduled' && out.seats_left > 0 &&
+      Date.now() < Date.parse(ev.starts_at) && (out.phase === 'public' || out.invited);
+  }
+  if (viewer && viewer.id === ev.model_id) {
+    out.invited_count = db.prepare('SELECT COUNT(*) AS n FROM private_event_invites WHERE event_id = ?')
+      .get(ev.id).n;
+    out.invited_fan_ids = db.prepare('SELECT fan_id FROM private_event_invites WHERE event_id = ?')
+      .all(ev.id).map((r) => r.fan_id);
+    out.seated_fan_ids = db.prepare('SELECT fan_id FROM private_event_seats WHERE event_id = ?')
+      .all(ev.id).map((r) => r.fan_id);
+  }
+  return out;
+}
+function privateEventWithModel(id) {
+  return db.prepare(`SELECT pe.*, u.username AS model_username,
+      u.display_name AS model_display_name, m.photo_url AS model_photo_url
+    FROM private_events pe JOIN users u ON u.id = pe.model_id
+    LEFT JOIN models m ON m.user_id = pe.model_id WHERE pe.id = ?`).get(id);
+}
+
+/* Refund every seat-holder of an event in full (cancel / no-show) and
+   bell each of them. The reversal rides refundFan, so her earnings,
+   the platform cut and her rank all net back automatically. */
+function refundPrivateEventSeats(ev, titleKey, bodyKey) {
+  const seats = db.prepare('SELECT fan_id, price_cents FROM private_event_seats WHERE event_id = ?')
+    .all(ev.id);
+  const model = db.prepare('SELECT display_name FROM users WHERE id = ?').get(ev.model_id);
+  for (const s of seats) {
+    try {
+      refundFan(s.fan_id, ev.model_id, s.price_cents, 'private_seat_refund',
+        `🔒 Private room #${ev.id} seat refund`, null);
+    } catch (e) { /* one bad refund must not block the rest */ }
+    try {
+      notifyUser(s.fan_id, 'private_refund', srv(titleKey, userLang(s.fan_id)),
+        srv(bodyKey, userLang(s.fan_id), { model: model ? model.display_name : '' }),
+        `/#pevent/${ev.id}`);
+    } catch (e) { /* the bell is a bonus; the refund is the deliverable */ }
+  }
+  return seats.length;
+}
+
+/* No-show sweep: a 'scheduled' event whose start is 3h past never ran —
+   close it and refund its seat-holders. Idempotent (the status flip is
+   the guard); runs at boot and lazily on the event reads. */
+function sweepStalePrivateEvents() {
+  const cutoff = Date.now() - PRIVATE_ROOM_STALE_MS;
+  const rows = db.prepare("SELECT * FROM private_events WHERE status = 'scheduled'").all();
+  let n = 0;
+  for (const ev of rows) {
+    if (!(Date.parse(ev.starts_at) < cutoff)) continue;
+    db.prepare("UPDATE private_events SET status = 'ended' WHERE id = ?").run(ev.id);
+    refundPrivateEventSeats(ev, 'private_noshow_bell_title', 'private_noshow_bell_body');
+    n++;
+  }
+  return n;
+}
+
+/* The seat gate for fan-facing live endpoints: a session with a
+   private_event_id admits seat-holders only. Returns true when the
+   caller may proceed; otherwise the 403 is already sent. */
+function seatGate(res, sess, userId) {
+  if (!sess.private_event_id) return true;
+  if (privateSeatRow(sess.private_event_id, userId)) return true;
+  res.status(403).json({ error: 'seat_required',
+    message: '🔒 This is a Private Room — only seat-holders can enter.' });
+  return false;
+}
+
+/* ---------------- model: top-spenders tracker ---------------- */
+/* Her fans ranked by what they spent ON HER (signed ledger sum:      */
+/* charges net of refunds), all-time or last-30-days. She only ever   */
+/* sees her own fans' spend on her — the model_id predicate is the    */
+/* privacy wall.                                                      */
+app.get('/api/model/top-spenders', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const range = req.query.range === '30d' ? '30d' : 'all';
+  const rows = db.prepare(`
+    SELECT t.fan_id AS fan_id, u.username, u.display_name,
+      COALESCE(SUM(t.gross_cents), 0) AS total_cents,
+      COALESCE(SUM(CASE WHEN t.created_at >= datetime('now', '-30 days')
+                        THEN t.gross_cents ELSE 0 END), 0) AS recent_cents,
+      MAX(t.created_at) AS last_spent_at
+    FROM transactions t JOIN users u ON u.id = t.fan_id
+    WHERE t.model_id = ? AND t.fan_id IS NOT NULL AND t.is_test = 0 AND u.banned = 0
+      AND t.type IN (${TRACKER_TYPES_SQL})
+    GROUP BY t.fan_id
+    HAVING (CASE WHEN ? = '30d' THEN recent_cents ELSE total_cents END) > 0
+    ORDER BY (CASE WHEN ? = '30d' THEN recent_cents ELSE total_cents END) DESC, total_cents DESC
+    LIMIT 100`).all(req.user.id, range, range);
+  // spend_cents = the ranked figure for the requested range (the client
+  // and the tracker's own arithmetic speak in that one field).
+  const spenders = rows.map((r) => ({ ...r,
+    spend_cents: range === '30d' ? r.recent_cents : r.total_cents }));
+  res.json({ range, spenders });
+});
+
+/* ---------------- model: her private events ---------------- */
+function ownPrivateEvent(req, res) {
+  const ev = db.prepare('SELECT * FROM private_events WHERE id = ?').get(req.params.id);
+  if (!ev) { res.status(404).json({ error: 'not_found' }); return null; }
+  if (ev.model_id !== req.user.id) { res.status(403).json({ error: 'forbidden' }); return null; }
+  return ev;
+}
+
+app.get('/api/model/private-events', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  sweepStalePrivateEvents();
+  const rows = db.prepare('SELECT * FROM private_events WHERE model_id = ? ORDER BY starts_at DESC LIMIT 50')
+    .all(req.user.id);
+  res.json({ events: rows.map((ev) => serializePrivateEvent(ev, req.user)),
+    cap: getPrivateRoomCap(), max_seats: PRIVATE_ROOM_MAX_SEATS });
+});
+
+app.post('/api/model/private-events', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  // Model-first (spec): house ticketed events reuse this machinery
+  // later; the house account does not run private rooms in Phase 5.
+  if (isHouseAccountId(req.user.id))
+    return res.status(403).json({ error: 'house_not_included',
+      message: '🔒 Private Rooms are for models — house ticketed events come later.' });
+  // An event is a commitment to go live, and going live needs her
+  // approved ID (the standing gate) — checked here so fans never buy
+  // seats to a room she cannot open.
+  if (!isIdVerified(req.user.id))
+    return res.status(403).json({ error: 'id_verification_required',
+      message: '🪪 ID verification required — upload your ID in Settings → ID Verification to run a Private Room.' });
+  const b = req.body || {};
+  const startsMs = Date.parse(b.starts_at || '');
+  if (!Number.isFinite(startsMs) || startsMs <= Date.now())
+    return res.status(400).json({ error: 'bad_start_time' });
+  const seats = Number(b.seats);
+  if (!Number.isInteger(seats) || seats < 1 || seats > PRIVATE_ROOM_MAX_SEATS)
+    return res.status(400).json({ error: 'bad_seats', max_seats: PRIVATE_ROOM_MAX_SEATS });
+  const price = Number(b.seat_price_cents);
+  if (!Number.isInteger(price) || price < PRIVATE_ROOM_SEAT_MIN_CENTS || price > PRIVATE_ROOM_SEAT_MAX_CENTS)
+    return res.status(400).json({ error: 'bad_price' });
+  // Weekly cap: platform-set, counted over the Mon–Sun Chicago week
+  // of the event's own start; cancelled events free their slot.
+  const cap = getPrivateRoomCap();
+  const weekKey = chicagoMondayKey(new Date(startsMs));
+  const mine = db.prepare("SELECT starts_at FROM private_events WHERE model_id = ? AND status != 'cancelled'")
+    .all(req.user.id);
+  const used = mine.filter((e) => chicagoMondayKey(new Date(e.starts_at)) === weekKey).length;
+  if (used >= cap)
+    return res.status(409).json({ error: 'weekly_cap_reached', cap, week: weekKey });
+  const startsIso = new Date(startsMs).toISOString();
+  const inviteEnds = new Date(Math.min(Date.now() + PRIVATE_ROOM_INVITE_WINDOW_MS, startsMs)).toISOString();
+  const title = String(b.title || '').trim().slice(0, 60);
+  const info = db.prepare(`INSERT INTO private_events
+    (model_id, title, starts_at, seats_total, seat_price_cents, invite_window_ends_at)
+    VALUES (?,?,?,?,?,?)`).run(req.user.id, title, startsIso, seats, price, inviteEnds);
+  const ev = db.prepare('SELECT * FROM private_events WHERE id = ?').get(info.lastInsertRowid);
+  res.json({ event: serializePrivateEvent(ev, req.user), cap, used_this_week: used + 1 });
+});
+
+/* Broadcast invite: she selects fans FROM HER TRACKER — a fan is only
+   eligible with real spend on her (no cold spam) — and each selected
+   fan gets ONE message in his thread with her (the invite PK is the
+   frequency limit: re-inviting never re-messages). The message is
+   system-composed from the event, carries private_event_id so the
+   client renders the seat card, and the bell opens that thread. */
+app.post('/api/model/private-events/:id/invite', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const ev = ownPrivateEvent(req, res);
+  if (!ev) return;
+  if (ev.status !== 'scheduled') return res.status(409).json({ error: 'event_not_scheduled' });
+  const ids = Array.isArray(req.body && req.body.fan_ids)
+    ? [...new Set(req.body.fan_ids.map(Number).filter((n) => Number.isInteger(n) && n > 0))] : [];
+  if (!ids.length) return res.status(400).json({ error: 'no_fans' });
+  if (ids.length > 100) return res.status(400).json({ error: 'too_many_fans' });
+  const me = db.prepare('SELECT display_name FROM users WHERE id = ?').get(req.user.id);
+  const when = fmtEventWhen(ev.starts_at);
+  let invited = 0, skipped = 0;
+  for (const fanId of ids) {
+    const fan = db.prepare("SELECT id, banned FROM users WHERE id = ? AND role = 'fan'").get(fanId);
+    if (!fan || fan.banned || trackerSpendCents(req.user.id, fanId) <= 0) { skipped++; continue; }
+    const ins = db.prepare('INSERT OR IGNORE INTO private_event_invites (event_id, fan_id) VALUES (?,?)')
+      .run(ev.id, fanId);
+    if (!ins.changes) { skipped++; continue; }
+    let conv = db.prepare('SELECT * FROM conversations WHERE fan_id = ? AND model_id = ?')
+      .get(fanId, req.user.id);
+    if (!conv) {
+      const ci = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)')
+        .run(fanId, req.user.id);
+      conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(ci.lastInsertRowid);
+    }
+    const lang = userLang(fanId);
+    const body = srv('private_invite_msg', lang, { model: me.display_name, date: when,
+      price: fmt$(ev.seat_price_cents), seats: ev.seats_total });
+    db.prepare('INSERT INTO messages (conversation_id, sender_id, body, private_event_id) VALUES (?,?,?,?)')
+      .run(conv.id, req.user.id, body, ev.id);
+    db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+    try {
+      notifyUser(fanId, 'private_invite',
+        srv('private_invite_bell_title', lang, { model: me.display_name }),
+        srv('private_invite_bell_body', lang, { model: me.display_name }),
+        `/#chat/${conv.id}`);
+    } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+    invited++;
+  }
+  res.json({ ok: true, invited, skipped });
+});
+
+/* Cancel (scheduled only): every seat-holder is refunded in full. A
+   live room is ended through the normal live end flow instead — its
+   seats are already being used. */
+app.post('/api/model/private-events/:id/cancel', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const ev = ownPrivateEvent(req, res);
+  if (!ev) return;
+  if (ev.status !== 'scheduled') return res.status(409).json({ error: 'event_not_scheduled' });
+  db.prepare("UPDATE private_events SET status = 'cancelled' WHERE id = ?").run(ev.id);
+  const refunded = refundPrivateEventSeats(ev, 'private_cancel_bell_title', 'private_cancel_bell_body');
+  res.json({ ok: true, refunded });
+});
+
+/* ---------------- fan side: view + buy ---------------- */
+app.get('/api/private-events/:id', identMiddleware, requireUser, (req, res) => {
+  sweepStalePrivateEvents();
+  const ev = privateEventWithModel(req.params.id);
+  if (!ev) return res.status(404).json({ error: 'not_found' });
+  if (req.user.role === 'fan' && modelRegionBlocked(ev.model_id, geoOfReq(req)))
+    return regionBlocked(res);
+  res.json({ event: serializePrivateEvent(ev, req.user) });
+});
+
+app.get('/api/models/:id/private-events', identMiddleware, requireUser, (req, res) => {
+  const rows = db.prepare(`SELECT pe.*, u.username AS model_username,
+      u.display_name AS model_display_name, m.photo_url AS model_photo_url
+    FROM private_events pe JOIN users u ON u.id = pe.model_id
+    LEFT JOIN models m ON m.user_id = pe.model_id
+    WHERE pe.model_id = ? AND pe.status IN ('scheduled','live')
+    ORDER BY pe.starts_at ASC LIMIT 20`).all(req.params.id);
+  res.json({ events: rows.map((ev) => serializePrivateEvent(ev, req.user)) });
+});
+
+/* Buy a seat. Invitees buy during the invite window; after it, anyone
+   may take a leftover seat — always only until showtime (a 'live' or
+   past-start event sells nothing) and never past the seat cap. The
+   charge rides chargeFan, so the 60/40 split, her rank and payout
+   protection all apply exactly as for any other spend. */
+app.post('/api/private-events/:id/buy', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const ev = db.prepare('SELECT * FROM private_events WHERE id = ?').get(req.params.id);
+  if (!ev) return res.status(404).json({ error: 'not_found' });
+  if (modelRegionBlocked(ev.model_id, geoOfReq(req))) return regionBlocked(res);
+  if (ev.status !== 'scheduled' || Date.now() >= Date.parse(ev.starts_at))
+    return res.status(409).json({ error: 'event_started' });
+  if (privateSeatRow(ev.id, req.user.id))
+    return res.status(409).json({ error: 'already_seated' });
+  const invited = !!db.prepare('SELECT 1 FROM private_event_invites WHERE event_id = ? AND fan_id = ?')
+    .get(ev.id, req.user.id);
+  if (privateEventPhase(ev) === 'invite' && !invited)
+    return res.status(403).json({ error: 'invite_only',
+      message: '🔒 Seats are for her invited top spenders first — the door opens to everyone after the invite window.' });
+  const sold = db.prepare('SELECT COUNT(*) AS n FROM private_event_seats WHERE event_id = ?').get(ev.id).n;
+  if (sold >= ev.seats_total) return res.status(409).json({ error: 'sold_out' });
+  try {
+    chargeFan(req.user.id, ev.model_id, ev.seat_price_cents, 'private_seat',
+      `🔒 Private room seat — ${fmtEventWhen(ev.starts_at)}`, clientIp(req));
+  } catch (e) {
+    if (e.message === 'insufficient_credits' || e.message === 'spend_cap_reached')
+      return res.status(402).json(chargeErrorBody(e, ev.seat_price_cents, req.user.id));
+    throw e;
+  }
+  db.prepare('INSERT INTO private_event_seats (event_id, fan_id, price_cents, source) VALUES (?,?,?,?)')
+    .run(ev.id, req.user.id, ev.seat_price_cents, invited ? 'invite' : 'public');
+  try {
+    notifyUser(ev.model_id, 'private_seat',
+      srv('private_seat_bell_title', userLang(ev.model_id)),
+      srv('private_seat_bell_body', userLang(ev.model_id), { fan: req.user.display_name }),
+      `/#pevent/${ev.id}`);
+  } catch (e) { /* the bell is a bonus; the seat is the deliverable */ }
+  const left = ev.seats_total - sold - 1;
+  res.json({ ok: true, seats_left: left, balance_cents: getWallet(req.user.id).credits_cents });
+});
+
 app.get('/api/live/my-session', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const sess = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`)
     .get(req.user.id);
@@ -11351,6 +11808,19 @@ app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), 
       faceCap = 1 + new Set(declared.filter((p) => p !== req.user.id)).size;
     }
   }
+  // Private Room (Phase 5): starting with a private_event_id turns
+  // this session into her closed room. The event must be hers and
+  // still scheduled; the session row carries the link and every
+  // public surface filters private sessions out. All the gates above
+  // (ID, co-performers, face cap) apply exactly as for a public live.
+  let privEv = null;
+  if (req.body && Number(req.body.private_event_id) > 0) {
+    privEv = db.prepare('SELECT * FROM private_events WHERE id = ?')
+      .get(Number(req.body.private_event_id));
+    if (!privEv || privEv.model_id !== req.user.id || privEv.status !== 'scheduled')
+      return res.status(409).json({ error: 'event_not_scheduled',
+        message: '🔒 That Private Room is not scheduled anymore.' });
+  }
   const existing = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`)
     .get(req.user.id);
   if (existing) return res.status(409).json({ error: 'already_live', session_id: existing.id });
@@ -11363,10 +11833,10 @@ app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), 
   const m = db.prepare('SELECT explicit_rate_cents FROM models WHERE user_id = ?').get(req.user.id);
   const explicit_rate_cents = Number.isInteger(req.body.explicit_rate_cents) &&
     req.body.explicit_rate_cents >= 0 ? req.body.explicit_rate_cents : (m ? m.explicit_rate_cents : 499);
-  const title = String(req.body.title || '').trim().slice(0, 60);
+  const title = String(req.body.title || (privEv ? privEv.title : '') || '').trim().slice(0, 60);
   const info = db.prepare(
-    'INSERT INTO live_sessions (model_id, explicit_rate_cents, title) VALUES (?,?,?)')
-    .run(req.user.id, explicit_rate_cents, title);
+    'INSERT INTO live_sessions (model_id, explicit_rate_cents, title, private_event_id) VALUES (?,?,?,?)')
+    .run(req.user.id, explicit_rate_cents, title, privEv ? privEv.id : null);
   liveFaceCaps.set(Number(info.lastInsertRowid), faceCap);
   db.prepare('UPDATE models SET is_online = 1 WHERE user_id = ?').run(req.user.id);
   // Notify followers: "she's live!" — EXCEPT the official house account
@@ -11374,15 +11844,32 @@ app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), 
   // notified, follower or not. Joining, tipping and in-live spending
   // are the regular live machinery, unchanged for everyone.
   const me = db.prepare('SELECT display_name FROM users WHERE id = ?').get(req.user.id);
-  const followers = isHouseAccountId(req.user.id)
-    ? db.prepare("SELECT id AS fan_id FROM users WHERE role = 'fan' AND banned = 0").all()
-    : db.prepare('SELECT fan_id FROM follows WHERE model_id = ?').all(req.user.id);
-  for (const f of followers) {
-    const fanLang = userLang(f.fan_id);
-    notifyUser(f.fan_id, 'live',
-      srv('bell_live_title', fanLang, { model: me.display_name }),
-      title ? srv('bell_live_body_titled', fanLang, { title }) : srv('bell_live_body', fanLang),
-      '/#live');
+  if (privEv) {
+    // Private Room start: the room is closed, so the public follower
+    // blast does NOT go out — only seat-holders are belled, straight
+    // to the event page that admits them.
+    db.prepare("UPDATE private_events SET status = 'live', session_id = ? WHERE id = ?")
+      .run(Number(info.lastInsertRowid), privEv.id);
+    const holders = db.prepare('SELECT fan_id FROM private_event_seats WHERE event_id = ?')
+      .all(privEv.id);
+    for (const h of holders) {
+      const fanLang = userLang(h.fan_id);
+      notifyUser(h.fan_id, 'private_live',
+        srv('private_live_bell_title', fanLang, { model: me.display_name }),
+        srv('private_live_bell_body', fanLang, { model: me.display_name }),
+        `/#pevent/${privEv.id}`);
+    }
+  } else {
+    const followers = isHouseAccountId(req.user.id)
+      ? db.prepare("SELECT id AS fan_id FROM users WHERE role = 'fan' AND banned = 0").all()
+      : db.prepare('SELECT fan_id FROM follows WHERE model_id = ?').all(req.user.id);
+    for (const f of followers) {
+      const fanLang = userLang(f.fan_id);
+      notifyUser(f.fan_id, 'live',
+        srv('bell_live_title', fanLang, { model: me.display_name }),
+        title ? srv('bell_live_body_titled', fanLang, { title }) : srv('bell_live_body', fanLang),
+        '/#live');
+    }
   }
   res.json({ session_id: Number(info.lastInsertRowid), explicit_rate_cents, title,
     face_cap: faceCap });
@@ -11529,6 +12016,10 @@ app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
   liveFaceCaps.delete(sess.id);
   db.prepare(`UPDATE live_sessions SET status = 'ended', ended_at = datetime('now') WHERE id = ?`)
     .run(sess.id);
+  // Private Room (Phase 5): the linked event closes with its session.
+  if (sess.private_event_id)
+    db.prepare("UPDATE private_events SET status = 'ended' WHERE id = ? AND status = 'live'")
+      .run(sess.private_event_id);
   const viewers = db.prepare('SELECT fan_id FROM live_viewers WHERE session_id = ?').all(sess.id);
   for (const v of viewers) stopLivePayTimer(sess.id, v.fan_id);
   // Join-live cleanup: pending requests auto-declined + refunded; active stage dropped (no refund)
@@ -11558,7 +12049,7 @@ app.get('/api/live', (req, res) => {
            (SELECT COALESCE(SUM(gross_cents),0) FROM gift_events WHERE session_id = ls.id) AS gift_cents
     FROM live_sessions ls JOIN users u ON u.id = ls.model_id
     LEFT JOIN models mo ON mo.user_id = u.id
-    WHERE ls.status = 'live' AND u.banned = 0 AND COALESCE(mo.is_hidden, 0) = 0`).all();
+    WHERE ls.status = 'live' AND ls.private_event_id IS NULL AND u.banned = 0 AND COALESCE(mo.is_hidden, 0) = 0`).all();
   // Storefront sections + region blocking: every viewer sees only the
   // lives his active tab opens onto (owner ruling, Oct 19 2026 — the
   // tab filter binds models/app-side admins too), and fan/guest
@@ -11580,6 +12071,9 @@ app.post('/api/live/:id/join', identMiddleware, requireUser, requireRole('fan'),
     .get(req.params.id);
   if (!sess) return res.status(404).json({ error: 'not_live' });
   if (modelRegionBlocked(sess.model_id, geoOfReq(req))) return regionBlocked(res);
+  // Private Room (Phase 5): only seat-holders enter — this join is
+  // what opens the peer connection, so the gate lives here.
+  if (!seatGate(res, sess, req.user.id)) return;
   db.prepare('INSERT OR IGNORE INTO live_viewers (session_id, fan_id) VALUES (?,?)')
     .run(sess.id, req.user.id);
   // Tell the model someone new is watching (she'll open a peer connection)
@@ -11880,6 +12374,7 @@ app.post('/api/live/:id/game-buy', identMiddleware, requireUser, requireRole('fa
   const sess = liveSessionOr404(req, res);
   if (!sess) return;
   if (modelRegionBlocked(sess.model_id, geoOfReq(req))) return regionBlocked(res);
+  if (!seatGate(res, sess, req.user.id)) return;
   const viewer = db.prepare('SELECT * FROM live_viewers WHERE session_id = ? AND fan_id = ?')
     .get(sess.id, req.user.id);
   if (!viewer) return res.status(403).json({ error: 'join_first' });
@@ -12039,6 +12534,7 @@ function isLiveParticipant(sess, user) {
 app.get('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
   const sess = liveSessionOr404(req, res);
   if (!sess) return;
+  if (req.user.role === 'fan' && !seatGate(res, sess, req.user.id)) return;
   if (!isLiveParticipant(sess, req.user)) return res.status(403).json({ error: 'join_first' });
   const msgs = db.prepare(`
     SELECT sc.*, u.display_name AS sender_name, u.role AS sender_role
@@ -12053,6 +12549,10 @@ function killLiveSession(sess, reason) {
   liveFaceCaps.delete(sess.id);
   db.prepare(`UPDATE live_sessions SET status = 'ended', ended_at = datetime('now') WHERE id = ?`)
     .run(sess.id);
+  // Private Room (Phase 5): the linked event closes with its session.
+  if (sess.private_event_id)
+    db.prepare("UPDATE private_events SET status = 'ended' WHERE id = ? AND status = 'live'")
+      .run(sess.private_event_id);
   const viewers = db.prepare('SELECT fan_id FROM live_viewers WHERE session_id = ?').all(sess.id);
   for (const v of viewers) stopLivePayTimer(sess.id, v.fan_id);
   for (const r of pendingStageReqs(sess.id)) {
@@ -12074,6 +12574,7 @@ function killLiveSession(sess, reason) {
 app.post('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
   const sess = liveSessionOr404(req, res);
   if (!sess) return;
+  if (req.user.role === 'fan' && !seatGate(res, sess, req.user.id)) return;
   if (!isLiveParticipant(sess, req.user)) return res.status(403).json({ error: 'join_first' });
   const body = String(req.body.body || '').trim().slice(0, 500);
   if (!body) return res.status(400).json({ error: 'empty_message' });
@@ -12268,6 +12769,7 @@ app.post('/api/live/:id/gift', identMiddleware, requireUser, requireRole('fan'),
   const sess = liveSessionOr404(req, res);
   if (!sess) return;
   if (modelRegionBlocked(sess.model_id, geoOfReq(req))) return regionBlocked(res);
+  if (!seatGate(res, sess, req.user.id)) return;
   const viewer = db.prepare('SELECT * FROM live_viewers WHERE session_id = ? AND fan_id = ?')
     .get(sess.id, req.user.id);
   if (!viewer) return res.status(403).json({ error: 'join_first' });
@@ -12447,6 +12949,7 @@ function currentPriority(sessionId) {
 app.post('/api/live/:id/priority', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
   const sess = liveSessionOr404(req, res);
   if (!sess) return;
+  if (!seatGate(res, sess, req.user.id)) return;
   const viewer = db.prepare('SELECT * FROM live_viewers WHERE session_id = ? AND fan_id = ?')
     .get(sess.id, req.user.id);
   if (!viewer) return res.status(403).json({ error: 'join_first' });
@@ -12558,6 +13061,7 @@ app.post('/api/live/:id/join-request', identMiddleware, requireUser, requireRole
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ? AND status = \'live\'')
     .get(req.params.id);
   if (!sess) return res.status(404).json({ error: 'not_live' });
+  if (!seatGate(res, sess, req.user.id)) return;
   const viewer = db.prepare('SELECT 1 FROM live_viewers WHERE session_id = ? AND fan_id = ?')
     .get(sess.id, req.user.id);
   if (!viewer) return res.status(403).json({ error: 'join_first' });
@@ -15405,6 +15909,15 @@ app.put('/api/admin/settings', ...adminOnly, (req, res) => {
       return res.status(400).json({ error: 'bad_entry' });
     db.prepare('UPDATE platform_stats SET explicit_entry_cents = ? WHERE id = 1').run(e);
     out.explicit_entry_cents = e;
+  }
+  // Private Room (Phase 5): the platform-set weekly cap — max private
+  // rooms per model per week (Mon–Sun America/Chicago). Default 2.
+  if (req.body.private_room_cap !== undefined) {
+    const c = parseInt(req.body.private_room_cap);
+    if (!Number.isInteger(c) || c < 1 || c > 7)
+      return res.status(400).json({ error: 'bad_private_room_cap' });
+    db.prepare('UPDATE platform_stats SET private_room_cap = ? WHERE id = 1').run(c);
+    out.private_room_cap = c;
   }
   // Payout protection: earnings hold window + fraud-flag thresholds.
   const ppFields = [
