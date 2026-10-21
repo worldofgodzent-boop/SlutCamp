@@ -329,7 +329,7 @@ const I18N = {
     sec_male: 'Male',
     sec_couple: 'Couple',
     err_must_declare_section: 'Pick your section (Female, Male or Couple) to continue.',
-    err_username_is_email: 'Your username can't be an email address — pick a name instead.',
+    err_username_is_email: 'Your username can\'t be an email address — pick a name instead.',
     sf_female: 'Female',
     sf_male: 'Male',
     sf_couples: 'Couples',

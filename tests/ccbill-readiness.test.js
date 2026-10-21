@@ -266,6 +266,12 @@ test('static: the username-rename migration ships, marker-guarded, exact pairs o
   assert.ok(SERVER_JS.includes('UPDATE users SET username = ? WHERE id = ?'), 'rename by user id');
 });
 
+test('static: both shipped JS files parse (a broken string literal must never reach the browser)', () => {
+  const vm = require('node:vm');
+  assert.doesNotThrow(() => new vm.Script(APP_JS), 'app.js parses');
+  assert.doesNotThrow(() => new vm.Script(SERVER_JS), 'server.js parses');
+});
+
 test('static: the signup guard ships server-side and the client speaks it in all 13 languages', () => {
   assert.ok(SERVER_JS.includes("if (finalRole === 'model' && String(username).includes('@'))"),
     'guard fires on the resolved model role');
