@@ -1421,6 +1421,7 @@ addColumnIfMissing('platform_stats', 'explicit_entry_cents', 'INTEGER NOT NULL D
 addColumnIfMissing('platform_stats', 'admin_phone', 'TEXT');
 addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'test_money_cleared_at', 'TEXT');
+addColumnIfMissing('platform_stats', 'demo_wipe_2026_10_at', 'TEXT'); // one-time FULL demo-money wipe stamp (Oct 21 2026) — its own marker; the Oct 12 stamp above is already consumed in production
 addColumnIfMissing('platform_stats', 'commission_60_40_fixed_at', 'TEXT'); // one-time canonical 60/40 correction stamp
 addColumnIfMissing('platform_stats', 'demo_purge_at', 'TEXT'); // one-time demo-seed purge stamp
 addColumnIfMissing('platform_stats', 'play_money_zeroed_at', 'TEXT'); // one-time play-money totals cleanup stamp (Oct 17 2026)
@@ -5093,6 +5094,59 @@ try { const n = sweepStalePrivateEvents(); if (n) console.log(`[private-room] Sw
     db.prepare("UPDATE platform_stats SET test_money_cleared_at = datetime('now') WHERE id = 1").run();
     console.log('[cleanup] Pre-launch test money cleared (transactions flagged is_test, balances zeroed).');
   } catch (e) { console.log('[cleanup] test money clear failed:', e.message); }
+})();
+
+// One-time FULL demo-money wipe (Asce, Oct 21 2026): "clear the demo
+// money off SlutCamp... Make sure it's 0 right across." Every cent
+// still on the platform is demo money — real revenue is $0 and no real
+// purchase has ever occurred (cards not live pending CCBill; no real
+// crypto purchase) — so this pass is TOTAL where the Oct 12/Oct 17
+// passes were surgical:
+//   - EVERY wallet goes to zero: credits, earnings AND paid_out, for
+//     every user of every role. Fan credits included, fandemo's too —
+//     the owner's explicit one-time exception to fandemo's purge
+//     protection (the ACCOUNT is never deleted or disabled, here or
+//     anywhere in this pass; the CCBill review account likewise keeps
+//     its account, only its fake $100 goes).
+//   - The whole ledger is flagged is_test=1 (history kept, never
+//     deleted). That single flag is also what clears every earnings
+//     HOLD: payout protection replays only is_test=0 rows
+//     (replayEarnings), so no pre-wipe lot — matured or still holding —
+//     can ever become payable, and every derived total (model
+//     total_sales, fan lifetime spend, recruiter totals, platform
+//     volume, the money component of rank_score) reads $0.
+//   - Platform earnings → 0; every PENDING withdrawal is rejected so
+//     nothing fake remains payable (decided rows are history and stay).
+//   - LIKES ARE NOT MONEY: model_likes is untouched, and ranks are
+//     recomputed from the flagged ledger, so rank_score keeps exactly
+//     its likes component and $0 of money.
+//   - Accounts, pictures, messages and ID verifications: untouched.
+// Runs exactly once, in one transaction, under its OWN marker
+// (demo_wipe_2026_10_at) — the Oct 12 marker is already consumed in
+// production, so reusing it would never fire. At launch Asce adds real
+// money for the test purchase into this already-clean ledger; new
+// transactions land is_test=0 and count normally. Skipped entirely
+// while SEED_DEMO=1, marker unstamped — the demo-seed purge's rule: a
+// dev box that opted into demo fixtures keeps them (seed money is
+// created at every seeded boot and is test money by definition);
+// production never sets SEED_DEMO, so the wipe still fires there
+// exactly once.
+(function clearDemoMoneyWipeOnce() {
+  try {
+    if (process.env.SEED_DEMO === '1') return;
+    const row = db.prepare('SELECT demo_wipe_2026_10_at FROM platform_stats WHERE id = 1').get();
+    if (!row || row.demo_wipe_2026_10_at) return;
+    txn(() => {
+      db.prepare('UPDATE transactions SET is_test = 1 WHERE is_test = 0').run();
+      db.prepare('UPDATE wallets SET credits_cents = 0, earnings_cents = 0, paid_out_cents = 0').run();
+      db.prepare('UPDATE platform_stats SET earnings_cents = 0 WHERE id = 1').run();
+      db.prepare(`UPDATE withdrawals SET status = 'rejected', decided_at = datetime('now'),
+                  note = 'Demo balance cleared 2026-10-21' WHERE status = 'pending'`).run();
+      db.prepare("UPDATE platform_stats SET demo_wipe_2026_10_at = datetime('now') WHERE id = 1").run();
+    });
+    recomputeAllModelRanks();
+    console.log('[cleanup] Full demo-money wipe complete: every wallet $0, platform $0, pending withdrawals rejected, ledger flagged is_test. No accounts touched; likes untouched.');
+  } catch (e) { console.log('[cleanup] demo-money wipe failed:', e.message); }
 })();
 
 // One-time play-money totals cleanup (Asce, Oct 17 2026): every sale on
