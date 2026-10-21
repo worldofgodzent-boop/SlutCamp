@@ -1058,6 +1058,15 @@ async function adminMoreBody(s) {
       </div>
     </div>
     <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🔒 Private rooms — weekly cap</div>
+      <div class="muted small">How many private room events each model may run per week (Mon–Sun, Chicago). She picks the days; the cap is platform-wide.</div>
+      <div class="row" style="margin-top:8px">
+        <input class="input" id="set-prcap" type="number" min="1" max="7" value="${s.private_room_cap ?? 2}" style="margin-top:0;max-width:100px">
+        <span><b>per week</b></span>
+        <button class="btn small" id="set-prcap-go">Save</button>
+      </div>
+    </div>
+    <div class="card">
       <div style="font-weight:800;margin-bottom:6px">🛡️ Payout protection</div>
       <div class="muted small">New earnings become withdrawable after the hold window — the owner rule is one week behind. The flag thresholds only raise advisory warnings on the Payouts screen; they never block or delay a payout by themselves.</div>
       <div class="row" style="margin-top:8px;gap:10px;flex-wrap:wrap;align-items:flex-end">
@@ -2134,6 +2143,13 @@ function wireAdminBody(tab) {
     const { status } = await api('/admin/settings', {
       method: 'PUT', body: JSON.stringify({ commission_pct }) });
     toast(status === 200 ? `✅ Commission set to ${commission_pct}%` : 'Use 0–90');
+    if (status === 200) M.reload();
+  });
+  go('#set-prcap-go', async () => {
+    const private_room_cap = parseInt($('#set-prcap').value);
+    const { status } = await api('/admin/settings', {
+      method: 'PUT', body: JSON.stringify({ private_room_cap }) });
+    toast(status === 200 ? `✅ Private room cap set to ${private_room_cap}/week` : 'Use 1–7');
     if (status === 200) M.reload();
   });
   go('#set-pp-go', async () => {
