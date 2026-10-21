@@ -89,7 +89,7 @@ test('directory payload: second video + parsed gallery ship; the shield withhold
   assert.ok(route.includes('m.preview_video_url_2'), 'SELECT includes preview_video_url_2');
   assert.ok(route.includes('m.gallery_photos'), 'SELECT includes gallery_photos');
   assert.ok(server.includes("pub.preview_video_url_2 = '';"), 'shield blanks video 2 like video 1');
-  assert.ok(server.includes('gallery_photos: parseGalleryPhotos(rawGallery)'), 'payload gallery is a parsed array');
+  assert.ok(server.includes('gallery_photos: idVerified ? parseGalleryPhotos(rawGallery) : []'), 'payload gallery is a parsed array once her ID is approved, withheld until then (upload gate, Oct 21 2026)');
 });
 
 test('orphan sweep counts gallery pictures as current (never deleted as orphans)', () => {
@@ -244,6 +244,14 @@ test('functional: 10-picture cap (11th rejected), gallery add/remove, video 2 li
       return { id: s.json.user.id, token: s.json.token };
     };
     const model = await mk('mediamodel', 'model');
+    // Upload gate (Oct 21 2026): directory media requires an approved
+    // ID — approve her here so the directory assertions below test
+    // the gallery mechanics, not the gate (pinned separately by
+    // tests/upload-gate.test.js).
+    const gdb = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+    gdb.exec('PRAGMA busy_timeout = 10000');
+    gdb.prepare("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved')").run(model.id);
+    gdb.close();
     const fan = await mk('mediafan', 'fan');
     const png = new Blob([PNG_1PX], { type: 'image/png' });
     const mp4 = new Blob([FAKE_MP4], { type: 'video/mp4' });

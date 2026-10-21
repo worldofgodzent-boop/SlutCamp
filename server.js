@@ -264,7 +264,8 @@ app.use((req, res, next) => {
 /* region, so the canonical roster is what crawlers get.) Nothing     */
 /* explicit lives here — her separate CLEAN public photo only (never   */
 /* the in-app storefront photo, which may be explicit by design), and  */
-/* no gallery/PPV/media.                                              */
+/* no gallery/PPV/media. UPLOAD GATE (Oct 21 2026): that photo is      */
+/* withheld until her ID is approved — see seoPublicModels below.     */
 /* Every model-supplied string is HTML-escaped: names and bios are    */
 /* user input, and these pages are public.                            */
 /* ------------------------------------------------------------------ */
@@ -302,21 +303,31 @@ function seoPublicModels() {
   // (computeSectionRankPositions) — identical numbers to
   // GET /api/models by construction, house excluded there too.
   const rankPos = computeSectionRankPositions();
-  return rows.map((r) => ({
-    id: r.id,
-    username: r.username,
-    display_name: r.display_name,
-    bio: r.bio || '',
-    per_message_cents: r.per_message_cents,
-    public_photo_url: r.public_photo_url || '',
-    tags: parseModelTags(r.tags),
-    section: r.section || 'female',
-    is_online: effectiveOnline(r.presence_override, r.is_online),
-    is_live: !!r.live_session_id,
-    rank_position: rankPos.get(r.id) || null,
-    url: '/models/' + encodeURIComponent(r.username),
-    photo_abs: r.public_photo_url ? SEO_ORIGIN + r.public_photo_url : SEO_ORIGIN + '/img/lips-logo.png',
-  }));
+  return rows.map((r) => {
+    // UPLOAD GATE (CCBill Self-Attestation, Oct 21 2026): her clean
+    // public photo is uploaded content — it stays OFF every public
+    // page until her ID is approved. isIdVerified() is the single
+    // point the live and cash-out gates already consult, and it
+    // short-circuits true for the house. She stays LISTED (name, bio,
+    // prices, rank) — only the media waits, and photo_abs falls back
+    // to the logo exactly as it already does when she has no photo.
+    const pubPhoto = isIdVerified(r.id) ? (r.public_photo_url || '') : '';
+    return {
+      id: r.id,
+      username: r.username,
+      display_name: r.display_name,
+      bio: r.bio || '',
+      per_message_cents: r.per_message_cents,
+      public_photo_url: pubPhoto,
+      tags: parseModelTags(r.tags),
+      section: r.section || 'female',
+      is_online: effectiveOnline(r.presence_override, r.is_online),
+      is_live: !!r.live_session_id,
+      rank_position: rankPos.get(r.id) || null,
+      url: '/models/' + encodeURIComponent(r.username),
+      photo_abs: pubPhoto ? SEO_ORIGIN + pubPhoto : SEO_ORIGIN + '/img/lips-logo.png',
+    };
+  });
 }
 const seoTagSlug = (tag) => tag.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 function seoLiveTags(models) {
@@ -5980,12 +5991,30 @@ app.get('/api/models', (req, res) => {
     // per-minute rate until then — so the fan booking sheet's quote is
     // always the price the server will charge.
     pub.booking_rate_cents = r.booking_rate_cents ?? r.per_minute_cents;
+    // UPLOAD GATE (CCBill Self-Attestation, Oct 21 2026): a model's
+    // uploaded media — storefront photo, clean public photo, gallery,
+    // both preview videos — is NOT public until her ID is approved.
+    // isIdVerified() is the single point the live and cash-out gates
+    // already consult, and it short-circuits true for the house, so
+    // the official object shaped from this same function below is
+    // untouched. She stays LISTED (name, bio, prices, schedule, rank —
+    // fans can find her and message her, and she can finish setting
+    // up); only the media waits, and it appears the moment her
+    // approval lands, with nothing to re-upload. Her own /api/me
+    // payload is NOT shaped here and keeps returning her real media.
+    // Discovery and the New Models rail are client-side slices of
+    // this payload, so they inherit the gate with no side channel.
+    const idVerified = isIdVerified(r.id);
+    if (!idVerified) {
+      pub.photo_url = ''; pub.public_photo_url = '';
+      pub.preview_video_url = ''; pub.preview_video_url_2 = '';
+    }
     // Her second profile video is storefront media exactly like the
     // first — the shield withholds both, never the pictures (they ARE
     // the shop window, same rule as photo_url).
     if (dirShielded) { pub.preview_video_url = ''; pub.preview_video_url_2 = ''; }
     return { ...pub, tags: parseModelTags(rawTags),
-      gallery_photos: parseGalleryPhotos(rawGallery),
+      gallery_photos: idVerified ? parseGalleryPhotos(rawGallery) : [],
       is_online: effectiveOnline(presence_override, r.is_online),
       is_live: !!r.live_session_id, is_featured: !!r.is_featured,
       live_viewers: r.live_viewers || 0, schedule_summary: summary, liked: likedSet.has(r.id),
@@ -7019,8 +7048,14 @@ function otherParty(conv, ident) {
   }
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(otherId);
   const m = u.role === 'model' ? db.prepare('SELECT * FROM models WHERE user_id = ?').get(otherId) : null;
+  // UPLOAD GATE (CCBill Self-Attestation, Oct 21 2026): her photo
+  // stays out of fan/guest conversation views until her ID is
+  // approved — the same blanking GET /api/models applies. Her own
+  // thread view never receives her own photo through here (for her,
+  // the other party is the fan), so her own views are unaffected.
+  const otherPhoto = m && isIdVerified(otherId) ? (m.photo_url || '') : '';
   return { ...getUserPublic(u), is_online: m ? effectiveOnline(u.presence_override, m.is_online) : false,
-           photo_url: m ? (m.photo_url || '') : '',
+           photo_url: otherPhoto,
            per_message_cents: m ? m.per_message_cents : 0,
            per_minute_cents: m ? m.per_minute_cents : 0,
            per_voice_cents: m ? m.per_voice_cents : 0,
