@@ -13,10 +13,12 @@
  *      admin credit grant on the ledger) boots without the flag: the
  *      purge removes ONLY the three seed MODEL accounts and their
  *      dependents (wallets, threads, messages, notifications), stamps
- *      its marker, preserves the real user + his balance + his ledger
+ *      its marker, preserves the real user + his account + his ledger
  *      row, the admin account AND fandemo — the owner's own test
- *      account (owner decision, Oct 16 2026), whose $100 stays put —
- *      and never runs twice.
+ *      account (owner decision, Oct 16 2026) — and never runs twice.
+ *      (Balances read $0 after this boot: the separate platform-wide
+ *      demo-money wipe of Oct 21 2026 — owner-directed, "0 right
+ *      across" — zeroes EVERY wallet on the same no-flag boot.)
  *   4. The guards: the seed bunny and bella are deleted, then REAL
  *      models register those names with their OWN passwords. Bunny
  *      also earns real money (a fan's paid message, on the ledger)
@@ -25,9 +27,11 @@
  *      guard must trip and log: Bunny on pictures + password, Bella
  *      on password alone, stacey on ID verification alone (her
  *      password IS the seed default — the ID row is her only shield).
- *      Nothing is purged; every account, balance and ledger row
- *      survives. (Test 3 proves the purge itself still fires on
- *      genuinely pristine seeds.)
+ *      Nothing is purged; every account and ledger row survives
+ *      (balances read $0 — the platform-wide Oct 21 2026 demo-money
+ *      wipe fires on the same boot and zeroes every wallet).
+ *      (Test 3 proves the purge itself still fires on genuinely
+ *      pristine seeds.)
  *
  * Same isolation pattern as tests/smoke.test.js: the real server.js is
  * copied to a fresh temp dir and booted there on free ports — except
@@ -187,14 +191,14 @@ test('purge: seeded DB + real user boots clean — only the seed models go, exac
   const fanKept = await req(h.base, 'POST', '/api/auth/login', { body: { username: 'fandemo', password: 'fan123' } });
   assert.equal(fanKept.status, 200, 'fandemo survives the purge — he is the owner\'s test account');
   const fanMe = await req(h.base, 'GET', '/api/me', { token: fanKept.json.token });
-  assert.equal(fanMe.json.wallet.credits_cents, 10000, 'fandemo\'s $100 of test credits is untouched, to the cent');
+  assert.equal(fanMe.json.wallet.credits_cents, 0, 'fandemo\'s account is untouched, but his $100 of test credits reads $0 — the Oct 21 platform-wide demo-money wipe zeroes every wallet, his included (owner-directed one-time exception)')
   const bunnyGone = await req(h.base, 'POST', '/api/auth/login', { body: { username: 'bunny', password: 'model123' } });
   assert.equal(bunnyGone.status, 401, 'bunny is gone');
 
   const realLogin = await req(h.base, 'POST', '/api/auth/login', { body: { username: 'realfan', password: 'real-pass-1' } });
   assert.equal(realLogin.status, 200, 'the real fan still signs in');
   const realMe = await req(h.base, 'GET', '/api/me', { token: realLogin.json.token });
-  assert.equal(realMe.json.wallet.credits_cents, 5000, 'the real balance is untouched, to the cent');
+  assert.equal(realMe.json.wallet.credits_cents, 0, 'his account and ledger row are untouched (proven below), but the pre-wipe grant reads $0 — the demo-money wipe zeroes every wallet platform-wide');
 
   const adminStill = await req(h.base, 'POST', '/api/auth/login', { body: { username: 'admin', password: 'admin123' } });
   assert.equal(adminStill.status, 200, 'admin preserved — no owner lockout');
@@ -207,7 +211,7 @@ test('purge: seeded DB + real user boots clean — only the seed models go, exac
     const fdRow = db.prepare("SELECT id FROM users WHERE username = 'fandemo'").get();
     assert.ok(fdRow, 'fandemo row preserved');
     assert.equal(db.prepare('SELECT credits_cents FROM wallets WHERE user_id = ?').get(fdRow.id).credits_cents,
-      10000, 'fandemo wallet still holds exactly his $100');
+      0, 'fandemo wallet reads $0 in the DB after the platform-wide wipe');
     assert.equal(db.prepare("SELECT COUNT(*) AS n FROM users WHERE username = 'admin'").get().n, 1,
       'admin row preserved');
     assert.ok(db.prepare('SELECT demo_purge_at FROM platform_stats WHERE id = 1').get().demo_purge_at,
@@ -240,11 +244,11 @@ test('purge: seeded DB + real user boots clean — only the seed models go, exac
   const again = await req(h.base, 'POST', '/api/auth/login', { body: { username: 'realfan', password: 'real-pass-1' } });
   assert.equal(again.status, 200);
   const me3 = await req(h.base, 'GET', '/api/me', { token: again.json.token });
-  assert.equal(me3.json.wallet.credits_cents, 5000, 'real balance still intact after a third boot');
+  assert.equal(me3.json.wallet.credits_cents, 0, 'real account intact after a third boot; balance stays at the wiped $0');
   const fd3 = await req(h.base, 'POST', '/api/auth/login', { body: { username: 'fandemo', password: 'fan123' } });
   assert.equal(fd3.status, 200, 'fandemo still there after a third boot');
   const fdMe3 = await req(h.base, 'GET', '/api/me', { token: fd3.json.token });
-  assert.equal(fdMe3.json.wallet.credits_cents, 10000, 'fandemo balance still intact after a third boot');
+  assert.equal(fdMe3.json.wallet.credits_cents, 0, 'fandemo balance stays at the wiped $0 after a third boot');
 });
 
 test('purge guards: pictures, ID-verification and password fingerprint each save a real account', { timeout: 180000 }, async (t) => {
@@ -359,8 +363,8 @@ test('purge guards: pictures, ID-verification and password fingerprint each save
   const bunnyLogin = await req(h.base, 'POST', '/api/auth/login', { body: { username: 'Bunny', password: 'real-bunny-pass' } });
   assert.equal(bunnyLogin.status, 200, 'the real Bunny still signs in with HER password');
   const bunnyMe2 = await req(h.base, 'GET', '/api/me', { token: bunnyLogin.json.token });
-  assert.equal(bunnyMe2.json.wallet.earnings_cents, earningsBefore,
-    'her earnings are untouched, to the cent');
+  assert.equal(bunnyMe2.json.wallet.earnings_cents, 0,
+    'her account is untouched, but her 89¢ of pre-wipe earnings reads $0 — the Oct 21 platform-wide demo-money wipe zeroes every wallet');
   const bellaLogin = await req(h.base, 'POST', '/api/auth/login', { body: { username: 'Bella', password: 'real-bella-pass' } });
   assert.equal(bellaLogin.status, 200, 'the real Bella still signs in with HER password');
   const staceyLogin = await req(h.base, 'POST', '/api/auth/login', { body: { username: 'stacey', password: 'model123' } });
@@ -381,7 +385,7 @@ test('purge guards: pictures, ID-verification and password fingerprint each save
     assert.equal(bellas.length, 1, 'exactly one account holds the name bella');
     assert.equal(bellas[0].id, bellaId, 'and it is the REAL Bella');
     const w = db.prepare('SELECT credits_cents, earnings_cents FROM wallets WHERE user_id = ?').get(bunnyId);
-    assert.equal(w.earnings_cents, 89, 'her wallet earnings survived in the DB');
+    assert.equal(w.earnings_cents, 0, 'her wallet earnings read $0 in the DB after the platform-wide wipe (ledger row below keeps the history)');
     const tx = db.prepare("SELECT type, gross_cents, model_cents FROM transactions WHERE model_id = ?").all(bunnyId);
     assert.equal(tx.length, 1, 'her ledger row survived');
     assert.equal(tx[0].type, 'message');
@@ -398,7 +402,7 @@ test('purge guards: pictures, ID-verification and password fingerprint each save
     const fdRow = db.prepare("SELECT id FROM users WHERE username = 'fandemo'").get();
     assert.ok(fdRow, 'fandemo preserved');
     assert.equal(db.prepare('SELECT credits_cents FROM wallets WHERE user_id = ?').get(fdRow.id).credits_cents,
-      10000, 'fandemo $100 untouched');
+      0, 'fandemo preserved as an account; his $100 reads $0 after the platform-wide wipe');
     assert.ok(db.prepare('SELECT demo_purge_at FROM platform_stats WHERE id = 1').get().demo_purge_at,
       'purge marker is stamped');
   });
