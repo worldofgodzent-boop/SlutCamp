@@ -1058,6 +1058,94 @@ CREATE TABLE IF NOT EXISTS game_requests (
 );
 CREATE INDEX IF NOT EXISTS idx_game_req_session ON game_requests(session_id, status, id);
 
+-- LIVE BATTLES (Phase 6, owner design Oct 20 2026): two ID-approved
+-- models, two phones, one split-screen stage, one countdown, one
+-- scoreboard. Every battle-room spend (tips, Game Category buys,
+-- gifts) is side-tagged into battle_spend as ESCROW — the fan is
+-- debited at spend time but NOBODY is credited until the battle
+-- settles: house takes its standard cut off the top of gross, the
+-- pool splits 60% winner / 40% loser (tie 50/50, forfeit = loser
+-- regardless of score). battle_allocations keeps the per-spend
+-- winner/loser distribution for chargeback traceability.
+CREATE TABLE IF NOT EXISTS battles (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind            TEXT NOT NULL CHECK(kind IN ('invite','scheduled','random','rematch')),
+  host_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  guest_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  minutes         INTEGER NOT NULL DEFAULT 10,
+  status          TEXT NOT NULL DEFAULT 'invited'
+                  CHECK(status IN ('invited','ready_check','scheduled','live','finished','declined','expired','cancelled')),
+  confirmed       INTEGER NOT NULL DEFAULT 0,
+  host_accepted   INTEGER NOT NULL DEFAULT 0,
+  guest_accepted  INTEGER NOT NULL DEFAULT 0,
+  host_ready      INTEGER NOT NULL DEFAULT 0,
+  guest_ready     INTEGER NOT NULL DEFAULT 0,
+  starts_at       TEXT,
+  expires_at      TEXT,
+  host_session_id INTEGER REFERENCES live_sessions(id) ON DELETE SET NULL,
+  guest_session_id INTEGER REFERENCES live_sessions(id) ON DELETE SET NULL,
+  started_at      TEXT,
+  ends_at         TEXT,
+  winner_id       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  forfeit_by      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  gross_cents     INTEGER NOT NULL DEFAULT 0,
+  house_cents     INTEGER NOT NULL DEFAULT 0,
+  pool_cents      INTEGER NOT NULL DEFAULT 0,
+  winner_cents    INTEGER NOT NULL DEFAULT 0,
+  loser_cents     INTEGER NOT NULL DEFAULT 0,
+  created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  ended_at        TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_battles_pair ON battles(host_id, guest_id, status);
+CREATE INDEX IF NOT EXISTS idx_battles_status ON battles(status, id);
+
+CREATE TABLE IF NOT EXISTS battle_spend (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  battle_id   INTEGER NOT NULL REFERENCES battles(id) ON DELETE CASCADE,
+  fan_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  model_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind        TEXT NOT NULL CHECK(kind IN ('tip','game','gift')),
+  gross_cents INTEGER NOT NULL,
+  ref_id      INTEGER,
+  status      TEXT NOT NULL DEFAULT 'held' CHECK(status IN ('held','settled','refunded')),
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_battle_spend_battle ON battle_spend(battle_id, status, model_id);
+
+CREATE TABLE IF NOT EXISTS battle_allocations (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  battle_id  INTEGER NOT NULL REFERENCES battles(id) ON DELETE CASCADE,
+  spend_id   INTEGER NOT NULL REFERENCES battle_spend(id) ON DELETE CASCADE,
+  model_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  cents      INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_battle_alloc_spend ON battle_allocations(spend_id);
+
+-- Random-battle matchmaking pool (Door 3). looking = her "looking for
+-- a battle" flag stays ON — her live tile carries the ⚔️ badge.
+CREATE TABLE IF NOT EXISTS battle_pool (
+  model_id   INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  looking    INTEGER NOT NULL DEFAULT 0,
+  entered_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Fans who entered the battle stage (push recipients + chat access)
+CREATE TABLE IF NOT EXISTS battle_viewers (
+  battle_id  INTEGER NOT NULL REFERENCES battles(id) ON DELETE CASCADE,
+  fan_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  entered_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (battle_id, fan_id)
+);
+
+-- Fan reminders for scheduled showdowns (bell at start / on cancel)
+CREATE TABLE IF NOT EXISTS battle_reminders (
+  battle_id  INTEGER NOT NULL REFERENCES battles(id) ON DELETE CASCADE,
+  fan_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (battle_id, fan_id)
+);
+
 -- Fans watching a live session
 CREATE TABLE IF NOT EXISTS live_viewers (
   session_id   INTEGER NOT NULL REFERENCES live_sessions(id) ON DELETE CASCADE,
@@ -1586,6 +1674,9 @@ addColumnIfMissing('platform_stats', 'faceguard_announced_at', 'TEXT'); // one-t
 addColumnIfMissing('platform_stats', 'safety_announced_at', 'TEXT'); // one-time "safety hard-block" model broadcast stamp
 addColumnIfMissing('platform_stats', 'private_room_announced_at', 'TEXT'); // one-time "Private Room" (Phase 5) model broadcast stamp
 addColumnIfMissing('platform_stats', 'private_room_cap', 'INTEGER NOT NULL DEFAULT 2'); // Phase 5: max private rooms per model per week (Manager-adjustable)
+addColumnIfMissing('platform_stats', 'battles_announced_at', 'TEXT'); // one-time "live battles" model broadcast stamp (Phase 6)
+addColumnIfMissing('models', 'battle_invites_open', 'INTEGER NOT NULL DEFAULT 1'); // Phase 6: "Open to battle invites" Settings toggle (default ON)
+addColumnIfMissing('game_requests', 'battle_id', 'INTEGER'); // Phase 6: set when the buy was escrowed into a live battle (refund path branches on it)
 addColumnIfMissing('conversations', 'is_official', 'INTEGER NOT NULL DEFAULT 0'); // the pinned read-only SlutCamp notices thread
 
 /* The recruiters row IS the affiliate capability (see above). */
@@ -3420,6 +3511,20 @@ const SRV = {
   ann_storefront_dm: { en: '🆕 NEW: SlutCamp now has sections! Look at the tabs at the top of your home — Female, Male, Couples and All. The store always opens on Female; tap a tab anytime to see more. 💋', es: '🆕 NUEVO: ¡SlutCamp ahora tiene secciones! Mira las pestañas en la parte superior de tu inicio — Femenina, Masculina, Parejas y Todo. La tienda siempre abre en Femenina; toca una pestaña cuando quieras para ver más. 💋', pt: '🆕 NOVO: A SlutCamp agora tem seções! Veja as abas no topo da sua página inicial — Feminina, Masculina, Casais e Tudo. A loja sempre abre na Feminina; toque em uma aba quando quiser para ver mais. 💋', fr: '🆕 NOUVEAU : SlutCamp a maintenant des sections ! Regardez les onglets en haut de votre accueil — Femmes, Hommes, Couples et Tout. La boutique s\'ouvre toujours sur Femmes ; touchez un onglet à tout moment pour en voir plus. 💋', de: '🆕 NEU: SlutCamp hat jetzt Sektionen! Sieh dir die Tabs oben auf deiner Startseite an — Frauen, Männer, Paare und Alle. Der Shop öffnet immer bei Frauen; tippe jederzeit auf einen Tab, um mehr zu sehen. 💋', ru: '🆕 НОВОЕ: На SlutCamp теперь есть разделы! Посмотрите на вкладки вверху вашей главной страницы — Женщины, Мужчины, Пары и Все. Магазин всегда открывается на разделе «Женщины»; коснитесь вкладки в любое время, чтобы увидеть больше. 💋', ja: '🆕 新機能：SlutCampにセクションができました！ホーム上部のタブを見てね — 女性・男性・カップル・すべて。ストアはいつも女性から開きます；もっと見たいときはいつでもタブをタップしてね。💋', zh: '🆕 新功能：SlutCamp 现在有板块了！看看你主页顶部的标签 — 女性、男性、情侣和全部。商店始终从女性板块打开；随时点击标签查看更多。💋', ko: '🆕 새 소식: 이제 SlutCamp에 섹션이 생겼어요! 홈 상단의 탭을 보세요 — 여성, 남성, 커플, 전체. 스토어는 항상 여성에서 열립니다; 더 보고 싶을 땐 언제든 탭을 눌러 보세요. 💋', it: '🆕 NOVITÀ: SlutCamp ora ha le sezioni! Guarda le schede in alto nella tua home — Donne, Uomini, Coppie e Tutto. Il negozio si apre sempre su Donne; tocca una scheda quando vuoi per vedere di più. 💋', pl: '🆕 NOWOŚĆ: SlutCamp ma teraz sekcje! Spójrz na karty u góry strony głównej — Kobiety, Mężczyźni, Pary i Wszystko. Sklep zawsze otwiera się na Kobietach; dotknij karty w każdej chwili, aby zobaczyć więcej. 💋', nl: '🆕 NIEUW: SlutCamp heeft nu secties! Kijk naar de tabs bovenaan je home — Vrouwen, Mannen, Stellen en Alles. De winkel opent altijd op Vrouwen; tik op elk moment op een tab om meer te zien. 💋', tr: '🆕 YENİ: SlutCamp\'ta artık bölümler var! Ana sayfanın üstündeki sekmelere bak — Kadın, Erkek, Çift ve Tümü. Mağaza her zaman Kadın bölümünde açılır; daha fazlasını görmek için istediğin zaman bir sekmeye dokun. 💋' },
   ann_storefront_bell_title: { en: '🆕 New: storefront tabs', es: '🆕 Nuevo: pestañas de secciones', pt: '🆕 Novo: abas de seções', fr: '🆕 Nouveau : onglets de sections', de: '🆕 Neu: Sektion-Tabs', ru: '🆕 Новое: вкладки разделов', ja: '🆕 新機能：セクションタブ', zh: '🆕 新功能：板块标签', ko: '🆕 새 소식: 섹션 탭', it: '🆕 Novità: schede delle sezioni', pl: '🆕 Nowość: karty sekcji', nl: '🆕 Nieuw: sectietabs', tr: '🆕 Yeni: bölüm sekmeleri' },
   ann_storefront_bell_body: { en: 'Female, Male, Couples or All — the tabs at the top of your home 💋', es: 'Femenina, Masculina, Parejas o Todo — las pestañas en la parte superior de tu inicio 💋', pt: 'Feminina, Masculina, Casais ou Tudo — as abas no topo da sua página inicial 💋', fr: 'Femmes, Hommes, Couples ou Tout — les onglets en haut de votre accueil 💋', de: 'Frauen, Männer, Paare oder Alle — die Tabs oben auf deiner Startseite 💋', ru: 'Женщины, Мужчины, Пары или Все — вкладки вверху вашей главной страницы 💋', ja: '女性・男性・カップル・すべて — ホーム上部のタブだよ 💋', zh: '女性、男性、情侣或全部 — 就在你主页顶部的标签 💋', ko: '여성, 남성, 커플 또는 전체 — 홈 상단의 탭이에요 💋', it: 'Donne, Uomini, Coppie o Tutto — le schede in alto nella tua home 💋', pl: 'Kobiety, Mężczyźni, Pary lub Wszystko — karty u góry strony głównej 💋', nl: 'Vrouwen, Mannen, Stellen of Alles — de tabs bovenaan je home 💋', tr: 'Kadın, Erkek, Çift veya Tümü — ana sayfanın üstündeki sekmeler 💋' },
+  ann_battles_dm: { en: '⚔️ NEW: PumPum Verse is here!\n\nPick a rival and go live together on a split-screen stage — two phones, one room, one scoreboard. Battle to see who can get the fans spending the most!\n\nThree ways in: invite a model while you\'re live, schedule a showdown for later, or jump into a random battle and get matched.\n\nThe money is simple and out in the open — no secrets: SlutCamp takes its standard cut first, then the pot splits 60% to the winner and 40% to the loser. Nobody walks away empty, and ties split 50/50.\n\nYour Game Category stays open during battles too — fans can buy from your list the whole time, and every credit counts toward your score.\n\nMay the best girl win 💋', es: '⚔️ ¡NOVEDAD: LLEGÓ PUMPUM VERSE!\n\nElige una rival y salgan en vivo juntas en un escenario dividido — dos teléfonos, una sala, un marcador. ¡Compitan por ver quién hace que los fans gasten más!\n\nTres formas de entrar: invita a una modelo mientras estás en vivo, programa un duelo para después, o entra a una batalla aleatoria y te emparejamos.\n\nEl dinero es simple y a la vista — sin secretos: SlutCamp toma primero su comisión estándar, y luego el bote se reparte 60% para la ganadora y 40% para la perdedora. Nadie se va con las manos vacías, y los empates se reparten 50/50.\n\nTu Categoría de Juego también sigue abierta durante las batallas — los fans pueden comprar de tu lista todo el tiempo, y cada crédito cuenta para tu marcador.\n\n¡Que gane la mejor! 💋', pt: '⚔️ NOVO: O PUMPUM VERSE CHEGOU!\n\nEscolha uma rival e entrem ao vivo juntas num palco dividido — dois celulares, uma sala, um placar. Batalhem para ver quem faz os fãs gastarem mais!\n\nTrês formas de entrar: convide uma modelo enquanto você está ao vivo, agende um duelo para depois, ou entre numa batalha aleatória e seja pareada.\n\nO dinheiro é simples e aberto — sem segredos: a SlutCamp tira primeiro sua comissão padrão, e depois o pote se divide 60% para a vencedora e 40% para a perdedora. Ninguém sai de mãos vazias, e empates dividem 50/50.\n\nSua Categoria de Jogo continua aberta durante as batalhas também — os fãs podem comprar da sua lista o tempo todo, e cada crédito conta para o seu placar.\n\nQue vença a melhor! 💋', fr: '⚔️ NOUVEAU : PUMPUM VERSE EST LÀ !\n\nChoisissez une rivale et passez en direct ensemble sur une scène partagée — deux téléphones, une salle, un tableau de score. Affrontez-vous pour voir qui fera le plus dépenser les fans !\n\nTrois façons d\'entrer : invitez une modèle pendant votre direct, programmez un duel pour plus tard, ou lancez une bataille aléatoire et soyez jumelée.\n\nL\'argent est simple et au grand jour — aucun secret : SlutCamp prend d\'abord sa commission standard, puis le pot se partage 60 % pour la gagnante et 40 % pour la perdante. Personne ne repart les mains vides, et les égalités se partagent 50/50.\n\nVotre Catégorie de Jeu reste aussi ouverte pendant les batailles — les fans peuvent acheter dans votre liste à tout moment, et chaque crédit compte pour votre score.\n\nQue la meilleure gagne 💋', de: '⚔️ NEU: PUMPUM VERSE IST DA!\n\nSuch dir eine Rivalin und geht gemeinsam auf einer geteilten Bühne live — zwei Handys, ein Raum, eine Punktetafel. Kämpft darum, wer die Fans am meisten ausgeben lässt!\n\nDrei Wege hinein: Lade ein Model ein, während du live bist, plane ein Showdown für später oder steig in einen Zufalls-Battle ein und werde gematcht.\n\nDas Geld ist einfach und offen — keine Geheimnisse: SlutCamp nimmt zuerst seine übliche Provision, dann wird der Pot 60 % an die Gewinnerin und 40 % an die Verliererin aufgeteilt. Niemand geht leer aus, und bei Gleichstand wird 50/50 geteilt.\n\nDeine Spiel-Kategorie bleibt auch während der Battles geöffnet — Fans können die ganze Zeit von deiner Liste kaufen, und jeder Credit zählt für deinen Punktestand.\n\nMöge die Beste gewinnen 💋', ru: '⚔️ НОВОЕ: PUMPUM VERSE УЖЕ ЗДЕСЬ!\n\nВыберите соперницу и выходите в эфир вместе на разделённой сцене — два телефона, одна комната, одно табло. Сражайтесь за то, кто заставит фанатов потратить больше!\n\nТри способа войти: пригласите модель, пока вы в эфире, запланируйте поединок на потом или вступайте в случайный баттл — мы подберём соперницу.\n\nДеньги — просто и открыто, без секретов: SlutCamp сначала берёт свою стандартную комиссию, затем банк делится 60% победительнице и 40% проигравшей. Никто не уходит с пустыми руками, а ничьи делятся 50/50.\n\nВаша игровая категория тоже остаётся открытой во время баттлов — фанаты могут покупать из вашего списка всё время, и каждый кредит идёт в ваш счёт.\n\nПусть победит лучшая 💋', ja: '⚔️ 新機能：PumPum Verseが登場！\n\nライバルを選んで、分割画面のステージで一緒にライブ配信 — スマホ2台、1つのルーム、1つのスコアボード。ファンにどちらが多く使わせるか競い合おう！\n\n入り方3通り：ライブ中にモデルを招待する、後日に対決を予約する、ランダムバトルに参加してマッチングされる。\n\nお金はシンプルでオープン — 秘密なし：SlutCampがまず通常の手数料を引き、残りのポットは勝者60％／敗者40％に分かれます。誰も手ぶらでは帰らず、引き分けは50/50です。\n\nバトル中もゲームカテゴリーは開いたまま — ファンはいつでもあなたのリストから買えて、すべてのクレジットがスコアに加算されます。\n\n最強の勝者になろう 💋', zh: '⚔️ 新功能：PumPum Verse来了！\n\n挑选一个对手，在分屏舞台上一起直播 — 两部手机、一个房间、一个记分牌。比一比谁能让粉丝花得更多！\n\n三种参与方式：直播时邀请一位模特、预约稍后的对决，或者加入随机对战由系统为你匹配。\n\n钱的规则简单透明 — 没有秘密：SlutCamp 先扣除标准佣金，然后奖池按赢家 60% / 输家 40% 分配。没有人空手而归，平局 50/50。\n\n对战期间你的游戏菜单也保持开放 — 粉丝可以随时购买你列表里的项目，每个积分都计入你的分数。\n\n愿最棒的女孩获胜 💋', ko: '⚔️ 새 기능: PumPum Verse가 왔어요!\n\n라이벌을 골라 분할 화면 무대에서 함께 라이브를 켜세요 — 휴대폰 두 대, 하나의 방, 하나의 스코어보드. 팬들이 누구에게 더 많이 쓰게 하는지 겨뤄 보세요!\n\n참여 방법 세 가지: 라이브 중에 모델을 초대하기, 나중 대결 예약하기, 또는 랜덤 배틀에 참가해 매칭받기.\n\n돈은 간단하고 투명해요 — 비밀 없음: SlutCamp가 먼저 표준 수수료를 떼고, 남은 팟은 승자 60% / 패자 40%로 나뉩니다. 빈손으로 가는 사람은 없고, 무승부는 50/50이에요.\n\n배틀 중에도 게임 카테고리는 열려 있어요 — 팬들은 언제든 당신의 리스트에서 살 수 있고, 모든 크레딧이 점수에 반영됩니다.\n\n최고의 그녀가 이기길 💋', it: '⚔️ NOVITÀ: È ARRIVATO PUMPUM VERSE!\n\nScegli una rivale e andate live insieme su un palco diviso — due telefoni, una stanza, un tabellone. Sfida a chi fa spendere di più i fan!\n\nTre modi per entrare: invita una modella mentre sei live, programma una sfida per dopo, oppure entra in una battaglia casuale e fatti abbinare.\n\nI soldi sono semplici e alla luce del sole — niente segreti: SlutCamp prende prima la sua commissione standard, poi il montepremi si divide 60% alla vincitrice e 40% alla perdente. Nessuna torna a mani vuote, e i pareggi si dividono 50/50.\n\nAnche la tua Categoria Giochi resta aperta durante le battaglie — i fan possono comprare dalla tua lista in qualsiasi momento, e ogni credito conta per il tuo punteggio.\n\nChe vinca la migliore 💋', pl: '⚔️ NOWOŚĆ: PUMPUM VERSE JUŻ JEST!\n\nWybierz rywalkę i wyjdźcie razem na żywo na podzielonej scenie — dwa telefony, jeden pokój, jedna tabela wyników. Walczcie o to, która sprawi, że fani wydadzą więcej!\n\nTrzy sposoby wejścia: zaproś modelkę, gdy jesteś na żywo, zaplanuj pojedynek na później albo dołącz do losowej bitwy, a my dobierzemy przeciwniczkę.\n\nPieniądze są proste i jawne — bez tajemnic: SlutCamp najpierw pobiera swoją standardową prowizję, a potem pula dzieli się 60% dla zwyciężczyni i 40% dla przegranej. Nikt nie odchodzi z pustymi rękami, a remisy dzielą się 50/50.\n\nTwoja Kategoria Gier też pozostaje otwarta podczas bitew — fani mogą kupować z Twojej listy przez cały czas, a każdy kredyt liczy się do Twojego wyniku.\n\nNiech wygra najlepsza 💋', nl: '⚔️ NIEUW: PUMPUM VERSE IS ER!\n\nKies een rivaal en ga samen live op een gesplitst podium — twee telefoons, één kamer, één scorebord. Strijd om wie de fans het meest laat uitgeven!\n\nDrie manieren om mee te doen: nodig een model uit terwijl je live bent, plan een showdown voor later, of doe mee aan een willekeurige battle en word gematcht.\n\nHet geld is simpel en open — geen geheimen: SlutCamp neemt eerst zijn standaardcommissie, daarna wordt de pot 60% voor de winnaar en 40% voor de verliezer verdeeld. Niemand gaat met lege handen weg, en gelijkspel wordt 50/50 gedeeld.\n\nJe Gamecategorie blijft ook tijdens battles open — fans kunnen de hele tijd van je lijst kopen, en elke credit telt mee voor je score.\n\nMoge de beste winnen 💋', tr: '⚔️ YENİ: PUMPUM VERSE GELDİ!\n\nBir rakip seç ve bölünmüş sahnede birlikte canlı yayına çık — iki telefon, bir oda, bir skor tablosu. Hayranlara en çok harcamayı kimin yaptıracağını görmek için savaş!\n\nÜç giriş yolu: canlı yayındayken bir modeli davet et, sonrası için bir kapışma planla ya da rastgele savaşa girip eşleş.\n\nPara basit ve açık — sır yok: SlutCamp önce standart komisyonunu alır, sonra pot kazanan %60 / kaybeden %40 olarak bölünür. Kimse eli boş ayrılmaz, beraberlikler 50/50 bölünür.\n\nOyun Kategorin savaşlar sırasında da açık kalır — hayranlar listenizden her zaman satın alabilir ve her kredi skoruna sayılır.\n\nEn iyisi kazansın 💋' },
+  ann_battles_bell_title: { en: '⚔️ NEW: PumPum Verse!', es: '⚔️ ¡Novedad: PumPum Verse!', pt: '⚔️ Novo: PumPum Verse!', fr: '⚔️ Nouveau : PumPum Verse !', de: '⚔️ Neu: PumPum Verse!', ru: '⚔️ Новое: PumPum Verse!', ja: '⚔️ 新機能：PumPum Verse！', zh: '⚔️ 新功能：PumPum Verse！', ko: '⚔️ 새 기능: PumPum Verse!', it: '⚔️ Novità: PumPum Verse!', pl: '⚔️ Nowość: PumPum Verse!', nl: '⚔️ Nieuw: PumPum Verse!', tr: '⚔️ Yeni: PumPum Verse!' },
+  ann_battles_bell_body: { en: 'Face off in PumPum Verse — winner takes the bigger cut. Tap to read 💋', es: 'Enfréntate en PumPum Verse — la ganadora se lleva la mayor parte. Toca para leer 💋', pt: 'Batalhe no PumPum Verse — a vencedora fica com a maior parte. Toque para ler 💋', fr: 'Affrontez-vous dans PumPum Verse — la gagnante prend la plus grosse part. Touchez pour lire 💋', de: 'Kämpfe in PumPum Verse live gegen ein anderes Model — die Gewinnerin bekommt den größeren Anteil. Tippe zum Lesen 💋', ru: 'Сразитесь в PumPum Verse — победительница забирает большую часть. Нажмите, чтобы прочитать 💋', ja: 'PumPum Verseで別のモデルと対戦 — 勝者が大きな取り分をゲット。タップして読む 💋', zh: '在PumPum Verse与其他模特对战 — 赢家拿大头。点开阅读 💋', ko: 'PumPum Verse에서 다른 모델과 대결하세요 — 승자가 더 큰 몫을 가져갑니다. 탭해서 읽기 💋', it: 'Sfida un\'altra modella in PumPum Verse — la vincitrice prende la fetta più grande. Tocca per leggere 💋', pl: 'Walcz w PumPum Verse z inną modelką — zwyciężczyni bierze większą część. Dotknij, aby przeczytać 💋', nl: 'Battle in PumPum Verse tegen een ander model — de winnaar pakt het grootste deel. Tik om te lezen 💋', tr: 'PumPum Verse\'te başka bir modelle savaş — kazanan büyük payı alır. Okumak için dokun 💋' },
+  battle_bell_invite_title: { en: '⚔️ PumPum Verse challenge!', es: '⚔️ ¡Desafío PumPum Verse!', pt: '⚔️ Desafio PumPum Verse!', fr: '⚔️ Défi PumPum Verse !', de: '⚔️ PumPum Verse-Herausforderung!', ru: '⚔️ Вызов в PumPum Verse!', ja: '⚔️ PumPum Verseの挑戦状！', zh: '⚔️ PumPum Verse挑战！', ko: '⚔️ PumPum Verse 도전장!', it: '⚔️ Sfida PumPum Verse!', pl: '⚔️ Wyzwanie PumPum Verse!', nl: '⚔️ PumPum Verse-uitdaging!', tr: '⚔️ PumPum Verse meydan okuması!' },
+  battle_bell_invite_body: { en: '{name} wants to battle you live for {minutes} minutes — winner takes the bigger cut. Open the app to answer ⚔️', es: '{name} quiere enfrentarte en vivo por {minutes} minutos — la ganadora se lleva la mayor parte. Abre la app para responder ⚔️', pt: '{name} quer batalhar com você ao vivo por {minutes} minutos — a vencedora fica com a maior parte. Abra o app para responder ⚔️', fr: '{name} veut vous affronter en direct pendant {minutes} minutes — la gagnante prend la plus grosse part. Ouvrez l\'appli pour répondre ⚔️', de: '{name} will {minutes} Minuten live gegen dich kämpfen — die Gewinnerin bekommt den größeren Anteil. Öffne die App, um zu antworten ⚔️', ru: '{name} хочет сразиться с вами в эфире на {minutes} минут — победительница забирает большую часть. Откройте приложение, чтобы ответить ⚔️', ja: '{name}が{minutes}分間のライブバトルを申し込んでいます — 勝者が大きな取り分をゲット。アプリを開いて答えてね ⚔️', zh: '{name} 想和你进行 {minutes} 分钟的直播对战 — 赢家拿大头。打开应用回复 ⚔️', ko: '{name}님이 {minutes}분 라이브 배틀을 신청했어요 — 승자가 더 큰 몫을 가져갑니다. 앱을 열어 답하세요 ⚔️', it: '{name} vuole sfidarti in live per {minutes} minuti — la vincitrice prende la fetta più grande. Apri l\'app per rispondere ⚔️', pl: '{name} chce walczyć z Tobą na żywo przez {minutes} minut — zwyciężczyni bierze większą część. Otwórz aplikację, aby odpowiedzieć ⚔️', nl: '{name} wil {minutes} minuten live tegen je battelen — de winnaar pakt het grootste deel. Open de app om te antwoorden ⚔️', tr: '{name} seninle {minutes} dakika canlı savaşmak istiyor — kazanan büyük payı alır. Cevaplamak için uygulamayı aç ⚔️' },
+  battle_bell_won_title: { en: '🏆 You WON your PumPum Verse!', es: '🏆 ¡GANASTE tu PumPum Verse!', pt: '🏆 Você VENCEU seu PumPum Verse!', fr: '🏆 Vous avez GAGNÉ votre PumPum Verse !', de: '🏆 Du hast dein PumPum Verse GEWONNEN!', ru: '🏆 Вы ВЫИГРАЛИ PumPum Verse!', ja: '🏆 PumPum Verseに勝利！', zh: '🏆 你赢得了PumPum Verse！', ko: '🏆 PumPum Verse에서 승리했어요!', it: '🏆 Hai VINTO il tuo PumPum Verse!', pl: '🏆 WYGRAŁAŚ swój PumPum Verse!', nl: '🏆 Je hebt je PumPum Verse GEWONNEN!', tr: '🏆 PumPum Verse\'i KAZANDIN!' },
+  battle_bell_lost_title: { en: '⚔️ PumPum Verse over', es: '⚔️ Fin del PumPum Verse', pt: '⚔️ Fim do PumPum Verse', fr: '⚔️ PumPum Verse terminée', de: '⚔️ PumPum Verse vorbei', ru: '⚔️ PumPum Verse завершён', ja: '⚔️ PumPum Verse終了', zh: '⚔️ PumPum Verse结束', ko: '⚔️ PumPum Verse 종료', it: '⚔️ PumPum Verse finita', pl: '⚔️ PumPum Verse zakończony', nl: '⚔️ PumPum Verse voorbij', tr: '⚔️ PumPum Verse bitti' },
+  battle_bell_tie_title: { en: '🤝 PumPum Verse tied!', es: '🤝 ¡PumPum Verse empatado!', pt: '🤝 PumPum Verse empatado!', fr: '🤝 PumPum Verse à égalité !', de: '🤝 PumPum Verse unentschieden!', ru: '🤝 Ничья в PumPum Verse!', ja: '🤝 PumPum Verseは引き分け！', zh: '🤝 PumPum Verse平局！', ko: '🤝 PumPum Verse 무승부!', it: '🤝 PumPum Verse in pareggio!', pl: '🤝 PumPum Verse zakończony remisem!', nl: '🤝 PumPum Verse gelijkspel!', tr: '🤝 PumPum Verse berabere!' },
+  battle_bell_result_body: { en: 'Your battle payout: {amount} — the full line-by-line breakdown is in your Earnings 💋', es: 'Tu pago de la batalla: {amount} — el desglose completo está en tus Ganancias 💋', pt: 'Seu pagamento da batalha: {amount} — o detalhamento completo está nos seus Ganhos 💋', fr: 'Votre gain de bataille : {amount} — le détail complet est dans vos Revenus 💋', de: 'Deine Battle-Auszahlung: {amount} — die komplette Aufschlüsselung steht in deinen Einnahmen 💋', ru: 'Ваша выплата за баттл: {amount} — полная разбивка по строкам в вашем разделе «Доходы» 💋', ja: 'バトルの報酬：{amount} — 明細は収益ページで確認できます 💋', zh: '你的对战奖金：{amount} — 完整明细在你的收益页面 💋', ko: '배틀 정산금: {amount} — 전체 내역은 수익 페이지에 있어요 💋', it: 'Il tuo pagamento della battaglia: {amount} — il dettaglio completo è nei tuoi Guadagni 💋', pl: 'Twoja wypłata za bitwę: {amount} — pełne rozliczenie znajdziesz w swoich Zarobkach 💋', nl: 'Je battle-uitbetaling: {amount} — de volledige uitsplitsing staat in je Inkomsten 💋', tr: 'Savaş ödemen: {amount} — satır satır döküm Kazançlarında 💋' },
+  battle_bell_starting_title: { en: '⚔️ PumPum Verse time!', es: '⚔️ ¡Hora del PumPum Verse!', pt: '⚔️ Hora do PumPum Verse!', fr: '⚔️ C\'est l\'heure du PumPum Verse !', de: '⚔️ PumPum Verse-Zeit!', ru: '⚔️ Время PumPum Verse!', ja: '⚔️ PumPum Verseの時間です！', zh: '⚔️ PumPum Verse时间到！', ko: '⚔️ PumPum Verse 시간이에요!', it: '⚔️ È ora del PumPum Verse!', pl: '⚔️ Czas na PumPum Verse!', nl: '⚔️ Tijd voor PumPum Verse!', tr: '⚔️ PumPum Verse zamanı!' },
+  battle_bell_starting_body: { en: 'Your battle with {name} is starting — go live and tap Ready ⚔️', es: 'Tu batalla con {name} está empezando — sal en vivo y toca Lista ⚔️', pt: 'Sua batalha com {name} está começando — entre ao vivo e toque em Pronta ⚔️', fr: 'Votre bataille avec {name} commence — passez en direct et touchez Prête ⚔️', de: 'Dein Battle mit {name} startet — geh live und tippe auf Bereit ⚔️', ru: 'Ваш баттл с {name} начинается — выходите в эфир и нажимайте «Готова» ⚔️', ja: '{name}とのバトルが始まります — ライブを開始して「準備OK」をタップ ⚔️', zh: '你与 {name} 的对战即将开始 — 开播并点击准备 ⚔️', ko: '{name}님과의 배틀이 시작돼요 — 라이브를 켜고 준비 버튼을 누르세요 ⚔️', it: 'La tua battaglia con {name} sta iniziando — vai live e tocca Pronta ⚔️', pl: 'Twoja bitwa z {name} się zaczyna — wejdź na żywo i dotknij Gotowa ⚔️', nl: 'Je battle met {name} begint — ga live en tik op Klaar ⚔️', tr: '{name} ile savaşın başlıyor — canlı yayına geç ve Hazır\'a dokun ⚔️' },
+  battle_bell_starting_fan_body: { en: '{a} vs {b} is starting now — tap to watch the battle ⚔️', es: '{a} contra {b} está empezando ahora — toca para ver la batalla ⚔️', pt: '{a} vs {b} está começando agora — toque para assistir à batalha ⚔️', fr: '{a} contre {b} commence maintenant — touchez pour regarder la bataille ⚔️', de: '{a} gegen {b} startet jetzt — tippe, um den Battle zu sehen ⚔️', ru: '{a} против {b} начинается прямо сейчас — нажмите, чтобы смотреть баттл ⚔️', ja: '{a} vs {b}が今始まります — タップしてバトルを見よう ⚔️', zh: '{a} 对 {b} 现在开始 — 点击观看对战 ⚔️', ko: '{a} vs {b} 지금 시작해요 — 탭해서 배틀을 보세요 ⚔️', it: '{a} contro {b} sta iniziando ora — tocca per guardare la battaglia ⚔️', pl: '{a} kontra {b} zaczyna się teraz — dotknij, aby oglądać bitwę ⚔️', nl: '{a} tegen {b} begint nu — tik om de battle te kijken ⚔️', tr: '{a} ile {b} şimdi başlıyor — savaşı izlemek için dokun ⚔️' },
+  battle_bell_cancelled_title: { en: '⚔️ PumPum Verse cancelled', es: '⚔️ PumPum Verse cancelado', pt: '⚔️ PumPum Verse cancelado', fr: '⚔️ PumPum Verse annulée', de: '⚔️ PumPum Verse abgesagt', ru: '⚔️ PumPum Verse отменён', ja: '⚔️ PumPum Verseはキャンセルされました', zh: '⚔️ PumPum Verse已取消', ko: '⚔️ PumPum Verse가 취소됐어요', it: '⚔️ PumPum Verse annullata', pl: '⚔️ PumPum Verse odwołany', nl: '⚔️ PumPum Verse geannuleerd', tr: '⚔️ PumPum Verse iptal edildi' },
+  battle_bell_cancelled_body: { en: 'The showdown with {name} was cancelled — a side didn\'t show in time.', es: 'El duelo con {name} fue cancelado — un lado no apareció a tiempo.', pt: 'O duelo com {name} foi cancelado — um lado não apareceu a tempo.', fr: 'Le duel avec {name} a été annulé — un côté ne s\'est pas présenté à temps.', de: 'Das Showdown mit {name} wurde abgesagt — eine Seite ist nicht rechtzeitig erschienen.', ru: 'Поединок с {name} отменён — одна из сторон не появилась вовремя.', ja: '{name}との対決はキャンセルされました — 片方が時間内に現れませんでした。', zh: '与 {name} 的对决已取消 — 一方未按时出现。', ko: '{name}님과의 대결이 취소됐어요 — 한쪽이 제시간에 나타나지 않았어요.', it: 'La sfida con {name} è stata annullata — una parte non si è presentata in tempo.', pl: 'Pojedynek z {name} został odwołany — jedna ze stron nie pojawiła się na czas.', nl: 'De showdown met {name} is geannuleerd — een kant kwam niet op tijd opdagen.', tr: '{name} ile kapışma iptal edildi — bir taraf zamanında gelmedi.' },
   rt_queen: { en: 'Queen', es: 'Reina', pt: 'Rainha', fr: 'Reine', de: 'Königin', ru: 'Королева', ja: 'クイーン', zh: '女王', ko: '여왕', it: 'Regina', pl: 'Królowa', nl: 'Koningin', tr: 'Kraliçe' },
   rt_princess: { en: 'Princess', es: 'Princesa', pt: 'Princesa', fr: 'Princesse', de: 'Prinzessin', ru: 'Принцесса', ja: 'プリンセス', zh: '公主', ko: '공주', it: 'Principessa', pl: 'Księżniczka', nl: 'Prinses', tr: 'Prenses' },
   rt_duchess: { en: 'Duchess', es: 'Duquesa', pt: 'Duquesa', fr: 'Duchesse', de: 'Herzogin', ru: 'Герцогиня', ja: '公爵夫人', zh: '公爵夫人', ko: '공작부인', it: 'Duchessa', pl: 'Księżna', nl: 'Hertogin', tr: 'Düşes' },
@@ -4856,6 +4961,43 @@ function announcePrivateRoomsToModels() {
   return sent;
 }
 
+/* ------------------------------------------------------------------ */
+/* Live Battles — ONE-TIME announcement (stamp battles_announced_at   */
+/* on platform_stats). Phase 6 put two models on one split-screen     */
+/* stage with a scoreboard — winner takes the bigger cut of the pot,  */
+/* announced up front, no secrets. Every model hears it once — DM +   */
+/* bell in her announcement thread, copy in her stored language via   */
+/* the SRV table (ann_battles_dm). Same pattern as the faceguard /    */
+/* booking-rate broadcasts: stamp set only after the loop, so a       */
+/* mid-boot failure retries next start.                               */
+/* ------------------------------------------------------------------ */
+function announceBattlesToModels() {
+  const st = db.prepare('SELECT battles_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.battles_announced_at) return 0;
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin) return 0;
+  const models = db.prepare("SELECT id, username, language FROM users WHERE role = 'model' AND banned = 0").all();
+  let sent = 0;
+  for (const m of models) {
+    if (m.id === admin.id) continue;
+    try {
+      const conv = announcementThreadFor(m.id, 'model', admin.id);
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, conv.senderId, srv('ann_battles_dm', m.language));
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(m.id, 'battles', srv('ann_battles_bell_title', m.language),
+          srv('ann_battles_bell_body', m.language), `/#chat/${conv.id}`);
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest */ }
+  }
+  if (sent > 0 || models.length === 0) {
+    db.prepare("UPDATE platform_stats SET battles_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
 /* Fan blast — ONE-TIME bell + Web Push to every fan (stamp           */
 /* fan_preview_announced_at on platform_stats). Fans have no email or */
 /* text channel today (no provider; users held no contact info until  */
@@ -5039,6 +5181,7 @@ try { const n = announceStorefrontToFans(); if (n) console.log(`[storefront] Sto
 try { const n = announceFaceguardToModels(); if (n) console.log(`[faceguard] Face-count guard announced to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceSafetyToModels(); if (n) console.log(`[safety] Safety hard-block announced to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announcePrivateRoomsToModels(); if (n) console.log(`[private-room] Private Room announced to ${n} models.`); } catch (e) { /* retry next boot */ }
+try { const n = announceBattlesToModels(); if (n) console.log(`[battles] Live Battles announced to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = sweepStalePrivateEvents(); if (n) console.log(`[private-room] Swept ${n} stale private event(s) with refunds.`); } catch (e) { /* retry next boot */ }
 
 /* Safety scrub (Safety build, owner-directed 2026-10-20): the messages
@@ -7834,9 +7977,21 @@ app.post('/api/models/:id/tip', identMiddleware, requireUser, requireRole('fan')
   if (!item) return res.status(404).json({ error: 'menu_item_not_found' });
   const context = ['live', 'chat', 'profile'].includes(req.body.context) ? req.body.context : 'profile';
 
+  /* Phase 6: a live-context tip to a model who is mid-battle escrows
+   * into the pot, tagged to her side (the battle stage's own tip
+   * endpoint is the primary path; this keeps the normal live view's
+   * tip menu honest during a battle too). Profile/chat tips are not
+   * battle-room spend and pay out as usual. */
+  const battle = context === 'live' ? liveBattleForModel(modelId) : null;
   try {
-    chargeFan(req.user.id, modelId, item.price_cents, 'tip_menu',
-      `💰 ${item.emoji} ${item.label}`, clientIp(req));
+    if (battle) {
+      chargeBattleEscrow(battle, req.user.id, modelId, item.price_cents, 'tip',
+        'tip_menu', typeof item.id === 'number' ? item.id : null,
+        `⚔️ Battle tip: ${item.emoji} ${item.label}`, clientIp(req));
+    } else {
+      chargeFan(req.user.id, modelId, item.price_cents, 'tip_menu',
+        `💰 ${item.emoji} ${item.label}`, clientIp(req));
+    }
   } catch (e) {
     if (e.message === 'insufficient_credits' || e.message === 'spend_cap_reached')
       return res.status(402).json(chargeErrorBody(e, item.price_cents, req.user.id));
@@ -7854,8 +8009,10 @@ app.post('/api/models/:id/tip', identMiddleware, requireUser, requireRole('fan')
   pushToUser(modelId, { type: 'tip:received', fan_id: req.user.id,
     fan_name: req.user.display_name || 'A fan',
     emoji: item.emoji, label: item.label, price_cents: item.price_cents, context });
+  if (battle) pushBattleUpdate(getBattle(battle.id), {});
 
   res.json({ ok: true, emoji: item.emoji, label: item.label, price_cents: item.price_cents,
+    battle_id: battle ? battle.id : null,
     balance_cents: getWallet(req.user.id).credits_cents });
 });
 
@@ -9501,7 +9658,7 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
   const { bio, per_message_cents, per_minute_cents, per_voice_cents, booking_rate_cents,
           explicit_rate_cents,
           explicit_join_cents, explicit_mic_join_cents, join_cents, mic_join_cents,
-          is_online, tags } = req.body || {};
+          is_online, tags, battle_invites_open } = req.body || {};
   const updates = [], params = [];
   // Model-settable 1-on-1 rates (tighter ranges than the admin override)
   const rateRange = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
@@ -9551,6 +9708,12 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
     updates.push('mic_join_cents = ?'); params.push(mic_join_cents);
   }
   if (is_online === 0 || is_online === 1) { updates.push('is_online = ?'); params.push(is_online); }
+  // Phase 6: "Open to battle invites" (default ON). OFF hides her from
+  // Door 1 pickers and refuses direct invites; she can still send
+  // invites and schedule showdowns herself.
+  if (battle_invites_open === 0 || battle_invites_open === 1) {
+    updates.push('battle_invites_open = ?'); params.push(battle_invites_open);
+  }
   // Discovery tags: must be an array of catalogue strings; unknown tags
   // are dropped, duplicates collapse, and the list caps at MAX_MODEL_TAGS.
   if (tags !== undefined) {
@@ -10779,9 +10942,1029 @@ app.get('/api/model/earnings', identMiddleware, requireUser, requireRole('model'
   const gifts = db.prepare(`
     SELECT COALESCE(SUM(t.model_cents), 0) AS gifts_cents, COUNT(*) AS gift_count
     FROM transactions t WHERE t.model_id = ? AND t.is_test = 0 AND t.type = 'gift' AND t.model_cents > 0`).get(req.user.id);
+  /* Phase 6: battle history with the full transparent breakdown —
+   * gross, house cut, pot, both shares, and her own payout (the same
+   * numbers the fan-facing screen and the opponent's dashboard show;
+   * nothing hidden from anyone). */
+  const battles = db.prepare(`SELECT * FROM battles WHERE status = 'finished'
+    AND (host_id = ? OR guest_id = ?) ORDER BY ended_at DESC LIMIT 20`)
+    .all(req.user.id, req.user.id)
+    .map((b) => {
+      const opponent = battleUserBrief(b.host_id === req.user.id ? b.guest_id : b.host_id);
+      const sc = battleScores(b.id);
+      return { id: b.id, kind: b.kind, minutes: b.minutes, ended_at: b.ended_at,
+        opponent_name: opponent.display_name, opponent_username: opponent.username,
+        gross_cents: b.gross_cents, house_cents: b.house_cents, pool_cents: b.pool_cents,
+        winner_cents: b.winner_cents, loser_cents: b.loser_cents,
+        your_cents: b.winner_id
+          ? (b.winner_id === req.user.id ? b.winner_cents : b.loser_cents)
+          : (req.user.id === b.host_id ? b.winner_cents : b.loser_cents),
+        result: !b.winner_id ? 'tie' : (b.winner_id === req.user.id ? 'won' : 'lost'),
+        forfeit: !!b.forfeit_by,
+        your_score_cents: req.user.id === b.host_id ? sc.host : sc.guest,
+        opponent_score_cents: req.user.id === b.host_id ? sc.guest : sc.host };
+    });
   res.json({ earnings_cents: wallet.earnings_cents, paid_out_cents: wallet.paid_out_cents,
     pending_cents: wallet.earnings_cents - wallet.paid_out_cents, by_fan: byFan, by_type: byType,
-    gifts_cents: gifts.gifts_cents, gift_count: gifts.gift_count });
+    gifts_cents: gifts.gifts_cents, gift_count: gifts.gift_count, battles });
+});
+
+/* ================================================================== */
+/* LIVE BATTLES (Phase 6 — owner design Oct 20 2026)                    */
+/*                                                                      */
+/* Two ID-approved models, two phones, one split-screen stage, one      */
+/* countdown, one scoreboard. Three doors in: (1) Live Invite,          */
+/* (2) Scheduled Showdown, (3) Random Battle matchmaking.               */
+/*                                                                      */
+/* MONEY — fully transparent, no secrets anywhere: every battle-room    */
+/* spend (battle tips, Game Category buys, live gifts) is side-tagged   */
+/* and ESCROWED through chargeBattleEscrow — the fan is debited at      */
+/* spend time, nobody is credited. At settle, gross → house takes its   */
+/* standard cut off the top (splitPayment with no model: the unchanged  */
+/* 60/40 commission, pool = the models' 60%) → the pool splits 60%      */
+/* winner / 40% loser (tie 50/50; forfeit = loser regardless of score).  */
+/* Payouts land as 'battle_payout' transactions rows with              */
+/* available_at = earningsAvailableAt(), so payout protection, the      */
+/* 7-day hold and rank recompute treat them like any credited           */
+/* earnings; battle_allocations keeps the per-spend winner/loser        */
+/* distribution for chargeback traceability. NO recruiter carve-out     */
+/* is taken from battle payouts in v1 — the pool shape the owner        */
+/* locked is house → pool → 60/40, and a battle payout is not one       */
+/* model's own sale.                                                    */
+/*                                                                      */
+/* Game Category (owner add-on, Oct 20 2026): both models' game sheets  */
+/* stay open on the battle stage. A game buy on either session routes   */
+/* through escrow (tagged to that session's model's side) and settles   */
+/* through the battle distribution; skip still refunds the fan in       */
+/* full and an unresolved request at battle end is auto-refunded        */
+/* (refundPendingGameRequests branches on game_requests.battle_id) and  */
+/* excluded from the settled gross.                                     */
+/* ================================================================== */
+
+const BATTLE_MINUTES = [5, 10, 15];
+const BATTLE_INVITE_TTL_SEC = 60;
+const BATTLE_DECLINE_COOLDOWN_MIN = 10;
+
+function battleUserBrief(userId) {
+  const u = db.prepare('SELECT id, username, display_name FROM users WHERE id = ?').get(userId);
+  if (!u) return { id: userId, username: '', display_name: '', photo_url: null };
+  const m = db.prepare('SELECT photo_url FROM models WHERE user_id = ?').get(userId);
+  return { id: u.id, username: u.username, display_name: u.display_name,
+    photo_url: m ? m.photo_url : null };
+}
+
+function battleScores(battleId) {
+  const b = db.prepare('SELECT host_id, guest_id FROM battles WHERE id = ?').get(battleId);
+  const out = { host: 0, guest: 0 };
+  if (!b) return out;
+  const rows = db.prepare(`SELECT model_id, COALESCE(SUM(gross_cents), 0) AS cents
+    FROM battle_spend WHERE battle_id = ? AND status IN ('held','settled')
+    GROUP BY model_id`).all(battleId);
+  for (const r of rows) {
+    if (r.model_id === b.host_id) out.host = r.cents;
+    if (r.model_id === b.guest_id) out.guest = r.cents;
+  }
+  return out;
+}
+
+function battleOut(b) {
+  if (!b) return null;
+  const s = battleScores(b.id);
+  return {
+    id: b.id, kind: b.kind, status: b.status, minutes: b.minutes,
+    confirmed: !!b.confirmed,
+    host_accepted: !!b.host_accepted, guest_accepted: !!b.guest_accepted,
+    host_ready: !!b.host_ready, guest_ready: !!b.guest_ready,
+    host: battleUserBrief(b.host_id), guest: battleUserBrief(b.guest_id),
+    host_session_id: b.host_session_id, guest_session_id: b.guest_session_id,
+    starts_at: b.starts_at, expires_at: b.expires_at,
+    started_at: b.started_at, ends_at: b.ends_at, ended_at: b.ended_at,
+    host_score_cents: s.host, guest_score_cents: s.guest,
+    winner_id: b.winner_id, forfeit_by: b.forfeit_by,
+    gross_cents: b.gross_cents, house_cents: b.house_cents,
+    pool_cents: b.pool_cents, winner_cents: b.winner_cents, loser_cents: b.loser_cents,
+    money_rule: 'House takes its standard cut first; the rest splits 60% to the winner, 40% to the loser. Tie = 50/50.',
+    created_at: b.created_at,
+  };
+}
+
+function getBattle(battleId) {
+  return db.prepare('SELECT * FROM battles WHERE id = ?').get(battleId);
+}
+function isBattler(b, userId) { return b && (b.host_id === userId || b.guest_id === userId); }
+
+function battleFanIds(battleId) {
+  return db.prepare('SELECT fan_id FROM battle_viewers WHERE battle_id = ?')
+    .all(battleId).map((r) => r.fan_id);
+}
+function pushBattle(b, event) {
+  const targets = new Set([b.host_id, b.guest_id, ...battleFanIds(b.id)]);
+  for (const uid of targets) pushToUser(uid, event);
+}
+function pushBattleUpdate(b, extra = {}) {
+  if (!b) return;
+  pushBattle(b, { type: 'battle:update', battle: battleOut(b), ...extra });
+}
+
+function liveSessionOf(modelId) {
+  return db.prepare("SELECT * FROM live_sessions WHERE model_id = ? AND status = 'live'")
+    .get(modelId) || null;
+}
+function liveBattleForSession(sessionId) {
+  if (!sessionId) return null;
+  return db.prepare(`SELECT * FROM battles WHERE status = 'live'
+    AND (host_session_id = ? OR guest_session_id = ?)`).get(sessionId, sessionId) || null;
+}
+function liveBattleForModel(modelId) {
+  return db.prepare(`SELECT * FROM battles WHERE status = 'live'
+    AND (host_id = ? OR guest_id = ?)`).get(modelId, modelId) || null;
+}
+function pendingBattleFor(modelId) {
+  return db.prepare(`SELECT * FROM battles WHERE status IN ('invited','ready_check')
+    AND (host_id = ? OR guest_id = ?) ORDER BY id DESC LIMIT 1`).get(modelId, modelId) || null;
+}
+
+/* ---------------- battle escrow money ---------------- */
+
+/* The balance + spend-cap half of chargeFan, shared so escrow charges
+ * refuse exactly the way every other charge refuses. */
+function assertFanCanSpend(fanId, grossCents) {
+  const wallet = getWallet(fanId);
+  if (!wallet || wallet.credits_cents < grossCents) throw new Error('insufficient_credits');
+  if (grossCents > 0) {
+    const capCents = getFanSpendCap(fanId);
+    if (capCents != null) {
+      const monthSpent = Math.max(0, fanSpendCents(fanId, true));
+      if (monthSpent + grossCents > capCents) {
+        const err = new Error('spend_cap_reached');
+        err.cap_cents = capCents;
+        err.month_spent_cents = monthSpent;
+        throw err;
+      }
+    }
+  }
+}
+
+/* Debit a fan into a battle's escrow. The ledger row carries the
+ * NORMAL spend type (tip_menu / game / gift) so the fan's spend
+ * dashboard and monthly cap keep counting battle spend, but
+ * model_cents / platform_cents stay 0 until settleBattle distributes
+ * the pot. Returns the battle_spend row id. */
+function chargeBattleEscrow(battle, fanId, sideModelId, grossCents, kind, ledgerType, refId, note, ip) {
+  assertFanCanSpend(fanId, grossCents);
+  let spendId = null;
+  txn(() => {
+    db.prepare('UPDATE wallets SET credits_cents = credits_cents - ? WHERE user_id = ?')
+      .run(grossCents, fanId);
+    db.prepare(`INSERT INTO transactions
+      (fan_id, model_id, type, gross_cents, model_cents, platform_cents, recruiter_id, recruiter_cents, note, ip, available_at)
+      VALUES (?,?,?,?,0,0,NULL,0,?,?,?)`)
+      .run(fanId, sideModelId, ledgerType, grossCents, note || null, ip || null, earningsAvailableAt());
+    const info = db.prepare(`INSERT INTO battle_spend
+      (battle_id, fan_id, model_id, kind, gross_cents, ref_id) VALUES (?,?,?,?,?,?)`)
+      .run(battle.id, fanId, sideModelId, kind, grossCents, refId || null);
+    spendId = Number(info.lastInsertRowid);
+  });
+  return spendId;
+}
+
+/* Give an escrowed spend back to the fan (game skip / unresolved at
+ * battle end). Mirrors refundFan's negative-ledger shape, but with
+ * zero splits — the model was never credited, so nobody is debited. */
+function refundBattleEscrow(spend, refundType, note, ip) {
+  if (!spend || spend.status !== 'held') return false;
+  txn(() => {
+    db.prepare('UPDATE wallets SET credits_cents = credits_cents + ? WHERE user_id = ?')
+      .run(spend.gross_cents, spend.fan_id);
+    db.prepare(`INSERT INTO transactions
+      (fan_id, model_id, type, gross_cents, model_cents, platform_cents, recruiter_id, recruiter_cents, note, ip)
+      VALUES (?,?,?,?,0,0,NULL,0,?,?)`)
+      .run(spend.fan_id, spend.model_id, refundType, -spend.gross_cents, note || null, ip || null);
+    db.prepare("UPDATE battle_spend SET status = 'refunded' WHERE id = ?").run(spend.id);
+  });
+  return true;
+}
+
+function battleSpendForGameRequest(gameRequestId) {
+  return db.prepare(`SELECT * FROM battle_spend
+    WHERE kind = 'game' AND ref_id = ? AND status = 'held'`).get(gameRequestId) || null;
+}
+
+/* ---------------- settle / finish ---------------- */
+
+/* Distribute a finished battle's escrow. Runs AFTER the sessions are
+ * ended (so unresolved game requests have already been refunded out
+ * of the held set). outcome: { winnerId } — null winnerId = tie. */
+function settleBattle(b, outcome) {
+  const held = db.prepare(`SELECT * FROM battle_spend
+    WHERE battle_id = ? AND status = 'held' ORDER BY id`).all(b.id);
+  const gross = held.reduce((s, r) => s + r.gross_cents, 0);
+  const pool = gross > 0 ? splitPayment(gross, null).modelCents : 0;
+  const house = gross - pool;
+  const winnerId = outcome.winnerId || null;
+  const loserId = winnerId ? (winnerId === b.host_id ? b.guest_id : b.host_id) : null;
+  let winnerCents = 0, loserCents = 0;
+  if (pool > 0) {
+    if (winnerId) { winnerCents = Math.round(pool * 0.6); loserCents = pool - winnerCents; }
+    else { winnerCents = Math.round(pool / 2); loserCents = pool - winnerCents; }
+  }
+  txn(() => {
+    if (house > 0)
+      db.prepare('UPDATE platform_stats SET earnings_cents = earnings_cents + ? WHERE id = 1').run(house);
+    const avail = earningsAvailableAt();
+    const payRow = (modelId, cents, note) => {
+      if (!modelId || cents <= 0) return;
+      db.prepare('UPDATE wallets SET earnings_cents = earnings_cents + ? WHERE user_id = ?')
+        .run(cents, modelId);
+      db.prepare(`INSERT INTO transactions
+        (fan_id, model_id, type, gross_cents, model_cents, platform_cents, recruiter_id, recruiter_cents, note, ip, available_at)
+        VALUES (NULL,?, 'battle_payout', 0, ?, 0, NULL, 0, ?, NULL, ?)`)
+        .run(modelId, cents, note, avail);
+    };
+    if (winnerId) {
+      payRow(winnerId, winnerCents, `⚔️ Battle #${b.id} — winner share (60% of pot)`);
+      payRow(loserId, loserCents, `⚔️ Battle #${b.id} — loser share (40% of pot)`);
+    } else if (pool > 0) {
+      payRow(b.host_id, winnerCents, `⚔️ Battle #${b.id} — tie share (50% of pot)`);
+      payRow(b.guest_id, loserCents, `⚔️ Battle #${b.id} — tie share (50% of pot)`);
+    }
+    if (house > 0)
+      db.prepare(`INSERT INTO transactions
+        (fan_id, model_id, type, gross_cents, model_cents, platform_cents, note)
+        VALUES (NULL, NULL, 'battle_payout', 0, 0, ?, ?)`)
+        .run(house, `⚔️ Battle #${b.id} — house cut`);
+    // Per-spend allocations: every held spend's pool portion splits by
+    // the same outcome (60/40 or 50/50), so a later chargeback on one
+    // fan's spend can claw back exactly what each model received from
+    // it. Rounding drift is absorbed by the largest spend.
+    if (pool > 0 && held.length) {
+      const allocs = held.map((s) => {
+        const sPool = splitPayment(s.gross_cents, null).modelCents;
+        let wA, lA;
+        if (winnerId) { wA = Math.round(sPool * 0.6); lA = sPool - wA; }
+        else { wA = Math.round(sPool / 2); lA = sPool - wA; }
+        return { spend: s, wA, lA };
+      });
+      const drift = winnerCents - allocs.reduce((s, a) => s + a.wA, 0);
+      if (drift !== 0) {
+        let big = 0;
+        for (let i = 1; i < allocs.length; i++)
+          if (allocs[i].spend.gross_cents > allocs[big].spend.gross_cents) big = i;
+        allocs[big].wA += drift; allocs[big].lA -= drift;
+      }
+      const ins = db.prepare(`INSERT INTO battle_allocations
+        (battle_id, spend_id, model_id, cents) VALUES (?,?,?,?)`);
+      for (const a of allocs) {
+        if (winnerId) {
+          if (a.wA > 0) ins.run(b.id, a.spend.id, winnerId, a.wA);
+          if (a.lA > 0) ins.run(b.id, a.spend.id, loserId, a.lA);
+        } else {
+          if (a.wA > 0) ins.run(b.id, a.spend.id, b.host_id, a.wA);
+          if (a.lA > 0) ins.run(b.id, a.spend.id, b.guest_id, a.lA);
+        }
+      }
+    }
+    db.prepare("UPDATE battle_spend SET status = 'settled' WHERE battle_id = ? AND status = 'held'")
+      .run(b.id);
+    db.prepare(`UPDATE battles SET winner_id = ?, forfeit_by = ?, gross_cents = ?,
+      house_cents = ?, pool_cents = ?, winner_cents = ?, loser_cents = ? WHERE id = ?`)
+      .run(winnerId, outcome.forfeitBy || null, gross, house, pool,
+        winnerCents, loserCents, b.id);
+  });
+  try { recomputeModelRank(b.host_id); } catch (e) {}
+  try { recomputeModelRank(b.guest_id); } catch (e) {}
+}
+
+/* Finish a live battle exactly once (the conditional UPDATE is the
+ * claim — session-end hooks, the timer and forfeit paths all race
+ * here and only one wins). Ends both lives first so unresolved game
+ * requests refund out of escrow before the pot is read. */
+function finishBattle(battleId, outcome) {
+  const claim = db.prepare(`UPDATE battles SET status = 'finished',
+    ended_at = datetime('now') WHERE id = ? AND status = 'live'`).run(battleId);
+  if (!claim.changes) return false;
+  const b = getBattle(battleId);
+  db.prepare('DELETE FROM battle_pool WHERE model_id IN (?, ?)').run(b.host_id, b.guest_id);
+  for (const sid of [b.host_session_id, b.guest_session_id]) {
+    if (!sid) continue;
+    const sess = db.prepare("SELECT * FROM live_sessions WHERE id = ? AND status = 'live'").get(sid);
+    if (sess) { try { killLiveSession(sess, 'battle_over'); } catch (e) {} }
+  }
+  settleBattle(b, outcome);
+  const done = getBattle(battleId);
+  const myCents = (mid) => done.winner_id
+    ? (done.winner_id === mid ? done.winner_cents : done.loser_cents)
+    : (mid === done.host_id ? done.winner_cents : done.loser_cents);
+  for (const mid of [done.host_id, done.guest_id]) {
+    const lang = userLang(mid);
+    const titleKey = !done.winner_id ? 'battle_bell_tie_title'
+      : (done.winner_id === mid ? 'battle_bell_won_title' : 'battle_bell_lost_title');
+    try {
+      notifyUser(mid, 'battle', srv(titleKey, lang),
+        srv('battle_bell_result_body', lang, { amount: fmt$(myCents(mid)) }), null);
+    } catch (e) { /* bell is a bonus */ }
+    pushToUser(mid, { type: 'battle:finished', battle: battleOut(done),
+      your_cents: myCents(mid) });
+  }
+  for (const fanId of battleFanIds(done.id))
+    pushToUser(fanId, { type: 'battle:finished', battle: battleOut(done) });
+  return true;
+}
+
+/* A battler's live session ended (her /end, a safety kill, any path):
+ * she forfeits — the other side wins regardless of score, and the pot
+ * splits on the spend already made. */
+function battleOnSessionEnded(sessionId) {
+  const b = liveBattleForSession(sessionId);
+  if (!b) return;
+  const forfeiter = b.host_session_id === sessionId ? b.host_id : b.guest_id;
+  const winner = forfeiter === b.host_id ? b.guest_id : b.host_id;
+  finishBattle(b.id, { winnerId: winner, forfeitBy: forfeiter });
+}
+
+/* Both readied + both live → the clock starts. Public-live rules:
+ * explicit mode is forced off on both sessions for the battle (the
+ * explicit-room upsell pauses while a battle runs). */
+function startBattle(b) {
+  const hostSess = liveSessionOf(b.host_id);
+  const guestSess = liveSessionOf(b.guest_id);
+  if (!hostSess || !guestSess) return false;
+  for (const s of [hostSess, guestSess]) {
+    if (s.is_explicit) {
+      db.prepare('UPDATE live_sessions SET is_explicit = 0 WHERE id = ?').run(s.id);
+      pushLiveAll(s.id, { type: 'live:explicit', session_id: s.id, is_explicit: false,
+        explicit_rate_cents: s.explicit_rate_cents });
+    }
+  }
+  db.prepare(`UPDATE battles SET status = 'live', host_session_id = ?,
+    guest_session_id = ?, started_at = datetime('now'),
+    ends_at = datetime('now', ?) WHERE id = ?`)
+    .run(hostSess.id, guestSess.id, `+${b.minutes} minutes`, b.id);
+  const live = getBattle(b.id);
+  pushBattleUpdate(live, { started: true });
+  if (live.kind === 'scheduled') {
+    const host = battleUserBrief(live.host_id), guest = battleUserBrief(live.guest_id);
+    for (const r of db.prepare('SELECT fan_id FROM battle_reminders WHERE battle_id = ?').all(live.id)) {
+      try {
+        notifyUser(r.fan_id, 'battle', srv('battle_bell_starting_title', userLang(r.fan_id)),
+          srv('battle_bell_starting_fan_body', userLang(r.fan_id),
+            { a: host.display_name, b: guest.display_name }), null);
+      } catch (e) {}
+    }
+  }
+  return true;
+}
+
+/* ---------------- matchmaking pool (Door 3) ---------------- */
+
+function battledRecently(a, b) {
+  return !!db.prepare(`SELECT 1 FROM battles
+    WHERE ((host_id = ? AND guest_id = ?) OR (host_id = ? AND guest_id = ?))
+      AND created_at > datetime('now', '-24 hours')
+      AND status IN ('live','finished')`).get(a, b, b, a);
+}
+
+function pairBattlePool() {
+  const waiting = db.prepare(`SELECT p.model_id FROM battle_pool p
+    JOIN live_sessions ls ON ls.model_id = p.model_id AND ls.status = 'live'
+    WHERE NOT EXISTS (SELECT 1 FROM battles b
+      WHERE b.status IN ('invited','ready_check','live')
+        AND (b.host_id = p.model_id OR b.guest_id = p.model_id))
+    ORDER BY p.entered_at ASC`).all().map((r) => r.model_id);
+  const used = new Set();
+  for (let i = 0; i < waiting.length; i++) {
+    if (used.has(waiting[i])) continue;
+    let partner = -1, fallback = -1;
+    for (let j = i + 1; j < waiting.length; j++) {
+      if (used.has(waiting[j])) continue;
+      if (fallback === -1) fallback = j;
+      if (!battledRecently(waiting[i], waiting[j])) { partner = j; break; }
+    }
+    if (partner === -1) partner = fallback;
+    if (partner === -1) continue;
+    const a = waiting[i], c = waiting[partner];
+    used.add(a); used.add(c);
+    const info = db.prepare(`INSERT INTO battles
+      (kind, host_id, guest_id, minutes, status, expires_at)
+      VALUES ('random', ?, ?, 10, 'invited', datetime('now', '+60 seconds'))`).run(a, c);
+    const b = getBattle(Number(info.lastInsertRowid));
+    db.prepare('DELETE FROM battle_pool WHERE model_id IN (?, ?)').run(a, c);
+    for (const mid of [a, c]) {
+      pushToUser(mid, { type: 'battle:invite', battle: battleOut(b) });
+      try {
+        const other = battleUserBrief(mid === a ? c : a);
+        notifyUser(mid, 'battle', srv('battle_bell_invite_title', userLang(mid)),
+          srv('battle_bell_invite_body', userLang(mid),
+            { name: other.display_name, minutes: 10 }), null);
+      } catch (e) {}
+    }
+  }
+}
+
+/* ---------------- sweep: timers, forfeits, no-shows ---------------- */
+
+/* Socket presence is only meaningful for battlers we have actually
+ * SEEN connected since the battle started (a model whose app never
+ * opened a socket in this process can't "drop"). The sweep samples
+ * presence; a seen battler with no socket for >60s forfeits. */
+const battleSocketSeen = new Set();
+const battleDropSince = new Map();
+const battleDuePrompted = new Set();
+let battleLastPairAt = 0;
+
+function battleSweep() {
+  // 1) Expired invites (Door 1 + random pairings): 60s to answer.
+  const expired = db.prepare(`SELECT * FROM battles WHERE status = 'invited'
+    AND expires_at IS NOT NULL AND expires_at <= datetime('now')`).all();
+  for (const b of expired) {
+    db.prepare("UPDATE battles SET status = 'expired' WHERE id = ? AND status = 'invited'").run(b.id);
+    if (b.kind === 'random') {
+      // Whoever DID accept goes back into the pool (still live = still in).
+      const accepter = b.host_accepted && !b.guest_accepted ? b.host_id
+        : (b.guest_accepted && !b.host_accepted ? b.guest_id : null);
+      if (accepter && liveSessionOf(accepter) && isIdVerified(accepter))
+        db.prepare('INSERT OR IGNORE INTO battle_pool (model_id) VALUES (?)').run(accepter);
+    }
+    pushBattleUpdate(getBattle(b.id), { expired: true });
+  }
+  // 2) Clock ran out → settle on score.
+  const due = db.prepare(`SELECT * FROM battles WHERE status = 'live'
+    AND ends_at IS NOT NULL AND ends_at <= datetime('now')`).all();
+  for (const b of due) {
+    const s = battleScores(b.id);
+    const winner = s.host === s.guest ? null : (s.host > s.guest ? b.host_id : b.guest_id);
+    finishBattle(b.id, { winnerId: winner, forfeitBy: null });
+  }
+  // 3) A side's session died without the hook firing → forfeit.
+  const live = db.prepare("SELECT * FROM battles WHERE status = 'live'").all();
+  for (const b of live) {
+    for (const sid of [b.host_session_id, b.guest_session_id]) {
+      if (!sid) continue;
+      const sess = db.prepare('SELECT status FROM live_sessions WHERE id = ?').get(sid);
+      if (!sess || sess.status !== 'live') battleOnSessionEnded(sid);
+    }
+  }
+  // 4) Socket-drop forfeit (>60s gone) for battlers seen connected.
+  for (const b of db.prepare("SELECT * FROM battles WHERE status = 'live'").all()) {
+    for (const mid of [b.host_id, b.guest_id]) {
+      const key = `${b.id}:${mid}`;
+      const set = socketsBySubject.get(`u:${mid}`);
+      if (set && set.size) {
+        battleSocketSeen.add(key);
+        battleDropSince.delete(key);
+      } else if (battleSocketSeen.has(key)) {
+        if (!battleDropSince.has(key)) battleDropSince.set(key, Date.now());
+        else if (Date.now() - battleDropSince.get(key) > 60000) {
+          battleSocketSeen.delete(key); battleDropSince.delete(key);
+          const winner = mid === b.host_id ? b.guest_id : b.host_id;
+          finishBattle(b.id, { winnerId: winner, forfeitBy: mid });
+          break;
+        }
+      }
+    }
+  }
+  // 5) Scheduled showdown starting prompts (once per battle).
+  const dueShows = db.prepare(`SELECT * FROM battles WHERE kind = 'scheduled'
+    AND status = 'scheduled' AND confirmed = 1 AND starts_at <= datetime('now')`).all();
+  for (const b of dueShows) {
+    if (battleDuePrompted.has(b.id)) continue;
+    battleDuePrompted.add(b.id);
+    for (const mid of [b.host_id, b.guest_id]) {
+      const other = battleUserBrief(mid === b.host_id ? b.guest_id : b.host_id);
+      try {
+        notifyUser(mid, 'battle', srv('battle_bell_starting_title', userLang(mid)),
+          srv('battle_bell_starting_body', userLang(mid), { name: other.display_name }), null);
+      } catch (e) {}
+      pushToUser(mid, { type: 'battle:due', battle: battleOut(b) });
+    }
+  }
+  // 6) No-show: 10 minutes past start, never started → auto-cancel.
+  const noShows = db.prepare(`SELECT * FROM battles WHERE kind = 'scheduled'
+    AND status IN ('scheduled','ready_check') AND starts_at IS NOT NULL
+    AND starts_at <= datetime('now', '-10 minutes')`).all();
+  for (const b of noShows) {
+    db.prepare("UPDATE battles SET status = 'cancelled' WHERE id = ?").run(b.id);
+    battleDuePrompted.delete(b.id);
+    const fresh = getBattle(b.id);
+    for (const mid of [b.host_id, b.guest_id]) {
+      const other = battleUserBrief(mid === b.host_id ? b.guest_id : b.host_id);
+      try {
+        notifyUser(mid, 'battle', srv('battle_bell_cancelled_title', userLang(mid)),
+          srv('battle_bell_cancelled_body', userLang(mid), { name: other.display_name }), null);
+      } catch (e) {}
+    }
+    for (const r of db.prepare('SELECT fan_id FROM battle_reminders WHERE battle_id = ?').all(b.id)) {
+      try {
+        notifyUser(r.fan_id, 'battle', srv('battle_bell_cancelled_title', userLang(r.fan_id)),
+          srv('battle_bell_cancelled_body', userLang(r.fan_id),
+            { name: battleUserBrief(b.host_id).display_name }), null);
+      } catch (e) {}
+    }
+    pushBattleUpdate(fresh, { cancelled: true });
+  }
+  // 7) Random matchmaking (throttled — pairing runs on pool entry too).
+  if (Date.now() - battleLastPairAt > 2000) {
+    battleLastPairAt = Date.now();
+    try { pairBattlePool(); } catch (e) {}
+  }
+}
+setInterval(() => { try { battleSweep(); } catch (e) {} }, 5000);
+
+/* ---------------- battle endpoints ---------------- */
+
+function battleEligibleModel(userId) {
+  const u = db.prepare("SELECT * FROM users WHERE id = ? AND role = 'model'").get(userId);
+  if (!u || u.banned) return null;
+  if (!isIdVerified(userId)) return null;
+  return u;
+}
+function validBattleMinutes(v) {
+  const m = parseInt(v);
+  return BATTLE_MINUTES.includes(m) ? m : null;
+}
+
+/* Door 1 picker: ID-approved models whose invites are open, live
+ * models first. She sees everyone she could invite — including models
+ * in a battle (flagged) — but never herself. */
+app.get('/api/battles/opponents', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const rows = db.prepare(`SELECT u.id, u.username, u.display_name, m.photo_url,
+      m.is_online, u.presence_override,
+      ls.id AS live_session_id
+    FROM users u JOIN models m ON m.user_id = u.id
+    LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live'
+    WHERE u.role = 'model' AND u.banned = 0 AND u.id != ?
+      AND COALESCE(m.battle_invites_open, 1) = 1 AND COALESCE(m.is_hidden, 0) = 0
+    ORDER BY (ls.id IS NOT NULL) DESC, u.display_name ASC`).all(req.user.id);
+  const out = [];
+  for (const r of rows) {
+    if (!isIdVerified(r.id)) continue;
+    out.push({ id: r.id, username: r.username, display_name: r.display_name,
+      photo_url: r.photo_url, live_session_id: r.live_session_id,
+      is_online: !!effectiveOnline(r.presence_override, r.is_online),
+      in_battle: !!liveBattleForModel(r.id) });
+  }
+  res.json({ opponents: out });
+});
+
+/* Door 1 — Live Invite. One pending invite per model at a time
+ * (either direction), declined pair cools down for 10 minutes. */
+app.post('/api/battles/invite', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  battleSweep();
+  if (!battleEligibleModel(req.user.id))
+    return res.status(403).json({ error: 'id_verification_required' });
+  const opponentId = parseInt(req.body.opponent_id);
+  const minutes = validBattleMinutes(req.body.minutes ?? 10);
+  if (!minutes) return res.status(400).json({ error: 'bad_minutes' });
+  if (!opponentId || opponentId === req.user.id)
+    return res.status(400).json({ error: 'bad_opponent' });
+  const opp = battleEligibleModel(opponentId);
+  if (!opp) return res.status(404).json({ error: 'opponent_not_eligible' });
+  const oppModel = db.prepare('SELECT battle_invites_open FROM models WHERE user_id = ?').get(opponentId);
+  if (oppModel && oppModel.battle_invites_open === 0)
+    return res.status(409).json({ error: 'invites_closed' });
+  if (liveBattleForModel(req.user.id) || liveBattleForModel(opponentId))
+    return res.status(409).json({ error: 'already_in_battle' });
+  if (pendingBattleFor(req.user.id) || pendingBattleFor(opponentId))
+    return res.status(409).json({ error: 'invite_pending' });
+  const declined = db.prepare(`SELECT 1 FROM battles WHERE kind IN ('invite','rematch')
+    AND host_id = ? AND guest_id = ? AND status = 'declined'
+    AND created_at > datetime('now', '-10 minutes')`).get(req.user.id, opponentId);
+  if (declined) return res.status(429).json({ error: 'cooldown',
+    message: 'She declined recently — give it a few minutes before inviting her again.' });
+  const info = db.prepare(`INSERT INTO battles
+    (kind, host_id, guest_id, minutes, status, host_accepted, expires_at)
+    VALUES ('invite', ?, ?, ?, 'invited', 1, datetime('now', '+60 seconds'))`)
+    .run(req.user.id, opponentId, minutes);
+  const b = getBattle(Number(info.lastInsertRowid));
+  pushToUser(opponentId, { type: 'battle:invite', battle: battleOut(b) });
+  try {
+    notifyUser(opponentId, 'battle', srv('battle_bell_invite_title', userLang(opponentId)),
+      srv('battle_bell_invite_body', userLang(opponentId),
+        { name: req.user.display_name, minutes }), null);
+  } catch (e) {}
+  res.json({ ok: true, battle: battleOut(b) });
+});
+
+/* Door 2 — Scheduled Showdown. The opponent must confirm before the
+ * event displays anywhere (profiles, reminders). */
+app.post('/api/battles/schedule', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  if (!battleEligibleModel(req.user.id))
+    return res.status(403).json({ error: 'id_verification_required' });
+  const opponentId = parseInt(req.body.opponent_id);
+  const minutes = validBattleMinutes(req.body.minutes ?? 10);
+  if (!minutes) return res.status(400).json({ error: 'bad_minutes' });
+  if (!opponentId || opponentId === req.user.id)
+    return res.status(400).json({ error: 'bad_opponent' });
+  if (!battleEligibleModel(opponentId))
+    return res.status(404).json({ error: 'opponent_not_eligible' });
+  const startsAt = new Date(String(req.body.starts_at || ''));
+  if (isNaN(startsAt.getTime()) || startsAt.getTime() < Date.now() + 60000)
+    return res.status(400).json({ error: 'bad_start_time' });
+  const startsSql = startsAt.toISOString().slice(0, 19).replace('T', ' ');
+  const info = db.prepare(`INSERT INTO battles
+    (kind, host_id, guest_id, minutes, status, host_accepted, starts_at)
+    VALUES ('scheduled', ?, ?, ?, 'scheduled', 1, ?)`).run(req.user.id, opponentId, minutes, startsSql);
+  const b = getBattle(Number(info.lastInsertRowid));
+  pushToUser(opponentId, { type: 'battle:invite', battle: battleOut(b) });
+  try {
+    notifyUser(opponentId, 'battle', srv('battle_bell_invite_title', userLang(opponentId)),
+      srv('battle_bell_invite_body', userLang(opponentId),
+        { name: req.user.display_name, minutes }), null);
+  } catch (e) {}
+  res.json({ ok: true, battle: battleOut(b) });
+});
+
+/* Door 3 — Random Battle pool. Live + ID-approved only. */
+app.post('/api/battles/pool/enter', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  battleSweep();
+  if (!battleEligibleModel(req.user.id))
+    return res.status(403).json({ error: 'id_verification_required' });
+  if (!liveSessionOf(req.user.id))
+    return res.status(409).json({ error: 'not_live', message: 'Go live first, then enter the battle pool.' });
+  if (liveBattleForModel(req.user.id) || pendingBattleFor(req.user.id))
+    return res.status(409).json({ error: 'already_in_battle' });
+  db.prepare('INSERT OR REPLACE INTO battle_pool (model_id, looking, entered_at) VALUES (?, ?, datetime(\'now\'))')
+    .run(req.user.id, req.body.looking ? 1 : 0);
+  try { pairBattlePool(); } catch (e) {}
+  const paired = pendingBattleFor(req.user.id);
+  res.json({ ok: true, in_pool: !paired, battle: paired ? battleOut(paired) : null });
+});
+app.post('/api/battles/pool/leave', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  db.prepare('DELETE FROM battle_pool WHERE model_id = ?').run(req.user.id);
+  res.json({ ok: true, in_pool: false });
+});
+app.post('/api/battles/pool/looking', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const row = db.prepare('SELECT * FROM battle_pool WHERE model_id = ?').get(req.user.id);
+  if (!row) return res.status(409).json({ error: 'not_in_pool' });
+  db.prepare('UPDATE battle_pool SET looking = ? WHERE model_id = ?')
+    .run(req.body.on ? 1 : 0, req.user.id);
+  res.json({ ok: true, looking: !!req.body.on });
+});
+
+/* Shared accept/decline/confirm/ready/cancel actions. */
+function loadBattleForAction(req, res) {
+  const b = getBattle(parseInt(req.params.id));
+  if (!b) { res.status(404).json({ error: 'not_found' }); return null; }
+  if (!isBattler(b, req.user.id)) { res.status(403).json({ error: 'forbidden' }); return null; }
+  return b;
+}
+
+app.post('/api/battles/:id/accept', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  battleSweep();
+  const b = loadBattleForAction(req, res);
+  if (!b) return;
+  if (b.kind === 'scheduled') {
+    if (b.status !== 'scheduled' || b.confirmed)
+      return res.status(409).json({ error: 'bad_state', status: b.status });
+    if (req.user.id !== b.guest_id)
+      return res.status(403).json({ error: 'forbidden' });
+    db.prepare('UPDATE battles SET confirmed = 1, guest_accepted = 1 WHERE id = ?').run(b.id);
+    const fresh = getBattle(b.id);
+    pushBattleUpdate(fresh, { confirmed: true });
+    return res.json({ ok: true, battle: battleOut(fresh) });
+  }
+  if (b.status !== 'invited')
+    return res.status(409).json({ error: 'bad_state', status: b.status });
+  if (b.expires_at && b.expires_at <= new Date().toISOString().slice(0, 19).replace('T', ' '))
+    return res.status(409).json({ error: 'expired' });
+  const col = req.user.id === b.host_id ? 'host_accepted' : 'guest_accepted';
+  // Door 1: the inviter already accepted by sending; only the guest answers.
+  if (b.kind === 'invite' || b.kind === 'rematch') {
+    if (req.user.id !== b.guest_id)
+      return res.status(403).json({ error: 'forbidden' });
+  }
+  db.prepare(`UPDATE battles SET ${col} = 1 WHERE id = ?`).run(b.id);
+  let fresh = getBattle(b.id);
+  if (fresh.host_accepted && fresh.guest_accepted) {
+    db.prepare("UPDATE battles SET status = 'ready_check', expires_at = NULL WHERE id = ?").run(b.id);
+    fresh = getBattle(b.id);
+  }
+  pushBattleUpdate(fresh, { accepted_by: req.user.id });
+  res.json({ ok: true, battle: battleOut(fresh) });
+});
+
+app.post('/api/battles/:id/decline', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const b = loadBattleForAction(req, res);
+  if (!b) return;
+  if (!['invited', 'scheduled'].includes(b.status))
+    return res.status(409).json({ error: 'bad_state', status: b.status });
+  if (b.kind === 'scheduled' && b.confirmed)
+    return res.status(409).json({ error: 'already_confirmed' });
+  if ((b.kind === 'invite' || b.kind === 'rematch') && req.user.id !== b.guest_id)
+    return res.status(403).json({ error: 'forbidden' });
+  db.prepare("UPDATE battles SET status = 'declined' WHERE id = ?").run(b.id);
+  if (b.kind === 'random') {
+    // No penalty: the other model returns to the pool if still live.
+    const other = req.user.id === b.host_id ? b.guest_id : b.host_id;
+    if (liveSessionOf(other) && isIdVerified(other) && !pendingBattleFor(other))
+      db.prepare('INSERT OR IGNORE INTO battle_pool (model_id) VALUES (?)').run(other);
+  }
+  const fresh = getBattle(b.id);
+  pushBattleUpdate(fresh, { declined_by: req.user.id });
+  res.json({ ok: true, battle: battleOut(fresh) });
+});
+
+app.post('/api/battles/:id/cancel', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const b = loadBattleForAction(req, res);
+  if (!b) return;
+  if (!['invited', 'ready_check', 'scheduled'].includes(b.status))
+    return res.status(409).json({ error: 'bad_state', status: b.status });
+  db.prepare("UPDATE battles SET status = 'cancelled' WHERE id = ?").run(b.id);
+  db.prepare('DELETE FROM battle_pool WHERE model_id IN (?, ?)').run(b.host_id, b.guest_id);
+  const fresh = getBattle(b.id);
+  pushBattleUpdate(fresh, { cancelled_by: req.user.id });
+  res.json({ ok: true, battle: battleOut(fresh) });
+});
+
+/* Scheduled showdown: at start time a battler moves it to the ready
+ * check (15 minutes early is fine — the prompt fires at starts_at). */
+app.post('/api/battles/:id/start', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  battleSweep();
+  const b = loadBattleForAction(req, res);
+  if (!b) return;
+  if (b.kind !== 'scheduled' || b.status !== 'scheduled' || !b.confirmed)
+    return res.status(409).json({ error: 'bad_state', status: b.status });
+  const startsMs = new Date(String(b.starts_at).replace(' ', 'T') + 'Z').getTime();
+  if (Date.now() < startsMs - 15 * 60000)
+    return res.status(409).json({ error: 'too_early', starts_at: b.starts_at });
+  db.prepare("UPDATE battles SET status = 'ready_check' WHERE id = ?").run(b.id);
+  const fresh = getBattle(b.id);
+  pushBattleUpdate(fresh, { starting: true });
+  res.json({ ok: true, battle: battleOut(fresh) });
+});
+
+/* The ready check: both tap Ready; the clock starts when both are
+ * readied AND both are live. */
+app.post('/api/battles/:id/ready', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  battleSweep();
+  const b = loadBattleForAction(req, res);
+  if (!b) return;
+  if (b.status !== 'ready_check')
+    return res.status(409).json({ error: 'bad_state', status: b.status });
+  const col = req.user.id === b.host_id ? 'host_ready' : 'guest_ready';
+  db.prepare(`UPDATE battles SET ${col} = 1 WHERE id = ?`).run(b.id);
+  let fresh = getBattle(b.id);
+  if (fresh.host_ready && fresh.guest_ready) {
+    if (!liveSessionOf(fresh.host_id) || !liveSessionOf(fresh.guest_id)) {
+      pushBattleUpdate(fresh, { waiting_for_live: true });
+      return res.status(409).json({ error: 'not_live',
+        message: 'Both models must be live before the battle clock can start.',
+        battle: battleOut(fresh) });
+    }
+    startBattle(fresh);
+    fresh = getBattle(b.id);
+    return res.json({ ok: true, started: true, battle: battleOut(fresh) });
+  }
+  pushBattleUpdate(fresh, { ready_by: req.user.id });
+  res.json({ ok: true, battle: battleOut(fresh) });
+});
+
+/* Rematch: from a finished battle's result card — same opponent, same
+ * length, a fresh invite the other side must accept. */
+app.post('/api/battles/:id/rematch', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  battleSweep();
+  const b = loadBattleForAction(req, res);
+  if (!b) return;
+  if (b.status !== 'finished')
+    return res.status(409).json({ error: 'bad_state', status: b.status });
+  const opponentId = req.user.id === b.host_id ? b.guest_id : b.host_id;
+  if (!battleEligibleModel(opponentId))
+    return res.status(404).json({ error: 'opponent_not_eligible' });
+  if (liveBattleForModel(req.user.id) || liveBattleForModel(opponentId))
+    return res.status(409).json({ error: 'already_in_battle' });
+  if (pendingBattleFor(req.user.id) || pendingBattleFor(opponentId))
+    return res.status(409).json({ error: 'invite_pending' });
+  const info = db.prepare(`INSERT INTO battles
+    (kind, host_id, guest_id, minutes, status, host_accepted, expires_at)
+    VALUES ('rematch', ?, ?, ?, 'invited', 1, datetime('now', '+60 seconds'))`)
+    .run(req.user.id, opponentId, b.minutes);
+  const fresh = getBattle(Number(info.lastInsertRowid));
+  pushToUser(opponentId, { type: 'battle:invite', battle: battleOut(fresh) });
+  res.json({ ok: true, battle: battleOut(fresh) });
+});
+
+/* Fan reminder for a scheduled showdown (toggle). */
+app.post('/api/battles/:id/remind', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const b = getBattle(parseInt(req.params.id));
+  if (!b || b.kind !== 'scheduled') return res.status(404).json({ error: 'not_found' });
+  if (!['scheduled', 'ready_check'].includes(b.status) || !b.confirmed)
+    return res.status(409).json({ error: 'bad_state', status: b.status });
+  const existing = db.prepare('SELECT 1 FROM battle_reminders WHERE battle_id = ? AND fan_id = ?')
+    .get(b.id, req.user.id);
+  if (existing) {
+    db.prepare('DELETE FROM battle_reminders WHERE battle_id = ? AND fan_id = ?').run(b.id, req.user.id);
+    return res.json({ ok: true, reminded: false });
+  }
+  db.prepare('INSERT INTO battle_reminders (battle_id, fan_id) VALUES (?,?)').run(b.id, req.user.id);
+  res.json({ ok: true, reminded: true });
+});
+
+/* Confirmed upcoming showdowns for a model's profile ("⚔️ vs @name —
+ * Fri 8 PM"). Unconfirmed events never display. */
+app.get('/api/models/:id/battle-events', (req, res) => {
+  const modelId = parseInt(req.params.id);
+  const rows = db.prepare(`SELECT * FROM battles WHERE kind = 'scheduled'
+    AND confirmed = 1 AND status = 'scheduled'
+    AND starts_at >= datetime('now', '-1 hour')
+    AND (host_id = ? OR guest_id = ?) ORDER BY starts_at ASC LIMIT 5`).all(modelId, modelId);
+  res.json({ events: rows.map((b) => ({
+    id: b.id, minutes: b.minutes, starts_at: b.starts_at,
+    opponent: battleUserBrief(b.host_id === modelId ? b.guest_id : b.host_id),
+  })) });
+});
+
+/* Enter the battle stage: fans get viewer rows in BOTH sessions (so
+ * both peer connections, both game sheets and the shared chat all
+ * work through the existing per-session gates); a battler gets a
+ * viewer row in the OTHER model's session (her cross-connection). */
+app.post('/api/battles/:id/enter', identMiddleware, requireUser, (req, res) => {
+  battleSweep();
+  const b = getBattle(parseInt(req.params.id));
+  if (!b) return res.status(404).json({ error: 'not_found' });
+  if (b.status !== 'live')
+    return res.status(409).json({ error: 'not_live', status: b.status });
+  const joinViewer = (sessionId, viewerId) => {
+    if (!sessionId) return;
+    const before = db.prepare('SELECT 1 FROM live_viewers WHERE session_id = ? AND fan_id = ?')
+      .get(sessionId, viewerId);
+    db.prepare('INSERT OR IGNORE INTO live_viewers (session_id, fan_id) VALUES (?,?)')
+      .run(sessionId, viewerId);
+    if (!before) {
+      const sess = db.prepare('SELECT model_id FROM live_sessions WHERE id = ?').get(sessionId);
+      if (sess) pushToUser(sess.model_id, { type: 'live:viewer-joined',
+        session_id: sessionId, fan_id: viewerId,
+        fan_name: req.user.display_name });
+    }
+  };
+  if (isBattler(b, req.user.id)) {
+    const otherSession = req.user.id === b.host_id ? b.guest_session_id : b.host_session_id;
+    joinViewer(otherSession, req.user.id);
+  } else {
+    if (req.user.role !== 'fan') return res.status(403).json({ error: 'forbidden' });
+    joinViewer(b.host_session_id, req.user.id);
+    joinViewer(b.guest_session_id, req.user.id);
+    db.prepare('INSERT OR IGNORE INTO battle_viewers (battle_id, fan_id) VALUES (?,?)')
+      .run(b.id, req.user.id);
+  }
+  res.json({ ok: true, battle: battleOut(b) });
+});
+
+/* Battle state (the stage polls this as a WS fallback). Live battles
+ * are a public show — any signed-in user may read one. */
+app.get('/api/battles/live', identMiddleware, requireUser, (req, res) => {
+  battleSweep();
+  const rows = db.prepare("SELECT * FROM battles WHERE status = 'live' ORDER BY started_at ASC").all();
+  res.json({ battles: rows.map(battleOut) });
+});
+
+/* A model's battle inbox + history. */
+app.get('/api/battles/mine', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  battleSweep();
+  const me = req.user.id;
+  const pending = db.prepare(`SELECT * FROM battles
+    WHERE status IN ('invited','ready_check') AND (host_id = ? OR guest_id = ?)
+    ORDER BY id DESC`).all(me, me);
+  const scheduled = db.prepare(`SELECT * FROM battles WHERE kind = 'scheduled'
+    AND status = 'scheduled' AND (host_id = ? OR guest_id = ?)
+    AND starts_at >= datetime('now', '-1 hour') ORDER BY starts_at ASC`).all(me, me);
+  const history = db.prepare(`SELECT * FROM battles WHERE status = 'finished'
+    AND (host_id = ? OR guest_id = ?) ORDER BY ended_at DESC LIMIT 20`).all(me, me);
+  const pool = db.prepare('SELECT * FROM battle_pool WHERE model_id = ?').get(me);
+  res.json({
+    pending: pending.map(battleOut),
+    scheduled: scheduled.map(battleOut),
+    history: history.map((b) => {
+      const out = battleOut(b);
+      out.your_cents = b.winner_id
+        ? (b.winner_id === me ? b.winner_cents : b.loser_cents)
+        : (me === b.host_id ? b.winner_cents : b.loser_cents);
+      out.result = !b.winner_id ? 'tie' : (b.winner_id === me ? 'won' : 'lost');
+      return out;
+    }),
+    pool: pool ? { in_pool: true, looking: !!pool.looking } : { in_pool: false, looking: false },
+  });
+});
+
+/* Battle tip: her tip menu, bought into escrow and tagged to her
+ * side. Same menu resolution as POST /api/models/:id/tip (custom
+ * items + the DEFAULT_TIP_MENU 'default-N' scheme). */
+app.get('/api/battles/:id', identMiddleware, requireUser, (req, res) => {
+  battleSweep();
+  const b = getBattle(parseInt(req.params.id));
+  if (!b) return res.status(404).json({ error: 'not_found' });
+  if (b.status !== 'live' && !isBattler(b, req.user.id)
+      && !battleFanIds(b.id).includes(req.user.id))
+    return res.status(403).json({ error: 'forbidden' });
+  res.json({ battle: battleOut(b) });
+});
+
+/* Live battles right now (fan discovery). */
+app.post('/api/battles/:id/tip', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const b = getBattle(parseInt(req.params.id));
+  if (!b) return res.status(404).json({ error: 'not_found' });
+  if (b.status !== 'live')
+    return res.status(409).json({ error: 'not_live', status: b.status });
+  const sideId = parseInt(req.body.side_model_id);
+  if (sideId !== b.host_id && sideId !== b.guest_id)
+    return res.status(400).json({ error: 'bad_side' });
+  const entered = db.prepare('SELECT 1 FROM battle_viewers WHERE battle_id = ? AND fan_id = ?')
+    .get(b.id, req.user.id);
+  if (!entered) return res.status(403).json({ error: 'enter_first' });
+  const menuId = req.body ? req.body.menu_id : undefined;
+  if ((typeof menuId !== 'string' && typeof menuId !== 'number') || String(menuId).trim() === '')
+    return res.status(400).json({ error: 'menu_id_required' });
+  let item = db.prepare('SELECT * FROM tip_menus WHERE id = ? AND model_id = ?').get(menuId, sideId);
+  if (!item && String(menuId).startsWith('default-')) {
+    const idx = parseInt(String(menuId).replace('default-', ''));
+    const d = DEFAULT_TIP_MENU[idx];
+    if (d) item = { id: menuId, model_id: sideId, ...d };
+  }
+  if (!item) return res.status(404).json({ error: 'menu_item_not_found' });
+  let spendId;
+  try {
+    spendId = chargeBattleEscrow(b, req.user.id, sideId, item.price_cents, 'tip',
+      'tip_menu', typeof item.id === 'number' ? item.id : null,
+      `⚔️ Battle tip: ${item.emoji} ${item.label}`, clientIp(req));
+  } catch (e) {
+    if (e.message === 'insufficient_credits' || e.message === 'spend_cap_reached')
+      return res.status(402).json(chargeErrorBody(e, item.price_cents, req.user.id));
+    throw e;
+  }
+  db.prepare(`INSERT INTO tip_sends (fan_id, model_id, menu_id, price_cents, context)
+    VALUES (?,?,?,?, 'live')`).run(req.user.id, sideId, item.id, item.price_cents);
+  pushToUser(sideId, { type: 'tip:received', fan_id: req.user.id,
+    fan_name: req.user.display_name || 'A fan', emoji: item.emoji, label: item.label,
+    price_cents: item.price_cents, context: 'live', battle_id: b.id });
+  pushBattleUpdate(getBattle(b.id), { spend_id: spendId });
+  res.json({ ok: true, price_cents: item.price_cents,
+    balance_cents: getWallet(req.user.id).credits_cents,
+    battle: battleOut(getBattle(b.id)) });
+});
+
+/* Shared battle chat — ONE room for both fanbases, stored on the host
+ * session's stream_chat (her normal live chat shows it too), with the
+ * same safety scan as live chat. Payment info ends the battle on the
+ * spot and settles on the current score (no forfeit designation). */
+function battleChatRecipients(b, msg) {
+  pushLiveAll(b.host_session_id, { type: 'live:chat', message: msg });
+  pushBattle(b, { type: 'battle:chat', battle_id: b.id, message: msg });
+}
+function isBattleParticipant(b, user) {
+  if (isBattler(b, user.id)) return true;
+  return !!db.prepare('SELECT 1 FROM battle_viewers WHERE battle_id = ? AND fan_id = ?')
+    .get(b.id, user.id);
+}
+app.get('/api/battles/:id/chat', identMiddleware, requireUser, (req, res) => {
+  const b = getBattle(parseInt(req.params.id));
+  if (!b) return res.status(404).json({ error: 'not_found' });
+  if (!isBattleParticipant(b, req.user)) return res.status(403).json({ error: 'enter_first' });
+  if (!b.host_session_id) return res.json({ messages: [] });
+  const rows = db.prepare(`SELECT sc.*, u.display_name AS sender_name, u.role AS sender_role
+    FROM stream_chat sc JOIN users u ON u.id = sc.sender_id
+    WHERE sc.session_id = ? ORDER BY sc.id DESC LIMIT 50`).all(b.host_session_id);
+  res.json({ messages: rows.reverse().map((r) => ({ id: r.id, session_id: r.session_id,
+    sender_id: r.sender_id, sender_name: r.sender_name, sender_role: r.sender_role,
+    body: r.body, created_at: r.created_at })) });
+});
+app.post('/api/battles/:id/chat', identMiddleware, requireUser, (req, res) => {
+  const b = getBattle(parseInt(req.params.id));
+  if (!b) return res.status(404).json({ error: 'not_found' });
+  if (b.status !== 'live')
+    return res.status(409).json({ error: 'not_live', status: b.status });
+  if (!isBattleParticipant(b, req.user)) return res.status(403).json({ error: 'enter_first' });
+  const body = String(req.body.body || '').trim().slice(0, 500);
+  if (!body) return res.status(400).json({ error: 'empty_message' });
+  const matched = safetyScan(body);
+  if (matched) {
+    const key = `u:${req.user.id}`;
+    const total = addStrike(key);
+    db.prepare(`INSERT INTO stream_flags (session_id, sender_id, sender_name, flagged_text, matched)
+                VALUES (?,?,?,?,?)`)
+      .run(b.host_session_id, req.user.id, req.user.display_name, body.slice(0, 300), matched);
+    if (matched.startsWith('payment_')) {
+      pushToAdmins({ type: 'safety:stream_killed', session_id: b.host_session_id,
+        sender_name: req.user.display_name, matched, total_strikes: total,
+        exact_words: body.slice(0, 300) });
+      const s = battleScores(b.id);
+      const winner = s.host === s.guest ? null : (s.host > s.guest ? b.host_id : b.guest_id);
+      finishBattle(b.id, { winnerId: winner, forfeitBy: null });
+      pushToUser(req.user.id, { type: 'live:killed',
+        warning: `🛑 Battle ended — payment info is never allowed on live. (${total}/3 strikes)` });
+      return res.status(423).json({ error: 'stream_killed', matched, strikes: total });
+    }
+    pushToAdmins({ type: 'safety:stream_flag', session_id: b.host_session_id,
+      sender_name: req.user.display_name, matched, total_strikes: total });
+    pushToUser(req.user.id, { type: 'live:chat_blocked', session_id: b.host_session_id,
+      warning: `⚠️ Message blocked — "${matched}" is not allowed. (${total}/3 strikes)` });
+    return res.status(423).json({ error: 'blocked', matched, strikes: total });
+  }
+  const info = db.prepare('INSERT INTO stream_chat (session_id, sender_id, body) VALUES (?,?,?)')
+    .run(b.host_session_id, req.user.id, body);
+  const msg = { id: Number(info.lastInsertRowid), session_id: b.host_session_id,
+    sender_id: req.user.id, sender_name: req.user.display_name,
+    sender_role: req.user.role, body, created_at: new Date().toISOString() };
+  battleChatRecipients(b, msg);
+  res.json({ ok: true, message: msg });
 });
 
 /* ------------------------------------------------------------------ */
@@ -12091,6 +13274,8 @@ app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
   refundPendingGameRequests(sess, clientIp(req));
   pushLiveViewers(sess.id, { type: 'live:ended', session_id: sess.id });
   pushToUser(sess.model_id, { type: 'live:ended', session_id: sess.id });
+  // Phase 6: ending her live mid-battle forfeits the battle.
+  try { battleOnSessionEnded(sess.id); } catch (e) {}
   res.json({ ok: true });
 });
 
@@ -12115,6 +13300,19 @@ app.get('/api/live', (req, res) => {
   if (vRole !== 'model' && vRole !== 'admin') {
     const blocked = blockedModelIds(geoOfReq(req));
     if (blocked.size) out = out.filter((r) => !blocked.has(r.model_id));
+  }
+  // Phase 6: tag rows that are a side of a live battle (fans open the
+  // battle stage instead of the single stream) + the ⚔️ "looking for
+  // a battle" badge for pooled models who left their flag on.
+  const battleBySession = new Map();
+  for (const bb of db.prepare("SELECT id, host_session_id, guest_session_id FROM battles WHERE status = 'live'").all()) {
+    if (bb.host_session_id) battleBySession.set(bb.host_session_id, bb.id);
+    if (bb.guest_session_id) battleBySession.set(bb.guest_session_id, bb.id);
+  }
+  const lookingSet = new Set(db.prepare('SELECT model_id FROM battle_pool WHERE looking = 1').all().map((r) => r.model_id));
+  for (const r of out) {
+    r.battle_id = battleBySession.get(r.session_id) || null;
+    r.battle_looking = lookingSet.has(r.model_id) ? 1 : 0;
   }
   res.json({ live: out });
 });
@@ -12224,6 +13422,11 @@ app.post('/api/live/:id/mode', identMiddleware, requireUser, requireRole('model'
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ? AND status = \'live\'')
     .get(req.params.id);
   if (!sess || sess.model_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
+  // Phase 6: battles run under public-live rules — the explicit
+  // upsell pauses while a battle is running.
+  if (liveBattleForSession(sess.id))
+    return res.status(409).json({ error: 'in_battle',
+      message: 'Explicit mode is paused during a battle.' });
   const isExplicit = req.body.is_explicit ? 1 : 0;
   db.prepare('UPDATE live_sessions SET is_explicit = ? WHERE id = ?').run(isExplicit, sess.id);
   if (isExplicit) {
@@ -12441,6 +13644,42 @@ app.post('/api/live/:id/game-buy', identMiddleware, requireUser, requireRole('fa
   if (item.section === 'special' && !item.special_ready)
     return res.status(409).json({ error: 'special_resting' });
 
+  /* Phase 6 (owner add-on): if this session is a side of a LIVE
+   * battle, the buy escrows into the battle pot — tagged to THIS
+   * session's model — and settles through the battle distribution.
+   * Every gate above is unchanged; skip / unresolved-at-end refunds
+   * branch on game_requests.battle_id (see the resolve route and
+   * refundPendingGameRequests). */
+  const battle = liveBattleForSession(sess.id);
+  if (battle) {
+    const info = db.prepare(`INSERT INTO game_requests
+      (session_id, model_id, fan_id, item_id, label, price_cents, status, battle_id)
+      VALUES (?,?,?,?,?,?, 'pending', ?)`)
+      .run(sess.id, sess.model_id, req.user.id, item.id, item.label, item.price_cents, battle.id);
+    const requestId = Number(info.lastInsertRowid);
+    try {
+      chargeBattleEscrow(battle, req.user.id, sess.model_id, item.price_cents, 'game',
+        'game', requestId, `🎲 Game Category (battle #${battle.id}): ${item.label}`, clientIp(req));
+    } catch (e) {
+      db.prepare('DELETE FROM game_requests WHERE id = ?').run(requestId);
+      if (e.message === 'insufficient_credits' || e.message === 'spend_cap_reached')
+        return res.status(402).json(chargeErrorBody(e, item.price_cents, req.user.id));
+      throw e;
+    }
+    if (item.section === 'special')
+      db.prepare('UPDATE game_items SET special_ready = 0 WHERE id = ?').run(item.id);
+    const payload = { type: 'game:request', session_id: sess.id, request_id: requestId,
+      fan_id: req.user.id, fan_name: req.user.display_name, label: item.label,
+      price_cents: item.price_cents, duration_sec: item.duration_sec,
+      section: item.section, battle_id: battle.id };
+    pushLiveAll(sess.id, payload);
+    pushToAdmins({ type: 'game:request_admin', session_id: sess.id, model_id: sess.model_id,
+      fan_name: req.user.display_name, label: item.label, gross_cents: item.price_cents });
+    pushBattleUpdate(getBattle(battle.id), { spend_id: requestId });
+    return res.json({ ok: true, request_id: requestId, battle_id: battle.id,
+      balance_cents: getWallet(req.user.id).credits_cents });
+  }
+
   let charged;
   try {
     charged = chargeFan(req.user.id, sess.model_id, item.price_cents, 'game',
@@ -12523,9 +13762,18 @@ app.post('/api/game/requests/:id/resolve', identMiddleware, requireUser, (req, r
       request_id: gr.id, status: 'done' });
     return res.json({ ok: true, status: 'done' });
   }
-  // skip → full refund through the standard reversal path
-  refundFan(gr.fan_id, gr.model_id, gr.price_cents, 'game_refund',
-    `🎲 Game Category skipped by model — refunded: ${gr.label}`, clientIp(req));
+  // skip → full refund (battle buys refund out of escrow — the model
+  // was never credited; normal buys reverse through refundFan)
+  if (gr.battle_id) {
+    const spend = battleSpendForGameRequest(gr.id);
+    if (spend) refundBattleEscrow(spend, 'game_refund',
+      `🎲 Game Category skipped by model — refunded: ${gr.label}`, clientIp(req));
+    const bb = getBattle(gr.battle_id);
+    if (bb && bb.status === 'live') pushBattleUpdate(bb, { spend_refunded: gr.id });
+  } else {
+    refundFan(gr.fan_id, gr.model_id, gr.price_cents, 'game_refund',
+      `🎲 Game Category skipped by model — refunded: ${gr.label}`, clientIp(req));
+  }
   db.prepare(`UPDATE game_requests SET status = 'skipped', resolved_at = datetime('now')
               WHERE id = ?`).run(gr.id);
   pushLiveAll(gr.session_id, { type: 'game:update', session_id: gr.session_id,
@@ -12542,8 +13790,16 @@ function refundPendingGameRequests(sess, ip) {
   const open = db.prepare(`SELECT * FROM game_requests
     WHERE session_id = ? AND status IN ('pending','current')`).all(sess.id);
   for (const gr of open) {
+    if (gr.battle_id) {
+      // Battle buy: refund out of escrow (nobody was credited) — the
+      // spend leaves the pot before settle reads it.
+      const spend = battleSpendForGameRequest(gr.id);
+      if (spend) refundBattleEscrow(spend, 'game_refund',
+        `🎲 Game Category — stream ended before: ${gr.label}`, ip || null);
+    } else {
     refundFan(gr.fan_id, sess.model_id, gr.price_cents, 'game_refund',
       `🎲 Game Category — stream ended before: ${gr.label}`, ip || null);
+    }
     db.prepare(`UPDATE game_requests SET status = 'refunded', resolved_at = datetime('now')
                 WHERE id = ?`).run(gr.id);
     pushToUser(gr.fan_id, { type: 'game:refunded', session_id: sess.id,
@@ -12622,6 +13878,10 @@ function killLiveSession(sess, reason) {
   refundPendingGameRequests(sess, 'safety-kill');
   pushLiveViewers(sess.id, { type: 'live:ended', session_id: sess.id, reason });
   pushToUser(sess.model_id, { type: 'live:ended', session_id: sess.id, reason });
+  // Phase 6: a safety kill mid-battle forfeits her side (finishBattle
+  // claims atomically, so the battle-chat payment path — which settles
+  // on score instead — wins by finishing first).
+  try { battleOnSessionEnded(sess.id); } catch (e) {}
 }
 
 // POST a group stream chat message — FREE, safety-scanned
@@ -12788,9 +14048,19 @@ app.get('/api/gifts', (req, res) => {
 // (model 60%, platform/recruiter split), logs gift_events, refreshes the viewer's
 // explicit grace timer, and broadcasts to all viewers + the model + admins.
 function sendLiveGift(sess, fanId, gift, ip = null) {
-  const { modelCents, platformCents } = chargeFan(
-    fanId, sess.model_id, gift.price_cents, 'gift',
-    `${gift.emoji} ${gift.name} on stream #${sess.id}`, ip);
+  /* Phase 6: on a battle side, gifts escrow into the pot (tagged to
+   * this session's model) instead of paying out on the spot — the
+   * gift feed, grace timer and pushes behave exactly as usual. */
+  const battle = liveBattleForSession(sess.id);
+  let modelCents = 0, platformCents = 0;
+  if (battle) {
+    chargeBattleEscrow(battle, fanId, sess.model_id, gift.price_cents, 'gift',
+      'gift', gift.id, `${gift.emoji} ${gift.name} on stream #${sess.id}`, ip);
+  } else {
+    ({ modelCents, platformCents } = chargeFan(
+      fanId, sess.model_id, gift.price_cents, 'gift',
+      `${gift.emoji} ${gift.name} on stream #${sess.id}`, ip));
+  }
   db.prepare(`INSERT INTO gift_events
     (session_id, fan_id, gift_id, gross_cents, model_cents, platform_cents)
     VALUES (?,?,?,?,?,?)`)
@@ -12815,6 +14085,7 @@ function sendLiveGift(sess, fanId, gift, ip = null) {
   pushToAdmins({ type: 'live:gift_admin', session_id: sess.id,
     model_id: sess.model_id, fan_name: fanName,
     gift: gift.emoji + ' ' + gift.name, gross_cents: gift.price_cents });
+  if (battle) pushBattleUpdate(getBattle(battle.id), { gift: true });
   return { explicitUntil, balanceCents: getWallet(fanId).credits_cents };
 }
 
