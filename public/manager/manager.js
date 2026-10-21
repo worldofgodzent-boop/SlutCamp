@@ -352,6 +352,40 @@ function wireChats() {
   };
 }
 
+/* Fans search wiring: client-side filter over the already-rendered
+   cards. Filtering only toggles each card's visibility — cards are
+   never re-rendered or re-bound — so the Credits / 💬 Message / Ban
+   handlers on a card keep acting on the exact fan that card belongs
+   to, filtered or not. Matching is case-insensitive substring against
+   the card's "display name + username" (a leading @ is ignored). */
+function fansFilterApply(q) {
+  const query = String(q == null ? '' : q).trim().toLowerCase().replace(/^@+/, '');
+  const cards = document.querySelectorAll('#fans-list [data-fan-card]');
+  let shown = 0;
+  cards.forEach((card) => {
+    const hit = !query || (card.dataset.fanSearch || '').includes(query);
+    card.style.display = hit ? '' : 'none';
+    if (hit) shown += 1;
+  });
+  const count = document.getElementById('fans-count');
+  if (count) count.textContent = query ? `${shown} of ${cards.length} fans` : `${cards.length} fan${cards.length === 1 ? '' : 's'}`;
+  const none = document.getElementById('fans-noresults');
+  if (none) none.style.display = (query && shown === 0 && cards.length > 0) ? '' : 'none';
+  return shown;
+}
+function wireFansSearch() {
+  const input = document.getElementById('fans-search');
+  if (!input) return;
+  input.addEventListener('input', () => fansFilterApply(input.value));
+  const clear = document.getElementById('fans-search-clear');
+  if (clear) clear.onclick = () => {
+    input.value = '';
+    fansFilterApply('');
+    input.focus();
+  };
+  fansFilterApply(input.value || '');
+}
+
 async function adminSafetyBody() {
   const { data: inc } = await api('/admin/safety/incidents?status=open');
   const { data: kw } = await api('/admin/safety/keywords');
@@ -757,9 +791,16 @@ async function adminFansBody() {
     if (L.refund_cents) parts.push(`↩️ Refunds ${fmt(L.refund_cents)}`);
     return `<br><span class="small">Loaded ${fmt(L.total_cents)} <span class="muted">(${parts.join(' · ')})</span></span>`;
   };
+  const fans = data.fans || [];
   return `
-    ${(data.fans || []).map((f) => `
-      <div class="card" style="padding:12px">
+    <div class="row" style="margin-bottom:10px;gap:8px;align-items:center">
+      <input id="fans-search" class="input" type="search" placeholder="🔎 Search by name or @username…" style="flex:1">
+      <button class="btn small ghost" id="fans-search-clear">✕ Clear</button>
+    </div>
+    <div class="muted small" id="fans-count" style="margin-bottom:10px">${fans.length} fan${fans.length === 1 ? '' : 's'}</div>
+    <div id="fans-list">
+    ${fans.map((f) => `
+      <div class="card" style="padding:12px" data-fan-card="${f.id}" data-fan-search="${esc((String(f.display_name || '') + ' ' + String(f.username || '')).toLowerCase())}">
         <div class="row"><span class="grow"><b>${esc(f.display_name)}</b>
           <span class="small muted">@${esc(f.username)}</span><br>
           <span class="small">Balance ${fmt(f.credits_cents)} · Spent ${fmt(f.spent_cents)} <span class="muted">(msgs, calls, gifts)</span></span>
@@ -772,7 +813,9 @@ async function adminFansBody() {
           <button class="btn small ${f.banned ? 'success' : 'danger'}" data-ban="${f.id}">${f.banned ? 'Unban' : 'Ban'}</button>
         </div>
         <div id="fedit-${f.id}"></div>
-      </div>`).join('') || '<div class="empty">No fans yet.</div>'}`;
+      </div>`).join('') || '<div class="empty">No fans yet.</div>'}
+    </div>
+    <div class="empty" id="fans-noresults" style="display:none">No fans match your search.</div>`;
 }
 
 async function adminContractsBody() {
@@ -2084,6 +2127,7 @@ function wireAdminBody(tab) {
   });
 
   // Fans
+  wireFansSearch();
   document.querySelectorAll('[data-credit]').forEach((b) => {
     b.onclick = async () => {
       const id = b.dataset.credit;
