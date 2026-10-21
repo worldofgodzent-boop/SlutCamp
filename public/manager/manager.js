@@ -84,6 +84,14 @@ function fmtDT(iso) {
   return `${mon} ${d.getDate()} · ${timeHM(iso)}`;
 }
 
+/* "Last login" text for a Fans card: the formatted moment of the
+   fan's most recent login (their newest session row), or "never".
+   It is the LOGIN moment only — a persistent session does not
+   refresh it — so it must never be worded as last activity. */
+function fanLastLoginText(f) {
+  return f && f.last_login_at ? fmtDT(f.last_login_at) : 'never';
+}
+
 /* ---------------- state + API ---------------- */
 const M = {
   token: localStorage.getItem('wc_token') || null,
@@ -805,6 +813,7 @@ async function adminFansBody() {
           <span class="small muted">@${esc(f.username)}</span><br>
           <span class="small">Balance ${fmt(f.credits_cents)} · Spent ${fmt(f.spent_cents)} <span class="muted">(msgs, calls, gifts)</span></span>
           ${fanLoadsLine(f)}
+          <br><span class="small muted">Last login: ${esc(fanLastLoginText(f))}</span>
           ${f.banned ? ' <span class="small" style="color:var(--red)">⛔ banned</span>' : ''}</span></div>
         <div class="row" style="margin-top:8px">
           <input class="input" id="cr-${f.id}" type="number" step="0.01" placeholder="$ credits" style="margin-top:0;max-width:130px">

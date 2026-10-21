@@ -15607,11 +15607,18 @@ app.get('/api/mod/presence', identMiddleware, modOnly, (req, res) => {
 presenceSvc.start();
 
 app.get('/api/admin/fans', ...adminOnly, (req, res) => {
+  // last_login_at: the fan's most recent session row — a session is
+  // created at login (password or passkey), so this is the LOGIN
+  // moment only; a still-open session never refreshes it. NULL when
+  // the fan has never logged in.
   const fans = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.banned, u.created_at, w.credits_cents,
            (SELECT COALESCE(SUM(gross_cents),0) FROM transactions t
-             WHERE t.fan_id = u.id AND t.is_test = 0 AND t.type IN ('message','call','gift')) AS spent_cents
+             WHERE t.fan_id = u.id AND t.is_test = 0 AND t.type IN ('message','call','gift')) AS spent_cents,
+           s.last_login_at
     FROM users u JOIN wallets w ON w.user_id = u.id
+    LEFT JOIN (SELECT user_id, MAX(created_at) AS last_login_at
+               FROM sessions GROUP BY user_id) s ON s.user_id = u.id
     WHERE u.role = 'fan' ORDER BY spent_cents DESC LIMIT 200`).all();
   // Lifetime money-in per fan, grouped by rail (payment-source visibility).
   const loadsByFan = fanLoadsBySource();
