@@ -329,6 +329,7 @@ const I18N = {
     sec_male: 'Male',
     sec_couple: 'Couple',
     err_must_declare_section: 'Pick your section (Female, Male or Couple) to continue.',
+    err_username_is_email: 'Your username can't be an email address — pick a name instead.',
     sf_female: 'Female',
     sf_male: 'Male',
     sf_couples: 'Couples',
@@ -680,6 +681,40 @@ const I18N = {
     say_fans_ph: 'Say something to your fans…',
     explicit_rate_note: 'Explicit rate: {price}/min · Your preview is never blurred',
     game_category: 'Game Category',
+    battle: '⚔️ PumPum Verse',
+    battle_brand: 'PumPum Verse',
+    battle_money_rule: 'House takes its standard cut first — the rest splits 60% to the winner, 40% to the loser. Tie = 50/50. Forfeit = loser, whatever the score.',
+    battle_invite_from: '{name} wants a PumPum Verse with you!',
+    battle_minutes: '{n}-minute battle',
+    battle_accept: '✅ Accept',
+    battle_ready: '✅ I\'m Ready',
+    battle_waiting_opp: 'Waiting for {name}…',
+    battle_waiting_live: 'Both models must be live before the clock can start',
+    battle_tip_her: '💰 Tip {name}',
+    battle_games_her: '🎲 {name}\'s Games',
+    battle_you_won: '🏆 YOU WON!',
+    battle_you_lost: '⚔️ {name} takes this one — good game!',
+    battle_tied: '🤝 It\'s a tie!',
+    battle_wins: '🏆 {name} wins!',
+    battle_rematch: '🔁 Rematch',
+    battle_open_invites: '⚔️ Open to PumPum Verse invites',
+    battle_open_invites_note: 'Off hides you from PumPum Verse pickers — you can still invite and schedule yourself.',
+    battle_random: '🎲 Random PumPum Verse',
+    battle_schedule: '📅 Schedule a Showdown',
+    battle_looking: '⚔️ Looking for a PumPum Verse',
+    battle_in_battle: '⚔️ IN PUMPUM VERSE',
+    battle_forfeited: 'Forfeit — a side\'s live ended',
+    battle_you_earned: 'You earned {amount}',
+    battle_enter_pool: 'Enter the pool',
+    battle_leave_pool: 'Leave pool',
+    battle_pool_waiting: 'In the pool — matching you with a rival…',
+    battle_pick_rival: 'Pick your rival',
+    battle_chat_ph: 'PumPum Verse chat…',
+    battle_history: '⚔️ PumPum Verse history',
+    battle_vs_line: '⚔️ vs {name}',
+    battle_remind: '🔔 Remind me',
+    battle_reminded: '✓ Reminder set',
+    battle_pot: 'Pot',
     game_btn: '🎲 Game',
     game_regular: 'Regular',
     game_explicit: 'Explicit 🔞',
@@ -785,7 +820,7 @@ const I18N = {
     age_confirm_toast: 'You must confirm you are 18 or older',
     agreement_signed_toast: '✅ Agreement signed — welcome to SlutCamp!',
     public_photo_removed_toast: 'Public photo removed — your public page shows the SlutCamp logo instead.',
-    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Terms of Service · Last updated October 16, 2026</div>\n    </div>\n    <div class="screen">\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. 18+ Only</div>\n        <div class="small muted">SlutCamp is strictly for adults 18 and older. By using this app you confirm you are at least 18. Models must complete ID verification with SlutCamp before going live (18 U.S.C. §2257 compliance).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. How Fans Pay</div>\n        <div class="small muted">Fans buy credits and spend them on chats, calls, gifts, live access, priority messages, stage joins, and bookings. Your first 3 messages with each model are free — after that, texts cost $1.49 each (or the model\'s own rate). Unused credits stay in your wallet. <b>Spent credits are non-refundable.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Model Rates</div>\n        <div class="small muted">Models set their own rates: per-message, per-minute video, per voice note, and their explicit stage-join rates ($5–$100). Rates are shown before you pay. The platform may set default rates which models can adjust within the allowed ranges.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Revenue Split & Payouts</div>\n        <div class="small muted">Models keep <b>60%</b> of everything fans spend on them; the platform keeps 40%. Payouts are sent by SlutCamp (currently processed manually). Models add their bank details in the app and request withdrawals anytime; pending requests are paid out on SlutCamp\'s schedule. Model earnings become eligible for withdrawal one week (7 days) after they are earned.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Live Streams & Explicit Content</div>\n        <div class="small muted">Group streams are free to watch; explicit viewing requires a paid entry fee plus ongoing gifts to stay unblurred. Stage joins (video or mic) are 3 minutes, then timed out — re-pay to return. The model approves every stage join; declined requests are refunded in full. Priority messages are paid banners with optional paid voice.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. 1-on-1 Bookings &amp; No-Shows</div>\n        <div class="small muted">Booking a private 1-on-1 reserves the model\'s time just for you — bookings are paid upfront. When your 1-on-1 goes active, you have <b>3 minutes</b> to join the call; if you\'re a no-show, <b>there is no refund</b> — you booked a slot another fan could have taken, and her time was reserved for you. If the model doesn\'t start within <b>5 minutes</b> of the booked time, that\'s her no-show: you get a <b>full refund, automatically</b>. Fans can cancel for a full refund <b>2+ hours</b> before the start (requested bookings: 1+ hour ahead); the model can cancel anytime for a full refund.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Model Access</div>\n        <div class="small muted">Model accounts are invite-only. SlutCamp may deactivate or remove any model account at any time, for any reason. Deactivated models keep earned balances available for withdrawal.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Safety & Conduct</div>\n        <div class="small muted">Sharing contact info, payment handles, or attempting to take transactions off-platform will get your messages blocked and may get your account banned. Racial slurs and hate speech are blocked. All chats and streams are monitored for safety.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. No Refunds on Spent Credits</div>\n        <div class="small muted">Once credits are spent on messages, calls, gifts, entries, priorities, joins, or bookings, they are gone — no refunds, no chargebacks through the app. Unused wallet credits are not redeemable for cash (fans).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Chargebacks & Fraud</div>\n        <div class="small muted">If you dispute a credit purchase with your bank or card issuer (a chargeback) instead of contacting us first, we may revoke the credits from that purchase, reverse any earnings it generated, and close your account. Chargebacks on purchases you received and spent are treated as fraud. If a charge is ever genuinely wrong, contact us first — real billing errors are refunded under our Billing & Refunds policy.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Governing Law</div>\n        <div class="small muted">These terms are governed by the laws of the State of Texas, without regard to its conflict-of-laws rules. Any dispute relating to these terms or your use of SlutCamp must be brought in the state or federal courts located in Texas, and you and SlutCamp consent to the personal jurisdiction and venue of those courts. Nothing in this section waives or limits any right your home state gives you that cannot legally be waived.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Changes</div>\n        <div class="small muted">Features, prices, rates, and these terms may change at any time. Continued use means you accept the current terms.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">These terms are a plain-language summary, not legal advice.<br>Operated by World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Privacy Policy</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Billing & Refunds</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">2257 Statement</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Copyright takedown →</a></p>\n      <button class="btn ghost" id="t-back">← Back</button>\n    </div>',
+    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Terms of Service · Last updated October 16, 2026</div>\n    </div>\n    <div class="screen">\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. 18+ Only</div>\n        <div class="small muted">SlutCamp is strictly for adults 18 and older. By using this app you confirm you are at least 18. Models must complete ID verification with SlutCamp before going live (18 U.S.C. §2257 compliance).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. How Fans Pay</div>\n        <div class="small muted">Fans buy credits and spend them on chats, calls, gifts, live access, priority messages, stage joins, and bookings. Your first 3 messages with each model are free — after that, texts cost $1.49 each (or the model\'s own rate). Unused credits stay in your wallet. <b>Spent credits are non-refundable.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Model Rates</div>\n        <div class="small muted">Models set their own rates: per-message, per-minute video, per voice note, and their explicit stage-join rates ($5–$100). Rates are shown before you pay. The platform may set default rates which models can adjust within the allowed ranges.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Revenue Split & Payouts</div>\n        <div class="small muted">Models keep <b>60%</b> of everything fans spend on them; the platform keeps 40%. Payouts are sent by SlutCamp (currently processed manually). Models add their bank details in the app and request withdrawals anytime; pending requests are paid out on SlutCamp\'s schedule. Model earnings become eligible for withdrawal one week (7 days) after they are earned.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Live Streams & Explicit Content</div>\n        <div class="small muted">Group streams are free to watch; explicit viewing requires a paid entry fee plus ongoing gifts to stay unblurred. Stage joins (video or mic) are 3 minutes, then timed out — re-pay to return. The model approves every stage join; declined requests are refunded in full. Priority messages are paid banners with optional paid voice.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. 1-on-1 Bookings &amp; No-Shows</div>\n        <div class="small muted">Booking a private 1-on-1 reserves the model\'s time just for you — bookings are paid upfront. When your 1-on-1 goes active, you have <b>3 minutes</b> to join the call; if you\'re a no-show, <b>there is no refund</b> — you booked a slot another fan could have taken, and her time was reserved for you. If the model doesn\'t start within <b>5 minutes</b> of the booked time, that\'s her no-show: you get a <b>full refund, automatically</b>. Fans can cancel for a full refund <b>2+ hours</b> before the start (requested bookings: 1+ hour ahead); the model can cancel anytime for a full refund.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Model Access</div>\n        <div class="small muted">Model accounts are invite-only. SlutCamp may deactivate or remove any model account at any time, for any reason. Deactivated models keep earned balances available for withdrawal.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Safety & Conduct</div>\n        <div class="small muted">Sharing contact info, payment handles, or attempting to take transactions off-platform will get your messages blocked and may get your account banned. Racial slurs and hate speech are blocked. All chats and streams are monitored for safety.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. No Refunds on Spent Credits</div>\n        <div class="small muted">Once credits are spent on messages, calls, gifts, entries, priorities, joins, or bookings, they are gone — no refunds, no chargebacks through the app. Unused wallet credits are not redeemable for cash (fans).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Chargebacks & Fraud</div>\n        <div class="small muted">If you dispute a credit purchase with your bank or card issuer (a chargeback) instead of contacting us first, we may revoke the credits from that purchase, reverse any earnings it generated, and close your account. Chargebacks on purchases you received and spent are treated as fraud. If a charge is ever genuinely wrong, contact us first — real billing errors are refunded under our Billing & Refunds policy.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Governing Law</div>\n        <div class="small muted">These terms are governed by the laws of the State of Texas, without regard to its conflict-of-laws rules. Any dispute relating to these terms or your use of SlutCamp must be brought in the state or federal courts located in Texas, and you and SlutCamp consent to the personal jurisdiction and venue of those courts. Nothing in this section waives or limits any right your home state gives you that cannot legally be waived.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Changes</div>\n        <div class="small muted">Features, prices, rates, and these terms may change at any time. Continued use means you accept the current terms.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">13. No Trafficking or Exploitation</div>\n        <div class="small muted">SlutCamp prohibits human trafficking, sexual exploitation, and non-consensual content in all forms. Every performer on SlutCamp is a verified adult acting voluntarily. Suspected trafficking or exploitation is reported to the appropriate authorities and to the National Human Trafficking Hotline (1-888-373-7888). Violations result in immediate content removal and account termination.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">These terms are a plain-language summary, not legal advice.<br>Operated by World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Privacy Policy</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Billing & Refunds</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">2257 Statement</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Copyright takedown →</a></p>\n      <button class="btn ghost" id="t-back">← Back</button>\n    </div>',
     mc_sub: 'Model Agreement',
     mc_loading: 'Loading contract…',
     mc_load_fail: 'Could not load the contract — try again',
@@ -1087,6 +1122,7 @@ const I18N = {
     sec_male: 'Hombre',
     sec_couple: 'Pareja',
     err_must_declare_section: 'Elige tu sección (Mujer, Hombre o Pareja) para continuar.',
+    err_username_is_email: 'Tu nombre de usuario no puede ser un correo electrónico — elige un nombre.',
     sf_female: 'Femenina',
     sf_male: 'Masculina',
     sf_couples: 'Parejas',
@@ -1438,6 +1474,40 @@ const I18N = {
     say_fans_ph: 'Di algo a tus fans…',
     explicit_rate_note: 'Tarifa explícita: {price}/min · Tu vista previa nunca se difumina',
     game_category: 'Game Category',
+    battle: '⚔️ PumPum Verse',
+    battle_brand: 'PumPum Verse',
+    battle_money_rule: 'La casa toma primero su comisión estándar — el resto se reparte 60% para la ganadora y 40% para la perdedora. Empate = 50/50. Abandonar = perder, sin importar el marcador.',
+    battle_invite_from: '¡{name} quiere un PumPum Verse contigo!',
+    battle_minutes: 'Batalla de {n} minutos',
+    battle_accept: '✅ Aceptar',
+    battle_ready: '✅ Estoy lista',
+    battle_waiting_opp: 'Esperando a {name}…',
+    battle_waiting_live: 'Ambas modelos deben estar en vivo para que empiece el reloj',
+    battle_tip_her: '💰 Propina a {name}',
+    battle_games_her: '🎲 Juegos de {name}',
+    battle_you_won: '🏆 ¡GANASTE!',
+    battle_you_lost: '⚔️ {name} se lleva esta — ¡buen juego!',
+    battle_tied: '🤝 ¡Es un empate!',
+    battle_wins: '🏆 ¡{name} gana!',
+    battle_rematch: '🔁 Revancha',
+    battle_open_invites: '⚔️ Abierta a invitaciones de PumPum Verse',
+    battle_open_invites_note: 'Desactivado te oculta de la lista de PumPum Verse — igual puedes invitar y programar tú.',
+    battle_random: '🎲 PumPum Verse aleatorio',
+    battle_schedule: '📅 Programar un duelo',
+    battle_looking: '⚔️ Buscando un PumPum Verse',
+    battle_in_battle: '⚔️ EN PUMPUM VERSE',
+    battle_forfeited: 'Abandono — un lado terminó su en vivo',
+    battle_you_earned: 'Ganaste {amount}',
+    battle_enter_pool: 'Entrar al grupo',
+    battle_leave_pool: 'Salir del grupo',
+    battle_pool_waiting: 'En el grupo — buscándote una rival…',
+    battle_pick_rival: 'Elige a tu rival',
+    battle_chat_ph: 'Chat de PumPum Verse…',
+    battle_history: '⚔️ Historial de PumPum Verse',
+    battle_vs_line: '⚔️ contra {name}',
+    battle_remind: '🔔 Recuérdame',
+    battle_reminded: '✓ Recordatorio activado',
+    battle_pot: 'Bote',
     game_btn: '🎲 Juego',
     game_regular: 'Regular',
     game_explicit: 'Explícito 🔞',
@@ -1543,7 +1613,7 @@ const I18N = {
     age_confirm_toast: 'Debes confirmar que tienes 18 años o más',
     agreement_signed_toast: '✅ Acuerdo firmado — ¡bienvenida a SlutCamp!',
     public_photo_removed_toast: 'Foto pública eliminada — tu página pública muestra el logo de SlutCamp en su lugar.',
-    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Términos de Servicio · Última actualización: 16 de octubre de 2026</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Traducción por conveniencia — rige la versión en inglés.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. Solo mayores de 18</div>\n        <div class="small muted">SlutCamp es estrictamente para adultos de 18 años o más. Al usar esta app confirmas que tienes al menos 18 años. Las modelos deben completar la verificación de identidad con SlutCamp antes de salir en vivo (cumplimiento de 18 U.S.C. §2257).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. Cómo pagan los fans</div>\n        <div class="small muted">Los fans compran créditos y los gastan en chats, llamadas, regalos, acceso a en vivos, mensajes prioritarios, uniones al escenario y reservas. Tus primeros 3 mensajes con cada modelo son gratis — después, los mensajes cuestan $1.49 cada uno (o la tarifa propia de la modelo). Los créditos no usados permanecen en tu billetera. <b>Los créditos gastados no son reembolsables.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Tarifas de las modelos</div>\n        <div class="small muted">Las modelos fijan sus propias tarifas: por mensaje, por minuto de video, por nota de voz y sus tarifas de unión explícita al escenario ($5–$100). Las tarifas se muestran antes de pagar. La plataforma puede fijar tarifas predeterminadas que las modelos pueden ajustar dentro de los rangos permitidos.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Reparto de ingresos y pagos</div>\n        <div class="small muted">Las modelos se quedan con el <b>60%</b> de todo lo que los fans gastan en ellas; la plataforma se queda con el 40%. Los pagos los envía SlutCamp (actualmente se procesan manualmente). Las modelos agregan sus datos bancarios en la app y solicitan retiros en cualquier momento; las solicitudes pendientes se pagan según el calendario de SlutCamp. Las ganancias de las modelos se vuelven elegibles para retiro una semana (7 días) después de generarse.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Transmisiones en vivo y contenido explícito</div>\n        <div class="small muted">Las transmisiones grupales son gratuitas para ver; la visualización explícita requiere una tarifa de entrada paga más regalos continuos para permanecer sin difuminar. Las uniones al escenario (video o micrófono) duran 3 minutos, luego se agota el tiempo — vuelve a pagar para regresar. La modelo aprueba cada unión al escenario; las solicitudes rechazadas se reembolsan por completo. Los mensajes prioritarios son banners pagos con voz paga opcional.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. Reservas 1 a 1 &amp; ausencias</div>\n        <div class="small muted">Reservar un 1 a 1 privado reserva el tiempo de la modelo solo para ti — las reservas se pagan por adelantado. Cuando tu 1 a 1 se activa, tienes <b>3 minutos</b> para unirte a la llamada; si no te presentas, <b>no hay reembolso</b> — reservaste un espacio que otro fan podría haber tomado, y su tiempo estuvo reservado para ti. Si la modelo no comienza dentro de los <b>5 minutos</b> de la hora reservada, esa es su ausencia: recibes un <b>reembolso completo, automáticamente</b>. Los fans pueden cancelar para obtener un reembolso completo <b>2+ horas</b> antes del inicio (reservas solicitadas: 1+ hora antes); la modelo puede cancelar en cualquier momento para un reembolso completo.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Acceso de modelos</div>\n        <div class="small muted">Las cuentas de modelo son solo por invitación. SlutCamp puede desactivar o eliminar cualquier cuenta de modelo en cualquier momento, por cualquier motivo. Las modelos desactivadas mantienen los saldos ganados disponibles para retiro.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Seguridad y conducta</div>\n        <div class="small muted">Compartir datos de contacto, identificadores de pago o intentar llevar las transacciones fuera de la plataforma hará que tus mensajes sean bloqueados y puede hacer que tu cuenta sea suspendida. Los insultos raciales y el discurso de odio están bloqueados. Todos los chats y transmisiones se supervisan por seguridad.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Sin reembolsos por créditos gastados</div>\n        <div class="small muted">Una vez que los créditos se gastan en mensajes, llamadas, regalos, entradas, prioridades, uniones o reservas, se acaban — sin reembolsos, sin contracargos a través de la app. Los créditos de billetera no usados no son canjeables por efectivo (fans).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Contracargos y fraude</div>\n        <div class="small muted">Si disputas una compra de créditos con tu banco o emisor de tarjeta (un contracargo) en lugar de contactarnos primero, podemos revocar los créditos de esa compra, revertir cualquier ganancia que haya generado y cerrar tu cuenta. Los contracargos por compras que recibiste y gastaste se tratan como fraude. Si un cargo es realmente erróneo, contáctanos primero — los errores reales de facturación se reembolsan según nuestra política de Facturación y Reembolsos.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Ley aplicable</div>\n        <div class="small muted">Estos términos se rigen por las leyes del Estado de Texas, sin tener en cuenta sus normas sobre conflicto de leyes. Cualquier disputa relacionada con estos términos o tu uso de SlutCamp debe presentarse ante los tribunales estatales o federales ubicados en Texas, y tú y SlutCamp aceptan la jurisdicción personal y la competencia de esos tribunales. Nada en esta sección renuncia ni limita ningún derecho que tu estado de residencia te otorgue y que legalmente no pueda renunciarse.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Cambios</div>\n        <div class="small muted">Las funciones, precios, tarifas y estos términos pueden cambiar en cualquier momento. El uso continuo significa que aceptas los términos actuales.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Estos términos son un resumen en lenguaje sencillo, no asesoramiento legal.<br>Operado por World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Política de Privacidad</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Facturación y Reembolsos</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">Declaración 2257</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Retirada por derechos de autor →</a></p>\n      <button class="btn ghost" id="t-back">← Atrás</button>\n    </div>',
+    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Términos de Servicio · Última actualización: 16 de octubre de 2026</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Traducción por conveniencia — rige la versión en inglés.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. Solo mayores de 18</div>\n        <div class="small muted">SlutCamp es estrictamente para adultos de 18 años o más. Al usar esta app confirmas que tienes al menos 18 años. Las modelos deben completar la verificación de identidad con SlutCamp antes de salir en vivo (cumplimiento de 18 U.S.C. §2257).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. Cómo pagan los fans</div>\n        <div class="small muted">Los fans compran créditos y los gastan en chats, llamadas, regalos, acceso a en vivos, mensajes prioritarios, uniones al escenario y reservas. Tus primeros 3 mensajes con cada modelo son gratis — después, los mensajes cuestan $1.49 cada uno (o la tarifa propia de la modelo). Los créditos no usados permanecen en tu billetera. <b>Los créditos gastados no son reembolsables.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Tarifas de las modelos</div>\n        <div class="small muted">Las modelos fijan sus propias tarifas: por mensaje, por minuto de video, por nota de voz y sus tarifas de unión explícita al escenario ($5–$100). Las tarifas se muestran antes de pagar. La plataforma puede fijar tarifas predeterminadas que las modelos pueden ajustar dentro de los rangos permitidos.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Reparto de ingresos y pagos</div>\n        <div class="small muted">Las modelos se quedan con el <b>60%</b> de todo lo que los fans gastan en ellas; la plataforma se queda con el 40%. Los pagos los envía SlutCamp (actualmente se procesan manualmente). Las modelos agregan sus datos bancarios en la app y solicitan retiros en cualquier momento; las solicitudes pendientes se pagan según el calendario de SlutCamp. Las ganancias de las modelos se vuelven elegibles para retiro una semana (7 días) después de generarse.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Transmisiones en vivo y contenido explícito</div>\n        <div class="small muted">Las transmisiones grupales son gratuitas para ver; la visualización explícita requiere una tarifa de entrada paga más regalos continuos para permanecer sin difuminar. Las uniones al escenario (video o micrófono) duran 3 minutos, luego se agota el tiempo — vuelve a pagar para regresar. La modelo aprueba cada unión al escenario; las solicitudes rechazadas se reembolsan por completo. Los mensajes prioritarios son banners pagos con voz paga opcional.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. Reservas 1 a 1 &amp; ausencias</div>\n        <div class="small muted">Reservar un 1 a 1 privado reserva el tiempo de la modelo solo para ti — las reservas se pagan por adelantado. Cuando tu 1 a 1 se activa, tienes <b>3 minutos</b> para unirte a la llamada; si no te presentas, <b>no hay reembolso</b> — reservaste un espacio que otro fan podría haber tomado, y su tiempo estuvo reservado para ti. Si la modelo no comienza dentro de los <b>5 minutos</b> de la hora reservada, esa es su ausencia: recibes un <b>reembolso completo, automáticamente</b>. Los fans pueden cancelar para obtener un reembolso completo <b>2+ horas</b> antes del inicio (reservas solicitadas: 1+ hora antes); la modelo puede cancelar en cualquier momento para un reembolso completo.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Acceso de modelos</div>\n        <div class="small muted">Las cuentas de modelo son solo por invitación. SlutCamp puede desactivar o eliminar cualquier cuenta de modelo en cualquier momento, por cualquier motivo. Las modelos desactivadas mantienen los saldos ganados disponibles para retiro.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Seguridad y conducta</div>\n        <div class="small muted">Compartir datos de contacto, identificadores de pago o intentar llevar las transacciones fuera de la plataforma hará que tus mensajes sean bloqueados y puede hacer que tu cuenta sea suspendida. Los insultos raciales y el discurso de odio están bloqueados. Todos los chats y transmisiones se supervisan por seguridad.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Sin reembolsos por créditos gastados</div>\n        <div class="small muted">Una vez que los créditos se gastan en mensajes, llamadas, regalos, entradas, prioridades, uniones o reservas, se acaban — sin reembolsos, sin contracargos a través de la app. Los créditos de billetera no usados no son canjeables por efectivo (fans).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Contracargos y fraude</div>\n        <div class="small muted">Si disputas una compra de créditos con tu banco o emisor de tarjeta (un contracargo) en lugar de contactarnos primero, podemos revocar los créditos de esa compra, revertir cualquier ganancia que haya generado y cerrar tu cuenta. Los contracargos por compras que recibiste y gastaste se tratan como fraude. Si un cargo es realmente erróneo, contáctanos primero — los errores reales de facturación se reembolsan según nuestra política de Facturación y Reembolsos.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Ley aplicable</div>\n        <div class="small muted">Estos términos se rigen por las leyes del Estado de Texas, sin tener en cuenta sus normas sobre conflicto de leyes. Cualquier disputa relacionada con estos términos o tu uso de SlutCamp debe presentarse ante los tribunales estatales o federales ubicados en Texas, y tú y SlutCamp aceptan la jurisdicción personal y la competencia de esos tribunales. Nada en esta sección renuncia ni limita ningún derecho que tu estado de residencia te otorgue y que legalmente no pueda renunciarse.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Cambios</div>\n        <div class="small muted">Las funciones, precios, tarifas y estos términos pueden cambiar en cualquier momento. El uso continuo significa que aceptas los términos actuales.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">13. Nada de trata ni explotación</div>\n        <div class="small muted">SlutCamp prohíbe la trata de personas, la explotación sexual y el contenido no consentido en todas sus formas. Cada artista en SlutCamp es un adulto verificado que actúa voluntariamente. Las sospechas de trata o explotación se denuncian a las autoridades correspondientes y a la Línea Nacional contra la Trata de Personas (1-888-373-7888). Las infracciones resultan en la eliminación inmediata del contenido y el cierre de la cuenta.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Estos términos son un resumen en lenguaje sencillo, no asesoramiento legal.<br>Operado por World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Política de Privacidad</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Facturación y Reembolsos</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">Declaración 2257</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Retirada por derechos de autor →</a></p>\n      <button class="btn ghost" id="t-back">← Atrás</button>\n    </div>',
     mc_sub: 'Acuerdo de Modelo',
     mc_loading: 'Cargando contrato…',
     mc_load_fail: 'No se pudo cargar el contrato — inténtalo de nuevo',
@@ -1845,6 +1915,7 @@ const I18N = {
     sec_male: 'Homem',
     sec_couple: 'Casal',
     err_must_declare_section: 'Escolha sua seção (Mulher, Homem ou Casal) para continuar.',
+    err_username_is_email: 'Seu nome de usuário não pode ser um e-mail — escolha um nome.',
     sf_female: 'Feminina',
     sf_male: 'Masculina',
     sf_couples: 'Casais',
@@ -2196,6 +2267,40 @@ const I18N = {
     say_fans_ph: 'Diga algo aos seus fãs…',
     explicit_rate_note: 'Tarifa explícita: {price}/min · Sua prévia nunca fica borrada',
     game_category: 'Game Category',
+    battle: '⚔️ PumPum Verse',
+    battle_brand: 'PumPum Verse',
+    battle_money_rule: 'A casa tira primeiro sua comissão padrão — o restante se divide 60% para a vencedora e 40% para a perdedora. Empate = 50/50. Desistir = perder, seja qual for o placar.',
+    battle_invite_from: '{name} quer um PumPum Verse com você!',
+    battle_minutes: 'Batalha de {n} minutos',
+    battle_accept: '✅ Aceitar',
+    battle_ready: '✅ Estou pronta',
+    battle_waiting_opp: 'Esperando {name}…',
+    battle_waiting_live: 'As duas modelos precisam estar ao vivo para o relógio começar',
+    battle_tip_her: '💰 Gorjeta para {name}',
+    battle_games_her: '🎲 Jogos de {name}',
+    battle_you_won: '🏆 VOCÊ VENCEU!',
+    battle_you_lost: '⚔️ {name} levou essa — bom jogo!',
+    battle_tied: '🤝 É um empate!',
+    battle_wins: '🏆 {name} venceu!',
+    battle_rematch: '🔁 Revanche',
+    battle_open_invites: '⚔️ Aberta a convites de PumPum Verse',
+    battle_open_invites_note: 'Desligado esconde você das listas de PumPum Verse — você ainda pode convidar e agendar.',
+    battle_random: '🎲 PumPum Verse aleatório',
+    battle_schedule: '📅 Agendar um duelo',
+    battle_looking: '⚔️ Procurando um PumPum Verse',
+    battle_in_battle: '⚔️ EM PUMPUM VERSE',
+    battle_forfeited: 'Desistência — um lado encerrou a live',
+    battle_you_earned: 'Você ganhou {amount}',
+    battle_enter_pool: 'Entrar no grupo',
+    battle_leave_pool: 'Sair do grupo',
+    battle_pool_waiting: 'No grupo — procurando uma rival para você…',
+    battle_pick_rival: 'Escolha sua rival',
+    battle_chat_ph: 'Chat do PumPum Verse…',
+    battle_history: '⚔️ Histórico de PumPum Verse',
+    battle_vs_line: '⚔️ vs {name}',
+    battle_remind: '🔔 Me lembre',
+    battle_reminded: '✓ Lembrete ativado',
+    battle_pot: 'Pote',
     game_btn: '🎲 Jogo',
     game_regular: 'Regular',
     game_explicit: 'Explícito 🔞',
@@ -2301,7 +2406,7 @@ const I18N = {
     age_confirm_toast: 'Você precisa confirmar que tem 18 anos ou mais',
     agreement_signed_toast: '✅ Contrato assinado — bem-vinda à SlutCamp!',
     public_photo_removed_toast: 'Foto pública removida — sua página pública mostra o logo da SlutCamp.',
-    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Termos de Serviço · Última atualização em 16 de outubro de 2026</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Tradução apenas para conveniência — prevalece a versão em inglês.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. Somente 18+</div>\n        <div class="small muted">A SlutCamp é estritamente para adultos com 18 anos ou mais. Ao usar este app, você confirma que tem pelo menos 18 anos. As modelos devem concluir a verificação de documento com a SlutCamp antes de entrar ao vivo (conformidade com 18 U.S.C. §2257).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. Como os fãs pagam</div>\n        <div class="small muted">Os fãs compram créditos e gastam em conversas, chamadas, presentes, acesso a lives, mensagens prioritárias, subidas ao palco e reservas. Suas 3 primeiras mensagens com cada modelo são grátis — depois disso, cada mensagem custa $1.49 (ou a tarifa da própria modelo). Créditos não usados ficam na sua carteira. <b>Créditos gastos não são reembolsáveis.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Tarifas das modelos</div>\n        <div class="small muted">As modelos definem suas próprias tarifas: por mensagem, por minuto de vídeo, por mensagem de voz e suas tarifas explícitas de subida ao palco ($5–$100). As tarifas são mostradas antes de você pagar. A plataforma pode definir tarifas padrão, que as modelos podem ajustar dentro das faixas permitidas.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Divisão de receita e pagamentos</div>\n        <div class="small muted">As modelos ficam com <b>60%</b> de tudo o que os fãs gastam com elas; a plataforma fica com 40%. Os pagamentos são enviados pela SlutCamp (atualmente processados manualmente). As modelos adicionam seus dados bancários no app e solicitam saques a qualquer momento; as solicitações pendentes são pagas conforme o cronograma da SlutCamp. Os ganhos das modelos ficam disponíveis para saque uma semana (7 dias) depois de gerados.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Lives e conteúdo explícito</div>\n        <div class="small muted">As lives em grupo são grátis para assistir; a visualização explícita exige uma taxa de entrada paga mais presentes contínuos para continuar sem borrão. As subidas ao palco (vídeo ou microfone) duram 3 minutos e depois expiram — pague de novo para voltar. A modelo aprova cada subida ao palco; solicitações recusadas são reembolsadas integralmente. Mensagens prioritárias são banners pagos com voz paga opcional.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. Reservas 1 a 1 e faltas</div>\n        <div class="small muted">Reservar um 1 a 1 privado reserva o tempo da modelo só para você — as reservas são pagas adiantado. Quando seu 1 a 1 ficar ativo, você tem <b>3 minutos</b> para entrar na chamada; se você não aparecer, <b>não há reembolso</b> — você reservou um horário que outro fã poderia ter pegado, e o tempo dela foi reservado para você. Se a modelo não começar dentro de <b>5 minutos</b> do horário reservado, é falta dela: você recebe <b>reembolso total, automaticamente</b>. Os fãs podem cancelar com reembolso total <b>2+ horas</b> antes do início (reservas solicitadas: 1+ hora antes); a modelo pode cancelar a qualquer momento com reembolso total.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Acesso das modelos</div>\n        <div class="small muted">As contas de modelo são só por convite. A SlutCamp pode desativar ou remover qualquer conta de modelo a qualquer momento, por qualquer motivo. Modelos desativadas mantêm os saldos já ganhos disponíveis para saque.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Segurança e conduta</div>\n        <div class="small muted">Compartilhar informações de contato, dados de pagamento ou tentar levar transações para fora da plataforma fará suas mensagens serem bloqueadas e pode fazer sua conta ser banida. Injúrias raciais e discurso de ódio são bloqueados. Todas as conversas e lives são monitoradas por segurança.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Sem reembolso de créditos gastos</div>\n        <div class="small muted">Depois que os créditos são gastos em mensagens, chamadas, presentes, entradas, prioridades, subidas ou reservas, eles se foram — sem reembolsos, sem estornos pelo app. Créditos não usados na carteira não podem ser trocados por dinheiro (fãs).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Estornos e fraude</div>\n        <div class="small muted">Se você contestar uma compra de créditos junto ao seu banco ou emissor do cartão (um estorno) em vez de falar com a gente primeiro, poderemos revogar os créditos dessa compra, reverter quaisquer ganhos que ela tenha gerado e encerrar sua conta. Estornos de compras que você recebeu e gastou são tratados como fraude. Se uma cobrança estiver realmente errada, fale com a gente primeiro — erros reais de cobrança são reembolsados conforme nossa Política de Cobrança e Reembolsos.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Lei aplicável</div>\n        <div class="small muted">Estes termos são regidos pelas leis do Estado do Texas, independentemente de suas regras de conflito de leis. Qualquer disputa relacionada a estes termos ou ao seu uso da SlutCamp deve ser levada aos tribunais estaduais ou federais localizados no Texas, e você e a SlutCamp consentem com a jurisdição pessoal e o foro desses tribunais. Nada nesta seção renuncia ou limita qualquer direito que seu estado de origem lhe conceda e que não possa ser legalmente renunciado.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Alterações</div>\n        <div class="small muted">Recursos, preços, tarifas e estes termos podem mudar a qualquer momento. O uso continuado significa que você aceita os termos atuais.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Estes termos são um resumo em linguagem simples, não aconselhamento jurídico.<br>Operado por World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Política de Privacidade</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Cobrança e Reembolsos</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">Declaração 2257</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Remoção por direitos autorais →</a></p>\n      <button class="btn ghost" id="t-back">← Voltar</button>\n    </div>',
+    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Termos de Serviço · Última atualização em 16 de outubro de 2026</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Tradução apenas para conveniência — prevalece a versão em inglês.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. Somente 18+</div>\n        <div class="small muted">A SlutCamp é estritamente para adultos com 18 anos ou mais. Ao usar este app, você confirma que tem pelo menos 18 anos. As modelos devem concluir a verificação de documento com a SlutCamp antes de entrar ao vivo (conformidade com 18 U.S.C. §2257).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. Como os fãs pagam</div>\n        <div class="small muted">Os fãs compram créditos e gastam em conversas, chamadas, presentes, acesso a lives, mensagens prioritárias, subidas ao palco e reservas. Suas 3 primeiras mensagens com cada modelo são grátis — depois disso, cada mensagem custa $1.49 (ou a tarifa da própria modelo). Créditos não usados ficam na sua carteira. <b>Créditos gastos não são reembolsáveis.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Tarifas das modelos</div>\n        <div class="small muted">As modelos definem suas próprias tarifas: por mensagem, por minuto de vídeo, por mensagem de voz e suas tarifas explícitas de subida ao palco ($5–$100). As tarifas são mostradas antes de você pagar. A plataforma pode definir tarifas padrão, que as modelos podem ajustar dentro das faixas permitidas.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Divisão de receita e pagamentos</div>\n        <div class="small muted">As modelos ficam com <b>60%</b> de tudo o que os fãs gastam com elas; a plataforma fica com 40%. Os pagamentos são enviados pela SlutCamp (atualmente processados manualmente). As modelos adicionam seus dados bancários no app e solicitam saques a qualquer momento; as solicitações pendentes são pagas conforme o cronograma da SlutCamp. Os ganhos das modelos ficam disponíveis para saque uma semana (7 dias) depois de gerados.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Lives e conteúdo explícito</div>\n        <div class="small muted">As lives em grupo são grátis para assistir; a visualização explícita exige uma taxa de entrada paga mais presentes contínuos para continuar sem borrão. As subidas ao palco (vídeo ou microfone) duram 3 minutos e depois expiram — pague de novo para voltar. A modelo aprova cada subida ao palco; solicitações recusadas são reembolsadas integralmente. Mensagens prioritárias são banners pagos com voz paga opcional.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. Reservas 1 a 1 e faltas</div>\n        <div class="small muted">Reservar um 1 a 1 privado reserva o tempo da modelo só para você — as reservas são pagas adiantado. Quando seu 1 a 1 ficar ativo, você tem <b>3 minutos</b> para entrar na chamada; se você não aparecer, <b>não há reembolso</b> — você reservou um horário que outro fã poderia ter pegado, e o tempo dela foi reservado para você. Se a modelo não começar dentro de <b>5 minutos</b> do horário reservado, é falta dela: você recebe <b>reembolso total, automaticamente</b>. Os fãs podem cancelar com reembolso total <b>2+ horas</b> antes do início (reservas solicitadas: 1+ hora antes); a modelo pode cancelar a qualquer momento com reembolso total.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Acesso das modelos</div>\n        <div class="small muted">As contas de modelo são só por convite. A SlutCamp pode desativar ou remover qualquer conta de modelo a qualquer momento, por qualquer motivo. Modelos desativadas mantêm os saldos já ganhos disponíveis para saque.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Segurança e conduta</div>\n        <div class="small muted">Compartilhar informações de contato, dados de pagamento ou tentar levar transações para fora da plataforma fará suas mensagens serem bloqueadas e pode fazer sua conta ser banida. Injúrias raciais e discurso de ódio são bloqueados. Todas as conversas e lives são monitoradas por segurança.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Sem reembolso de créditos gastos</div>\n        <div class="small muted">Depois que os créditos são gastos em mensagens, chamadas, presentes, entradas, prioridades, subidas ou reservas, eles se foram — sem reembolsos, sem estornos pelo app. Créditos não usados na carteira não podem ser trocados por dinheiro (fãs).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Estornos e fraude</div>\n        <div class="small muted">Se você contestar uma compra de créditos junto ao seu banco ou emissor do cartão (um estorno) em vez de falar com a gente primeiro, poderemos revogar os créditos dessa compra, reverter quaisquer ganhos que ela tenha gerado e encerrar sua conta. Estornos de compras que você recebeu e gastou são tratados como fraude. Se uma cobrança estiver realmente errada, fale com a gente primeiro — erros reais de cobrança são reembolsados conforme nossa Política de Cobrança e Reembolsos.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Lei aplicável</div>\n        <div class="small muted">Estes termos são regidos pelas leis do Estado do Texas, independentemente de suas regras de conflito de leis. Qualquer disputa relacionada a estes termos ou ao seu uso da SlutCamp deve ser levada aos tribunais estaduais ou federais localizados no Texas, e você e a SlutCamp consentem com a jurisdição pessoal e o foro desses tribunais. Nada nesta seção renuncia ou limita qualquer direito que seu estado de origem lhe conceda e que não possa ser legalmente renunciado.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Alterações</div>\n        <div class="small muted">Recursos, preços, tarifas e estes termos podem mudar a qualquer momento. O uso continuado significa que você aceita os termos atuais.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">13. Nada de tráfico ou exploração</div>\n        <div class="small muted">A SlutCamp proíbe o tráfico de pessoas, a exploração sexual e o conteúdo não consensual em todas as formas. Cada artista na SlutCamp é um adulto verificado agindo voluntariamente. Suspeitas de tráfico ou exploração são denunciadas às autoridades competentes e à National Human Trafficking Hotline (1-888-373-7888). Violações resultam na remoção imediata do conteúdo e no encerramento da conta.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Estes termos são um resumo em linguagem simples, não aconselhamento jurídico.<br>Operado por World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Política de Privacidade</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Cobrança e Reembolsos</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">Declaração 2257</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Remoção por direitos autorais →</a></p>\n      <button class="btn ghost" id="t-back">← Voltar</button>\n    </div>',
     mc_sub: 'Contrato da Modelo',
     mc_loading: 'Carregando contrato…',
     mc_load_fail: 'Não foi possível carregar o contrato — tente novamente',
@@ -2603,6 +2708,7 @@ const I18N = {
     sec_male: 'Homme',
     sec_couple: 'Couple',
     err_must_declare_section: 'Choisissez votre section (Femme, Homme ou Couple) pour continuer.',
+    err_username_is_email: 'Votre nom d\'utilisateur ne peut pas être une adresse e-mail — choisissez un nom.',
     sf_female: 'Femmes',
     sf_male: 'Hommes',
     sf_couples: 'Couples',
@@ -2954,6 +3060,40 @@ const I18N = {
     say_fans_ph: 'Dites quelque chose à vos fans…',
     explicit_rate_note: 'Tarif explicite : {price}/min · Votre aperçu n\'est jamais flouté',
     game_category: 'Catégorie de jeu',
+    battle: '⚔️ PumPum Verse',
+    battle_brand: 'PumPum Verse',
+    battle_money_rule: 'La maison prend d\'abord sa commission standard — le reste se partage 60 % pour la gagnante, 40 % pour la perdante. Égalité = 50/50. Abandon = défaite, quel que soit le score.',
+    battle_invite_from: '{name} veut un PumPum Verse avec vous !',
+    battle_minutes: 'Bataille de {n} minutes',
+    battle_accept: '✅ Accepter',
+    battle_ready: '✅ Je suis prête',
+    battle_waiting_opp: 'En attente de {name}…',
+    battle_waiting_live: 'Les deux modèles doivent être en direct pour lancer le chrono',
+    battle_tip_her: '💰 Pourboire à {name}',
+    battle_games_her: '🎲 Jeux de {name}',
+    battle_you_won: '🏆 VOUS AVEZ GAGNÉ !',
+    battle_you_lost: '⚔️ {name} remporte celle-ci — beau match !',
+    battle_tied: '🤝 Égalité !',
+    battle_wins: '🏆 {name} gagne !',
+    battle_rematch: '🔁 Revanche',
+    battle_open_invites: '⚔️ Ouverte aux invitations PumPum Verse',
+    battle_open_invites_note: 'Désactivé vous cache des listes PumPum Verse — vous pouvez toujours inviter et programmer.',
+    battle_random: '🎲 PumPum Verse aléatoire',
+    battle_schedule: '📅 Programmer un duel',
+    battle_looking: '⚔️ À la recherche d\'un PumPum Verse',
+    battle_in_battle: '⚔️ EN PUMPUM VERSE',
+    battle_forfeited: 'Forfait — un côté a terminé son direct',
+    battle_you_earned: 'Vous avez gagné {amount}',
+    battle_enter_pool: 'Entrer dans la file',
+    battle_leave_pool: 'Quitter la file',
+    battle_pool_waiting: 'Dans la file — on vous cherche une rivale…',
+    battle_pick_rival: 'Choisissez votre rivale',
+    battle_chat_ph: 'Chat PumPum Verse…',
+    battle_history: '⚔️ Historique PumPum Verse',
+    battle_vs_line: '⚔️ contre {name}',
+    battle_remind: '🔔 Me rappeler',
+    battle_reminded: '✓ Rappel activé',
+    battle_pot: 'Pot',
     game_btn: '🎲 Jeu',
     game_regular: 'Normal',
     game_explicit: 'Explicite 🔞',
@@ -3059,7 +3199,7 @@ const I18N = {
     age_confirm_toast: 'Vous devez confirmer avoir 18 ans ou plus',
     agreement_signed_toast: '✅ Contrat signé — bienvenue sur SlutCamp !',
     public_photo_removed_toast: 'Photo publique retirée — votre page publique affiche le logo SlutCamp à la place.',
-    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Conditions d\'utilisation · Dernière mise à jour le 16 octobre 2026</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Traduction fournie à titre de commodité — la version anglaise prévaut.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. 18+ uniquement</div>\n        <div class="small muted">SlutCamp est strictement réservé aux adultes de 18 ans et plus. En utilisant cette application, vous confirmez avoir au moins 18 ans. Les modèles doivent effectuer une vérification d\'identité auprès de SlutCamp avant de passer en direct (conformité à 18 U.S.C. §2257).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. Comment les fans paient</div>\n        <div class="small muted">Les fans achètent des crédits et les dépensent en discussions, appels, cadeaux, accès aux directs, messages prioritaires, participations à la scène et réservations. Vos 3 premiers messages avec chaque modèle sont gratuits — après cela, les messages coûtent $1.49 chacun (ou le tarif propre au modèle). Les crédits inutilisés restent dans votre portefeuille. <b>Les crédits dépensés ne sont pas remboursables.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Tarifs des modèles</div>\n        <div class="small muted">Les modèles définissent leurs propres tarifs : par message, par minute de vidéo, par note vocale, ainsi que leurs tarifs de participation explicite à la scène ($5–$100). Les tarifs sont affichés avant que vous payiez. La plateforme peut définir des tarifs par défaut que les modèles peuvent ajuster dans les limites autorisées.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Répartition des revenus et paiements</div>\n        <div class="small muted">Les modèles gardent <b>60%</b> de tout ce que les fans dépensent pour elles ; la plateforme garde 40%. Les paiements sont envoyés par SlutCamp (actuellement traités manuellement). Les modèles ajoutent leurs coordonnées bancaires dans l\'application et demandent des retraits à tout moment ; les demandes en attente sont payées selon le calendrier de SlutCamp. Les gains des modèles deviennent éligibles au retrait une semaine (7 jours) après avoir été gagnés.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Diffusions en direct et contenu explicite</div>\n        <div class="small muted">Les diffusions de groupe sont gratuites à regarder ; le visionnage explicite nécessite des frais d\'entrée payants ainsi que des cadeaux continus pour rester non flouté. Les participations à la scène (vidéo ou micro) durent 3 minutes, puis expirent — repayez pour revenir. Le modèle approuve chaque participation à la scène ; les demandes refusées sont intégralement remboursées. Les messages prioritaires sont des bannières payantes avec voix payante en option.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. Réservations 1-à-1 &amp; Absences</div>\n        <div class="small muted">Réserver un 1-à-1 privé réserve le temps du modèle rien que pour vous — les réservations sont payées d\'avance. Lorsque votre 1-à-1 devient actif, vous avez <b>3 minutes</b> pour rejoindre l\'appel ; si vous êtes absent, <b>il n\'y a aucun remboursement</b> — vous avez réservé un créneau qu\'un autre fan aurait pu prendre, et son temps vous était réservé. Si le modèle ne commence pas dans les <b>5 minutes</b> suivant l\'heure réservée, c\'est son absence : vous obtenez un <b>remboursement intégral, automatiquement</b>. Les fans peuvent annuler pour un remboursement intégral <b>2+ heures</b> avant le début (réservations demandées : 1+ heure à l\'avance) ; le modèle peut annuler à tout moment pour un remboursement intégral.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Accès des modèles</div>\n        <div class="small muted">Les comptes de modèles sont uniquement sur invitation. SlutCamp peut désactiver ou supprimer tout compte de modèle à tout moment, pour n\'importe quelle raison. Les modèles désactivées conservent leurs soldes gagnés disponibles au retrait.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Sécurité et conduite</div>\n        <div class="small muted">Partager des coordonnées, des identifiants de paiement, ou tenter de déplacer les transactions hors plateforme entraînera le blocage de vos messages et pourra entraîner le bannissement de votre compte. Les insultes raciales et les discours de haine sont bloqués. Toutes les discussions et diffusions sont surveillées pour la sécurité.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Aucun remboursement sur les crédits dépensés</div>\n        <div class="small muted">Une fois les crédits dépensés en messages, appels, cadeaux, entrées, priorités, participations ou réservations, ils sont perdus — aucun remboursement, aucun rejet de débit via l\'application. Les crédits de portefeuille inutilisés ne sont pas échangeables contre de l\'argent (fans).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Rejets de débit et fraude</div>\n        <div class="small muted">Si vous contestez un achat de crédits auprès de votre banque ou de l\'émetteur de votre carte (un rejet de débit) au lieu de nous contacter d\'abord, nous pouvons révoquer les crédits de cet achat, annuler tous les gains qu\'il a générés et fermer votre compte. Les rejets de débit sur des achats que vous avez reçus et dépensés sont traités comme de la fraude. Si un débit est un jour véritablement erroné, contactez-nous d\'abord — les véritables erreurs de facturation sont remboursées conformément à notre politique de Facturation et remboursements.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Droit applicable</div>\n        <div class="small muted">Ces conditions sont régies par les lois de l\'État du Texas, sans égard à ses règles de conflit de lois. Tout litige relatif à ces conditions ou à votre utilisation de SlutCamp doit être porté devant les tribunaux d\'État ou fédéraux situés au Texas, et vous et SlutCamp consentez à la compétence personnelle et à la juridiction de ces tribunaux. Rien dans cette section ne renonce ni ne limite un droit que votre État d\'origine vous accorde et qui ne peut légalement faire l\'objet d\'une renonciation.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Modifications</div>\n        <div class="small muted">Les fonctionnalités, prix, tarifs et ces conditions peuvent changer à tout moment. La poursuite de l\'utilisation signifie que vous acceptez les conditions actuelles.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Ces conditions sont un résumé en langage clair, et non un avis juridique.<br>Exploité par World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Politique de confidentialité</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Facturation et remboursements</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">Déclaration 2257</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Retrait pour droit d\'auteur →</a></p>\n      <button class="btn ghost" id="t-back">← Retour</button>\n    </div>',
+    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Conditions d\'utilisation · Dernière mise à jour le 16 octobre 2026</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Traduction fournie à titre de commodité — la version anglaise prévaut.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. 18+ uniquement</div>\n        <div class="small muted">SlutCamp est strictement réservé aux adultes de 18 ans et plus. En utilisant cette application, vous confirmez avoir au moins 18 ans. Les modèles doivent effectuer une vérification d\'identité auprès de SlutCamp avant de passer en direct (conformité à 18 U.S.C. §2257).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. Comment les fans paient</div>\n        <div class="small muted">Les fans achètent des crédits et les dépensent en discussions, appels, cadeaux, accès aux directs, messages prioritaires, participations à la scène et réservations. Vos 3 premiers messages avec chaque modèle sont gratuits — après cela, les messages coûtent $1.49 chacun (ou le tarif propre au modèle). Les crédits inutilisés restent dans votre portefeuille. <b>Les crédits dépensés ne sont pas remboursables.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Tarifs des modèles</div>\n        <div class="small muted">Les modèles définissent leurs propres tarifs : par message, par minute de vidéo, par note vocale, ainsi que leurs tarifs de participation explicite à la scène ($5–$100). Les tarifs sont affichés avant que vous payiez. La plateforme peut définir des tarifs par défaut que les modèles peuvent ajuster dans les limites autorisées.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Répartition des revenus et paiements</div>\n        <div class="small muted">Les modèles gardent <b>60%</b> de tout ce que les fans dépensent pour elles ; la plateforme garde 40%. Les paiements sont envoyés par SlutCamp (actuellement traités manuellement). Les modèles ajoutent leurs coordonnées bancaires dans l\'application et demandent des retraits à tout moment ; les demandes en attente sont payées selon le calendrier de SlutCamp. Les gains des modèles deviennent éligibles au retrait une semaine (7 jours) après avoir été gagnés.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Diffusions en direct et contenu explicite</div>\n        <div class="small muted">Les diffusions de groupe sont gratuites à regarder ; le visionnage explicite nécessite des frais d\'entrée payants ainsi que des cadeaux continus pour rester non flouté. Les participations à la scène (vidéo ou micro) durent 3 minutes, puis expirent — repayez pour revenir. Le modèle approuve chaque participation à la scène ; les demandes refusées sont intégralement remboursées. Les messages prioritaires sont des bannières payantes avec voix payante en option.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. Réservations 1-à-1 &amp; Absences</div>\n        <div class="small muted">Réserver un 1-à-1 privé réserve le temps du modèle rien que pour vous — les réservations sont payées d\'avance. Lorsque votre 1-à-1 devient actif, vous avez <b>3 minutes</b> pour rejoindre l\'appel ; si vous êtes absent, <b>il n\'y a aucun remboursement</b> — vous avez réservé un créneau qu\'un autre fan aurait pu prendre, et son temps vous était réservé. Si le modèle ne commence pas dans les <b>5 minutes</b> suivant l\'heure réservée, c\'est son absence : vous obtenez un <b>remboursement intégral, automatiquement</b>. Les fans peuvent annuler pour un remboursement intégral <b>2+ heures</b> avant le début (réservations demandées : 1+ heure à l\'avance) ; le modèle peut annuler à tout moment pour un remboursement intégral.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Accès des modèles</div>\n        <div class="small muted">Les comptes de modèles sont uniquement sur invitation. SlutCamp peut désactiver ou supprimer tout compte de modèle à tout moment, pour n\'importe quelle raison. Les modèles désactivées conservent leurs soldes gagnés disponibles au retrait.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Sécurité et conduite</div>\n        <div class="small muted">Partager des coordonnées, des identifiants de paiement, ou tenter de déplacer les transactions hors plateforme entraînera le blocage de vos messages et pourra entraîner le bannissement de votre compte. Les insultes raciales et les discours de haine sont bloqués. Toutes les discussions et diffusions sont surveillées pour la sécurité.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Aucun remboursement sur les crédits dépensés</div>\n        <div class="small muted">Une fois les crédits dépensés en messages, appels, cadeaux, entrées, priorités, participations ou réservations, ils sont perdus — aucun remboursement, aucun rejet de débit via l\'application. Les crédits de portefeuille inutilisés ne sont pas échangeables contre de l\'argent (fans).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Rejets de débit et fraude</div>\n        <div class="small muted">Si vous contestez un achat de crédits auprès de votre banque ou de l\'émetteur de votre carte (un rejet de débit) au lieu de nous contacter d\'abord, nous pouvons révoquer les crédits de cet achat, annuler tous les gains qu\'il a générés et fermer votre compte. Les rejets de débit sur des achats que vous avez reçus et dépensés sont traités comme de la fraude. Si un débit est un jour véritablement erroné, contactez-nous d\'abord — les véritables erreurs de facturation sont remboursées conformément à notre politique de Facturation et remboursements.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Droit applicable</div>\n        <div class="small muted">Ces conditions sont régies par les lois de l\'État du Texas, sans égard à ses règles de conflit de lois. Tout litige relatif à ces conditions ou à votre utilisation de SlutCamp doit être porté devant les tribunaux d\'État ou fédéraux situés au Texas, et vous et SlutCamp consentez à la compétence personnelle et à la juridiction de ces tribunaux. Rien dans cette section ne renonce ni ne limite un droit que votre État d\'origine vous accorde et qui ne peut légalement faire l\'objet d\'une renonciation.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Modifications</div>\n        <div class="small muted">Les fonctionnalités, prix, tarifs et ces conditions peuvent changer à tout moment. La poursuite de l\'utilisation signifie que vous acceptez les conditions actuelles.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">13. Aucune traite ni exploitation</div>\n        <div class="small muted">SlutCamp interdit la traite des êtres humains, l\'exploitation sexuelle et les contenus non consentis sous toutes leurs formes. Chaque artiste sur SlutCamp est un adulte vérifié agissant volontairement. Tout soupçon de traite ou d\'exploitation est signalé aux autorités compétentes et à la National Human Trafficking Hotline (1-888-373-7888). Toute violation entraîne le retrait immédiat du contenu et la fermeture du compte.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Ces conditions sont un résumé en langage clair, et non un avis juridique.<br>Exploité par World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Politique de confidentialité</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Facturation et remboursements</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">Déclaration 2257</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Retrait pour droit d\'auteur →</a></p>\n      <button class="btn ghost" id="t-back">← Retour</button>\n    </div>',
     mc_sub: 'Contrat de modèle',
     mc_loading: 'Chargement du contrat…',
     mc_load_fail: 'Impossible de charger le contrat — réessayez',
@@ -3361,6 +3501,7 @@ const I18N = {
     sec_male: 'Mann',
     sec_couple: 'Paar',
     err_must_declare_section: 'Wähle deine Sektion (Frau, Mann oder Paar), um fortzufahren.',
+    err_username_is_email: 'Dein Benutzername darf keine E-Mail-Adresse sein — wähle stattdessen einen Namen.',
     sf_female: 'Frauen',
     sf_male: 'Männer',
     sf_couples: 'Paare',
@@ -3712,6 +3853,40 @@ const I18N = {
     say_fans_ph: 'Sag etwas zu deinen Fans…',
     explicit_rate_note: 'Expliziter Preis: {price}/Min. · Deine Vorschau ist nie verwischt',
     game_category: 'Spielkategorie',
+    battle: '⚔️ PumPum Verse',
+    battle_brand: 'PumPum Verse',
+    battle_money_rule: 'Das Haus nimmt zuerst seine übliche Provision — der Rest teilt sich 60 % für die Gewinnerin, 40 % für die Verliererin. Gleichstand = 50/50. Aufgeben = verloren, egal bei welchem Stand.',
+    battle_invite_from: '{name} will ein PumPum Verse mit dir!',
+    battle_minutes: '{n}-Minuten-Battle',
+    battle_accept: '✅ Annehmen',
+    battle_ready: '✅ Ich bin bereit',
+    battle_waiting_opp: 'Warte auf {name}…',
+    battle_waiting_live: 'Beide Models müssen live sein, damit die Zeit startet',
+    battle_tip_her: '💰 Trinkgeld für {name}',
+    battle_games_her: '🎲 Spiele von {name}',
+    battle_you_won: '🏆 DU HAST GEWONNEN!',
+    battle_you_lost: '⚔️ {name} holt sich diese Runde — gutes Spiel!',
+    battle_tied: '🤝 Unentschieden!',
+    battle_wins: '🏆 {name} gewinnt!',
+    battle_rematch: '🔁 Rückkampf',
+    battle_open_invites: '⚔️ Offen für PumPum Verse-Einladungen',
+    battle_open_invites_note: 'Aus blendet dich aus den PumPum Verse-Listen aus — einladen und planen kannst du weiterhin selbst.',
+    battle_random: '🎲 Zufalls-PumPum Verse',
+    battle_schedule: '📅 Showdown planen',
+    battle_looking: '⚔️ Sucht ein PumPum Verse',
+    battle_in_battle: '⚔️ IM PUMPUM VERSE',
+    battle_forfeited: 'Aufgabe — eine Seite hat ihren Live beendet',
+    battle_you_earned: 'Du hast {amount} verdient',
+    battle_enter_pool: 'In den Pool',
+    battle_leave_pool: 'Pool verlassen',
+    battle_pool_waiting: 'Im Pool — wir suchen eine Rivalin für dich…',
+    battle_pick_rival: 'Wähl deine Rivalin',
+    battle_chat_ph: 'PumPum Verse Chat…',
+    battle_history: '⚔️ PumPum Verse-Verlauf',
+    battle_vs_line: '⚔️ gegen {name}',
+    battle_remind: '🔔 Erinnere mich',
+    battle_reminded: '✓ Erinnerung gesetzt',
+    battle_pot: 'Pot',
     game_btn: '🎲 Spiel',
     game_regular: 'Regulär',
     game_explicit: 'Explizit 🔞',
@@ -3817,7 +3992,7 @@ const I18N = {
     age_confirm_toast: 'Du musst bestätigen, dass du 18 oder älter bist',
     agreement_signed_toast: '✅ Vereinbarung unterschrieben — willkommen bei SlutCamp!',
     public_photo_removed_toast: 'Öffentliches Foto entfernt — deine öffentliche Seite zeigt stattdessen das SlutCamp-Logo.',
-    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Nutzungsbedingungen · Zuletzt aktualisiert am 16. Oktober 2026</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Übersetzung zur Erleichterung — die englische Version ist maßgebend.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. Nur 18+</div>\n        <div class="small muted">SlutCamp ist strikt für Erwachsene ab 18 Jahren. Durch die Nutzung dieser App bestätigst du, dass du mindestens 18 Jahre alt bist. Modelle müssen eine Ausweisverifizierung bei SlutCamp abschließen, bevor sie live gehen (Compliance mit 18 U.S.C. §2257).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. So zahlen Fans</div>\n        <div class="small muted">Fans kaufen Credits und geben sie für Chats, Anrufe, Geschenke, Live-Zugang, Prioritätsnachrichten, Bühnenbeitritte und Buchungen aus. Deine ersten 3 Nachrichten mit jedem Model sind kostenlos — danach kosten Texte jeweils $1.49 (oder den eigenen Preis des Models). Nicht verwendete Credits bleiben in deiner Wallet. <b>Ausgegebene Credits sind nicht erstattungsfähig.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Model-Preise</div>\n        <div class="small muted">Modelle legen ihre eigenen Preise fest: pro Nachricht, pro Minute Video, pro Sprachnachricht und ihre expliziten Preise für den Bühnenbeitritt ($5–$100). Die Preise werden angezeigt, bevor du zahlst. Die Plattform kann Standardpreise festlegen, die Modelle innerhalb der erlaubten Bereiche anpassen können.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Umsatzaufteilung & Auszahlungen</div>\n        <div class="small muted">Modelle behalten <b>60%</b> von allem, was Fans für sie ausgeben; die Plattform behält 40%. Auszahlungen werden von SlutCamp gesendet (derzeit manuell bearbeitet). Modelle fügen ihre Bankdaten in der App hinzu und fordern jederzeit Abhebungen an; ausstehende Anfragen werden nach SlutCamps Zeitplan ausgezahlt. Einnahmen der Modelle werden eine Woche (7 Tage) nach dem Verdienen für die Abhebung berechtigt.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Livestreams & explizite Inhalte</div>\n        <div class="small muted">Gruppenstreams sind kostenlos anzusehen; explizites Ansehen erfordert eine bezahlte Eintrittsgebühr plus laufende Geschenke, um unverschwommen zu bleiben. Bühnenbeitritte (Video oder Mikrofon) dauern 3 Minuten, dann läuft die Zeit ab — zahle erneut, um zurückzukehren. Das Model genehmigt jeden Bühnenbeitritt; abgelehnte Anfragen werden vollständig erstattet. Prioritätsnachrichten sind bezahlte Banner mit optionaler bezahlter Sprache.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. 1-zu-1 Buchungen &amp; No-Shows</div>\n        <div class="small muted">Die Buchung eines privaten 1-zu-1 reserviert die Zeit des Models nur für dich — Buchungen werden im Voraus bezahlt. Wenn dein 1-zu-1 aktiv wird, hast du <b>3 Minuten</b>, um dem Anruf beizutreten; wenn du nicht erscheinst, <b>gibt es keine Rückerstattung</b> — du hast einen Slot gebucht, den ein anderer Fan hätte nehmen können, und ihre Zeit war für dich reserviert. Wenn das Model nicht innerhalb von <b>5 Minuten</b> nach der gebuchten Zeit startet, ist das ihr No-Show: Du erhältst eine <b>vollständige Rückerstattung, automatisch</b>. Fans können für eine vollständige Rückerstattung <b>2+ Stunden</b> vor dem Start stornieren (angeforderte Buchungen: 1+ Stunde vorher); das Model kann jederzeit für eine vollständige Rückerstattung stornieren.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Model-Zugang</div>\n        <div class="small muted">Model-Accounts sind nur auf Einladung. SlutCamp kann jeden Model-Account jederzeit, aus beliebigem Grund, deaktivieren oder entfernen. Deaktivierte Modelle behalten verdiente Guthaben für die Abhebung verfügbar.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Sicherheit & Verhalten</div>\n        <div class="small muted">Das Teilen von Kontaktdaten, Zahlungs-Handles oder der Versuch, Transaktionen außerhalb der Plattform durchzuführen, führt dazu, dass deine Nachrichten blockiert werden und kann dazu führen, dass dein Account gesperrt wird. Rassistische Beleidigungen und Hassrede sind blockiert. Alle Chats und Streams werden aus Sicherheitsgründen überwacht.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Keine Rückerstattungen für ausgegebene Credits</div>\n        <div class="small muted">Sobald Credits für Nachrichten, Anrufe, Geschenke, Eintritte, Prioritäten, Beitritte oder Buchungen ausgegeben wurden, sind sie weg — keine Rückerstattungen, keine Rückbuchungen über die App. Nicht verwendete Wallet-Credits sind nicht gegen Bargeld einlösbar (Fans).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Rückbuchungen & Betrug</div>\n        <div class="small muted">Wenn du einen Credit-Kauf bei deiner Bank oder deinem Kartenherausgeber bestreitest (eine Rückbuchung), anstatt dich zuerst an uns zu wenden, können wir die Credits aus diesem Kauf widerrufen, alle Einnahmen, die er generiert hat, rückgängig machen und deinen Account schließen. Rückbuchungen für Käufe, die du erhalten und ausgegeben hast, werden als Betrug behandelt. Wenn eine Abbuchung jemals wirklich falsch ist, wende dich zuerst an uns — echte Abrechnungsfehler werden gemäß unserer Richtlinie für Abrechnung & Rückerstattungen erstattet.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Geltendes Recht</div>\n        <div class="small muted">Diese Bedingungen unterliegen den Gesetzen des Bundesstaates Texas, ohne Rücksicht auf seine Kollisionsnormen. Jeder Streit im Zusammenhang mit diesen Bedingungen oder deiner Nutzung von SlutCamp muss vor den staatlichen oder bundesstaatlichen Gerichten in Texas gebracht werden, und du und SlutCamp stimmen der persönlichen Gerichtsbarkeit und dem Gerichtsstand dieser Gerichte zu. Nichts in diesem Abschnitt verzichtet auf oder beschränkt ein Recht, das dir dein Heimatstaat gibt und das gesetzlich nicht verzichtet werden kann.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Änderungen</div>\n        <div class="small muted">Funktionen, Preise, Tarife und diese Bedingungen können sich jederzeit ändern. Die fortgesetzte Nutzung bedeutet, dass du die aktuellen Bedingungen akzeptierst.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Diese Bedingungen sind eine Zusammenfassung in einfacher Sprache, keine Rechtsberatung.<br>Betrieben von World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Datenschutzrichtlinie</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Abrechnung & Rückerstattungen</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">2257-Erklärung</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Urheberrechtsentfernung →</a></p>\n      <button class="btn ghost" id="t-back">← Zurück</button>\n    </div>\n',
+    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Nutzungsbedingungen · Zuletzt aktualisiert am 16. Oktober 2026</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Übersetzung zur Erleichterung — die englische Version ist maßgebend.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. Nur 18+</div>\n        <div class="small muted">SlutCamp ist strikt für Erwachsene ab 18 Jahren. Durch die Nutzung dieser App bestätigst du, dass du mindestens 18 Jahre alt bist. Modelle müssen eine Ausweisverifizierung bei SlutCamp abschließen, bevor sie live gehen (Compliance mit 18 U.S.C. §2257).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. So zahlen Fans</div>\n        <div class="small muted">Fans kaufen Credits und geben sie für Chats, Anrufe, Geschenke, Live-Zugang, Prioritätsnachrichten, Bühnenbeitritte und Buchungen aus. Deine ersten 3 Nachrichten mit jedem Model sind kostenlos — danach kosten Texte jeweils $1.49 (oder den eigenen Preis des Models). Nicht verwendete Credits bleiben in deiner Wallet. <b>Ausgegebene Credits sind nicht erstattungsfähig.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Model-Preise</div>\n        <div class="small muted">Modelle legen ihre eigenen Preise fest: pro Nachricht, pro Minute Video, pro Sprachnachricht und ihre expliziten Preise für den Bühnenbeitritt ($5–$100). Die Preise werden angezeigt, bevor du zahlst. Die Plattform kann Standardpreise festlegen, die Modelle innerhalb der erlaubten Bereiche anpassen können.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Umsatzaufteilung & Auszahlungen</div>\n        <div class="small muted">Modelle behalten <b>60%</b> von allem, was Fans für sie ausgeben; die Plattform behält 40%. Auszahlungen werden von SlutCamp gesendet (derzeit manuell bearbeitet). Modelle fügen ihre Bankdaten in der App hinzu und fordern jederzeit Abhebungen an; ausstehende Anfragen werden nach SlutCamps Zeitplan ausgezahlt. Einnahmen der Modelle werden eine Woche (7 Tage) nach dem Verdienen für die Abhebung berechtigt.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Livestreams & explizite Inhalte</div>\n        <div class="small muted">Gruppenstreams sind kostenlos anzusehen; explizites Ansehen erfordert eine bezahlte Eintrittsgebühr plus laufende Geschenke, um unverschwommen zu bleiben. Bühnenbeitritte (Video oder Mikrofon) dauern 3 Minuten, dann läuft die Zeit ab — zahle erneut, um zurückzukehren. Das Model genehmigt jeden Bühnenbeitritt; abgelehnte Anfragen werden vollständig erstattet. Prioritätsnachrichten sind bezahlte Banner mit optionaler bezahlter Sprache.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. 1-zu-1 Buchungen &amp; No-Shows</div>\n        <div class="small muted">Die Buchung eines privaten 1-zu-1 reserviert die Zeit des Models nur für dich — Buchungen werden im Voraus bezahlt. Wenn dein 1-zu-1 aktiv wird, hast du <b>3 Minuten</b>, um dem Anruf beizutreten; wenn du nicht erscheinst, <b>gibt es keine Rückerstattung</b> — du hast einen Slot gebucht, den ein anderer Fan hätte nehmen können, und ihre Zeit war für dich reserviert. Wenn das Model nicht innerhalb von <b>5 Minuten</b> nach der gebuchten Zeit startet, ist das ihr No-Show: Du erhältst eine <b>vollständige Rückerstattung, automatisch</b>. Fans können für eine vollständige Rückerstattung <b>2+ Stunden</b> vor dem Start stornieren (angeforderte Buchungen: 1+ Stunde vorher); das Model kann jederzeit für eine vollständige Rückerstattung stornieren.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Model-Zugang</div>\n        <div class="small muted">Model-Accounts sind nur auf Einladung. SlutCamp kann jeden Model-Account jederzeit, aus beliebigem Grund, deaktivieren oder entfernen. Deaktivierte Modelle behalten verdiente Guthaben für die Abhebung verfügbar.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Sicherheit & Verhalten</div>\n        <div class="small muted">Das Teilen von Kontaktdaten, Zahlungs-Handles oder der Versuch, Transaktionen außerhalb der Plattform durchzuführen, führt dazu, dass deine Nachrichten blockiert werden und kann dazu führen, dass dein Account gesperrt wird. Rassistische Beleidigungen und Hassrede sind blockiert. Alle Chats und Streams werden aus Sicherheitsgründen überwacht.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Keine Rückerstattungen für ausgegebene Credits</div>\n        <div class="small muted">Sobald Credits für Nachrichten, Anrufe, Geschenke, Eintritte, Prioritäten, Beitritte oder Buchungen ausgegeben wurden, sind sie weg — keine Rückerstattungen, keine Rückbuchungen über die App. Nicht verwendete Wallet-Credits sind nicht gegen Bargeld einlösbar (Fans).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Rückbuchungen & Betrug</div>\n        <div class="small muted">Wenn du einen Credit-Kauf bei deiner Bank oder deinem Kartenherausgeber bestreitest (eine Rückbuchung), anstatt dich zuerst an uns zu wenden, können wir die Credits aus diesem Kauf widerrufen, alle Einnahmen, die er generiert hat, rückgängig machen und deinen Account schließen. Rückbuchungen für Käufe, die du erhalten und ausgegeben hast, werden als Betrug behandelt. Wenn eine Abbuchung jemals wirklich falsch ist, wende dich zuerst an uns — echte Abrechnungsfehler werden gemäß unserer Richtlinie für Abrechnung & Rückerstattungen erstattet.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Geltendes Recht</div>\n        <div class="small muted">Diese Bedingungen unterliegen den Gesetzen des Bundesstaates Texas, ohne Rücksicht auf seine Kollisionsnormen. Jeder Streit im Zusammenhang mit diesen Bedingungen oder deiner Nutzung von SlutCamp muss vor den staatlichen oder bundesstaatlichen Gerichten in Texas gebracht werden, und du und SlutCamp stimmen der persönlichen Gerichtsbarkeit und dem Gerichtsstand dieser Gerichte zu. Nichts in diesem Abschnitt verzichtet auf oder beschränkt ein Recht, das dir dein Heimatstaat gibt und das gesetzlich nicht verzichtet werden kann.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Änderungen</div>\n        <div class="small muted">Funktionen, Preise, Tarife und diese Bedingungen können sich jederzeit ändern. Die fortgesetzte Nutzung bedeutet, dass du die aktuellen Bedingungen akzeptierst.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">13. Kein Menschenhandel, keine Ausbeutung</div>\n        <div class="small muted">SlutCamp verbietet Menschenhandel, sexuelle Ausbeutung und nicht einvernehmliche Inhalte in jeder Form. Jede Darstellerin und jeder Darsteller auf SlutCamp ist eine verifizierte erwachsene Person, die freiwillig handelt. Verdacht auf Menschenhandel oder Ausbeutung wird den zuständigen Behörden und der National Human Trafficking Hotline (1-888-373-7888) gemeldet. Verstöße führen zur sofortigen Entfernung der Inhalte und zur Kontoschließung.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Diese Bedingungen sind eine Zusammenfassung in einfacher Sprache, keine Rechtsberatung.<br>Betrieben von World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Datenschutzrichtlinie</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Abrechnung & Rückerstattungen</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">2257-Erklärung</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Urheberrechtsentfernung →</a></p>\n      <button class="btn ghost" id="t-back">← Zurück</button>\n    </div>\n',
     mc_sub: 'Model-Vertrag',
     mc_loading: 'Vertrag wird geladen…',
     mc_load_fail: 'Vertrag konnte nicht geladen werden — bitte erneut versuchen',
@@ -4119,6 +4294,7 @@ const I18N = {
     sec_male: 'Мужчина',
     sec_couple: 'Пара',
     err_must_declare_section: 'Выберите свой раздел (Женщины, Мужчины или Пары), чтобы продолжить.',
+    err_username_is_email: 'Имя пользователя не может быть адресом электронной почты — выберите имя.',
     sf_female: 'Женщины',
     sf_male: 'Мужчины',
     sf_couples: 'Пары',
@@ -4470,6 +4646,40 @@ const I18N = {
     say_fans_ph: 'Скажите что-нибудь вашим фанатам…',
     explicit_rate_note: 'Тариф откровенного: {price}/мин · Ваш предпросмотр никогда не размывается',
     game_category: 'Категория игры',
+    battle: '⚔️ PumPum Verse',
+    battle_brand: 'PumPum Verse',
+    battle_money_rule: 'Платформа сначала берёт свою стандартную комиссию — остальное делится 60% победительнице и 40% проигравшей. Ничья = 50/50. Сдаться = проиграть, при любом счёте.',
+    battle_invite_from: '{name} зовёт вас в PumPum Verse!',
+    battle_minutes: 'Баттл на {n} минут',
+    battle_accept: '✅ Принять',
+    battle_ready: '✅ Я готова',
+    battle_waiting_opp: 'Ждём {name}…',
+    battle_waiting_live: 'Обе модели должны быть в эфире, чтобы запустить отсчёт',
+    battle_tip_her: '💰 Чаевые для {name}',
+    battle_games_her: '🎲 Игры — {name}',
+    battle_you_won: '🏆 ВЫ ВЫИГРАЛИ!',
+    battle_you_lost: '⚔️ {name} забирает эту победу — хорошая игра!',
+    battle_tied: '🤝 Ничья!',
+    battle_wins: '🏆 {name} побеждает!',
+    battle_rematch: '🔁 Реванш',
+    battle_open_invites: '⚔️ Открыта для приглашений в PumPum Verse',
+    battle_open_invites_note: 'Выключено — вы скрыты из списков PumPum Verse, но сами приглашать и планировать можете.',
+    battle_random: '🎲 Случайный PumPum Verse',
+    battle_schedule: '📅 Запланировать поединок',
+    battle_looking: '⚔️ Ищет PumPum Verse',
+    battle_in_battle: '⚔️ В PUMPUM VERSE',
+    battle_forfeited: 'Сдача — одна из сторон завершила эфир',
+    battle_you_earned: 'Вы заработали {amount}',
+    battle_enter_pool: 'Войти в пул',
+    battle_leave_pool: 'Покинуть пул',
+    battle_pool_waiting: 'В пуле — ищем вам соперницу…',
+    battle_pick_rival: 'Выберите соперницу',
+    battle_chat_ph: 'Чат PumPum Verse…',
+    battle_history: '⚔️ История PumPum Verse',
+    battle_vs_line: '⚔️ против {name}',
+    battle_remind: '🔔 Напомнить мне',
+    battle_reminded: '✓ Напоминание установлено',
+    battle_pot: 'Банк',
     game_btn: '🎲 Игра',
     game_regular: 'Обычная',
     game_explicit: 'Откровенная 🔞',
@@ -4575,7 +4785,7 @@ const I18N = {
     age_confirm_toast: 'Вы должны подтвердить, что вам 18 лет или больше',
     agreement_signed_toast: '✅ Соглашение подписано — добро пожаловать в SlutCamp!',
     public_photo_removed_toast: 'Публичное фото удалено — на вашей публичной странице вместо него отображается логотип SlutCamp.',
-    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Условия обслуживания · Последнее обновление 16 октября 2026 г.</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Перевод для удобства — преимущественную силу имеет английская версия.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. Только 18+</div>\n        <div class="small muted">SlutCamp строго для взрослых от 18 лет и старше. Используя это приложение, вы подтверждаете, что вам не менее 18 лет. Модели должны пройти проверку удостоверения личности в SlutCamp, прежде чем выходить в эфир (соответствие 18 U.S.C. §2257).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. Как платят фанаты</div>\n        <div class="small muted">Фанаты покупают кредиты и тратят их на чаты, звонки, подарки, доступ к эфирам, приоритетные сообщения, присоединения к сцене и бронирования. Ваши первые 3 сообщения с каждой моделью бесплатны — после этого сообщения стоят $1.49 каждое (или по собственному тарифу модели). Неиспользованные кредиты остаются в вашем кошельке. <b>Потраченные кредиты возврату не подлежат.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Тарифы моделей</div>\n        <div class="small muted">Модели устанавливают свои собственные тарифы: за сообщение, за минуту видео, за голосовое сообщение и их тарифы откровенного присоединения к сцене ($5–$100). Тарифы отображаются до оплаты. Платформа может устанавливать тарифы по умолчанию, которые модели могут корректировать в разрешённых пределах.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Разделение дохода и выплаты</div>\n        <div class="small muted">Модели сохраняют <b>60%</b> от всего, что фанаты тратят на них; платформа сохраняет 40%. Выплаты отправляются SlutCamp (в настоящее время обрабатываются вручную). Модели добавляют свои банковские реквизиты в приложении и запрашивают вывод в любое время; ожидающие запросы выплачиваются по расписанию SlutCamp. Доход моделей становится доступным для вывода через неделю (7 дней) после его получения.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Прямые эфиры и откровенный контент</div>\n        <div class="small muted">Групповые трансляции бесплатны для просмотра; откровенный просмотр требует платной платы за вход плюс постоянные подарки, чтобы оставаться без размытия. Присоединения к сцене (видео или микрофон) длятся 3 минуты, затем время истекает — оплатите снова, чтобы вернуться. Модель одобряет каждое присоединение к сцене; отклонённые запросы возвращаются в полном объёме. Приоритетные сообщения — это платные баннеры с необязательным платным голосом.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. Бронирования 1-на-1 и неявки</div>\n        <div class="small muted">Бронирование приватного 1-на-1 резервирует время модели только для вас — бронирования оплачиваются вперёд. Когда ваш 1-на-1 становится активным, у вас есть <b>3 минуты</b>, чтобы присоединиться к звонку; если вы не явитесь, <b>возврата не будет</b> — вы забронировали слот, который мог занять другой фанат, и её время было зарезервировано за вами. Если модель не начнёт в течение <b>5 минут</b> от забронированного времени, это её неявка: вы получаете <b>полный возврат, автоматически</b>. Фанаты могут отменить с полным возвратом за <b>2+ часа</b> до начала (запрошенные бронирования: за 1+ час); модель может отменить в любое время с полным возвратом.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Доступ моделей</div>\n        <div class="small muted">Аккаунты моделей только по приглашению. SlutCamp может деактивировать или удалить любой аккаунт модели в любое время, по любой причине. Деактивированные модели сохраняют заработанные балансы, доступные для вывода.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Безопасность и поведение</div>\n        <div class="small muted">Обмен контактной информацией, платёжными реквизитами или попытки увести транзакции за пределы платформы приведут к блокировке ваших сообщений и могут привести к блокировке вашего аккаунта. Расовые оскорбления и язык ненависти блокируются. Все чаты и трансляции отслеживаются в целях безопасности.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Нет возвратов за потраченные кредиты</div>\n        <div class="small muted">Как только кредиты потрачены на сообщения, звонки, подарки, входы, приоритеты, присоединения или бронирования, они исчезли — никаких возвратов, никаких чарджбэков через приложение. Неиспользованные кредиты кошелька не подлежат обмену на наличные (фанаты).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Чарджбэки и мошенничество</div>\n        <div class="small muted">Если вы оспорите покупку кредитов в вашем банке или у эмитента карты (чарджбэк) вместо того, чтобы сначала связаться с нами, мы можем отозвать кредиты от этой покупки, отменить любой доход, который она принесла, и закрыть ваш аккаунт. Чарджбэки по покупкам, которые вы получили и потратили, рассматриваются как мошенничество. Если списание когда-либо действительно ошибочно, сначала свяжитесь с нами — реальные ошибки биллинга возвращаются в соответствии с нашей Политикой биллинга и возвратов.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Применимое право</div>\n        <div class="small muted">Эти условия регулируются законами штата Техас, без учёта его коллизионных норм. Любой спор, связанный с этими условиями или вашим использованием SlutCamp, должен подаваться в суды штата или федеральные суды, расположенные в Техасе, и вы и SlutCamp соглашаетесь с персональной юрисдикцией и местом рассмотрения этих судов. Ничто в этом разделе не отменяет и не ограничивает какое-либо право, предоставляемое вам вашим родным штатом, которое не может быть юридически отменено.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Изменения</div>\n        <div class="small muted">Функции, цены, тарифы и эти условия могут изменяться в любое время. Продолжение использования означает, что вы принимаете текущие условия.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Эти условия являются кратким изложением простым языком, а не юридической консультацией.<br>Управляется World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Политика конфиденциальности</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Биллинг и возвраты</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">Заявление 2257</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Удаление за нарушение авторских прав →</a></p>\n      <button class="btn ghost" id="t-back">← Назад</button>\n    </div>\n',
+    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Условия обслуживания · Последнее обновление 16 октября 2026 г.</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Перевод для удобства — преимущественную силу имеет английская версия.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. Только 18+</div>\n        <div class="small muted">SlutCamp строго для взрослых от 18 лет и старше. Используя это приложение, вы подтверждаете, что вам не менее 18 лет. Модели должны пройти проверку удостоверения личности в SlutCamp, прежде чем выходить в эфир (соответствие 18 U.S.C. §2257).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. Как платят фанаты</div>\n        <div class="small muted">Фанаты покупают кредиты и тратят их на чаты, звонки, подарки, доступ к эфирам, приоритетные сообщения, присоединения к сцене и бронирования. Ваши первые 3 сообщения с каждой моделью бесплатны — после этого сообщения стоят $1.49 каждое (или по собственному тарифу модели). Неиспользованные кредиты остаются в вашем кошельке. <b>Потраченные кредиты возврату не подлежат.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Тарифы моделей</div>\n        <div class="small muted">Модели устанавливают свои собственные тарифы: за сообщение, за минуту видео, за голосовое сообщение и их тарифы откровенного присоединения к сцене ($5–$100). Тарифы отображаются до оплаты. Платформа может устанавливать тарифы по умолчанию, которые модели могут корректировать в разрешённых пределах.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Разделение дохода и выплаты</div>\n        <div class="small muted">Модели сохраняют <b>60%</b> от всего, что фанаты тратят на них; платформа сохраняет 40%. Выплаты отправляются SlutCamp (в настоящее время обрабатываются вручную). Модели добавляют свои банковские реквизиты в приложении и запрашивают вывод в любое время; ожидающие запросы выплачиваются по расписанию SlutCamp. Доход моделей становится доступным для вывода через неделю (7 дней) после его получения.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Прямые эфиры и откровенный контент</div>\n        <div class="small muted">Групповые трансляции бесплатны для просмотра; откровенный просмотр требует платной платы за вход плюс постоянные подарки, чтобы оставаться без размытия. Присоединения к сцене (видео или микрофон) длятся 3 минуты, затем время истекает — оплатите снова, чтобы вернуться. Модель одобряет каждое присоединение к сцене; отклонённые запросы возвращаются в полном объёме. Приоритетные сообщения — это платные баннеры с необязательным платным голосом.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. Бронирования 1-на-1 и неявки</div>\n        <div class="small muted">Бронирование приватного 1-на-1 резервирует время модели только для вас — бронирования оплачиваются вперёд. Когда ваш 1-на-1 становится активным, у вас есть <b>3 минуты</b>, чтобы присоединиться к звонку; если вы не явитесь, <b>возврата не будет</b> — вы забронировали слот, который мог занять другой фанат, и её время было зарезервировано за вами. Если модель не начнёт в течение <b>5 минут</b> от забронированного времени, это её неявка: вы получаете <b>полный возврат, автоматически</b>. Фанаты могут отменить с полным возвратом за <b>2+ часа</b> до начала (запрошенные бронирования: за 1+ час); модель может отменить в любое время с полным возвратом.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Доступ моделей</div>\n        <div class="small muted">Аккаунты моделей только по приглашению. SlutCamp может деактивировать или удалить любой аккаунт модели в любое время, по любой причине. Деактивированные модели сохраняют заработанные балансы, доступные для вывода.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Безопасность и поведение</div>\n        <div class="small muted">Обмен контактной информацией, платёжными реквизитами или попытки увести транзакции за пределы платформы приведут к блокировке ваших сообщений и могут привести к блокировке вашего аккаунта. Расовые оскорбления и язык ненависти блокируются. Все чаты и трансляции отслеживаются в целях безопасности.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Нет возвратов за потраченные кредиты</div>\n        <div class="small muted">Как только кредиты потрачены на сообщения, звонки, подарки, входы, приоритеты, присоединения или бронирования, они исчезли — никаких возвратов, никаких чарджбэков через приложение. Неиспользованные кредиты кошелька не подлежат обмену на наличные (фанаты).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Чарджбэки и мошенничество</div>\n        <div class="small muted">Если вы оспорите покупку кредитов в вашем банке или у эмитента карты (чарджбэк) вместо того, чтобы сначала связаться с нами, мы можем отозвать кредиты от этой покупки, отменить любой доход, который она принесла, и закрыть ваш аккаунт. Чарджбэки по покупкам, которые вы получили и потратили, рассматриваются как мошенничество. Если списание когда-либо действительно ошибочно, сначала свяжитесь с нами — реальные ошибки биллинга возвращаются в соответствии с нашей Политикой биллинга и возвратов.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Применимое право</div>\n        <div class="small muted">Эти условия регулируются законами штата Техас, без учёта его коллизионных норм. Любой спор, связанный с этими условиями или вашим использованием SlutCamp, должен подаваться в суды штата или федеральные суды, расположенные в Техасе, и вы и SlutCamp соглашаетесь с персональной юрисдикцией и местом рассмотрения этих судов. Ничто в этом разделе не отменяет и не ограничивает какое-либо право, предоставляемое вам вашим родным штатом, которое не может быть юридически отменено.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Изменения</div>\n        <div class="small muted">Функции, цены, тарифы и эти условия могут изменяться в любое время. Продолжение использования означает, что вы принимаете текущие условия.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">13. Нет торговле людьми и эксплуатации</div>\n        <div class="small muted">SlutCamp запрещает торговлю людьми, сексуальную эксплуатацию и несогласованный контент в любых формах. Каждый исполнитель на SlutCamp — совершеннолетний, прошедший проверку и действующий добровольно. Подозрения в торговле людьми или эксплуатации передаются в соответствующие органы и на Национальную горячую линию по борьбе с торговлей людьми (1-888-373-7888). Нарушения ведут к немедленному удалению контента и закрытию аккаунта.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Эти условия являются кратким изложением простым языком, а не юридической консультацией.<br>Управляется World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Политика конфиденциальности</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Биллинг и возвраты</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">Заявление 2257</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Удаление за нарушение авторских прав →</a></p>\n      <button class="btn ghost" id="t-back">← Назад</button>\n    </div>\n',
     mc_sub: 'Договор модели',
     mc_loading: 'Загрузка договора…',
     mc_load_fail: 'Не удалось загрузить договор — попробуйте ещё раз',
@@ -4877,6 +5087,7 @@ const I18N = {
     sec_male: '男性',
     sec_couple: 'カップル',
     err_must_declare_section: '続けるにはセクション（女性・男性・カップル）を選んでください。',
+    err_username_is_email: 'ユーザー名にメールアドレスは使えません — 名前を選んでください。',
     sf_female: '女性',
     sf_male: '男性',
     sf_couples: 'カップル',
@@ -5228,6 +5439,40 @@ const I18N = {
     say_fans_ph: 'ファンに何か言ってね…',
     explicit_rate_note: '露骨料金：{price}/分 · あなたのプレビューは決してぼかされません',
     game_category: 'ゲームカテゴリ',
+    battle: '⚔️ PumPum Verse',
+    battle_brand: 'PumPum Verse',
+    battle_money_rule: 'まずプラットフォームが通常の手数料を引きます — 残りは勝者60％／敗者40％に分配。引き分け＝50/50。途中終了した側はスコアに関係なく敗北です。',
+    battle_invite_from: '{name}がPumPum Verseに誘っています！',
+    battle_minutes: '{n}分のバトル',
+    battle_accept: '✅ 受ける',
+    battle_ready: '✅ 準備OK',
+    battle_waiting_opp: '{name}を待っています…',
+    battle_waiting_live: 'カウントダウン開始には両モデルの配信が必要です',
+    battle_tip_her: '💰 {name}にチップ',
+    battle_games_her: '🎲 {name}のゲーム',
+    battle_you_won: '🏆 あなたの勝利！',
+    battle_you_lost: '⚔️ 今回は{name}の勝ち — ナイスゲーム！',
+    battle_tied: '🤝 引き分け！',
+    battle_wins: '🏆 {name}の勝利！',
+    battle_rematch: '🔁 再戦',
+    battle_open_invites: '⚔️ PumPum Verseの招待を受ける',
+    battle_open_invites_note: 'オフにするとPumPum Verseの一覧に表示されません — 自分から招待や予約はできます。',
+    battle_random: '🎲 ランダムPumPum Verse',
+    battle_schedule: '📅 対決を予約',
+    battle_looking: '⚔️ PumPum Verse相手を募集中',
+    battle_in_battle: '⚔️ PumPum Verse中',
+    battle_forfeited: '不戦敗 — 片方の配信が終了しました',
+    battle_you_earned: '{amount}を獲得しました',
+    battle_enter_pool: 'プールに入る',
+    battle_leave_pool: 'プールを出る',
+    battle_pool_waiting: 'プール内 — ライバルをマッチング中…',
+    battle_pick_rival: 'ライバルを選んでね',
+    battle_chat_ph: 'PumPum Verseチャット…',
+    battle_history: '⚔️ PumPum Verse履歴',
+    battle_vs_line: '⚔️ vs {name}',
+    battle_remind: '🔔 リマインドする',
+    battle_reminded: '✓ リマインダー設定済み',
+    battle_pot: 'ポット',
     game_btn: '🎲 ゲーム',
     game_regular: '通常',
     game_explicit: '露骨 🔞',
@@ -5333,7 +5578,7 @@ const I18N = {
     age_confirm_toast: '18歳以上であることを確認する必要があります',
     agreement_signed_toast: '✅ 契約にサインしました — SlutCampへようこそ！',
     public_photo_removed_toast: '公開写真を削除しました — 公開ページには代わりにSlutCampのロゴが表示されます。',
-    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">利用規約 · 最終更新日：2026年10月16日</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">便宜上の翻訳です — 英語版が正式なものとなります。</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. 18歳以上のみ</div>\n        <div class="small muted">SlutCampは18歳以上の成人専用です。本アプリを使用することにより、あなたは18歳以上であることを確認したものとみなされます。モデルはライブ配信を開始する前に、SlutCampによる身分証確認を完了しなければなりません（合衆国法典第18編 §2257 の遵守）。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. ファンの支払い方法</div>\n        <div class="small muted">ファンはクレジットを購入し、チャット、通話、ギフト、ライブアクセス、優先メッセージ、ステージ参加、予約に使用します。各モデルとの最初の3通のメッセージは無料です。その後は、テキスト1通につき$1.49（またはモデル独自の料金）がかかります。未使用のクレジットはウォレットに残ります。<b>使用済みクレジットは返金されません。</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. モデルの料金</div>\n        <div class="small muted">モデルは独自の料金を設定します：メッセージ単価、ビデオ1分単価、ボイスノート単価、および露骨なステージ参加料金（$5–$100）です。料金は支払い前に表示されます。プラットフォームはデフォルト料金を設定することができ、モデルは許容範囲内で調整できます。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. 収益分配と出金</div>\n        <div class="small muted">モデルは、ファンが自分に使った金額の<b>60%</b>を保持し、プラットフォームが40%を保持します。出金はSlutCampから送金されます（現在は手動で処理されています）。モデルはアプリに銀行情報を追加し、いつでも出金をリクエストできます。保留中のリクエストはSlutCampのスケジュールに従って支払われます。モデルの収益は、獲得してから1週間（7日）後に出金可能となります。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. ライブ配信と露骨なコンテンツ</div>\n        <div class="small muted">グループ配信は無料で視聴できます。露骨な視聴には有料の入場料に加え、ぼかしを解除した状態を維持するための継続的なギフトが必要です。ステージ参加（ビデオまたはマイク）は3分間でタイムアウトします。再度参加するには再支払いが必要です。すべてのステージ参加はモデルが承認します。却下されたリクエストは全額返金されます。優先メッセージは有料バナーで、有料ボイスは任意です。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. 1対1予約とノーショー</div>\n        <div class="small muted">プライベート1対1を予約すると、モデルの時間があなた専用に確保されます。予約は前払いです。1対1が有効になったら、通話に参加するまで<b>3分</b>あります。ノーショーの場合、<b>返金はありません</b>。別のファンが取得できた可能性のある枠をあなたが予約し、彼女の時間があなたのために確保されていたためです。モデルが予約時間から<b>5分</b>以内に開始しない場合、それはモデル側のノーショーとなります：あなたには<b>自動的に全額返金</b>されます。ファンは開始の<b>2時間以上前</b>までにキャンセルすれば全額返金を受けられます（リクエスト型予約：1時間以上前）。モデルはいつでもキャンセルでき、全額返金されます。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. モデルのアクセス</div>\n        <div class="small muted">モデルアカウントは招待制のみです。SlutCampはいつでも、理由を問わず、モデルアカウントを無効化または削除できます。無効化されたモデルは、獲得した残高を引き続き出金できます。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. 安全と行動規範</div>\n        <div class="small muted">連絡先情報や支払いハンドルを共有したり、取引をプラットフォーム外に移そうとすると、メッセージがブロックされ、アカウントが禁止される場合があります。人種的中傷やヘイトスピーチはブロックされます。すべてのチャットと配信は安全のために監視されています。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. 使用済みクレジットの返金なし</div>\n        <div class="small muted">クレジットがメッセージ、通話、ギフト、入場、優先、参加、予約に使用されると、そのクレジットは消滅します。返金はなく、アプリを通じたチャージバックもできません。ウォレット内の未使用クレジットは現金に換金できません（ファン）。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. チャージバックと不正行為</div>\n        <div class="small muted">まず当社に連絡する代わりに、銀行またはカード発行会社に対してクレジット購入に異議を申し立てた場合（チャージバック）、当社はその購入分のクレジットを取り消し、それによって生じた収益を取り消し、あなたのアカウントを閉鎖する場合があります。受け取って使用した購入に対するチャージバックは不正行為として扱われます。請求が本当に誤っている場合は、まず当社にご連絡ください。本当の請求エラーは、当社の請求と返金ポリシーに基づいて返金されます。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. 準拠法</div>\n        <div class="small muted">本規約は、抵触法の規則にかかわらず、テキサス州の法律に準拠します。本規約またはあなたのSlutCampの使用に関連する紛争は、テキサス州に所在する州裁判所または連邦裁判所に提起しなければならず、あなたとSlutCampは、それらの裁判所の対人管轄権および裁判地に同意します。本条のいかなる規定も、法的に放棄できないあなたの居住州が与える権利を放棄または制限するものではありません。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. 変更</div>\n        <div class="small muted">機能、価格、料金、および本規約はいつでも変更される場合があります。継続して使用することは、現在の規約に同意したものとみなされます。</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">本規約は平易な言葉による要約であり、法的助言ではありません。<br>World of Godz Entertainment LLC により運営されています。<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">プライバシーポリシー</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">請求と返金</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">2257に関する声明</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / 著作権削除 →</a></p>\n      <button class="btn ghost" id="t-back">← 戻る</button>\n    </div>\n',
+    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">利用規約 · 最終更新日：2026年10月16日</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">便宜上の翻訳です — 英語版が正式なものとなります。</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. 18歳以上のみ</div>\n        <div class="small muted">SlutCampは18歳以上の成人専用です。本アプリを使用することにより、あなたは18歳以上であることを確認したものとみなされます。モデルはライブ配信を開始する前に、SlutCampによる身分証確認を完了しなければなりません（合衆国法典第18編 §2257 の遵守）。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. ファンの支払い方法</div>\n        <div class="small muted">ファンはクレジットを購入し、チャット、通話、ギフト、ライブアクセス、優先メッセージ、ステージ参加、予約に使用します。各モデルとの最初の3通のメッセージは無料です。その後は、テキスト1通につき$1.49（またはモデル独自の料金）がかかります。未使用のクレジットはウォレットに残ります。<b>使用済みクレジットは返金されません。</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. モデルの料金</div>\n        <div class="small muted">モデルは独自の料金を設定します：メッセージ単価、ビデオ1分単価、ボイスノート単価、および露骨なステージ参加料金（$5–$100）です。料金は支払い前に表示されます。プラットフォームはデフォルト料金を設定することができ、モデルは許容範囲内で調整できます。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. 収益分配と出金</div>\n        <div class="small muted">モデルは、ファンが自分に使った金額の<b>60%</b>を保持し、プラットフォームが40%を保持します。出金はSlutCampから送金されます（現在は手動で処理されています）。モデルはアプリに銀行情報を追加し、いつでも出金をリクエストできます。保留中のリクエストはSlutCampのスケジュールに従って支払われます。モデルの収益は、獲得してから1週間（7日）後に出金可能となります。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. ライブ配信と露骨なコンテンツ</div>\n        <div class="small muted">グループ配信は無料で視聴できます。露骨な視聴には有料の入場料に加え、ぼかしを解除した状態を維持するための継続的なギフトが必要です。ステージ参加（ビデオまたはマイク）は3分間でタイムアウトします。再度参加するには再支払いが必要です。すべてのステージ参加はモデルが承認します。却下されたリクエストは全額返金されます。優先メッセージは有料バナーで、有料ボイスは任意です。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. 1対1予約とノーショー</div>\n        <div class="small muted">プライベート1対1を予約すると、モデルの時間があなた専用に確保されます。予約は前払いです。1対1が有効になったら、通話に参加するまで<b>3分</b>あります。ノーショーの場合、<b>返金はありません</b>。別のファンが取得できた可能性のある枠をあなたが予約し、彼女の時間があなたのために確保されていたためです。モデルが予約時間から<b>5分</b>以内に開始しない場合、それはモデル側のノーショーとなります：あなたには<b>自動的に全額返金</b>されます。ファンは開始の<b>2時間以上前</b>までにキャンセルすれば全額返金を受けられます（リクエスト型予約：1時間以上前）。モデルはいつでもキャンセルでき、全額返金されます。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. モデルのアクセス</div>\n        <div class="small muted">モデルアカウントは招待制のみです。SlutCampはいつでも、理由を問わず、モデルアカウントを無効化または削除できます。無効化されたモデルは、獲得した残高を引き続き出金できます。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. 安全と行動規範</div>\n        <div class="small muted">連絡先情報や支払いハンドルを共有したり、取引をプラットフォーム外に移そうとすると、メッセージがブロックされ、アカウントが禁止される場合があります。人種的中傷やヘイトスピーチはブロックされます。すべてのチャットと配信は安全のために監視されています。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. 使用済みクレジットの返金なし</div>\n        <div class="small muted">クレジットがメッセージ、通話、ギフト、入場、優先、参加、予約に使用されると、そのクレジットは消滅します。返金はなく、アプリを通じたチャージバックもできません。ウォレット内の未使用クレジットは現金に換金できません（ファン）。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. チャージバックと不正行為</div>\n        <div class="small muted">まず当社に連絡する代わりに、銀行またはカード発行会社に対してクレジット購入に異議を申し立てた場合（チャージバック）、当社はその購入分のクレジットを取り消し、それによって生じた収益を取り消し、あなたのアカウントを閉鎖する場合があります。受け取って使用した購入に対するチャージバックは不正行為として扱われます。請求が本当に誤っている場合は、まず当社にご連絡ください。本当の請求エラーは、当社の請求と返金ポリシーに基づいて返金されます。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. 準拠法</div>\n        <div class="small muted">本規約は、抵触法の規則にかかわらず、テキサス州の法律に準拠します。本規約またはあなたのSlutCampの使用に関連する紛争は、テキサス州に所在する州裁判所または連邦裁判所に提起しなければならず、あなたとSlutCampは、それらの裁判所の対人管轄権および裁判地に同意します。本条のいかなる規定も、法的に放棄できないあなたの居住州が与える権利を放棄または制限するものではありません。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. 変更</div>\n        <div class="small muted">機能、価格、料金、および本規約はいつでも変更される場合があります。継続して使用することは、現在の規約に同意したものとみなされます。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">13. 人身売買と搾取の禁止</div>\n        <div class="small muted">SlutCampは、人身売買、性的搾取、同意のないコンテンツをあらゆる形で禁止します。SlutCampのすべての出演者は、本人確認済みの成人で、自発的に活動しています。人身売買や搾取の疑いは、関係当局および全米人身売買ホットライン（1-888-373-7888）に報告されます。違反した場合は、コンテンツの即時削除とアカウントの停止を行います。</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">本規約は平易な言葉による要約であり、法的助言ではありません。<br>World of Godz Entertainment LLC により運営されています。<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">プライバシーポリシー</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">請求と返金</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">2257に関する声明</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / 著作権削除 →</a></p>\n      <button class="btn ghost" id="t-back">← 戻る</button>\n    </div>\n',
     mc_sub: 'モデル契約',
     mc_loading: '契約書を読み込み中…',
     mc_load_fail: '契約書を読み込めませんでした — もう一度お試しください',
@@ -5635,6 +5880,7 @@ const I18N = {
     sec_male: '男性',
     sec_couple: '情侣',
     err_must_declare_section: '请选择你的板块（女性、男性或情侣）以继续。',
+    err_username_is_email: '用户名不能是电子邮件地址——请选择一个名字。',
     sf_female: '女性',
     sf_male: '男性',
     sf_couples: '情侣',
@@ -5986,6 +6232,40 @@ const I18N = {
     say_fans_ph: '对你的粉丝说点什么…',
     explicit_rate_note: '露骨费率：{price}/分钟 · 你的预览永不模糊',
     game_category: '游戏类别',
+    battle: '⚔️ PumPum Verse',
+    battle_brand: 'PumPum Verse',
+    battle_money_rule: '平台先扣除标准佣金 — 剩余部分按赢家 60% / 输家 40% 分配。平局 = 50/50。提前结束直播的一方判负，不论分数。',
+    battle_invite_from: '{name}想和你来一场PumPum Verse！',
+    battle_minutes: '{n} 分钟对战',
+    battle_accept: '✅ 接受',
+    battle_ready: '✅ 我准备好了',
+    battle_waiting_opp: '等待 {name}…',
+    battle_waiting_live: '两位模特都必须开播才能开始计时',
+    battle_tip_her: '💰 打赏 {name}',
+    battle_games_her: '🎲 {name} 的游戏',
+    battle_you_won: '🏆 你赢了！',
+    battle_you_lost: '⚔️ 这次 {name} 赢了 — 比赛精彩！',
+    battle_tied: '🤝 平局！',
+    battle_wins: '🏆 {name} 获胜！',
+    battle_rematch: '🔁 再来一局',
+    battle_open_invites: '⚔️ 接受PumPum Verse邀请',
+    battle_open_invites_note: '关闭后你不会出现在PumPum Verse名单中 — 但你仍可主动邀请和预约。',
+    battle_random: '🎲 随机PumPum Verse',
+    battle_schedule: '📅 预约对决',
+    battle_looking: '⚔️ 正在寻找PumPum Verse',
+    battle_in_battle: '⚔️ PumPum Verse进行中',
+    battle_forfeited: '判负 — 一方结束了直播',
+    battle_you_earned: '你获得了 {amount}',
+    battle_enter_pool: '加入匹配池',
+    battle_leave_pool: '离开匹配池',
+    battle_pool_waiting: '已在池中 — 正在为你匹配对手…',
+    battle_pick_rival: '选择你的对手',
+    battle_chat_ph: 'PumPum Verse聊天…',
+    battle_history: '⚔️ PumPum Verse历史',
+    battle_vs_line: '⚔️ 对战 {name}',
+    battle_remind: '🔔 提醒我',
+    battle_reminded: '✓ 已设置提醒',
+    battle_pot: '奖池',
     game_btn: '🎲 游戏',
     game_regular: '常规',
     game_explicit: '露骨 🔞',
@@ -6091,7 +6371,7 @@ const I18N = {
     age_confirm_toast: '你必须确认你已年满 18 岁',
     agreement_signed_toast: '✅ 协议已签署 — 欢迎来到 SlutCamp！',
     public_photo_removed_toast: '公开照片已移除 — 你的公开页面将改为显示 SlutCamp 标志。',
-    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">服务条款 · 最后更新于 2026 年 10 月 16 日</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">此译文仅供方便参考 — 以英文版本为准。</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. 仅限 18 岁以上</div>\n        <div class="small muted">SlutCamp 严格仅限 18 岁及以上的成年人。使用此应用即表示你确认你至少 18 岁。模特在开播前必须完成 SlutCamp 的身份证件验证（符合 18 U.S.C. §2257）。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. 粉丝如何付款</div>\n        <div class="small muted">粉丝购买点数，并将其用于聊天、通话、礼物、直播访问、优先消息、舞台加入和预约。你与每位模特的前 3 条消息免费 — 之后，每条短信收费 $1.49（或模特自己的费率）。未使用的点数会留在你的钱包中。<b>已消费的点数不可退款。</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. 模特费率</div>\n        <div class="small muted">模特设定自己的费率：每条消息、每分钟视频、每条语音消息，以及她们的露骨舞台加入费率 ($5–$100)。费率会在你付款前显示。平台可以设定默认费率，模特可以在允许的范围内调整。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. 收入分成与付款</div>\n        <div class="small muted">模特保留粉丝在她们身上消费的全部金额的 <b>60%</b>；平台保留 40%。付款由 SlutCamp 发送（目前手动处理）。模特在应用中添加银行详细信息，并可随时申请提现；待处理的请求按 SlutCamp 的时间表支付。模特收入在赚取一周（7 天）后才有资格提现。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. 直播与露骨内容</div>\n        <div class="small muted">群组直播可免费观看；露骨观看需要付费入场费，并持续送礼物才能保持不模糊。舞台加入（视频或麦克风）为 3 分钟，然后超时 — 重新付费才能返回。模特批准每一次舞台加入；被拒绝的请求全额退款。优先消息是付费横幅，可选付费语音。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. 一对一预约与爽约</div>\n        <div class="small muted">预约一对一私密服务即为你独占模特的时间 — 预约预付费用。当你的一对一激活时，你有 <b>3 分钟</b> 时间加入通话；如果你爽约，<b>不予退款</b> — 你预约了一个其他粉丝本可以占用的时段，她的时间已为你保留。如果模特未在预约时间后 <b>5 分钟</b> 内开始，那就是她爽约：你将获得 <b>全额退款，自动处理</b>。粉丝可以在开始前 <b>2 小时以上</b> 取消并获得全额退款（申请的预约：提前 1 小时以上）；模特可以随时取消并全额退款。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. 模特访问权限</div>\n        <div class="small muted">模特账号仅限邀请。SlutCamp 可随时以任何理由停用或移除任何模特账号。被停用的模特仍可提取已赚取的余额。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. 安全与行为</div>\n        <div class="small muted">分享联系信息、付款账号，或试图将交易转移到平台外，将导致你的消息被屏蔽，并可能导致你的账号被封禁。种族侮辱和仇恨言论会被屏蔽。所有聊天和直播都会出于安全目的受到监控。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. 已消费点数不退款</div>\n        <div class="small muted">一旦点数用于消息、通话、礼物、入场、优先服务、加入或预约，它们就消失了 — 不退款，不通过应用进行拒付。未使用的钱包点数不可兑换为现金（粉丝）。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. 拒付与欺诈</div>\n        <div class="small muted">如果你不先联系我们，而是向你的银行或发卡机构争议一笔点数购买（拒付），我们可能会撤销该购买的点数、逆转它产生的任何收入，并关闭你的账号。对你已收到并消费的购买进行拒付将被视为欺诈。如果某笔收费确实有误，请先联系我们 — 真实的账单错误会根据我们的账单与退款政策退款。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. 适用法律</div>\n        <div class="small muted">这些条款受德克萨斯州法律管辖，不考虑其法律冲突规则。与这些条款或你使用 SlutCamp 有关的任何争议必须提交位于德克萨斯州的州法院或联邦法院，你和 SlutCamp 同意接受这些法院的属人管辖权和审判地。本节中的任何内容均不放弃或限制你所在州依法不可放弃的任何权利。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. 变更</div>\n        <div class="small muted">功能、价格、费率和这些条款可随时变更。继续使用即表示你接受当前条款。</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">这些条款是通俗语言摘要，不是法律建议。<br>由 World of Godz Entertainment LLC 运营。<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">隐私政策</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">账单与退款</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">2257 声明</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / 版权下架 →</a></p>\n      <button class="btn ghost" id="t-back">← 返回</button>\n    </div>\n',
+    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">服务条款 · 最后更新于 2026 年 10 月 16 日</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">此译文仅供方便参考 — 以英文版本为准。</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. 仅限 18 岁以上</div>\n        <div class="small muted">SlutCamp 严格仅限 18 岁及以上的成年人。使用此应用即表示你确认你至少 18 岁。模特在开播前必须完成 SlutCamp 的身份证件验证（符合 18 U.S.C. §2257）。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. 粉丝如何付款</div>\n        <div class="small muted">粉丝购买点数，并将其用于聊天、通话、礼物、直播访问、优先消息、舞台加入和预约。你与每位模特的前 3 条消息免费 — 之后，每条短信收费 $1.49（或模特自己的费率）。未使用的点数会留在你的钱包中。<b>已消费的点数不可退款。</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. 模特费率</div>\n        <div class="small muted">模特设定自己的费率：每条消息、每分钟视频、每条语音消息，以及她们的露骨舞台加入费率 ($5–$100)。费率会在你付款前显示。平台可以设定默认费率，模特可以在允许的范围内调整。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. 收入分成与付款</div>\n        <div class="small muted">模特保留粉丝在她们身上消费的全部金额的 <b>60%</b>；平台保留 40%。付款由 SlutCamp 发送（目前手动处理）。模特在应用中添加银行详细信息，并可随时申请提现；待处理的请求按 SlutCamp 的时间表支付。模特收入在赚取一周（7 天）后才有资格提现。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. 直播与露骨内容</div>\n        <div class="small muted">群组直播可免费观看；露骨观看需要付费入场费，并持续送礼物才能保持不模糊。舞台加入（视频或麦克风）为 3 分钟，然后超时 — 重新付费才能返回。模特批准每一次舞台加入；被拒绝的请求全额退款。优先消息是付费横幅，可选付费语音。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. 一对一预约与爽约</div>\n        <div class="small muted">预约一对一私密服务即为你独占模特的时间 — 预约预付费用。当你的一对一激活时，你有 <b>3 分钟</b> 时间加入通话；如果你爽约，<b>不予退款</b> — 你预约了一个其他粉丝本可以占用的时段，她的时间已为你保留。如果模特未在预约时间后 <b>5 分钟</b> 内开始，那就是她爽约：你将获得 <b>全额退款，自动处理</b>。粉丝可以在开始前 <b>2 小时以上</b> 取消并获得全额退款（申请的预约：提前 1 小时以上）；模特可以随时取消并全额退款。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. 模特访问权限</div>\n        <div class="small muted">模特账号仅限邀请。SlutCamp 可随时以任何理由停用或移除任何模特账号。被停用的模特仍可提取已赚取的余额。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. 安全与行为</div>\n        <div class="small muted">分享联系信息、付款账号，或试图将交易转移到平台外，将导致你的消息被屏蔽，并可能导致你的账号被封禁。种族侮辱和仇恨言论会被屏蔽。所有聊天和直播都会出于安全目的受到监控。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. 已消费点数不退款</div>\n        <div class="small muted">一旦点数用于消息、通话、礼物、入场、优先服务、加入或预约，它们就消失了 — 不退款，不通过应用进行拒付。未使用的钱包点数不可兑换为现金（粉丝）。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. 拒付与欺诈</div>\n        <div class="small muted">如果你不先联系我们，而是向你的银行或发卡机构争议一笔点数购买（拒付），我们可能会撤销该购买的点数、逆转它产生的任何收入，并关闭你的账号。对你已收到并消费的购买进行拒付将被视为欺诈。如果某笔收费确实有误，请先联系我们 — 真实的账单错误会根据我们的账单与退款政策退款。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. 适用法律</div>\n        <div class="small muted">这些条款受德克萨斯州法律管辖，不考虑其法律冲突规则。与这些条款或你使用 SlutCamp 有关的任何争议必须提交位于德克萨斯州的州法院或联邦法院，你和 SlutCamp 同意接受这些法院的属人管辖权和审判地。本节中的任何内容均不放弃或限制你所在州依法不可放弃的任何权利。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. 变更</div>\n        <div class="small muted">功能、价格、费率和这些条款可随时变更。继续使用即表示你接受当前条款。</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">13. 禁止人口贩卖与剥削</div>\n        <div class="small muted">SlutCamp 禁止一切形式的人口贩卖、性剥削和非自愿内容。SlutCamp 上的每一位表演者都是经过验证的成年人，并出于自愿参与。涉嫌贩卖或剥削的行为将被报告给相关当局和全国人口贩卖热线（1-888-373-7888）。违规将导致内容立即被删除且账户被终止。</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">这些条款是通俗语言摘要，不是法律建议。<br>由 World of Godz Entertainment LLC 运营。<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">隐私政策</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">账单与退款</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">2257 声明</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / 版权下架 →</a></p>\n      <button class="btn ghost" id="t-back">← 返回</button>\n    </div>\n',
     mc_sub: '模特协议',
     mc_loading: '正在加载合同…',
     mc_load_fail: '无法加载合同 — 请重试',
@@ -6393,6 +6673,7 @@ const I18N = {
     sec_male: '남성',
     sec_couple: '커플',
     err_must_declare_section: '계속하려면 섹션(여성, 남성 또는 커플)을 선택하세요.',
+    err_username_is_email: '사용자 이름은 이메일 주소일 수 없습니다 — 이름을 선택하세요.',
     sf_female: '여성',
     sf_male: '남성',
     sf_couples: '커플',
@@ -6744,6 +7025,40 @@ const I18N = {
     say_fans_ph: '팬들에게 한마디 하세요…',
     explicit_rate_note: '선정적 요금: {price}/분 · 미리보기는 절대 흐려지지 않습니다',
     game_category: '게임 카테고리',
+    battle: '⚔️ PumPum Verse',
+    battle_brand: 'PumPum Verse',
+    battle_money_rule: '플랫폼이 먼저 표준 수수료를 떼고, 나머지는 승자 60% / 패자 40%로 나뉩니다. 무승부 = 50/50. 중간에 라이브를 끝내면 점수와 관계없이 패배예요.',
+    battle_invite_from: '{name}님이 PumPum Verse에 초대했어요!',
+    battle_minutes: '{n}분 배틀',
+    battle_accept: '✅ 수락',
+    battle_ready: '✅ 준비됐어요',
+    battle_waiting_opp: '{name}님을 기다리는 중…',
+    battle_waiting_live: '두 모델 모두 라이브 중이어야 타이머가 시작돼요',
+    battle_tip_her: '💰 {name}님에게 팁',
+    battle_games_her: '🎲 {name}님의 게임',
+    battle_you_won: '🏆 승리했어요!',
+    battle_you_lost: '⚔️ 이번엔 {name}님이 이겼어요 — 좋은 경기였어요!',
+    battle_tied: '🤝 무승부예요!',
+    battle_wins: '🏆 {name}님 승리!',
+    battle_rematch: '🔁 리매치',
+    battle_open_invites: '⚔️ PumPum Verse 초대 받기',
+    battle_open_invites_note: '끄면 PumPum Verse 목록에서 숨겨져요 — 직접 초대하고 예약하는 건 계속 가능해요.',
+    battle_random: '🎲 랜덤 PumPum Verse',
+    battle_schedule: '📅 대결 예약하기',
+    battle_looking: '⚔️ PumPum Verse 상대를 찾는 중',
+    battle_in_battle: '⚔️ PumPum Verse 중',
+    battle_forfeited: '기권 — 한쪽이 라이브를 종료했어요',
+    battle_you_earned: '{amount}을(를) 벌었어요',
+    battle_enter_pool: '풀에 들어가기',
+    battle_leave_pool: '풀 나가기',
+    battle_pool_waiting: '풀에 있어요 — 라이벌을 매칭 중…',
+    battle_pick_rival: '라이벌을 고르세요',
+    battle_chat_ph: 'PumPum Verse 채팅…',
+    battle_history: '⚔️ PumPum Verse 기록',
+    battle_vs_line: '⚔️ vs {name}',
+    battle_remind: '🔔 알림 받기',
+    battle_reminded: '✓ 알림 설정됨',
+    battle_pot: '팟',
     game_btn: '🎲 게임',
     game_regular: '일반',
     game_explicit: '선정적 🔞',
@@ -6849,7 +7164,7 @@ const I18N = {
     age_confirm_toast: '18세 이상임을 확인해야 합니다',
     agreement_signed_toast: '✅ 계약에 서명했습니다 — SlutCamp에 오신 것을 환영합니다!',
     public_photo_removed_toast: '공개 사진이 제거되었습니다 — 공개 페이지에는 대신 SlutCamp 로고가 표시됩니다.',
-    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">이용약관 · 최종 업데이트 2026년 10월 16일</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">편의를 위한 번역입니다 — 영어 버전이 우선합니다.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. 18세 이상만 이용 가능</div>\n        <div class="small muted">SlutCamp는 엄격히 18세 이상 성인 전용입니다. 이 앱을 이용함으로써 본인이 최소 18세임을 확인합니다. 모델은 라이브를 시작하기 전에 SlutCamp에서 신분증 인증을 완료해야 합니다 (18 U.S.C. §2257 준수).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. 팬 결제 방법</div>\n        <div class="small muted">팬은 크레딧을 구매하여 채팅, 통화, 선물, 라이브 입장, 우선 메시지, 무대 참여, 예약에 사용합니다. 각 모델과의 첫 3개 메시지는 무료입니다 — 이후 문자는 1개당 $1.49입니다 (또는 모델 본인의 요금). 사용하지 않은 크레딧은 지갑에 남습니다. <b>사용한 크레딧은 환불되지 않습니다.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. 모델 요금</div>\n        <div class="small muted">모델은 본인의 요금을 직접 정합니다: 메시지당, 영상 분당, 음성 메시지당, 그리고 선정적 무대 참여 요금 ($5–$100). 요금은 결제 전에 표시됩니다. 플랫폼은 기본 요금을 설정할 수 있으며 모델은 허용 범위 내에서 조정할 수 있습니다.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. 수익 배분 및 지급</div>\n        <div class="small muted">모델은 팬이 자신에게 쓰는 모든 금액의 <b>60%</b>를 가져가고, 플랫폼은 40%를 가져갑니다. 지급은 SlutCamp에서 보냅니다 (현재 수동으로 처리됩니다). 모델은 앱에 은행 정보를 추가하고 언제든지 출금을 요청할 수 있습니다; 대기 중인 요청은 SlutCamp의 일정에 따라 지급됩니다. 모델 수익은 발생한 지 1주일(7일) 후부터 출금할 수 있습니다.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. 라이브 스트림 및 선정적 콘텐츠</div>\n        <div class="small muted">그룹 스트림은 무료로 시청할 수 있습니다; 선정적 시청은 유료 입장료와 흐림 해제를 유지하기 위한 지속적인 선물이 필요합니다. 무대 참여(영상 또는 마이크)는 3분간 진행된 후 시간이 종료됩니다 — 돌아오려면 다시 결제하세요. 모델은 모든 무대 참여를 승인합니다; 거절된 요청은 전액 환불됩니다. 우선 메시지는 유료 배너이며 선택적으로 유료 음성을 사용할 수 있습니다.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. 1:1 예약 및 노쇼</div>\n        <div class="small muted">프라이빗 1:1을 예약하면 모델의 시간이 오직 나를 위해 예약됩니다 — 예약은 선불로 결제됩니다. 1:1이 활성화되면 <b>3분</b> 안에 통화에 참여해야 합니다; 노쇼인 경우 <b>환불은 없습니다</b> — 다른 팬이 이용할 수 있었던 자리를 예약했고, 그녀의 시간이 나를 위해 예약되어 있었습니다. 모델이 예약 시간으로부터 <b>5분</b> 안에 시작하지 않으면 그것은 그녀의 노쇼입니다: <b>자동으로 전액 환불</b>받습니다. 팬은 시작 <b>2시간 이상</b> 전에 취소하면 전액 환불받을 수 있습니다 (요청된 예약: 1시간 이상 전); 모델은 언제든지 취소하면 전액 환불됩니다.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. 모델 접근</div>\n        <div class="small muted">모델 계정은 초대 전용입니다. SlutCamp는 언제든지, 어떤 이유로든 모델 계정을 비활성화하거나 제거할 수 있습니다. 비활성화된 모델은 벌어둔 잔액을 출금할 수 있습니다.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. 안전 및 행동</div>\n        <div class="small muted">연락처 정보나 결제 정보를 공유하거나 거래를 플랫폼 밖으로 가져가려고 시도하면 메시지가 차단되고 계정이 차단될 수 있습니다. 인종 비하 발언과 혐오 발언은 차단됩니다. 모든 채팅과 스트림은 안전을 위해 모니터링됩니다.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. 사용한 크레딧에 대한 환불 없음</div>\n        <div class="small muted">크레딧이 메시지, 통화, 선물, 입장, 우선권, 참여, 예약에 사용되면 사라집니다 — 환불도 없고, 앱을 통한 차지백도 없습니다. 사용하지 않은 지갑 크레딧은 현금으로 교환할 수 없습니다 (팬).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. 차지백 및 사기</div>\n        <div class="small muted">먼저 저희에게 연락하는 대신 은행이나 카드 발급사와 크레딧 구매에 대해 분쟁을 제기하면(차지백), 저희는 해당 구매의 크레딧을 취소하고, 그로 인해 발생한 수익을 되돌리고, 계정을 폐쇄할 수 있습니다. 받고 사용한 구매에 대한 차지백은 사기로 취급됩니다. 청구가 실제로 잘못된 적이 있으면 먼저 저희에게 연락하세요 — 실제 청구 오류는 청구 및 환불 정책에 따라 환불됩니다.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. 준거법</div>\n        <div class="small muted">본 약관은 텍사스주 법률의 저촉법 규칙과 관계없이 텍사스주 법률에 따라 규율됩니다. 본 약관이나 SlutCamp 이용과 관련된 모든 분쟁은 텍사스에 위치한 주 또는 연방 법원에 제기해야 하며, 귀하와 SlutCamp는 해당 법원의 대인 관할권과 재판지에 동의합니다. 본 조항의 어떤 내용도 법적으로 포기할 수 없는, 거주 주가 귀하에게 부여하는 권리를 포기하거나 제한하지 않습니다.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. 변경</div>\n        <div class="small muted">기능, 가격, 요금, 본 약관은 언제든지 변경될 수 있습니다. 계속 이용하면 현재 약관에 동의하는 것으로 간주됩니다.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">본 약관은 쉬운 말로 쓴 요약이며, 법률 자문이 아닙니다.<br>World of Godz Entertainment LLC가 운영합니다.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">개인정보 처리방침</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">청구 및 환불</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">2257 성명</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / 저작권 삭제 요청 →</a></p>\n      <button class="btn ghost" id="t-back">← 뒤로</button>\n    </div>',
+    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">이용약관 · 최종 업데이트 2026년 10월 16일</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">편의를 위한 번역입니다 — 영어 버전이 우선합니다.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. 18세 이상만 이용 가능</div>\n        <div class="small muted">SlutCamp는 엄격히 18세 이상 성인 전용입니다. 이 앱을 이용함으로써 본인이 최소 18세임을 확인합니다. 모델은 라이브를 시작하기 전에 SlutCamp에서 신분증 인증을 완료해야 합니다 (18 U.S.C. §2257 준수).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. 팬 결제 방법</div>\n        <div class="small muted">팬은 크레딧을 구매하여 채팅, 통화, 선물, 라이브 입장, 우선 메시지, 무대 참여, 예약에 사용합니다. 각 모델과의 첫 3개 메시지는 무료입니다 — 이후 문자는 1개당 $1.49입니다 (또는 모델 본인의 요금). 사용하지 않은 크레딧은 지갑에 남습니다. <b>사용한 크레딧은 환불되지 않습니다.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. 모델 요금</div>\n        <div class="small muted">모델은 본인의 요금을 직접 정합니다: 메시지당, 영상 분당, 음성 메시지당, 그리고 선정적 무대 참여 요금 ($5–$100). 요금은 결제 전에 표시됩니다. 플랫폼은 기본 요금을 설정할 수 있으며 모델은 허용 범위 내에서 조정할 수 있습니다.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. 수익 배분 및 지급</div>\n        <div class="small muted">모델은 팬이 자신에게 쓰는 모든 금액의 <b>60%</b>를 가져가고, 플랫폼은 40%를 가져갑니다. 지급은 SlutCamp에서 보냅니다 (현재 수동으로 처리됩니다). 모델은 앱에 은행 정보를 추가하고 언제든지 출금을 요청할 수 있습니다; 대기 중인 요청은 SlutCamp의 일정에 따라 지급됩니다. 모델 수익은 발생한 지 1주일(7일) 후부터 출금할 수 있습니다.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. 라이브 스트림 및 선정적 콘텐츠</div>\n        <div class="small muted">그룹 스트림은 무료로 시청할 수 있습니다; 선정적 시청은 유료 입장료와 흐림 해제를 유지하기 위한 지속적인 선물이 필요합니다. 무대 참여(영상 또는 마이크)는 3분간 진행된 후 시간이 종료됩니다 — 돌아오려면 다시 결제하세요. 모델은 모든 무대 참여를 승인합니다; 거절된 요청은 전액 환불됩니다. 우선 메시지는 유료 배너이며 선택적으로 유료 음성을 사용할 수 있습니다.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. 1:1 예약 및 노쇼</div>\n        <div class="small muted">프라이빗 1:1을 예약하면 모델의 시간이 오직 나를 위해 예약됩니다 — 예약은 선불로 결제됩니다. 1:1이 활성화되면 <b>3분</b> 안에 통화에 참여해야 합니다; 노쇼인 경우 <b>환불은 없습니다</b> — 다른 팬이 이용할 수 있었던 자리를 예약했고, 그녀의 시간이 나를 위해 예약되어 있었습니다. 모델이 예약 시간으로부터 <b>5분</b> 안에 시작하지 않으면 그것은 그녀의 노쇼입니다: <b>자동으로 전액 환불</b>받습니다. 팬은 시작 <b>2시간 이상</b> 전에 취소하면 전액 환불받을 수 있습니다 (요청된 예약: 1시간 이상 전); 모델은 언제든지 취소하면 전액 환불됩니다.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. 모델 접근</div>\n        <div class="small muted">모델 계정은 초대 전용입니다. SlutCamp는 언제든지, 어떤 이유로든 모델 계정을 비활성화하거나 제거할 수 있습니다. 비활성화된 모델은 벌어둔 잔액을 출금할 수 있습니다.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. 안전 및 행동</div>\n        <div class="small muted">연락처 정보나 결제 정보를 공유하거나 거래를 플랫폼 밖으로 가져가려고 시도하면 메시지가 차단되고 계정이 차단될 수 있습니다. 인종 비하 발언과 혐오 발언은 차단됩니다. 모든 채팅과 스트림은 안전을 위해 모니터링됩니다.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. 사용한 크레딧에 대한 환불 없음</div>\n        <div class="small muted">크레딧이 메시지, 통화, 선물, 입장, 우선권, 참여, 예약에 사용되면 사라집니다 — 환불도 없고, 앱을 통한 차지백도 없습니다. 사용하지 않은 지갑 크레딧은 현금으로 교환할 수 없습니다 (팬).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. 차지백 및 사기</div>\n        <div class="small muted">먼저 저희에게 연락하는 대신 은행이나 카드 발급사와 크레딧 구매에 대해 분쟁을 제기하면(차지백), 저희는 해당 구매의 크레딧을 취소하고, 그로 인해 발생한 수익을 되돌리고, 계정을 폐쇄할 수 있습니다. 받고 사용한 구매에 대한 차지백은 사기로 취급됩니다. 청구가 실제로 잘못된 적이 있으면 먼저 저희에게 연락하세요 — 실제 청구 오류는 청구 및 환불 정책에 따라 환불됩니다.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. 준거법</div>\n        <div class="small muted">본 약관은 텍사스주 법률의 저촉법 규칙과 관계없이 텍사스주 법률에 따라 규율됩니다. 본 약관이나 SlutCamp 이용과 관련된 모든 분쟁은 텍사스에 위치한 주 또는 연방 법원에 제기해야 하며, 귀하와 SlutCamp는 해당 법원의 대인 관할권과 재판지에 동의합니다. 본 조항의 어떤 내용도 법적으로 포기할 수 없는, 거주 주가 귀하에게 부여하는 권리를 포기하거나 제한하지 않습니다.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. 변경</div>\n        <div class="small muted">기능, 가격, 요금, 본 약관은 언제든지 변경될 수 있습니다. 계속 이용하면 현재 약관에 동의하는 것으로 간주됩니다.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">13. 인신매매 및 착취 금지</div>\n        <div class="small muted">SlutCamp는 모든 형태의 인신매매, 성적 착취 및 비동의 콘텐츠를 금지합니다. SlutCamp의 모든 출연자는 신원이 확인된 성인이며 자발적으로 활동합니다. 인신매매 또는 착취가 의심되는 경우 관련 당국과 미국 인신매매 핫라인(1-888-373-7888)에 신고됩니다. 위반 시 콘텐츠가 즉시 삭제되고 계정이 해지됩니다.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">본 약관은 쉬운 말로 쓴 요약이며, 법률 자문이 아닙니다.<br>World of Godz Entertainment LLC가 운영합니다.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">개인정보 처리방침</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">청구 및 환불</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">2257 성명</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / 저작권 삭제 요청 →</a></p>\n      <button class="btn ghost" id="t-back">← 뒤로</button>\n    </div>',
     mc_sub: '모델 계약',
     mc_loading: '계약을 불러오는 중…',
     mc_load_fail: '계약을 불러오지 못했습니다 — 다시 시도해 주세요',
@@ -7151,6 +7466,7 @@ const I18N = {
     sec_male: 'Uomo',
     sec_couple: 'Coppia',
     err_must_declare_section: 'Scegli la tua sezione (Donna, Uomo o Coppia) per continuare.',
+    err_username_is_email: 'Il tuo nome utente non può essere un indirizzo email — scegli un nome.',
     sf_female: 'Donne',
     sf_male: 'Uomini',
     sf_couples: 'Coppie',
@@ -7502,6 +7818,40 @@ const I18N = {
     say_fans_ph: 'Di\' qualcosa ai tuoi fan…',
     explicit_rate_note: 'Tariffa esplicita: {price}/min · La tua anteprima non è mai sfocata',
     game_category: 'Categoria gioco',
+    battle: '⚔️ PumPum Verse',
+    battle_brand: 'PumPum Verse',
+    battle_money_rule: 'La piattaforma prende prima la sua commissione standard — il resto si divide 60% alla vincitrice e 40% alla perdente. Pareggio = 50/50. Chi abbandona perde, qualunque sia il punteggio.',
+    battle_invite_from: '{name} vuole un PumPum Verse con te!',
+    battle_minutes: 'Battaglia da {n} minuti',
+    battle_accept: '✅ Accetta',
+    battle_ready: '✅ Sono pronta',
+    battle_waiting_opp: 'In attesa di {name}…',
+    battle_waiting_live: 'Entrambe le modelle devono essere live per far partire il timer',
+    battle_tip_her: '💰 Mancia a {name}',
+    battle_games_her: '🎲 Giochi di {name}',
+    battle_you_won: '🏆 HAI VINTO!',
+    battle_you_lost: '⚔️ Questa la vince {name} — bella partita!',
+    battle_tied: '🤝 È un pareggio!',
+    battle_wins: '🏆 Vince {name}!',
+    battle_rematch: '🔁 Rivincita',
+    battle_open_invites: '⚔️ Aperta agli inviti PumPum Verse',
+    battle_open_invites_note: 'Disattivato ti nasconde dagli elenchi di PumPum Verse — puoi comunque invitare e programmare tu.',
+    battle_random: '🎲 PumPum Verse casuale',
+    battle_schedule: '📅 Programma una sfida',
+    battle_looking: '⚔️ In cerca di un PumPum Verse',
+    battle_in_battle: '⚔️ IN PUMPUM VERSE',
+    battle_forfeited: 'Forfait — un lato ha chiuso la live',
+    battle_you_earned: 'Hai guadagnato {amount}',
+    battle_enter_pool: 'Entra nel pool',
+    battle_leave_pool: 'Esci dal pool',
+    battle_pool_waiting: 'Nel pool — ti stiamo abbinando a una rivale…',
+    battle_pick_rival: 'Scegli la tua rivale',
+    battle_chat_ph: 'Chat PumPum Verse…',
+    battle_history: '⚔️ Cronologia PumPum Verse',
+    battle_vs_line: '⚔️ contro {name}',
+    battle_remind: '🔔 Ricordamelo',
+    battle_reminded: '✓ Promemoria impostato',
+    battle_pot: 'Montepremi',
     game_btn: '🎲 Gioco',
     game_regular: 'Normale',
     game_explicit: 'Esplicito 🔞',
@@ -7607,7 +7957,7 @@ const I18N = {
     age_confirm_toast: 'Devi confermare di avere 18 anni o più',
     agreement_signed_toast: '✅ Contratto firmato — benvenuta su SlutCamp!',
     public_photo_removed_toast: 'Foto pubblica rimossa — la tua pagina pubblica mostra invece il logo SlutCamp.',
-    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Termini di Servizio · Ultimo aggiornamento 16 ottobre 2026</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Traduzione fornita per comodità — fa fede la versione inglese.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. Solo 18+</div>\n        <div class="small muted">SlutCamp è rigorosamente per adulti di 18 anni e oltre. Usando questa app confermi di avere almeno 18 anni. Le modelle devono completare la verifica del documento con SlutCamp prima di andare live (conformità 18 U.S.C. §2257).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. Come pagano i fan</div>\n        <div class="small muted">I fan comprano crediti e li spendono in chat, chiamate, regali, accesso live, messaggi prioritari, accessi al palco e prenotazioni. I tuoi primi 3 messaggi con ogni modella sono gratuiti — dopo, i messaggi costano $1.49 l\'uno (o la tariffa della modella). I crediti non usati restano nel tuo portafoglio. <b>I crediti spesi non sono rimborsabili.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Tariffe delle modelle</div>\n        <div class="small muted">Le modelle impostano le proprie tariffe: per messaggio, per minuto video, per nota vocale e le loro tariffe esplicite di accesso al palco ($5–$100). Le tariffe sono mostrate prima che tu paghi. La piattaforma può impostare tariffe predefinite che le modelle possono modificare entro gli intervalli consentiti.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Ripartizione ricavi e pagamenti</div>\n        <div class="small muted">Le modelle trattengono il <b>60%</b> di tutto ciò che i fan spendono per loro; la piattaforma trattiene il 40%. I pagamenti sono inviati da SlutCamp (attualmente elaborati manualmente). Le modelle aggiungono i loro dati bancari nell\'app e richiedono prelievi in qualsiasi momento; le richieste in attesa vengono pagate secondo il programma di SlutCamp. I guadagni delle modelle diventano idonei al prelievo una settimana (7 giorni) dopo essere stati guadagnati.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Live stream e contenuti espliciti</div>\n        <div class="small muted">Gli stream di gruppo sono gratuiti da guardare; la visione esplicita richiede una quota di ingresso a pagamento più regali continui per restare senza sfocatura. Gli accessi al palco (video o microfono) durano 3 minuti, poi scadono — ripaga per tornare. La modella approva ogni accesso al palco; le richieste rifiutate vengono rimborsate per intero. I messaggi prioritari sono banner a pagamento con voce a pagamento facoltativa.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. Prenotazioni 1-a-1 e assenze</div>\n        <div class="small muted">Prenotare un 1-a-1 privato riserva il tempo della modella solo per te — le prenotazioni sono pagate in anticipo. Quando il tuo 1-a-1 diventa attivo, hai <b>3 minuti</b> per unirti alla chiamata; se sei assente, <b>non c\'è rimborso</b> — hai prenotato uno slot che un altro fan avrebbe potuto prendere, e il suo tempo era riservato per te. Se la modella non inizia entro <b>5 minuti</b> dall\'orario prenotato, è una sua assenza: ricevi un <b>rimborso completo, automaticamente</b>. I fan possono cancellare per un rimborso completo <b>2+ ore</b> prima dell\'inizio (prenotazioni richieste: 1+ ora prima); la modella può cancellare in qualsiasi momento per un rimborso completo.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Accesso modelle</div>\n        <div class="small muted">Gli account modella sono solo su invito. SlutCamp può disattivare o rimuovere qualsiasi account modella in qualsiasi momento, per qualsiasi motivo. Le modelle disattivate mantengono i saldi guadagnati disponibili per il prelievo.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Sicurezza e condotta</div>\n        <div class="small muted">Condividere informazioni di contatto, coordinate di pagamento o tentare di portare le transazioni fuori piattaforma farà bloccare i tuoi messaggi e potrà far bannare il tuo account. Insulti razziali e discorsi d\'odio sono bloccati. Tutte le chat e gli stream sono monitorati per la sicurezza.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Nessun rimborso sui crediti spesi</div>\n        <div class="small muted">Una volta che i crediti sono spesi in messaggi, chiamate, regali, ingressi, priorità, accessi o prenotazioni, sono finiti — nessun rimborso, nessun chargeback tramite l\'app. I crediti portafoglio non usati non sono convertibili in denaro (fan).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Chargeback e frode</div>\n        <div class="small muted">Se contesti un acquisto di crediti con la tua banca o l\'emittente della carta (un chargeback) invece di contattarci prima, potremmo revocare i crediti di quell\'acquisto, stornare qualsiasi guadagno generato e chiudere il tuo account. I chargeback su acquisti che hai ricevuto e speso sono trattati come frode. Se un addebito è davvero sbagliato, contattaci prima — i veri errori di fatturazione vengono rimborsati secondo la nostra Politica di fatturazione e rimborsi.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Legge applicabile</div>\n        <div class="small muted">Questi termini sono governati dalle leggi dello Stato del Texas, senza riguardo alle sue norme sul conflitto di leggi. Qualsiasi controversia relativa a questi termini o al tuo uso di SlutCamp deve essere portata davanti ai tribunali statali o federali situati in Texas, e tu e SlutCamp acconsentite alla giurisdizione personale e alla sede di quei tribunali. Nulla in questa sezione rinuncia o limita qualsiasi diritto che il tuo stato di residenza ti concede e che non può essere legalmente oggetto di rinuncia.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Modifiche</div>\n        <div class="small muted">Funzionalità, prezzi, tariffe e questi termini possono cambiare in qualsiasi momento. L\'uso continuato significa che accetti i termini attuali.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Questi termini sono un riepilogo in linguaggio semplice, non una consulenza legale.<br>Gestito da World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Informativa sulla privacy</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Fatturazione e rimborsi</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">Dichiarazione 2257</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Rimozione per copyright →</a></p>\n      <button class="btn ghost" id="t-back">← Indietro</button>\n    </div>\n',
+    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Termini di Servizio · Ultimo aggiornamento 16 ottobre 2026</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Traduzione fornita per comodità — fa fede la versione inglese.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. Solo 18+</div>\n        <div class="small muted">SlutCamp è rigorosamente per adulti di 18 anni e oltre. Usando questa app confermi di avere almeno 18 anni. Le modelle devono completare la verifica del documento con SlutCamp prima di andare live (conformità 18 U.S.C. §2257).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. Come pagano i fan</div>\n        <div class="small muted">I fan comprano crediti e li spendono in chat, chiamate, regali, accesso live, messaggi prioritari, accessi al palco e prenotazioni. I tuoi primi 3 messaggi con ogni modella sono gratuiti — dopo, i messaggi costano $1.49 l\'uno (o la tariffa della modella). I crediti non usati restano nel tuo portafoglio. <b>I crediti spesi non sono rimborsabili.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Tariffe delle modelle</div>\n        <div class="small muted">Le modelle impostano le proprie tariffe: per messaggio, per minuto video, per nota vocale e le loro tariffe esplicite di accesso al palco ($5–$100). Le tariffe sono mostrate prima che tu paghi. La piattaforma può impostare tariffe predefinite che le modelle possono modificare entro gli intervalli consentiti.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Ripartizione ricavi e pagamenti</div>\n        <div class="small muted">Le modelle trattengono il <b>60%</b> di tutto ciò che i fan spendono per loro; la piattaforma trattiene il 40%. I pagamenti sono inviati da SlutCamp (attualmente elaborati manualmente). Le modelle aggiungono i loro dati bancari nell\'app e richiedono prelievi in qualsiasi momento; le richieste in attesa vengono pagate secondo il programma di SlutCamp. I guadagni delle modelle diventano idonei al prelievo una settimana (7 giorni) dopo essere stati guadagnati.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Live stream e contenuti espliciti</div>\n        <div class="small muted">Gli stream di gruppo sono gratuiti da guardare; la visione esplicita richiede una quota di ingresso a pagamento più regali continui per restare senza sfocatura. Gli accessi al palco (video o microfono) durano 3 minuti, poi scadono — ripaga per tornare. La modella approva ogni accesso al palco; le richieste rifiutate vengono rimborsate per intero. I messaggi prioritari sono banner a pagamento con voce a pagamento facoltativa.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. Prenotazioni 1-a-1 e assenze</div>\n        <div class="small muted">Prenotare un 1-a-1 privato riserva il tempo della modella solo per te — le prenotazioni sono pagate in anticipo. Quando il tuo 1-a-1 diventa attivo, hai <b>3 minuti</b> per unirti alla chiamata; se sei assente, <b>non c\'è rimborso</b> — hai prenotato uno slot che un altro fan avrebbe potuto prendere, e il suo tempo era riservato per te. Se la modella non inizia entro <b>5 minuti</b> dall\'orario prenotato, è una sua assenza: ricevi un <b>rimborso completo, automaticamente</b>. I fan possono cancellare per un rimborso completo <b>2+ ore</b> prima dell\'inizio (prenotazioni richieste: 1+ ora prima); la modella può cancellare in qualsiasi momento per un rimborso completo.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Accesso modelle</div>\n        <div class="small muted">Gli account modella sono solo su invito. SlutCamp può disattivare o rimuovere qualsiasi account modella in qualsiasi momento, per qualsiasi motivo. Le modelle disattivate mantengono i saldi guadagnati disponibili per il prelievo.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Sicurezza e condotta</div>\n        <div class="small muted">Condividere informazioni di contatto, coordinate di pagamento o tentare di portare le transazioni fuori piattaforma farà bloccare i tuoi messaggi e potrà far bannare il tuo account. Insulti razziali e discorsi d\'odio sono bloccati. Tutte le chat e gli stream sono monitorati per la sicurezza.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Nessun rimborso sui crediti spesi</div>\n        <div class="small muted">Una volta che i crediti sono spesi in messaggi, chiamate, regali, ingressi, priorità, accessi o prenotazioni, sono finiti — nessun rimborso, nessun chargeback tramite l\'app. I crediti portafoglio non usati non sono convertibili in denaro (fan).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Chargeback e frode</div>\n        <div class="small muted">Se contesti un acquisto di crediti con la tua banca o l\'emittente della carta (un chargeback) invece di contattarci prima, potremmo revocare i crediti di quell\'acquisto, stornare qualsiasi guadagno generato e chiudere il tuo account. I chargeback su acquisti che hai ricevuto e speso sono trattati come frode. Se un addebito è davvero sbagliato, contattaci prima — i veri errori di fatturazione vengono rimborsati secondo la nostra Politica di fatturazione e rimborsi.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Legge applicabile</div>\n        <div class="small muted">Questi termini sono governati dalle leggi dello Stato del Texas, senza riguardo alle sue norme sul conflitto di leggi. Qualsiasi controversia relativa a questi termini o al tuo uso di SlutCamp deve essere portata davanti ai tribunali statali o federali situati in Texas, e tu e SlutCamp acconsentite alla giurisdizione personale e alla sede di quei tribunali. Nulla in questa sezione rinuncia o limita qualsiasi diritto che il tuo stato di residenza ti concede e che non può essere legalmente oggetto di rinuncia.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Modifiche</div>\n        <div class="small muted">Funzionalità, prezzi, tariffe e questi termini possono cambiare in qualsiasi momento. L\'uso continuato significa che accetti i termini attuali.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">13. Niente tratta né sfruttamento</div>\n        <div class="small muted">SlutCamp vieta la tratta di esseri umani, lo sfruttamento sessuale e i contenuti non consensuali in ogni forma. Ogni artista su SlutCamp è un adulto verificato che agisce volontariamente. I sospetti di tratta o sfruttamento vengono segnalati alle autorità competenti e alla National Human Trafficking Hotline (1-888-373-7888). Le violazioni comportano la rimozione immediata dei contenuti e la chiusura dell\'account.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Questi termini sono un riepilogo in linguaggio semplice, non una consulenza legale.<br>Gestito da World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Informativa sulla privacy</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Fatturazione e rimborsi</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">Dichiarazione 2257</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Rimozione per copyright →</a></p>\n      <button class="btn ghost" id="t-back">← Indietro</button>\n    </div>\n',
     mc_sub: 'Contratto per Modelle',
     mc_loading: 'Caricamento del contratto…',
     mc_load_fail: 'Impossibile caricare il contratto — riprova',
@@ -7909,6 +8259,7 @@ const I18N = {
     sec_male: 'Mężczyzna',
     sec_couple: 'Para',
     err_must_declare_section: 'Wybierz swoją sekcję (Kobieta, Mężczyzna lub Para), aby kontynuować.',
+    err_username_is_email: 'Twoja nazwa użytkownika nie może być adresem e-mail — wybierz nazwę.',
     sf_female: 'Kobiety',
     sf_male: 'Mężczyźni',
     sf_couples: 'Pary',
@@ -8260,6 +8611,40 @@ const I18N = {
     say_fans_ph: 'Powiedz coś swoim fanom…',
     explicit_rate_note: 'Stawka erotyczna: {price}/min · Twój podgląd nigdy nie jest zamazany',
     game_category: 'Kategoria gry',
+    battle: '⚔️ PumPum Verse',
+    battle_brand: 'PumPum Verse',
+    battle_money_rule: 'Platforma najpierw pobiera swoją standardową prowizję — reszta dzieli się 60% dla zwyciężczyni i 40% dla przegranej. Remis = 50/50. Opuszczenie transmisji = przegrana, niezależnie od wyniku.',
+    battle_invite_from: '{name} chce z Tobą PumPum Verse!',
+    battle_minutes: 'Bitwa na {n} minut',
+    battle_accept: '✅ Akceptuję',
+    battle_ready: '✅ Jestem gotowa',
+    battle_waiting_opp: 'Czekam na {name}…',
+    battle_waiting_live: 'Obie modelki muszą być na żywo, aby ruszył zegar',
+    battle_tip_her: '💰 Napiwek dla {name}',
+    battle_games_her: '🎲 Gry — {name}',
+    battle_you_won: '🏆 WYGRAŁAŚ!',
+    battle_you_lost: '⚔️ Tę rundę bierze {name} — dobra gra!',
+    battle_tied: '🤝 Remis!',
+    battle_wins: '🏆 {name} wygrywa!',
+    battle_rematch: '🔁 Rewanż',
+    battle_open_invites: '⚔️ Otwarta na zaproszenia do PumPum Verse',
+    battle_open_invites_note: 'Wyłączone ukrywa Cię na listach PumPum Verse — nadal możesz sama zapraszać i planować.',
+    battle_random: '🎲 Losowy PumPum Verse',
+    battle_schedule: '📅 Zaplanuj pojedynek',
+    battle_looking: '⚔️ Szuka PumPum Verse',
+    battle_in_battle: '⚔️ W PUMPUM VERSE',
+    battle_forfeited: 'Walkower — jedna strona zakończyła transmisję',
+    battle_you_earned: 'Zarobiłaś {amount}',
+    battle_enter_pool: 'Wejdź do puli',
+    battle_leave_pool: 'Opuść pulę',
+    battle_pool_waiting: 'W puli — dobieramy Ci rywalkę…',
+    battle_pick_rival: 'Wybierz rywalkę',
+    battle_chat_ph: 'Czat PumPum Verse…',
+    battle_history: '⚔️ Historia PumPum Verse',
+    battle_vs_line: '⚔️ kontra {name}',
+    battle_remind: '🔔 Przypomnij mi',
+    battle_reminded: '✓ Przypomnienie ustawione',
+    battle_pot: 'Pula',
     game_btn: '🎲 Gra',
     game_regular: 'Zwykła',
     game_explicit: 'Erotyczna 🔞',
@@ -8365,7 +8750,7 @@ const I18N = {
     age_confirm_toast: 'Musisz potwierdzić, że masz 18 lat lub więcej',
     agreement_signed_toast: '✅ Umowa podpisana — witaj w SlutCamp!',
     public_photo_removed_toast: 'Zdjęcie publiczne usunięte — Twoja publiczna strona pokazuje zamiast tego logo SlutCamp.',
-    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Regulamin świadczenia usług · Ostatnia aktualizacja: 16 października 2026 r.</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Tłumaczenie dla wygody — obowiązuje wersja angielska.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. Tylko 18+</div>\n        <div class="small muted">SlutCamp jest przeznaczone wyłącznie dla dorosłych w wieku 18 lat i starszych. Korzystając z tej aplikacji, potwierdzasz, że masz co najmniej 18 lat. Modelki muszą ukończyć weryfikację tożsamości w SlutCamp przed rozpoczęciem transmisji na żywo (zgodność z 18 U.S.C. §2257).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. Jak płacą fani</div>\n        <div class="small muted">Fani kupują kredyty i wydają je na czaty, rozmowy, prezenty, dostęp do transmisji na żywo, wiadomości priorytetowe, dołączenia do sceny i rezerwacje. Twoje pierwsze 3 wiadomości do każdej modelki są darmowe — potem wiadomości kosztują 1,49 $ każda (lub według własnej stawki modelki). Niewykorzystane kredyty zostają w Twoim portfelu. <b>Wydane kredyty nie podlegają zwrotowi.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Stawki modelek</div>\n        <div class="small muted">Modelki ustalają własne stawki: za wiadomość, za minutę wideo, za wiadomość głosową oraz swoje stawki za dołączenie do sceny erotycznej (5–100 $). Stawki są pokazywane przed zapłatą. Platforma może ustalać stawki domyślne, które modelki mogą dostosowywać w dozwolonych zakresach.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Podział przychodów i wypłaty</div>\n        <div class="small muted">Modelki zatrzymują <b>60%</b> wszystkiego, co fani u nich wydadzą; platforma zatrzymuje 40%. Wypłaty są wysyłane przez SlutCamp (obecnie przetwarzane ręcznie). Modelki dodają swoje dane bankowe w aplikacji i mogą w każdej chwili wnioskować o wypłaty; oczekujące wnioski są wypłacane według harmonogramu SlutCamp. Zarobki modelek stają się uprawnione do wypłaty tydzień (7 dni) po ich zarobieniu.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Transmisje na żywo i treści erotyczne</div>\n        <div class="small muted">Transmisje grupowe można oglądać za darmo; oglądanie erotyczne wymaga płatnej opłaty wstępnej oraz bieżących prezentów, aby pozostać nieodmazanym. Dołączenia do sceny (wideo lub mikrofon) trwają 3 minuty, potem następuje przerwa — zapłać ponownie, aby wrócić. Modelka zatwierdza każde dołączenie do sceny; odrzucone prośby są w pełni zwracane. Wiadomości priorytetowe to płatne banery z opcjonalnym płatnym głosem.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. Rezerwacje 1 na 1 i nieobecności</div>\n        <div class="small muted">Rezerwacja prywatnego 1 na 1 rezerwuje czas modelki tylko dla Ciebie — rezerwacje są płatne z góry. Gdy Twoje 1 na 1 stanie się aktywne, masz <b>3 minuty</b>, aby dołączyć do rozmowy; jeśli się nie pojawisz, <b>nie ma zwrotu</b> — zarezerwowałeś termin, który mógł zająć inny fan, a jej czas był zarezerwowany dla Ciebie. Jeśli modelka nie rozpocznie w ciągu <b>5 minut</b> od zarezerwowanego czasu, to jej nieobecność: otrzymujesz <b>pełny zwrot, automatycznie</b>. Fani mogą anulować z pełnym zwrotem na <b>2+ godziny</b> przed rozpoczęciem (rezerwacje na prośbę: 1+ godzinę wcześniej); modelka może anulować w każdej chwili z pełnym zwrotem.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Dostęp modelek</div>\n        <div class="small muted">Konta modelek są dostępne tylko na zaproszenie. SlutCamp może w każdej chwili dezaktywować lub usunąć dowolne konto modelki, z dowolnego powodu. Dezaktywowane modelki zachowują zarobione salda dostępne do wypłaty.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Bezpieczeństwo i zasady postępowania</div>\n        <div class="small muted">Udostępnianie danych kontaktowych, identyfikatorów płatności lub próba przeniesienia transakcji poza platformę spowoduje zablokowanie Twoich wiadomości i może spowodować zbanowanie Twojego konta. Wyzwiska rasowe i mowa nienawiści są blokowane. Wszystkie czaty i transmisje są monitorowane pod kątem bezpieczeństwa.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Brak zwrotów za wydane kredyty</div>\n        <div class="small muted">Gdy kredyty zostaną wydane na wiadomości, rozmowy, prezenty, wejścia, priorytety, dołączenia lub rezerwacje, przepadają — bez zwrotów, bez obciążeń zwrotnych za pośrednictwem aplikacji. Niewykorzystane kredyty w portfelu nie podlegają wymianie na gotówkę (fani).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Obciążenia zwrotne i oszustwa</div>\n        <div class="small muted">Jeśli zakwestionujesz zakup kredytów w swoim banku lub u wydawcy karty (obciążenie zwrotne) zamiast najpierw skontaktować się z nami, możemy unieważnić kredyty z tego zakupu, cofnąć wszelkie zarobki, które wygenerował, i zamknąć Twoje konto. Obciążenia zwrotne za zakupy, które otrzymałeś i wydałeś, są traktowane jako oszustwo. Jeśli obciążenie kiedykolwiek będzie rzeczywiście błędne, najpierw skontaktuj się z nami — prawdziwe błędy rozliczeniowe są zwracane zgodnie z naszą Polityką rozliczeń i zwrotów.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Prawo właściwe</div>\n        <div class="small muted">Niniejszy regulamin podlega prawu stanu Teksas, bez względu na jego przepisy kolizyjne. Wszelkie spory dotyczące niniejszego regulaminu lub korzystania przez Ciebie ze SlutCamp muszą być wnoszone do sądów stanowych lub federalnych znajdujących się w Teksasie, a Ty i SlutCamp wyrażacie zgodę na właściwość osobistą i miejsce postępowania tych sądów. Żadne postanowienie niniejszej sekcji nie zrzeka się ani nie ogranicza żadnego prawa, które przyznaje Ci Twój stan zamieszkania, a którego nie można zgodnie z prawem się zrzec.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Zmiany</div>\n        <div class="small muted">Funkcje, ceny, stawki i niniejszy regulamin mogą zmienić się w każdej chwili. Dalsze korzystanie oznacza, że akceptujesz aktualny regulamin.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Niniejszy regulamin jest streszczeniem w prostym języku, a nie poradą prawną.<br>Prowadzony przez World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Polityka prywatności</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Rozliczenia i zwroty</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">Oświadczenie 2257</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Usuwanie z powodu praw autorskich →</a></p>\n      <button class="btn ghost" id="t-back">← Wstecz</button>\n    </div>',
+    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Regulamin świadczenia usług · Ostatnia aktualizacja: 16 października 2026 r.</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Tłumaczenie dla wygody — obowiązuje wersja angielska.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. Tylko 18+</div>\n        <div class="small muted">SlutCamp jest przeznaczone wyłącznie dla dorosłych w wieku 18 lat i starszych. Korzystając z tej aplikacji, potwierdzasz, że masz co najmniej 18 lat. Modelki muszą ukończyć weryfikację tożsamości w SlutCamp przed rozpoczęciem transmisji na żywo (zgodność z 18 U.S.C. §2257).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. Jak płacą fani</div>\n        <div class="small muted">Fani kupują kredyty i wydają je na czaty, rozmowy, prezenty, dostęp do transmisji na żywo, wiadomości priorytetowe, dołączenia do sceny i rezerwacje. Twoje pierwsze 3 wiadomości do każdej modelki są darmowe — potem wiadomości kosztują 1,49 $ każda (lub według własnej stawki modelki). Niewykorzystane kredyty zostają w Twoim portfelu. <b>Wydane kredyty nie podlegają zwrotowi.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Stawki modelek</div>\n        <div class="small muted">Modelki ustalają własne stawki: za wiadomość, za minutę wideo, za wiadomość głosową oraz swoje stawki za dołączenie do sceny erotycznej (5–100 $). Stawki są pokazywane przed zapłatą. Platforma może ustalać stawki domyślne, które modelki mogą dostosowywać w dozwolonych zakresach.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Podział przychodów i wypłaty</div>\n        <div class="small muted">Modelki zatrzymują <b>60%</b> wszystkiego, co fani u nich wydadzą; platforma zatrzymuje 40%. Wypłaty są wysyłane przez SlutCamp (obecnie przetwarzane ręcznie). Modelki dodają swoje dane bankowe w aplikacji i mogą w każdej chwili wnioskować o wypłaty; oczekujące wnioski są wypłacane według harmonogramu SlutCamp. Zarobki modelek stają się uprawnione do wypłaty tydzień (7 dni) po ich zarobieniu.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Transmisje na żywo i treści erotyczne</div>\n        <div class="small muted">Transmisje grupowe można oglądać za darmo; oglądanie erotyczne wymaga płatnej opłaty wstępnej oraz bieżących prezentów, aby pozostać nieodmazanym. Dołączenia do sceny (wideo lub mikrofon) trwają 3 minuty, potem następuje przerwa — zapłać ponownie, aby wrócić. Modelka zatwierdza każde dołączenie do sceny; odrzucone prośby są w pełni zwracane. Wiadomości priorytetowe to płatne banery z opcjonalnym płatnym głosem.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. Rezerwacje 1 na 1 i nieobecności</div>\n        <div class="small muted">Rezerwacja prywatnego 1 na 1 rezerwuje czas modelki tylko dla Ciebie — rezerwacje są płatne z góry. Gdy Twoje 1 na 1 stanie się aktywne, masz <b>3 minuty</b>, aby dołączyć do rozmowy; jeśli się nie pojawisz, <b>nie ma zwrotu</b> — zarezerwowałeś termin, który mógł zająć inny fan, a jej czas był zarezerwowany dla Ciebie. Jeśli modelka nie rozpocznie w ciągu <b>5 minut</b> od zarezerwowanego czasu, to jej nieobecność: otrzymujesz <b>pełny zwrot, automatycznie</b>. Fani mogą anulować z pełnym zwrotem na <b>2+ godziny</b> przed rozpoczęciem (rezerwacje na prośbę: 1+ godzinę wcześniej); modelka może anulować w każdej chwili z pełnym zwrotem.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Dostęp modelek</div>\n        <div class="small muted">Konta modelek są dostępne tylko na zaproszenie. SlutCamp może w każdej chwili dezaktywować lub usunąć dowolne konto modelki, z dowolnego powodu. Dezaktywowane modelki zachowują zarobione salda dostępne do wypłaty.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Bezpieczeństwo i zasady postępowania</div>\n        <div class="small muted">Udostępnianie danych kontaktowych, identyfikatorów płatności lub próba przeniesienia transakcji poza platformę spowoduje zablokowanie Twoich wiadomości i może spowodować zbanowanie Twojego konta. Wyzwiska rasowe i mowa nienawiści są blokowane. Wszystkie czaty i transmisje są monitorowane pod kątem bezpieczeństwa.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Brak zwrotów za wydane kredyty</div>\n        <div class="small muted">Gdy kredyty zostaną wydane na wiadomości, rozmowy, prezenty, wejścia, priorytety, dołączenia lub rezerwacje, przepadają — bez zwrotów, bez obciążeń zwrotnych za pośrednictwem aplikacji. Niewykorzystane kredyty w portfelu nie podlegają wymianie na gotówkę (fani).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Obciążenia zwrotne i oszustwa</div>\n        <div class="small muted">Jeśli zakwestionujesz zakup kredytów w swoim banku lub u wydawcy karty (obciążenie zwrotne) zamiast najpierw skontaktować się z nami, możemy unieważnić kredyty z tego zakupu, cofnąć wszelkie zarobki, które wygenerował, i zamknąć Twoje konto. Obciążenia zwrotne za zakupy, które otrzymałeś i wydałeś, są traktowane jako oszustwo. Jeśli obciążenie kiedykolwiek będzie rzeczywiście błędne, najpierw skontaktuj się z nami — prawdziwe błędy rozliczeniowe są zwracane zgodnie z naszą Polityką rozliczeń i zwrotów.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Prawo właściwe</div>\n        <div class="small muted">Niniejszy regulamin podlega prawu stanu Teksas, bez względu na jego przepisy kolizyjne. Wszelkie spory dotyczące niniejszego regulaminu lub korzystania przez Ciebie ze SlutCamp muszą być wnoszone do sądów stanowych lub federalnych znajdujących się w Teksasie, a Ty i SlutCamp wyrażacie zgodę na właściwość osobistą i miejsce postępowania tych sądów. Żadne postanowienie niniejszej sekcji nie zrzeka się ani nie ogranicza żadnego prawa, które przyznaje Ci Twój stan zamieszkania, a którego nie można zgodnie z prawem się zrzec.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Zmiany</div>\n        <div class="small muted">Funkcje, ceny, stawki i niniejszy regulamin mogą zmienić się w każdej chwili. Dalsze korzystanie oznacza, że akceptujesz aktualny regulamin.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">13. Zero handlu ludźmi i wyzysku</div>\n        <div class="small muted">SlutCamp zakazuje handlu ludźmi, wyzysku seksualnego i treści bez zgody we wszelkich formach. Każda osoba występująca na SlutCamp to zweryfikowana osoba dorosła działająca dobrowolnie. Podejrzenia handlu ludźmi lub wyzysku są zgłaszane odpowiednim organom oraz na National Human Trafficking Hotline (1-888-373-7888). Naruszenia skutkują natychmiastowym usunięciem treści i zamknięciem konta.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Niniejszy regulamin jest streszczeniem w prostym języku, a nie poradą prawną.<br>Prowadzony przez World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Polityka prywatności</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Rozliczenia i zwroty</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">Oświadczenie 2257</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Usuwanie z powodu praw autorskich →</a></p>\n      <button class="btn ghost" id="t-back">← Wstecz</button>\n    </div>',
     mc_sub: 'Umowa dla modelek',
     mc_loading: 'Wczytywanie umowy…',
     mc_load_fail: 'Nie udało się wczytać umowy — spróbuj ponownie',
@@ -8667,6 +9052,7 @@ const I18N = {
     sec_male: 'Man',
     sec_couple: 'Stel',
     err_must_declare_section: 'Kies je sectie (Vrouw, Man of Stel) om door te gaan.',
+    err_username_is_email: 'Je gebruikersnaam mag geen e-mailadres zijn — kies in plaats daarvan een naam.',
     sf_female: 'Vrouwen',
     sf_male: 'Mannen',
     sf_couples: 'Stellen',
@@ -9018,6 +9404,40 @@ const I18N = {
     say_fans_ph: 'Zeg iets tegen je fans…',
     explicit_rate_note: 'Expliciet tarief: {price}/min · Je preview wordt nooit vervaagd',
     game_category: 'Spelcategorie',
+    battle: '⚔️ PumPum Verse',
+    battle_brand: 'PumPum Verse',
+    battle_money_rule: 'Het platform neemt eerst zijn standaardcommissie — de rest wordt 60% voor de winnaar en 40% voor de verliezer verdeeld. Gelijkspel = 50/50. Stoppen = verliezen, wat de score ook is.',
+    battle_invite_from: '{name} wil een PumPum Verse met je!',
+    battle_minutes: 'Battle van {n} minuten',
+    battle_accept: '✅ Accepteren',
+    battle_ready: '✅ Ik ben er klaar voor',
+    battle_waiting_opp: 'Wachten op {name}…',
+    battle_waiting_live: 'Beide modellen moeten live zijn voordat de klok kan starten',
+    battle_tip_her: '💰 Fooi voor {name}',
+    battle_games_her: '🎲 Spellen van {name}',
+    battle_you_won: '🏆 JE HEBT GEWONNEN!',
+    battle_you_lost: '⚔️ {name} pakt deze — goed gespeeld!',
+    battle_tied: '🤝 Gelijkspel!',
+    battle_wins: '🏆 {name} wint!',
+    battle_rematch: '🔁 Rematch',
+    battle_open_invites: '⚔️ Open voor PumPum Verse-uitnodigingen',
+    battle_open_invites_note: 'Uit verbergt je in PumPum Verse-lijsten — zelf uitnodigen en plannen kan nog steeds.',
+    battle_random: '🎲 Willekeurige PumPum Verse',
+    battle_schedule: '📅 Plan een showdown',
+    battle_looking: '⚔️ Zoekt een PumPum Verse',
+    battle_in_battle: '⚔️ IN PUMPUM VERSE',
+    battle_forfeited: 'Opgave — een kant beëindigde haar live',
+    battle_you_earned: 'Je verdiende {amount}',
+    battle_enter_pool: 'Doe mee in de pool',
+    battle_leave_pool: 'Verlaat de pool',
+    battle_pool_waiting: 'In de pool — we zoeken een rivaal voor je…',
+    battle_pick_rival: 'Kies je rivaal',
+    battle_chat_ph: 'PumPum Verse chat…',
+    battle_history: '⚔️ PumPum Verse-geschiedenis',
+    battle_vs_line: '⚔️ tegen {name}',
+    battle_remind: '🔔 Herinner mij',
+    battle_reminded: '✓ Herinnering ingesteld',
+    battle_pot: 'Pot',
     game_btn: '🎲 Spel',
     game_regular: 'Regulier',
     game_explicit: 'Expliciet 🔞',
@@ -9123,7 +9543,7 @@ const I18N = {
     age_confirm_toast: 'Je moet bevestigen dat je 18 jaar of ouder bent',
     agreement_signed_toast: '✅ Overeenkomst ondertekend — welkom bij SlutCamp!',
     public_photo_removed_toast: 'Openbare foto verwijderd — je openbare pagina toont in plaats daarvan het SlutCamp-logo.',
-    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Servicevoorwaarden · Laatst bijgewerkt op 16 oktober 2026</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Vertaling voor het gemak — de Engelse versie is leidend.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. Alleen 18+</div>\n        <div class="small muted">SlutCamp is strikt voor volwassenen van 18 jaar en ouder. Door deze app te gebruiken bevestig je dat je minstens 18 bent. Modellen moeten ID-verificatie bij SlutCamp voltooien voordat ze live gaan (naleving van 18 U.S.C. §2257).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. Hoe Fans Betalen</div>\n        <div class="small muted">Fans kopen credits en geven ze uit aan chats, gesprekken, cadeaus, live-toegang, prioriteitsberichten, podiumdeelnames en boekingen. Je eerste 3 berichten met elk model zijn gratis — daarna kosten sms\'jes $1.49 per stuk (of het eigen tarief van het model). Ongebruikte credits blijven in je portemonnee. <b>Uitgegeven credits worden niet terugbetaald.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Modeltarieven</div>\n        <div class="small muted">Modellen stellen hun eigen tarieven in: per bericht, per minuut video, per spraaknotitie, en hun expliciete podiumdeelname-tarieven ($5–$100). Tarieven worden getoond voordat je betaalt. Het platform kan standaardtarieven instellen die modellen binnen de toegestane bereiken kunnen aanpassen.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Inkomstenverdeling &amp; Uitbetalingen</div>\n        <div class="small muted">Modellen houden <b>60%</b> van alles wat fans aan hen uitgeven; het platform houdt 40%. Uitbetalingen worden verzonden door SlutCamp (momenteel handmatig verwerkt). Modellen voegen hun bankgegevens toe in de app en vragen op elk moment opnames aan; openstaande verzoeken worden uitbetaald volgens SlutCamp\'s schema. Modelinkomsten komen in aanmerking voor opname één week (7 dagen) nadat ze zijn verdiend.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Livestreams &amp; Expliciete Content</div>\n        <div class="small muted">Groepsstreams zijn gratis te kijken; expliciet kijken vereist een betaalde toegangsprijs plus doorlopende cadeaus om onvervaagd te blijven. Podiumdeelnames (video of microfoon) duren 3 minuten, daarna volgt een time-out — betaal opnieuw om terug te keren. Het model keurt elke podiumdeelname goed; afgewezen verzoeken worden volledig terugbetaald. Prioriteitsberichten zijn betaalde banners met optionele betaalde spraak.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. 1-op-1 Boekingen &amp; No-Shows</div>\n        <div class="small muted">Een privé 1-op-1 boeken reserveert de tijd van het model alleen voor jou — boekingen worden vooraf betaald. Wanneer je 1-op-1 actief wordt, heb je <b>3 minuten</b> om aan het gesprek deel te nemen; als je een no-show bent, is er <b>geen terugbetaling</b> — je boekte een slot dat een andere fan had kunnen nemen, en haar tijd was voor jou gereserveerd. Als het model niet binnen <b>5 minuten</b> na de geboekte tijd start, is dat haar no-show: je krijgt een <b>volledige terugbetaling, automatisch</b>. Fans kunnen annuleren voor een volledige terugbetaling <b>2+ uur</b> vóór de start (aangevraagde boekingen: 1+ uur vooraf); het model kan op elk moment annuleren voor een volledige terugbetaling.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Modeltoegang</div>\n        <div class="small muted">Modelaccounts zijn alleen op uitnodiging. SlutCamp kan elk modelaccount op elk moment deactiveren of verwijderen, om welke reden dan ook. Gedeactiveerde modellen houden verdiende saldi beschikbaar voor opname.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Veiligheid &amp; Gedrag</div>\n        <div class="small muted">Het delen van contactgegevens, betaalhandles, of pogingen om transacties buiten het platform te brengen, zorgt ervoor dat je berichten worden geblokkeerd en kan ervoor zorgen dat je account wordt verbannen. Racistische beledigingen en haatspraak worden geblokkeerd. Alle chats en streams worden gemonitord voor veiligheid.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Geen Terugbetalingen voor Uitgegeven Credits</div>\n        <div class="small muted">Zodra credits zijn uitgegeven aan berichten, gesprekken, cadeaus, toegangen, prioriteiten, deelnames of boekingen, zijn ze weg — geen terugbetalingen, geen chargebacks via de app. Ongebruikte portemonnee-credits zijn niet inwisselbaar voor contant geld (fans).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Chargebacks &amp; Fraude</div>\n        <div class="small muted">Als je een creditaankoop betwist bij je bank of kaartuitgever (een chargeback) in plaats van eerst contact met ons op te nemen, kunnen wij de credits van die aankoop intrekken, alle inkomsten die het genereerde terugdraaien, en je account sluiten. Chargebacks op aankopen die je hebt ontvangen en uitgegeven worden behandeld als fraude. Als een afschrijving ooit echt verkeerd is, neem dan eerst contact met ons op — echte factureringsfouten worden terugbetaald onder ons Facturerings- &amp; Terugbetalingsbeleid.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Toepasselijk Recht</div>\n        <div class="small muted">Deze voorwaarden worden beheerst door de wetten van de Staat Texas, zonder rekening te houden met haar regels inzake wetsconflicten. Elk geschil met betrekking tot deze voorwaarden of je gebruik van SlutCamp moet worden voorgelegd aan de staats- of federale rechtbanken in Texas, en jij en SlutCamp stemmen in met de persoonlijke jurisdictie en rechtsplaats van die rechtbanken. Niets in deze sectie doet afstand van of beperkt enig recht dat je thuisstaat je geeft dat wettelijk niet kan worden opgegeven.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Wijzigingen</div>\n        <div class="small muted">Functies, prijzen, tarieven en deze voorwaarden kunnen op elk moment veranderen. Voortgezet gebruik betekent dat je de huidige voorwaarden accepteert.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Deze voorwaarden zijn een samenvatting in begrijpelijke taal, geen juridisch advies.<br>Geëxploiteerd door World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Privacybeleid</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Facturering &amp; Terugbetalingen</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">2257 Verklaring</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Auteursrecht verwijdering →</a></p>\n      <button class="btn ghost" id="t-back">← Terug</button>\n    </div>\n',
+    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Servicevoorwaarden · Laatst bijgewerkt op 16 oktober 2026</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Vertaling voor het gemak — de Engelse versie is leidend.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. Alleen 18+</div>\n        <div class="small muted">SlutCamp is strikt voor volwassenen van 18 jaar en ouder. Door deze app te gebruiken bevestig je dat je minstens 18 bent. Modellen moeten ID-verificatie bij SlutCamp voltooien voordat ze live gaan (naleving van 18 U.S.C. §2257).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. Hoe Fans Betalen</div>\n        <div class="small muted">Fans kopen credits en geven ze uit aan chats, gesprekken, cadeaus, live-toegang, prioriteitsberichten, podiumdeelnames en boekingen. Je eerste 3 berichten met elk model zijn gratis — daarna kosten sms\'jes $1.49 per stuk (of het eigen tarief van het model). Ongebruikte credits blijven in je portemonnee. <b>Uitgegeven credits worden niet terugbetaald.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Modeltarieven</div>\n        <div class="small muted">Modellen stellen hun eigen tarieven in: per bericht, per minuut video, per spraaknotitie, en hun expliciete podiumdeelname-tarieven ($5–$100). Tarieven worden getoond voordat je betaalt. Het platform kan standaardtarieven instellen die modellen binnen de toegestane bereiken kunnen aanpassen.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Inkomstenverdeling &amp; Uitbetalingen</div>\n        <div class="small muted">Modellen houden <b>60%</b> van alles wat fans aan hen uitgeven; het platform houdt 40%. Uitbetalingen worden verzonden door SlutCamp (momenteel handmatig verwerkt). Modellen voegen hun bankgegevens toe in de app en vragen op elk moment opnames aan; openstaande verzoeken worden uitbetaald volgens SlutCamp\'s schema. Modelinkomsten komen in aanmerking voor opname één week (7 dagen) nadat ze zijn verdiend.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Livestreams &amp; Expliciete Content</div>\n        <div class="small muted">Groepsstreams zijn gratis te kijken; expliciet kijken vereist een betaalde toegangsprijs plus doorlopende cadeaus om onvervaagd te blijven. Podiumdeelnames (video of microfoon) duren 3 minuten, daarna volgt een time-out — betaal opnieuw om terug te keren. Het model keurt elke podiumdeelname goed; afgewezen verzoeken worden volledig terugbetaald. Prioriteitsberichten zijn betaalde banners met optionele betaalde spraak.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. 1-op-1 Boekingen &amp; No-Shows</div>\n        <div class="small muted">Een privé 1-op-1 boeken reserveert de tijd van het model alleen voor jou — boekingen worden vooraf betaald. Wanneer je 1-op-1 actief wordt, heb je <b>3 minuten</b> om aan het gesprek deel te nemen; als je een no-show bent, is er <b>geen terugbetaling</b> — je boekte een slot dat een andere fan had kunnen nemen, en haar tijd was voor jou gereserveerd. Als het model niet binnen <b>5 minuten</b> na de geboekte tijd start, is dat haar no-show: je krijgt een <b>volledige terugbetaling, automatisch</b>. Fans kunnen annuleren voor een volledige terugbetaling <b>2+ uur</b> vóór de start (aangevraagde boekingen: 1+ uur vooraf); het model kan op elk moment annuleren voor een volledige terugbetaling.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Modeltoegang</div>\n        <div class="small muted">Modelaccounts zijn alleen op uitnodiging. SlutCamp kan elk modelaccount op elk moment deactiveren of verwijderen, om welke reden dan ook. Gedeactiveerde modellen houden verdiende saldi beschikbaar voor opname.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Veiligheid &amp; Gedrag</div>\n        <div class="small muted">Het delen van contactgegevens, betaalhandles, of pogingen om transacties buiten het platform te brengen, zorgt ervoor dat je berichten worden geblokkeerd en kan ervoor zorgen dat je account wordt verbannen. Racistische beledigingen en haatspraak worden geblokkeerd. Alle chats en streams worden gemonitord voor veiligheid.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Geen Terugbetalingen voor Uitgegeven Credits</div>\n        <div class="small muted">Zodra credits zijn uitgegeven aan berichten, gesprekken, cadeaus, toegangen, prioriteiten, deelnames of boekingen, zijn ze weg — geen terugbetalingen, geen chargebacks via de app. Ongebruikte portemonnee-credits zijn niet inwisselbaar voor contant geld (fans).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Chargebacks &amp; Fraude</div>\n        <div class="small muted">Als je een creditaankoop betwist bij je bank of kaartuitgever (een chargeback) in plaats van eerst contact met ons op te nemen, kunnen wij de credits van die aankoop intrekken, alle inkomsten die het genereerde terugdraaien, en je account sluiten. Chargebacks op aankopen die je hebt ontvangen en uitgegeven worden behandeld als fraude. Als een afschrijving ooit echt verkeerd is, neem dan eerst contact met ons op — echte factureringsfouten worden terugbetaald onder ons Facturerings- &amp; Terugbetalingsbeleid.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Toepasselijk Recht</div>\n        <div class="small muted">Deze voorwaarden worden beheerst door de wetten van de Staat Texas, zonder rekening te houden met haar regels inzake wetsconflicten. Elk geschil met betrekking tot deze voorwaarden of je gebruik van SlutCamp moet worden voorgelegd aan de staats- of federale rechtbanken in Texas, en jij en SlutCamp stemmen in met de persoonlijke jurisdictie en rechtsplaats van die rechtbanken. Niets in deze sectie doet afstand van of beperkt enig recht dat je thuisstaat je geeft dat wettelijk niet kan worden opgegeven.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Wijzigingen</div>\n        <div class="small muted">Functies, prijzen, tarieven en deze voorwaarden kunnen op elk moment veranderen. Voortgezet gebruik betekent dat je de huidige voorwaarden accepteert.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">13. Geen mensenhandel of uitbuiting</div>\n        <div class="small muted">SlutCamp verbiedt mensenhandel, seksuele uitbuiting en niet-consensuele inhoud in alle vormen. Elke performer op SlutCamp is een geverifieerde volwassene die vrijwillig handelt. Vermoedens van mensenhandel of uitbuiting worden gemeld bij de bevoegde autoriteiten en de National Human Trafficking Hotline (1-888-373-7888). Overtredingen leiden tot onmiddellijke verwijdering van inhoud en beëindiging van het account.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Deze voorwaarden zijn een samenvatting in begrijpelijke taal, geen juridisch advies.<br>Geëxploiteerd door World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Privacybeleid</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Facturering &amp; Terugbetalingen</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">2257 Verklaring</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Auteursrecht verwijdering →</a></p>\n      <button class="btn ghost" id="t-back">← Terug</button>\n    </div>\n',
     mc_sub: 'Modellenovereenkomst',
     mc_loading: 'Overeenkomst laden…',
     mc_load_fail: 'Kon de overeenkomst niet laden — probeer het opnieuw',
@@ -9425,6 +9845,7 @@ const I18N = {
     sec_male: 'Erkek',
     sec_couple: 'Çift',
     err_must_declare_section: 'Devam etmek için bölümünü seç (Kadın, Erkek veya Çift).',
+    err_username_is_email: 'Kullanıcı adın bir e-posta adresi olamaz — bunun yerine bir isim seç.',
     sf_female: 'Kadın',
     sf_male: 'Erkek',
     sf_couples: 'Çift',
@@ -9776,6 +10197,40 @@ const I18N = {
     say_fans_ph: 'Hayranlarına bir şey söyle…',
     explicit_rate_note: 'Müstehcen ücret: {price}/dk · Ön izlemen asla bulanıklaştırılmaz',
     game_category: 'Oyun Kategorisi',
+    battle: '⚔️ PumPum Verse',
+    battle_brand: 'PumPum Verse',
+    battle_money_rule: 'Platform önce standart komisyonunu alır — kalan kazanan %60 / kaybeden %40 olarak bölünür. Beraberlik = 50/50. Yayını erken bitiren, skor ne olursa olsun kaybeder.',
+    battle_invite_from: '{name} seninle PumPum Verse istiyor!',
+    battle_minutes: '{n} dakikalık savaş',
+    battle_accept: '✅ Kabul et',
+    battle_ready: '✅ Hazırım',
+    battle_waiting_opp: '{name} bekleniyor…',
+    battle_waiting_live: 'Sürenin başlaması için iki modelin de yayında olması gerekir',
+    battle_tip_her: '💰 {name} için bahşiş',
+    battle_games_her: '🎲 {name} Oyunları',
+    battle_you_won: '🏆 KAZANDIN!',
+    battle_you_lost: '⚔️ Bu sefer {name} kazandı — güzel oyundu!',
+    battle_tied: '🤝 Berabere!',
+    battle_wins: '🏆 {name} kazandı!',
+    battle_rematch: '🔁 Rövanş',
+    battle_open_invites: '⚔️ PumPum Verse davetlerine açık',
+    battle_open_invites_note: 'Kapalı, PumPum Verse listelerinde seni gizler — kendin davet edip planlayabilirsin.',
+    battle_random: '🎲 Rastgele PumPum Verse',
+    battle_schedule: '📅 Kapışma planla',
+    battle_looking: '⚔️ PumPum Verse arıyor',
+    battle_in_battle: '⚔️ PUMPUM VERSE\'TE',
+    battle_forfeited: 'Hükmen — bir taraf yayınını bitirdi',
+    battle_you_earned: '{amount} kazandın',
+    battle_enter_pool: 'Havuza gir',
+    battle_leave_pool: 'Havuzdan çık',
+    battle_pool_waiting: 'Havuzdasın — sana bir rakip eşleştiriyoruz…',
+    battle_pick_rival: 'Rakibini seç',
+    battle_chat_ph: 'PumPum Verse sohbeti…',
+    battle_history: '⚔️ PumPum Verse geçmişi',
+    battle_vs_line: '⚔️ vs {name}',
+    battle_remind: '🔔 Bana hatırlat',
+    battle_reminded: '✓ Hatırlatma kuruldu',
+    battle_pot: 'Pot',
     game_btn: '🎲 Oyun',
     game_regular: 'Normal',
     game_explicit: 'Müstehcen 🔞',
@@ -9881,7 +10336,7 @@ const I18N = {
     age_confirm_toast: '18 yaşında veya daha büyük olduğunu onaylamalısın',
     agreement_signed_toast: '✅ Sözleşme imzalandı — SlutCamp\'e hoş geldin!',
     public_photo_removed_toast: 'Herkese açık fotoğraf kaldırıldı — herkese açık sayfan bunun yerine SlutCamp logosunu gösteriyor.',
-    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Hizmet Şartları · Son güncelleme 16 Ekim 2026</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Kolaylık için çeviri — İngilizce sürüm geçerlidir.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. Yalnızca 18+</div>\n        <div class="small muted">SlutCamp kesinlikle 18 yaş ve üzeri yetişkinler içindir. Bu uygulamayı kullanarak en az 18 yaşında olduğunu onaylarsın. Modeller, canlıya geçmeden önce SlutCamp ile kimlik doğrulamasını tamamlamalıdır (18 U.S.C. §2257 uyumu).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. Hayranlar Nasıl Öder</div>\n        <div class="small muted">Hayranlar kredi satın alır ve bunları sohbetler, aramalar, hediyeler, canlı erişim, öncelikli mesajlar, sahne katılımları ve rezervasyonlar için harcar. Her modelle ilk 3 mesajın ücretsizdir — ondan sonra metinler tanesi 1,49$\'dır (veya modelin kendi ücreti). Kullanılmayan krediler cüzdanında kalır. <b>Harcanan krediler iade edilmez.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Model Ücretleri</div>\n        <div class="small muted">Modeller kendi ücretlerini belirler: mesaj başına, video dakikası başına, sesli not başına ve müstehcen sahne katılım ücretleri (5$–100$). Ücretler ödemeden önce gösterilir. Platform, modellerin izin verilen aralıklar içinde ayarlayabileceği varsayılan ücretler belirleyebilir.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Gelir Paylaşımı ve Ödemeler</div>\n        <div class="small muted">Modeller, hayranların onlarla harcadığı her şeyin <b>%60\'ını</b> alır; platform %40\'ını alır. Ödemeler SlutCamp tarafından gönderilir (şu anda manuel olarak işlenmektedir). Modeller banka bilgilerini uygulamaya ekler ve istediği zaman para çekme talebinde bulunur; bekleyen talepler SlutCamp\'in programına göre ödenir. Model kazançları, kazanıldıktan bir hafta (7 gün) sonra çekilmeye uygun hale gelir.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Canlı Yayınlar ve Müstehcen İçerik</div>\n        <div class="small muted">Grup yayınları izlemek ücretsizdir; müstehcen izleme, bulanık olmadan kalmak için ücretli giriş ücreti ve devam eden hediyeler gerektirir. Sahne katılımları (video veya mikrofon) 3 dakikadır, sonra zaman aşımına uğrar — dönmek için tekrar öde. Model her sahne katılımını onaylar; reddedilen istekler tam olarak iade edilir. Öncelikli mesajlar, isteğe bağlı ücretli ses içeren ücretli banner\'lardır.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. Bire Bir Rezervasyonlar &amp; Gelmemeler</div>\n        <div class="small muted">Özel bir bire bir rezervasyonu yapmak, modelin zamanını yalnızca senin için ayırır — rezervasyonlar önceden ödenir. Bire birin aktif hale geldiğinde, aramaya katılmak için <b>3 dakikan</b> var; gelmezsen, <b>iade yoktur</b> — başka bir hayranın alabileceği bir yeri rezerve ettin ve onun zamanı senin için ayrılmıştı. Model, rezervasyon saatinden itibaren <b>5 dakika</b> içinde başlamazsa, bu onun gelmemesidir: <b>otomatik olarak tam iade</b> alırsın. Hayranlar, başlangıçtan <b>2+ saat</b> önce tam iade için iptal edebilir (talep edilen rezervasyonlar: 1+ saat önce); model, tam iade için istediği zaman iptal edebilir.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Model Erişimi</div>\n        <div class="small muted">Model hesapları yalnızca davetiyeyle açılır. SlutCamp, herhangi bir model hesabını istediği zaman, herhangi bir nedenle devre dışı bırakabilir veya kaldırabilir. Devre dışı bırakılan modeller, kazanılmış bakiyelerini çekilebilir olarak korur.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Güvenlik ve Davranış</div>\n        <div class="small muted">İletişim bilgisi veya ödeme bilgileri paylaşmak ya da işlemleri platform dışına taşımaya çalışmak, mesajlarının engellenmesine ve hesabının yasaklanmasına yol açabilir. Irksal hakaretler ve nefret söylemi engellenir. Tüm sohbetler ve yayınlar güvenlik için izlenir.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Harcanan Kredilerde İade Yok</div>\n        <div class="small muted">Krediler mesajlar, aramalar, hediyeler, girişler, öncelikler, katılımlar veya rezervasyonlar için harcandıktan sonra gider — iade yok, uygulama üzerinden ters ibraz yok. Kullanılmayan cüzdan kredileri nakde çevrilemez (hayranlar).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Ters İbrazlar ve Dolandırıcılık</div>\n        <div class="small muted">Önce bizimle iletişime geçmek yerine, bir kredi satın alımına bankan veya kart sağlayıcın nezdinde itiraz edersen (ters ibraz), o satın alımdan gelen kredileri iptal edebilir, ürettiği kazançları tersine çevirebilir ve hesabını kapatabiliriz. Aldığın ve harcadığın satın alımlara yönelik ters ibrazlar dolandırıcılık olarak değerlendirilir. Bir ücret gerçekten yanlışsa, önce bizimle iletişime geç — gerçek faturalandırma hataları, Faturalandırma ve İadeler politikamız kapsamında iade edilir.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Uygulanacak Hukuk</div>\n        <div class="small muted">Bu şartlar, kanunlar ihtilafı kurallarına bakılmaksızın, Teksas Eyaleti yasalarına tabidir. Bu şartlarla veya SlutCamp kullanımınla ilgili herhangi bir uyuşmazlık, Teksas\'ta bulunan eyalet veya federal mahkemelerde açılmalıdır ve sen ve SlutCamp, o mahkemelerin kişisel yargı yetkisini ve yerini kabul edersiniz. Bu bölümdeki hiçbir şey, kendi eyaletinin sana verdiği ve yasal olarak feragat edilemeyen herhangi bir hakkı feragat ettirmez veya sınırlamaz.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Değişiklikler</div>\n        <div class="small muted">Özellikler, fiyatlar, ücretler ve bu şartlar istediği zaman değişebilir. Kullanmaya devam etmek, mevcut şartları kabul ettiğin anlamına gelir.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Bu şartlar, sade dille bir özettir, hukuki tavsiye değildir.<br>World of Godz Entertainment LLC tarafından işletilmektedir.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Gizlilik Politikası</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Faturalandırma ve İadeler</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">2257 Bildirimi</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Telif hakkı kaldırma →</a></p>\n      <button class="btn ghost" id="t-back">← Geri</button>\n    </div>',
+    legal_terms_html: '\n    <div class="header">\n      <h1>Slut<span class="logo">Camp</span> 📜</h1>\n      <div class="sub">Hizmet Şartları · Son güncelleme 16 Ekim 2026</div>\n    </div>\n    <div class="screen">\n      <div class="card"><div class="small muted">Kolaylık için çeviri — İngilizce sürüm geçerlidir.</div></div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">1. Yalnızca 18+</div>\n        <div class="small muted">SlutCamp kesinlikle 18 yaş ve üzeri yetişkinler içindir. Bu uygulamayı kullanarak en az 18 yaşında olduğunu onaylarsın. Modeller, canlıya geçmeden önce SlutCamp ile kimlik doğrulamasını tamamlamalıdır (18 U.S.C. §2257 uyumu).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">2. Hayranlar Nasıl Öder</div>\n        <div class="small muted">Hayranlar kredi satın alır ve bunları sohbetler, aramalar, hediyeler, canlı erişim, öncelikli mesajlar, sahne katılımları ve rezervasyonlar için harcar. Her modelle ilk 3 mesajın ücretsizdir — ondan sonra metinler tanesi 1,49$\'dır (veya modelin kendi ücreti). Kullanılmayan krediler cüzdanında kalır. <b>Harcanan krediler iade edilmez.</b></div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">3. Model Ücretleri</div>\n        <div class="small muted">Modeller kendi ücretlerini belirler: mesaj başına, video dakikası başına, sesli not başına ve müstehcen sahne katılım ücretleri (5$–100$). Ücretler ödemeden önce gösterilir. Platform, modellerin izin verilen aralıklar içinde ayarlayabileceği varsayılan ücretler belirleyebilir.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">4. Gelir Paylaşımı ve Ödemeler</div>\n        <div class="small muted">Modeller, hayranların onlarla harcadığı her şeyin <b>%60\'ını</b> alır; platform %40\'ını alır. Ödemeler SlutCamp tarafından gönderilir (şu anda manuel olarak işlenmektedir). Modeller banka bilgilerini uygulamaya ekler ve istediği zaman para çekme talebinde bulunur; bekleyen talepler SlutCamp\'in programına göre ödenir. Model kazançları, kazanıldıktan bir hafta (7 gün) sonra çekilmeye uygun hale gelir.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">5. Canlı Yayınlar ve Müstehcen İçerik</div>\n        <div class="small muted">Grup yayınları izlemek ücretsizdir; müstehcen izleme, bulanık olmadan kalmak için ücretli giriş ücreti ve devam eden hediyeler gerektirir. Sahne katılımları (video veya mikrofon) 3 dakikadır, sonra zaman aşımına uğrar — dönmek için tekrar öde. Model her sahne katılımını onaylar; reddedilen istekler tam olarak iade edilir. Öncelikli mesajlar, isteğe bağlı ücretli ses içeren ücretli banner\'lardır.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">6. Bire Bir Rezervasyonlar &amp; Gelmemeler</div>\n        <div class="small muted">Özel bir bire bir rezervasyonu yapmak, modelin zamanını yalnızca senin için ayırır — rezervasyonlar önceden ödenir. Bire birin aktif hale geldiğinde, aramaya katılmak için <b>3 dakikan</b> var; gelmezsen, <b>iade yoktur</b> — başka bir hayranın alabileceği bir yeri rezerve ettin ve onun zamanı senin için ayrılmıştı. Model, rezervasyon saatinden itibaren <b>5 dakika</b> içinde başlamazsa, bu onun gelmemesidir: <b>otomatik olarak tam iade</b> alırsın. Hayranlar, başlangıçtan <b>2+ saat</b> önce tam iade için iptal edebilir (talep edilen rezervasyonlar: 1+ saat önce); model, tam iade için istediği zaman iptal edebilir.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">7. Model Erişimi</div>\n        <div class="small muted">Model hesapları yalnızca davetiyeyle açılır. SlutCamp, herhangi bir model hesabını istediği zaman, herhangi bir nedenle devre dışı bırakabilir veya kaldırabilir. Devre dışı bırakılan modeller, kazanılmış bakiyelerini çekilebilir olarak korur.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">8. Güvenlik ve Davranış</div>\n        <div class="small muted">İletişim bilgisi veya ödeme bilgileri paylaşmak ya da işlemleri platform dışına taşımaya çalışmak, mesajlarının engellenmesine ve hesabının yasaklanmasına yol açabilir. Irksal hakaretler ve nefret söylemi engellenir. Tüm sohbetler ve yayınlar güvenlik için izlenir.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">9. Harcanan Kredilerde İade Yok</div>\n        <div class="small muted">Krediler mesajlar, aramalar, hediyeler, girişler, öncelikler, katılımlar veya rezervasyonlar için harcandıktan sonra gider — iade yok, uygulama üzerinden ters ibraz yok. Kullanılmayan cüzdan kredileri nakde çevrilemez (hayranlar).</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">10. Ters İbrazlar ve Dolandırıcılık</div>\n        <div class="small muted">Önce bizimle iletişime geçmek yerine, bir kredi satın alımına bankan veya kart sağlayıcın nezdinde itiraz edersen (ters ibraz), o satın alımdan gelen kredileri iptal edebilir, ürettiği kazançları tersine çevirebilir ve hesabını kapatabiliriz. Aldığın ve harcadığın satın alımlara yönelik ters ibrazlar dolandırıcılık olarak değerlendirilir. Bir ücret gerçekten yanlışsa, önce bizimle iletişime geç — gerçek faturalandırma hataları, Faturalandırma ve İadeler politikamız kapsamında iade edilir.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">11. Uygulanacak Hukuk</div>\n        <div class="small muted">Bu şartlar, kanunlar ihtilafı kurallarına bakılmaksızın, Teksas Eyaleti yasalarına tabidir. Bu şartlarla veya SlutCamp kullanımınla ilgili herhangi bir uyuşmazlık, Teksas\'ta bulunan eyalet veya federal mahkemelerde açılmalıdır ve sen ve SlutCamp, o mahkemelerin kişisel yargı yetkisini ve yerini kabul edersiniz. Bu bölümdeki hiçbir şey, kendi eyaletinin sana verdiği ve yasal olarak feragat edilemeyen herhangi bir hakkı feragat ettirmez veya sınırlamaz.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">12. Değişiklikler</div>\n        <div class="small muted">Özellikler, fiyatlar, ücretler ve bu şartlar istediği zaman değişebilir. Kullanmaya devam etmek, mevcut şartları kabul ettiğin anlamına gelir.</div>\n      </div>\n      <div class="card">\n        <div style="font-weight:800;margin-bottom:8px">13. İnsan Ticareti ve Sömürü Yasaktır</div>\n        <div class="small muted">SlutCamp, her türlü insan ticaretini, cinsel sömürüyü ve rızasız içeriği yasaklar. SlutCamp\'taki her sanatçı, doğrulanmış bir yetişkindir ve gönüllü olarak hareket eder. İnsan ticareti veya sömürü şüphesi, ilgili makamlara ve Ulusal İnsan Ticareti Yardım Hattı\'na (1-888-373-7888) bildirilir. İhlaller, içeriğin derhal kaldırılmasına ve hesabın kapatılmasına yol açar.</div>\n      </div>\n      <p class="muted small" style="text-align:center;margin:16px 0">Bu şartlar, sade dille bir özettir, hukuki tavsiye değildir.<br>World of Godz Entertainment LLC tarafından işletilmektedir.<br><a href="javascript:void(0)" id="t-privacy" style="color:var(--pink)">Gizlilik Politikası</a> · <a href="javascript:void(0)" id="t-billing" style="color:var(--pink)">Faturalandırma ve İadeler</a> · <a href="javascript:void(0)" id="t-2257" style="color:var(--pink)">2257 Bildirimi</a> · <a href="javascript:void(0)" id="t-dmca" style="color:var(--pink)">DMCA / Telif hakkı kaldırma →</a></p>\n      <button class="btn ghost" id="t-back">← Geri</button>\n    </div>',
     mc_sub: 'Model Sözleşmesi',
     mc_loading: 'Sözleşme yükleniyor…',
     mc_load_fail: 'Sözleşme yüklenemedi — tekrar dene',
@@ -10432,8 +10887,19 @@ function handleWS(m) {
   } else if (m.type === 'media:unlocked' && S.view === 'chat' && S.conv && m.conversation_id === S.conv.id) {
     toast(`💰 ${fmt(m.amount_cents)} unlock! Nice!`);
     if (S.user && S.user.role === 'model') refreshMe();
+  } else if (m.type === 'battle:invite') {
+    onBattleInvite(m.battle);
+  } else if (m.type === 'battle:update') {
+    onBattleUpdate(m.battle);
+  } else if (m.type === 'battle:finished') {
+    onBattleFinished(m.battle, m.your_cents);
+  } else if (m.type === 'battle:chat') {
+    onBattleChatMsg(m.message);
+  } else if (m.type === 'battle:due') {
+    toast('⚔️ ' + t('battle_schedule') + ' — ' + t('battle_ready'), 5000);
+    onBattleUpdate(m.battle);
   } else if (m.type === 'live-signal') {
-    handleLiveSignal(m);
+    if (!routeBattleSignal(m)) handleLiveSignal(m);
   } else if (m.type === 'live:viewer-joined' && S.live && S.live.role === 'model' && m.session_id === S.live.sessionId) {
     liveModelAddViewer(m.fan_id);
   } else if (m.type === 'live:viewer-left' && S.live && S.live.role === 'model' && m.session_id === S.live.sessionId) {
@@ -10749,7 +11215,7 @@ function show(view, params) {
     fanModels: vFanModels, fanLive: vFanLive, lives: vLives, fanChats: vFanChats, wallet: vWallet, quickSignup: vQuickSignup,
     modelChats: vModelChats, modelEarnings: vModelEarnings, modelSettings: vModelSettings,
     chat: vChat,
-    liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch,
+    liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch, battleStage: vBattleStage,
     bookings: vBookings, terms: vTerms, privacy: vPrivacy, billing: vBilling, statement2257: vStatement2257,
     managerGate: vManagerGate, modelContract: vModelContract,
     recruiter: vRecruiter, notifications: vNotifications, dmca: vDmca,
@@ -10762,7 +11228,7 @@ function show(view, params) {
     ? vPreviewPlaceholder
     : (VIEWS[view] || vLanding);
   viewFn(params || {});
-  if (view === 'liveBroadcast' || view === 'liveWatch') tabbar.classList.add('hidden');
+  if (view === 'liveBroadcast' || view === 'liveWatch' || view === 'battleStage') tabbar.classList.add('hidden');
   else if (S.user) refreshTabBadges();
 }
 
@@ -11497,6 +11963,7 @@ async function doSignup(role) {
   if (status === 200) return afterLogin(data);
   const msgs = { username_taken: t('err_username_taken'), must_be_18: t('err_must_be_18'),
     must_declare_section: t('err_must_declare_section'),
+    username_is_email: t('err_username_is_email'),
     password_too_short: t('err_password_short'), bad_email: t('err_bad_email') };
   toast(msgs[data.error] || t('err_signup_failed'));
 }
@@ -11936,6 +12403,7 @@ async function vInviteSignup(code) {
     if (status === 200) return afterLogin(data);
     const msgs = { username_taken: t('err_username_taken'), must_be_18: t('err_must_be_18'),
       must_declare_section: t('err_must_declare_section'),
+      username_is_email: t('err_username_is_email'),
       password_too_short: t('err_password_short'),
       bad_invite: t('err_bad_invite'), invite_used: t('err_invite_used') };
     toast(msgs[data.error] || data.message || t('err_signup_failed'));
@@ -12007,6 +12475,7 @@ async function vRecruiterSignup(code) {
     if (status === 200) return afterLogin(data);
     const msgs = { username_taken: t('err_username_taken'), must_be_18: t('err_must_be_18'),
       must_declare_section: t('err_must_declare_section'),
+      username_is_email: t('err_username_is_email'),
       password_too_short: t('err_password_short'),
       bad_referral: t('err_bad_referral') };
     toast(msgs[data.error] || data.message || t('err_signup_failed'));
@@ -12433,6 +12902,7 @@ function openModelPeek(m, models) {
       <div class="peek-row"><span>Video calls</span><b>${fmt(m.per_minute_cents)} / min</b></div>
       ${m.schedule_summary ? `<div class="peek-row"><span>Usually live</span><b>${esc(m.schedule_summary)}</b></div>` : ''}
     </div>
+    <div id="peek-battles"></div>
     ${m.bio ? `<div class="muted small" style="margin-top:10px">${esc(m.bio)}</div>` : ''}
     <div id="peek-pr"></div>
     ${(m.tags && m.tags.length) ? `<div class="peek-tags">${m.tags.map((tg) => `<button class="disc-chip" data-peek-tag="${esc(tg)}">${esc(tg)}</button>`).join('')}</div>` : ''}
@@ -12492,6 +12962,29 @@ function openModelPeek(m, models) {
         sheet.remove();
         openChatWithModel(id);
       };
+    }
+    // Phase 6: her confirmed scheduled showdowns ("⚔️ vs @name — Fri 8 PM")
+    // + a fan reminder toggle. Unconfirmed events never render here —
+    // the server only returns confirmed ones.
+    const pb = sheet.querySelector('#peek-battles');
+    if (pb && !isOfficial) {
+      api(`/models/${m.id}/battle-events`).then(({ data }) => {
+        const events = (data && data.events) || [];
+        if (!events.length || !document.getElementById('peek-battles')) return;
+        pb.innerHTML = events.map((ev) => {
+          const when = new Date(String(ev.starts_at).replace(' ', 'T') + 'Z');
+          const label = when.toLocaleDateString(undefined, { weekday: 'short' }) + ' ' +
+            when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+          return `<div class="peek-row"><span>${t('battle_vs_line', { name: '@' + ev.opponent.username })}</span><b>${esc(label)}</b></div>
+            ${S.user && S.user.role === 'fan' ? `<button class="btn small ghost" data-battle-remind="${ev.id}" style="width:100%;margin-top:6px">${t('battle_remind')}</button>` : ''}`;
+        }).join('');
+        pb.querySelectorAll('[data-battle-remind]').forEach((btn) => {
+          btn.onclick = async () => {
+            const { data } = await api(`/battles/${btn.dataset.battleRemind}/remind`, { method: 'POST' });
+            btn.textContent = data && data.reminded ? t('battle_reminded') : t('battle_remind');
+          };
+        });
+      }).catch(() => {});
     }
     // Guest bar: no conversation is started — the tap closes her
     // page and lands on the auth view to join / log in, the same
@@ -12673,10 +13166,10 @@ async function vFanLive() {
     <div class="screen">
       ${inPreview ? '' : houseBannerHTML(house)}
       ${streams.map((s) => `
-        <button class="list-item" data-stream="${s.session_id}" data-model="${s.model_id}" style="background:var(--card);border-radius:14px;margin-bottom:10px;border:1px solid rgba(239,68,68,.35)">
+        <button class="list-item" data-stream="${s.session_id}" data-model="${s.model_id}" data-battle="${s.battle_id || ''}" style="background:var(--card);border-radius:14px;margin-bottom:10px;border:1px solid rgba(239,68,68,.35)">
           <span class="avatar-wrap">${avatarHTML(s.model_name, '', s.model_photo_url)}<span class="online-dot"></span></span>
           <span class="grow">
-            <span class="title">${esc(s.model_name)} <span class="live-badge">🔴 LIVE</span></span><br>
+            <span class="title">${esc(s.model_name)} <span class="live-badge">🔴 LIVE</span>${s.battle_id ? ` <span class="live-badge" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">${t('battle_in_battle')}</span>` : ''}${s.battle_looking ? ` <span class="live-badge" style="background:#7c3aed">${t('battle_looking')}</span>` : ''}</span><br>
             ${s.title ? `<span class="preview" style="font-weight:700;color:#fff">${esc(s.title)}</span><br>` : ''}
             <span class="small muted">${t('watching_gifts', { v: s.viewers, g: fmt(s.gift_cents || 0) })}</span><br>
             <span class="small" style="color:#f87171;font-weight:800">${t('join_free_line')}</span>
@@ -12706,6 +13199,8 @@ async function vFanLive() {
         else toast('👁 Preview mode — joining a live is fan-only');
         return;
       }
+      // A battling model's row opens the battle stage, not her solo stream.
+      if (b.dataset.battle) return openBattleStage(parseInt(b.dataset.battle));
       watchLive(parseInt(b.dataset.stream));
     };
   });
@@ -13743,6 +14238,19 @@ async function vModelEarnings() {
         <div class="row"><span class="grow muted small">${t(data.gift_count === 1 ? 'gifts_from_fans_1' : 'gifts_from_fans_n', { n: data.gift_count })}</span>
           <b style="color:var(--green)">${fmt(data.gifts_cents)}</b></div>
         <div class="muted small" style="margin-top:4px">${t('gifts_cut_note')}</div>
+      </div>` : ''}
+      ${(data.battles && data.battles.length) ? `
+      <div class="card" style="margin-top:12px">
+        <div style="font-weight:800;margin-bottom:8px">${t('battle_history')}</div>
+        ${data.battles.map((b) => `
+        <div style="padding:8px 0;border-top:1px solid rgba(139,92,246,.12)">
+          <div class="row" style="align-items:center">
+            <span class="grow"><b>${b.result === 'won' ? '🏆' : b.result === 'tie' ? '🤝' : '⚔️'} ${t('battle_vs_line', { name: esc(b.opponent_name) })}</b>
+              <br><span class="muted small">${b.your_score_cents != null ? `${fmt(b.your_score_cents)} — ${fmt(b.opponent_score_cents)}` : ''}${b.forfeit ? ' · ' + t('battle_forfeited') : ''}</span></span>
+            <b style="color:var(--green)">${fmt(b.your_cents)}</b>
+          </div>
+          <div class="muted small" style="margin-top:2px">${t('battle_pot')}: ${fmt(b.gross_cents)} · 🏠 ${fmt(b.house_cents)} · 🏆 ${fmt(b.winner_cents)} / ${fmt(b.loser_cents)}</div>
+        </div>`).join('')}
       </div>` : ''}
       <div class="card" style="margin-top:12px">
         <div style="font-weight:800;margin-bottom:8px">${t('revenue_breakdown')}</div>
@@ -14814,6 +15322,14 @@ async function vModelSettings() {
       <button class="btn" id="goto-home" style="width:100%;padding:16px;font-size:17px;font-weight:800;margin-bottom:12px;background:linear-gradient(135deg,var(--pink),#ff8fab);box-shadow:0 6px 22px rgba(255,92,158,.35)">🏠 Home Screen — see the girls 🔥</button>
       ${langCardHTML()}
       <div class="card">
+        <div style="font-weight:800;margin-bottom:6px">${t('battle')}</div>
+        <div class="row" style="gap:10px;align-items:center">
+          <button class="toggle ${m.battle_invites_open === 0 ? '' : 'on'}" id="battle-invites-toggle" aria-label="${t('battle_open_invites')}"></button>
+          <span style="font-weight:700">${t('battle_open_invites')}</span>
+        </div>
+        <div class="muted small" style="margin-top:6px">${t('battle_open_invites_note')}</div>
+      </div>
+      <div class="card">
         <div style="font-weight:800;margin-bottom:6px">${t('my_rates')}</div>
         <div class="muted small" style="margin-bottom:10px">${t('rates_note')}</div>
         <label class="field">${t('per_text')} <b id="s-msg-label">${fmt(m.per_message_cents || 149)}</b>
@@ -14975,6 +15491,17 @@ async function vModelSettings() {
         <button class="btn" id="rb-add" style="margin-top:8px">${t('rb_add')}</button>
       </div>
     </div>`;
+  const battleInvitesToggle = $('#battle-invites-toggle');
+  if (battleInvitesToggle) battleInvitesToggle.onclick = async () => {
+    const next = S.model.battle_invites_open === 0 ? 1 : 0;
+    const { status } = await api('/model/profile', {
+      method: 'PUT', body: JSON.stringify({ battle_invites_open: next }) });
+    if (status === 200) {
+      S.model.battle_invites_open = next;
+      battleInvitesToggle.classList.toggle('on', !!next);
+      toast(next ? '⚔️ PumPum Verse invites ON' : '⚔️ PumPum Verse invites OFF');
+    }
+  };
   $('#s-save').onclick = async () => {
     const per_message_cents = parseInt($('#s-msg').value);
     const per_minute_cents = parseInt($('#s-min').value);
@@ -18577,11 +19104,17 @@ function vLiveBroadcast() {
           </div>
           <div class="muted small" style="text-align:center;margin-top:6px">${t('explicit_rate_note', { price: fmt(L.explicitRate) })}</div>
           <button class="btn small ghost" id="game-panel-btn" style="width:100%;margin-top:8px">🎲 ${t('game_category')} <span id="game-queue-badge" class="hidden" style="background:var(--pink);color:#fff;border-radius:999px;padding:1px 8px;font-weight:800"></span></button>
+          <button class="btn small ghost" id="battle-open-btn" style="width:100%;margin-top:8px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;font-weight:800">⚔️ ${t('battle')}</button>
+          <div id="battle-panel"></div>
         </div>
       </div>
     </div>`;
   $('#live-local').srcObject = L.stream;
   $('#game-panel-btn').onclick = openGamePanel;
+  const battleOpenBtn = $('#battle-open-btn');
+  if (battleOpenBtn) battleOpenBtn.onclick = openBattleSheet;
+  renderBattlePanel();
+  refreshMyBattle();
   refreshGameBadge();
   $('#live-explicit-btn').onclick = liveToggleExplicit;
   $('#live-pause-btn').onclick = liveToggleBrb;
@@ -20133,6 +20666,774 @@ function stopStageStream() {
   hideStageBanner();
 }
 
+/* ================= LIVE BATTLES (Phase 6) =================
+ * Fan stage + battler panel + invite/ready/result cards + the battle
+ * sheet (invite / random pool / schedule). Battle viewers hold one
+ * RTCPeerConnection per session in battlePCs; live-signal routing
+ * checks that registry before the normal single-live handler, so a
+ * battler's cross-connection and a fan's two stage connections never
+ * fight S.live. Scores/state ride WS battle:update pushes with a 4s
+ * poll as fallback. */
+
+let battlePCs = new Map();       // sessionId -> RTCPeerConnection (viewer side)
+let battleView = null;           // fan stage: { id, battle, chat: [] }
+let battleMine = null;           // battler: latest battleOut involving me
+let battleChatMsgs = [];         // shared battle chat (stage + panel)
+let battlePollInt = null;
+let battleMinePollInt = null;
+let battleClockInt = null;
+let battleCardTimer = null;
+let battlePickMinutes = 10;
+let battleSchedFor = null;
+
+function battleMakeViewerPC(sessionId, modelId, videoElId) {
+  battleCloseViewerPC(sessionId);
+  const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  pc.onicecandidate = (e) => {
+    if (e.candidate) liveSignal(modelId, sessionId, { kind: 'ice', candidate: e.candidate });
+  };
+  pc.ontrack = (e) => {
+    const v = document.getElementById(videoElId);
+    if (v) {
+      v.srcObject = e.streams[0];
+      e.streams[0].getAudioTracks().forEach((tr) => { tr.enabled = true; });
+      v.play().catch(() => {});
+    }
+  };
+  battlePCs.set(sessionId, pc);
+  return pc;
+}
+function battleCloseViewerPC(sessionId) {
+  const pc = battlePCs.get(sessionId);
+  if (pc) { try { pc.close(); } catch (e) {} battlePCs.delete(sessionId); }
+}
+function closeAllBattlePCs() {
+  for (const sid of [...battlePCs.keys()]) battleCloseViewerPC(sid);
+}
+function routeBattleSignal(m) {
+  const pc = battlePCs.get(m.session_id);
+  if (!pc) return false;
+  const p = m.payload || {};
+  (async () => {
+    try {
+      if (p.kind === 'offer') {
+        await pc.setRemoteDescription(new RTCSessionDescription(p.sdp));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        liveSignal(m.from, m.session_id, { kind: 'answer', sdp: answer });
+      } else if (p.kind === 'ice') {
+        await pc.addIceCandidate(new RTCIceCandidate(p.candidate));
+      }
+    } catch (e) { /* stale signaling */ }
+  })();
+  return true;
+}
+function battleClientTeardown() {
+  closeAllBattlePCs();
+  stopBattlePoll();
+  stopBattleMinePoll();
+  stopBattleClock();
+}
+function stopBattlePoll() { if (battlePollInt) { clearInterval(battlePollInt); battlePollInt = null; } }
+function stopBattleMinePoll() { if (battleMinePollInt) { clearInterval(battleMinePollInt); battleMinePollInt = null; } }
+function stopBattleClock() { if (battleClockInt) { clearInterval(battleClockInt); battleClockInt = null; } }
+function startBattleClock(endsAt) {
+  stopBattleClock();
+  if (!endsAt) return;
+  const endsMs = new Date(String(endsAt).replace(' ', 'T') + 'Z').getTime();
+  const tick = () => {
+    const left = Math.max(0, Math.round((endsMs - Date.now()) / 1000));
+    const label = `⏱ ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+    document.querySelectorAll('[data-battle-clock]').forEach((el) => { el.textContent = label; });
+  };
+  tick();
+  battleClockInt = setInterval(tick, 1000);
+}
+
+function battleScoreHTML(b) {
+  const total = (b.host_score_cents || 0) + (b.guest_score_cents || 0);
+  const lead = total ? Math.round((b.host_score_cents / total) * 100) : 50;
+  return `
+    <div style="background:rgba(0,0,0,.55);border-radius:14px;padding:8px 12px;margin:6px 0">
+      <div class="battle-brand">⚔️ ${t('battle_brand')} ⚔️</div>
+      <div class="battle-scorebar" style="display:flex;gap:10px;align-items:center">
+      <div style="flex:1;text-align:center">
+        <div style="font-weight:800;font-size:13px">${esc(b.host.display_name)}</div>
+        <div style="font-weight:900;font-size:19px;color:#fda4af">${fmt(b.host_score_cents)}</div>
+      </div>
+      <div style="text-align:center;min-width:86px">
+        <div data-battle-clock style="font-weight:900;font-size:16px">⏱ --:--</div>
+        <div style="height:6px;border-radius:99px;background:#7c3aed;overflow:hidden;margin:4px 0"><div style="height:100%;width:${lead}%;background:linear-gradient(90deg,#ff5c9e,#f59e0b)"></div></div>
+        <div class="muted small">${t('battle_pot')}: ${fmt(total)}</div>
+      </div>
+      <div style="flex:1;text-align:center">
+        <div style="font-weight:800;font-size:13px">${esc(b.guest.display_name)}</div>
+        <div style="font-weight:900;font-size:19px;color:#93c5fd">${fmt(b.guest_score_cents)}</div>
+      </div>
+      </div>
+    </div>`;
+}
+function paintBattleScores() {
+  const b = (battleView && battleView.battle) || battleMine;
+  const sb = document.getElementById('battle-scorebar');
+  if (sb && b) sb.innerHTML = battleScoreHTML(b);
+}
+
+/* ---------------- fan stage ---------------- */
+
+async function openBattleStage(battleId) {
+  if (!S.user) {
+    toast('Sign up free to watch live 🔴');
+    return show('auth', { mode: 'signup', role: 'fan' });
+  }
+  if (S.user.role !== 'fan') return toast('Fans only.');
+  battleClientTeardown();
+  battleView = { id: battleId, battle: null };
+  battleChatMsgs = [];
+  show('battleStage', { battleId });
+}
+
+async function vBattleStage(params) {
+  const battleId = params && params.battleId;
+  app.innerHTML = `<div class="live-wrap" id="battle-stage"><div class="muted" style="padding:40px;text-align:center">⚔️…</div></div>`;
+  const { status, data } = await api(`/battles/${battleId}`);
+  if (status !== 200 || !data.battle || data.battle.status !== 'live') {
+    toast('⚔️ That PumPum Verse is not live.');
+    return show('fanLive', {});
+  }
+  const b = data.battle;
+  battleView = { id: battleId, battle: b };
+  // Peers first (so both models' offers find a connection waiting),
+  // then enter — the server pushes viewer-joined to both models.
+  battleMakeViewerPC(b.host_session_id, b.host.id, 'battle-vid-a');
+  battleMakeViewerPC(b.guest_session_id, b.guest.id, 'battle-vid-b');
+  await api(`/battles/${battleId}/enter`, { method: 'POST' });
+  renderBattleStage();
+  loadBattleChat();
+  startBattleClock(b.ends_at);
+  stopBattlePoll();
+  battlePollInt = setInterval(async () => {
+    if (!document.getElementById('battle-stage')) { battleClientTeardown(); return; }
+    const r = await api(`/battles/${battleId}`);
+    if (r.status === 200 && r.data.battle) {
+      battleView.battle = r.data.battle;
+      paintBattleScores();
+      if (r.data.battle.status !== 'live') stopBattlePoll();
+    }
+  }, 4000);
+}
+
+function renderBattleStage() {
+  const wrap = document.getElementById('battle-stage');
+  const bv = battleView;
+  if (!wrap || !bv || !bv.battle) return;
+  const b = bv.battle;
+  wrap.innerHTML = `
+    <div class="battle-arena">
+      <div class="split-pane">
+        <video id="battle-vid-a" autoplay playsinline muted></video>
+        <div class="split-name">${esc(b.host.display_name)}</div>
+      </div>
+      <div class="battle-divider"></div>
+      <div class="split-pane">
+        <video id="battle-vid-b" autoplay playsinline muted></video>
+        <div class="split-name">${esc(b.guest.display_name)}</div>
+      </div>
+      <div class="battle-center"><div id="battle-scorebar"></div></div>
+    </div>
+    <button id="battle-unmute" class="btn small ghost" style="margin:6px auto;display:block">🔊 Tap for sound</button>
+    <div class="row" style="gap:8px;padding:0 10px">
+      <div style="flex:1">
+        <button class="btn" id="battle-tip-a" style="width:100%">${t('battle_tip_her', { name: esc(b.host.display_name) })}</button>
+        <button class="btn ghost" id="battle-game-a" style="width:100%;margin-top:6px">${t('battle_games_her', { name: esc(b.host.display_name) })}</button>
+      </div>
+      <div style="flex:1">
+        <button class="btn" id="battle-tip-b" style="width:100%">${t('battle_tip_her', { name: esc(b.guest.display_name) })}</button>
+        <button class="btn ghost" id="battle-game-b" style="width:100%;margin-top:6px">${t('battle_games_her', { name: esc(b.guest.display_name) })}</button>
+      </div>
+    </div>
+    <div class="muted small" style="text-align:center;padding:8px 14px">🏆 ${t('battle_money_rule')}</div>
+    <div id="battle-chat" class="stream-chat" style="max-height:170px"></div>
+    <div class="stream-chat-input live-typing-bubble">
+      <input id="battle-chat-box" class="input" placeholder="${t('battle_chat_ph')}" maxlength="500" autocomplete="off">
+      <button class="btn small" id="battle-chat-send" style="margin:0">➤</button>
+    </div>
+    <button class="btn ghost" id="battle-leave" style="margin:10px">← Leave</button>`;
+  paintBattleScores();
+  renderBattleChat();
+  $('#battle-unmute').onclick = () => {
+    for (const id of ['battle-vid-a', 'battle-vid-b']) {
+      const v = document.getElementById(id);
+      if (v) { v.muted = false; v.removeAttribute('muted'); v.play().catch(() => {}); }
+    }
+    const ub = $('#battle-unmute');
+    if (ub) ub.classList.add('hidden');
+  };
+  $('#battle-tip-a').onclick = () => openBattleTipSheet(b.host);
+  $('#battle-tip-b').onclick = () => openBattleTipSheet(b.guest);
+  $('#battle-game-a').onclick = () => openBattleGameSheet(b.host_session_id, b.host.display_name);
+  $('#battle-game-b').onclick = () => openBattleGameSheet(b.guest_session_id, b.guest.display_name);
+  const sendIt = () => {
+    const box = $('#battle-chat-box');
+    const v = box.value.trim();
+    if (v) { sendBattleChat(v); box.value = ''; }
+  };
+  $('#battle-chat-send').onclick = sendIt;
+  $('#battle-chat-box').onkeydown = (e) => { if (e.key === 'Enter') sendIt(); };
+  $('#battle-leave').onclick = () => {
+    battleClientTeardown();
+    battleView = null;
+    show('fanLive', {});
+  };
+}
+
+/* Battle tip sheet — her own tip menu, bought into escrow through
+ * the battle endpoint so the spend tags to her side. */
+async function openBattleTipSheet(side) {
+  if (!battleView) return;
+  const { data } = await api(`/models/${side.id}/tip-menu`);
+  const items = (data && data.items) || [];
+  let sheet = $('#tip-sheet');
+  if (sheet) sheet.remove();
+  sheet = document.createElement('div');
+  sheet.id = 'tip-sheet';
+  sheet.className = 'sheet-backdrop';
+  sheet.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-title">💰 ${esc(side.display_name)}'s Tip Menu
+        <span class="muted small">· ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span></div>
+      <div class="muted small" style="margin-bottom:10px">⚔️ ${t('battle_money_rule')}</div>
+      <div class="tip-list">
+        ${items.map((it) => `
+          <button class="tip-item" data-btip="${it.id}">
+            <span class="tip-emoji">${it.emoji}</span>
+            <span class="grow"><span class="title">${esc(it.label)}</span></span>
+            <span class="tip-price">${fmt(it.price_cents)}</span>
+          </button>`).join('') || '<div class="muted">—</div>'}
+      </div>
+      <button class="btn ghost" id="tip-close" style="margin-top:10px">Close</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  $('#tip-close').onclick = () => sheet.remove();
+  sheet.onclick = (e) => { if (e.target === sheet) sheet.remove(); };
+  sheet.querySelectorAll('[data-btip]').forEach((btn) => {
+    btn.onclick = async () => {
+      const raw = btn.dataset.btip;
+      const menuId = /^\d+$/.test(raw) ? Number(raw) : raw;
+      sheet.remove();
+      const { status, data } = await api(`/battles/${battleView.id}/tip`, {
+        method: 'POST', body: JSON.stringify({ side_model_id: side.id, menu_id: menuId }) });
+      if (status === 200) {
+        if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
+        if (data.battle) { battleView.battle = data.battle; paintBattleScores(); }
+        toast('💰 Sent!', 2500);
+      } else if (status === 402) {
+        if (!spendCapToast(data)) { toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500); showBuyCredits(data.needed_cents); }
+      } else {
+        toast("Hmm — that one didn't go through.");
+      }
+    };
+  });
+}
+
+/* Battle Game Category sheet (owner add-on): EITHER model's own game
+ * list, her own prices, opened from the battle stage. Buys ride the
+ * normal per-session game-buy endpoint — the server escrows them
+ * into the pot and tags them to that model's side. */
+async function openBattleGameSheet(sessionId, modelName) {
+  let sheet = $('#game-sheet');
+  if (sheet) sheet.remove();
+  sheet = document.createElement('div');
+  sheet.id = 'game-sheet';
+  sheet.className = 'sheet-backdrop';
+  sheet.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-title">🎲 ${t('game_category')} · ${esc(modelName)}
+        <span class="muted small">· ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span></div>
+      <div id="battle-game-body"><div class="muted" style="text-align:center;padding:14px">…</div></div>
+      <button class="btn ghost" id="game-close" style="margin-top:10px">Close</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  $('#game-close').onclick = () => sheet.remove();
+  sheet.onclick = (e) => { if (e.target === sheet) sheet.remove(); };
+  renderBattleGameBody(sessionId);
+}
+
+async function renderBattleGameBody(sessionId) {
+  const body = $('#battle-game-body');
+  if (!body) return;
+  const { status, data } = await api(`/live/${sessionId}/game-menu`);
+  if (!$('#battle-game-body')) return; // sheet closed mid-fetch
+  if (status !== 200 || !data) {
+    body.innerHTML = '<div class="muted" style="text-align:center;padding:14px">—</div>';
+    return;
+  }
+  if (!data.game_on) {
+    body.innerHTML = `<div class="muted" style="text-align:center;padding:18px 6px">${t('game_off_msg')}</div>`;
+    return;
+  }
+  const secs = [['regular', t('game_regular')], ['explicit', t('game_explicit')], ['special', t('game_specials')]];
+  body.innerHTML = secs.map(([key, title]) => {
+    const items = (data.sections && data.sections[key]) || [];
+    if (!items.length) return '';
+    return `<div class="game-sec-h">${title}</div>` + items.map((it) => {
+      const locked = key === 'explicit' && !data.is_explicit;
+      const resting = key === 'special' && !it.special_ready;
+      const dur = it.duration_sec ? ` <span class="muted small">· ${it.duration_sec}s</span>` : '';
+      const right = resting
+        ? `<span class="muted small">${t('game_resting')}</span>`
+        : `<span class="tip-price">${fmt(it.price_cents)}</span>${locked ? ' <span>🔒</span>' : ''}`;
+      return `<button class="game-row${locked ? ' locked' : ''}${resting ? ' resting' : ''}" data-bgame-buy="${it.id}" ${locked || resting ? 'disabled' : ''}>
+        <span class="grow"><span class="title">${esc(it.label)}</span>${dur}
+        ${locked ? `<div class="muted small">🔒 ${t('game_unlocks_explicit')}</div>` : ''}</span>
+        <span class="game-row-right">${right}</span>
+      </button>`;
+    }).join('');
+  }).join('') || '<div class="muted" style="text-align:center;padding:14px">—</div>';
+  body.querySelectorAll('[data-bgame-buy]').forEach((b) => {
+    b.onclick = () => buyBattleGameItem(sessionId, parseInt(b.dataset.bgameBuy));
+  });
+}
+
+async function buyBattleGameItem(sessionId, itemId) {
+  const { status, data } = await api(`/live/${sessionId}/game-buy`, {
+    method: 'POST', body: JSON.stringify({ item_id: itemId }) });
+  if (status === 200) {
+    if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
+    toast('🎲 Sent! Watch her screen 🔥', 3000);
+    renderBattleGameBody(sessionId); // a bought special flips to Resting
+  } else if (status === 402) {
+    if (!spendCapToast(data)) { toast(`Need ${fmt(data.needed_cents)} — top up your wallet 💰`, 3500); showBuyCredits(data.needed_cents); }
+  } else if (status === 403 && data.error === 'explicit_locked') {
+    toast(`🔒 ${t('game_unlocks_explicit')}`, 3000);
+    renderBattleGameBody(sessionId);
+  } else if (status === 409) {
+    toast(t('game_resting'), 2500);
+    renderBattleGameBody(sessionId);
+  } else if (status === 423) {
+    toast(t('game_off_msg'), 3000);
+    renderBattleGameBody(sessionId);
+  } else {
+    toast("Hmm — that one didn't go through.");
+  }
+}
+
+/* ---------------- shared battle chat ---------------- */
+
+async function loadBattleChat() {
+  const id = (battleView && battleView.id) || (battleMine && battleMine.id);
+  if (!id) return;
+  const { data } = await api(`/battles/${id}/chat`);
+  if (data && data.messages) {
+    battleChatMsgs = data.messages;
+    renderBattleChat();
+  }
+}
+function renderBattleChat() {
+  const html = battleChatMsgs.map((msg) => `
+    <div class="stream-msg${msg.sender_role === 'model' ? ' from-model' : ''}"><b>${esc(msg.sender_name)}</b> ${esc(msg.body)}</div>`).join('');
+  for (const id of ['battle-chat', 'battle-panel-chat']) {
+    const box = document.getElementById(id);
+    if (box) { box.innerHTML = html; box.scrollTop = box.scrollHeight; }
+  }
+}
+async function sendBattleChat(text) {
+  const id = (battleView && battleView.id) || (battleMine && battleMine.id);
+  if (!id) return;
+  const { status, data } = await api(`/battles/${id}/chat`, {
+    method: 'POST', body: JSON.stringify({ body: text }) });
+  if (status === 200 && data.message) {
+    battleChatMsgs.push(data.message);
+    renderBattleChat();
+  } else if (status === 423) {
+    toast(data.error === 'stream_killed' ? '🛑 PumPum Verse ended by the safety bot.' : '⚠️ Message blocked', 4000);
+  }
+}
+function onBattleChatMsg(msg) {
+  if (!msg) return;
+  const id = (battleView && battleView.id) || (battleMine && battleMine.id);
+  if (!id) return;
+  if (battleChatMsgs.some((x) => x.id === msg.id)) return; // own echo
+  battleChatMsgs.push(msg);
+  renderBattleChat();
+}
+
+/* ---------------- battler: sheet, cards, panel ---------------- */
+
+async function battleAction(id, action) {
+  const { status, data } = await api(`/battles/${id}/${action}`, { method: 'POST' });
+  if (status !== 200) {
+    toast((data && (data.message || data.error)) || '⚔️ That did not work.', 3500);
+    return null;
+  }
+  if (data.battle) {
+    battleMine = data.battle;
+    onBattleUpdate(data.battle);
+  }
+  return data;
+}
+
+async function refreshMyBattle() {
+  if (!S.user || S.user.role !== 'model') return;
+  const { data } = await api('/battles/mine');
+  if (!data) return;
+  const incoming = (data.pending || []).find((b) => b.status === 'invited'
+    && (b.kind === 'random' || b.guest.id === S.user.id)
+    && !(b.kind === 'random' && ((b.host.id === S.user.id && b.host_accepted) || (b.guest.id === S.user.id && b.guest_accepted))));
+  if (incoming) { battleMine = incoming; showBattleInviteCard(incoming); return; }
+  const ready = (data.pending || []).find((b) => b.status === 'ready_check');
+  if (ready) { battleMine = ready; renderBattlePanel(); }
+}
+
+function battleOppOf(b) {
+  if (!S.user) return b.guest;
+  return b.host.id === S.user.id ? b.guest : b.host;
+}
+
+function showBattleInviteCard(b) {
+  if (!b || !S.user) return;
+  // Door 1/random: only the side who still owes an answer gets the card.
+  if (b.kind === 'scheduled' && b.guest.id !== S.user.id) return;
+  if ((b.kind === 'invite' || b.kind === 'rematch') && b.guest.id !== S.user.id) return;
+  closeBattleCard();
+  const opp = battleOppOf(b);
+  const card = document.createElement('div');
+  card.id = 'battle-card';
+  card.className = 'sheet-backdrop';
+  const when = b.kind === 'scheduled' && b.starts_at
+    ? new Date(String(b.starts_at).replace(' ', 'T') + 'Z') : null;
+  card.innerHTML = `
+    <div class="sheet" style="text-align:center">
+      ${avatarHTML(opp.display_name, 'xl', opp.photo_url)}
+      <div class="sheet-title" style="margin-top:8px">${t('battle_invite_from', { name: esc(opp.display_name) })}</div>
+      <div class="muted">${t('battle_minutes', { n: b.minutes })}</div>
+      ${when ? `<div class="muted">📅 ${esc(when.toLocaleDateString(undefined, { weekday: 'short' }) + ' ' + when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))}</div>` : ''}
+      <div class="muted small" style="margin:10px 0">🏆 ${t('battle_money_rule')}</div>
+      <div id="battle-card-count" style="font-weight:900;font-size:18px;margin-bottom:8px"></div>
+      <button class="btn" id="battle-card-accept" style="width:100%">${t('battle_accept')}</button>
+      <button class="btn ghost" id="battle-card-decline" style="width:100%;margin-top:8px">${t('decline')}</button>
+    </div>`;
+  document.body.appendChild(card);
+  $('#battle-card-accept').onclick = async () => { closeBattleCard(); await battleAction(b.id, 'accept'); };
+  $('#battle-card-decline').onclick = async () => { closeBattleCard(); await battleAction(b.id, 'decline'); };
+  if (b.expires_at) {
+    const endsMs = new Date(String(b.expires_at).replace(' ', 'T') + 'Z').getTime();
+    const tick = () => {
+      const el = document.getElementById('battle-card-count');
+      if (!el) { stopBattleCardTimer(); return; }
+      const left = Math.max(0, Math.round((endsMs - Date.now()) / 1000));
+      el.textContent = `⏱ ${left}s`;
+      if (left <= 0) closeBattleCard();
+    };
+    tick();
+    battleCardTimer = setInterval(tick, 500);
+  }
+}
+function stopBattleCardTimer() {
+  if (battleCardTimer) { clearInterval(battleCardTimer); battleCardTimer = null; }
+}
+function closeBattleCard() {
+  stopBattleCardTimer();
+  const c = document.getElementById('battle-card');
+  if (c) c.remove();
+}
+
+function onBattleInvite(b) {
+  if (!b || !S.user || S.user.role !== 'model') return;
+  battleMine = b;
+  showBattleInviteCard(b);
+  renderBattleSheetBody();
+}
+
+function onBattleUpdate(b) {
+  if (!b) return;
+  if (battleView && battleView.id === b.id) {
+    battleView.battle = b;
+    paintBattleScores();
+  }
+  if (!S.user || (b.host.id !== S.user.id && b.guest.id !== S.user.id)) return;
+  battleMine = b;
+  if (b.status === 'ready_check') {
+    closeBattleCard();
+    renderBattlePanel();
+    renderBattleSheetBody();
+    if (S.view !== 'liveBroadcast') toast('⚔️ PumPum Verse ready — open your live to tap Ready!', 4500);
+  } else if (b.status === 'live') {
+    closeBattleCard();
+    renderBattlePanel();
+    battleBattlerConnect(b);
+    startBattleClock(b.ends_at);
+    startBattleMinePoll();
+    loadBattleChat();
+  } else if (['declined', 'expired', 'cancelled'].includes(b.status)) {
+    closeBattleCard();
+    renderBattlePanel();
+    renderBattleSheetBody();
+  }
+}
+
+async function battleBattlerConnect(b) {
+  if (!S.user) return;
+  const oppSession = b.host.id === S.user.id ? b.guest_session_id : b.host_session_id;
+  const opp = battleOppOf(b);
+  if (!oppSession || battlePCs.has(oppSession)) return;
+  battleMakeViewerPC(oppSession, opp.id, 'battle-remote');
+  await api(`/battles/${b.id}/enter`, { method: 'POST' });
+}
+
+function startBattleMinePoll() {
+  if (battleMinePollInt) return;
+  battleMinePollInt = setInterval(async () => {
+    if (!battleMine || battleMine.status !== 'live') { stopBattleMinePoll(); return; }
+    const r = await api(`/battles/${battleMine.id}`);
+    if (r.status === 200 && r.data.battle) {
+      battleMine = r.data.battle;
+      paintBattleScores();
+    }
+  }, 4000);
+}
+
+function renderBattlePanel() {
+  const panel = document.getElementById('battle-panel');
+  if (!panel) return;
+  const b = battleMine;
+  if (!b || !S.user || (b.host.id !== S.user.id && b.guest.id !== S.user.id)) {
+    panel.innerHTML = '';
+    return;
+  }
+  const opp = battleOppOf(b);
+  if (b.status === 'ready_check') {
+    const mine = b.host.id === S.user.id ? b.host_ready : b.guest_ready;
+    const theirs = b.host.id === S.user.id ? b.guest_ready : b.host_ready;
+    panel.innerHTML = `
+      <div class="card" style="margin-top:10px;border-color:#f59e0b">
+        <div style="font-weight:800">⚔️ ${t('battle_vs_line', { name: esc(opp.display_name) })}</div>
+        <div class="muted small" style="margin:4px 0">${t('battle_minutes', { n: b.minutes })} · ${t('battle_money_rule')}</div>
+        <button class="btn" id="battle-ready-btn" style="width:100%;margin-top:6px" ${mine ? 'disabled' : ''}>${mine ? '✓ Ready' : t('battle_ready')}</button>
+        <div class="muted small" style="margin-top:6px">${theirs ? `✓ ${esc(opp.display_name)}` : t('battle_waiting_opp', { name: esc(opp.display_name) })}</div>
+      </div>`;
+    const rb = $('#battle-ready-btn');
+    if (rb) rb.onclick = async () => {
+      rb.disabled = true;
+      const data = await battleAction(b.id, 'ready');
+      if (!data) { rb.disabled = false; return; }
+      if (data.started) toast('⚔️ BATTLE ON!', 3000);
+    };
+    return;
+  }
+  if (b.status === 'live') {
+    panel.innerHTML = `
+      <div class="card" style="margin-top:10px;border-color:#ef4444">
+        <div style="font-weight:800">⚔️ ${t('battle_in_battle')} — ${t('battle_vs_line', { name: esc(opp.display_name) })}</div>
+        <div id="battle-scorebar">${battleScoreHTML(b)}</div>
+        <video id="battle-remote" autoplay playsinline style="width:100%;border-radius:12px;margin-top:6px;background:#000"></video>
+        <div id="battle-panel-chat" class="stream-chat" style="max-height:140px;margin-top:8px"></div>
+        <div class="stream-chat-input live-typing-bubble" style="margin-top:6px">
+          <input id="battle-panel-chat-box" class="input" placeholder="${t('battle_chat_ph')}" maxlength="500" autocomplete="off">
+          <button class="btn small" id="battle-panel-chat-send" style="margin:0">➤</button>
+        </div>
+      </div>`;
+    renderBattleChat();
+    const sendIt = () => {
+      const box = $('#battle-panel-chat-box');
+      const v = box.value.trim();
+      if (v) { sendBattleChat(v); box.value = ''; }
+    };
+    $('#battle-panel-chat-send').onclick = sendIt;
+    $('#battle-panel-chat-box').onkeydown = (e) => { if (e.key === 'Enter') sendIt(); };
+    return;
+  }
+  panel.innerHTML = '';
+}
+
+function onBattleFinished(b, yourCents) {
+  if (!b) return;
+  if (battleView && battleView.id === b.id) battleView.battle = b;
+  const involved = !!(S.user && (b.host.id === S.user.id || b.guest.id === S.user.id));
+  if (involved) battleMine = b;
+  stopBattlePoll();
+  stopBattleMinePoll();
+  showBattleResultCard(b, involved ? yourCents : null);
+}
+
+function showBattleResultCard(b, yourCents) {
+  closeBattleCard();
+  const old = document.getElementById('battle-result');
+  if (old) old.remove();
+  const winner = b.winner_id ? (b.winner_id === b.host.id ? b.host : b.guest) : null;
+  const mine = !!(S.user && (b.host.id === S.user.id || b.guest.id === S.user.id));
+  let headline;
+  if (!winner) headline = t('battle_tied');
+  else if (mine && winner.id === S.user.id) headline = t('battle_you_won');
+  else if (mine) headline = t('battle_you_lost', { name: esc(winner.display_name) });
+  else headline = t('battle_wins', { name: esc(winner.display_name) });
+  const card = document.createElement('div');
+  card.id = 'battle-result';
+  card.className = 'sheet-backdrop';
+  card.innerHTML = `
+    <div class="sheet" style="text-align:center">
+      <div style="font-size:44px">${winner && mine && winner.id === S.user.id ? '👑' : '⚔️'}</div>
+      <div class="sheet-title">${headline}</div>
+      <div style="margin:10px 0">${battleScoreHTML(b)}</div>
+      ${b.forfeit_by ? `<div class="muted small">${t('battle_forfeited')}</div>` : ''}
+      <div class="muted small">${t('battle_pot')}: ${fmt(b.gross_cents)} · 🏠 ${fmt(b.house_cents)} · 🏆 ${fmt(b.winner_cents)} / ${fmt(b.loser_cents)}</div>
+      ${yourCents != null ? `<div style="font-weight:800;margin-top:8px;color:var(--green)">${t('battle_you_earned', { amount: fmt(yourCents) })}</div>` : ''}
+      ${mine ? `<button class="btn" id="battle-rematch-btn" style="width:100%;margin-top:12px">${t('battle_rematch')}</button>` : ''}
+      <button class="btn ghost" id="battle-result-close" style="width:100%;margin-top:8px">Close</button>
+    </div>`;
+  document.body.appendChild(card);
+  stopBattleClock();
+  $('#battle-result-close').onclick = () => {
+    card.remove();
+    closeAllBattlePCs();
+    if (battleView) { battleView = null; if (S.user && S.user.role === 'fan') show('fanLive', {}); }
+    if (mine) { battleMine = null; renderBattlePanel(); if (typeof refreshMe === 'function') refreshMe(); }
+  };
+  const rm = $('#battle-rematch-btn');
+  if (rm) rm.onclick = async () => {
+    const { status } = await api(`/battles/${b.id}/rematch`, { method: 'POST' });
+    if (status === 200) { toast('⚔️ Rematch sent!', 3000); card.remove(); battleMine = null; renderBattlePanel(); }
+    else toast('⚔️ Could not send the rematch.', 3000);
+  };
+}
+
+/* The battle sheet: Door 1 picker, Door 3 pool, Door 2 scheduling,
+ * plus my pending + scheduled battles with their actions. */
+async function openBattleSheet() {
+  let sheet = $('#battle-sheet');
+  if (sheet) sheet.remove();
+  sheet = document.createElement('div');
+  sheet.id = 'battle-sheet';
+  sheet.className = 'sheet-backdrop';
+  sheet.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-title">⚔️ ${t('battle')}</div>
+      <div id="battle-sheet-body"><div class="muted" style="text-align:center;padding:14px">…</div></div>
+      <button class="btn ghost" id="battle-sheet-close" style="margin-top:10px">Close</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  $('#battle-sheet-close').onclick = () => sheet.remove();
+  sheet.onclick = (e) => { if (e.target === sheet) sheet.remove(); };
+  renderBattleSheetBody();
+}
+
+function battleMineRowHTML(b) {
+  const opp = battleOppOf(b);
+  const isGuest = S.user && b.guest.id === S.user.id;
+  let actions = '';
+  if (b.status === 'invited' && isGuest)
+    actions = `<button class="btn small" data-bact="accept" data-bid="${b.id}">${t('battle_accept')}</button>
+      <button class="btn small ghost" data-bact="decline" data-bid="${b.id}">${t('decline')}</button>`;
+  else if (b.status === 'invited')
+    actions = `<span class="muted small">${t('battle_waiting_opp', { name: esc(opp.display_name) })}</span>
+      <button class="btn small ghost" data-bact="cancel" data-bid="${b.id}">✕</button>`;
+  else if (b.status === 'ready_check')
+    actions = `<span class="muted small">👇 Ready check is on your live screen</span>
+      <button class="btn small ghost" data-bact="cancel" data-bid="${b.id}">✕</button>`;
+  else if (b.status === 'scheduled' && !b.confirmed && isGuest)
+    actions = `<button class="btn small" data-bact="accept" data-bid="${b.id}">${t('battle_accept')}</button>
+      <button class="btn small ghost" data-bact="decline" data-bid="${b.id}">${t('decline')}</button>`;
+  else if (b.status === 'scheduled' && b.confirmed)
+    actions = `<button class="btn small" data-bact="start" data-bid="${b.id}">▶ Start</button>
+      <button class="btn small ghost" data-bact="cancel" data-bid="${b.id}">✕</button>`;
+  else if (b.status === 'scheduled')
+    actions = `<span class="muted small">${t('battle_waiting_opp', { name: esc(opp.display_name) })}</span>
+      <button class="btn small ghost" data-bact="cancel" data-bid="${b.id}">✕</button>`;
+  const when = b.starts_at
+    ? new Date(String(b.starts_at).replace(' ', 'T') + 'Z').toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '';
+  return `
+    <div class="row" style="align-items:center;padding:7px 0;border-top:1px solid rgba(139,92,246,.12);gap:6px;flex-wrap:wrap">
+      ${avatarHTML(opp.display_name, 'sm', opp.photo_url)}
+      <span class="grow"><b>${esc(opp.display_name)}</b>
+        <br><span class="muted small">${b.kind === 'scheduled' ? '📅 ' + esc(when) + ' · ' : ''}${t('battle_minutes', { n: b.minutes })}</span></span>
+      ${actions}
+    </div>`;
+}
+
+async function renderBattleSheetBody() {
+  const body = $('#battle-sheet-body');
+  if (!body) return;
+  const [{ data: oppData }, { data: mine }] = await Promise.all([
+    api('/battles/opponents'), api('/battles/mine')]);
+  if (!$('#battle-sheet-body')) return;
+  const opps = (oppData && oppData.opponents) || [];
+  const myRows = [...((mine && mine.pending) || []), ...((mine && mine.scheduled) || [])];
+  body.innerHTML = `
+    <div class="muted small" style="margin-bottom:8px">🏆 ${t('battle_money_rule')}</div>
+    ${myRows.length ? myRows.map(battleMineRowHTML).join('') : ''}
+    <div style="font-weight:800;margin:12px 0 6px">${t('battle_pick_rival')}</div>
+    <div class="row" style="gap:8px;margin-bottom:6px">
+      ${[5, 10, 15].map((n) => `<button class="btn small ${n === battlePickMinutes ? '' : 'ghost'}" data-bmin="${n}">${n} min</button>`).join('')}
+    </div>
+    ${opps.map((o) => `
+    <div class="row" style="align-items:center;padding:6px 0;border-top:1px solid rgba(139,92,246,.12)">
+      ${avatarHTML(o.display_name, 'sm', o.photo_url)}
+      <span class="grow" style="margin-left:8px"><b>${esc(o.display_name)}</b> ${o.live_session_id ? '🔴' : o.is_online ? '🟢' : '⚫'}
+        <br><span class="muted small">@${esc(o.username)}</span></span>
+      <button class="btn small" data-binvite="${o.id}" ${o.in_battle ? 'disabled' : ''}>⚔️</button>
+      <button class="btn small ghost" data-bsched="${o.id}">📅</button>
+    </div>`).join('') || '<div class="muted">—</div>'}
+    <div id="battle-sched-form">
+      ${battleSchedFor ? `
+      <div class="card" style="margin-top:10px">
+        <div style="font-weight:800;margin-bottom:6px">${t('battle_schedule')}</div>
+        <input class="input" id="battle-sched-when" type="datetime-local" style="width:100%">
+        <button class="btn" id="battle-sched-create" style="width:100%;margin-top:8px">📅 ${t('battle_schedule')}</button>
+      </div>` : ''}
+    </div>
+    <div style="font-weight:800;margin:14px 0 6px">${t('battle_random')}</div>
+    ${(mine && mine.pool && mine.pool.in_pool) ? `
+      <div class="muted small">${t('battle_pool_waiting')}</div>
+      <label class="checkbox-row" style="margin-top:8px"><input type="checkbox" id="battle-looking" ${mine.pool.looking ? 'checked' : ''}><span>${t('battle_looking')}</span></label>
+      <button class="btn ghost" id="battle-pool-leave" style="width:100%;margin-top:6px">${t('battle_leave_pool')}</button>`
+    : `<button class="btn" id="battle-pool-enter" style="width:100%">${t('battle_enter_pool')}</button>`}`;
+  body.querySelectorAll('[data-bmin]').forEach((b) => {
+    b.onclick = () => { battlePickMinutes = parseInt(b.dataset.bmin); renderBattleSheetBody(); };
+  });
+  body.querySelectorAll('[data-bact]').forEach((b) => {
+    b.onclick = async () => { await battleAction(parseInt(b.dataset.bid), b.dataset.bact); renderBattleSheetBody(); };
+  });
+  body.querySelectorAll('[data-binvite]').forEach((b) => {
+    b.onclick = async () => {
+      const { status, data } = await api('/battles/invite', {
+        method: 'POST', body: JSON.stringify({ opponent_id: parseInt(b.dataset.binvite), minutes: battlePickMinutes }) });
+      if (status === 200) { toast('⚔️ Invite sent!', 3000); renderBattleSheetBody(); }
+      else toast((data && (data.message || data.error)) || '⚔️ Invite failed.', 3500);
+    };
+  });
+  body.querySelectorAll('[data-bsched]').forEach((b) => {
+    b.onclick = () => { battleSchedFor = parseInt(b.dataset.bsched); renderBattleSheetBody(); };
+  });
+  const createBtn = $('#battle-sched-create');
+  if (createBtn) createBtn.onclick = async () => {
+    const when = $('#battle-sched-when').value;
+    if (!when) return toast('Pick a day and time first 📅');
+    const { status, data } = await api('/battles/schedule', {
+      method: 'POST', body: JSON.stringify({ opponent_id: battleSchedFor,
+        starts_at: new Date(when).toISOString(), minutes: battlePickMinutes }) });
+    if (status === 200) { battleSchedFor = null; toast('📅 Showdown proposed!', 3000); renderBattleSheetBody(); }
+    else toast((data && (data.message || data.error)) || '📅 Could not schedule.', 3500);
+  };
+  const enterBtn = $('#battle-pool-enter');
+  if (enterBtn) enterBtn.onclick = async () => {
+    const { status, data } = await api('/battles/pool/enter', { method: 'POST', body: JSON.stringify({}) });
+    if (status === 200) {
+      if (data.battle) { toast('⚔️ Matched!', 3000); onBattleInvite(data.battle); }
+      else toast('🎲 ' + t('battle_pool_waiting'), 3000);
+      renderBattleSheetBody();
+    } else toast((data && (data.message || data.error)) || '🎲 Pool entry failed.', 3500);
+  };
+  const leaveBtn = $('#battle-pool-leave');
+  if (leaveBtn) leaveBtn.onclick = async () => {
+    await api('/battles/pool/leave', { method: 'POST' });
+    renderBattleSheetBody();
+  };
+  const lookingBox = $('#battle-looking');
+  if (lookingBox) lookingBox.onchange = async () => {
+    await api('/battles/pool/looking', { method: 'POST', body: JSON.stringify({ on: lookingBox.checked }) });
+  };
+}
+
 /* --- FAN: watch (group stream) --- */
 
 async function watchLive(sessionId) {
@@ -20639,6 +21940,7 @@ function endLiveView(msg) {
   // or if this is a fan leaving — fans never hold the lock).
   releaseRotationLock();
   stopFaceGuard(); // Phase 4 guard never outlives the live either (no-op if never armed)
+  battleClientTeardown(); // Phase 6: battle peer connections/pollers die with the live too
   const L = S.live;
   if (L) {
     clearInterval(liveMonitorInt);
@@ -21655,7 +22957,7 @@ function vStatement2257() {
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">Content complaints</div>
-        <div class="small muted">To report content, request a removal, or raise a concern about any depiction on this website, email <b>support@slutcamp.app</b> or use the DMCA / takedown page linked below. Content complaints are reviewed and resolved within 7 business days.</div>
+        <div class="small muted">To report content, request a removal, or raise a concern about any depiction on this website, email <b>support@slutcamp.app</b> or use the DMCA / takedown page linked below. Content complaints are reviewed and resolved within 7 business days. SlutCamp prohibits human trafficking and sexual exploitation (Terms of Service, section 13); suspected trafficking is reported to the authorities and the National Human Trafficking Hotline (1-888-373-7888).</div>
       </div>
       <p class="muted small" style="text-align:center;margin:16px 0">Operated by World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="sf-terms" style="color:var(--pink)">Terms of Service</a> · <a href="javascript:void(0)" id="sf-privacy" style="color:var(--pink)">Privacy Policy</a> · <a href="javascript:void(0)" id="sf-billing" style="color:var(--pink)">Billing & Refunds</a> · <a href="javascript:void(0)" id="sf-dmca" style="color:var(--pink)">DMCA</a></p>
       <button class="btn ghost" id="s-back">← Back</button>
