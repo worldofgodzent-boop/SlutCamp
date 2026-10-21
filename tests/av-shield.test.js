@@ -260,6 +260,11 @@ async function runScenario(t, active) {
     return { token: s.json.token, id: s.json.user.id, username: name + suffix };
   };
   const model = await mkUser('shieldmodel', 'model', 'Shield Model');
+  // Upload gate (Oct 21 2026): directory media now requires an
+  // approved ID — this suite's model is a public, verified model, so
+  // the directory assertions below isolate the AV shield alone (the
+  // gate itself is pinned by tests/upload-gate.test.js).
+  dbExec("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved')", [model.id]);
   const fan = await mkUser('shieldfan', 'fan', 'Shield Fan');
 
   const convR = await req('POST', '/api/conversations/start', { body: { model_id: model.id }, token: fan.token });
@@ -389,7 +394,10 @@ async function runScenario(t, active) {
   });
 
   await t.test(`live explicit entry: ${active ? 'refused while shielded, opens once verified' : 'no AV gate while dormant'}`, async () => {
-    dbExec("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved')", [model.id]);
+    // OR IGNORE: since the upload gate (Oct 21 2026) the scenario
+    // approves her at setup (above); this insert remains for the
+    // record — her approval state here is 'approved' either way.
+    dbExec("INSERT OR IGNORE INTO id_verifications (model_id, status) VALUES (?, 'approved')", [model.id]);
     dbExec('UPDATE wallets SET credits_cents = 100000 WHERE user_id = ?', [fan.id]);
     const start = await req('POST', '/api/live/start', { body: {}, token: model.token });
     assert.equal(start.status, 200, start.text);

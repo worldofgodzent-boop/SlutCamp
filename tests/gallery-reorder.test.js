@@ -32,6 +32,7 @@ const os = require('node:os');
 const path = require('node:path');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
+const { DatabaseSync } = require('node:sqlite');
 
 const REPO = path.join(__dirname, '..');
 const app = fs.readFileSync(path.join(REPO, 'public/js/app.js'), 'utf8');
@@ -191,6 +192,14 @@ test('functional: reorder swaps the main photo, validation rejects anything but 
       return { id: s.json.user.id, token: s.json.token };
     };
     const model = await mk('reordermodel', 'model');
+    // Upload gate (Oct 21 2026): directory media requires an approved
+    // ID — approve her here so the directory assertions below test
+    // the reorder mechanics, not the gate (pinned separately by
+    // tests/upload-gate.test.js).
+    const gdb = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
+    gdb.exec('PRAGMA busy_timeout = 10000');
+    gdb.prepare("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved')").run(model.id);
+    gdb.close();
     const fan = await mk('reorderfan', 'fan');
     const png = new Blob([PNG_1PX], { type: 'image/png' });
     const reorder = (token, body) => req(h.base, 'POST', '/api/model/gallery-reorder', { token, body });

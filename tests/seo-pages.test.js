@@ -199,6 +199,12 @@ test.before(async () => {
   db.exec('PRAGMA busy_timeout = 10000');
   db.prepare('UPDATE models SET is_hidden = 1 WHERE user_id = ?').run(F.hidden.id);
   db.prepare('UPDATE users SET banned = 1 WHERE id = ?').run(F.banned.id);
+  // Upload gate (Oct 21 2026): public media — the directory payload
+  // and these SEO pages — now requires an approved ID. This suite's
+  // subjects are PUBLIC models, so star + plain are approved here;
+  // the gate itself is pinned by tests/upload-gate.test.js.
+  db.prepare("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved')").run(F.star.id);
+  db.prepare("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved')").run(F.plain.id);
   db.close();
 
   await boot();
