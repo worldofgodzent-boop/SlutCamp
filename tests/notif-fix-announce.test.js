@@ -101,7 +101,7 @@ test('notification-fix announcement: every model DMd exactly once, fans never, s
          WHERE c.fan_id = ? AND c.model_id = ? AND m.body LIKE '%notifications open now%'`
       ).get(admin.id, m.id);
       assert.ok(row.body.includes('takes you straight there'), 'routing behaviour explained');
-      assert.ok(row.body.includes('FaceTime requests open the request'), 'per-type routing explained');
+      assert.ok(row.body.includes('Video call requests open the request'), 'per-type routing explained');
     }
     const fan = db.prepare("SELECT id FROM users WHERE role = 'fan' LIMIT 1").get();
     const fanHit = db.prepare(

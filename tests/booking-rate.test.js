@@ -4,11 +4,11 @@
  * Stacey: "How do you even set bookings... I can't select the rates of
  * a booked call unless it'll be the same price as the live").
  *
- * The bug: a booked 1-on-1 priced silently off the model's FaceTime
+ * The bug: a booked 1-on-1 priced silently off the model's video call
  * per-minute rate (server: `model.per_minute_cents * minutes` in BOTH
  * booking-creation paths), so an $11/min video rate auto-quoted $660
  * for a 60-minute booking and the ONLY way to change it was to move her
- * FaceTime rate too. Bookings now have their own rate:
+ * video call rate too. Bookings now have their own rate:
  *  - models.booking_rate_cents (nullable; NULL = fall back to
  *    per_minute_cents, so nothing changes until she sets it),
  *  - a Settings slider (s-bk, $1–$100/min, step 50¢) saved through
@@ -45,9 +45,9 @@ test('pins: schema, pricing fallback, payload resolution, settings save', () => 
   assert.ok(fallbacks.length >= 3,
     `effective-rate fallback in slot create + legacy create + availability (got ${fallbacks.length})`);
   assert.ok(!serverSrc.includes('const total = model.per_minute_cents * minutes;'),
-    'slot path no longer prices off the raw FaceTime rate');
+    'slot path no longer prices off the raw video call rate');
   assert.ok(!serverSrc.includes('const total = model.per_minute_cents * durationMin;'),
-    'legacy path no longer prices off the raw FaceTime rate');
+    'legacy path no longer prices off the raw video call rate');
   // Availability payload quotes the effective rate.
   assert.ok(serverSrc.includes('rate_cents: model.booking_rate_cents ?? model.per_minute_cents'),
     'bookings-availability rate_cents is the effective booking rate');
@@ -73,14 +73,14 @@ test('pins: client — settings slider, save wiring, fan quote, i18n key ×13', 
   assert.ok(slider.includes('min="100"') && slider.includes('max="10000"') && slider.includes('step="50"'),
     'slider band is $1–$100 in 50¢ steps');
   assert.ok(slider.includes('m.booking_rate_cents ?? m.per_minute_cents'),
-    'slider starts at the EFFECTIVE rate (own rate, else FaceTime rate)');
+    'slider starts at the EFFECTIVE rate (own rate, else video call rate)');
   assert.ok(appSrc.includes('id="s-bk-label"'), 'slider has a live $ label');
   assert.ok(appSrc.includes("const booking_rate_cents = parseInt($('#s-bk').value);"),
     'rates save reads the slider');
   assert.ok(appSrc.includes('per_voice_cents, booking_rate_cents, explicit_rate_cents'),
     'rates save sends booking_rate_cents in the PUT body');
   // Fan booking sheet: the legacy fallback quote comes from the resolved
-  // booking rate first, never straight off the FaceTime rate.
+  // booking rate first, never straight off the video call rate.
   assert.ok(appSrc.includes('conv.other.booking_rate_cents || conv.other.per_minute_cents || 399'),
     'chat Book button quotes the effective booking rate');
   // i18n: the new settings label exists in exactly the 13 client dicts.
@@ -190,12 +190,12 @@ test('live: settings save persists + range-validates; payloads resolve the effec
     const fan = await login(h.base, 'fandemo', 'fan123');
     const bunny = await bunnyRow(h.base);
 
-    // Stacey's shape: $11/min FaceTime, a $3/min booking rate of her own.
+    // Stacey's shape: $11/min video call, a $3/min booking rate of her own.
     let r = await req(h.base, 'PUT', '/api/model/profile', {
       token: model, body: { per_minute_cents: 1100, booking_rate_cents: 300 } });
     assert.equal(r.status, 200, `save rates: ${r.text}`);
     assert.equal(r.json.model.booking_rate_cents, 300, 'PUT response carries the saved booking rate');
-    assert.equal(r.json.model.per_minute_cents, 1100, 'FaceTime rate saved alongside, independently');
+    assert.equal(r.json.model.per_minute_cents, 1100, 'video call rate saved alongside, independently');
 
     const me = await req(h.base, 'GET', '/api/me', { token: model });
     assert.equal(me.json.model.booking_rate_cents, 300, '/api/me model row carries the booking rate');
@@ -216,22 +216,22 @@ test('live: settings save persists + range-validates; payloads resolve the effec
     // Fan-facing payloads resolve the EFFECTIVE rate (300), not her 1100.
     const roster = await bunnyRow(h.base);
     assert.equal(roster.booking_rate_cents, 300, 'roster payload booking_rate_cents is resolved');
-    assert.equal(roster.per_minute_cents, 1100, 'roster still shows her true FaceTime rate');
+    assert.equal(roster.per_minute_cents, 1100, 'roster still shows her true video call rate');
     const avail = await req(h.base, 'GET', `/api/models/${bunny.id}/bookings-availability?days=7`, { token: fan });
     assert.equal(avail.status, 200, `availability: ${avail.text}`);
     assert.equal(avail.json.rate_cents, 300, 'availability rate_cents quotes the booking rate');
 
-    // Moving ONLY the FaceTime rate leaves the booking rate standing.
+    // Moving ONLY the video call rate leaves the booking rate standing.
     r = await req(h.base, 'PUT', '/api/model/profile', { token: model, body: { per_minute_cents: 1200 } });
     assert.equal(r.status, 200);
     const avail2 = await req(h.base, 'GET', `/api/models/${bunny.id}/bookings-availability?days=7`, { token: fan });
-    assert.equal(avail2.json.rate_cents, 300, 'booking quote survives a FaceTime-rate change');
+    assert.equal(avail2.json.rate_cents, 300, 'booking quote survives a video-call-rate change');
   } finally { stop(h); }
 });
 
 /* ---------------- live: pricing, both paths, fallback ---------------- */
 
-test('live: bookings charge the booking rate when set, the FaceTime rate when NULL', async () => {
+test('live: bookings charge the booking rate when set, the video call rate when NULL', async () => {
   const dir = makeCopy();
   const h1 = await boot(dir, { SEED_DEMO: '1' });
   stop(h1);
@@ -281,7 +281,7 @@ test('live: bookings charge the booking rate when set, the FaceTime rate when NU
     assert.equal(r.json.total_cents, 300 * 10, 'slot booking charges the booking rate');
     assert.equal(bookRow(r.json.booking_id).rate_cents, 300, 'slot booking stores the booking rate');
 
-    // NULL the dedicated rate: both paths fall back to the FaceTime rate,
+    // NULL the dedicated rate: both paths fall back to the video call rate,
     // and the payloads resolve to it too.
     {
       const db = new DatabaseSync(path.join(dir, 'wogent-chat.db'));
@@ -292,18 +292,18 @@ test('live: bookings charge the booking rate when set, the FaceTime rate when NU
     r = await req(h.base, 'POST', '/api/bookings', { token: fan, body: {
       model_id: bunny.id, scheduled_at: now + 6 * 3600e3, duration_min: 15 } });
     assert.equal(r.status, 200, `fallback legacy booking: ${r.text}`);
-    assert.equal(r.json.total_cents, 1100 * 15, 'NULL rate → legacy booking charges the FaceTime rate');
-    assert.equal(bookRow(r.json.booking_id).rate_cents, 1100, 'fallback booking stores the FaceTime rate');
+    assert.equal(r.json.total_cents, 1100 * 15, 'NULL rate → legacy booking charges the video call rate');
+    assert.equal(bookRow(r.json.booking_id).rate_cents, 1100, 'fallback booking stores the video call rate');
 
     r = await req(h.base, 'POST', '/api/bookings', { token: fan, body: {
       model_id: bunny.id, starts_at: aligned(now + 5 * 3600e3), minutes: 10 } });
     assert.equal(r.status, 200, `fallback slot booking: ${r.text}`);
-    assert.equal(r.json.total_cents, 1100 * 10, 'NULL rate → slot booking charges the FaceTime rate');
+    assert.equal(r.json.total_cents, 1100 * 10, 'NULL rate → slot booking charges the video call rate');
 
     const roster = await bunnyRow(h.base);
-    assert.equal(roster.booking_rate_cents, 1100, 'NULL rate → roster resolves to the FaceTime rate');
+    assert.equal(roster.booking_rate_cents, 1100, 'NULL rate → roster resolves to the video call rate');
     const avail = await req(h.base, 'GET', `/api/models/${bunny.id}/bookings-availability?days=7`, { token: fan });
-    assert.equal(avail.json.rate_cents, 1100, 'NULL rate → availability resolves to the FaceTime rate');
+    assert.equal(avail.json.rate_cents, 1100, 'NULL rate → availability resolves to the video call rate');
 
     // The bookings made while her rate was set keep their stored rate.
     assert.equal(bookRow(legacyId).rate_cents, 300, 'earlier booking untouched by the later NULL');

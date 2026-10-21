@@ -64,7 +64,7 @@ test('reload happens only when idle — live, call, sheet/purchase and typing al
   assert.match(app, /classList\.contains\('in-live'\)/);
   // 1-on-1 call overlays — the same signals the pop-up engine checks.
   assert.match(app, /\['call-overlay', 'active-call', 'call-error'\]/);
-  // Purchase/sheet flows (PPV price, tip/gift/FaceTime/booking, paywall).
+  // Purchase/sheet flows (PPV price, tip/gift/video call/booking, paywall).
   assert.match(app, /classList\.contains\('sheet-open'\)/);
   assert.match(app, /#ppv-price-overlay, #voice-ov, #tip-ov, #paywall, \.sheet-backdrop/);
   // Typing must never be eaten.

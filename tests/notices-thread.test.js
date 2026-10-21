@@ -21,8 +21,8 @@
  *  - PR #41's other protections stand: arbitrary house threads stay
  *    hidden from fan lists and unmessageable.
  *
- * Rider (same PR): the FaceTime bells rendered "undefined accepted
- * your FaceTime" — ftGet rows carry no model_name; both bell sites
+ * Rider (same PR): the video call bells rendered "undefined accepted
+ * your video call" — ftGet rows carry no model_name; both bell sites
  * now resolve the name through ftPublic like the rest of the flow.
  *
  * Live tests run the real server over several boots (the deploy
@@ -93,11 +93,11 @@ test('pins: client — announcement bells resolve to the official thread', () =>
   assert.ok(route.includes('ANNOUNCE_TYPES.includes(n.type)'), 'announcement types join the legacy branch');
 });
 
-test('pins: rider — FaceTime bells resolve the model name through ftPublic', () => {
+test('pins: rider — video call bells resolve the model name through ftPublic', () => {
   assert.ok(!server.includes('{ model: fresh.model_name }'),
     'ftGet rows carry no model_name — the raw field must never feed a bell again');
   assert.equal(server.split('ftPublic(fresh).model_name').length - 1, 2,
-    'both FaceTime bell sites (turn + accepted) use ftPublic');
+    'both video call bell sites (turn + accepted) use ftPublic');
 });
 
 /* ---------------- live harness ---------------- */

@@ -551,7 +551,7 @@ body.bg-blur #app { filter: blur(24px); }
 #remote-video { width: 100%; height: 100%; object-fit: cover; background: #000; }
 /* Self-view mirroring (owner, 2026-10-18: "I raise my left hand, but I
    see it in the right side of the screen"): every mainstream app shows
-   you your own camera MIRRORED (FaceTime / IG Live / Zoom) — raise your
+   you your own camera MIRRORED (as on video-call apps / IG Live / Zoom) — raise your
    left hand and it rises on the left of your preview. CSS transforms are
    display-only: the WebRTC track fans receive is never touched, so the
    other side always sees her naturally. #local-video only ever displays
@@ -1086,7 +1086,7 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 .live-leaderboard.king-pop .lb-king { animation: kingPop .55s ease; }
 @keyframes kingPop { 0% { transform: scale(1); } 40% { transform: scale(1.22) rotate(-2deg); } 100% { transform: scale(1); } }
 
-/* ---------- FaceTime: waiting panel + model request card ---------- */
+/* ---------- Video call: waiting panel + model request card ---------- */
 .ft-panel {
   position: fixed; left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom));
   z-index: 60; max-width: 480px; margin: 0 auto;
@@ -2124,7 +2124,7 @@ body.in-home:has(> #phone > .sc-theme-promo):not(:has(> #phone > .sc-theme-banne
 }
 .bk-slot-sub { font-size: 10.5px; font-weight: 700; letter-spacing: .3px; }
 
-/* ---------- FaceTime line: minimize + model queue rows ---------- */
+/* ---------- Video call line: minimize + model queue rows ---------- */
 .ft-min {
   flex: 0 0 auto; width: 30px; height: 30px; border-radius: 9px; cursor: pointer;
   background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.22);

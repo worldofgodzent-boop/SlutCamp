@@ -27,7 +27,7 @@
  *     in a vm against stubbed show/showFtRequestCard/rejoin/S.
  *  2. Source pins: the tap handler carries no show('notifications')
  *     fallthrough, the in-place fallback exists, markRead is intact,
- *     and the protected neighbours (FaceTime Accept/Decline, ft-open,
+ *     and the protected neighbours (video call Accept/Decline, ft-open,
  *     Mark-all-read) still re-render exactly as before.
  */
 const test = require('node:test');
@@ -133,7 +133,7 @@ test("routing: 'tip' bells (link null) open model earnings; fans go to chats", (
   assert.deepEqual(fan.calls, [['show', 'fanChats']]);
 });
 
-test('routing: FaceTime bells open the live request card when it is still live', () => {
+test('routing: video call bells open the live request card when it is still live', () => {
   const fr = { id: 7, status: 'queued' };
   const model = makeRouter({ role: 'model' });
   assert.equal(model.route(bell({ link: '/#ft/7', type: 'facetime' }), { 7: fr }), true);
@@ -194,9 +194,9 @@ test('pin: markRead behaviour is unchanged (POST ids + badge refresh)', () => {
   assert.ok(vNotif.includes('refreshNotifBadge();'), 'badge refresh still wired');
 });
 
-test('pin: protected neighbours untouched — read-all + FaceTime actions still re-render', () => {
+test('pin: protected neighbours untouched — read-all + video call actions still re-render', () => {
   // Exactly three show('notifications', {}) remain in vNotifications:
-  // Mark-all-read, FaceTime Accept, FaceTime Decline. The ft-open row
+  // Mark-all-read, video call Accept, video call Decline. The ft-open row
   // still opens the request card. Nothing else may re-render the list.
   const renders = vNotif.split("show('notifications', {})").length - 1;
   assert.equal(renders, 3, 'only read-all / ft-accept / ft-decline re-render');

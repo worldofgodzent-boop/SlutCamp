@@ -295,7 +295,7 @@ test('pin: the /#chat/ rule is the FIRST link rule, before the chats fallback', 
   const route = extractFn(app, 'routeNotifTap');
   const chatAt = route.indexOf('#chat\\/');
   assert.ok(chatAt >= 0, 'routeNotifTap matches /#chat/<id> links');
-  assert.ok(chatAt < route.indexOf('#ft\\/'), '/#chat/ rule precedes the FaceTime link rule');
+  assert.ok(chatAt < route.indexOf('#ft\\/'), '/#chat/ rule precedes the video call link rule');
   const fallbackAt = route.indexOf("show(role === 'model' ? 'modelChats' : 'fanChats', {})");
   assert.ok(fallbackAt > chatAt, '/#chat/ rule precedes the generic chats-list fallback');
   assert.ok(route.includes("typeof openNotifThread === 'function'"),
