@@ -558,17 +558,21 @@ test('runtime: cap, tracker, invites, seats, private live, refunds, announcement
 
 /* ---------------- migration: previous version's schema ---------------- */
 
-test('migration: a database created by the previous (HEAD) code upgrades in place', { timeout: 300000 }, async () => {
+test('migration: a database created by the previous (pre-Phase-5) code upgrades in place', { timeout: 300000 }, async () => {
   const dir = makeCopy('prold');
   let h = null;
   try {
-    // Replace the working tree files with HEAD (pre-Phase-5) code and
-    // boot THAT, so the DB is genuinely the previous version's schema.
-    const headFiles = execFileSync('git', ['-C', REPO, 'ls-tree', '-r', '--name-only', 'HEAD'],
+    // Replace the working tree files with the pinned pre-Phase-5 base
+    // commit (PR #73 merge) and boot THAT, so the DB is genuinely the
+    // previous version's schema. The base is pinned explicitly: HEAD on
+    // this branch IS the Phase 5 commit, so "HEAD" is no longer the
+    // previous version.
+    const PREV = 'dcb199b0ee56b6db94d6aa978f06260928258886';
+    const headFiles = execFileSync('git', ['-C', REPO, 'ls-tree', '-r', '--name-only', PREV],
       { encoding: 'utf8' }).split('\n').filter(Boolean)
       .filter((f) => f.startsWith('lib/') || f.startsWith('public/') || f === 'server.js' || f === 'package.json');
     for (const f of headFiles) {
-      const content = execFileSync('git', ['-C', REPO, 'show', `HEAD:${f}`], { maxBuffer: 128 * 1024 * 1024 });
+      const content = execFileSync('git', ['-C', REPO, 'show', `${PREV}:${f}`], { maxBuffer: 128 * 1024 * 1024 });
       fs.mkdirSync(path.join(dir, path.dirname(f)), { recursive: true });
       fs.writeFileSync(path.join(dir, f), content);
     }
