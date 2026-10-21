@@ -13097,7 +13097,7 @@ async function vWallet() {
       }
       const { data: d } = await api('/credits/buy', {
         method: 'POST', body: JSON.stringify({ package: b.dataset.pkg }) });
-      toast(d.message || 'Payment processor coming soon.');
+      toast(d.message || 'Card payments are launching soon.');
     };
   });
   // Card "Add more" slider (appears once CCBill approves a cap above $100)
@@ -21086,6 +21086,17 @@ async function routeInitial() {
     location.replace('/manager');
     return;
   }
+  // Public legal links: the server-rendered public pages (footer on
+  // /models, /join, /payouts, profiles) link to /#terms, /#privacy,
+  // /#billing, /#2257 and /#dmca — open the same legal views the auth
+  // screen footer opens, so a reviewer lands on the legal page itself.
+  const legalMatch = window.location.hash.match(/^#(terms|privacy|billing|2257|dmca)$/);
+  if (legalMatch) {
+    await ensureGuest();
+    wsConnect();
+    const legalViews = { terms: 'terms', privacy: 'privacy', billing: 'billing', '2257': 'statement2257', dmca: 'dmca' };
+    return show(legalViews[legalMatch[1]], {});
+  }
   // Model invite link: ?invite=CODE → dedicated signup screen
   const inviteCode = new URLSearchParams(window.location.search).get('invite');
   if (inviteCode && /^[a-f0-9]{18}$/.test(inviteCode)) {
@@ -21444,8 +21455,9 @@ function vDmca() {
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">📮 Designated copyright agent</div>
         <div class="small muted">DMCA Agent, World of Godz Entertainment LLC<br>
+        7511 Oak Chase, San Antonio, TX 78239<br>
         Email: <b>dmca@slutcamp.app</b><br>
-        <span class="small" style="opacity:.7">(Mailing address: to be provided)</span></div>
+        Phone: (210) 943-6509</div>
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:10px">📝 File a takedown notice</div>
@@ -21603,7 +21615,7 @@ function vBilling() {
       </div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:8px">9. Paying with crypto</div>
-        <div class="small muted">You can also load credits with Bitcoin (BTC), USDT, Ethereum (ETH), Solana (SOL) or XRP from the Wallet tab. The exchange rate is locked when your invoice is created and stays fixed for 30 minutes — send the exact amount shown to the address on your invoice. Two coins need one extra detail, shown big on your invoice: for <b>XRP</b>, always include the destination tag, and for <b>Solana</b>, send the exact amount to the last decimal — the tag and the exact amount are how your payment is matched to your account. Credits are added automatically after 1 network confirmation. Crypto loads are final: once credits are in your wallet they follow the same rules as card loads (section 5), and crypto cannot be refunded back to a wallet address. If you send less than the invoice amount, you receive proportional credits automatically when the payment window closes. If you send more than the package price, the package is credited in full and the extra amount is recorded — email us (section 8) with your transaction ID and we will make it right.</div>
+        <div class="small muted">You can also load credits with Bitcoin (BTC), USDT, Ethereum (ETH) or Solana (SOL) from the Wallet tab. The exchange rate is locked when your invoice is created and stays fixed for 30 minutes — send the exact amount shown to the address on your invoice. One coin needs one extra detail, shown big on your invoice: for <b>Solana</b>, send the exact amount to the last decimal — the exact amount is how your payment is matched to your account. Credits are added automatically after 1 network confirmation. Crypto loads are final: once credits are in your wallet they follow the same rules as card loads (section 5), and crypto cannot be refunded back to a wallet address. If you send less than the invoice amount, you receive proportional credits automatically when the payment window closes. If you send more than the package price, the package is credited in full and the extra amount is recorded — email us (section 8) with your transaction ID and we will make it right.</div>
       </div>
       <p class="muted small" style="text-align:center;margin:16px 0">This page is a plain-language summary, not legal advice.<br>Operated by World of Godz Entertainment LLC.<br><a href="javascript:void(0)" id="bl-terms" style="color:var(--pink)">Terms of Service</a> · <a href="javascript:void(0)" id="bl-privacy" style="color:var(--pink)">Privacy Policy</a> · <a href="javascript:void(0)" id="bl-2257" style="color:var(--pink)">2257 Statement</a> · <a href="javascript:void(0)" id="bl-dmca" style="color:var(--pink)">DMCA</a></p>
       <button class="btn ghost" id="b-back">← Back</button>
@@ -21638,7 +21650,7 @@ function vStatement2257() {
         <div class="small muted">The records required to be maintained pursuant to 18 U.S.C. § 2257 and 28 C.F.R. Part 75 are kept by the Custodian of Records at the following address, and are available for inspection during normal business hours:<br><br>
         <b>Custodian of Records</b><br>
         World of Godz Entertainment LLC dba SlutCamp<br>
-        7511 Oak Chase St<br>
+        7511 Oak Chase<br>
         San Antonio, TX 78239, USA</div>
       </div>
       <div class="card">

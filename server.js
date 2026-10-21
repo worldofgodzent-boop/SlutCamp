@@ -402,7 +402,7 @@ function seoModelCard(m) {
   </div></a>`;
 }
 const seoBrand = `<div class="brand"><a href="/">Slut<span class="camp">Camp</span></a><span class="age">18+</span></div>`;
-const seoFooter = `<footer>SlutCamp is an 18+ platform. You must be of legal age in your location to use it.<br><a href="/models">All models</a> · <a href="/join">Become a model</a> · <a href="/">Open the app</a></footer>`;
+const seoFooter = `<footer>SlutCamp is an 18+ platform. You must be of legal age in your location to use it.<br><a href="/models">All models</a> · <a href="/join">Become a model</a> · <a href="/">Open the app</a><br><a href="/#terms">Terms</a> · <a href="/#privacy">Privacy</a> · <a href="/#billing">Billing &amp; Refunds</a> · <a href="/#2257">2257</a> · <a href="/#dmca">DMCA</a><br>Operated by World of Godz Entertainment LLC</footer>`;
 
 // GET /models/:username — her public, crawlable page.
 app.get('/models/:username', (req, res) => {
@@ -500,7 +500,7 @@ ${seoBrand}
   <li><strong>Your earnings are protected</strong> — payouts run on a published weekly cycle, and chargeback handling is written into the Terms you sign, so a fan's bank dispute isn't handled on a whim. <a href="/payouts">Read our payout promise</a></li>
   <li><strong>Face ID sign-in</strong> — your account unlocks with your face. No password to leak, nothing biometric ever leaves your phone.</li>
   <li><strong>You set your prices</strong> — per-message, per-minute, live rates, games and bookings are yours to price and change anytime.</li>
-  <li><strong>ID-verified community</strong> — every model is ID-verified before she can earn, and fans pay through one wallet: no subscription stacking, no games.</li>
+  <li><strong>ID-verified community</strong> — every model is ID-verified before she can go live or cash out, and fans pay through one wallet: no subscription stacking, no games.</li>
 </ul>
 <p style="text-align:center"><a class="cta" href="/">Apply in the app — it's free</a></p>
 <p>Applying takes a few minutes: create your model account, verify your ID, set your prices, and go live. You must be 18+ and able to work legally where you live.</p>
@@ -9489,7 +9489,7 @@ app.post('/api/credits/buy', identMiddleware, requireUser, requireRole('fan'), (
   // 'completed' (and credit the wallet) or 'failed' (card declined).
   logPurchaseAttempt(req.user.id, pkg, pkg.price_cents, cardFingerprint, ip, 'pending', 'processor_not_connected');
   res.status(501).json({ error: 'payment_not_connected',
-    message: 'Payment processor coming soon — CCBill/Segpay will plug in here.',
+    message: 'Card payments are launching soon.',
     descriptor: pkg.descriptor });
 });
 
