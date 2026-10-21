@@ -233,7 +233,15 @@ test('pin: the Manager admin→model message bell carries its thread link', () =
   assert.ok(stmt.includes('`/#chat/${conv.id}`'), 'route bell must link to its thread');
 });
 
-test('pin: exactly 25 thread links exist server-side — no more, no fewer', () => {
+test('pin: the Manager admin→fan message bell carries its thread link', () => {
+  const start = server.indexOf("app.post('/api/admin/fans/:id/message'");
+  assert.ok(start >= 0, 'admin→fan message route located');
+  const stmt = notifyStatement(server.slice(start, start + 1600));
+  assert.ok(stmt.startsWith("notifyUser(f.id, 'message'"), 'route bell is the fan message bell');
+  assert.ok(stmt.includes('`/#chat/${conv.id}`'), 'route bell must link to its thread');
+});
+
+test('pin: exactly 30 thread links exist server-side — no more, no fewer', () => {
   // 17 named functions + the Manager route. (The thread-tap broadcast
   // joined the list when it shipped — its bell demonstrates the
   // feature; the 13-languages broadcast joined later the same day;
@@ -253,11 +261,25 @@ test('pin: exactly 25 thread links exist server-side — no more, no fewer', () 
   // `thr` variable instead and are not part of this count; the
   // rank-congrats bell joined with the per-section ranking ladders —
   // its bell links the model to her official Notices thread, the
-  // sanctioned pattern; the Live Battles broadcast joined with
-  // Phase 6 — its bell links the model to her official Notices
-  // thread the same way.) Any other bell gaining a '/#chat/' link
-  // (or one of the 25 losing it) trips this count.
-  assert.equal(server.split('/#chat/${conv.id}').length - 1, 25);
+  // sanctioned pattern; the faceguard broadcast joined with the
+  // Phase 4 face-count guard announcement — its bell links each
+  // model to her official Notices thread, the same sanctioned
+  // pattern; the safety hard-block broadcast joined with the Safety
+  // build — its bell links each model to her official Notices
+  // thread, the same sanctioned pattern; and the Manager warn-a-fan
+  // route joined with the same build — its bell links the fan to
+  // his admin thread, an exact mirror of the admin→model message
+  // bell above; the Phase 5 private-rooms announcement joined with
+  // the Private Room Events build — its bell links each model to her
+  // official Notices thread, the same sanctioned pattern; and the
+  // private-room invite broadcast joined with the same build — its
+  // bell links each invited fan to his DM thread with the model,
+  // where the invite message itself lives; and the Live Battles
+  // broadcast joined with Phase 6 (PumPum Verse) — its bell links
+  // each model to her official Notices thread, the same sanctioned
+  // pattern.) Any other bell gaining
+  // a '/#chat/' link (or one of the 30 losing it) trips this count.
+  assert.equal(server.split('/#chat/${conv.id}').length - 1, 30);
 });
 
 test('pin: non-DM bells keep their links (tip/facetime/live/booking untouched)', () => {

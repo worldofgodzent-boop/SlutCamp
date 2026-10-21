@@ -252,6 +252,49 @@ const I18N = {
     book_1on1: '📅 Book 1-on-1',
     book_title: 'Book a private 1-on-1 live',
     chat_paused_banner: '⚠️ This chat is paused by the safety monitor.',
+    safety_blocked_info: 'That message wasn\'t sent 💋 Personal contact info (phone numbers, emails, socials) can\'t be shared on SlutCamp — keep the conversation here, where you\'re both protected.',
+    pr_h: '🔒 Private Rooms',
+    pr_sub: 'Exclusive room events for your top spenders. Up to {cap} per week — you pick the days.',
+    pr_title_ph: 'Event title (optional)',
+    pr_when: 'Date & time',
+    pr_seats: 'Seats',
+    pr_price: 'Seat price',
+    pr_create_btn: 'Create event',
+    pr_my_events: 'My private events',
+    pr_no_events: 'No private events yet. Create your first one above.',
+    pr_spenders: 'Top spenders',
+    pr_all_time: 'All time',
+    pr_30d: 'Last 30 days',
+    pr_no_spenders: 'No fan spending to rank yet.',
+    pr_spent: 'spent',
+    pr_selected: 'selected',
+    pr_invited_tag: 'invited',
+    pr_seated_tag: 'seated',
+    pr_send_invites: 'Send invites',
+    pr_invites_sent: '💌 Invites sent!',
+    pr_event_created: '🔒 Private room created!',
+    pr_cancel: 'Cancel event',
+    pr_cancel_confirm: 'Cancel this event? Every seat buyer gets a full refund.',
+    pr_cancelled: 'Event cancelled — seats refunded',
+    pr_scheduled: 'Scheduled',
+    pr_live_now: 'LIVE NOW',
+    pr_ended: 'Ended',
+    pr_seats_left: '{n} of {total} seats left',
+    pr_phase_invite: 'Invite window open — your invitees buy first',
+    pr_phase_public: 'Open to everyone now',
+    pr_start_room: 'Start private room',
+    pr_view: 'View event',
+    pr_invited_badge: '💌 You\'re invited',
+    pr_your_seat: '🎟️ You have a seat',
+    pr_buy: 'Buy seat — {price}',
+    pr_sold_out: 'Sold out',
+    pr_join: 'Join the room',
+    pr_bought: '🎟️ Seat secured — see you at showtime!',
+    pr_by: 'Private room by {name}',
+    pr_when_label: 'Showtime',
+    pr_price_label: 'Seat price',
+    pr_seats_label: 'Seats left',
+    bio_not_allowed_info: 'That bio couldn\'t be saved 💋 Bios can\'t mention other websites, platforms, link pages, payment apps, or contact info — SlutCamp is your whole storefront, and everything here stays protected.',
     sharing_not_allowed: 'Sharing contact info is not allowed.',
     msgs_cost: 'Messages cost {price} each',
     free_msgs_left: '🎁 {n} FREE messages left — then sign up to continue',
@@ -1001,6 +1044,49 @@ const I18N = {
     book_1on1: '📅 Reservar 1 a 1',
     book_title: 'Reserva un en vivo privado 1 a 1',
     chat_paused_banner: '⚠️ Este chat fue pausado por el monitor de seguridad.',
+    safety_blocked_info: 'Ese mensaje no se envió 💋 La información de contacto personal (números de teléfono, correos, redes sociales) no se puede compartir en SlutCamp — mantén la conversación aquí, donde ambos están protegidos.',
+    pr_h: '🔒 Salas privadas',
+    pr_sub: 'Eventos exclusivos para tus fans que más gastan. Hasta {cap} por semana — tú eliges los días.',
+    pr_title_ph: 'Título del evento (opcional)',
+    pr_when: 'Fecha y hora',
+    pr_seats: 'Asientos',
+    pr_price: 'Precio del asiento',
+    pr_create_btn: 'Crear evento',
+    pr_my_events: 'Mis eventos privados',
+    pr_no_events: 'Aún no tienes eventos privados. Crea el primero arriba.',
+    pr_spenders: 'Fans que más gastan',
+    pr_all_time: 'Todo el tiempo',
+    pr_30d: 'Últimos 30 días',
+    pr_no_spenders: 'Aún no hay gastos de fans para clasificar.',
+    pr_spent: 'gastado',
+    pr_selected: 'seleccionados',
+    pr_invited_tag: 'invitado',
+    pr_seated_tag: 'con asiento',
+    pr_send_invites: 'Enviar invitaciones',
+    pr_invites_sent: '💌 ¡Invitaciones enviadas!',
+    pr_event_created: '🔒 ¡Sala privada creada!',
+    pr_cancel: 'Cancelar evento',
+    pr_cancel_confirm: '¿Cancelar este evento? Todos los compradores reciben un reembolso completo.',
+    pr_cancelled: 'Evento cancelado — asientos reembolsados',
+    pr_scheduled: 'Programado',
+    pr_live_now: 'EN VIVO',
+    pr_ended: 'Terminado',
+    pr_seats_left: 'Quedan {n} de {total} asientos',
+    pr_phase_invite: 'Ventana de invitaciones abierta — tus invitados compran primero',
+    pr_phase_public: 'Abierto a todos ahora',
+    pr_start_room: 'Iniciar sala privada',
+    pr_view: 'Ver evento',
+    pr_invited_badge: '💌 Estás invitado',
+    pr_your_seat: '🎟️ Tienes un asiento',
+    pr_buy: 'Comprar asiento — {price}',
+    pr_sold_out: 'Agotado',
+    pr_join: 'Entrar a la sala',
+    pr_bought: '🎟️ ¡Asiento reservado — nos vemos en el show!',
+    pr_by: 'Sala privada de {name}',
+    pr_when_label: 'Hora del show',
+    pr_price_label: 'Precio del asiento',
+    pr_seats_label: 'Asientos libres',
+    bio_not_allowed_info: 'Esa biografía no se pudo guardar 💋 Las biografías no pueden mencionar otros sitios web, plataformas, páginas de enlaces, apps de pago ni información de contacto — SlutCamp es todo tu escaparate, y todo aquí permanece protegido.',
     sharing_not_allowed: 'No está permitido compartir datos de contacto.',
     msgs_cost: 'Cada mensaje cuesta {price}',
     free_msgs_left: '🎁 Te quedan {n} mensajes GRATIS — luego regístrate para seguir',
@@ -1750,6 +1836,49 @@ const I18N = {
     book_1on1: '📅 Reservar 1 a 1',
     book_title: 'Reserve uma live privada 1 a 1',
     chat_paused_banner: '⚠️ Esta conversa foi pausada pelo monitor de segurança.',
+    safety_blocked_info: 'Essa mensagem não foi enviada 💋 Informações de contato pessoais (telefones, e-mails, redes sociais) não podem ser compartilhadas no SlutCamp — mantenham a conversa aqui, onde vocês dois estão protegidos.',
+    pr_h: '🔒 Salas privadas',
+    pr_sub: 'Eventos exclusivos para os seus fãs que mais gastam. Até {cap} por semana — você escolhe os dias.',
+    pr_title_ph: 'Título do evento (opcional)',
+    pr_when: 'Data e hora',
+    pr_seats: 'Lugares',
+    pr_price: 'Preço do lugar',
+    pr_create_btn: 'Criar evento',
+    pr_my_events: 'Meus eventos privados',
+    pr_no_events: 'Ainda sem eventos privados. Crie o primeiro acima.',
+    pr_spenders: 'Fãs que mais gastam',
+    pr_all_time: 'Todo o período',
+    pr_30d: 'Últimos 30 dias',
+    pr_no_spenders: 'Ainda não há gastos de fãs para classificar.',
+    pr_spent: 'gasto',
+    pr_selected: 'selecionados',
+    pr_invited_tag: 'convidado',
+    pr_seated_tag: 'com lugar',
+    pr_send_invites: 'Enviar convites',
+    pr_invites_sent: '💌 Convites enviados!',
+    pr_event_created: '🔒 Sala privada criada!',
+    pr_cancel: 'Cancelar evento',
+    pr_cancel_confirm: 'Cancelar este evento? Todos os compradores recebem reembolso total.',
+    pr_cancelled: 'Evento cancelado — lugares reembolsados',
+    pr_scheduled: 'Agendado',
+    pr_live_now: 'AO VIVO',
+    pr_ended: 'Encerrado',
+    pr_seats_left: 'Restam {n} de {total} lugares',
+    pr_phase_invite: 'Janela de convites aberta — seus convidados compram primeiro',
+    pr_phase_public: 'Aberto a todos agora',
+    pr_start_room: 'Iniciar sala privada',
+    pr_view: 'Ver evento',
+    pr_invited_badge: '💌 Você foi convidado',
+    pr_your_seat: '🎟️ Você tem um lugar',
+    pr_buy: 'Comprar lugar — {price}',
+    pr_sold_out: 'Esgotado',
+    pr_join: 'Entrar na sala',
+    pr_bought: '🎟️ Lugar garantido — até o show!',
+    pr_by: 'Sala privada de {name}',
+    pr_when_label: 'Hora do show',
+    pr_price_label: 'Preço do lugar',
+    pr_seats_label: 'Lugares livres',
+    bio_not_allowed_info: 'Essa bio não pôde ser salva 💋 Bios não podem mencionar outros sites, plataformas, páginas de links, apps de pagamento ou informações de contato — a SlutCamp é toda a sua vitrine, e tudo aqui fica protegido.',
     sharing_not_allowed: 'Não é permitido compartilhar informações de contato.',
     msgs_cost: 'Cada mensagem custa {price}',
     free_msgs_left: '🎁 Restam {n} mensagens GRÁTIS — depois cadastre-se para continuar',
@@ -2499,6 +2628,49 @@ const I18N = {
     book_1on1: '📅 Réserver un 1-à-1',
     book_title: 'Réserver un direct privé en 1-à-1',
     chat_paused_banner: '⚠️ Cette discussion est mise en pause par le moniteur de sécurité.',
+    safety_blocked_info: 'Ce message n\'a pas été envoyé 💋 Les coordonnées personnelles (numéros de téléphone, e-mails, réseaux sociaux) ne peuvent pas être partagées sur SlutCamp — gardez la conversation ici, où vous êtes tous les deux protégés.',
+    pr_h: '🔒 Salons privés',
+    pr_sub: 'Des événements exclusifs pour vos fans les plus dépensiers. Jusqu’à {cap} par semaine — vous choisissez les jours.',
+    pr_title_ph: 'Titre de l’événement (facultatif)',
+    pr_when: 'Date et heure',
+    pr_seats: 'Places',
+    pr_price: 'Prix de la place',
+    pr_create_btn: 'Créer l’événement',
+    pr_my_events: 'Mes événements privés',
+    pr_no_events: 'Aucun événement privé pour le moment. Créez le premier ci-dessus.',
+    pr_spenders: 'Fans les plus dépensiers',
+    pr_all_time: 'Depuis toujours',
+    pr_30d: '30 derniers jours',
+    pr_no_spenders: 'Aucune dépense de fan à classer pour le moment.',
+    pr_spent: 'dépensé',
+    pr_selected: 'sélectionnés',
+    pr_invited_tag: 'invité',
+    pr_seated_tag: 'place réservée',
+    pr_send_invites: 'Envoyer les invitations',
+    pr_invites_sent: '💌 Invitations envoyées !',
+    pr_event_created: '🔒 Salon privé créé !',
+    pr_cancel: 'Annuler l’événement',
+    pr_cancel_confirm: 'Annuler cet événement ? Chaque acheteur est intégralement remboursé.',
+    pr_cancelled: 'Événement annulé — places remboursées',
+    pr_scheduled: 'Programmé',
+    pr_live_now: 'EN DIRECT',
+    pr_ended: 'Terminé',
+    pr_seats_left: '{n} places restantes sur {total}',
+    pr_phase_invite: 'Fenêtre d’invitation ouverte — vos invités achètent en premier',
+    pr_phase_public: 'Ouvert à tous maintenant',
+    pr_start_room: 'Lancer le salon privé',
+    pr_view: 'Voir l’événement',
+    pr_invited_badge: '💌 Vous êtes invité',
+    pr_your_seat: '🎟️ Vous avez une place',
+    pr_buy: 'Acheter une place — {price}',
+    pr_sold_out: 'Complet',
+    pr_join: 'Rejoindre le salon',
+    pr_bought: '🎟️ Place réservée — à très vite pour le show !',
+    pr_by: 'Salon privé de {name}',
+    pr_when_label: 'Heure du show',
+    pr_price_label: 'Prix de la place',
+    pr_seats_label: 'Places restantes',
+    bio_not_allowed_info: 'Cette bio n\'a pas pu être enregistrée 💋 Les bios ne peuvent pas mentionner d\'autres sites web, plateformes, pages de liens, applications de paiement ni coordonnées — SlutCamp est toute votre vitrine, et tout reste protégé ici.',
     sharing_not_allowed: 'Le partage de coordonnées n\'est pas autorisé.',
     msgs_cost: 'Les messages coûtent {price} chacun',
     free_msgs_left: '🎁 {n} messages GRATUITS restants — puis inscrivez-vous pour continuer',
@@ -3248,6 +3420,49 @@ const I18N = {
     book_1on1: '📅 1-zu-1 buchen',
     book_title: 'Privates 1-zu-1 Live buchen',
     chat_paused_banner: '⚠️ Dieser Chat wurde vom Sicherheitsmonitor pausiert.',
+    safety_blocked_info: 'Diese Nachricht wurde nicht gesendet 💋 Persönliche Kontaktdaten (Telefonnummern, E-Mails, Social Media) dürfen auf SlutCamp nicht geteilt werden — behalte das Gespräch hier, wo ihr beide geschützt seid.',
+    pr_h: '🔒 Private Räume',
+    pr_sub: 'Exklusive Events für deine Top-Ausgeber. Bis zu {cap} pro Woche — du wählst die Tage.',
+    pr_title_ph: 'Eventtitel (optional)',
+    pr_when: 'Datum & Uhrzeit',
+    pr_seats: 'Plätze',
+    pr_price: 'Platzpreis',
+    pr_create_btn: 'Event erstellen',
+    pr_my_events: 'Meine privaten Events',
+    pr_no_events: 'Noch keine privaten Events. Erstelle oben dein erstes.',
+    pr_spenders: 'Top-Ausgeber',
+    pr_all_time: 'Gesamt',
+    pr_30d: 'Letzte 30 Tage',
+    pr_no_spenders: 'Noch keine Fan-Ausgaben zum Ranken.',
+    pr_spent: 'ausgegeben',
+    pr_selected: 'ausgewählt',
+    pr_invited_tag: 'eingeladen',
+    pr_seated_tag: 'Platz sicher',
+    pr_send_invites: 'Einladungen senden',
+    pr_invites_sent: '💌 Einladungen gesendet!',
+    pr_event_created: '🔒 Privater Raum erstellt!',
+    pr_cancel: 'Event absagen',
+    pr_cancel_confirm: 'Dieses Event absagen? Jeder Käufer erhält eine volle Rückerstattung.',
+    pr_cancelled: 'Event abgesagt — Plätze erstattet',
+    pr_scheduled: 'Geplant',
+    pr_live_now: 'JETZT LIVE',
+    pr_ended: 'Beendet',
+    pr_seats_left: '{n} von {total} Plätzen frei',
+    pr_phase_invite: 'Einladungsfenster offen — deine Eingeladenen kaufen zuerst',
+    pr_phase_public: 'Jetzt für alle offen',
+    pr_start_room: 'Privaten Raum starten',
+    pr_view: 'Event ansehen',
+    pr_invited_badge: '💌 Du bist eingeladen',
+    pr_your_seat: '🎟️ Du hast einen Platz',
+    pr_buy: 'Platz kaufen — {price}',
+    pr_sold_out: 'Ausverkauft',
+    pr_join: 'Raum betreten',
+    pr_bought: '🎟️ Platz gesichert — bis zur Show!',
+    pr_by: 'Privater Raum von {name}',
+    pr_when_label: 'Showtime',
+    pr_price_label: 'Platzpreis',
+    pr_seats_label: 'Freie Plätze',
+    bio_not_allowed_info: 'Diese Bio konnte nicht gespeichert werden 💋 Bios dürfen keine anderen Websites, Plattformen, Linkseiten, Zahlungs-Apps oder Kontaktdaten erwähnen — SlutCamp ist deine gesamte Verkaufsfläche, und hier bleibt alles geschützt.',
     sharing_not_allowed: 'Das Teilen von Kontaktdaten ist nicht erlaubt.',
     msgs_cost: 'Nachrichten kosten jeweils {price}',
     free_msgs_left: '🎁 {n} KOSTENLOSE Nachrichten übrig — dann registriere dich, um fortzufahren',
@@ -3997,6 +4212,49 @@ const I18N = {
     book_1on1: '📅 Забронировать 1-на-1',
     book_title: 'Забронировать приватный эфир 1-на-1',
     chat_paused_banner: '⚠️ Этот чат приостановлен монитором безопасности.',
+    safety_blocked_info: 'Это сообщение не было отправлено 💋 Личные контакты (номера телефонов, e-mail, соцсети) нельзя передавать на SlutCamp — оставьте разговор здесь, где вы оба защищены.',
+    pr_h: '🔒 Приватные комнаты',
+    pr_sub: 'Эксклюзивные события для ваших самых щедрых фанатов. До {cap} в неделю — дни выбираете вы.',
+    pr_title_ph: 'Название события (по желанию)',
+    pr_when: 'Дата и время',
+    pr_seats: 'Места',
+    pr_price: 'Цена места',
+    pr_create_btn: 'Создать событие',
+    pr_my_events: 'Мои приватные события',
+    pr_no_events: 'Приватных событий пока нет. Создайте первое выше.',
+    pr_spenders: 'Топ по тратам',
+    pr_all_time: 'За всё время',
+    pr_30d: 'За 30 дней',
+    pr_no_spenders: 'Пока некого ранжировать по тратам.',
+    pr_spent: 'потрачено',
+    pr_selected: 'выбрано',
+    pr_invited_tag: 'приглашён',
+    pr_seated_tag: 'с местом',
+    pr_send_invites: 'Отправить приглашения',
+    pr_invites_sent: '💌 Приглашения отправлены!',
+    pr_event_created: '🔒 Приватная комната создана!',
+    pr_cancel: 'Отменить событие',
+    pr_cancel_confirm: 'Отменить событие? Все покупатели получат полный возврат.',
+    pr_cancelled: 'Событие отменено — места возвращены',
+    pr_scheduled: 'Запланировано',
+    pr_live_now: 'В ЭФИРЕ',
+    pr_ended: 'Завершено',
+    pr_seats_left: 'Осталось {n} из {total} мест',
+    pr_phase_invite: 'Окно приглашений открыто — ваши гости покупают первыми',
+    pr_phase_public: 'Теперь открыто для всех',
+    pr_start_room: 'Запустить приватную комнату',
+    pr_view: 'Смотреть событие',
+    pr_invited_badge: '💌 Вы приглашены',
+    pr_your_seat: '🎟️ У вас есть место',
+    pr_buy: 'Купить место — {price}',
+    pr_sold_out: 'Распродано',
+    pr_join: 'Войти в комнату',
+    pr_bought: '🎟️ Место ваше — до встречи на шоу!',
+    pr_by: 'Приватная комната: {name}',
+    pr_when_label: 'Время шоу',
+    pr_price_label: 'Цена места',
+    pr_seats_label: 'Свободных мест',
+    bio_not_allowed_info: 'Не удалось сохранить описание 💋 В описании нельзя упоминать другие сайты, платформы, страницы ссылок, платёжные приложения или контакты — SlutCamp — это вся ваша витрина, и здесь всё остаётся под защитой.',
     sharing_not_allowed: 'Обмен контактной информацией запрещён.',
     msgs_cost: 'Сообщения стоят {price} каждое',
     free_msgs_left: '🎁 Осталось {n} БЕСПЛАТНЫХ сообщений — затем зарегистрируйтесь, чтобы продолжить',
@@ -4746,6 +5004,49 @@ const I18N = {
     book_1on1: '📅 1対1を予約',
     book_title: 'プライベート1対1ライブを予約',
     chat_paused_banner: '⚠️ このチャットは安全モニターにより一時停止されています。',
+    safety_blocked_info: 'このメッセージは送信されませんでした 💋 個人の連絡先（電話番号、メール、SNS）はSlutCampで共有できません — 会話はここで続けましょう。ここなら二人とも守られます。',
+    pr_h: '🔒 プライベートルーム',
+    pr_sub: 'トップファン限定の特別イベント。週{cap}回まで — 日程はあなたが選べます。',
+    pr_title_ph: 'イベント名（任意）',
+    pr_when: '日時',
+    pr_seats: '席数',
+    pr_price: '席の価格',
+    pr_create_btn: 'イベントを作成',
+    pr_my_events: '私のプライベートイベント',
+    pr_no_events: 'プライベートイベントはまだありません。上で最初のイベントを作成しましょう。',
+    pr_spenders: 'トップファン',
+    pr_all_time: '全期間',
+    pr_30d: '過去30日',
+    pr_no_spenders: 'まだランキングできるファンの利用がありません。',
+    pr_spent: '利用額',
+    pr_selected: '選択中',
+    pr_invited_tag: '招待済み',
+    pr_seated_tag: '席あり',
+    pr_send_invites: '招待を送る',
+    pr_invites_sent: '💌 招待を送信しました！',
+    pr_event_created: '🔒 プライベートルームを作成しました！',
+    pr_cancel: 'イベントをキャンセル',
+    pr_cancel_confirm: 'このイベントをキャンセルしますか？購入者全員に全額返金されます。',
+    pr_cancelled: 'イベントはキャンセルされました — 返金済み',
+    pr_scheduled: '予定済み',
+    pr_live_now: '配信中',
+    pr_ended: '終了',
+    pr_seats_left: '残り{n}席 / 全{total}席',
+    pr_phase_invite: '招待期間中 — 招待された方が先に購入できます',
+    pr_phase_public: '現在どなたでも購入できます',
+    pr_start_room: 'プライベートルームを開始',
+    pr_view: 'イベントを見る',
+    pr_invited_badge: '💌 招待されています',
+    pr_your_seat: '🎟️ 席を確保済み',
+    pr_buy: '席を購入 — {price}',
+    pr_sold_out: '完売',
+    pr_join: 'ルームに参加',
+    pr_bought: '🎟️ 席を確保しました — ショーでお会いしましょう！',
+    pr_by: '{name}のプライベートルーム',
+    pr_when_label: '開始時刻',
+    pr_price_label: '席の価格',
+    pr_seats_label: '残り席数',
+    bio_not_allowed_info: 'このプロフィールは保存できませんでした 💋 プロフィールには他のウェブサイト、プラットフォーム、リンクページ、支払いアプリ、連絡先を記載できません — SlutCampがあなたのすべての店舗であり、ここではすべてが保護されます。',
     sharing_not_allowed: '連絡先の共有は禁止されています。',
     msgs_cost: 'メッセージは1通 {price} です',
     free_msgs_left: '🎁 無料メッセージ残り {n}通 — その後は登録して続けてね',
@@ -5495,6 +5796,49 @@ const I18N = {
     book_1on1: '📅 预约一对一',
     book_title: '预约一对一私密直播',
     chat_paused_banner: '⚠️ 此聊天已被安全监控暂停。',
+    safety_blocked_info: '这条消息没有发送出去 💋 个人联系方式（电话号码、电子邮件、社交账号）不能在 SlutCamp 上分享 — 把对话留在这里，在这里你们双方都受到保护。',
+    pr_h: '🔒 私人房间',
+    pr_sub: '为你的头号粉丝准备的专属活动。每周最多 {cap} 场 — 日期由你决定。',
+    pr_title_ph: '活动标题（可选）',
+    pr_when: '日期和时间',
+    pr_seats: '座位数',
+    pr_price: '座位价格',
+    pr_create_btn: '创建活动',
+    pr_my_events: '我的私人活动',
+    pr_no_events: '还没有私人活动。在上方创建第一个吧。',
+    pr_spenders: '消费最高的粉丝',
+    pr_all_time: '全部时间',
+    pr_30d: '最近30天',
+    pr_no_spenders: '暂无粉丝消费可排名。',
+    pr_spent: '已消费',
+    pr_selected: '已选',
+    pr_invited_tag: '已邀请',
+    pr_seated_tag: '已订座',
+    pr_send_invites: '发送邀请',
+    pr_invites_sent: '💌 邀请已发送！',
+    pr_event_created: '🔒 私人房间已创建！',
+    pr_cancel: '取消活动',
+    pr_cancel_confirm: '取消这场活动？所有购票者将获得全额退款。',
+    pr_cancelled: '活动已取消 — 座位已退款',
+    pr_scheduled: '已安排',
+    pr_live_now: '直播中',
+    pr_ended: '已结束',
+    pr_seats_left: '剩余 {n} / {total} 个座位',
+    pr_phase_invite: '邀请期开放 — 受邀者优先购买',
+    pr_phase_public: '现已向所有人开放',
+    pr_start_room: '开启私人房间',
+    pr_view: '查看活动',
+    pr_invited_badge: '💌 你已被邀请',
+    pr_your_seat: '🎟️ 你已订座',
+    pr_buy: '购买座位 — {price}',
+    pr_sold_out: '已售罄',
+    pr_join: '进入房间',
+    pr_bought: '🎟️ 座位已锁定 — 演出见！',
+    pr_by: '{name} 的私人房间',
+    pr_when_label: '演出时间',
+    pr_price_label: '座位价格',
+    pr_seats_label: '剩余座位',
+    bio_not_allowed_info: '这条简介无法保存 💋 简介不能提及其他网站、平台、链接页、支付应用或联系方式 — SlutCamp 就是你的整个店面，这里的一切都受到保护。',
     sharing_not_allowed: '不允许分享联系方式。',
     msgs_cost: '每条消息收费 {price}',
     free_msgs_left: '🎁 还剩 {n} 条免费消息 — 之后请注册继续',
@@ -6244,6 +6588,49 @@ const I18N = {
     book_1on1: '📅 1:1 예약하기',
     book_title: '프라이빗 1:1 라이브 예약하기',
     chat_paused_banner: '⚠️ 이 채팅은 안전 모니터에 의해 일시 중지되었습니다.',
+    safety_blocked_info: '이 메시지는 전송되지 않았어요 💋 개인 연락처(전화번호, 이메일, SNS)는 SlutCamp에서 공유할 수 없어요 — 대화는 여기에서 이어가세요. 여기서는 두 분 모두 보호받습니다.',
+    pr_h: '🔒 프라이빗 룸',
+    pr_sub: '최고 팬들을 위한 전용 이벤트. 주당 최대 {cap}회 — 요일은 당신이 정합니다.',
+    pr_title_ph: '이벤트 제목 (선택)',
+    pr_when: '날짜 및 시간',
+    pr_seats: '좌석 수',
+    pr_price: '좌석 가격',
+    pr_create_btn: '이벤트 만들기',
+    pr_my_events: '내 프라이빗 이벤트',
+    pr_no_events: '아직 프라이빗 이벤트가 없습니다. 위에서 첫 이벤트를 만드세요.',
+    pr_spenders: '최고 팬',
+    pr_all_time: '전체 기간',
+    pr_30d: '최근 30일',
+    pr_no_spenders: '아직 순위를 매길 팬 소비가 없습니다.',
+    pr_spent: '소비',
+    pr_selected: '선택됨',
+    pr_invited_tag: '초대됨',
+    pr_seated_tag: '좌석 있음',
+    pr_send_invites: '초대 보내기',
+    pr_invites_sent: '💌 초대를 보냈습니다!',
+    pr_event_created: '🔒 프라이빗 룸이 만들어졌습니다!',
+    pr_cancel: '이벤트 취소',
+    pr_cancel_confirm: '이 이벤트를 취소할까요? 모든 구매자에게 전액 환불됩니다.',
+    pr_cancelled: '이벤트 취소됨 — 좌석 환불 완료',
+    pr_scheduled: '예정됨',
+    pr_live_now: '라이브 중',
+    pr_ended: '종료',
+    pr_seats_left: '{total}석 중 {n}석 남음',
+    pr_phase_invite: '초대 기간 열림 — 초대받은 분이 먼저 구매합니다',
+    pr_phase_public: '지금 모두에게 열려 있습니다',
+    pr_start_room: '프라이빗 룸 시작',
+    pr_view: '이벤트 보기',
+    pr_invited_badge: '💌 초대받았습니다',
+    pr_your_seat: '🎟️ 좌석이 있습니다',
+    pr_buy: '좌석 구매 — {price}',
+    pr_sold_out: '매진',
+    pr_join: '룸 입장',
+    pr_bought: '🎟️ 좌석 확정 — 쇼에서 만나요!',
+    pr_by: '{name}님의 프라이빗 룸',
+    pr_when_label: '쇼 시간',
+    pr_price_label: '좌석 가격',
+    pr_seats_label: '남은 좌석',
+    bio_not_allowed_info: '이 소개글은 저장되지 않았어요 💋 소개글에는 다른 웹사이트, 플랫폼, 링크 페이지, 결제 앱, 연락처를 언급할 수 없어요 — SlutCamp가 당신의 전체 매장이며, 여기서는 모든 것이 보호됩니다.',
     sharing_not_allowed: '연락처 공유는 허용되지 않습니다.',
     msgs_cost: '메시지 1개당 {price}가 듭니다',
     free_msgs_left: '🎁 무료 메시지 {n}개 남음 — 이후 계속하려면 가입하세요',
@@ -6993,6 +7380,49 @@ const I18N = {
     book_1on1: '📅 Prenota 1-a-1',
     book_title: 'Prenota una live privata 1-a-1',
     chat_paused_banner: '⚠️ Questa chat è in pausa dal monitoraggio di sicurezza.',
+    safety_blocked_info: 'Quel messaggio non è stato inviato 💋 I contatti personali (numeri di telefono, e-mail, social) non possono essere condivisi su SlutCamp — tieni la conversazione qui, dove siete entrambi protetti.',
+    pr_h: '🔒 Stanze private',
+    pr_sub: 'Eventi esclusivi per i tuoi fan più generosi. Fino a {cap} a settimana — scegli tu i giorni.',
+    pr_title_ph: 'Titolo evento (facoltativo)',
+    pr_when: 'Data e ora',
+    pr_seats: 'Posti',
+    pr_price: 'Prezzo del posto',
+    pr_create_btn: 'Crea evento',
+    pr_my_events: 'I miei eventi privati',
+    pr_no_events: 'Nessun evento privato ancora. Crea il primo qui sopra.',
+    pr_spenders: 'Fan più generosi',
+    pr_all_time: 'Sempre',
+    pr_30d: 'Ultimi 30 giorni',
+    pr_no_spenders: 'Nessuna spesa dei fan da classificare ancora.',
+    pr_spent: 'speso',
+    pr_selected: 'selezionati',
+    pr_invited_tag: 'invitato',
+    pr_seated_tag: 'posto preso',
+    pr_send_invites: 'Invia inviti',
+    pr_invites_sent: '💌 Inviti inviati!',
+    pr_event_created: '🔒 Stanza privata creata!',
+    pr_cancel: 'Annulla evento',
+    pr_cancel_confirm: 'Annullare questo evento? Ogni acquirente riceve un rimborso completo.',
+    pr_cancelled: 'Evento annullato — posti rimborsati',
+    pr_scheduled: 'Programmato',
+    pr_live_now: 'IN DIRETTA',
+    pr_ended: 'Terminato',
+    pr_seats_left: '{n} di {total} posti rimasti',
+    pr_phase_invite: 'Finestra inviti aperta — i tuoi invitati comprano per primi',
+    pr_phase_public: 'Ora aperto a tutti',
+    pr_start_room: 'Avvia stanza privata',
+    pr_view: 'Vedi evento',
+    pr_invited_badge: '💌 Sei invitato',
+    pr_your_seat: '🎟️ Hai un posto',
+    pr_buy: 'Compra posto — {price}',
+    pr_sold_out: 'Esaurito',
+    pr_join: 'Entra nella stanza',
+    pr_bought: '🎟️ Posto tuo — ci vediamo allo show!',
+    pr_by: 'Stanza privata di {name}',
+    pr_when_label: 'Orario show',
+    pr_price_label: 'Prezzo del posto',
+    pr_seats_label: 'Posti rimasti',
+    bio_not_allowed_info: 'Impossibile salvare quella bio 💋 Le bio non possono menzionare altri siti web, piattaforme, pagine di link, app di pagamento o contatti — SlutCamp è tutta la tua vetrina, e qui tutto resta protetto.',
     sharing_not_allowed: 'Condividere informazioni di contatto non è consentito.',
     msgs_cost: 'I messaggi costano {price} l\'uno',
     free_msgs_left: '🎁 {n} messaggi GRATUITI rimasti — poi registrati per continuare',
@@ -7742,6 +8172,49 @@ const I18N = {
     book_1on1: '📅 Zarezerwuj 1 na 1',
     book_title: 'Zarezerwuj prywatną transmisję 1 na 1 na żywo',
     chat_paused_banner: '⚠️ Ten czat został wstrzymany przez monitor bezpieczeństwa.',
+    safety_blocked_info: 'Ta wiadomość nie została wysłana 💋 Osobistych danych kontaktowych (numerów telefonów, e-maili, mediów społecznościowych) nie można udostępniać na SlutCamp — prowadź rozmowę tutaj, gdzie oboje jesteście chronieni.',
+    pr_h: '🔒 Pokoje prywatne',
+    pr_sub: 'Ekskluzywne wydarzenia dla twoich najlepszych fanów. Do {cap} tygodniowo — ty wybierasz dni.',
+    pr_title_ph: 'Tytuł wydarzenia (opcjonalnie)',
+    pr_when: 'Data i godzina',
+    pr_seats: 'Miejsca',
+    pr_price: 'Cena miejsca',
+    pr_create_btn: 'Utwórz wydarzenie',
+    pr_my_events: 'Moje wydarzenia prywatne',
+    pr_no_events: 'Brak wydarzeń prywatnych. Utwórz pierwsze powyżej.',
+    pr_spenders: 'Najlepsi fani',
+    pr_all_time: 'Cały czas',
+    pr_30d: 'Ostatnie 30 dni',
+    pr_no_spenders: 'Brak wydatków fanów do rankingu.',
+    pr_spent: 'wydano',
+    pr_selected: 'wybranych',
+    pr_invited_tag: 'zaproszony',
+    pr_seated_tag: 'ma miejsce',
+    pr_send_invites: 'Wyślij zaproszenia',
+    pr_invites_sent: '💌 Zaproszenia wysłane!',
+    pr_event_created: '🔒 Pokój prywatny utworzony!',
+    pr_cancel: 'Anuluj wydarzenie',
+    pr_cancel_confirm: 'Anulować to wydarzenie? Każdy kupujący otrzyma pełny zwrot.',
+    pr_cancelled: 'Wydarzenie anulowane — miejsca zwrócone',
+    pr_scheduled: 'Zaplanowane',
+    pr_live_now: 'NA ŻYWO',
+    pr_ended: 'Zakończone',
+    pr_seats_left: 'Zostało {n} z {total} miejsc',
+    pr_phase_invite: 'Okno zaproszeń otwarte — zaproszeni kupują pierwsi',
+    pr_phase_public: 'Teraz otwarte dla wszystkich',
+    pr_start_room: 'Start pokoju prywatnego',
+    pr_view: 'Zobacz wydarzenie',
+    pr_invited_badge: '💌 Masz zaproszenie',
+    pr_your_seat: '🎟️ Masz miejsce',
+    pr_buy: 'Kup miejsce — {price}',
+    pr_sold_out: 'Wyprzedane',
+    pr_join: 'Wejdź do pokoju',
+    pr_bought: '🎟️ Miejsce twoje — do zobaczenia na show!',
+    pr_by: 'Pokój prywatny: {name}',
+    pr_when_label: 'Godzina show',
+    pr_price_label: 'Cena miejsca',
+    pr_seats_label: 'Wolne miejsca',
+    bio_not_allowed_info: 'Nie udało się zapisać tego opisu 💋 Opisy nie mogą wspominać innych stron, platform, stron z linkami, aplikacji płatniczych ani danych kontaktowych — SlutCamp to cała Twoja witryna, a tutaj wszystko jest chronione.',
     sharing_not_allowed: 'Udostępnianie danych kontaktowych jest niedozwolone.',
     msgs_cost: 'Wiadomości kosztują {price} każda',
     free_msgs_left: '🎁 Pozostało {n} DARMOWYCH wiadomości — potem zarejestruj się, aby kontynuować',
@@ -8491,6 +8964,49 @@ const I18N = {
     book_1on1: '📅 Boek 1-op-1',
     book_title: 'Boek een privé 1-op-1 live',
     chat_paused_banner: '⚠️ Deze chat is gepauzeerd door de veiligheidsmonitor.',
+    safety_blocked_info: 'Dat bericht is niet verzonden 💋 Persoonlijke contactgegevens (telefoonnummers, e-mails, socials) mogen niet worden gedeeld op SlutCamp — houd het gesprek hier, waar jullie allebei beschermd zijn.',
+    pr_h: '🔒 Privékamers',
+    pr_sub: 'Exclusieve events voor je topfans. Tot {cap} per week — jij kiest de dagen.',
+    pr_title_ph: 'Eventtitel (optioneel)',
+    pr_when: 'Datum & tijd',
+    pr_seats: 'Stoelen',
+    pr_price: 'Stoelprijs',
+    pr_create_btn: 'Event aanmaken',
+    pr_my_events: 'Mijn privé-events',
+    pr_no_events: 'Nog geen privé-events. Maak hierboven je eerste.',
+    pr_spenders: 'Topfans',
+    pr_all_time: 'Altijd',
+    pr_30d: 'Laatste 30 dagen',
+    pr_no_spenders: 'Nog geen fanuitgaven om te rangschikken.',
+    pr_spent: 'uitgegeven',
+    pr_selected: 'geselecteerd',
+    pr_invited_tag: 'uitgenodigd',
+    pr_seated_tag: 'stoel bezet',
+    pr_send_invites: 'Uitnodigingen sturen',
+    pr_invites_sent: '💌 Uitnodigingen verstuurd!',
+    pr_event_created: '🔒 Privékamer aangemaakt!',
+    pr_cancel: 'Event annuleren',
+    pr_cancel_confirm: 'Dit event annuleren? Elke koper krijgt het volledige bedrag terug.',
+    pr_cancelled: 'Event geannuleerd — stoelen terugbetaald',
+    pr_scheduled: 'Gepland',
+    pr_live_now: 'NU LIVE',
+    pr_ended: 'Beëindigd',
+    pr_seats_left: '{n} van {total} stoelen over',
+    pr_phase_invite: 'Uitnodigingsvenster open — genodigden kopen eerst',
+    pr_phase_public: 'Nu open voor iedereen',
+    pr_start_room: 'Privékamer starten',
+    pr_view: 'Event bekijken',
+    pr_invited_badge: '💌 Je bent uitgenodigd',
+    pr_your_seat: '🎟️ Je hebt een stoel',
+    pr_buy: 'Stoel kopen — {price}',
+    pr_sold_out: 'Uitverkocht',
+    pr_join: 'Kamer betreden',
+    pr_bought: '🎟️ Stoel vast — tot bij de show!',
+    pr_by: 'Privékamer van {name}',
+    pr_when_label: 'Showtijd',
+    pr_price_label: 'Stoelprijs',
+    pr_seats_label: 'Stoelen over',
+    bio_not_allowed_info: 'Die bio kon niet worden opgeslagen 💋 Bio\'s mogen geen andere websites, platforms, linkpagina\'s, betaalapps of contactgegevens vermelden — SlutCamp is je hele winkel, en hier blijft alles beschermd.',
     sharing_not_allowed: 'Contactgegevens delen is niet toegestaan.',
     msgs_cost: 'Berichten kosten {price} per stuk',
     free_msgs_left: '🎁 {n} GRATIS berichten over — meld je daarna aan om door te gaan',
@@ -9240,6 +9756,49 @@ const I18N = {
     book_1on1: '📅 Bire Bir Rezervasyon',
     book_title: 'Özel bire bir canlı rezervasyonu yap',
     chat_paused_banner: '⚠️ Bu sohbet güvenlik izleyicisi tarafından duraklatıldı.',
+    safety_blocked_info: 'Bu mesaj gönderilmedi 💋 Kişisel iletişim bilgileri (telefon numaraları, e-postalar, sosyal medya) SlutCamp\'ta paylaşılamaz — sohbeti burada tutun, burada ikiniz de korunursunuz.',
+    pr_h: '🔒 Özel Odalar',
+    pr_sub: 'En çok harcayan hayranların için özel etkinlikler. Haftada en fazla {cap} — günleri sen seçersin.',
+    pr_title_ph: 'Etkinlik başlığı (isteğe bağlı)',
+    pr_when: 'Tarih ve saat',
+    pr_seats: 'Koltuk',
+    pr_price: 'Koltuk fiyatı',
+    pr_create_btn: 'Etkinlik oluştur',
+    pr_my_events: 'Özel etkinliklerim',
+    pr_no_events: 'Henüz özel etkinliğin yok. İlkin yukarıdan oluştur.',
+    pr_spenders: 'En çok harcayanlar',
+    pr_all_time: 'Tüm zamanlar',
+    pr_30d: 'Son 30 gün',
+    pr_no_spenders: 'Henüz sıralanacak hayran harcaması yok.',
+    pr_spent: 'harcadı',
+    pr_selected: 'seçildi',
+    pr_invited_tag: 'davetli',
+    pr_seated_tag: 'koltuğu var',
+    pr_send_invites: 'Davetleri gönder',
+    pr_invites_sent: '💌 Davetler gönderildi!',
+    pr_event_created: '🔒 Özel oda oluşturuldu!',
+    pr_cancel: 'Etkinliği iptal et',
+    pr_cancel_confirm: 'Bu etkinlik iptal edilsin mi? Her alıcıya tam iade yapılır.',
+    pr_cancelled: 'Etkinlik iptal edildi — koltuklar iade edildi',
+    pr_scheduled: 'Planlandı',
+    pr_live_now: 'CANLI',
+    pr_ended: 'Bitti',
+    pr_seats_left: '{total} koltuktan {n} kaldı',
+    pr_phase_invite: 'Davet penceresi açık — davetlilerin önce satın alır',
+    pr_phase_public: 'Şimdi herkese açık',
+    pr_start_room: 'Özel odayı başlat',
+    pr_view: 'Etkinliği gör',
+    pr_invited_badge: '💌 Davetlisin',
+    pr_your_seat: '🎟️ Koltuğun hazır',
+    pr_buy: 'Koltuk al — {price}',
+    pr_sold_out: 'Tükendi',
+    pr_join: 'Odaya gir',
+    pr_bought: '🎟️ Koltuk senin — gösteride görüşürüz!',
+    pr_by: '{name} özel odası',
+    pr_when_label: 'Gösteri saati',
+    pr_price_label: 'Koltuk fiyatı',
+    pr_seats_label: 'Kalan koltuk',
+    bio_not_allowed_info: 'Bu biyografi kaydedilemedi 💋 Biyografilerde başka web siteleri, platformlar, bağlantı sayfaları, ödeme uygulamaları veya iletişim bilgileri yer alamaz — SlutCamp senin tüm vitrinin ve burada her şey korunur.',
     sharing_not_allowed: 'İletişim bilgisi paylaşmak yasaktır.',
     msgs_cost: 'Mesajlar tanesi {price}',
     free_msgs_left: '🎁 {n} ÜCRETSİZ mesaj kaldı — sonra devam etmek için kaydol',
@@ -10648,6 +11207,7 @@ function show(view, params) {
     managerGate: vManagerGate, modelContract: vModelContract,
     recruiter: vRecruiter, notifications: vNotifications, dmca: vDmca,
     affiliateAttach: vAffiliateAttach, affiliateMerge: vAffiliateMerge,
+    privateEvent: vPrivateEvent,
   };
   // Fan-preview placeholders: chats/bookings/wallet run on a fan's own data
   // and would 403 for an admin token — show the friendly note instead.
@@ -10753,6 +11313,11 @@ function modelTileHTML(m, opts) {
    10 to a page — Top 10 on page 1, next 10 on page 2, and so on. The
    featured headliner (hero) stays pinned above the chart on every page. */
 let homePage = 1;
+// Phase 5: set by "Start private room" so the normal go-live flow opens
+// the room for that event (threaded into /api/live/start, then cleared).
+let pendingPrivateEventId = null;
+let prTrackerRange = 'all';
+let prOpenTracker = null;
 const HOME_PAGE_SIZE = 10;
 
 /* ---------------- Discovery 2.0 — search / filters / tags ----------------
@@ -12323,6 +12888,7 @@ function openModelPeek(m, models) {
     </div>
     <div id="peek-battles"></div>
     ${m.bio ? `<div class="muted small" style="margin-top:10px">${esc(m.bio)}</div>` : ''}
+    <div id="peek-pr"></div>
     ${(m.tags && m.tags.length) ? `<div class="peek-tags">${m.tags.map((tg) => `<button class="disc-chip" data-peek-tag="${esc(tg)}">${esc(tg)}</button>`).join('')}</div>` : ''}
     ${similarModels(m, models).length ? `
     <div style="font-weight:800;margin:14px 0 8px;text-align:left">${t('more_like_her')}</div>
@@ -12350,6 +12916,23 @@ function openModelPeek(m, models) {
     </div>` : ''}`);
   const sheet = document.getElementById('ft-sheet');
   if (sheet) {
+    // Phase 5: her upcoming private room events (invite window or
+    // public leftovers) — tapping one opens the event page.
+    const prBox = sheet.querySelector('#peek-pr');
+    if (prBox && !isOfficial) {
+      api(`/models/${m.id}/private-events`).then(({ data }) => {
+        const evs = (data && data.events) || [];
+        if (!evs.length) return;
+        prBox.innerHTML = `<div style="font-weight:800;margin:14px 0 8px;text-align:left">${t('pr_h')}</div>` +
+          evs.map((ev) => `
+          <button class="sheet-btn" data-peek-pevent="${ev.id}" style="margin-bottom:8px">🔒 ${esc(ev.title || t('pr_h'))}
+            <span class="small muted">· ${prWhenLabel(ev.starts_at)} · ${fmt(ev.seat_price_cents)} · ${t('pr_seats_left', { n: ev.seats_left, total: ev.seats_total })}</span>
+          </button>`).join('');
+        prBox.querySelectorAll('[data-peek-pevent]').forEach((b) => {
+          b.onclick = () => { sheet.remove(); show('privateEvent', { id: parseInt(b.dataset.peekPevent) }); };
+        });
+      }).catch(() => {});
+    }
     // The peek panel becomes a flex column: her page scrolls inside
     // .peek-scroll while the Message bar (fan view) stays pinned to
     // the bottom of the sheet — visible at all times while scrolling.
@@ -13732,6 +14315,19 @@ async function vModelEarnings() {
             <span>${wdBadge(w.status)}</span>
           </div>`).join('')}
       </div>` : ''}
+      <div class="card" style="margin-top:12px">
+        <div style="font-weight:800;margin-bottom:4px">${t('pr_h')}</div>
+        <div class="muted small" style="margin-bottom:10px" id="pr-sub"></div>
+        <label class="field">${t('pr_title_ph')}<input class="input" id="pr-title" maxlength="120"></label>
+        <label class="field">${t('pr_when')}<input class="input" id="pr-when" type="datetime-local"></label>
+        <div class="row" style="gap:8px">
+          <label class="field grow">${t('pr_seats')}<input class="input" id="pr-seats" type="number" min="1" max="20" value="5"></label>
+          <label class="field grow">${t('pr_price')}<input class="input" id="pr-price" type="number" min="1" max="1000" step="1" value="25"></label>
+        </div>
+        <button class="btn" id="pr-create" style="margin-top:8px">${t('pr_create_btn')}</button>
+        <div style="font-weight:700;margin:14px 0 4px" class="small muted">${t('pr_my_events')}</div>
+        <div id="pr-events"><div class="muted small">…</div></div>
+      </div>
       <div class="muted small" style="text-align:center">${t('payouts_note')}</div>
     </div>`;
 
@@ -13739,6 +14335,25 @@ async function vModelEarnings() {
     b.onclick = () => loadFanClub(b.dataset.fc);
   });
   loadFanClub('all');
+  loadPrivateEvents();
+  const prCreate = $('#pr-create');
+  if (prCreate) prCreate.onclick = async () => {
+    const when = $('#pr-when').value;
+    if (!when) return toast(t('pr_when'));
+    prCreate.disabled = true;
+    const { status, data: ev } = await api('/model/private-events', { method: 'POST',
+      body: JSON.stringify({ title: $('#pr-title').value.trim(),
+        starts_at: new Date(when).toISOString(),
+        seats: parseInt($('#pr-seats').value) || 0,
+        seat_price_cents: Math.round(parseFloat($('#pr-price').value || '0') * 100) }) });
+    if (status === 200) { toast(t('pr_event_created')); loadPrivateEvents(); }
+    else {
+      toast(ev.error === 'weekly_cap_reached' ? t('pr_sub', { cap: ev.cap || 2 })
+        : ev.error === 'id_verification_required' ? '🪪 ID verification required first.'
+        : (ev.message || 'Could not create event'));
+      prCreate.disabled = false;
+    }
+  };
 
   const baSave = $('#ba-save');
   if (baSave) baSave.onclick = async () => {
@@ -13772,6 +14387,154 @@ async function vModelEarnings() {
       wdGo.disabled = false;
     }
   };
+}
+
+/* ---------------- PRIVATE ROOM EVENTS (Phase 5) ---------------- */
+
+function prWhenLabel(iso) {
+  try { return new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); }
+  catch (e) { return iso; }
+}
+
+async function loadPrivateEvents() {
+  const box = $('#pr-events'); if (!box) return;
+  const { data } = await api('/model/private-events');
+  const sub = $('#pr-sub');
+  if (sub && data) sub.textContent = t('pr_sub', { cap: data.cap || 2 });
+  const events = (data && data.events) || [];
+  if (!events.length) { box.innerHTML = `<div class="muted small">${t('pr_no_events')}</div>`; return; }
+  box.innerHTML = events.map((ev) => {
+    const statusTxt = ev.status === 'live' ? t('pr_live_now')
+      : ev.status === 'ended' ? t('pr_ended')
+      : ev.status === 'cancelled' ? t('pr_cancelled') : t('pr_scheduled');
+    const phaseTxt = ev.status === 'scheduled'
+      ? (ev.phase === 'invite' ? t('pr_phase_invite') : t('pr_phase_public')) : '';
+    return `<div style="padding:10px 0;border-top:1px solid rgba(139,92,246,.12)">
+      <div class="row"><span class="grow"><b>${esc(ev.title || t('pr_h'))}</b>
+        <span class="muted small">· ${statusTxt}</span></span><b>${fmt(ev.seat_price_cents)}</b></div>
+      <div class="muted small">${prWhenLabel(ev.starts_at)} · ${t('pr_seats_left', { n: ev.seats_left, total: ev.seats_total })}${phaseTxt ? ` · ${phaseTxt}` : ''}</div>
+      ${ev.status === 'scheduled' ? `<div class="row" style="gap:8px;margin-top:8px">
+        <button class="btn small ghost" data-pr-track="${ev.id}">👥 ${t('pr_spenders')}</button>
+        <button class="btn small" data-pr-start="${ev.id}">🔴 ${t('pr_start_room')}</button>
+        <button class="btn small ghost" data-pr-cancel="${ev.id}">${t('pr_cancel')}</button>
+      </div>
+      <div id="pr-track-${ev.id}"></div>` : ''}
+      ${ev.status === 'live' && ev.session_id ? `<div style="margin-top:8px">
+        <button class="btn small" data-pr-start="${ev.id}">🔴 ${t('pr_join')}</button></div>` : ''}
+    </div>`;
+  }).join('');
+  box.querySelectorAll('[data-pr-track]').forEach((b) => {
+    b.onclick = () => {
+      const id = parseInt(b.dataset.prTrack);
+      prOpenTracker = prOpenTracker === id ? null : id;
+      document.querySelectorAll('[id^="pr-track-"]').forEach((d) => { d.innerHTML = ''; });
+      if (prOpenTracker) renderPrivateTracker(id, events);
+    };
+  });
+  box.querySelectorAll('[data-pr-start]').forEach((b) => {
+    b.onclick = () => {
+      pendingPrivateEventId = parseInt(b.dataset.prStart);
+      startLiveBroadcast();
+    };
+  });
+  box.querySelectorAll('[data-pr-cancel]').forEach((b) => {
+    b.onclick = async () => {
+      if (!confirm(t('pr_cancel_confirm'))) return;
+      const id = parseInt(b.dataset.prCancel);
+      const { status } = await api(`/model/private-events/${id}/cancel`, { method: 'POST' });
+      if (status === 200) { toast(t('pr_cancelled')); loadPrivateEvents(); }
+      else toast('Could not cancel');
+    };
+  });
+}
+
+async function renderPrivateTracker(evId, events) {
+  const panel = document.getElementById('pr-track-' + evId); if (!panel) return;
+  const ev = (events || []).find((e) => e.id === evId) || {};
+  const invited = new Set(ev.invited_fan_ids || []);
+  const seated = new Set(ev.seated_fan_ids || []);
+  const { data } = await api(`/model/top-spenders?range=${prTrackerRange}`);
+  const fans = (data && data.spenders) || [];
+  panel.innerHTML = `
+    <div style="margin-top:10px;padding:10px;background:rgba(139,92,246,.07);border-radius:10px">
+      <div class="row" style="gap:8px;margin-bottom:8px">
+        <button class="btn small ${prTrackerRange === 'all' ? '' : 'ghost'}" data-pr-range="all">${t('pr_all_time')}</button>
+        <button class="btn small ${prTrackerRange === '30d' ? '' : 'ghost'}" data-pr-range="30d">${t('pr_30d')}</button>
+      </div>
+      ${fans.length ? fans.map((f) => `
+        <label class="row" style="padding:6px 0;gap:8px">
+          <input type="checkbox" data-pr-fan="${f.fan_id}" ${invited.has(f.fan_id) || seated.has(f.fan_id) ? 'disabled' : ''}>
+          <span class="grow"><b>${esc(f.display_name || f.username)}</b>
+            <span class="muted small">@${esc(f.username)}</span>
+            ${seated.has(f.fan_id) ? `<span class="muted small">· ${t('pr_seated_tag')}</span>`
+              : invited.has(f.fan_id) ? `<span class="muted small">· ${t('pr_invited_tag')}</span>` : ''}</span>
+          <b style="color:var(--green)">${fmt(f.spend_cents)}</b>
+        </label>`).join('') : `<div class="muted small">${t('pr_no_spenders')}</div>`}
+      <button class="btn small" data-pr-send="${evId}" style="margin-top:8px">💌 ${t('pr_send_invites')}</button>
+    </div>`;
+  panel.querySelectorAll('[data-pr-range]').forEach((b) => {
+    b.onclick = () => { prTrackerRange = b.dataset.prRange; renderPrivateTracker(evId, events); };
+  });
+  const send = panel.querySelector('[data-pr-send]');
+  if (send) send.onclick = async () => {
+    const ids = [...panel.querySelectorAll('[data-pr-fan]:checked')].map((c) => parseInt(c.dataset.prFan));
+    if (!ids.length) return;
+    send.disabled = true;
+    const { status } = await api(`/model/private-events/${evId}/invite`, { method: 'POST',
+      body: JSON.stringify({ fan_ids: ids }) });
+    if (status === 200) { toast(t('pr_invites_sent')); show('modelEarnings', {}); }
+    else { toast('Could not send invites'); send.disabled = false; }
+  };
+}
+
+/* Fan-facing private event page (invite DM / bell landing). */
+async function vPrivateEvent({ id }) {
+  const { status, data } = await api(`/private-events/${id}`);
+  if (status !== 200 || !data || !data.event) {
+    app.innerHTML = `${hdrPublic('🔒')}<div class="screen"><div class="card muted">—</div></div>`;
+    return;
+  }
+  const ev = data.event;
+  const m = { display_name: ev.model_name, username: ev.model_username };
+  const statusTxt = ev.status === 'live' ? t('pr_live_now')
+    : ev.status === 'ended' ? t('pr_ended')
+    : ev.status === 'cancelled' ? t('pr_cancelled') : t('pr_scheduled');
+  app.innerHTML = `
+    <div class="header"><h1>🔒 ${esc(ev.title || t('pr_h'))}</h1>
+      <div class="sub">${t('pr_by', { name: m.display_name || m.username || '' })}</div></div>
+    <div class="screen">
+      <div class="card">
+        <div class="row" style="padding:6px 0"><span class="grow muted">${t('pr_when_label')}</span><b>${prWhenLabel(ev.starts_at)}</b></div>
+        <div class="row" style="padding:6px 0"><span class="grow muted">${t('pr_price_label')}</span><b>${fmt(ev.seat_price_cents)}</b></div>
+        <div class="row" style="padding:6px 0"><span class="grow muted">${t('pr_seats_label')}</span><b>${ev.seats_left} / ${ev.seats_total}</b></div>
+        <div class="row" style="padding:6px 0"><span class="grow muted">${t('pr_scheduled')}</span><b>${statusTxt}</b></div>
+        ${ev.has_seat ? `<div style="margin-top:10px;font-weight:800">${t('pr_your_seat')}</div>`
+          : ev.invited && ev.status === 'scheduled' ? `<div style="margin-top:10px;font-weight:800">${t('pr_invited_badge')}</div>` : ''}
+        <div id="pr-action" style="margin-top:12px"></div>
+      </div>
+      <button class="btn ghost" id="pr-back" style="margin-top:12px">←</button>
+    </div>`;
+  $('#pr-back').onclick = () => history.back();
+  const act = $('#pr-action');
+  if (ev.status === 'live' && ev.has_seat && ev.session_id) {
+    act.innerHTML = `<button class="btn" id="pr-join">🔴 ${t('pr_join')}</button>`;
+    $('#pr-join').onclick = () => watchLive(ev.session_id);
+  } else if (ev.status === 'scheduled' && ev.can_buy && !ev.has_seat) {
+    act.innerHTML = `<button class="btn" id="pr-buy">${t('pr_buy', { price: fmt(ev.seat_price_cents) })}</button>`;
+    $('#pr-buy').onclick = async (e) => {
+      e.target.disabled = true;
+      const r = await api(`/private-events/${id}/buy`, { method: 'POST' });
+      if (r.status === 200) { toast(t('pr_bought')); show('privateEvent', { id }); }
+      else {
+        toast(r.data && r.data.error === 'sold_out' ? t('pr_sold_out')
+          : r.data && r.data.error === 'insufficient_credits' ? t('pr_buy', { price: fmt(ev.seat_price_cents) })
+          : 'Could not buy seat');
+        e.target.disabled = false;
+      }
+    };
+  } else if (ev.status === 'scheduled' && !ev.can_buy && !ev.has_seat && ev.seats_left <= 0) {
+    act.innerHTML = `<div class="muted" style="font-weight:800">${t('pr_sold_out')}</div>`;
+  }
 }
 
 /* ---------------- RECRUITER / PARTNER dashboard ---------------- */
@@ -14741,9 +15504,14 @@ async function vModelSettings() {
   if (sVoice) sVoice.oninput = () => { $('#s-voice-label').textContent = fmt(parseInt(sVoice.value)); };
   if (sBk) sBk.oninput = () => { $('#s-bk-label').textContent = fmt(parseInt(sBk.value)); };
   $('#s-bio-save').onclick = async () => {
-    const { status } = await api('/model/profile', {
+    const { status, data } = await api('/model/profile', {
       method: 'PUT', body: JSON.stringify({ bio: $('#s-bio').value }) });
-    toast(status === 200 ? t('bio_saved') : t('couldnt_save'));
+    if (status === 400 && data && data.error === 'bio_not_allowed') {
+      // The whole save was rejected — explain on screen why.
+      toast(t('bio_not_allowed_info'), 6000);
+    } else {
+      toast(status === 200 ? t('bio_saved') : t('couldnt_save'));
+    }
   };
   // Discovery tags picker — tap to toggle, max 5, saved via the profile PUT
   let selTags = myTags.slice();
@@ -16079,13 +16847,17 @@ function bubbleHTML(m) {
       </span>
       <span class="meta-info">${timeHM(m.created_at)}${m.cost_cents && !g ? ` · <span class="cost">-${fmt(m.cost_cents)}</span>` : ''}${m.edited ? ` · <span class="edited-tag">${t('edited')}</span>` : ''}${ticks}</span>
     </div>
-    ${reactionChipsHTML(m)}
+    ${reactionChipsHTML(m)}${m.private_event_id ? `
+    <button type="button" class="btn small" data-pevent="${m.private_event_id}" style="margin-top:6px">🔒 ${t('pr_view')}</button>` : ''}
   </div>`;
 }
 
 function bindMessageActions(scope) {
   if (!scope) return;
   bindLongPressReact(scope);
+  scope.querySelectorAll('[data-pevent]').forEach((b) => {
+    b.onclick = () => show('privateEvent', { id: parseInt(b.dataset.pevent) });
+  });
   scope.querySelectorAll('[data-unlock]').forEach((b) => {
     if (!b.disabled) b.onclick = () => unlockMedia(parseInt(b.dataset.unlock));
   });
@@ -16337,16 +17109,12 @@ async function saveEditMsg(msgId) {
     method: 'POST', body: JSON.stringify({ body: text }),
   });
   const m = S.messages.find((x) => x.id === msgId);
-  if (status === 200 && data.flagged) {
-    // Safety monitor blocked the edit — original text stays, chat paused.
-    // Same toast + paused state as a blocked send (see sendMessage).
+  if (status === 200 && data.blocked) {
+    // Safety hard-block: the edit never landed — original text stays and
+    // the chat keeps flowing (no pause). Explain on screen why.
     editingMsgId = null;
     if (m) updateMessageBubble(m);
-    toast(`⚠️ ${data.strikes >= 3 ? 'FLAGGED FOR REVIEW — ' : ''}Contact sharing is not allowed. Chat paused.`);
-    if (S.conv) {
-      S.conv.is_paused = true;
-      show('chat', { conv: S.conv, keepMessages: true });
-    }
+    toast(t('safety_blocked_info'), 6000);
     return;
   }
   if (status === 200) {
@@ -16474,11 +17242,13 @@ async function sendMessage() {
   const { status, data } = await api('/messages', {
     method: 'POST', body: JSON.stringify({ conversation_id: S.conv.id, body: text }),
   });
-  if (status === 200 && data.flagged) {
-    // Safety monitor blocked it
-    toast(`⚠️ ${data.strikes >= 3 ? 'FLAGGED FOR REVIEW — ' : ''}Contact sharing is not allowed. Chat paused.`);
-    S.conv.is_paused = true;
-    show('chat', { conv: S.conv, keepMessages: true });
+  if (status === 200 && data.blocked) {
+    // Safety hard-block: the message was never sent and nothing was
+    // charged. The chat is NOT paused — explain why on screen and put
+    // the text back so she/he can reword it.
+    toast(t('safety_blocked_info'), 6000);
+    input.value = text;
+    syncChatComposer();
     return;
   }
   if (status === 200) {
@@ -17649,9 +18419,11 @@ async function startLiveBroadcast() {
       }
     }
   } catch (e) { /* checklist is best-effort; solo start still works */ }
+  const prEventId = pendingPrivateEventId; pendingPrivateEventId = null;
   const { status, data } = await api('/live/start', {
     method: 'POST', body: JSON.stringify({ title: (title || '').trim(),
-      ...(participants ? { participants } : {}) }) });
+      ...(participants ? { participants } : {}),
+      ...(prEventId ? { private_event_id: prEventId } : {}) }) });
   if (status !== 200) {
     if (data.error === 'already_live' && data.session_id) {
       // She got disconnected but the session is still live — offer to rejoin
@@ -18797,6 +19569,9 @@ async function vNotifications() {
     // '/#chat/<id>' opens THAT conversation — straight to the message
     // (owner ruling, Oct 17 2026). openNotifThread falls back to the
     // chats list itself if the thread can't be found.
+    // Private room bells link at the event page: '/#pevent/<id>'.
+    const pm = /^\/?#pevent\/(\d+)$/.exec(link);
+    if (pm) { show('privateEvent', { id: parseInt(pm[1]) }); return true; }
     const cm = /^\/?#chat\/(\d+)$/.exec(link);
     if (cm && typeof openNotifThread === 'function') {
       openNotifThread(parseInt(cm[1]), role);
