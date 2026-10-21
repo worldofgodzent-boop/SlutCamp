@@ -21,7 +21,7 @@
  *    short-circuit: no id_verifications row, and its refusal is the
  *    NEXT check (no_bank_account), never the ID gate.
  *  - An ID-approved model withdraws exactly as before (same success
- *    shape), and nothing about chatting/FaceTime/bookings changes —
+ *    shape), and nothing about chatting/video calls/bookings changes —
  *    no other endpoint is touched.
  *
  * Rider (same build): the stale "can't chat until approved" copy is

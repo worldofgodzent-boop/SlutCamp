@@ -899,7 +899,7 @@ CREATE TABLE IF NOT EXISTS calls (
   created_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- FaceTime (instant 1-on-1 from chat): fan prepays a duration block and
+-- Video call (instant 1-on-1 from chat): fan prepays a duration block and
 -- requests; model accepts (starts now or queues behind her current call).
 CREATE TABLE IF NOT EXISTS facetime_requests (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1481,7 +1481,7 @@ addColumnIfMissing('media_items', 'is_explicit', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('models', 'bookings_day_cap', 'INTEGER');
 addColumnIfMissing('models', 'bookings_week_cap', 'INTEGER');
 // Dedicated 1-on-1 booking rate (owner, Oct 18 2026): a booked 1-on-1 used
-// to price silently off her FaceTime per-minute rate — a $11/min video rate
+// to price silently off her video-call per-minute rate — a $11/min video rate
 // auto-quoted $660 for a 60-minute booking, with no way to price bookings
 // separately. NULL = not set: pricing falls back to per_minute_cents, so
 // nothing changes for a model until she sets this in Settings.
@@ -1510,7 +1510,7 @@ addColumnIfMissing('platform_stats', 'admin_phone', 'TEXT');
 addColumnIfMissing('platform_stats', 'admin_2fa_on', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('platform_stats', 'test_money_cleared_at', 'TEXT');
 addColumnIfMissing('platform_stats', 'demo_wipe_2026_10_at', 'TEXT'); // one-time FULL demo-money wipe stamp (Oct 21 2026) — its own marker; the Oct 12 stamp above is already consumed in production
-addColumnIfMissing('platform_stats', 'ccbill_cleanup_2026_10_at', 'TEXT'); // one-time CCBill evaluation cleanup stamp (Oct 21 2026): "FaceTime" wording scrub of model-authored text
+addColumnIfMissing('platform_stats', 'ccbill_cleanup_2026_10_at', 'TEXT'); // one-time CCBill evaluation cleanup stamp (Oct 21 2026): brand-name wording scrub of model-authored text (see ccbillReadinessCleanupOnce)
 addColumnIfMissing('platform_stats', 'ccbill_username_rename_2026_10_at', 'TEXT'); // one-time username rename stamp (Oct 21 2026): the two models whose username was their Gmail address
 addColumnIfMissing('platform_stats', 'commission_60_40_fixed_at', 'TEXT'); // one-time canonical 60/40 correction stamp
 addColumnIfMissing('platform_stats', 'demo_purge_at', 'TEXT'); // one-time demo-seed purge stamp
@@ -3424,18 +3424,18 @@ const SRV = {
   bell_tip_title: { en: '💰 {fan} tipped {emoji} {label}!', es: '💰 ¡{fan} dio una propina {emoji} {label}!', pt: '💰 {fan} deu uma gorjeta {emoji} {label}!', fr: '💰 {fan} a donné un pourboire {emoji} {label} !', de: '💰 {fan} hat {emoji} {label} als Trinkgeld gegeben!', ru: '💰 {fan} отправил чаевые {emoji} {label}!', ja: '💰 {fan} が {emoji} {label} をチップしました！', zh: '💰 {fan} 打赏了 {emoji} {label}！', ko: '💰 {fan}님이 {emoji} {label} 팁을 보냈습니다!', it: '💰 {fan} ha dato una mancia {emoji} {label}!', pl: '💰 {fan} dał napiwek {emoji} {label}!', nl: '💰 {fan} gaf een fooi {emoji} {label}!', tr: '💰 {fan} bahşiş verdi {emoji} {label}!' },
   bell_tip_body: { en: '{amount} tip received', es: 'Propina de {amount} recibida', pt: 'Gorjeta de {amount} recebida', fr: 'Pourboire de {amount} reçu', de: '{amount} Trinkgeld erhalten', ru: 'Получены чаевые {amount}', ja: '{amount} のチップを受け取りました', zh: '收到 {amount} 小费', ko: '{amount} 팁을 받았습니다', it: 'Mancia di {amount} ricevuta', pl: 'Otrzymano napiwek {amount}', nl: '{amount} fooi ontvangen', tr: '{amount} bahşiş alındı' },
   bell_ft_turn_title: { en: '📹 Your turn!', es: '📹 ¡Tu turno!', pt: '📹 Sua vez!', fr: '📹 À votre tour !', de: '📹 Du bist dran!', ru: '📹 Ваша очередь!', ja: '📹 あなたの番です！', zh: '📹 轮到你了！', ko: '📹 차례입니다!', it: '📹 È il tuo turno!', pl: '📹 Twoja kolej!', nl: '📹 Jouw beurt!', tr: '📹 Sıra sende!' },
-  bell_ft_turn_body: { en: '{model} is ready for your FaceTime — join in the next 90 seconds or the spot passes on.', es: '{model} está lista para tu FaceTime — únete en los próximos 90 segundos o el espacio pasa al siguiente.', pt: '{model} está pronta para seu FaceTime — entre nos próximos 90 segundos ou a vaga passa para o próximo.', fr: '{model} est prête pour votre FaceTime — rejoignez dans les 90 prochaines secondes, sinon la place passe.', de: '{model} ist bereit für dein FaceTime — tritt in den nächsten 90 Sekunden bei, sonst geht der Platz weiter.', ru: '{model} готова к вашему FaceTime — присоединяйтесь в течение следующих 90 секунд, иначе место перейдёт дальше.', ja: '{model} があなたのFaceTimeの準備ができています — 次の90秒以内に参加しないと枠が次に移ります。', zh: '{model} 已准备好与你 FaceTime — 在接下来 90 秒内加入，否则名额会顺延。', ko: '{model}님이 FaceTime 준비를 마쳤습니다 — 다음 90초 안에 참여하지 않으면 자리가 넘어갑니다.', it: '{model} è pronta per il tuo FaceTime — entra nei prossimi 90 secondi o il posto passa a un altro.', pl: '{model} jest gotowa na Twój FaceTime — dołącz w ciągu następnych 90 sekund, bo miejsce przejdzie dalej.', nl: '{model} is klaar voor je FaceTime — doe binnen de volgende 90 seconden mee of de plek gaat door.', tr: '{model} FaceTime\'ın için hazır — sonraki 90 saniye içinde katıl, yoksa sıra başkasına geçer.' },
-  bell_ft_req_title: { en: '📹 FaceTime request', es: '📹 Solicitud de FaceTime', pt: '📹 Solicitação de FaceTime', fr: '📹 Demande FaceTime', de: '📹 FaceTime-Anfrage', ru: '📹 Запрос FaceTime', ja: '📹 FaceTimeリクエスト', zh: '📹 FaceTime 请求', ko: '📹 FaceTime 요청', it: '📹 Richiesta FaceTime', pl: '📹 Prośba o FaceTime', nl: '📹 FaceTime-verzoek', tr: '📹 FaceTime isteği' },
-  bell_ft_req_body: { en: '{fan} wants a {min}-min FaceTime with you — {amount}.', es: '{fan} quiere un FaceTime de {min} min contigo — {amount}.', pt: '{fan} quer um FaceTime de {min} min com você — {amount}.', fr: '{fan} veut un FaceTime de {min} min avec vous — {amount}.', de: '{fan} will ein {min}-minütiges FaceTime mit dir — {amount}.', ru: '{fan} хочет FaceTime с вами на {min} мин — {amount}.', ja: '{fan} があなたと {min}分のFaceTimeを希望しています — {amount}。', zh: '{fan} 想与你进行 {min} 分钟的 FaceTime — {amount}。', ko: '{fan}님이 {min}분 FaceTime을 원합니다 — {amount}.', it: '{fan} vuole un FaceTime di {min} min con te — {amount}.', pl: '{fan} chce FaceTime z Tobą na {min} min — {amount}.', nl: '{fan} wil een FaceTime van {min} min met jou — {amount}.', tr: '{fan} seninle {min} dakikalık bir FaceTime istiyor — {amount}.' },
+  bell_ft_turn_body: { en: '{model} is ready for your video call — join in the next 90 seconds or the spot passes on.', es: '{model} está lista para tu videollamada — únete en los próximos 90 segundos o el espacio pasa al siguiente.', pt: '{model} está pronta para sua videochamada — entre nos próximos 90 segundos ou a vaga passa para o próximo.', fr: '{model} est prête pour votre appel vidéo — rejoignez dans les 90 prochaines secondes, sinon la place passe.', de: '{model} ist bereit für deinen Videoanruf — tritt in den nächsten 90 Sekunden bei, sonst geht der Platz weiter.', ru: '{model} готова к вашему видеозвонку — присоединяйтесь в течение следующих 90 секунд, иначе место перейдёт дальше.', ja: '{model} があなたのビデオ通話の準備ができています — 次の90秒以内に参加しないと枠が次に移ります。', zh: '{model} 已准备好与你视频通话 — 在接下来 90 秒内加入，否则名额会顺延。', ko: '{model}님이 영상 통화 준비를 마쳤습니다 — 다음 90초 안에 참여하지 않으면 자리가 넘어갑니다.', it: '{model} è pronta per la tua videochiamata — entra nei prossimi 90 secondi o il posto passa a un altro.', pl: '{model} jest gotowa na Twoją rozmowę wideo — dołącz w ciągu następnych 90 sekund, bo miejsce przejdzie dalej.', nl: '{model} is klaar voor je videogesprek — doe binnen de volgende 90 seconden mee of de plek gaat door.', tr: '{model} görüntülü araman için hazır — sonraki 90 saniye içinde katıl, yoksa sıra başkasına geçer.' },
+  bell_ft_req_title: { en: '📹 Video call request', es: '📹 Solicitud de videollamada', pt: '📹 Solicitação de videochamada', fr: '📹 Demande d\'appel vidéo', de: '📹 Videoanruf-Anfrage', ru: '📹 Запрос видеозвонка', ja: '📹 ビデオ通話リクエスト', zh: '📹 视频通话请求', ko: '📹 영상 통화 요청', it: '📹 Richiesta videochiamata', pl: '📹 Prośba o rozmowę wideo', nl: '📹 Videogesprek-verzoek', tr: '📹 Görüntülü arama isteği' },
+  bell_ft_req_body: { en: '{fan} wants a {min}-min video call with you — {amount}.', es: '{fan} quiere una videollamada de {min} min contigo — {amount}.', pt: '{fan} quer uma videochamada de {min} min com você — {amount}.', fr: '{fan} veut un appel vidéo de {min} min avec vous — {amount}.', de: '{fan} will einen {min}-minütigen Videoanruf mit dir — {amount}.', ru: '{fan} хочет видеозвонок с вами на {min} мин — {amount}.', ja: '{fan} があなたと {min}分のビデオ通話を希望しています — {amount}。', zh: '{fan} 想与你进行 {min} 分钟的视频通话 — {amount}。', ko: '{fan}님이 {min}분 영상 통화를 원합니다 — {amount}.', it: '{fan} vuole una videochiamata di {min} min con te — {amount}.', pl: '{fan} chce rozmowę wideo z Tobą na {min} min — {amount}.', nl: '{fan} wil een videogesprek van {min} min met jou — {amount}.', tr: '{fan} seninle {min} dakikalık bir görüntülü arama istiyor — {amount}.' },
   bell_ft_accepted_title: { en: '📹 She accepted!', es: '📹 ¡Aceptó!', pt: '📹 Ela aceitou!', fr: '📹 Elle a accepté !', de: '📹 Sie hat akzeptiert!', ru: '📹 Она приняла!', ja: '📹 彼女が承諾しました！', zh: '📹 她接受了！', ko: '📹 그녀가 수락했습니다!', it: '📹 Ha accettato!', pl: '📹 Zaakceptowała!', nl: '📹 Ze heeft geaccepteerd!', tr: '📹 Kabul etti!' },
-  bell_ft_accepted_body: { en: '{model} accepted your FaceTime — join in the next 90 seconds.', es: '{model} aceptó tu FaceTime — únete en los próximos 90 segundos.', pt: '{model} aceitou seu FaceTime — entre nos próximos 90 segundos.', fr: '{model} a accepté votre FaceTime — rejoignez dans les 90 prochaines secondes.', de: '{model} hat dein FaceTime akzeptiert — tritt in den nächsten 90 Sekunden bei.', ru: '{model} приняла ваш FaceTime — присоединяйтесь в течение следующих 90 секунд.', ja: '{model} があなたのFaceTimeを承諾しました — 次の90秒以内に参加してね。', zh: '{model} 接受了你的 FaceTime — 在接下来 90 秒内加入。', ko: '{model}님이 FaceTime을 수락했습니다 — 다음 90초 안에 참여하세요.', it: '{model} ha accettato il tuo FaceTime — entra nei prossimi 90 secondi.', pl: '{model} zaakceptowała Twój FaceTime — dołącz w ciągu następnych 90 sekund.', nl: '{model} heeft je FaceTime geaccepteerd — doe binnen de volgende 90 seconden mee.', tr: '{model} FaceTime\'ını kabul etti — sonraki 90 saniye içinde katıl.' },
+  bell_ft_accepted_body: { en: '{model} accepted your video call — join in the next 90 seconds.', es: '{model} aceptó tu videollamada — únete en los próximos 90 segundos.', pt: '{model} aceitou sua videochamada — entre nos próximos 90 segundos.', fr: '{model} a accepté votre appel vidéo — rejoignez dans les 90 prochaines secondes.', de: '{model} hat deinen Videoanruf akzeptiert — tritt in den nächsten 90 Sekunden bei.', ru: '{model} приняла ваш видеозвонок — присоединяйтесь в течение следующих 90 секунд.', ja: '{model} があなたのビデオ通話を承諾しました — 次の90秒以内に参加してね。', zh: '{model} 接受了你的视频通话 — 在接下来 90 秒内加入。', ko: '{model}님이 영상 통화를 수락했습니다 — 다음 90초 안에 참여하세요.', it: '{model} ha accettato la tua videochiamata — entra nei prossimi 90 secondi.', pl: '{model} zaakceptowała Twoją rozmowę wideo — dołącz w ciągu następnych 90 sekund.', nl: '{model} heeft je videogesprek geaccepteerd — doe binnen de volgende 90 seconden mee.', tr: '{model} görüntülü aramanı kabul etti — sonraki 90 saniye içinde katıl.' },
   bell_live_title: { en: '🔴 {model} just went live!', es: '🔴 ¡{model} acaba de salir en vivo!', pt: '🔴 {model} acabou de entrar ao vivo!', fr: '🔴 {model} vient de passer en direct !', de: '🔴 {model} ist gerade live gegangen!', ru: '🔴 {model} только что вышла в эфир!', ja: '🔴 {model} がライブを開始しました！', zh: '🔴 {model} 刚刚开播了！', ko: '🔴 {model}님이 방금 라이브를 시작했습니다!', it: '🔴 {model} è appena andata live!', pl: '🔴 {model} właśnie rozpoczęła transmisję na żywo!', nl: '🔴 {model} is net live gegaan!', tr: '🔴 {model} az önce canlıya geçti!' },
   bell_live_body_titled: { en: '“{title}” — tap to watch.', es: '“{title}” — toca para ver.', pt: '“{title}” — toque para assistir.', fr: '“{title}” — touchez pour regarder.', de: '“{title}” — tippen zum Ansehen.', ru: '«{title}» — нажмите, чтобы смотреть.', ja: '“{title}” — タップして視聴。', zh: '“{title}” — 点击观看。', ko: '“{title}” — 탭하여 시청하세요.', it: '“{title}” — tocca per guardare.', pl: '„{title}” — dotknij, aby oglądać.', nl: '“{title}” — tik om te kijken.', tr: '“{title}” — izlemek için dokun.' },
   bell_live_body: { en: 'Tap to watch her now.', es: 'Toca para verla ahora.', pt: 'Toque para assistir a ela agora.', fr: 'Touchez pour la regarder maintenant.', de: 'Tippen, um sie jetzt anzusehen.', ru: 'Нажмите, чтобы смотреть её сейчас.', ja: 'タップして今すぐ彼女を視聴。', zh: '点击立即观看她。', ko: '탭하여 지금 그녀를 시청하세요.', it: 'Tocca per guardarla ora.', pl: 'Dotknij, aby oglądać ją teraz.', nl: 'Tik om haar nu te kijken.', tr: 'Onu şimdi izlemek için dokun.' },
   bell_stage_title: { en: '🎥 {fan} wants to join your live!', es: '🎥 {fan} quiere unirse a tu en vivo', pt: '🎥 {fan} quer entrar na sua live!', fr: '🎥 {fan} veut rejoindre votre direct !', de: '🎥 {fan} will bei deinem Live mitmachen!', ru: '🎥 {fan} хочет присоединиться к вашему эфиру!', ja: '🎥 {fan} があなたのライブに参加したいです！', zh: '🎥 {fan} 想加入你的直播！', ko: '🎥 {fan}님이 라이브에 참여하고 싶어 합니다!', it: '🎥 {fan} vuole unirsi alla tua live!', pl: '🎥 {fan} chce dołączyć do Twojej transmisji na żywo!', nl: '🎥 {fan} wil meedoen aan je live!', tr: '🎥 {fan} canlına katılmak istiyor!' },
   bell_stage_body: { en: 'Tap to review and approve (paid {fee})', es: 'Toca para revisar y aprobar (pago de {fee})', pt: 'Toque para revisar e aprovar (pago {fee})', fr: 'Touchez pour examiner et approuver (payé {fee})', de: 'Tippen zum Überprüfen und Genehmigen (bezahlt {fee})', ru: 'Нажмите, чтобы рассмотреть и одобрить (оплачено {fee})', ja: 'タップして確認・承認（有料 {fee}）', zh: '点击查看并批准（已付费 {fee}）', ko: '탭하여 검토하고 승인하세요 (유료 {fee})', it: 'Tocca per esaminare e approvare (a pagamento {fee})', pl: 'Dotknij, aby sprawdzić i zatwierdzić (płatne {fee})', nl: 'Tik om te beoordelen en goed te keuren (betaald {fee})', tr: 'İncelemek ve onaylamak için dokun (ücretli {fee})' },
   bell_booking_fan_active_title: { en: '📹 Your 1-on-1 is now active', es: '📹 Tu 1 a 1 ya está activo', pt: '📹 Seu 1 a 1 está ativo agora', fr: '📹 Votre 1-à-1 est maintenant actif', de: '📹 Dein 1-zu-1 ist jetzt aktiv', ru: '📹 Ваш 1-на-1 теперь активен', ja: '📹 あなたの1対1が有効になりました', zh: '📹 你的一对一已激活', ko: '📹 1:1이 지금 활성화되었습니다', it: '📹 Il tuo 1-a-1 è ora attivo', pl: '📹 Twoje 1 na 1 jest teraz aktywne', nl: '📹 Je 1-op-1 is nu actief', tr: '📹 Bire birin şimdi aktif' },
-  bell_booking_fan_active_body: { en: '📹 Your FaceTime call with {model} is now active — you have 3 minutes to get to the call.', es: '📹 Tu llamada FaceTime con {model} ya está activa — tienes 3 minutos para llegar a la llamada.', pt: '📹 Sua chamada FaceTime com {model} está ativa agora — você tem 3 minutos para entrar na chamada.', fr: '📹 Votre appel FaceTime avec {model} est maintenant actif — vous avez 3 minutes pour rejoindre l\'appel.', de: '📹 Dein FaceTime-Anruf mit {model} ist jetzt aktiv — du hast 3 Minuten, um zum Anruf zu kommen.', ru: '📹 Ваш звонок FaceTime с {model} теперь активен — у вас есть 3 минуты, чтобы попасть на звонок.', ja: '📹 {model} とのFaceTime通話が有効になりました — 通話に参加するまで3分あります。', zh: '📹 你与 {model} 的 FaceTime 通话已激活 — 你有 3 分钟时间进入通话。', ko: '📹 {model}님과의 FaceTime 통화가 지금 활성화되었습니다 — 3분 안에 통화에 참여하세요.', it: '📹 La tua chiamata FaceTime con {model} è ora attiva — hai 3 minuti per arrivare alla chiamata.', pl: '📹 Twoja rozmowa FaceTime z {model} jest teraz aktywna — masz 3 minuty, aby dotrzeć na rozmowę.', nl: '📹 Je FaceTime-gesprek met {model} is nu actief — je hebt 3 minuten om naar het gesprek te gaan.', tr: '📹 {model} ile FaceTime araman şimdi aktif — aramaya gitmek için 3 dakikan var.' },
+  bell_booking_fan_active_body: { en: '📹 Your video call with {model} is now active — you have 3 minutes to get to the call.', es: '📹 Tu videollamada con {model} ya está activa — tienes 3 minutos para llegar a la llamada.', pt: '📹 Sua videochamada com {model} está ativa agora — você tem 3 minutos para entrar na chamada.', fr: '📹 Votre appel vidéo avec {model} est maintenant actif — vous avez 3 minutes pour rejoindre l\'appel.', de: '📹 Dein Videoanruf mit {model} ist jetzt aktiv — du hast 3 Minuten, um zum Anruf zu kommen.', ru: '📹 Ваш видеозвонок с {model} теперь активен — у вас есть 3 минуты, чтобы попасть на звонок.', ja: '📹 {model} とのビデオ通話が有効になりました — 通話に参加するまで3分あります。', zh: '📹 你与 {model} 的视频通话已激活 — 你有 3 分钟时间进入通话。', ko: '📹 {model}님과의 영상 통화가 지금 활성화되었습니다 — 3분 안에 통화에 참여하세요.', it: '📹 La tua videochiamata con {model} è ora attiva — hai 3 minuti per arrivare alla chiamata.', pl: '📹 Twoja rozmowa wideo z {model} jest teraz aktywna — masz 3 minuty, aby dotrzeć na rozmowę.', nl: '📹 Je videogesprek met {model} is nu actief — je hebt 3 minuten om naar het gesprek te gaan.', tr: '📹 {model} ile görüntülü araman şimdi aktif — aramaya gitmek için 3 dakikan var.' },
   bell_booking_fan_noshow_model_title: { en: '💔 Fan no-show', es: '💔 El fan no se presentó', pt: '💔 Fã não apareceu', fr: '💔 Fan absent', de: '💔 Fan-No-Show', ru: '💔 Фанат не явился', ja: '💔 ファンのノーショー', zh: '💔 粉丝爽约', ko: '💔 팬 노쇼', it: '💔 Fan assente', pl: '💔 Fan się nie pojawił', nl: '💔 Fan no-show', tr: '💔 Hayran gelmedi' },
   bell_booking_fan_noshow_model_body: { en: '💔 {fan} never showed up for your 1-on-1 — the booking is paid, you keep it.', es: '💔 {fan} nunca se presentó a tu 1 a 1 — la reserva está pagada, te la quedas.', pt: '💔 {fan} nunca apareceu no seu 1 a 1 — a reserva está paga, você fica com ela.', fr: '💔 {fan} ne s\'est jamais présenté à votre 1-à-1 — la réservation est payée, vous la gardez.', de: '💔 {fan} ist nie zu deinem 1-zu-1 erschienen — die Buchung ist bezahlt, du behältst sie.', ru: '💔 {fan} так и не явился на ваш 1-на-1 — бронирование оплачено, вы его сохраняете.', ja: '💔 {fan} はあなたの1対1に現れませんでした — 予約は支払い済みで、あなたのものになります。', zh: '💔 {fan} 没有出现在你的一对一中 — 预约已付款，你保留这笔费用。', ko: '💔 {fan}님이 1:1에 나타나지 않았습니다 — 예약은 결제되었으며, 금액은 내 것입니다.', it: '💔 {fan} non si è mai presentato al tuo 1-a-1 — la prenotazione è pagata, la trattieni tu.', pl: '💔 {fan} nigdy nie pojawił się na Waszym 1 na 1 — rezerwacja jest opłacona, zatrzymujesz ją.', nl: '💔 {fan} is nooit verschenen voor je 1-op-1 — de boeking is betaald, je houdt hem.', tr: '💔 {fan} bire birine hiç gelmedi — rezervasyon ödendi, sen alırsın.' },
   bell_booking_fan_noshow_fan_title: { en: '📅 You missed your 1-on-1', es: '📅 Perdiste tu 1 a 1', pt: '📅 Você perdeu seu 1 a 1', fr: '📅 Vous avez manqué votre 1-à-1', de: '📅 Du hast dein 1-zu-1 verpasst', ru: '📅 Вы пропустили ваш 1-на-1', ja: '📅 1対1を逃しました', zh: '📅 你错过了你的一对一', ko: '📅 1:1을 놓쳤습니다', it: '📅 Hai perso il tuo 1-a-1', pl: '📅 Przegapiłeś swoje 1 na 1', nl: '📅 Je hebt je 1-op-1 gemist', tr: '📅 Bire birini kaçırdın' },
@@ -3772,11 +3772,11 @@ Welcome in! Here's the whole game, quick:
 
 💬 CHATS — fans pay per message at YOUR price. Every text he sends you earns. Set your price in Settings.
 
-📹 FACETIME — private video by the minute (10–60 min, he pays upfront). Accept when you want; if you're mid-call he waits in line. Mid-call you can offer to switch explicit for double. Your rate, your call.
+📹 VIDEO CALLS — private video by the minute (10–60 min, he pays upfront). Accept when you want; if you're mid-call he waits in line. Mid-call you can offer to switch explicit for double. Your rate, your call.
 
 🔴 GO LIVE — stream to everyone. Fans pay to join your stage, tip you, and fight for the 👑 at the top of your live (top spender of the stream). Your biggest spenders land in your 🏆 Fan Club under Earnings — treat them sweet, they pay the rent.
 
-📅 BOOKINGS — fans schedule FaceTime dates ahead. Guaranteed prepaid minutes.
+📅 BOOKINGS — fans schedule video call dates ahead. Guaranteed prepaid minutes.
 
 💰 YOUR MONEY — you keep 60% of EVERYTHING. Watch it live in Earnings. Before your first payout, add your tax info (W-9) in Settings — you're a 1099 contractor, we never touch your taxes.
 
@@ -3793,11 +3793,11 @@ Questions? Reply right here, I read everything. — Asce`,
 
 💬 CHATS — los fans pagan por mensaje a TU precio. Cada texto que te manda te hace ganar. Pon tu precio en Ajustes.
 
-📹 FACETIME — video privado por minuto (10–60 min, él paga por adelantado). Acepta cuando quieras; si estás en una llamada, él espera en la fila. A mitad de llamada puedes ofrecer cambiar a explícito por el doble. Tu tarifa, tú decides.
+📹 VIDEOLLAMADAS — video privado por minuto (10–60 min, él paga por adelantado). Acepta cuando quieras; si estás en una llamada, él espera en la fila. A mitad de llamada puedes ofrecer cambiar a explícito por el doble. Tu tarifa, tú decides.
 
 🔴 SAL EN VIVO — transmite para todos. Los fans pagan por unirse a tu escenario, te dan propinas y pelean por la 👑 en lo alto de tu live (el que más gasta de la transmisión). Tus fans que más gastan llegan a tu 🏆 Fan Club en Ganancias — trátalos bien, ellos pagan la renta.
 
-📅 RESERVAS — los fans reservan fechas de FaceTime por adelantado. Minutos prepagados garantizados.
+📅 RESERVAS — los fans reservan fechas de videollamada por adelantado. Minutos prepagados garantizados.
 
 💰 TU DINERO — te quedas con el 60% de TODO. Míralo en vivo en Ganancias. Antes de tu primer pago, agrega tu información de impuestos (W-9) en Ajustes — eres contratista 1099, nunca tocamos tus impuestos.
 
@@ -3814,11 +3814,11 @@ Bem-vinda! Aqui está o jogo todo, rapidinho:
 
 💬 CHATS — os fãs pagam por mensagem no SEU preço. Cada texto que ele te manda, você ganha. Defina seu preço em Configurações.
 
-📹 FACETIME — vídeo privado por minuto (10–60 min, ele paga adiantado). Aceite quando quiser; se estiver no meio de uma chamada, ele espera na fila. No meio da chamada você pode oferecer trocar para explícito pelo dobro. Sua tarifa, você decide.
+📹 VIDEOCHAMADAS — vídeo privado por minuto (10–60 min, ele paga adiantado). Aceite quando quiser; se estiver no meio de uma chamada, ele espera na fila. No meio da chamada você pode oferecer trocar para explícito pelo dobro. Sua tarifa, você decide.
 
 🔴 ENTRE AO VIVO — transmita para todo mundo. Os fãs pagam para entrar no seu palco, te dão gorjetas e brigam pela 👑 no topo da sua live (quem mais gasta na transmissão). Seus maiores gastadores caem no seu 🏆 Fan Club em Ganhos — trate-os com carinho, são eles que pagam o aluguel.
 
-📅 AGENDAMENTOS — os fãs agendam datas de FaceTime com antecedência. Minutos pré-pagos garantidos.
+📅 AGENDAMENTOS — os fãs agendam datas de videochamada com antecedência. Minutos pré-pagos garantidos.
 
 💰 SEU DINHEIRO — você fica com 60% de TUDO. Acompanhe ao vivo em Ganhos. Antes do seu primeiro pagamento, adicione suas informações fiscais (W-9) em Configurações — você é autônoma 1099, a gente nunca mexe nos seus impostos.
 
@@ -3835,11 +3835,11 @@ Bienvenue ! Voici tout le jeu, en rapide :
 
 💬 DISCUSSIONS — les fans paient par message à VOTRE tarif. Chaque texto qu'il vous envoie vous rapporte. Définissez votre tarif dans Paramètres.
 
-📹 FACETIME — vidéo privée à la minute (10–60 min, il paie d'avance). Acceptez quand vous voulez ; si vous êtes en plein appel, il attend en file. En plein appel, vous pouvez proposer de passer en explicite pour le double. Votre tarif, votre décision.
+📹 APPELS VIDÉO — vidéo privée à la minute (10–60 min, il paie d'avance). Acceptez quand vous voulez ; si vous êtes en plein appel, il attend en file. En plein appel, vous pouvez proposer de passer en explicite pour le double. Votre tarif, votre décision.
 
 🔴 PASSER EN DIRECT — diffusez pour tout le monde. Les fans paient pour rejoindre votre scène, vous donnent des pourboires et se battent pour la 👑 en haut de votre direct (le plus gros dépensier du stream). Vos plus gros dépensiers atterrissent dans votre 🏆 Fan Club sous Gains — traitez-les bien, ce sont eux qui paient le loyer.
 
-📅 RÉSERVATIONS — les fans programment des rendez-vous FaceTime à l'avance. Minutes prépayées garanties.
+📅 RÉSERVATIONS — les fans programment des rendez-vous d'appel vidéo à l'avance. Minutes prépayées garanties.
 
 💰 VOTRE ARGENT — vous gardez 60% de TOUT. Suivez-le en direct dans Gains. Avant votre premier paiement, ajoutez vos informations fiscales (W-9) dans Paramètres — vous êtes une contractante indépendante 1099, nous ne touchons jamais à vos impôts.
 
@@ -3856,11 +3856,11 @@ Willkommen drin! Hier ist das ganze Spiel, kurz:
 
 💬 CHATS — Fans zahlen pro Nachricht zu DEINEM Preis. Jeder Text, den er dir schickt, verdient. Lege deinen Preis in den Einstellungen fest.
 
-📹 FACETIME — privates Video pro Minute (10–60 Min., er zahlt im Voraus). Akzeptiere, wenn du willst; wenn du mitten in einem Anruf bist, wartet er in der Schlange. Während des Anrufs kannst du anbieten, für das Doppelte auf explizit zu wechseln. Dein Preis, deine Entscheidung.
+📹 VIDEOANRUFE — privates Video pro Minute (10–60 Min., er zahlt im Voraus). Akzeptiere, wenn du willst; wenn du mitten in einem Anruf bist, wartet er in der Schlange. Während des Anrufs kannst du anbieten, für das Doppelte auf explizit zu wechseln. Dein Preis, deine Entscheidung.
 
 🔴 LIVE GEHEN — streame für alle. Fans zahlen, um deiner Bühne beizutreten, dir Trinkgeld zu geben und um die 👑 oben in deinem Live zu kämpfen (Top-Ausgeber des Streams). Deine größten Ausgeber landen in deinem 🏆 Fanclub unter Einnahmen — behandle sie süß, sie zahlen die Miete.
 
-📅 BUCHUNGEN — Fans planen FaceTime-Termine im Voraus. Garantierte, im Voraus bezahlte Minuten.
+📅 BUCHUNGEN — Fans planen Videoanruf-Termine im Voraus. Garantierte, im Voraus bezahlte Minuten.
 
 💰 DEIN GELD — du behältst 60% von ALLEM. Beobachte es live unter Einnahmen. Vor deiner ersten Auszahlung füge deine Steuerinformationen (W-9) in den Einstellungen hinzu — du bist eine 1099-Vertragspartnerin, wir fassen deine Steuern nie an.
 
@@ -3877,11 +3877,11 @@ Fragen? Antworte hier, ich lese alles. — Asce`,
 
 💬 ЧАТЫ — фанаты платят за сообщение по ВАШЕЙ цене. Каждое отправленное им сообщение приносит вам доход. Установите вашу цену в Настройках.
 
-📹 FACETIME — приватное видео по минутам (10–60 мин, он платит вперёд). Принимайте, когда хотите; если вы в середине звонка, он ждёт в очереди. В середине звонка вы можете предложить перейти к откровенному за двойную плату. Ваш тариф, ваше решение.
+📹 ВИДЕОЗВОНКИ — приватное видео по минутам (10–60 мин, он платит вперёд). Принимайте, когда хотите; если вы в середине звонка, он ждёт в очереди. В середине звонка вы можете предложить перейти к откровенному за двойную плату. Ваш тариф, ваше решение.
 
 🔴 ВЫХОД В ЭФИР — трансляция для всех. Фанаты платят, чтобы присоединиться к вашей сцене, отправляют вам чаевые и борются за 👑 на вершине вашего эфира (самый щедрый фанат трансляции). Ваши самые щедрые фанаты попадают в ваш 🏆 Фан-клуб в разделе Доход — относитесь к ним ласково, они оплачивают аренду.
 
-📅 БРОНИРОВАНИЯ — фанаты заранее назначают даты FaceTime. Гарантированные предоплаченные минуты.
+📅 БРОНИРОВАНИЯ — фанаты заранее назначают даты видеозвонков. Гарантированные предоплаченные минуты.
 
 💰 ВАШИ ДЕНЬГИ — вы сохраняете 60% от ВСЕГО. Следите за этим в реальном времени в разделе Доход. Перед первой выплатой добавьте вашу налоговую информацию (W-9) в Настройках — вы подрядчик 1099, мы никогда не трогаем ваши налоги.
 
@@ -3898,11 +3898,11 @@ Fragen? Antworte hier, ich lese alles. — Asce`,
 
 💬 チャット — ファンはあなたの値段でメッセージごとに支払います。彼が送るテキスト1通ごとにあなたが稼げます。料金は設定で決めてね。
 
-📹 FACETIME — 1分ごとのプライベートビデオ（10〜60分、彼は前払い）。好きなときに承諾してね。通話中の場合は彼は列で待ちます。通話中に露骨に切り替えるオファーを2倍で出すこともできます。あなたの料金、あなたの判断。
+📹 ビデオ通話 — 1分ごとのプライベートビデオ（10〜60分、彼は前払い）。好きなときに承諾してね。通話中の場合は彼は列で待ちます。通話中に露骨に切り替えるオファーを2倍で出すこともできます。あなたの料金、あなたの判断。
 
 🔴 ライブ配信 — 全員に向けて配信。ファンはステージ参加のために支払い、チップを送り、あなたのライブ上位の 👑 を競います（その配信での最高額利用者）。あなたの最大の支援者は収益内の 🏆 ファンクラブに入ります — 大切にしてね、彼らが家賃を払ってくれるんだから。
 
-📅 予約 — ファンはFaceTimeの予定を事前に予約します。前払い保証の分数です。
+📅 予約 — ファンはビデオ通話の予定を事前に予約します。前払い保証の分数です。
 
 💰 あなたのお金 — あなたはすべての60%をキープします。収益でライブで確認してね。初回出金の前に、設定で税務情報（W-9）を追加してね — あなたは1099の個人事業主です。当社があなたの税金に触れることは決してありません。
 
@@ -3919,11 +3919,11 @@ Fragen? Antworte hier, ich lese alles. — Asce`,
 
 💬 聊天 — 粉丝按你定的价格为每条消息付费。他发给你的每条短信你都能赚钱。在设置中设置你的价格。
 
-📹 FACETIME — 按分钟计费的私密视频（10–60 分钟，他预付费用）。想接的时候就接；如果你正在通话中，他会排队等候。通话中你可以提出切换到露骨模式，价格翻倍。你的费率，你做主。
+📹 视频通话 — 按分钟计费的私密视频（10–60 分钟，他预付费用）。想接的时候就接；如果你正在通话中，他会排队等候。通话中你可以提出切换到露骨模式，价格翻倍。你的费率，你做主。
 
 🔴 开始直播 — 向所有人直播。粉丝付费加入你的舞台、给你打赏，并在你的直播顶部争夺 👑（本场直播消费最高者）。你消费最高的粉丝会进入收入下的 🏆 粉丝俱乐部 — 好好待他们，他们付房租。
 
-📅 预约 — 粉丝提前预约 FaceTime 约会。保证预付的分钟数。
+📅 预约 — 粉丝提前预约视频通话。保证预付的分钟数。
 
 💰 你的钱 — 所有收入你留 60%。在收入中实时查看。在首次提现前，在设置中添加你的税务信息 (W-9) — 你是 1099 独立承包商，我们从不碰你的税。
 
@@ -3940,11 +3940,11 @@ Fragen? Antworte hier, ich lese alles. — Asce`,
 
 💬 채팅 — 팬이 본인이 정한 가격으로 메시지마다 결제합니다. 그가 보내는 문자마다 수익이 발생합니다. 설정에서 가격을 정하세요.
 
-📹 FACETIME — 분당 프라이빗 영상 (10–60분, 그가 선불로 결제합니다). 원할 때 수락하세요; 통화 중이면 그는 줄을 서서 기다립니다. 통화 중에는 선정적으로 전환하면 두 배를 받도록 제안할 수 있습니다. 내 요금, 내 결정입니다.
+📹 영상 통화 — 분당 프라이빗 영상 (10–60분, 그가 선불로 결제합니다). 원할 때 수락하세요; 통화 중이면 그는 줄을 서서 기다립니다. 통화 중에는 선정적으로 전환하면 두 배를 받도록 제안할 수 있습니다. 내 요금, 내 결정입니다.
 
 🔴 라이브 시작 — 모두에게 스트리밍하세요. 팬이 무대에 참여하기 위해 결제하고, 팁을 주고, 라이브 맨 위의 👑를 차지하기 위해 경쟁합니다 (스트림의 최고 지출자). 가장 많이 쓰는 팬들은 수익 아래의 🏆 팬클럽에 들어갑니다 — 그들을 달콤하게 대하세요, 그들이 월세를 냅니다.
 
-📅 예약 — 팬이 FaceTime 날짜를 미리 예약합니다. 보장된 선불 시간입니다.
+📅 예약 — 팬이 영상 통화 날짜를 미리 예약합니다. 보장된 선불 시간입니다.
 
 💰 내 돈 — 모든 것의 60%를 가져갑니다. 수익에서 실시간으로 확인하세요. 첫 지급 전에 설정에서 세금 정보(W-9)를 추가하세요 — 1099 계약자이며, 저희는 세금에 절대 손대지 않습니다.
 
@@ -3961,11 +3961,11 @@ Benvenuta! Ecco tutto il gioco, in breve:
 
 💬 CHAT — i fan pagano per messaggio al TUO prezzo. Ogni messaggio che ti manda guadagna. Imposta il tuo prezzo in Impostazioni.
 
-📹 FACETIME — video privato al minuto (10–60 min, lui paga in anticipo). Accetta quando vuoi; se sei in un'altra chiamata lui aspetta in fila. Durante la chiamata puoi proporre di passare a esplicito per il doppio. La tua tariffa, la tua scelta.
+📹 VIDEOCHIAMATE — video privato al minuto (10–60 min, lui paga in anticipo). Accetta quando vuoi; se sei in un'altra chiamata lui aspetta in fila. Durante la chiamata puoi proporre di passare a esplicito per il doppio. La tua tariffa, la tua scelta.
 
 🔴 VAI LIVE — trasmetti a tutti. I fan pagano per unirsi al tuo palco, ti danno mance e lottano per la 👑 in cima alla tua live (il maggior spenditore dello stream). I tuoi maggiori spenditori finiscono nel tuo 🏆 Fan Club sotto Guadagni — trattali bene, pagano l'affitto.
 
-📅 PRENOTAZIONI — i fan programmano appuntamenti FaceTime in anticipo. Minuti prepagati garantiti.
+📅 PRENOTAZIONI — i fan programmano appuntamenti di videochiamata in anticipo. Minuti prepagati garantiti.
 
 💰 I TUOI SOLDI — trattieni il 60% di TUTTO. Guardalo in tempo reale in Guadagni. Prima del tuo primo pagamento, aggiungi le tue informazioni fiscali (W-9) in Impostazioni — sei una collaboratrice 1099, non tocchiamo mai le tue tasse.
 
@@ -3982,11 +3982,11 @@ Witaj! Oto cała gra, w skrócie:
 
 💬 CZATY — fani płacą za wiadomość według TWOJEJ ceny. Każda wiadomość, którą Ci wyśle, zarabia. Ustaw swoją cenę w Ustawieniach.
 
-📹 FACETIME — prywatne wideo za minutę (10–60 min, on płaci z góry). Akceptuj, kiedy chcesz; jeśli jesteś w trakcie rozmowy, on czeka w kolejce. W trakcie rozmowy możesz zaproponować przejście do erotyki za podwójną stawkę. Twoja stawka, Twoja decyzja.
+📹 ROZMOWY WIDEO — prywatne wideo za minutę (10–60 min, on płaci z góry). Akceptuj, kiedy chcesz; jeśli jesteś w trakcie rozmowy, on czeka w kolejce. W trakcie rozmowy możesz zaproponować przejście do erotyki za podwójną stawkę. Twoja stawka, Twoja decyzja.
 
 🔴 NA ŻYWO — streamuj do wszystkich. Fani płacą, aby dołączyć do Twojej sceny, dają Ci napiwki i walczą o 👑 na górze Twojej transmisji (największy wydający transmisji). Twoi najwięksi wydający trafiają do Twojego 🏆 Klubu Fanów w Zarobkach — traktuj ich słodko, oni płacą czynsz.
 
-📅 REZERWACJE — fani umawiają terminy FaceTime z wyprzedzeniem. Gwarantowane przedpłacone minuty.
+📅 REZERWACJE — fani umawiają terminy rozmów wideo z wyprzedzeniem. Gwarantowane przedpłacone minuty.
 
 💰 TWOJE PIENIĄDZE — zatrzymujesz 60% WSZYSTKIEGO. Obserwuj to na żywo w Zarobkach. Przed pierwszą wypłatą dodaj swoje informacje podatkowe (W-9) w Ustawieniach — jesteś wykonawcą 1099, nigdy nie dotykamy Twoich podatków.
 
@@ -4003,11 +4003,11 @@ Welkom binnen! Hier is het hele spel, snel:
 
 💬 CHATS — fans betalen per bericht tegen JOUW tarief. Elke sms die hij je stuurt verdient. Stel je tarief in bij Instellingen.
 
-📹 FACETIME — privévideo per minuut (10–60 min, hij betaalt vooraf). Accepteer wanneer je wilt; als je midden in een gesprek zit, wacht hij in de rij. Midden in het gesprek kun je aanbieden om expliciet te schakelen voor het dubbele. Jouw tarief, jouw beslissing.
+📹 VIDEOGESPREKKEN — privévideo per minuut (10–60 min, hij betaalt vooraf). Accepteer wanneer je wilt; als je midden in een gesprek zit, wacht hij in de rij. Midden in het gesprek kun je aanbieden om expliciet te schakelen voor het dubbele. Jouw tarief, jouw beslissing.
 
 🔴 GA LIVE — stream naar iedereen. Fans betalen om mee te doen aan je podium, geven je fooien en vechten om de 👑 bovenaan je live (topbesteder van de stream). Je grootste besteders landen in je 🏆 Fanclub onder Inkomsten — behandel ze lief, zij betalen de huur.
 
-📅 BOEKINGEN — fans plannen FaceTime-dates vooruit. Gegarandeerde vooraf betaalde minuten.
+📅 BOEKINGEN — fans plannen videogesprekken vooruit. Gegarandeerde vooraf betaalde minuten.
 
 💰 JOUW GELD — je houdt 60% van ALLES. Bekijk het live bij Inkomsten. Voeg vóór je eerste uitbetaling je belastinginfo (W-9) toe bij Instellingen — je bent een 1099-contractant, wij raken je belastingen nooit aan.
 
@@ -4024,11 +4024,11 @@ Hoş geldin! İşte tüm oyun, hızlıca:
 
 💬 SOHBETLER — hayranlar SENİN fiyatınla mesaj başına öder. Gönderdiği her metin kazandırır. Fiyatını Ayarlar'da belirle.
 
-📹 FACETIME — dakika başına özel video (10–60 dk, önceden öder). İstediğinde kabul et; aramanın ortasındaysan sırada bekler. Arama ortasında iki katına müstehcene geçmeyi teklif edebilirsin. Senin ücretin, senin kararın.
+📹 GÖRÜNTÜLÜ ARAMA — dakika başına özel video (10–60 dk, önceden öder). İstediğinde kabul et; aramanın ortasındaysan sırada bekler. Arama ortasında iki katına müstehcene geçmeyi teklif edebilirsin. Senin ücretin, senin kararın.
 
 🔴 CANLIYA GEÇ — herkese yayın yap. Hayranlar sahnene katılmak için öder, sana bahşiş verir ve canlı yayının en üstündeki 👑 için yarışır (yayının en çok harcayanı). En çok harcayanların Kazançlar altında 🏆 Hayran Kulübüne düşer — onlara tatlı davran, kirayı onlar öder.
 
-📅 REZERVASYONLAR — hayranlar FaceTime randevularını önceden planlar. Garantili ön ödemeli dakikalar.
+📅 REZERVASYONLAR — hayranlar görüntülü arama randevularını önceden planlar. Garantili ön ödemeli dakikalar.
 
 💰 PARAN — HER ŞEYİN %60'ını sen alırsın. Kazançlar'da canlı izle. İlk ödemenden önce, Ayarlar'da vergi bilgilerini (W-9) ekle — sen bir 1099 yüklenicisisin, vergilerine asla dokunmayız.
 
@@ -4346,7 +4346,7 @@ function announceGameCategoryToModels() {
 /* existing model must re-sign: the version-aware contract status     */
 /* locks 1.1 signers to the signing screen until they sign 1.2.        */
 /* ------------------------------------------------------------------ */
-const AGREEMENT_12_ANNOUNCE_TEXT = "📄 New model agreement — please read & sign. We added the 1-on-1 booking + FaceTime waiting-list rules (booking reminders, the 5-minute start window, fan no-shows paying out to you) as agreement v1.2. Open the app and tap to read and sign — it takes 20 seconds. Until you sign, going live and earning stay paused. 💋";
+const AGREEMENT_12_ANNOUNCE_TEXT = "📄 New model agreement — please read & sign. We added the 1-on-1 booking + video call waiting-list rules (booking reminders, the 5-minute start window, fan no-shows paying out to you) as agreement v1.2. Open the app and tap to read and sign — it takes 20 seconds. Until you sign, going live and earning stay paused. 💋";
 
 function announceAgreement12ToModels() {
   const st = db.prepare('SELECT agreement_12_announced_at FROM platform_stats WHERE id = 1').get();
@@ -4437,7 +4437,7 @@ function announceNotifFixToModels() {
     try {
       const conv = announcementThreadFor(m.id, 'model', admin.id);
       db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
-        .run(conv.id, conv.senderId, `🔔 FIXED: Your notifications open now! Tapping a notification used to just flicker — now it takes you straight there: messages open the chat, bookings open your bookings, tips open your earnings, FaceTime requests open the request. Try it — tap that bell 💋`);
+        .run(conv.id, conv.senderId, `🔔 FIXED: Your notifications open now! Tapping a notification used to just flicker — now it takes you straight there: messages open the chat, bookings open your bookings, tips open your earnings, Video call requests open the request. Try it — tap that bell 💋`);
       db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
       try {
         notifyUser(m.id, 'notif_fix', '🔔 FIXED: Your notifications open now!',
@@ -4715,7 +4715,7 @@ function announceChatRetention() {
 /* ------------------------------------------------------------------ */
 /* Dedicated 1-on-1 booking rate — ONE-TIME announcement (stamp        */
 /* booking_rate_announced_at on platform_stats). Bookings used to      */
-/* price silently off her FaceTime per-minute rate; now they have      */
+/* price silently off her video-call per-minute rate; now they have      */
 /* their own Settings rate that defaults to the video rate, so MODELS  */
 /* ONLY hear it once: the DM lands in their official SlutCamp thread   */
 /* plus a bell that opens it. Copy localized per recipient via the     */
@@ -5976,7 +5976,7 @@ app.get('/api/models', (req, res) => {
       : '';
     const { presence_override, tags: rawTags, gallery_photos: rawGallery, ...pub } = r;
     // The payload carries the EFFECTIVE booking rate under the same name
-    // as the column: her dedicated booking rate when set, her FaceTime
+    // as the column: her dedicated booking rate when set, her video-call
     // per-minute rate until then — so the fan booking sheet's quote is
     // always the price the server will charge.
     pub.booking_rate_cents = r.booking_rate_cents ?? r.per_minute_cents;
@@ -8213,8 +8213,8 @@ const MODEL_CONTRACT = {
       body: 'Either side can end this Agreement at any time. You can stop using the platform whenever you want. If the Company deactivates your account, this Agreement ends immediately, except the confidentiality, non-circumvention, and content-rights sections, which survive termination.',
     },
     {
-      title: '12. Scheduled 1-on-1s & the FaceTime Waiting List',
-      body: 'You control your own 1-on-1 schedule: you set the days and hours when you take private 1-on-1 bookings, and how many you accept per day and per week. A confirmed booking reserves your time for that fan. The platform will send you reminder notices before each booking — 3 days before, 3 hours before, and 15 minutes before. You must start a booked 1-on-1 within 5 minutes of its scheduled start time. If you do not start in time, the fan is automatically refunded in full and receives an apology from the platform, and that booking pays you nothing. If you start on time and the fan does not join within 3 minutes, that is a fan no-show: the fan receives no refund, and the booking is paid to you as earned. You may also get FaceTime requests while you are busy: when you accept a request during another call, the fan joins your waiting list and can see his place in line and his estimated wait. When your call ends, the next fan in line gets a 90-second window to join. By accepting a request, you commit to taking that fan\'s call when his turn comes.',
+      title: '12. Scheduled 1-on-1s & the Video Call Waiting List',
+      body: 'You control your own 1-on-1 schedule: you set the days and hours when you take private 1-on-1 bookings, and how many you accept per day and per week. A confirmed booking reserves your time for that fan. The platform will send you reminder notices before each booking — 3 days before, 3 hours before, and 15 minutes before. You must start a booked 1-on-1 within 5 minutes of its scheduled start time. If you do not start in time, the fan is automatically refunded in full and receives an apology from the platform, and that booking pays you nothing. If you start on time and the fan does not join within 3 minutes, that is a fan no-show: the fan receives no refund, and the booking is paid to you as earned. You may also get video call requests while you are busy: when you accept a request during another call, the fan joins your waiting list and can see his place in line and his estimated wait. When your call ends, the next fan in line gets a 90-second window to join. By accepting a request, you commit to taking that fan\'s call when his turn comes.',
     },
     {
       title: '13. Payout Holds, Chargeback Reversals & Fraud',
@@ -8342,8 +8342,8 @@ const MODEL_CONTRACT_I18N = {
     "body": "Cualquiera de las partes puede terminar este Acuerdo en cualquier momento. Puedes dejar de usar la plataforma cuando quieras. Si la Compañía desactiva tu cuenta, este Acuerdo termina de inmediato, excepto las secciones de confidencialidad, no elusión y derechos sobre el contenido, que sobreviven a la terminación."
    },
    {
-    "title": "12. 1 a 1 programados y la lista de espera de FaceTime",
-    "body": "Tú controlas tu propio horario de 1 a 1: fijas los días y las horas en que aceptas reservas privadas de 1 a 1, y cuántas aceptas por día y por semana. Una reserva confirmada reserva tu tiempo para ese fan. La plataforma te enviará avisos recordatorios antes de cada reserva — 3 días antes, 3 horas antes y 15 minutos antes. Debes iniciar un 1 a 1 reservado dentro de los 5 minutos de su hora de inicio programada. Si no lo inicias a tiempo, al fan se le reembolsa automáticamente por completo y recibe una disculpa de la plataforma, y esa reserva no te paga nada. Si inicias a tiempo y el fan no se une dentro de los 3 minutos, eso es una ausencia del fan: el fan no recibe reembolso y la reserva se te paga como ganada. También puedes recibir solicitudes de FaceTime mientras estás ocupada: cuando aceptas una solicitud durante otra llamada, el fan se une a tu lista de espera y puede ver su lugar en la fila y su tiempo de espera estimado. Cuando tu llamada termina, el siguiente fan en la fila obtiene una ventana de 90 segundos para unirse. Al aceptar una solicitud, te comprometes a atender la llamada de ese fan cuando llegue su turno."
+    "title": "12. 1 a 1 programados y la lista de espera de videollamadas",
+    "body": "Tú controlas tu propio horario de 1 a 1: fijas los días y las horas en que aceptas reservas privadas de 1 a 1, y cuántas aceptas por día y por semana. Una reserva confirmada reserva tu tiempo para ese fan. La plataforma te enviará avisos recordatorios antes de cada reserva — 3 días antes, 3 horas antes y 15 minutos antes. Debes iniciar un 1 a 1 reservado dentro de los 5 minutos de su hora de inicio programada. Si no lo inicias a tiempo, al fan se le reembolsa automáticamente por completo y recibe una disculpa de la plataforma, y esa reserva no te paga nada. Si inicias a tiempo y el fan no se une dentro de los 3 minutos, eso es una ausencia del fan: el fan no recibe reembolso y la reserva se te paga como ganada. También puedes recibir solicitudes de videollamada mientras estás ocupada: cuando aceptas una solicitud durante otra llamada, el fan se une a tu lista de espera y puede ver su lugar en la fila y su tiempo de espera estimado. Cuando tu llamada termina, el siguiente fan en la fila obtiene una ventana de 90 segundos para unirse. Al aceptar una solicitud, te comprometes a atender la llamada de ese fan cuando llegue su turno."
    },
    {
     "title": "13. Retenciones de pago, reversiones por contracargos y fraude",
@@ -8411,8 +8411,8 @@ const MODEL_CONTRACT_I18N = {
     "body": "Qualquer uma das partes pode encerrar este Contrato a qualquer momento. Você pode parar de usar a plataforma quando quiser. Se a Empresa desativar sua conta, este Contrato se encerra imediatamente, exceto as seções de confidencialidade, não desvio e direitos sobre o conteúdo, que sobrevivem à rescisão."
    },
    {
-    "title": "12. Sessões 1 a 1 Agendadas e a Lista de Espera do FaceTime",
-    "body": "Você controla sua própria agenda de sessões 1 a 1: você define os dias e horários em que aceita reservas privadas 1 a 1 e quantas aceita por dia e por semana. Uma reserva confirmada reserva seu tempo para aquele fã. A plataforma enviará avisos de lembrete antes de cada reserva — 3 dias antes, 3 horas antes e 15 minutos antes. Você deve iniciar uma sessão 1 a 1 reservada dentro de 5 minutos do horário agendado de início. Se você não iniciar a tempo, o fã será reembolsado integralmente de forma automática e receberá um pedido de desculpas da plataforma, e essa reserva não lhe pagará nada. Se você iniciar no horário e o fã não entrar dentro de 3 minutos, isso é uma falta do fã: o fã não recebe reembolso, e a reserva é paga a você como ganho. Você também pode receber solicitações de FaceTime enquanto estiver ocupada: quando você aceita uma solicitação durante outra chamada, o fã entra na sua lista de espera e pode ver sua posição na fila e seu tempo estimado de espera. Quando sua chamada termina, o próximo fã da fila tem uma janela de 90 segundos para entrar. Ao aceitar uma solicitação, você se compromete a atender a chamada daquele fã quando chegar a vez dele."
+    "title": "12. Sessões 1 a 1 Agendadas e a Lista de Espera da Videochamada",
+    "body": "Você controla sua própria agenda de sessões 1 a 1: você define os dias e horários em que aceita reservas privadas 1 a 1 e quantas aceita por dia e por semana. Uma reserva confirmada reserva seu tempo para aquele fã. A plataforma enviará avisos de lembrete antes de cada reserva — 3 dias antes, 3 horas antes e 15 minutos antes. Você deve iniciar uma sessão 1 a 1 reservada dentro de 5 minutos do horário agendado de início. Se você não iniciar a tempo, o fã será reembolsado integralmente de forma automática e receberá um pedido de desculpas da plataforma, e essa reserva não lhe pagará nada. Se você iniciar no horário e o fã não entrar dentro de 3 minutos, isso é uma falta do fã: o fã não recebe reembolso, e a reserva é paga a você como ganho. Você também pode receber solicitações de videochamada enquanto estiver ocupada: quando você aceita uma solicitação durante outra chamada, o fã entra na sua lista de espera e pode ver sua posição na fila e seu tempo estimado de espera. Quando sua chamada termina, o próximo fã da fila tem uma janela de 90 segundos para entrar. Ao aceitar uma solicitação, você se compromete a atender a chamada daquele fã quando chegar a vez dele."
    },
    {
     "title": "13. Retenções de Pagamento, Reversões por Estorno e Fraude",
@@ -8480,8 +8480,8 @@ const MODEL_CONTRACT_I18N = {
     "body": "Chaque partie peut mettre fin au présent Contrat à tout moment. Vous pouvez cesser d'utiliser la plateforme quand vous le souhaitez. Si la Société désactive votre compte, le présent Contrat prend fin immédiatement, à l'exception des sections relatives à la confidentialité, au non-contournement et aux droits sur le contenu, qui survivent à la résiliation."
    },
    {
-    "title": "12. 1-à-1 programmés et liste d'attente FaceTime",
-    "body": "Vous contrôlez votre propre programme de 1-à-1 : vous définissez les jours et les heures auxquels vous acceptez les réservations privées en 1-à-1, ainsi que le nombre que vous acceptez par jour et par semaine. Une réservation confirmée réserve votre temps pour ce fan. La plateforme vous enverra des avis de rappel avant chaque réservation — 3 jours avant, 3 heures avant et 15 minutes avant. Vous devez commencer un 1-à-1 réservé dans les 5 minutes suivant son heure de début programmée. Si vous ne commencez pas à temps, le fan est automatiquement remboursé intégralement et reçoit des excuses de la plateforme, et cette réservation ne vous rapporte rien. Si vous commencez à temps et que le fan ne rejoint pas dans les 3 minutes, il s'agit d'une absence du fan : le fan ne reçoit aucun remboursement, et la réservation vous est payée comme un gain. Vous pouvez également recevoir des demandes FaceTime pendant que vous êtes occupée : lorsque vous acceptez une demande pendant un autre appel, le fan rejoint votre liste d'attente et peut voir sa place dans la file et son temps d'attente estimé. Lorsque votre appel se termine, le fan suivant dans la file dispose d'un délai de 90 secondes pour rejoindre. En acceptant une demande, vous vous engagez à prendre l'appel de ce fan lorsque son tour viendra."
+    "title": "12. 1-à-1 programmés et liste d'attente des appels vidéo",
+    "body": "Vous contrôlez votre propre programme de 1-à-1 : vous définissez les jours et les heures auxquels vous acceptez les réservations privées en 1-à-1, ainsi que le nombre que vous acceptez par jour et par semaine. Une réservation confirmée réserve votre temps pour ce fan. La plateforme vous enverra des avis de rappel avant chaque réservation — 3 jours avant, 3 heures avant et 15 minutes avant. Vous devez commencer un 1-à-1 réservé dans les 5 minutes suivant son heure de début programmée. Si vous ne commencez pas à temps, le fan est automatiquement remboursé intégralement et reçoit des excuses de la plateforme, et cette réservation ne vous rapporte rien. Si vous commencez à temps et que le fan ne rejoint pas dans les 3 minutes, il s'agit d'une absence du fan : le fan ne reçoit aucun remboursement, et la réservation vous est payée comme un gain. Vous pouvez également recevoir des demandes d'appel vidéo pendant que vous êtes occupée : lorsque vous acceptez une demande pendant un autre appel, le fan rejoint votre liste d'attente et peut voir sa place dans la file et son temps d'attente estimé. Lorsque votre appel se termine, le fan suivant dans la file dispose d'un délai de 90 secondes pour rejoindre. En acceptant une demande, vous vous engagez à prendre l'appel de ce fan lorsque son tour viendra."
    },
    {
     "title": "13. Délais de paiement, annulations pour rejet de débit et fraude",
@@ -8549,8 +8549,8 @@ const MODEL_CONTRACT_I18N = {
     "body": "Jede Seite kann diese Vereinbarung jederzeit beenden. Sie können die Nutzung der Plattform jederzeit einstellen. Wenn das Unternehmen Ihren Account deaktiviert, endet diese Vereinbarung sofort, mit Ausnahme der Abschnitte zu Vertraulichkeit, Umgehungsverbot und Inhaltsrechten, die über die Beendigung hinaus fortbestehen."
    },
    {
-    "title": "12. Geplante 1-zu-1 & die FaceTime-Warteliste",
-    "body": "Sie kontrollieren Ihren eigenen 1-zu-1-Zeitplan: Sie legen die Tage und Stunden fest, an denen Sie private 1-zu-1-Buchungen annehmen, und wie viele Sie pro Tag und pro Woche akzeptieren. Eine bestätigte Buchung reserviert Ihre Zeit für diesen Fan. Die Plattform sendet Ihnen Erinnerungsbenachrichtigungen vor jeder Buchung — 3 Tage vorher, 3 Stunden vorher und 15 Minuten vorher. Sie müssen ein gebuchtes 1-zu-1 innerhalb von 5 Minuten nach seiner geplanten Startzeit beginnen. Wenn Sie nicht rechtzeitig beginnen, wird der Fan automatisch vollständig erstattet und erhält eine Entschuldigung von der Plattform, und diese Buchung zahlt Ihnen nichts. Wenn Sie pünktlich beginnen und der Fan nicht innerhalb von 3 Minuten beitritt, ist das ein Fan-No-Show: Der Fan erhält keine Rückerstattung, und die Buchung wird Ihnen als verdient ausgezahlt. Sie können auch FaceTime-Anfragen erhalten, während Sie beschäftigt sind: Wenn Sie eine Anfrage während eines anderen Anrufs akzeptieren, tritt der Fan Ihrer Warteliste bei und kann seinen Platz in der Schlange und seine geschätzte Wartezeit sehen. Wenn Ihr Anruf endet, erhält der nächste Fan in der Schlange ein 90-Sekunden-Fenster, um beizutreten. Mit der Annahme einer Anfrage verpflichten Sie sich, den Anruf dieses Fans anzunehmen, wenn er an der Reihe ist."
+    "title": "12. Geplante 1-zu-1 & die Videoanruf-Warteliste",
+    "body": "Sie kontrollieren Ihren eigenen 1-zu-1-Zeitplan: Sie legen die Tage und Stunden fest, an denen Sie private 1-zu-1-Buchungen annehmen, und wie viele Sie pro Tag und pro Woche akzeptieren. Eine bestätigte Buchung reserviert Ihre Zeit für diesen Fan. Die Plattform sendet Ihnen Erinnerungsbenachrichtigungen vor jeder Buchung — 3 Tage vorher, 3 Stunden vorher und 15 Minuten vorher. Sie müssen ein gebuchtes 1-zu-1 innerhalb von 5 Minuten nach seiner geplanten Startzeit beginnen. Wenn Sie nicht rechtzeitig beginnen, wird der Fan automatisch vollständig erstattet und erhält eine Entschuldigung von der Plattform, und diese Buchung zahlt Ihnen nichts. Wenn Sie pünktlich beginnen und der Fan nicht innerhalb von 3 Minuten beitritt, ist das ein Fan-No-Show: Der Fan erhält keine Rückerstattung, und die Buchung wird Ihnen als verdient ausgezahlt. Sie können auch Videoanruf-Anfragen erhalten, während Sie beschäftigt sind: Wenn Sie eine Anfrage während eines anderen Anrufs akzeptieren, tritt der Fan Ihrer Warteliste bei und kann seinen Platz in der Schlange und seine geschätzte Wartezeit sehen. Wenn Ihr Anruf endet, erhält der nächste Fan in der Schlange ein 90-Sekunden-Fenster, um beizutreten. Mit der Annahme einer Anfrage verpflichten Sie sich, den Anruf dieses Fans anzunehmen, wenn er an der Reihe ist."
    },
    {
     "title": "13. Auszahlungssperren, Rückbuchungsumkehrungen & Betrug",
@@ -8618,8 +8618,8 @@ const MODEL_CONTRACT_I18N = {
     "body": "Любая сторона может расторгнуть настоящее Соглашение в любое время. Вы можете прекратить пользоваться платформой, когда захотите. Если Компания деактивирует ваш аккаунт, настоящее Соглашение немедленно прекращается, за исключением разделов о конфиденциальности, запрете обхода и правах на контент, которые сохраняют силу после расторжения."
    },
    {
-    "title": "12. Запланированные 1-на-1 и лист ожидания FaceTime",
-    "body": "Вы контролируете ваше собственное расписание 1-на-1: вы устанавливаете дни и часы, когда вы принимаете приватные бронирования 1-на-1, и сколько вы принимаете в день и в неделю. Подтверждённое бронирование резервирует ваше время за этим фанатом. Платформа будет отправлять вам напоминания перед каждым бронированием — за 3 дня, за 3 часа и за 15 минут. Вы должны начать забронированный 1-на-1 в течение 5 минут от его запланированного времени начала. Если вы не начнёте вовремя, фанату автоматически возвращается полная сумма и он получает извинение от платформы, а это бронирование вам ничего не оплачивает. Если вы начнёте вовремя, а фанат не присоединится в течение 3 минут, это неявка фаната: фанат не получает возврата, а бронирование оплачивается вам как заработанное. Вы также можете получать запросы FaceTime, пока вы заняты: когда вы принимаете запрос во время другого звонка, фанат присоединяется к вашему листу ожидания и может видеть своё место в очереди и предполагаемое время ожидания. Когда ваш звонок заканчивается, следующий фанат в очереди получает 90-секундное окно для присоединения. Принимая запрос, вы обязуетесь принять звонок этого фаната, когда придёт его очередь."
+    "title": "12. Запланированные 1-на-1 и лист ожидания видеозвонков",
+    "body": "Вы контролируете ваше собственное расписание 1-на-1: вы устанавливаете дни и часы, когда вы принимаете приватные бронирования 1-на-1, и сколько вы принимаете в день и в неделю. Подтверждённое бронирование резервирует ваше время за этим фанатом. Платформа будет отправлять вам напоминания перед каждым бронированием — за 3 дня, за 3 часа и за 15 минут. Вы должны начать забронированный 1-на-1 в течение 5 минут от его запланированного времени начала. Если вы не начнёте вовремя, фанату автоматически возвращается полная сумма и он получает извинение от платформы, а это бронирование вам ничего не оплачивает. Если вы начнёте вовремя, а фанат не присоединится в течение 3 минут, это неявка фаната: фанат не получает возврата, а бронирование оплачивается вам как заработанное. Вы также можете получать запросы видеозвонков, пока вы заняты: когда вы принимаете запрос во время другого звонка, фанат присоединяется к вашему листу ожидания и может видеть своё место в очереди и предполагаемое время ожидания. Когда ваш звонок заканчивается, следующий фанат в очереди получает 90-секундное окно для присоединения. Принимая запрос, вы обязуетесь принять звонок этого фаната, когда придёт его очередь."
    },
    {
     "title": "13. Удержание выплат, отмены по чарджбэкам и мошенничество",
@@ -8687,8 +8687,8 @@ const MODEL_CONTRACT_I18N = {
     "body": "どちらの当事者もいつでも本契約を終了できます。あなたはいつでもプラットフォームの使用を停止できます。当社があなたのアカウントを無効化した場合、本契約は直ちに終了します。ただし、守秘義務、迂回禁止、およびコンテンツの権利に関する条項は、終了後も存続します。"
    },
    {
-    "title": "12. 予定された1対1とFaceTime待機リスト",
-    "body": "あなたは自身の1対1スケジュールを管理します：プライベート1対1予約を受ける曜日と時間、および1日あたり・1週間あたりに受ける件数を設定します。確定した予約は、そのファンのためにあなたの時間を確保します。プラットフォームは各予約の前にリマインダー通知を送信します — 3日前、3時間前、15分前です。あなたは、予約された1対1を予定開始時刻から5分以内に開始しなければなりません。時間内に開始しない場合、ファンには自動的に全額返金され、プラットフォームから謝罪が送られ、その予約についてあなたへの支払いはありません。あなたが時間通りに開始し、ファンが3分以内に参加しない場合、それはファンのノーショーです：ファンは返金を受けず、予約分は獲得分としてあなたに支払われます。あなたは、忙しいときにFaceTimeリクエストを受け取ることもあります：別の通話中にリクエストを承諾すると、ファンはあなたの待機リストに参加し、順番と推定待ち時間を確認できます。あなたの通話が終了すると、列の次のファンは参加するための90秒の猶予が与えられます。リクエストを承諾することにより、あなたは、そのファンの番が来たときにその通話を受けることを約束します。"
+    "title": "12. 予定された1対1とビデオ通話待機リスト",
+    "body": "あなたは自身の1対1スケジュールを管理します：プライベート1対1予約を受ける曜日と時間、および1日あたり・1週間あたりに受ける件数を設定します。確定した予約は、そのファンのためにあなたの時間を確保します。プラットフォームは各予約の前にリマインダー通知を送信します — 3日前、3時間前、15分前です。あなたは、予約された1対1を予定開始時刻から5分以内に開始しなければなりません。時間内に開始しない場合、ファンには自動的に全額返金され、プラットフォームから謝罪が送られ、その予約についてあなたへの支払いはありません。あなたが時間通りに開始し、ファンが3分以内に参加しない場合、それはファンのノーショーです：ファンは返金を受けず、予約分は獲得分としてあなたに支払われます。あなたは、忙しいときにビデオ通話リクエストを受け取ることもあります：別の通話中にリクエストを承諾すると、ファンはあなたの待機リストに参加し、順番と推定待ち時間を確認できます。あなたの通話が終了すると、列の次のファンは参加するための90秒の猶予が与えられます。リクエストを承諾することにより、あなたは、そのファンの番が来たときにその通話を受けることを約束します。"
    },
    {
     "title": "13. 出金保留、チャージバック取消し、および不正行為",
@@ -8756,8 +8756,8 @@ const MODEL_CONTRACT_I18N = {
     "body": "任何一方均可随时终止本协议。你可以随时停止使用本平台。如果公司停用你的账号，本协议立即终止，但保密、禁止规避和内容权利条款除外，这些条款在终止后继续有效。"
    },
    {
-    "title": "12. 预约的一对一与 FaceTime 等候名单",
-    "body": "你掌控自己的一对一日程：你设定接受一对一私密预约的日期和时间，以及你每天和每周接受的数量。已确认的预约会为该粉丝保留你的时间。平台会在每次预约前向你发送提醒通知 — 提前 3 天、提前 3 小时和提前 15 分钟。你必须在预定的开始时间后 5 分钟内开始已预约的一对一。如果你未及时开始，粉丝将自动获得全额退款，并收到平台的道歉，该预约不会向你支付任何费用。如果你按时开始，而粉丝未在 3 分钟内加入，则为粉丝爽约：粉丝不获得退款，该预约将作为已赚取收入支付给你。当你忙碌时，你也可能收到 FaceTime 请求：当你在另一次通话期间接受一个请求时，该粉丝会加入你的等候名单，并能看到他在队列中的位置和预计等候时间。当你的通话结束时，队列中的下一位粉丝有 90 秒的时间加入。接受请求即表示你承诺在轮到该粉丝时接听他的通话。"
+    "title": "12. 预约的一对一与 视频通话等候名单",
+    "body": "你掌控自己的一对一日程：你设定接受一对一私密预约的日期和时间，以及你每天和每周接受的数量。已确认的预约会为该粉丝保留你的时间。平台会在每次预约前向你发送提醒通知 — 提前 3 天、提前 3 小时和提前 15 分钟。你必须在预定的开始时间后 5 分钟内开始已预约的一对一。如果你未及时开始，粉丝将自动获得全额退款，并收到平台的道歉，该预约不会向你支付任何费用。如果你按时开始，而粉丝未在 3 分钟内加入，则为粉丝爽约：粉丝不获得退款，该预约将作为已赚取收入支付给你。当你忙碌时，你也可能收到视频通话请求：当你在另一次通话期间接受一个请求时，该粉丝会加入你的等候名单，并能看到他在队列中的位置和预计等候时间。当你的通话结束时，队列中的下一位粉丝有 90 秒的时间加入。接受请求即表示你承诺在轮到该粉丝时接听他的通话。"
    },
    {
     "title": "13. 付款暂扣、拒付逆转与欺诈",
@@ -8825,8 +8825,8 @@ const MODEL_CONTRACT_I18N = {
     "body": "어느 쪽이든 언제든지 본 계약을 종료할 수 있습니다. 귀하는 언제든지 플랫폼 이용을 중단할 수 있습니다. 회사가 귀하의 계정을 비활성화하면 본 계약은 즉시 종료됩니다. 단, 비밀 유지, 우회 금지 및 콘텐츠 권리 조항은 종료 후에도 존속합니다."
    },
    {
-    "title": "12. 예약된 1:1 및 FaceTime 대기 목록",
-    "body": "귀하는 본인의 1:1 일정을 직접 관리합니다: 프라이빗 1:1 예약을 받는 요일과 시간을 정하고, 하루와 일주일에 몇 건을 받을지도 정합니다. 확정된 예약은 해당 팬을 위해 귀하의 시간을 예약합니다. 플랫폼은 각 예약 전에 알림을 보냅니다 — 3일 전, 3시간 전, 15분 전. 귀하는 예약된 1:1을 예정된 시작 시간으로부터 5분 안에 시작해야 합니다. 제시간에 시작하지 않으면 팬에게 자동으로 전액 환불되고 플랫폼으로부터 사과를 받으며, 해당 예약은 귀하에게 아무것도 지급하지 않습니다. 귀하가 제시간에 시작하고 팬이 3분 안에 참여하지 않으면 그것은 팬 노쇼입니다: 팬은 환불받지 못하고, 예약 금액은 귀하에게 수익으로 지급됩니다. 귀하는 바쁠 때 FaceTime 요청을 받을 수도 있습니다: 다른 통화 중에 요청을 수락하면 팬은 대기 목록에 들어가고 자신의 순서와 예상 대기 시간을 볼 수 있습니다. 통화가 끝나면 다음 순서의 팬은 90초 안에 참여할 수 있는 시간이 주어집니다. 요청을 수락함으로써 귀하는 그 팬의 차례가 오면 그의 통화를 받는 데 동의합니다."
+    "title": "12. 예약된 1:1 및 영상 통화 대기 목록",
+    "body": "귀하는 본인의 1:1 일정을 직접 관리합니다: 프라이빗 1:1 예약을 받는 요일과 시간을 정하고, 하루와 일주일에 몇 건을 받을지도 정합니다. 확정된 예약은 해당 팬을 위해 귀하의 시간을 예약합니다. 플랫폼은 각 예약 전에 알림을 보냅니다 — 3일 전, 3시간 전, 15분 전. 귀하는 예약된 1:1을 예정된 시작 시간으로부터 5분 안에 시작해야 합니다. 제시간에 시작하지 않으면 팬에게 자동으로 전액 환불되고 플랫폼으로부터 사과를 받으며, 해당 예약은 귀하에게 아무것도 지급하지 않습니다. 귀하가 제시간에 시작하고 팬이 3분 안에 참여하지 않으면 그것은 팬 노쇼입니다: 팬은 환불받지 못하고, 예약 금액은 귀하에게 수익으로 지급됩니다. 귀하는 바쁠 때 영상 통화 요청을 받을 수도 있습니다: 다른 통화 중에 요청을 수락하면 팬은 대기 목록에 들어가고 자신의 순서와 예상 대기 시간을 볼 수 있습니다. 통화가 끝나면 다음 순서의 팬은 90초 안에 참여할 수 있는 시간이 주어집니다. 요청을 수락함으로써 귀하는 그 팬의 차례가 오면 그의 통화를 받는 데 동의합니다."
    },
    {
     "title": "13. 지급 보류, 차지백 취소 및 사기",
@@ -8894,8 +8894,8 @@ const MODEL_CONTRACT_I18N = {
     "body": "Entrambe le parti possono terminare il presente Contratto in qualsiasi momento. Puoi smettere di usare la piattaforma quando vuoi. Se la Società disattiva il tuo account, il presente Contratto termina immediatamente, ad eccezione delle sezioni su riservatezza, non elusione e diritti sui contenuti, che sopravvivono alla risoluzione."
    },
    {
-    "title": "12. 1-a-1 programmati e lista d'attesa FaceTime",
-    "body": "Controlli il tuo programma 1-a-1: imposti i giorni e gli orari in cui accetti prenotazioni private 1-a-1, e quante ne accetti al giorno e a settimana. Una prenotazione confermata riserva il tuo tempo per quel fan. La piattaforma ti manderà avvisi di promemoria prima di ogni prenotazione — 3 giorni prima, 3 ore prima e 15 minuti prima. Devi iniziare un 1-a-1 prenotato entro 5 minuti dall'orario di inizio programmato. Se non inizi in tempo, il fan viene automaticamente rimborsato per intero e riceve le scuse dalla piattaforma, e quella prenotazione non ti paga nulla. Se inizi in tempo e il fan non si unisce entro 3 minuti, è un'assenza del fan: il fan non riceve rimborso, e la prenotazione ti viene pagata come guadagnata. Puoi anche ricevere richieste FaceTime mentre sei occupata: quando accetti una richiesta durante un'altra chiamata, il fan si unisce alla tua lista d'attesa e può vedere il suo posto in fila e la sua attesa stimata. Quando la tua chiamata finisce, il prossimo fan in fila ha una finestra di 90 secondi per unirsi. Accettando una richiesta, ti impegni a prendere la chiamata di quel fan quando arriva il suo turno."
+    "title": "12. 1-a-1 programmati e lista d'attesa videochiamate",
+    "body": "Controlli il tuo programma 1-a-1: imposti i giorni e gli orari in cui accetti prenotazioni private 1-a-1, e quante ne accetti al giorno e a settimana. Una prenotazione confermata riserva il tuo tempo per quel fan. La piattaforma ti manderà avvisi di promemoria prima di ogni prenotazione — 3 giorni prima, 3 ore prima e 15 minuti prima. Devi iniziare un 1-a-1 prenotato entro 5 minuti dall'orario di inizio programmato. Se non inizi in tempo, il fan viene automaticamente rimborsato per intero e riceve le scuse dalla piattaforma, e quella prenotazione non ti paga nulla. Se inizi in tempo e il fan non si unisce entro 3 minuti, è un'assenza del fan: il fan non riceve rimborso, e la prenotazione ti viene pagata come guadagnata. Puoi anche ricevere richieste di videochiamata mentre sei occupata: quando accetti una richiesta durante un'altra chiamata, il fan si unisce alla tua lista d'attesa e può vedere il suo posto in fila e la sua attesa stimata. Quando la tua chiamata finisce, il prossimo fan in fila ha una finestra di 90 secondi per unirsi. Accettando una richiesta, ti impegni a prendere la chiamata di quel fan quando arriva il suo turno."
    },
    {
     "title": "13. Trattenute sui pagamenti, storni per chargeback e frode",
@@ -8963,8 +8963,8 @@ const MODEL_CONTRACT_I18N = {
     "body": "Każda ze stron może w każdej chwili rozwiązać niniejszą Umowę. Możesz przestać korzystać z platformy, kiedy tylko chcesz. Jeśli Spółka dezaktywuje Twoje konto, niniejsza Umowa kończy się natychmiast, z wyjątkiem sekcji dotyczących poufności, zakazu obchodzenia oraz praw do treści, które pozostają w mocy po rozwiązaniu."
    },
    {
-    "title": "12. Zaplanowane 1 na 1 i lista oczekujących FaceTime",
-    "body": "Kontrolujesz własny harmonogram 1 na 1: ustalasz dni i godziny, w których przyjmujesz prywatne rezerwacje 1 na 1, oraz ile przyjmujesz dziennie i tygodniowo. Potwierdzona rezerwacja rezerwuje Twój czas dla tego fana. Platforma wyśle Ci przypomnienia przed każdą rezerwacją — 3 dni wcześniej, 3 godziny wcześniej i 15 minut wcześniej. Musisz rozpocząć zarezerwowane 1 na 1 w ciągu 5 minut od zaplanowanego czasu rozpoczęcia. Jeśli nie rozpoczniesz na czas, fan automatycznie otrzyma pełny zwrot oraz przeprosiny od platformy, a ta rezerwacja nic Ci nie zapłaci. Jeśli rozpoczniesz na czas, a fan nie dołączy w ciągu 3 minut, jest to nieobecność fana: fan nie otrzymuje zwrotu, a rezerwacja jest Ci wypłacana jako zarobiona. Możesz również otrzymywać prośby o FaceTime, gdy jesteś zajęta: gdy zaakceptujesz prośbę podczas innej rozmowy, fan dołącza do Twojej listy oczekujących i może zobaczyć swoje miejsce w kolejce oraz szacowany czas oczekiwania. Gdy Twoja rozmowa się zakończy, następny fan w kolejce otrzymuje 90-sekundowe okno na dołączenie. Akceptując prośbę, zobowiązujesz się przyjąć rozmowę tego fana, gdy nadejdzie jego kolej."
+    "title": "12. Zaplanowane 1 na 1 i lista oczekujących na rozmowę wideo",
+    "body": "Kontrolujesz własny harmonogram 1 na 1: ustalasz dni i godziny, w których przyjmujesz prywatne rezerwacje 1 na 1, oraz ile przyjmujesz dziennie i tygodniowo. Potwierdzona rezerwacja rezerwuje Twój czas dla tego fana. Platforma wyśle Ci przypomnienia przed każdą rezerwacją — 3 dni wcześniej, 3 godziny wcześniej i 15 minut wcześniej. Musisz rozpocząć zarezerwowane 1 na 1 w ciągu 5 minut od zaplanowanego czasu rozpoczęcia. Jeśli nie rozpoczniesz na czas, fan automatycznie otrzyma pełny zwrot oraz przeprosiny od platformy, a ta rezerwacja nic Ci nie zapłaci. Jeśli rozpoczniesz na czas, a fan nie dołączy w ciągu 3 minut, jest to nieobecność fana: fan nie otrzymuje zwrotu, a rezerwacja jest Ci wypłacana jako zarobiona. Możesz również otrzymywać prośby o rozmowę wideo, gdy jesteś zajęta: gdy zaakceptujesz prośbę podczas innej rozmowy, fan dołącza do Twojej listy oczekujących i może zobaczyć swoje miejsce w kolejce oraz szacowany czas oczekiwania. Gdy Twoja rozmowa się zakończy, następny fan w kolejce otrzymuje 90-sekundowe okno na dołączenie. Akceptując prośbę, zobowiązujesz się przyjąć rozmowę tego fana, gdy nadejdzie jego kolej."
    },
    {
     "title": "13. Wstrzymania wypłat, cofnięcia z tytułu obciążeń zwrotnych i oszustwa",
@@ -9032,8 +9032,8 @@ const MODEL_CONTRACT_I18N = {
     "body": "Beide partijen kunnen deze Overeenkomst op elk moment beëindigen. Je kunt op elk moment stoppen met het gebruik van het platform. Als het Bedrijf je account deactiveert, eindigt deze Overeenkomst onmiddellijk, behalve de secties over vertrouwelijkheid, niet-omzeiling en contentrechten, die na beëindiging blijven bestaan."
    },
    {
-    "title": "12. Geplande 1-op-1's & de FaceTime-wachtlijst",
-    "body": "Je beheert je eigen 1-op-1-schema: je stelt de dagen en uren in wanneer je privé 1-op-1-boekingen aanneemt, en hoeveel je er per dag en per week accepteert. Een bevestigde boeking reserveert je tijd voor die fan. Het platform stuurt je herinneringen vóór elke boeking — 3 dagen ervoor, 3 uur ervoor en 15 minuten ervoor. Je moet een geboekte 1-op-1 binnen 5 minuten na de geplande starttijd starten. Als je niet op tijd start, wordt de fan automatisch volledig terugbetaald en ontvangt hij een verontschuldiging van het platform, en die boeking betaalt je niets. Als je op tijd start en de fan neemt niet binnen 3 minuten deel, is dat een fan no-show: de fan ontvangt geen terugbetaling, en de boeking wordt aan jou uitbetaald als verdiend. Je kunt ook FaceTime-verzoeken krijgen terwijl je bezig bent: wanneer je een verzoek accepteert tijdens een ander gesprek, komt de fan op je wachtlijst en kan hij zijn plaats in de rij en zijn geschatte wachttijd zien. Wanneer je gesprek eindigt, krijgt de volgende fan in de rij een venster van 90 seconden om deel te nemen. Door een verzoek te accepteren, verplicht je je om het gesprek van die fan aan te nemen wanneer zijn beurt komt."
+    "title": "12. Geplande 1-op-1's & de videogesprek-wachtlijst",
+    "body": "Je beheert je eigen 1-op-1-schema: je stelt de dagen en uren in wanneer je privé 1-op-1-boekingen aanneemt, en hoeveel je er per dag en per week accepteert. Een bevestigde boeking reserveert je tijd voor die fan. Het platform stuurt je herinneringen vóór elke boeking — 3 dagen ervoor, 3 uur ervoor en 15 minuten ervoor. Je moet een geboekte 1-op-1 binnen 5 minuten na de geplande starttijd starten. Als je niet op tijd start, wordt de fan automatisch volledig terugbetaald en ontvangt hij een verontschuldiging van het platform, en die boeking betaalt je niets. Als je op tijd start en de fan neemt niet binnen 3 minuten deel, is dat een fan no-show: de fan ontvangt geen terugbetaling, en de boeking wordt aan jou uitbetaald als verdiend. Je kunt ook videogesprek-verzoeken krijgen terwijl je bezig bent: wanneer je een verzoek accepteert tijdens een ander gesprek, komt de fan op je wachtlijst en kan hij zijn plaats in de rij en zijn geschatte wachttijd zien. Wanneer je gesprek eindigt, krijgt de volgende fan in de rij een venster van 90 seconden om deel te nemen. Door een verzoek te accepteren, verplicht je je om het gesprek van die fan aan te nemen wanneer zijn beurt komt."
    },
    {
     "title": "13. Uitbetalingsblokkeringen, Chargeback-terugdraaiingen & Fraude",
@@ -9101,8 +9101,8 @@ const MODEL_CONTRACT_I18N = {
     "body": "Her iki taraf da bu Sözleşmeyi istediği zaman sona erdirebilir. Platformu kullanmayı istediğin zaman bırakabilirsin. Şirket hesabını devre dışı bırakırsa, bu Sözleşme derhal sona erer; gizlilik, dolanmayı önleme ve içerik hakları bölümleri hariç, bunlar fesihten sonra da geçerli kalır."
    },
    {
-    "title": "12. Planlanmış Bire Birler ve FaceTime Bekleme Listesi",
-    "body": "Kendi bire bir programını sen kontrol edersin: özel bire bir rezervasyonlarını hangi gün ve saatlerde aldığını ve günde ve haftada kaç tane kabul ettiğini sen belirlersin. Onaylanmış bir rezervasyon, zamanını o hayran için ayırır. Platform, her rezervasyondan önce sana hatırlatma bildirimleri gönderecek — 3 gün önce, 3 saat önce ve 15 dakika önce. Rezerve edilmiş bir bire bire, planlanan başlangıç saatinden itibaren 5 dakika içinde başlamalısın. Zamanında başlamazsan, hayrana otomatik olarak tam iade yapılır ve platformdan bir özür alır, ve o rezervasyon sana hiçbir şey ödemez. Zamanında başlarsan ve hayran 3 dakika içinde katılmazsa, bu bir hayran gelmemesidir: hayran iade almaz ve rezervasyon sana kazanılmış olarak ödenir. Meşgulken de FaceTime istekleri alabilirsin: başka bir arama sırasında bir isteği kabul ettiğinde, hayran bekleme listene katılır ve sıradaki yerini ve tahmini bekleme süresini görebilir. Araman bittiğinde, sıradaki hayrana katılmak için 90 saniyelik bir pencere verilir. Bir isteği kabul ederek, sırası geldiğinde o hayranın aramasını almayı taahhüt edersin."
+    "title": "12. Planlanmış Bire Birler ve Görüntülü Arama Bekleme Listesi",
+    "body": "Kendi bire bir programını sen kontrol edersin: özel bire bir rezervasyonlarını hangi gün ve saatlerde aldığını ve günde ve haftada kaç tane kabul ettiğini sen belirlersin. Onaylanmış bir rezervasyon, zamanını o hayran için ayırır. Platform, her rezervasyondan önce sana hatırlatma bildirimleri gönderecek — 3 gün önce, 3 saat önce ve 15 dakika önce. Rezerve edilmiş bir bire bire, planlanan başlangıç saatinden itibaren 5 dakika içinde başlamalısın. Zamanında başlamazsan, hayrana otomatik olarak tam iade yapılır ve platformdan bir özür alır, ve o rezervasyon sana hiçbir şey ödemez. Zamanında başlarsan ve hayran 3 dakika içinde katılmazsa, bu bir hayran gelmemesidir: hayran iade almaz ve rezervasyon sana kazanılmış olarak ödenir. Meşgulken de görüntülü arama istekleri alabilirsin: başka bir arama sırasında bir isteği kabul ettiğinde, hayran bekleme listene katılır ve sıradaki yerini ve tahmini bekleme süresini görebilir. Araman bittiğinde, sıradaki hayrana katılmak için 90 saniyelik bir pencere verilir. Bir isteği kabul ederek, sırası geldiğinde o hayranın aramasını almayı taahhüt edersin."
    },
    {
     "title": "13. Ödeme Bekletmeleri, Ters İbraz İptalleri ve Dolandırıcılık",
@@ -9781,7 +9781,7 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
     updates.push('per_voice_cents = ?'); params.push(per_voice_cents);
   }
   // Dedicated 1-on-1 booking rate: $1–$100/min — bookings run long, so the
-  // band sits below the FaceTime slider's. Setting it never touches her
+  // band sits below the video call slider's. Setting it never touches her
   // per-minute video rate (and vice versa) — that separation is the point.
   if (rateRange(booking_rate_cents, 100, 10000)) {
     updates.push('booking_rate_cents = ?'); params.push(booking_rate_cents);
@@ -9819,7 +9819,7 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
   if (!updates.length) return res.status(400).json({ error: 'nothing_to_update' });
   params.push(req.user.id);
   db.prepare(`UPDATE models SET ${updates.join(', ')} WHERE user_id = ?`).run(...params);
-  // Going offline empties her FaceTime line (refunded + notified).
+  // Going offline empties her video call line (refunded + notified).
   if (is_online === 0) ftCancelAll(req.user.id, 'she went offline');
   res.json({ model: db.prepare('SELECT * FROM models WHERE user_id = ?').get(req.user.id) });
 });
@@ -12085,14 +12085,14 @@ function endCall(callId, reason) {
   }
   pushToSubject(`u:${call.fan_id}`, { type: 'call:ended', call_id: callId, reason: reason || 'ended' });
   pushToSubject(`u:${call.model_id}`, { type: 'call:ended', call_id: callId, reason: reason || 'ended' });
-  // FaceTime: close out the request and bring the next fan in line.
+  // Video call: close out the request and bring the next fan in line.
   if (call.facetime_req_id) {
     const fr = ftGet(call.facetime_req_id);
     if (fr && fr.status === 'in_call') {
       // Never actually started (she never accepted — e.g. her camera/mic
       // failed): the block "didn't happen", so it refunds in full, exactly
-      // as the FaceTime sheet promises. Started calls finish as 'done'.
-      if (!call.started_at) ftFinish(fr, 'cancelled', 'FaceTime never started — refunded');
+      // as the video call sheet promises. Started calls finish as 'done'.
+      if (!call.started_at) ftFinish(fr, 'cancelled', 'Video call never started — refunded');
       else ftFinish(fr, 'done', null);
     }
   }
@@ -12107,7 +12107,7 @@ function billCallMinute(callId) {
     return;
   }
   if (call.prepaid_min > 0) {
-    // FaceTime block: already paid upfront — just count down to the cap.
+    // Video call block: already paid upfront — just count down to the cap.
     db.prepare('UPDATE calls SET minutes_billed = minutes_billed + 1 WHERE id = ?').run(callId);
     const upd = db.prepare('SELECT * FROM calls WHERE id = ?').get(callId);
     const remaining = Math.max(0, upd.prepaid_min - upd.minutes_billed);
@@ -12189,7 +12189,7 @@ app.get('/api/calls/:id', identMiddleware, requireUser, (req, res) => {
 });
 
 /* ------------------------------------------------------------------ */
-/* FaceTime: prepaid instant 1-on-1 requests + queue (Oct 13, 2026)    */
+/* Video call: prepaid instant 1-on-1 requests + queue (Oct 13, 2026)    */
 /* Fan prepays a block (10/15/30/45/60 min) from chat. The model       */
 /* accepts -> his call starts now, or he queues behind her current     */
 /* call with live position + ETA updates. Locked while she's LIVE      */
@@ -12297,7 +12297,7 @@ function ftCancelAll(modelId, reason) {
   for (const r of rows) {
     db.prepare(`UPDATE facetime_requests SET status = 'cancelled',
                 ended_at = datetime('now') WHERE id = ?`).run(r.id);
-    refundFan(r.fan_id, r.model_id, r.amount_cents, 'call_refund', `FaceTime cancelled — ${reason}`);
+    refundFan(r.fan_id, r.model_id, r.amount_cents, 'call_refund', `Video call cancelled — ${reason}`);
     ftPushFan(ftGet(r.id), { reason });
   }
   if (rows.length) ftPushQueue(modelId);
@@ -12311,7 +12311,7 @@ function ftSweep() {
     AND invite_expires_ms IS NOT NULL AND invite_expires_ms < ?`).all(Date.now());
   const touched = new Set();
   for (const r of missed) {
-    ftFinish(r, 'cancelled', 'FaceTime turn missed — refunded');
+    ftFinish(r, 'cancelled', 'Video call turn missed — refunded');
     touched.add(r.model_id);
   }
   for (const m of touched) ftPromote(m);
@@ -12330,7 +12330,7 @@ app.post('/api/facetime/request', identMiddleware, requireUser, requireRole('fan
   if (modelRegionBlocked(row.id, geoOfReq(req))) return regionBlocked(res);
   const live = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`).get(row.id);
   if (live) return res.status(409).json({ error: 'model_live',
-    message: "She's live right now — FaceTime is locked during lives. Join her stage or book a 1-on-1." });
+    message: "She's live right now — Video calls are locked during lives. Join her stage or book a 1-on-1." });
   if (!row.is_online) return res.status(409).json({ error: 'model_offline' });
   let conv = db.prepare('SELECT * FROM conversations WHERE fan_id = ? AND model_id = ?')
     .get(req.user.id, row.id);
@@ -12355,7 +12355,7 @@ app.post('/api/facetime/request', identMiddleware, requireUser, requireRole('fan
       balance_cents: getWallet(req.user.id).credits_cents });
   try {
     chargeFan(req.user.id, row.id, amount, 'call',
-      `FaceTime ${duration} min with ${row.display_name}`, clientIp(req));
+      `Video call ${duration} min with ${row.display_name}`, clientIp(req));
   } catch (e) {
     return res.status(402).json(chargeErrorBody(e, amount, req.user.id));
   }
@@ -12434,7 +12434,7 @@ app.post('/api/facetime/:id/decline', identMiddleware, requireUser, requireRole(
   if (!r || r.model_id !== req.user.id) return res.status(404).json({ error: 'not_found' });
   if (!['pending', 'queued'].includes(r.status))
     return res.status(409).json({ error: 'not_decidable' });
-  ftFinish(r, 'declined', 'FaceTime declined — refunded');
+  ftFinish(r, 'declined', 'Video call declined — refunded');
   ftPushQueue(req.user.id);
   res.json({ ok: true });
 });
@@ -12445,7 +12445,7 @@ app.post('/api/facetime/:id/cancel', identMiddleware, requireUser, requireRole('
   if (!['pending', 'queued', 'invited'].includes(r.status))
     return res.status(409).json({ error: 'not_cancellable' });
   const wasInvited = r.status === 'invited';
-  ftFinish(r, 'cancelled', 'FaceTime cancelled by fan — refunded');
+  ftFinish(r, 'cancelled', 'Video call cancelled by fan — refunded');
   if (wasInvited) ftPromote(r.model_id); else ftPushQueue(r.model_id);
   res.json({ ok: true });
 });
@@ -12503,7 +12503,7 @@ app.post('/api/calls/:id/explicit-accept', identMiddleware, requireUser, require
           balance_cents: getWallet(req.user.id).credits_cents });
       try {
         chargeFan(req.user.id, call.model_id, extra, 'call_explicit',
-          `Explicit FaceTime — ${remaining} min`, clientIp(req));
+          `Explicit video call — ${remaining} min`, clientIp(req));
       } catch (e) {
         return res.status(402).json(chargeErrorBody(e, extra, req.user.id));
       }
@@ -13155,11 +13155,11 @@ app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), 
   const existing = db.prepare(`SELECT id FROM live_sessions WHERE model_id = ? AND status = 'live'`)
     .get(req.user.id);
   if (existing) return res.status(409).json({ error: 'already_live', session_id: existing.id });
-  // FaceTime locks while she's live: an active call must end first, and
-  // everyone waiting in her FaceTime line is refunded + told why.
+  // Video calls lock while she's live: an active call must end first, and
+  // everyone waiting in her video call line is refunded + told why.
   if (ftActiveCall(req.user.id))
     return res.status(409).json({ error: 'in_facetime_call',
-      message: 'End your FaceTime call before going live.' });
+      message: 'End your video call before going live.' });
   ftCancelAll(req.user.id, 'she went live');
   const m = db.prepare('SELECT explicit_rate_cents FROM models WHERE user_id = ?').get(req.user.id);
   const explicit_rate_cents = Number.isInteger(req.body.explicit_rate_cents) &&
@@ -15093,7 +15093,7 @@ function slotBookingCreate(req, res) {
     return res.status(409).json({ error: 'slot_unavailable',
       message: 'She is not taking 1-on-1s then.' });
   // Bookings price off her dedicated booking rate; until she sets one it
-  // IS her FaceTime per-minute rate (booking_rate_cents NULL fallback).
+  // IS her video-call per-minute rate (booking_rate_cents NULL fallback).
   const rate = model.booking_rate_cents ?? model.per_minute_cents;
   const total = rate * minutes;
   let bookingId = null;
@@ -15170,7 +15170,7 @@ app.post('/api/bookings', identMiddleware, requireUser, requireRole('fan'), (req
   if (scheduledAt > now + BOOKING_MAX_DAYS * 24 * 60 * 60 * 1000)
     return res.status(400).json({ error: 'too_far',
       message: 'Bookings open up to 7 days ahead.' });
-  // Same rule as the slot path: dedicated booking rate, FaceTime rate as
+  // Same rule as the slot path: dedicated booking rate, video call rate as
   // the fallback until she sets one.
   const rate = model.booking_rate_cents ?? model.per_minute_cents;
   const total = rate * durationMin;
@@ -16680,7 +16680,7 @@ app.post('/api/admin/ccbill/orders/:id/credit', identMiddleware, requireUser, re
 /*      issued refund; the endpoint deletes the row if money          */
 /*      movement fails, so a row here means credits really landed).    */
 /* Automatic spend reversals (refundFan: declined live joins,          */
-/* never-started FaceTime cancels) are NOT loads — they hand back      */
+/* never-started video call cancels) are NOT loads — they hand back      */
 /* money from a spend that already happened, recorded as negative      */
 /* ledger rows of the original spend type, so they never appear here. */
 /*                                                                     */

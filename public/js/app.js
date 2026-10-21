@@ -746,12 +746,12 @@ const I18N = {
     mark_all_read: 'Mark all read',
     notif_empty_title: 'Nothing yet.',
     notif_empty_sub: 'Follow models to get notified when they go live.',
-    notif_ft_wants: '{name} wants a FaceTime — {min} min · {amount}',
+    notif_ft_wants: '{name} wants a video call — {min} min · {amount}',
     notif_accept: 'Accept ✅',
     notif_decline: 'Decline',
-    notif_ft_queued: '⏳ In your FaceTime line — #{pos} · his turn in about {eta} min',
+    notif_ft_queued: '⏳ In your video call line — #{pos} · his turn in about {eta} min',
     notif_ft_invited: '💚 Invited — he\'s joining now…',
-    notif_ft_incall: '🔴 On FaceTime now',
+    notif_ft_incall: '🔴 On a video call now',
     pv_blurb: '🎬 <b>Preview video</b> — a few seconds that plays on your home tile and on your profile. This is your free hook — it can be as wild as you like: talking, teasing, explicit. It only ever plays inside the app, never on Google or your public page. Everything after it stays paid. Under 15MB.',
     pv_change: '🎬 Change preview video',
     pv_upload: '🎬 Upload preview video',
@@ -1539,12 +1539,12 @@ const I18N = {
     mark_all_read: 'Marcar todo leído',
     notif_empty_title: 'Nada por aquí todavía.',
     notif_empty_sub: 'Sigue a las modelos para recibir avisos cuando salgan en vivo.',
-    notif_ft_wants: '{name} quiere un FaceTime — {min} min · {amount}',
+    notif_ft_wants: '{name} quiere una videollamada — {min} min · {amount}',
     notif_accept: 'Aceptar ✅',
     notif_decline: 'Rechazar',
-    notif_ft_queued: '⏳ En tu fila de FaceTime — #{pos} · su turno en unos {eta} min',
+    notif_ft_queued: '⏳ En tu fila de videollamadas — #{pos} · su turno en unos {eta} min',
     notif_ft_invited: '💚 Invitado — se está uniendo ahora…',
-    notif_ft_incall: '🔴 En FaceTime ahora',
+    notif_ft_incall: '🔴 En videollamada ahora',
     pv_blurb: '🎬 <b>Video de vista previa</b> — unos segundos que se reproduce en tu tarjeta de inicio y en tu perfil. Este es tu gancho gratis — puede ser tan atrevido como quieras: hablando, provocando, explícito. Solo se reproduce dentro de la app, nunca en Google ni en tu página pública. Todo lo que sigue es pago. Menos de 15MB.',
     pv_change: '🎬 Cambiar video de vista previa',
     pv_upload: '🎬 Subir video de vista previa',
@@ -2332,12 +2332,12 @@ const I18N = {
     mark_all_read: 'Marcar tudo como lido',
     notif_empty_title: 'Nada por aqui ainda.',
     notif_empty_sub: 'Siga modelos para ser avisado quando elas entrarem ao vivo.',
-    notif_ft_wants: '{name} quer um FaceTime — {min} min · {amount}',
+    notif_ft_wants: '{name} quer uma videochamada — {min} min · {amount}',
     notif_accept: 'Aceitar ✅',
     notif_decline: 'Recusar',
-    notif_ft_queued: '⏳ Na sua fila de FaceTime — #{pos} · a vez dele em cerca de {eta} min',
+    notif_ft_queued: '⏳ Na sua fila de videochamadas — #{pos} · a vez dele em cerca de {eta} min',
     notif_ft_invited: '💚 Convidado — ele está entrando agora…',
-    notif_ft_incall: '🔴 No FaceTime agora',
+    notif_ft_incall: '🔴 Em videochamada agora',
     pv_blurb: '🎬 <b>Vídeo de prévia</b> — alguns segundos que tocam no seu card da página inicial e no seu perfil. É seu gancho grátis — pode ser tão ousado quanto você quiser: falando, provocando, explícito. Ele só toca dentro do app, nunca no Google nem na sua página pública. Tudo depois dele continua pago. Até 15MB.',
     pv_change: '🎬 Trocar vídeo de prévia',
     pv_upload: '🎬 Enviar vídeo de prévia',
@@ -3125,12 +3125,12 @@ const I18N = {
     mark_all_read: 'Tout marquer comme lu',
     notif_empty_title: 'Rien pour le moment.',
     notif_empty_sub: 'Suivez des modèles pour être avertie quand elles passent en direct.',
-    notif_ft_wants: '{name} veut un FaceTime — {min} min · {amount}',
+    notif_ft_wants: '{name} veut un appel vidéo — {min} min · {amount}',
     notif_accept: 'Accepter ✅',
     notif_decline: 'Refuser',
-    notif_ft_queued: '⏳ Dans votre file FaceTime — #{pos} · son tour dans environ {eta} min',
+    notif_ft_queued: '⏳ Dans votre file d\'appels vidéo — #{pos} · son tour dans environ {eta} min',
     notif_ft_invited: '💚 Invité — il rejoint maintenant…',
-    notif_ft_incall: '🔴 En FaceTime maintenant',
+    notif_ft_incall: '🔴 En appel vidéo maintenant',
     pv_blurb: '🎬 <b>Vidéo d\'aperçu</b> — quelques secondes qui se jouent sur votre vignette d\'accueil et sur votre profil. C\'est votre accroche gratuite — elle peut être aussi folle que vous voulez : parler, taquiner, explicite. Elle ne se joue que dans l\'appli, jamais sur Google ni sur votre page publique. Tout ce qui suit reste payant. Moins de 15MB.',
     pv_change: '🎬 Changer la vidéo d\'aperçu',
     pv_upload: '🎬 Téléverser une vidéo d\'aperçu',
@@ -3918,12 +3918,12 @@ const I18N = {
     mark_all_read: 'Alle als gelesen markieren',
     notif_empty_title: 'Noch nichts.',
     notif_empty_sub: 'Folge Modellen, um benachrichtigt zu werden, wenn sie live gehen.',
-    notif_ft_wants: '{name} will ein FaceTime — {min} Min. · {amount}',
+    notif_ft_wants: '{name} will einen Videoanruf — {min} Min. · {amount}',
     notif_accept: 'Akzeptieren ✅',
     notif_decline: 'Ablehnen',
-    notif_ft_queued: '⏳ In deiner FaceTime-Schlange — #{pos} · er ist dran in etwa {eta} Min.',
+    notif_ft_queued: '⏳ In deiner Videoanruf-Schlange — #{pos} · er ist dran in etwa {eta} Min.',
     notif_ft_invited: '💚 Eingeladen — er tritt jetzt bei…',
-    notif_ft_incall: '🔴 Jetzt auf FaceTime',
+    notif_ft_incall: '🔴 Jetzt im Videoanruf',
     pv_blurb: '🎬 <b>Vorschauvideo</b> — ein paar Sekunden, die auf deiner Startkachel und auf deinem Profil abgespielt werden. Das ist dein kostenloser Köder — es kann so wild sein, wie du willst: reden, necken, explizit. Es wird nur in der App abgespielt, niemals auf Google oder deiner öffentlichen Seite. Alles danach bleibt bezahlt. Unter 15MB.',
     pv_change: '🎬 Vorschauvideo ändern',
     pv_upload: '🎬 Vorschauvideo hochladen',
@@ -4711,12 +4711,12 @@ const I18N = {
     mark_all_read: 'Отметить все как прочитанные',
     notif_empty_title: 'Пока ничего.',
     notif_empty_sub: 'Подписывайтесь на моделей, чтобы получать уведомления, когда они выходят в эфир.',
-    notif_ft_wants: '{name} хочет FaceTime — {min} мин · {amount}',
+    notif_ft_wants: '{name} хочет видеозвонок — {min} мин · {amount}',
     notif_accept: 'Принять ✅',
     notif_decline: 'Отклонить',
-    notif_ft_queued: '⏳ В вашей очереди FaceTime — #{pos} · его очередь примерно через {eta} мин',
+    notif_ft_queued: '⏳ В вашей очереди видеозвонков — #{pos} · его очередь примерно через {eta} мин',
     notif_ft_invited: '💚 Приглашён — он присоединяется сейчас…',
-    notif_ft_incall: '🔴 Сейчас на FaceTime',
+    notif_ft_incall: '🔴 Сейчас на видеозвонке',
     pv_blurb: '🎬 <b>Видео-превью</b> — несколько секунд, которые воспроизводятся на вашей плитке на главной и в вашем профиле. Это ваш бесплатный крючок — оно может быть настолько дерзким, насколько вы хотите: разговоры, дразнение, откровенное. Оно воспроизводится только внутри приложения, никогда в Google или на вашей публичной странице. Всё после него остаётся платным. Менее 15MB.',
     pv_change: '🎬 Изменить видео-превью',
     pv_upload: '🎬 Загрузить видео-превью',
@@ -5504,12 +5504,12 @@ const I18N = {
     mark_all_read: 'すべて既読にする',
     notif_empty_title: 'まだ何もありません。',
     notif_empty_sub: 'モデルをフォローすると、ライブ開始時に通知が届きます。',
-    notif_ft_wants: '{name} がFaceTimeを希望 — {min}分 · {amount}',
+    notif_ft_wants: '{name} がビデオ通話を希望 — {min}分 · {amount}',
     notif_accept: '承諾 ✅',
     notif_decline: '辞退',
-    notif_ft_queued: '⏳ あなたのFaceTime列 — #{pos}番 · 彼の番まであと約 {eta}分',
+    notif_ft_queued: '⏳ あなたのビデオ通話列 — #{pos}番 · 彼の番まであと約 {eta}分',
     notif_ft_invited: '💚 招待済み — 彼が今参加しています…',
-    notif_ft_incall: '🔴 現在FaceTime中',
+    notif_ft_incall: '🔴 現在ビデオ通話中',
     pv_blurb: '🎬 <b>プレビュー動画</b> — ホームタイルとプロフィールで再生される数秒の動画。これはあなたの無料フックです — 話したり、焦らしたり、露骨でも、好きなだけワイルドでOK。再生されるのはアプリ内のみで、Googleや公開ページには決して表示されません。その先はすべて有料のままです。15MB未満。',
     pv_change: '🎬 プレビュー動画を変更',
     pv_upload: '🎬 プレビュー動画をアップロード',
@@ -6297,12 +6297,12 @@ const I18N = {
     mark_all_read: '全部标为已读',
     notif_empty_title: '暂时还没有。',
     notif_empty_sub: '关注模特，以便在她们开播时收到通知。',
-    notif_ft_wants: '{name} 想要一次 FaceTime — {min} 分钟 · {amount}',
+    notif_ft_wants: '{name} 想要一次视频通话 — {min} 分钟 · {amount}',
     notif_accept: '接受 ✅',
     notif_decline: '拒绝',
-    notif_ft_queued: '⏳ 在你的 FaceTime 队列中 — #{pos} · 大约 {eta} 分钟轮到他',
+    notif_ft_queued: '⏳ 在你的视频通话队列中 — #{pos} · 大约 {eta} 分钟轮到他',
     notif_ft_invited: '💚 已邀请 — 他正在加入…',
-    notif_ft_incall: '🔴 正在 FaceTime 中',
+    notif_ft_incall: '🔴 正在视频通话中',
     pv_blurb: '🎬 <b>预览视频</b> — 一段几秒钟的视频，会在你的首页瓷砖和个人资料上播放。这是你的免费诱饵 — 可以随心所欲：说话、挑逗、露骨内容。它只在应用内播放，绝不会出现在 Google 或你的公开页面上。它之后的一切都保持付费。小于 15MB。',
     pv_change: '🎬 更换预览视频',
     pv_upload: '🎬 上传预览视频',
@@ -7090,12 +7090,12 @@ const I18N = {
     mark_all_read: '모두 읽음으로 표시',
     notif_empty_title: '아직 아무것도 없습니다.',
     notif_empty_sub: '모델을 팔로우하면 라이브를 시작할 때 알림을 받습니다.',
-    notif_ft_wants: '{name}님이 FaceTime을 원합니다 — {min}분 · {amount}',
+    notif_ft_wants: '{name}님이 영상 통화를 원합니다 — {min}분 · {amount}',
     notif_accept: '수락 ✅',
     notif_decline: '거절',
-    notif_ft_queued: '⏳ FaceTime 대기열에 있습니다 — #{pos}번 · 약 {eta}분 후 차례입니다',
+    notif_ft_queued: '⏳ 영상 통화 대기열에 있습니다 — #{pos}번 · 약 {eta}분 후 차례입니다',
     notif_ft_invited: '💚 초대됨 — 지금 참여 중입니다…',
-    notif_ft_incall: '🔴 지금 FaceTime 중',
+    notif_ft_incall: '🔴 지금 영상 통화 중',
     pv_blurb: '🎬 <b>미리보기 영상</b> — 홈 타일과 프로필에서 재생되는 몇 초짜리 영상입니다. 무료 유인책입니다 — 원하는 만큼 과감해도 됩니다: 말하기, 유혹하기, 선정적인 것까지. 앱 안에서만 재생되며 Google이나 공개 페이지에는 절대 올라가지 않습니다. 그 이후의 모든 것은 유료입니다. 15MB 미만.',
     pv_change: '🎬 미리보기 영상 변경',
     pv_upload: '🎬 미리보기 영상 업로드',
@@ -7883,12 +7883,12 @@ const I18N = {
     mark_all_read: 'Segna tutte come lette',
     notif_empty_title: 'Ancora nulla.',
     notif_empty_sub: 'Segui le modelle per ricevere notifiche quando vanno live.',
-    notif_ft_wants: '{name} vuole un FaceTime — {min} min · {amount}',
+    notif_ft_wants: '{name} vuole una videochiamata — {min} min · {amount}',
     notif_accept: 'Accetta ✅',
     notif_decline: 'Rifiuta',
-    notif_ft_queued: '⏳ Nella tua fila FaceTime — #{pos} · il suo turno tra circa {eta} min',
+    notif_ft_queued: '⏳ Nella tua fila videochiamate — #{pos} · il suo turno tra circa {eta} min',
     notif_ft_invited: '💚 Invitato — sta entrando ora…',
-    notif_ft_incall: '🔴 Su FaceTime ora',
+    notif_ft_incall: '🔴 In videochiamata ora',
     pv_blurb: '🎬 <b>Video di anteprima</b> — pochi secondi che vengono riprodotti sulla tua tile home e sul tuo profilo. Questo è il tuo gancio gratuito — può essere selvaggio quanto vuoi: parlare, provocare, esplicito. Viene riprodotto solo dentro l\'app, mai su Google o sulla tua pagina pubblica. Tutto ciò che segue resta a pagamento. Sotto i 15MB.',
     pv_change: '🎬 Cambia video di anteprima',
     pv_upload: '🎬 Carica video di anteprima',
@@ -8676,12 +8676,12 @@ const I18N = {
     mark_all_read: 'Oznacz wszystkie jako przeczytane',
     notif_empty_title: 'Jeszcze nic.',
     notif_empty_sub: 'Obserwuj modelki, aby otrzymywać powiadomienia, gdy rozpoczną transmisję na żywo.',
-    notif_ft_wants: '{name} chce FaceTime — {min} min · {amount}',
+    notif_ft_wants: '{name} chce rozmowę wideo — {min} min · {amount}',
     notif_accept: 'Akceptuj ✅',
     notif_decline: 'Odrzuć',
-    notif_ft_queued: '⏳ W Twojej kolejce FaceTime — #{pos} · jego kolej za około {eta} min',
+    notif_ft_queued: '⏳ W Twojej kolejce rozmów wideo — #{pos} · jego kolej za około {eta} min',
     notif_ft_invited: '💚 Zaproszony — dołącza teraz…',
-    notif_ft_incall: '🔴 Teraz na FaceTime',
+    notif_ft_incall: '🔴 Teraz na rozmowie wideo',
     pv_blurb: '🎬 <b>Wideo podglądu</b> — kilka sekund, które odtwarza się na Twoim kafelku na stronie głównej i na Twoim profilu. To Twój darmowy haczyk — może być tak dzikie, jak chcesz: rozmowa, drażnienie, erotyka. Odtwarza się tylko w aplikacji, nigdy w Google ani na Twojej publicznej stronie. Wszystko po nim pozostaje płatne. Poniżej 15MB.',
     pv_change: '🎬 Zmień wideo podglądu',
     pv_upload: '🎬 Prześlij wideo podglądu',
@@ -9469,12 +9469,12 @@ const I18N = {
     mark_all_read: 'Alles als gelezen markeren',
     notif_empty_title: 'Nog niets.',
     notif_empty_sub: 'Volg modellen om een melding te krijgen wanneer ze live gaan.',
-    notif_ft_wants: '{name} wil een FaceTime — {min} min · {amount}',
+    notif_ft_wants: '{name} wil een videogesprek — {min} min · {amount}',
     notif_accept: 'Accepteren ✅',
     notif_decline: 'Afwijzen',
-    notif_ft_queued: '⏳ In je FaceTime-rij — #{pos} · zijn beurt over ongeveer {eta} min',
+    notif_ft_queued: '⏳ In je videogesprek-rij — #{pos} · zijn beurt over ongeveer {eta} min',
     notif_ft_invited: '💚 Uitgenodigd — hij doet nu mee…',
-    notif_ft_incall: '🔴 Nu op FaceTime',
+    notif_ft_incall: '🔴 Nu in videogesprek',
     pv_blurb: '🎬 <b>Previewvideo</b> — een paar seconden die speelt op je home-tegel en op je profiel. Dit is je gratis haak — hij mag zo wild zijn als je wilt: praten, plagen, expliciet. Hij speelt alleen ooit binnen de app, nooit op Google of je openbare pagina. Alles erna blijft betaald. Onder 15MB.',
     pv_change: '🎬 Previewvideo wijzigen',
     pv_upload: '🎬 Previewvideo uploaden',
@@ -10262,12 +10262,12 @@ const I18N = {
     mark_all_read: 'Tümünü okundu işaretle',
     notif_empty_title: 'Henüz bir şey yok.',
     notif_empty_sub: 'Modelleri takip et, canlıya geçtiklerinde bildirim al.',
-    notif_ft_wants: '{name} FaceTime istiyor — {min} dk · {amount}',
+    notif_ft_wants: '{name} görüntülü arama istiyor — {min} dk · {amount}',
     notif_accept: 'Kabul et ✅',
     notif_decline: 'Reddet',
-    notif_ft_queued: '⏳ FaceTime sıranda — #{pos} · sırası yaklaşık {eta} dk içinde',
+    notif_ft_queued: '⏳ Görüntülü arama sıranda — #{pos} · sırası yaklaşık {eta} dk içinde',
     notif_ft_invited: '💚 Davet edildi — şimdi katılıyor…',
-    notif_ft_incall: '🔴 Şu an FaceTime\'da',
+    notif_ft_incall: '🔴 Şu an görüntülü aramada',
     pv_blurb: '🎬 <b>Ön izleme videosu</b> — ana kutucuğunda ve profilinde oynayan birkaç saniye. Bu senin ücretsiz kancan — istediğin kadar çılgın olabilir: konuşma, tahrik, müstehcen. Yalnızca uygulama içinde oynar, asla Google\'da veya herkese açık sayfanda değil. Ondan sonraki her şey ücretli kalır. 15MB altında.',
     pv_change: '🎬 Ön izleme videosunu değiştir',
     pv_upload: '🎬 Ön izleme videosu yükle',
@@ -10850,7 +10850,7 @@ function handleWS(m) {
         ? (S.call.role === 'model'
           ? '💔 He never showed up — the booking is paid, you keep it.'
           : "💔 You missed the 1-on-1 — no-shows aren't refunded.")
-      : m.reason === 'time_up' ? "⏰ Time's up — FaceTime over!" : 'Call ended.');
+      : m.reason === 'time_up' ? "⏰ Time's up — video call over!" : 'Call ended.');
   } else if (m.type === 'facetime:request') {
     if (S.user && S.user.role === 'model') showFtRequestCard(m.request);
   } else if (m.type === 'facetime:update') {
@@ -17232,11 +17232,11 @@ function syncChatComposer() {
 }
 
 /* Tab bar vanishes while any sheet/modal flow is open (PPV price sheet,
-   voice recorder, gift/tip/FaceTime/booking sheets…) and
+   voice recorder, gift/tip/video call/booking sheets…) and
    pops back the moment it closes. A MutationObserver catches EVERY open and
    close path (send, cancel, backdrop tap, programmatic remove), so the state
    can never desync; leaving a view removes the sheet node, which restores
-   the bar too. Sheets are: .sheet-backdrop modals (tip menu, gift, FaceTime,
+   the bar too. Sheets are: .sheet-backdrop modals (tip menu, gift, video call,
    booking, priority, stage…) and the fixed overlays #ppv-price-overlay /
    #voice-ov / #tip-ov / #paywall. */
 function syncSheetState() {
@@ -17643,7 +17643,7 @@ async function sendTip(amountCents) {
 
 let pc = null, localStream = null, callTimerInt = null;
 
-/* Call media plumbing shared by FaceTime, chat calls and bookings.
+/* Call media plumbing shared by video calls, chat calls and bookings.
  * The three helpers below exist because of the Oct 14 black-stage bug:
  *  - wireRemoteVideo: ontrack used to ONLY assign srcObject. iOS Safari
  *    will not autoplay an UNMUTED element whose stream is assigned in
@@ -17722,7 +17722,7 @@ function pcConnected(pc_) {
 }
 
 function wireRemoteVideo(pc_) {
-  /* Media-plane supervision. The Oct 14 FaceTime call ran its whole
+  /* Media-plane supervision. The Oct 14 video call ran its whole
    * state machine (accept → active → ticks) while NO media flowed in
    * either direction — and nothing in either client ever looked at the
    * peer connection's state, so a media-less call presented as a healthy
@@ -17816,7 +17816,7 @@ function updateCallHUD() {
     ? `${mm}:${ss} · ${S.call.remainingMin != null ? S.call.remainingMin : S.call.prepaidMin} min left`
     : `${mm}:${ss}`;
   if (c) c.textContent = (S.call.prepaidMin
-    ? `📹 FaceTime ${S.call.prepaidMin} min`
+    ? `📹 Video call ${S.call.prepaidMin} min`
     : `~${fmt((S.call.minutes || 0) * S.call.rate)}`) + (S.call.explicit ? ' · 🔞 EXPLICIT' : '');
   updateJoinCountdown();
 }
@@ -17850,7 +17850,7 @@ setInterval(() => {
   });
 }, 1000);
 
-/* ---------------- FaceTime: prepaid requests + queue ---------------- */
+/* ---------------- Video call: prepaid requests + queue ---------------- */
 const FACETIME_DURATIONS = [10, 15, 30, 45, 60];
 let ftPoll = null;
 let ftMine = null;
@@ -17872,7 +17872,7 @@ function openFaceTimeSheet() {
   const other = S.conv && S.conv.other;
   if (!other) return;
   const rate = other.per_minute_cents || 0;
-  ftSheet(`<div class="sheet-title">📹 FaceTime ${esc(other.display_name)}</div>
+  ftSheet(`<div class="sheet-title">📹 Video call with ${esc(other.display_name)}</div>
     <div class="muted small" style="margin-bottom:10px">Pay upfront — if she accepts, you're on. If she's in a call, you take a spot in line and we'll tell you your place + the wait. Full refund if she declines or it doesn't happen.</div>
     ${FACETIME_DURATIONS.map((d) => `
       <button class="sheet-btn ft-dur" data-d="${d}">📹 ${d} minutes<span class="sheet-btn-sub">${fmt(rate * d)}</span></button>`).join('')}`);
@@ -17883,12 +17883,12 @@ function openFaceTimeSheet() {
         body: JSON.stringify({ model_id: other.id, duration_min: Number(b.dataset.d) }) });
       if (status !== 200) {
         if (data.error === 'model_live')
-          return toast(data.message || "🔴 She's live — FaceTime is locked during lives. Join her stage or book a 1-on-1!", 5000);
+          return toast(data.message || "🔴 She's live — video calls are locked during lives. Join her stage or book a 1-on-1!", 5000);
         if (data.error === 'model_offline') return toast('She is offline right now.');
         if (data.error === 'spend_cap_reached') return spendCapToast(data);
         if (data.error === 'insufficient_credits') return showBuyCredits(data.needed_cents);
         if (data.error === 'already_requested') {
-          toast('You already have a FaceTime request with her ⏳');
+          toast('You already have a video call request with her ⏳');
           return refreshFtPanel();
         }
         if (data.error === 'already_in_line') {
@@ -17896,9 +17896,9 @@ function openFaceTimeSheet() {
           return refreshFtPanel();
         }
         if (data.error === 'chat_paused') return toast('Chat is paused by the safety monitor.');
-        return toast('Could not send the FaceTime request.');
+        return toast('Could not send the video call request.');
       }
-      toast('FaceTime request sent 📹');
+      toast('Video call request sent 📹');
       if (S.wallet) refreshMe();
       updateFtPanel(data.request);
     };
@@ -17929,13 +17929,13 @@ function updateFtPanel(req, reason) {
     stopFtPoll();
     ftMine = null;
     if (wasActive && req) {
-      if (req.status === 'declined') toast(`${req.model_name} declined the FaceTime — you were refunded.`, 4000);
-      else if (req.status === 'expired') toast('No answer — FaceTime expired, you were refunded.', 4000);
+      if (req.status === 'declined') toast(`${req.model_name} declined the video call — you were refunded.`, 4000);
+      else if (req.status === 'expired') toast('No answer — the video call expired, you were refunded.', 4000);
       else if (req.status === 'cancelled' && reason === 'she went live')
-        toast(`🔴 ${req.model_name} went live — FaceTime refunded. Join her stage or book a 1-on-1!`, 5000);
+        toast(`🔴 ${req.model_name} went live — video call refunded. Join her stage or book a 1-on-1!`, 5000);
       else if (req.status === 'cancelled' && reason === 'she went offline')
-        toast(`${req.model_name} went offline — FaceTime refunded.`, 4000);
-      else if (req.status === 'cancelled') toast('Your FaceTime turn passed — you were refunded.', 4000);
+        toast(`${req.model_name} went offline — video call refunded.`, 4000);
+      else if (req.status === 'cancelled') toast('Your video call turn passed — you were refunded.', 4000);
       refreshMe();
     }
     return;
@@ -17952,7 +17952,7 @@ function updateFtPanel(req, reason) {
     return;
   }
   if (req.status === 'pending') {
-    el.innerHTML = `<div class="ft-line">⏳ <b>Waiting for ${esc(req.model_name)}</b> to accept your ${req.duration_min}-min FaceTime…</div>
+    el.innerHTML = `<div class="ft-line">⏳ <b>Waiting for ${esc(req.model_name)}</b> to accept your ${req.duration_min}-min video call…</div>
       <div class="ft-sub">Paid ${fmt(req.amount_cents)} · she's got it in her notifications — full refund if she declines or you cancel</div>
       <button class="btn ghost small" id="ft-cancel">Cancel &amp; refund</button>`;
   } else if (req.status === 'queued') {
@@ -17960,7 +17960,7 @@ function updateFtPanel(req, reason) {
         <div class="ft-line grow">📹 <b>${t('bk_in_line')} ${esc(req.model_name)}</b> 💋</div>
         <button class="ft-min" id="ft-min" title="Minimize">–</button></div>
       <div class="ft-line" style="font-size:17px"><b>#${req.position}</b> · ${t('bk_turn_in')} <b>${req.eta_min} ${t('bk_min_wait')}</b></div>
-      <div class="ft-sub">Your ${req.duration_min}-min FaceTime starts the moment hers ends · paid ${fmt(req.amount_cents)}</div>
+      <div class="ft-sub">Your ${req.duration_min}-min video call starts the moment hers ends · paid ${fmt(req.amount_cents)}</div>
       <button class="btn ghost small" id="ft-cancel">${t('bk_leave_line')}</button>`;
     const mn = $('#ft-min');
     if (mn) mn.onclick = () => { ftPanelMin = true; updateFtPanel(ftMine); };
@@ -17979,7 +17979,7 @@ function updateFtPanel(req, reason) {
     stopFtPoll();
     ftMine = null;
     ftPanelMin = false;
-    toast('FaceTime cancelled — refunded.');
+    toast('Video call cancelled — refunded.');
     refreshMe();
   };
   startFtPoll();
@@ -18007,7 +18007,7 @@ async function joinFtCall() {
   beginCallMedia(data.call_id, data.rate_cents, req.model_id, data.prepaid_min);
 }
 
-/* Model side: FaceTime request popup (Accept / Decline). Shows on the
+/* Model side: video call request popup (Accept / Decline). Shows on the
    live WS event (and when she taps the request in her notification box),
    stays ~9 seconds, then dismisses ITSELF — dismissal is not a decline:
    the request lives on, actionable, in her notification box until she
@@ -18021,7 +18021,7 @@ function showFtRequestCard(req) {
   el.className = 'ft-req-modal';
   el.innerHTML = `<div class="ft-req-card">
       <div style="font-size:32px">📹</div>
-      <div class="ft-req-title">${esc(req.fan_name)} wants FaceTime</div>
+      <div class="ft-req-title">${esc(req.fan_name)} wants a video call</div>
       <div class="muted">${req.duration_min} minutes · ${fmt(req.amount_cents)} — already paid 💰</div>
       <div class="muted small">If you're in a call, Accept puts him in line. No rush — this also waits in your 🔔 notifications.</div>
       <div class="ft-req-actions">
@@ -18072,7 +18072,7 @@ async function refreshFtCard() {
   } catch (e) { /* ignore */ }
 }
 
-/* Model side: her FaceTime line — who's waiting, in what order, with a
+/* Model side: her video call line — who's waiting, in what order, with a
    Remove (refunds him) per waiter. Visible during calls too, so she can
    manage the line without leaving the call screen. */
 let ftQueuePoll = null;
@@ -18094,7 +18094,7 @@ function updateModelFtQueue(line) {
     return;
   }
   el.classList.remove('hidden');
-  el.innerHTML = `<div class="ft-line">📹 <b>Your FaceTime line</b> (${line.length})</div>` +
+  el.innerHTML = `<div class="ft-line">📹 <b>Your video call line</b> (${line.length})</div>` +
     line.map((r, i) => `
       <div class="ft-q-row">
         <span class="grow">${r.status === 'invited' ? '💚' : `<b>#${i + 1}</b>`} ${esc(r.fan_name)} · ${r.duration_min} min${r.status === 'invited' ? ' · invited — joining…' : ''}</span>
@@ -18162,11 +18162,11 @@ async function beginCallMedia(callId, rateCents, modelId, prepaidMin) {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
   } catch (e) {
-    // He already joined server-side (call row + FaceTime request exist).
-    // Release the call so it closes out — an unstarted FaceTime refunds —
+    // He already joined server-side (call row + video call request exist).
+    // Release the call so it closes out — an unstarted video call refunds —
     // instead of leaving her side waiting on a call that can't happen.
     await api(`/calls/${callId}/end`, { method: 'POST' }).catch(() => {});
-    return toast('📹 Camera/mic blocked — allow camera access for this site, then try again. The FaceTime never started, so you were refunded.', 6000);
+    return toast('📹 Camera/mic blocked — allow camera access for this site, then try again. The video call never started, so you were refunded.', 6000);
   }
   try {
     pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
@@ -18185,7 +18185,7 @@ async function beginCallMedia(callId, rateCents, modelId, prepaidMin) {
     await api(`/calls/${callId}/end`, { method: 'POST' }).catch(() => {});
     if (localStream) { localStream.getTracks().forEach((t) => t.stop()); localStream = null; }
     if (pc) { try { pc.close(); } catch (err) {} pc = null; }
-    return toast('Could not start the call — the FaceTime never started, so you were refunded.', 5000);
+    return toast('Could not start the call — the video call never started, so you were refunded.', 5000);
   }
   S.call = { id: callId, rate: rateCents, seconds: 0, minutes: 0, role: 'fan',
              prepaidMin: prepaidMin || 0, remainingMin: prepaidMin || null };
@@ -18204,7 +18204,7 @@ async function handleSignal(m) {
     if (!S.user || S.user.role !== 'model') return;
     S.call = { id: p.call_id, rate: p.rate, seconds: 0, minutes: 0, role: 'model',
                from: m.from, fromName: p.from_name, offer: p.sdp };
-    // FaceTime she already accepted: no second ring — connect straight away.
+    // Video call she already accepted: no second ring — connect straight away.
     try {
       const { data } = await api('/facetime/incoming');
       const match = (data.requests || []).find((r) => r.call_id === p.call_id && r.status === 'in_call');
@@ -19489,7 +19489,7 @@ async function refreshNotifBadge() {
 async function vNotifications() {
   const { data } = await api('/notifications');
   const notifs = data.notifications || [];
-  // FaceTime request bells (link /#ft/<id>) are ACTIONABLE for the model:
+  // Video call request bells (link /#ft/<id>) are ACTIONABLE for the model:
   // join them against her live incoming list so a still-pending request
   // renders Accept/Decline right here, and a queued one shows his wait.
   let ftById = {};
@@ -20622,7 +20622,7 @@ async function onStageApproved(stage, silent) {
       selfView.srcObject = stream;
       selfView.classList.remove('hidden');
       selfView.play().catch(() => {});
-      // Try native iOS Picture-in-Picture (floats like FaceTime)
+      // Try native iOS Picture-in-Picture (floats like a video call)
       try {
         if (document.pictureInPictureEnabled && !selfView.disablePictureInPicture) {
           await selfView.requestPictureInPicture().catch(() => {});
@@ -22268,7 +22268,7 @@ function updateBusy() {
       const el = document.getElementById(id);
       if (el && !el.classList.contains('hidden')) return true;
     }
-    // Any sheet / modal flow open — PPV price sheet, tip/gift/FaceTime/
+    // Any sheet / modal flow open — PPV price sheet, tip/gift/video call/
     // booking sheets, the paywall: a purchase may be mid-flight. The
     // body flag is maintained by syncSheetState(); the selector is the
     // same one it watches.
