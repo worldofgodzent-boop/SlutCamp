@@ -3163,6 +3163,21 @@ const requireRole = (...roles) => (req, res, next) => {
   next();
 };
 
+/* Fan-facing viewer doors, widened for the house account (owner comp,
+ * 2026-10-22): fans pass as always; the house account (a model-role
+ * user) passes as a comp viewer; every other role still gets the 403.
+ * Used ONLY by the live-viewing endpoints the comp covers — money
+ * endpoints (tips, gifts, PPV, bookings, calls) keep requireRole. */
+const requireFanOrHouse = (req, res, next) => {
+  if (req.ident.kind !== 'user') return res.status(401).json({ error: 'login_required' });
+  const u = req.ident.user;
+  if (u.role !== 'fan' && !isHouseAccountId(u.id)) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  req.user = u;
+  next();
+};
+
 /* Affiliate-area gate (one account for both): standalone recruiters
  * (role) OR any account holding the affiliate capability — a
  * recruiters row. A fan/model who attached Affiliate passes with her
@@ -5952,6 +5967,20 @@ function isHouseAccountId(userId) {
   return hid !== null && hid === userId;
 }
 
+/* Owner comp bypass (owner, 2026-10-22): "Let my SlutCamp account able
+ * to text and join all the live for free. Bypass all that money stuff
+ * since I'm the platform itself." Scope: the HOUSE account only
+ * (fandemo is NOT comped). This is a door key, never money: comp
+ * activity never calls chargeFan/refundFan, so it writes no
+ * transaction rows, credits no model earnings, moves no platform
+ * stats and triggers no rank recompute — the ledger stays exactly as
+ * clean as the 2026-10-21 wipe left it. Tips, gifts, PPV unlocks,
+ * bookings and 1-on-1 calls are NOT comped. */
+function isOwnerComp(user) { return !!user && isHouseAccountId(user.id); }
+/* A comp viewer's explicit-until: far future, so the gift-grace
+ * upkeep loop never re-blurs the house mid-live. */
+const ownerCompUntil = () => Date.now() + 10 * 365 * 24 * 3600 * 1000;
+
 /* ------------------------------------------------------------------ */
 /* The OFFICIAL SlutCamp notices thread (owner, Oct 18 2026): every   */
 /* user gets ONE conversation with the house account — the app's      */
@@ -6987,7 +7016,10 @@ app.get('/api/me', identMiddleware, requireUser, (req, res) => {
   // The affiliate flags ride the same private channel: capability,
   // primary code, and the email-matched merge offer (one account for
   // both) — the client shows dual-account UI ONLY from these flags.
-  const out = { user: { ...getUserPublic(req.user), email: req.user.email || '', ...affiliateFlagsFor(req.user) }, wallet };
+  const out = { user: { ...getUserPublic(req.user), email: req.user.email || '', ...affiliateFlagsFor(req.user),
+    // Owner comp: the client lets the house account through the
+    // fan-facing viewer doors (watchLive / battle stage) off this flag.
+    is_house: isHouseAccountId(req.user.id) }, wallet };
   if (req.user.role === 'model') {
     const mrow = db.prepare('SELECT * FROM models WHERE user_id = ?').get(req.user.id);
     if (mrow) {
@@ -7396,7 +7428,12 @@ app.post('/api/conversations/:id/read', identMiddleware, (req, res) => {
 
 // POST /api/conversations/start {model_id} — fan or guest opens a chat
 app.post('/api/conversations/start', identMiddleware, (req, res) => {
-  if (req.ident.kind === 'user' && req.ident.user.role !== 'fan')
+  // Owner comp: the house account may also open a fan-side thread with
+  // a model (it texts free — model-role senders are never billed, and
+  // /api/messages routes its fan-side sends to the model). Everyone
+  // else non-fan still gets fans_only.
+  if (req.ident.kind === 'user' && req.ident.user.role !== 'fan'
+      && !isHouseAccountId(req.ident.user.id))
     return res.status(403).json({ error: 'fans_only' });
   const model = db.prepare(`
     SELECT u.id FROM users u JOIN models m ON m.user_id = u.id
@@ -7582,14 +7619,21 @@ app.post('/api/messages', identMiddleware, (req, res) => {
                  sender_role: msg.sender_role || 'fan',
                  reactions: [], edited: false, edited_at: null };
 
-  // Deliver to the other side
-  const otherKey = req.ident.kind === 'user'
+  // Deliver to the other side. Owner comp exception: the house
+  // account can sit on the FAN side of a thread (it opened the chat
+  // with the model) while its role is 'model' — the role-based target
+  // below would push its own message back to itself, so a house
+  // fan-side send routes to the model side instead. Billing is
+  // untouched: a model-role sender is never charged either way.
+  const houseFanSide = req.ident.kind === 'user' && isHouseAccountId(req.ident.user.id)
+    && conv.fan_id === req.ident.user.id && conv.model_id !== req.ident.user.id;
+  const otherKey = houseFanSide ? `u:${conv.model_id}` : (req.ident.kind === 'user'
     ? (isModelSender
         ? (conv.fan_id ? `u:${conv.fan_id}` : `g:${conv.guest_token}`)
         : `u:${conv.model_id}`)
-    : `u:${conv.model_id}`;
+    : `u:${conv.model_id}`);
   pushToSubject(otherKey, { type: 'chat:new', conversation_id: conv.id, message: full });
-  buzzChatRecipient(isModelSender ? conv.fan_id : conv.model_id,
+  buzzChatRecipient(houseFanSide ? conv.model_id : (isModelSender ? conv.fan_id : conv.model_id),
     `💬 ${full.sender_name}`, text.slice(0, 120));
 
   res.json({ message: full, cost_cents: costCents, free_remaining: freeLeft,
@@ -7875,14 +7919,17 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
                    media: { ...receiverMedia, unlocked: true, shielded: false },
                    reactions: [], edited: false, edited_at: null }; // sender always sees own
 
-    const otherKey = req.ident.kind === 'user'
+    // Owner comp: same house fan-side routing as /api/messages.
+    const houseFanSide = req.ident.kind === 'user' && isHouseAccountId(req.ident.user.id)
+      && conv.fan_id === req.ident.user.id && conv.model_id !== req.ident.user.id;
+    const otherKey = houseFanSide ? `u:${conv.model_id}` : (req.ident.kind === 'user'
       ? (isModelSender
           ? (conv.fan_id ? `u:${conv.fan_id}` : `g:${conv.guest_token}`)
           : `u:${conv.model_id}`)
-      : `u:${conv.model_id}`;
+      : `u:${conv.model_id}`);
     const receiverMsg = { ...full, media: receiverMedia };
     pushToSubject(otherKey, { type: 'chat:new', conversation_id: conv.id, message: receiverMsg });
-    buzzChatRecipient(isModelSender ? conv.fan_id : conv.model_id,
+    buzzChatRecipient(houseFanSide ? conv.model_id : (isModelSender ? conv.fan_id : conv.model_id),
       `💬 ${full.sender_name}`, MEDIA_LABELS[kind] || 'New message');
 
     res.json({ message: full, cost_cents: costCents, free_remaining: freeLeft,
@@ -12243,7 +12290,10 @@ app.post('/api/battles/:id/enter', identMiddleware, requireUser, (req, res) => {
     const otherSession = req.user.id === b.host_id ? b.guest_session_id : b.host_session_id;
     joinViewer(otherSession, req.user.id);
   } else {
-    if (req.user.role !== 'fan') return res.status(403).json({ error: 'forbidden' });
+    // Owner comp: the house spectates battles like a fan (no charge
+    // exists at this door for anyone).
+    if (req.user.role !== 'fan' && !isHouseAccountId(req.user.id))
+      return res.status(403).json({ error: 'forbidden' });
     joinViewer(b.host_session_id, req.user.id);
     joinViewer(b.guest_session_id, req.user.id);
     db.prepare('INSERT OR IGNORE INTO battle_viewers (battle_id, fan_id) VALUES (?,?)')
@@ -13070,6 +13120,9 @@ function stopLivePayTimer(sessionId, fanId, clearDb = true) {
 }
 
 function billLiveMinute(sessionId, fanId) {
+  // Owner comp hard guard: the house is never billed per minute, even
+  // if a pay timer somehow exists for it — kill the timer, charge nil.
+  if (isHouseAccountId(fanId)) { stopLivePayTimer(sessionId, fanId); return; }
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(sessionId);
   const viewer = db.prepare('SELECT * FROM live_viewers WHERE session_id = ? AND fan_id = ?')
     .get(sessionId, fanId);
@@ -13183,11 +13236,13 @@ function serializePrivateEvent(ev, viewer) {
     out.model_name = ev.model_display_name;
     out.model_photo_url = ev.model_photo_url || null;
   }
-  if (viewer && viewer.role === 'fan') {
+  if (viewer && (viewer.role === 'fan' || isHouseAccountId(viewer.id))) {
     out.invited = !!db.prepare('SELECT 1 FROM private_event_invites WHERE event_id = ? AND fan_id = ?')
       .get(ev.id, viewer.id);
-    out.has_seat = !!privateSeatRow(ev.id, viewer.id);
-    out.can_buy = ev.status === 'scheduled' && out.seats_left > 0 &&
+    // Owner comp: the house always "has a seat" (its spectator pass
+    // rides seatGate at join time) and can never buy one.
+    out.has_seat = isHouseAccountId(viewer.id) ? true : !!privateSeatRow(ev.id, viewer.id);
+    out.can_buy = !isHouseAccountId(viewer.id) && ev.status === 'scheduled' && out.seats_left > 0 &&
       Date.now() < Date.parse(ev.starts_at) && (out.phase === 'public' || out.invited);
   }
   if (viewer && viewer.id === ev.model_id) {
@@ -13249,6 +13304,10 @@ function sweepStalePrivateEvents() {
    caller may proceed; otherwise the 403 is already sent. */
 function seatGate(res, sess, userId) {
   if (!sess.private_event_id) return true;
+  // Owner comp: the house passes as a spectator WITHOUT a seat row —
+  // seats_sold counts private_event_seats rows, so the house never
+  // consumes a sellable seat (and never paid, so never refunds).
+  if (isHouseAccountId(userId)) return true;
   if (privateSeatRow(sess.private_event_id, userId)) return true;
   res.status(403).json({ error: 'seat_required',
     message: '🔒 This is a Private Room — only seat-holders can enter.' });
@@ -13601,7 +13660,7 @@ app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), 
 });
 
 // Fan leaves the live view (stops billing, closes model's peer connection)
-app.post('/api/live/:id/leave', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+app.post('/api/live/:id/leave', identMiddleware, requireUser, requireFanOrHouse, (req, res) => {
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
   if (!sess) return res.status(404).json({ error: 'not_found' });
   stopLivePayTimer(sess.id, req.user.id);
@@ -13622,8 +13681,12 @@ app.post('/api/live/:id/leave', identMiddleware, requireUser, requireRole('fan')
     const fee = stageJoinFee(!!myPending.is_explicit, myPending.mode || 'video',
       modelJoinRates(sess.model_id));
     db.prepare(`UPDATE live_join_requests SET status = 'declined' WHERE id = ?`).run(myPending.id);
-    refundFan(req.user.id, sess.model_id, fee, 'live_join_refund',
-      `🎥 Left stream — join request refunded`, clientIp(req));
+    // Owner comp: a house request was never charged — refunding it
+    // would fabricate money out of thin air, so it is only cancelled.
+    if (!isHouseAccountId(req.user.id)) {
+      refundFan(req.user.id, sess.model_id, fee, 'live_join_refund',
+        `🎥 Left stream — join request refunded`, clientIp(req));
+    }
     pushToUser(sess.model_id, { type: 'live:join-request-cancelled',
       session_id: sess.id, request_id: myPending.id });
   }
@@ -13756,10 +13819,15 @@ app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
   for (const r of pendingStageReqs(sess.id)) {
     const fee = stageJoinFee(!!r.is_explicit, r.mode || 'video', modelJoinRates(sess.model_id));
     db.prepare(`UPDATE live_join_requests SET status = 'declined' WHERE id = ?`).run(r.id);
-    refundFan(r.fan_id, sess.model_id, fee, 'live_join_refund',
-      `🎥 Stream ended — join request refunded`, clientIp(req));
+    // Owner comp: a house request was never charged — no refund (a
+    // refund would fabricate money), it is simply declined.
+    const compReq = isHouseAccountId(r.fan_id);
+    if (!compReq) {
+      refundFan(r.fan_id, sess.model_id, fee, 'live_join_refund',
+        `🎥 Stream ended — join request refunded`, clientIp(req));
+    }
     pushToUser(r.fan_id, { type: 'live:join-declined', session_id: sess.id,
-      request_id: r.id, refunded_cents: fee,
+      request_id: r.id, refunded_cents: compReq ? 0 : fee,
       balance_cents: getWallet(r.fan_id).credits_cents });
   }
   dropStageFan(sess.id, 'stream_ended');
@@ -13836,7 +13904,10 @@ app.post('/api/relay/subscribe', identMiddleware, requireUser, async (req, res) 
     if (modelRegionBlocked(sess.model_id, geoOfReq(req))) return regionBlocked(res);
   } else if (req.user.role === 'model') {
     const b = liveBattleForSession(sess.id);
-    if (!b || !isBattler(b, req.user.id) || sess.model_id === req.user.id)
+    // Owner comp: the house may pull any public stream it isn't
+    // hosting; battlers keep their existing opposing-side access.
+    const houseViewer = isHouseAccountId(req.user.id) && sess.model_id !== req.user.id;
+    if (!houseViewer && (!b || !isBattler(b, req.user.id) || sess.model_id === req.user.id))
       return res.status(403).json({ error: 'forbidden' });
   } else {
     return res.status(403).json({ error: 'forbidden' });
@@ -13940,7 +14011,7 @@ app.get('/api/live', (req, res) => {
 });
 
 // Fan joins as a free viewer (SFW preview)
-app.post('/api/live/:id/join', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+app.post('/api/live/:id/join', identMiddleware, requireUser, requireFanOrHouse, (req, res) => {
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ? AND status = \'live\'')
     .get(req.params.id);
   if (!sess) return res.status(404).json({ error: 'not_live' });
@@ -13950,6 +14021,13 @@ app.post('/api/live/:id/join', identMiddleware, requireUser, requireRole('fan'),
   if (!seatGate(res, sess, req.user.id)) return;
   db.prepare('INSERT OR IGNORE INTO live_viewers (session_id, fan_id) VALUES (?,?)')
     .run(sess.id, req.user.id);
+  // Owner comp: the house watches unblurred from the start — its
+  // viewer row carries explicit_paid with a far-future grace, and no
+  // charge of any kind stands behind it (no transaction, no timer).
+  if (isOwnerComp(req.user)) {
+    db.prepare('UPDATE live_viewers SET explicit_paid = 1, explicit_until = ? WHERE session_id = ? AND fan_id = ?')
+      .run(ownerCompUntil(), sess.id, req.user.id);
+  }
   // Tell the model someone new is watching. A fan who already pulled
   // the stream from the relay (subscribe happens before join) is
   // flagged via_relay: she counts him but opens NO mesh peer
@@ -13966,33 +14044,44 @@ app.post('/api/live/:id/join', identMiddleware, requireUser, requireRole('fan'),
   const me = db.prepare('SELECT explicit_until, is_paying, explicit_paid FROM live_viewers WHERE session_id = ? AND fan_id = ?')
     .get(sess.id, req.user.id);
   const jr = modelJoinRates(sess.model_id);
+  // Owner comp: the rates the house sees are the rates it pays — $0.
+  const comp = isOwnerComp(req.user);
   res.json({ ok: true, session_id: sess.id, model_id: sess.model_id,
     model_name: model.display_name, title: sess.title || '',
-    explicit_rate_cents: sess.explicit_rate_cents, is_explicit: !!sess.is_explicit,
+    explicit_rate_cents: comp ? 0 : sess.explicit_rate_cents, is_explicit: !!sess.is_explicit,
     brb: !!sess.brb,
     is_paying: !!(me && me.is_paying), explicit_until: me ? me.explicit_until : 0,
     explicit_paid: !!(me && me.explicit_paid),
-    explicit_grace_sec: getGiftGraceSec(), explicit_entry_cents: getEntryCents(),
-    explicit_join_cents: jr.explicit_join_cents,
-    explicit_mic_join_cents: jr.explicit_mic_join_cents,
-    join_cents: jr.join_cents,
-    mic_join_cents: jr.mic_join_cents,
+    explicit_grace_sec: getGiftGraceSec(), explicit_entry_cents: comp ? 0 : getEntryCents(),
+    explicit_join_cents: comp ? 0 : jr.explicit_join_cents,
+    explicit_mic_join_cents: comp ? 0 : jr.explicit_mic_join_cents,
+    join_cents: comp ? 0 : jr.join_cents,
+    mic_join_cents: comp ? 0 : jr.mic_join_cents,
     relay_available: relayPubs.has(sess.id),
     priority: currentPriority(sess.id) });
 });
 
 // Fan starts paying the explicit per-minute rate (unblurs)
-app.post('/api/live/:id/pay', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+app.post('/api/live/:id/pay', identMiddleware, requireUser, requireFanOrHouse, (req, res) => {
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ? AND status = \'live\'')
     .get(req.params.id);
   if (!sess) return res.status(404).json({ error: 'not_live' });
   if (modelRegionBlocked(sess.model_id, geoOfReq(req))) return regionBlocked(res);
   // Shield: explicit unblur is an explicit-content purchase — a
-  // shielded (unverified, regulated-state) fan cannot start it.
-  if (shieldAppliesToIdent(req, req.ident)) return avRequired(res);
+  // shielded (unverified, regulated-state) fan cannot start it. The
+  // house is not a purchaser, so the shield does not apply to it.
+  if (!isOwnerComp(req.user) && shieldAppliesToIdent(req, req.ident)) return avRequired(res);
   const viewer = db.prepare('SELECT * FROM live_viewers WHERE session_id = ? AND fan_id = ?')
     .get(sess.id, req.user.id);
   if (!viewer) return res.status(403).json({ error: 'join_first' });
+  // Owner comp: unblur with NO billing timer and NO charge.
+  if (isOwnerComp(req.user)) {
+    const until = ownerCompUntil();
+    db.prepare('UPDATE live_viewers SET explicit_paid = 1, explicit_until = ? WHERE session_id = ? AND fan_id = ?')
+      .run(until, sess.id, req.user.id);
+    return res.json({ ok: true, owner_comp: true, rate_cents: 0, explicit_until: until,
+      balance_cents: getWallet(req.user.id).credits_cents });
+  }
   if (getWallet(req.user.id).credits_cents < sess.explicit_rate_cents)
     return res.status(402).json({ error: 'insufficient_credits',
       needed_cents: sess.explicit_rate_cents,
@@ -14010,16 +14099,30 @@ app.post('/api/live/:id/pay', identMiddleware, requireUser, requireRole('fan'), 
 
 // STAGE 1 — Explicit entry fee: one-time per-viewer charge to unblur when she
 // goes explicit. This is the gate; gifts are the upkeep (stage 2). Split via platform commission_pct.
-app.post('/api/live/:id/explicit-entry', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+app.post('/api/live/:id/explicit-entry', identMiddleware, requireUser, requireFanOrHouse, (req, res) => {
   const sess = liveSessionOr404(req, res);
   if (!sess) return;
   if (modelRegionBlocked(sess.model_id, geoOfReq(req))) return regionBlocked(res);
   if (!sess.is_explicit) return res.status(400).json({ error: 'not_explicit' });
   // Shield: same rule as /pay — no explicit entry while unverified.
-  if (shieldAppliesToIdent(req, req.ident)) return avRequired(res);
+  // The house is not a purchaser, so the shield does not apply to it.
+  if (!isOwnerComp(req.user) && shieldAppliesToIdent(req, req.ident)) return avRequired(res);
   const viewer = db.prepare('SELECT * FROM live_viewers WHERE session_id = ? AND fan_id = ?')
     .get(sess.id, req.user.id);
   if (!viewer) return res.status(403).json({ error: 'join_first' });
+  // Owner comp: entry granted with NO chargeFan call — no transaction,
+  // no model earnings, no platform cut. Idempotent (re-entry refreshes
+  // the far-future grace instead of a fan's 409).
+  if (isOwnerComp(req.user)) {
+    const until = ownerCompUntil();
+    db.prepare('UPDATE live_viewers SET explicit_paid = 1, explicit_until = ? WHERE session_id = ? AND fan_id = ?')
+      .run(until, sess.id, req.user.id);
+    db.prepare(`INSERT INTO blur_events (session_id, fan_id, event, detail)
+                VALUES (?,?,'paid','explicit_entry_owner_comp')`).run(sess.id, req.user.id);
+    return res.json({ ok: true, owner_comp: true, explicit_until: until,
+      explicit_grace_sec: getGiftGraceSec(),
+      balance_cents: getWallet(req.user.id).credits_cents });
+  }
   if (viewer.explicit_paid) return res.status(409).json({ error: 'already_paid' });
   const entryCents = getEntryCents();
   try {
@@ -14042,7 +14145,7 @@ app.post('/api/live/:id/explicit-entry', identMiddleware, requireUser, requireRo
 });
 
 // Fan stops paying (back to free blurred preview)
-app.post('/api/live/:id/stop-pay', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+app.post('/api/live/:id/stop-pay', identMiddleware, requireUser, requireFanOrHouse, (req, res) => {
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
   if (!sess) return res.status(404).json({ error: 'not_found' });
   stopLivePayTimer(sess.id, req.user.id);
@@ -14500,10 +14603,14 @@ function killLiveSession(sess, reason) {
   for (const r of pendingStageReqs(sess.id)) {
     const fee = stageJoinFee(!!r.is_explicit, r.mode || 'video', modelJoinRates(sess.model_id));
     db.prepare(`UPDATE live_join_requests SET status = 'declined' WHERE id = ?`).run(r.id);
-    refundFan(r.fan_id, sess.model_id, fee, 'live_join_refund',
-      `🎥 Stream ended — join request refunded`, 'safety-kill');
+    // Owner comp: a house request was never charged — no refund.
+    const compReq = isHouseAccountId(r.fan_id);
+    if (!compReq) {
+      refundFan(r.fan_id, sess.model_id, fee, 'live_join_refund',
+        `🎥 Stream ended — join request refunded`, 'safety-kill');
+    }
     pushToUser(r.fan_id, { type: 'live:join-declined', session_id: sess.id,
-      request_id: r.id, refunded_cents: fee,
+      request_id: r.id, refunded_cents: compReq ? 0 : fee,
       balance_cents: getWallet(r.fan_id).credits_cents });
   }
   dropStageFan(sess.id, 'stream_ended');
@@ -15014,7 +15121,7 @@ function dropStageFan(sessionId, reason) {
 
 // Fan requests stage time. Mode: 'video' ($10/$25) or 'mic' audio-only ($5/$15).
 // If she's explicit right now it's the EXPLICIT tier. Charged immediately; refunded if declined.
-app.post('/api/live/:id/join-request', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+app.post('/api/live/:id/join-request', identMiddleware, requireUser, requireFanOrHouse, (req, res) => {
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ? AND status = \'live\'')
     .get(req.params.id);
   if (!sess) return res.status(404).json({ error: 'not_live' });
@@ -15032,15 +15139,21 @@ app.post('/api/live/:id/join-request', identMiddleware, requireUser, requireRole
   const isExplicitJoin = !!sess.is_explicit;
   const mode = req.body && req.body.mode === 'mic' ? 'mic' : 'video';
   const rates = modelJoinRates(sess.model_id);
-  const fee = stageJoinFee(isExplicitJoin, mode, rates);
+  // Owner comp: the house's stage request carries a $0 fee and never
+  // touches chargeFan — no transaction, no model earnings. (Its
+  // decline/end/leave paths likewise skip the refund.)
+  const comp = isOwnerComp(req.user);
+  const fee = comp ? 0 : stageJoinFee(isExplicitJoin, mode, rates);
   const modeLabel = mode === 'mic' ? 'mic-only 🎙️' : 'video 🎥';
-  try {
-    chargeFan(req.user.id, sess.model_id, fee, 'live_join_request',
-      `${mode === 'mic' ? '🎙️' : '🎥'} Join-live request (${modeLabel}, ${isExplicitJoin ? 'explicit' : 'regular'}) on stream #${sess.id}`, clientIp(req));
-  } catch (e) {
-    if (e.message === 'insufficient_credits' || e.message === 'spend_cap_reached')
-      return res.status(402).json(chargeErrorBody(e, fee, req.user.id));
-    throw e;
+  if (!comp) {
+    try {
+      chargeFan(req.user.id, sess.model_id, fee, 'live_join_request',
+        `${mode === 'mic' ? '🎙️' : '🎥'} Join-live request (${modeLabel}, ${isExplicitJoin ? 'explicit' : 'regular'}) on stream #${sess.id}`, clientIp(req));
+    } catch (e) {
+      if (e.message === 'insufficient_credits' || e.message === 'spend_cap_reached')
+        return res.status(402).json(chargeErrorBody(e, fee, req.user.id));
+      throw e;
+    }
   }
   const info = db.prepare(`INSERT INTO live_join_requests (session_id, fan_id, is_explicit, mode) VALUES (?,?,?,?)`)
     .run(sess.id, req.user.id, isExplicitJoin ? 1 : 0, mode);
@@ -15098,12 +15211,17 @@ app.post('/api/live/join-requests/:rid/decline', identMiddleware, requireUser, r
   if (!sess || sess.model_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
   const fee = stageJoinFee(!!r.is_explicit, r.mode || 'video', modelJoinRates(sess.model_id));
   db.prepare(`UPDATE live_join_requests SET status = 'declined' WHERE id = ?`).run(r.id);
-  refundFan(r.fan_id, sess.model_id, fee, 'live_join_refund',
-    `${(r.mode || 'video') === 'mic' ? '🎙️' : '🎥'} Join-live declined on stream #${sess.id} — refunded`, clientIp(req));
+  // Owner comp: a house request was never charged — decline only,
+  // never a refund (a refund would fabricate money).
+  const compReq = isHouseAccountId(r.fan_id);
+  if (!compReq) {
+    refundFan(r.fan_id, sess.model_id, fee, 'live_join_refund',
+      `${(r.mode || 'video') === 'mic' ? '🎙️' : '🎥'} Join-live declined on stream #${sess.id} — refunded`, clientIp(req));
+  }
   pushToUser(r.fan_id, { type: 'live:join-declined', session_id: sess.id,
-    request_id: r.id, refunded_cents: fee,
+    request_id: r.id, refunded_cents: compReq ? 0 : fee,
     balance_cents: getWallet(r.fan_id).credits_cents });
-  res.json({ ok: true, refunded_cents: fee });
+  res.json({ ok: true, refunded_cents: compReq ? 0 : fee });
 });
 
 // Model drops the active stage fan (or stage timer expires — same path, no refund)
