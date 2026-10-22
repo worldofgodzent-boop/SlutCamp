@@ -362,6 +362,12 @@ test('live: couple signup, owner-only CRUD, partner ID queue, camera rule, house
     const ownRow = queue3.json.verifications.find((v) => v.model_id === duo.id && !v.co_performer_id);
     assert.ok(ownRow, 'her own submission is a separate, non-partner queue row');
     assert.equal(ownRow.is_partner, 0);
+    // PR #86: her own packet cannot be approved until her WOGENT
+    // release is on file — she signs it first, like a real model.
+    const sign = await req(base, 'POST', '/api/model/release/sign', { token: duo.token, body: {
+      legal_name: 'Test Signer', stage_name: 'coperfduo', dob: '1995-05-05',
+      attestations: { adult: true, freewill: true, rights: true } } });
+    assert.equal(sign.status, 200, `release sign: ${sign.text}`);
     const apOwn = await req(base, 'POST', `/api/admin/id-verifications/${ownRow.id}/approve`, { ...MGR });
     assert.equal(apOwn.status, 200);
 
