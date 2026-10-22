@@ -360,6 +360,7 @@ const SEO_CSS = `
   .bio { font-size:17px; line-height:1.55; color:#ead9e8; white-space:pre-wrap; max-width:640px; margin:14px auto; text-align:left; }
   .tags { margin:12px 0; } .tags a { display:inline-block; margin:3px; padding:5px 12px; border:1px solid #8b5cf6; border-radius:999px; text-decoration:none; font-size:14px; }
   .price { font-size:18px; margin:10px 0; }
+  .social { font-size:16px; margin:16px 0 0; }
   .cta { display:inline-block; margin-top:16px; background:linear-gradient(135deg,#8b5cf6,#ff5c9e); color:#fff; font-weight:800; font-size:18px; padding:14px 34px; border-radius:999px; text-decoration:none; }
   .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px; margin-top:20px; }
   .card { background:#241019; border-radius:16px; overflow:hidden; text-decoration:none; color:#f5eef4; display:block; }
@@ -419,7 +420,17 @@ function seoModelCard(m) {
   </div></a>`;
 }
 const seoBrand = `<div class="brand"><a href="/">Slut<span class="camp">Camp</span></a><span class="age">18+</span></div>`;
-const seoFooter = `<footer>SlutCamp is an 18+ platform. You must be of legal age in your location to use it.<br><a href="/models">All models</a> · <a href="/join">Become a model</a> · <a href="/">Open the app</a><br><a href="/#terms">Terms</a> · <a href="/#privacy">Privacy</a> · <a href="/#billing">Billing &amp; Refunds</a> · <a href="/#2257">2257</a> · <a href="/#dmca">DMCA</a><br>Operated by World of Godz Entertainment LLC</footer>`;
+/* Official brand socials (owner, Oct 22 2026: "We need our official X
+ * and instagram on slutcamp") — the BRAND accounts only, never the
+ * owner's personal accounts. Hard-coded constants: a single source, so
+ * a handle change is a one-line edit. Plain outbound links — no
+ * tracking parameters, no embeds, no feeds. Labels are the brand
+ * names themselves ("X" / "Instagram"), so the EN-only public pages
+ * need no STR keys for them. */
+const SOCIAL_X_URL = 'https://x.com/SlutCampApp';
+const SOCIAL_INSTAGRAM_URL = 'https://instagram.com/slcamp__';
+const seoSocialLinks = `<a href="${SOCIAL_X_URL}" target="_blank" rel="noopener">X</a> · <a href="${SOCIAL_INSTAGRAM_URL}" target="_blank" rel="noopener">Instagram</a>`;
+const seoFooter = `<footer>SlutCamp is an 18+ platform. You must be of legal age in your location to use it.<br><a href="/models">All models</a> · <a href="/join">Become a model</a> · <a href="/">Open the app</a><br><a href="/#terms">Terms</a> · <a href="/#privacy">Privacy</a> · <a href="/#billing">Billing &amp; Refunds</a> · <a href="/#2257">2257</a> · <a href="/#dmca">DMCA</a><br>${seoSocialLinks}<br>Operated by World of Godz Entertainment LLC</footer>`;
 
 // GET /models/:username — her public, crawlable page.
 app.get('/models/:username', (req, res) => {
@@ -440,6 +451,12 @@ app.get('/models/:username', (req, res) => {
   const photoHtml = m.public_photo_url
     ? `<img class="photo" src="${seoEsc(m.public_photo_url)}" alt="${seoEsc(m.display_name)} on SlutCamp">`
     : `<img class="photo" src="/img/lips-logo.png" alt="${seoEsc(m.display_name)} on SlutCamp">`;
+  // The official house page is the brand's home: it carries the
+  // official social links in its hero as well as in the footer every
+  // public page gets. House ONLY — a model's own page never grows
+  // social links (spec, Oct 22 2026: nowhere else in v1).
+  const socialHtml = isHouseAccountId(m.id)
+    ? `<p class="social">Follow SlutCamp: ${seoSocialLinks}</p>` : '';
   res.type('html').set('Cache-Control', 'public, max-age=300').send(`<!DOCTYPE html>
 <html lang="en">
 <head>${seoHead({ title, desc, url, image: m.photo_abs })}</head>
@@ -454,6 +471,7 @@ ${seoBrand}
   <p class="price">💬 Messages from ${seoMoney(m.per_message_cents)}</p>
   ${tagsHtml}
   <div><a class="cta" href="/">💋 Chat with her on SlutCamp</a></div>
+  ${socialHtml}
 </div>
 ${m.bio ? `<p class="bio">${seoEsc(m.bio)}</p>` : ''}
 ${seoFooter}
