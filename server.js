@@ -739,6 +739,26 @@ const idUpload = multer({
   },
 });
 
+// Signed paper WOGENT releases (Release in Onboarding, Oct 22 2026):
+// same private storage and photo-or-PDF discipline as consent forms —
+// a model who signed the house release on paper uploads it into the
+// same packet slot the in-app e-sign fills.
+const releaseUpload = multer({
+  storage: multer.diskStorage({
+    destination: ID_DIR,
+    filename: (req, file, cb) => {
+      const ext = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp',
+                    'application/pdf': '.pdf' }[file.mimetype] || '.jpg';
+      cb(null, 'release-' + crypto.randomBytes(16).toString('hex') + ext);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB — scanned forms run larger than ID photos
+  fileFilter: (req, file, cb) => {
+    const ok = /^image\/(jpeg|png|webp)$/.test(file.mimetype) || file.mimetype === 'application/pdf';
+    cb(ok ? null : new Error('bad_file_type'), ok);
+  },
+});
+
 // Co-star consent forms: the same private storage and discipline as
 // ID photos (a signed form carries a legal name + signature — PII),
 // but the file may be a photo OR a PDF: "any consent form will do"
@@ -2043,6 +2063,34 @@ CREATE INDEX IF NOT EXISTS idx_tipsends_model ON tip_sends(model_id, id);
    carry one (a model's own verification needs no consent form). */
 addColumnIfMissing('id_verifications', 'consent_form_path', 'TEXT');
 
+/* WOGENT house release (Release in Onboarding, Oct 22 2026): the
+   account-owning model's signed performer release lives in its OWN
+   table — one current record per model — NOT in contract_signatures:
+   recruiter agreement versions there are 'R%' and the recruiter
+   signature readers select LIKE 'R%', so a release version 'R1.0'
+   row would poison them. method 'esign' = the in-app signing flow
+   (attestations + typed legal name, text version pinned at signing);
+   method 'paper' = a signed paper copy uploaded into the same slot
+   (paper_path into the private ID storage, mirroring the co-star
+   consent form). Additive CREATE TABLE IF NOT EXISTS: databases
+   created before this build gain the table on boot, untouched. */
+db.exec(`
+CREATE TABLE IF NOT EXISTS model_releases (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  model_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
+  method TEXT NOT NULL CHECK(method IN ('esign','paper')),
+  legal_name TEXT NOT NULL DEFAULT '',
+  stage_name TEXT NOT NULL DEFAULT '',
+  dob TEXT NOT NULL DEFAULT '',
+  release_version TEXT NOT NULL DEFAULT '',
+  attestations TEXT NOT NULL DEFAULT '',
+  paper_path TEXT,
+  signed_at TEXT NOT NULL DEFAULT (datetime('now')),
+  ip TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_model_releases_model ON model_releases(model_id);
+`);
+
 /* One-time migration (Oct 15, 2026): contract_signatures shipped with a
    UNIQUE(user_id) constraint — one signature per user, forever — which
    makes re-signing a new agreement version impossible without erasing
@@ -3312,6 +3360,58 @@ function isIdVerified(modelUserId) {
   // owner's row hide behind a partner's pending one).
   const r = db.prepare('SELECT status FROM id_verifications WHERE model_id = ? AND co_performer_id IS NULL').get(modelUserId);
   return !!(r && r.status === 'approved');
+}
+
+/* ------------------------------------------------------------------ */
+/* WOGENT house release (Release in Onboarding, Oct 22 2026; Asce:    */
+/* "Fold it into model onboarding"). Every account-owning model signs */
+/* the site-neutral house release — rights to World Of Godz          */
+/* Entertainment LLC, the Producer, never to a platform — as part of  */
+/* her ID packet: the packet is COMPLETE only with ID front + ID back */
+/* + selfie holding ID + the signed release, and packet completeness  */
+/* drives the same gates as before (this adds a packet element; it    */
+/* opens no new gate and widens none). Signing is an in-app e-sign    */
+/* (attestations + typed legal name, text version pinned) or a signed */
+/* paper upload into the same slot. Models already ID-approved when   */
+/* this shipped KEEP their approval — nothing here ever rewrites a    */
+/* verification status; the requirement bites only at the Manager's   */
+/* approve action for a not-yet-approved packet. The house is the     */
+/* producer and exempt, as at every gate. Co-performers keep filing   */
+/* their PR #83 consent form — this covers the account owner herself. */
+/* ------------------------------------------------------------------ */
+
+// Her current release record (either method), or null.
+function modelReleaseRow(modelUserId) {
+  return db.prepare('SELECT * FROM model_releases WHERE model_id = ?').get(modelUserId) || null;
+}
+// The release slot is satisfied by an in-app e-sign OR a paper upload.
+// House = exempt (it is the producer the rights are granted TO).
+function releaseOnFile(modelUserId) {
+  if (isHouseAccountId(modelUserId)) return true;
+  return !!modelReleaseRow(modelUserId);
+}
+// Her whole own packet: all three ID documents AND the release.
+function ownPacketComplete(modelUserId) {
+  if (isHouseAccountId(modelUserId)) return true;
+  const v = db.prepare(`SELECT id_front_path, id_back_path, selfie_path
+                        FROM id_verifications WHERE model_id = ? AND co_performer_id IS NULL`).get(modelUserId);
+  return !!(v && v.id_front_path && v.id_back_path && v.selfie_path) && releaseOnFile(modelUserId);
+}
+// The client/Manager-safe shape of a release record (never the path).
+function releaseShape(r) {
+  if (!r) return null;
+  let attestations = null;
+  try { attestations = JSON.parse(r.attestations || 'null'); } catch (e) { attestations = null; }
+  return {
+    method: r.method,
+    legal_name: r.legal_name || '',
+    stage_name: r.stage_name || '',
+    dob: r.dob || '',
+    version: r.release_version || '',
+    attestations,
+    signed_at: r.signed_at || '',
+    paper_on_file: !!r.paper_path,
+  };
 }
 
 /* Camera rule (Sections Phase 2; Model Agreement v1.5 §15): the set
@@ -8488,6 +8588,57 @@ const MODEL_CONTRACT = {
   ],
 };
 
+/* WOGENT house performer release (Release in Onboarding, Oct 22 2026).
+   The site-neutral house form: rights run to World Of Godz
+   Entertainment LLC (the Producer), never to a platform, because every
+   platform demands its own form and a first-time model has none to
+   bring. The text is the house form Asce standardized for the
+   ManyVids fix, generalized to cover ALL content produced with the
+   Producer (no platform, no video IDs, no uploader account named).
+   The document stays in English as the controlling text; only the
+   app flow around it localizes. VERSIONED: bump RELEASE_VERSION and
+   the signed record keeps the version each model actually signed —
+   future wording changes never rewrite history. */
+const RELEASE_VERSION = 'R1.0';
+const WOGENT_RELEASE = {
+  version: RELEASE_VERSION,
+  updated: 'October 22, 2026',
+  sections: [
+    {
+      title: 'Performer Release and Consent',
+      body: 'This Performer Release and Consent ("Release") is between you, the performer ("Performer"), and World Of Godz Entertainment LLC (the "Producer"). It covers all photographs, videos, live performances, and other content you create with or for the Producer (the "Content"), on any website, platform, or medium. This Release is intentionally site-neutral: it grants rights to the Producer, not to any single platform.',
+    },
+    {
+      title: '1. Identity and Age',
+      body: 'You state your full legal name, your stage or professional name (if any), and your date of birth when you sign. You confirm you are at least 18 years old, and over the age of majority and legal consent in the jurisdiction where you live, both on the date the Content is produced and on the date you sign this Release. A copy of your valid government-issued photo ID is kept on file with this Release, together with a photograph of you holding that ID, as required for age and identity records under 18 U.S.C. § 2257.',
+    },
+    {
+      title: '2. Consent of Your Own Free Will',
+      body: 'You confirm you took part in the Content of your own free will, without coercion, threats, or duress, and that you fully understand the explicit sexual nature the Content may have and the online platforms on which it may be published. No person appearing in the Content was a minor. You consent to being depicted in the Content, and to your name (including stage name), likeness, voice, appearance, and performance being embodied in the Content.',
+    },
+    {
+      title: '3. Grant of Rights',
+      body: 'You grant the Producer the perpetual, worldwide right to reproduce, distribute, display, sell, license, publish, and otherwise commercially exploit the Content — in whole or in part — on ANY website, platform, or medium, now known or later created, including the right to edit, excerpt, and advertise the Content. You understand the Content may be searchable by users of the platforms where it is published and by publicly available search engines, and may be downloaded by viewers where a platform permits downloading.',
+    },
+    {
+      title: '4. Proceeds',
+      body: 'Payment for your work is handled under your SlutCamp model account and the Model Agreement you signed there, or under a separate written agreement between you and the Producer. This Release by itself does not promise any payment; proceeds from the Content are paid as those agreements say.',
+    },
+    {
+      title: '5. Identification Sharing for Verification and Compliance',
+      body: 'You authorise the Producer to provide a copy of the government identification referred to in section 1 to the operators or agents of any platform on which the Content is published, solely for age, identity, and compliance verification in connection with the Content, and to disclose it where required by applicable law, regulation, or valid legal process, such as a court order, search warrant, subpoena, or statutory requirement.',
+    },
+    {
+      title: '6. Release of Claims',
+      body: 'You release, discharge, indemnify, and hold harmless the Producer and any platform on which the Content is published from and against claims, liability, costs, losses, damages, or injuries of any kind arising out of or related to your participation in the Content, except where caused by that party\'s own unlawful conduct. You acknowledge that you are solely responsible for the nature of the Content in which you chose to participate, and that you bear the risks associated with your participation.',
+    },
+    {
+      title: '7. Whole Agreement and Electronic Signature',
+      body: 'This Release is the whole release between you and the Producer for the Content; any change must be in writing and agreed by both parties. You sign of your own free will, without coercion or compulsion of any kind. You understand you may consult an attorney before signing, and that this document affects your legal rights. Typing your legal name and submitting this form is your electronic signature, with the same legal effect as a handwritten signature.',
+    },
+  ],
+};
+
 /* Recruiter agreement — for models/partners who recruit other models */
 const RECRUITER_CONTRACT_VERSION = 'R1.3';
 const RECRUITER_CONTRACT = {
@@ -10677,8 +10828,13 @@ app.get('/api/model/id-verification', identMiddleware, requireUser, requireRole(
                         FROM id_verifications WHERE model_id = ? AND co_performer_id IS NULL`).get(req.user.id);
   // `house` drives the client: the house account's own Settings never
   // render the ID Verification card at all (owner, Oct 18 2026).
+  // `release` + `packet_complete` (Release in Onboarding, Oct 22
+  // 2026): her packet is complete only with the signed WOGENT house
+  // release alongside the three ID documents.
   res.json({ verification: v || null, verified: isIdVerified(req.user.id),
-    house: isHouseAccountId(req.user.id) });
+    house: isHouseAccountId(req.user.id),
+    release: releaseShape(modelReleaseRow(req.user.id)),
+    packet_complete: ownPacketComplete(req.user.id) });
 });
 
 // Model: submit ID front + ID back + selfie holding the ID
@@ -10725,6 +10881,117 @@ app.post('/api/model/id-verification', identMiddleware, requireUser, requireRole
     });
   });
 
+/* ------------------------------------------------------------------ */
+/* WOGENT house release — the model-facing signing flow               */
+/* (Release in Onboarding, Oct 22 2026). The document text is English */
+/* (controlling); the client localizes the flow around it.           */
+/* ------------------------------------------------------------------ */
+
+// Model: the release document + her signing state. `signed` is true
+// only when her record is on the CURRENT text version — a future
+// wording bump asks her to sign the new version, and her earlier
+// record stays exactly as signed underneath.
+app.get('/api/model/release', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const r = modelReleaseRow(req.user.id);
+  res.json({
+    version: WOGENT_RELEASE.version,
+    updated: WOGENT_RELEASE.updated,
+    sections: WOGENT_RELEASE.sections,
+    house: isHouseAccountId(req.user.id),
+    signed: !!r && r.release_version === WOGENT_RELEASE.version,
+    release: releaseShape(r),
+  });
+});
+
+// Model: sign the release in-app. Typed legal name = electronic
+// signature; the three attestations mirror the document (18+, free
+// will, rights grant) and ALL are required; the DOB she enters must
+// read 18+ — the release certifies it, so the flow refuses a DOB
+// that contradicts it. Stores the full record incl. the text version.
+app.post('/api/model/release/sign', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  if (isHouseAccountId(req.user.id)) return res.json({ ok: true, house: true });
+  const b = req.body || {};
+  const legalName = String(b.legal_name || '').trim().slice(0, 120);
+  const stageName = String(b.stage_name || '').trim().slice(0, 120);
+  const dob = String(b.dob || '').trim().slice(0, 10);
+  const at = b.attestations || {};
+  if (!legalName || legalName.length < 2)
+    return res.status(400).json({ error: 'bad_name', message: 'Type your full legal name to sign.' });
+  if (!at.adult || !at.freewill || !at.rights)
+    return res.status(400).json({ error: 'attestations_required',
+      message: 'All three boxes must be checked to sign.' });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dob))
+    return res.status(400).json({ error: 'bad_dob', message: 'Enter your date of birth.' });
+  const born = new Date(dob + 'T00:00:00Z');
+  if (Number.isNaN(born.getTime()))
+    return res.status(400).json({ error: 'bad_dob', message: 'Enter your date of birth.' });
+  const now = new Date();
+  let age = now.getUTCFullYear() - born.getUTCFullYear();
+  if (now.getUTCMonth() < born.getUTCMonth()
+      || (now.getUTCMonth() === born.getUTCMonth() && now.getUTCDate() < born.getUTCDate())) age--;
+  if (age < 18)
+    return res.status(400).json({ error: 'underage', message: 'You must be 18 or older to sign.' });
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
+  const attestations = JSON.stringify({ adult: true, freewill: true, rights: true });
+  const prev = modelReleaseRow(req.user.id);
+  if (prev && prev.paper_path) fs.unlink(prev.paper_path, () => { /* superseded by the e-sign */ });
+  db.prepare(`INSERT INTO model_releases
+                (model_id, method, legal_name, stage_name, dob, release_version,
+                 attestations, paper_path, signed_at, ip)
+              VALUES (?, 'esign', ?, ?, ?, ?, ?, NULL, datetime('now'), ?)
+              ON CONFLICT(model_id) DO UPDATE SET
+                method = 'esign', legal_name = excluded.legal_name,
+                stage_name = excluded.stage_name, dob = excluded.dob,
+                release_version = excluded.release_version,
+                attestations = excluded.attestations, paper_path = NULL,
+                signed_at = datetime('now'), ip = excluded.ip`)
+    .run(req.user.id, legalName, stageName, dob, WOGENT_RELEASE.version, attestations, ip.slice(0, 60));
+  pushToAdmins({ type: 'release:signed', model_id: req.user.id,
+    model_name: req.user.display_name, method: 'esign' });
+  res.json({ ok: true, version: WOGENT_RELEASE.version,
+    release: releaseShape(modelReleaseRow(req.user.id)),
+    packet_complete: ownPacketComplete(req.user.id) });
+});
+
+// Model: upload a signed PAPER copy of the house release instead —
+// the same packet slot, mirroring the co-star consent form (private
+// storage, photo or PDF). Her typed details ride along when she
+// provides them; the paper itself carries her signature.
+app.post('/api/model/release/paper', identMiddleware, requireUser, requireRole('model'),
+  (req, res) => {
+    if (isHouseAccountId(req.user.id)) return res.json({ ok: true, house: true });
+    releaseUpload.single('release')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ error: 'bad_file',
+          message: 'Use a JPG/PNG photo or a PDF of the signed release, under 10MB.' });
+      }
+      if (!req.file) {
+        return res.status(400).json({ error: 'missing_file',
+          message: 'Attach the signed release (a photo or PDF).' });
+      }
+      const legalName = String((req.body && req.body.legal_name) || '').trim().slice(0, 120);
+      const stageName = String((req.body && req.body.stage_name) || '').trim().slice(0, 120);
+      const prev = modelReleaseRow(req.user.id);
+      if (prev && prev.paper_path) fs.unlink(prev.paper_path, () => { /* replaced */ });
+      db.prepare(`INSERT INTO model_releases
+                    (model_id, method, legal_name, stage_name, dob, release_version,
+                     attestations, paper_path, signed_at, ip)
+                  VALUES (?, 'paper', ?, ?, '', ?, '', ?, datetime('now'), '')
+                  ON CONFLICT(model_id) DO UPDATE SET
+                    method = 'paper',
+                    legal_name = CASE WHEN excluded.legal_name != '' THEN excluded.legal_name ELSE model_releases.legal_name END,
+                    stage_name = CASE WHEN excluded.stage_name != '' THEN excluded.stage_name ELSE model_releases.stage_name END,
+                    release_version = excluded.release_version,
+                    paper_path = excluded.paper_path,
+                    signed_at = datetime('now')`)
+        .run(req.user.id, legalName, stageName, WOGENT_RELEASE.version, req.file.path);
+      pushToAdmins({ type: 'release:signed', model_id: req.user.id,
+        model_name: req.user.display_name, method: 'paper' });
+      res.json({ ok: true, release: releaseShape(modelReleaseRow(req.user.id)),
+        packet_complete: ownPacketComplete(req.user.id) });
+    });
+  });
+
 // Admin: list all ID verifications (pending first). Partner
 // submissions (Sections Phase 2) ride the SAME queue: their row
 // carries co_performer_id, the displayed name is the PARTNER's, and
@@ -10736,13 +11003,35 @@ app.get('/api/admin/id-verifications', identMiddleware, requireUser, requireRole
            (v.consent_form_path IS NOT NULL) AS consent_on_file,
            CASE WHEN v.co_performer_id IS NOT NULL THEN cp.display_name ELSE u.display_name END AS display_name,
            u.display_name AS owner_name, u.username,
-           cp.display_name AS partner_name
+           cp.display_name AS partner_name,
+           mr.method AS release_method, mr.legal_name AS release_legal_name,
+           mr.stage_name AS release_stage_name, mr.dob AS release_dob,
+           mr.release_version AS release_version, mr.signed_at AS release_signed_at,
+           mr.attestations AS release_attestations,
+           (mr.paper_path IS NOT NULL) AS release_paper_on_file
     FROM id_verifications v JOIN users u ON u.id = v.model_id
     LEFT JOIN co_performers cp ON cp.id = v.co_performer_id
+    LEFT JOIN model_releases mr ON mr.model_id = v.model_id AND v.co_performer_id IS NULL
     ORDER BY CASE v.status WHEN 'pending' THEN 0 WHEN 'rejected' THEN 1 ELSE 2 END,
              v.submitted_at DESC
   `).all();
-  res.json({ verifications: rows.map((r) => ({ ...r, is_partner: r.co_performer_id ? 1 : 0 })) });
+  res.json({ verifications: rows.map((r) => {
+    const { release_attestations, ...rest } = r;
+    let attestations = null;
+    try { attestations = JSON.parse(release_attestations || 'null'); } catch (e) { attestations = null; }
+    // The release belongs to the account owner — partner rows never carry one.
+    const own = !r.co_performer_id;
+    return { ...rest, is_partner: own ? 0 : 1,
+      release_on_file: own && r.release_method ? 1 : 0,
+      release_method: own ? r.release_method : null,
+      release_legal_name: own ? r.release_legal_name : null,
+      release_stage_name: own ? r.release_stage_name : null,
+      release_dob: own ? r.release_dob : null,
+      release_version: own ? r.release_version : null,
+      release_signed_at: own ? r.release_signed_at : null,
+      release_attestations: own ? attestations : null,
+      release_paper_on_file: own ? r.release_paper_on_file : 0 };
+  }) });
 });
 
 // Short-lived photo tokens so <img> tags can load ID photos without a Bearer
@@ -10764,9 +11053,12 @@ app.post('/api/admin/id-verifications/:id/photo-token', identMiddleware, require
 // Admin: view one ID photo (Bearer auth OR short-lived ?t= token). Sensitive PII — never cached.
 // 'consent' serves the co-star's signed consent form (photo or PDF) —
 // the fourth packet document, riding the same token machinery.
+// 'release' serves the account owner's signed PAPER WOGENT release
+// (Release in Onboarding, Oct 22 2026) — the record lives on
+// model_releases, read off the same packet row's owner.
 app.get('/api/admin/id-verifications/:id/photo/:which', (req, res) => {
   const which = req.params.which;
-  if (!['front', 'back', 'selfie', 'consent'].includes(which))
+  if (!['front', 'back', 'selfie', 'consent', 'release'].includes(which))
     return res.status(400).json({ error: 'bad_which' });
   let adminId = null;
   if (req.query.t) {
@@ -10781,12 +11073,16 @@ app.get('/api/admin/id-verifications/:id/photo/:which', (req, res) => {
     adminId = ident.user.id;
   }
   if (!adminId) return res.status(403).json({ error: 'forbidden' });
-  const v = db.prepare(`SELECT id_front_path, id_back_path, selfie_path, consent_form_path
-                        FROM id_verifications WHERE id = ?`).get(req.params.id);
+  const v = db.prepare(`SELECT v.id_front_path, v.id_back_path, v.selfie_path, v.consent_form_path,
+                               mr.paper_path AS release_paper_path
+                        FROM id_verifications v
+                        LEFT JOIN model_releases mr ON mr.model_id = v.model_id AND v.co_performer_id IS NULL
+                        WHERE v.id = ?`).get(req.params.id);
   if (!v) return res.status(404).json({ error: 'not_found' });
   const p = which === 'front' ? v.id_front_path
     : which === 'back' ? v.id_back_path
-    : which === 'consent' ? v.consent_form_path : v.selfie_path;
+    : which === 'consent' ? v.consent_form_path
+    : which === 'release' ? v.release_paper_path : v.selfie_path;
   if (!p || !p.startsWith(ID_DIR) || !fs.existsSync(p))
     return res.status(404).json({ error: 'not_found' });
   const ext = path.extname(p).toLowerCase();
@@ -10804,6 +11100,16 @@ app.get('/api/admin/id-verifications/:id/photo/:which', (req, res) => {
 app.post('/api/admin/id-verifications/:id/approve', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
   const v = db.prepare('SELECT * FROM id_verifications WHERE id = ?').get(req.params.id);
   if (!v) return res.status(404).json({ error: 'not_found' });
+  // Packet completeness (Release in Onboarding, Oct 22 2026): an OWN
+  // packet cannot be approved — so the packet cannot complete and
+  // every gate it drives stays shut — until the signed WOGENT house
+  // release is on file. Partner rows keep their own packet rule (the
+  // PR #83 consent form). Models approved before this build are never
+  // touched: their status is already 'approved' and this action is
+  // not what keeps them approved. House exempt via releaseOnFile.
+  if (!v.co_performer_id && !releaseOnFile(v.model_id))
+    return res.status(409).json({ error: 'release_missing',
+      message: 'Her packet is missing the signed WOGENT performer release — she signs it in her Settings (or uploads a signed paper copy) before this packet can be approved.' });
   txn(() => {
     db.prepare(`UPDATE id_verifications SET status = 'approved', reviewed_at = datetime('now'),
                 reviewer_note = '' WHERE id = ?`).run(v.id);
@@ -10844,6 +11150,9 @@ app.get('/api/admin/id-verifications/:id/2257', identMiddleware, requireUser, re
   const sig = db.prepare(`SELECT contract_version, display_name AS signed_name,
                                   signed_at, ip FROM contract_signatures
                           WHERE user_id = ? ORDER BY id DESC LIMIT 1`).get(v.model_id);
+  // Her WOGENT house release (Release in Onboarding, Oct 22 2026) —
+  // own packets only; partner rows carry their consent form instead.
+  const rel = v.co_performer_id ? null : modelReleaseRow(v.model_id);
   const base = (p) => p ? String(p).split('/').pop() : null;
   const packet = {
     record_type: 'Performer age/identity verification record — 18 U.S.C. §2257',
@@ -10871,6 +11180,16 @@ app.get('/api/admin/id-verifications/:id/2257', identMiddleware, requireUser, re
     agreement: sig ? {
       contract_version: sig.contract_version, signed_name: sig.signed_name,
       signed_at: sig.signed_at, signed_from_ip: sig.ip,
+    } : null,
+    // The signed WOGENT house release record (own packets only).
+    release: rel ? {
+      method: rel.method,
+      legal_name: rel.legal_name || '', stage_name: rel.stage_name || '',
+      date_of_birth_entered: rel.dob || '',
+      release_version: rel.release_version || '',
+      signed_at: rel.signed_at || '',
+      attestations: (() => { try { return JSON.parse(rel.attestations || 'null'); } catch (e) { return null; } })(),
+      paper_file: base(rel.paper_path),
     } : null,
   };
   if (v.co_performer_id) {
