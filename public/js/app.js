@@ -523,6 +523,26 @@ const I18N = {
     coperf_removed: 'Co-performer removed.',
     coperf_id_sent: '✅ ID submitted! SlutCamp will review it soon.',
     coperf_attach3: 'Please attach all 3 photos.',
+    costar_prompt_title: '📸 Who’s in this?',
+    costar_prompt_solo: '🧍 Just me (solo)',
+    costar_prompt_costar: '👥 A co-star is in it too',
+    costar_prompt_note: 'If anyone else appears, pick them below. Their ID + signed consent packet must be approved before this can go public — until then it stays private, and you can keep setting up.',
+    costar_prompt_pick: 'Who appears with you?',
+    costar_prompt_pickone: 'Pick at least one co-star — or choose Solo.',
+    costar_prompt_none: 'No co-stars registered yet — add them under Co-Performers in Settings first.',
+    costar_prompt_go: 'Upload',
+    costar_status_cleared: 'packet approved ✓',
+    costar_status_waiting: 'packet waiting',
+    costar_consent: 'Consent form',
+    costar_consent_onfile: 'on file ✓',
+    costar_consent_missing: 'missing',
+    costar_consent_note: 'Any standard signed consent/release form works — a photo or PDF of it.',
+    costar_consent_upload: 'Upload form',
+    costar_consent_saved: '📄 Consent form saved!',
+    costar_media_ready: 'Media with this co-star can go public.',
+    costar_media_waiting: 'Media with this co-star stays private until the packet is complete + approved.',
+    costar_held_badge: '🔒 Held — co-star packet',
+    costar_attach_one: '📎 Saved! It goes public once your co-star’s ID + consent packet is approved.',
     coperf_cam_h: 'Who\'s on camera?',
     coperf_cam_note: 'Check everyone appearing on camera with you.',
     coperf_cam_me: 'Just me',
@@ -1316,6 +1336,26 @@ const I18N = {
     coperf_removed: 'Co-intérprete eliminado.',
     coperf_id_sent: '✅ ¡ID enviado! SlutCamp lo revisará pronto.',
     coperf_attach3: 'Adjunta las 3 fotos.',
+    costar_prompt_title: '📸 ¿Quién sale en esto?',
+    costar_prompt_solo: '🧍 Solo yo',
+    costar_prompt_costar: '👥 También sale una coestrella',
+    costar_prompt_note: 'Si sale alguien más, elígelo abajo. Su paquete de ID + consentimiento firmado debe estar aprobado antes de que esto se haga público — hasta entonces queda privado, y puedes seguir configurando.',
+    costar_prompt_pick: '¿Quién sale contigo?',
+    costar_prompt_pickone: 'Elige al menos una coestrella — o elige Solo.',
+    costar_prompt_none: 'Aún no tienes coestrellas registradas — agrégalas primero en Co-intérpretes, en Ajustes.',
+    costar_prompt_go: 'Subir',
+    costar_status_cleared: 'paquete aprobado ✓',
+    costar_status_waiting: 'paquete en espera',
+    costar_consent: 'Formulario de consentimiento',
+    costar_consent_onfile: 'en archivo ✓',
+    costar_consent_missing: 'falta',
+    costar_consent_note: 'Cualquier formulario estándar de consentimiento/liberación firmado sirve — una foto o un PDF.',
+    costar_consent_upload: 'Subir formulario',
+    costar_consent_saved: '📄 ¡Formulario de consentimiento guardado!',
+    costar_media_ready: 'El contenido con esta coestrella puede hacerse público.',
+    costar_media_waiting: 'El contenido con esta coestrella queda privado hasta que el paquete esté completo + aprobado.',
+    costar_held_badge: '🔒 En espera — paquete de coestrella',
+    costar_attach_one: '📎 ¡Guardado! Se hará público cuando el paquete de ID + consentimiento de tu coestrella esté aprobado.',
     coperf_cam_h: '¿Quién sale en cámara?',
     coperf_cam_note: 'Marca a todas las personas que saldrán en cámara contigo.',
     coperf_cam_me: 'Solo yo',
@@ -2109,6 +2149,26 @@ const I18N = {
     coperf_removed: 'Parceiro de cena removido.',
     coperf_id_sent: '✅ Documento enviado! A SlutCamp vai analisá-lo em breve.',
     coperf_attach3: 'Anexe as 3 fotos.',
+    costar_prompt_title: '📸 Quem aparece nisto?',
+    costar_prompt_solo: '🧍 Só eu (solo)',
+    costar_prompt_costar: '👥 Uma coestrela também aparece',
+    costar_prompt_note: 'Se mais alguém aparecer, escolha abaixo. O pacote de ID + consentimento assinado precisa estar aprovado antes de isto ficar público — até lá fica privado, e você pode continuar configurando.',
+    costar_prompt_pick: 'Quem aparece com você?',
+    costar_prompt_pickone: 'Escolha pelo menos uma coestrela — ou escolha Solo.',
+    costar_prompt_none: 'Nenhuma coestrela registrada ainda — adicione em Co-intérpretes, nas Configurações.',
+    costar_prompt_go: 'Enviar',
+    costar_status_cleared: 'pacote aprovado ✓',
+    costar_status_waiting: 'pacote aguardando',
+    costar_consent: 'Formulário de consentimento',
+    costar_consent_onfile: 'em arquivo ✓',
+    costar_consent_missing: 'faltando',
+    costar_consent_note: 'Qualquer formulário padrão de consentimento/liberação assinado serve — uma foto ou PDF dele.',
+    costar_consent_upload: 'Enviar formulário',
+    costar_consent_saved: '📄 Formulário de consentimento salvo!',
+    costar_media_ready: 'A mídia com esta coestrela pode ficar pública.',
+    costar_media_waiting: 'A mídia com esta coestrela fica privada até o pacote estar completo + aprovado.',
+    costar_held_badge: '🔒 Retido — pacote da coestrela',
+    costar_attach_one: '📎 Salvo! Fica público quando o pacote de ID + consentimento da sua coestrela for aprovado.',
     coperf_cam_h: 'Quem está na câmera?',
     coperf_cam_note: 'Marque todos que aparecerão na câmera com você.',
     coperf_cam_me: 'Só eu',
@@ -2902,6 +2962,26 @@ const I18N = {
     coperf_removed: 'Partenaire de scène retiré.',
     coperf_id_sent: '✅ Pièce envoyée ! SlutCamp la vérifiera bientôt.',
     coperf_attach3: 'Veuillez joindre les 3 photos.',
+    costar_prompt_title: '📸 Qui est dessus ?',
+    costar_prompt_solo: '🧍 Juste moi (solo)',
+    costar_prompt_costar: '👥 Une co-star est dessus aussi',
+    costar_prompt_note: 'Si quelqu’un d’autre apparaît, choisissez-la ci-dessous. Son dossier pièce d’identité + consentement signé doit être approuvé avant que ceci devienne public — jusque-là, cela reste privé, et vous pouvez continuer la configuration.',
+    costar_prompt_pick: 'Qui apparaît avec vous ?',
+    costar_prompt_pickone: 'Choisissez au moins une co-star — ou choisissez Solo.',
+    costar_prompt_none: 'Aucune co-star enregistrée pour le moment — ajoutez-la d’abord sous Co-interprètes, dans les Réglages.',
+    costar_prompt_go: 'Envoyer',
+    costar_status_cleared: 'dossier approuvé ✓',
+    costar_status_waiting: 'dossier en attente',
+    costar_consent: 'Formulaire de consentement',
+    costar_consent_onfile: 'au dossier ✓',
+    costar_consent_missing: 'manquant',
+    costar_consent_note: 'Tout formulaire standard de consentement/décharge signé convient — une photo ou un PDF.',
+    costar_consent_upload: 'Envoyer le formulaire',
+    costar_consent_saved: '📄 Formulaire de consentement enregistré !',
+    costar_media_ready: 'Les médias avec cette co-star peuvent devenir publics.',
+    costar_media_waiting: 'Les médias avec cette co-star restent privés jusqu’à ce que le dossier soit complet + approuvé.',
+    costar_held_badge: '🔒 Retenu — dossier co-star',
+    costar_attach_one: '📎 Enregistré ! Ce sera public dès que le dossier ID + consentement de votre co-star sera approuvé.',
     coperf_cam_h: 'Qui est à la caméra ?',
     coperf_cam_note: 'Cochez toutes les personnes qui apparaîtront à la caméra avec vous.',
     coperf_cam_me: 'Juste moi',
@@ -3695,6 +3775,26 @@ const I18N = {
     coperf_removed: 'Co-Performer entfernt.',
     coperf_id_sent: '✅ Ausweis eingereicht! SlutCamp prüft ihn in Kürze.',
     coperf_attach3: 'Bitte alle 3 Fotos anhängen.',
+    costar_prompt_title: '📸 Wer ist darauf zu sehen?',
+    costar_prompt_solo: '🧍 Nur ich (solo)',
+    costar_prompt_costar: '👥 Ein Co-Star ist auch darauf',
+    costar_prompt_note: 'Wenn jemand anderes zu sehen ist, wähle sie unten aus. Ihr Paket aus Ausweis + unterschriebener Einwilligung muss genehmigt sein, bevor dies öffentlich wird — bis dahin bleibt es privat, und du kannst weiter einrichten.',
+    costar_prompt_pick: 'Wer ist mit dir darauf?',
+    costar_prompt_pickone: 'Wähle mindestens einen Co-Star — oder wähle Solo.',
+    costar_prompt_none: 'Noch keine Co-Stars registriert — füge sie zuerst unter Co-Performer in den Einstellungen hinzu.',
+    costar_prompt_go: 'Hochladen',
+    costar_status_cleared: 'Paket genehmigt ✓',
+    costar_status_waiting: 'Paket ausstehend',
+    costar_consent: 'Einwilligungsformular',
+    costar_consent_onfile: 'vorhanden ✓',
+    costar_consent_missing: 'fehlt',
+    costar_consent_note: 'Jedes übliche unterschriebene Einwilligungs-/Freigabeformular genügt — ein Foto oder PDF davon.',
+    costar_consent_upload: 'Formular hochladen',
+    costar_consent_saved: '📄 Einwilligungsformular gespeichert!',
+    costar_media_ready: 'Medien mit diesem Co-Star können öffentlich werden.',
+    costar_media_waiting: 'Medien mit diesem Co-Star bleiben privat, bis das Paket vollständig + genehmigt ist.',
+    costar_held_badge: '🔒 Zurückgehalten — Co-Star-Paket',
+    costar_attach_one: '📎 Gespeichert! Es wird öffentlich, sobald das Ausweis- + Einwilligungspaket deines Co-Stars genehmigt ist.',
     coperf_cam_h: 'Wer ist vor der Kamera?',
     coperf_cam_note: 'Markiere alle, die mit dir vor der Kamera sind.',
     coperf_cam_me: 'Nur ich',
@@ -4488,6 +4588,26 @@ const I18N = {
     coperf_removed: 'Партнёр по сцене удалён.',
     coperf_id_sent: '✅ Документ отправлен! SlutCamp скоро его проверит.',
     coperf_attach3: 'Прикрепите все 3 фотографии.',
+    costar_prompt_title: '📸 Кто на этом?',
+    costar_prompt_solo: '🧍 Только я (соло)',
+    costar_prompt_costar: '👥 Здесь есть ещё одна звезда',
+    costar_prompt_note: 'Если здесь есть кто-то ещё, выбери её ниже. Её пакет «документ + подписанное согласие» должен быть одобрен, прежде чем это станет публичным — до этого всё остаётся приватным, а ты можешь продолжать настройку.',
+    costar_prompt_pick: 'Кто здесь с тобой?',
+    costar_prompt_pickone: 'Выбери хотя бы одну со-звезду — или выбери «Соло».',
+    costar_prompt_none: 'Со-звёзды пока не зарегистрированы — сначала добавь их в разделе «Со-исполнители» в Настройках.',
+    costar_prompt_go: 'Загрузить',
+    costar_status_cleared: 'пакет одобрен ✓',
+    costar_status_waiting: 'пакет ожидает',
+    costar_consent: 'Форма согласия',
+    costar_consent_onfile: 'в файле ✓',
+    costar_consent_missing: 'отсутствует',
+    costar_consent_note: 'Подойдёт любая стандартная подписанная форма согласия/разрешения — фото или PDF.',
+    costar_consent_upload: 'Загрузить форму',
+    costar_consent_saved: '📄 Форма согласия сохранена!',
+    costar_media_ready: 'Медиа с этой со-звездой могут стать публичными.',
+    costar_media_waiting: 'Медиа с этой со-звездой остаются приватными, пока пакет не будет полным + одобренным.',
+    costar_held_badge: '🔒 Удержано — пакет со-звезды',
+    costar_attach_one: '📎 Сохранено! Станет публичным, как только пакет «документ + согласие» твоей со-звезды будет одобрен.',
     coperf_cam_h: 'Кто в кадре?',
     coperf_cam_note: 'Отметьте всех, кто будет с вами в кадре.',
     coperf_cam_me: 'Только я',
@@ -5281,6 +5401,26 @@ const I18N = {
     coperf_removed: '共演者を削除しました。',
     coperf_id_sent: '✅ 身分証を提出しました！まもなくSlutCampが確認します。',
     coperf_attach3: '3枚すべての写真を添付してください。',
+    costar_prompt_title: '📸 これは誰が写っていますか？',
+    costar_prompt_solo: '🧍 私だけ（ソロ）',
+    costar_prompt_costar: '👥 共演者も写っています',
+    costar_prompt_note: '他の人が写っている場合は、以下から選んでください。その人の身分証＋署名済み同意書のパケットが承認されるまで、これは公開されず非公開のままです。その間も設定は続けられます。',
+    costar_prompt_pick: '誰があなたと一緒に写っていますか？',
+    costar_prompt_pickone: '共演者を少なくとも1人選んでください — またはソロを選んでください。',
+    costar_prompt_none: '共演者がまだ登録されていません — まず設定の「共演者」から追加してください。',
+    costar_prompt_go: 'アップロード',
+    costar_status_cleared: 'パケット承認済み ✓',
+    costar_status_waiting: 'パケット保留中',
+    costar_consent: '同意書',
+    costar_consent_onfile: '登録済み ✓',
+    costar_consent_missing: '未登録',
+    costar_consent_note: '標準的な署名済み同意書／出演承諾書で構いません — 写真またはPDFで。',
+    costar_consent_upload: '同意書をアップロード',
+    costar_consent_saved: '📄 同意書を保存しました！',
+    costar_media_ready: 'この共演者とのメディアは公開できます。',
+    costar_media_waiting: 'この共演者とのメディアは、パケットが揃って承認されるまで非公開です。',
+    costar_held_badge: '🔒 保留中 — 共演者パケット',
+    costar_attach_one: '📎 保存しました！共演者の身分証＋同意書パケットが承認されると公開されます。',
     coperf_cam_h: 'カメラに映るのは誰ですか？',
     coperf_cam_note: 'あなたと一緒にカメラに映る人を全員チェックしてください。',
     coperf_cam_me: '私だけ',
@@ -6074,6 +6214,26 @@ const I18N = {
     coperf_removed: '搭档演员已移除。',
     coperf_id_sent: '✅ 身份证已提交！SlutCamp会尽快审核。',
     coperf_attach3: '请附上全部3张照片。',
+    costar_prompt_title: '📸 这里面有谁？',
+    costar_prompt_solo: '🧍 只有我（单人）',
+    costar_prompt_costar: '👥 还有一位搭档出镜',
+    costar_prompt_note: '如果还有其他人出镜，请在下方选择。在她的证件＋已签署同意书资料包获批之前，这些内容不会公开——在此之前保持私密，你可以继续设置。',
+    costar_prompt_pick: '谁和你一起出镜？',
+    costar_prompt_pickone: '请至少选择一位搭档——或选择单人。',
+    costar_prompt_none: '尚未登记任何搭档——请先在设置的“搭档”中添加。',
+    costar_prompt_go: '上传',
+    costar_status_cleared: '资料包已批准 ✓',
+    costar_status_waiting: '资料包等待中',
+    costar_consent: '同意书',
+    costar_consent_onfile: '已存档 ✓',
+    costar_consent_missing: '缺失',
+    costar_consent_note: '任何标准的已签署同意书/授权书都可以——照片或 PDF 均可。',
+    costar_consent_upload: '上传表格',
+    costar_consent_saved: '📄 同意书已保存！',
+    costar_media_ready: '与这位搭档的媒体可以公开。',
+    costar_media_waiting: '与这位搭档的媒体在资料包齐全并获批之前保持私密。',
+    costar_held_badge: '🔒 已暂缓 — 搭档资料包',
+    costar_attach_one: '📎 已保存！搭档的证件＋同意书资料包获批后即可公开。',
     coperf_cam_h: '谁会出镜？',
     coperf_cam_note: '勾选所有会与你一起出镜的人。',
     coperf_cam_me: '只有我',
@@ -6867,6 +7027,26 @@ const I18N = {
     coperf_removed: '공연 파트너가 삭제되었습니다.',
     coperf_id_sent: '✅ 신분증이 제출되었습니다! 곧 검토될 예정입니다.',
     coperf_attach3: '사진 3장을 모두 첨부해주세요.',
+    costar_prompt_title: '📸 여기에 누가 나오나요?',
+    costar_prompt_solo: '🧍 저만 (솔로)',
+    costar_prompt_costar: '👥 파트너도 함께 나와요',
+    costar_prompt_note: '다른 사람이 나온다면 아래에서 선택하세요. 그 사람의 신분증 + 서명된 동의서 패키지가 승인되기 전까지는 공개되지 않고 비공개로 유지되며, 그동안 계속 설정할 수 있어요.',
+    costar_prompt_pick: '누가 함께 나오나요?',
+    costar_prompt_pickone: '파트너를 최소 한 명 선택하세요 — 아니면 솔로를 선택하세요.',
+    costar_prompt_none: '아직 등록된 파트너가 없습니다 — 먼저 설정의 공동 출연자에서 추가하세요.',
+    costar_prompt_go: '업로드',
+    costar_status_cleared: '패키지 승인됨 ✓',
+    costar_status_waiting: '패키지 대기 중',
+    costar_consent: '동의서',
+    costar_consent_onfile: '등록됨 ✓',
+    costar_consent_missing: '없음',
+    costar_consent_note: '일반적인 서명된 동의서/출연 허가서면 됩니다 — 사진이나 PDF로 올려주세요.',
+    costar_consent_upload: '양식 업로드',
+    costar_consent_saved: '📄 동의서가 저장되었습니다!',
+    costar_media_ready: '이 파트너와의 미디어는 공개할 수 있습니다.',
+    costar_media_waiting: '이 파트너와의 미디어는 패키지가 완성되고 승인될 때까지 비공개입니다.',
+    costar_held_badge: '🔒 보류 중 — 파트너 패키지',
+    costar_attach_one: '📎 저장되었습니다! 파트너의 신분증 + 동의서 패키지가 승인되면 공개됩니다.',
     coperf_cam_h: '카메라에 누가 나오나요?',
     coperf_cam_note: '당신과 함께 출연하는 사람을 모두 선택하세요.',
     coperf_cam_me: '나 혼자',
@@ -7660,6 +7840,26 @@ const I18N = {
     coperf_removed: 'Partner di scena rimosso.',
     coperf_id_sent: '✅ Documento inviato! SlutCamp lo esaminerà a breve.',
     coperf_attach3: 'Allega tutte e 3 le foto.',
+    costar_prompt_title: '📸 Chi c’è qui dentro?',
+    costar_prompt_solo: '🧍 Solo io (solista)',
+    costar_prompt_costar: '👥 C’è anche una co-star',
+    costar_prompt_note: 'Se appare qualcun altro, selezionala qui sotto. Il suo pacchetto documento + consenso firmato deve essere approvato prima che questo diventi pubblico — fino ad allora resta privato, e puoi continuare a configurare.',
+    costar_prompt_pick: 'Chi appare con te?',
+    costar_prompt_pickone: 'Scegli almeno una co-star — oppure scegli Solo.',
+    costar_prompt_none: 'Nessuna co-star ancora registrata — aggiungila prima in Co-performer, nelle Impostazioni.',
+    costar_prompt_go: 'Carica',
+    costar_status_cleared: 'pacchetto approvato ✓',
+    costar_status_waiting: 'pacchetto in attesa',
+    costar_consent: 'Modulo di consenso',
+    costar_consent_onfile: 'in archivio ✓',
+    costar_consent_missing: 'mancante',
+    costar_consent_note: 'Va bene qualsiasi modulo standard di consenso/liberatoria firmato — una foto o un PDF.',
+    costar_consent_upload: 'Carica modulo',
+    costar_consent_saved: '📄 Modulo di consenso salvato!',
+    costar_media_ready: 'I media con questa co-star possono diventare pubblici.',
+    costar_media_waiting: 'I media con questa co-star restano privati finché il pacchetto non è completo + approvato.',
+    costar_held_badge: '🔒 In attesa — pacchetto co-star',
+    costar_attach_one: '📎 Salvato! Diventerà pubblico quando il pacchetto documento + consenso della tua co-star sarà approvato.',
     coperf_cam_h: 'Chi è in camera?',
     coperf_cam_note: 'Seleziona tutti coloro che appariranno in camera con te.',
     coperf_cam_me: 'Solo io',
@@ -8453,6 +8653,26 @@ const I18N = {
     coperf_removed: 'Usunięto współwykonawcę.',
     coperf_id_sent: '✅ Przesłano dokument! SlutCamp wkrótce go sprawdzi.',
     coperf_attach3: 'Załącz wszystkie 3 zdjęcia.',
+    costar_prompt_title: '📸 Kto tu występuje?',
+    costar_prompt_solo: '🧍 Tylko ja (solo)',
+    costar_prompt_costar: '👥 Występuje też współgwiazda',
+    costar_prompt_note: 'Jeśli występuje ktoś jeszcze, wybierz ją poniżej. Jej pakiet „dokument + podpisana zgoda” musi zostać zatwierdzony, zanim to stanie się publiczne — do tego czasu pozostaje prywatne, a ty możesz dalej konfigurować.',
+    costar_prompt_pick: 'Kto występuje z tobą?',
+    costar_prompt_pickone: 'Wybierz co najmniej jedną współgwiazdę — albo wybierz Solo.',
+    costar_prompt_none: 'Brak zarejestrowanych współgwiazd — najpierw dodaj je w Ustawieniach → Współwykonawcy.',
+    costar_prompt_go: 'Prześlij',
+    costar_status_cleared: 'pakiet zatwierdzony ✓',
+    costar_status_waiting: 'pakiet oczekuje',
+    costar_consent: 'Formularz zgody',
+    costar_consent_onfile: 'w aktach ✓',
+    costar_consent_missing: 'brak',
+    costar_consent_note: 'Wystarczy każdy standardowy podpisany formularz zgody/zwolnienia — zdjęcie lub PDF.',
+    costar_consent_upload: 'Prześlij formularz',
+    costar_consent_saved: '📄 Formularz zgody zapisany!',
+    costar_media_ready: 'Media z tą współgwiazdą mogą stać się publiczne.',
+    costar_media_waiting: 'Media z tą współgwiazdą pozostają prywatne, dopóki pakiet nie będzie kompletny + zatwierdzony.',
+    costar_held_badge: '🔒 Wstrzymane — pakiet współgwiazdy',
+    costar_attach_one: '📎 Zapisano! Stanie się publiczne, gdy pakiet „dokument + zgoda” twojej współgwiazdy zostanie zatwierdzony.',
     coperf_cam_h: 'Kto jest przed kamerą?',
     coperf_cam_note: 'Zaznacz wszystkich, którzy wystąpią z tobą przed kamerą.',
     coperf_cam_me: 'Tylko ja',
@@ -9246,6 +9466,26 @@ const I18N = {
     coperf_removed: 'Mede-performer verwijderd.',
     coperf_id_sent: '✅ ID ingediend! SlutCamp beoordeelt het binnenkort.',
     coperf_attach3: 'Voeg alle 3 foto’s toe.',
+    costar_prompt_title: '📸 Wie staat hierop?',
+    costar_prompt_solo: '🧍 Alleen ik (solo)',
+    costar_prompt_costar: '👥 Er staat ook een co-ster op',
+    costar_prompt_note: 'Staat er iemand anders op, kies haar dan hieronder. Haar pakket met ID + ondertekend toestemmingsformulier moet goedgekeurd zijn voordat dit openbaar wordt — tot dan blijft het privé, en je kunt gewoon verder instellen.',
+    costar_prompt_pick: 'Wie staat er met jou op?',
+    costar_prompt_pickone: 'Kies minstens één co-ster — of kies Solo.',
+    costar_prompt_none: 'Nog geen co-sterren geregistreerd — voeg ze eerst toe onder Mede-performers in Instellingen.',
+    costar_prompt_go: 'Uploaden',
+    costar_status_cleared: 'pakket goedgekeurd ✓',
+    costar_status_waiting: 'pakket in afwachting',
+    costar_consent: 'Toestemmingsformulier',
+    costar_consent_onfile: 'in bestand ✓',
+    costar_consent_missing: 'ontbreekt',
+    costar_consent_note: 'Elk standaard ondertekend toestemmings-/vrijwaringsformulier is goed — een foto of PDF ervan.',
+    costar_consent_upload: 'Formulier uploaden',
+    costar_consent_saved: '📄 Toestemmingsformulier opgeslagen!',
+    costar_media_ready: 'Media met deze co-ster kan openbaar worden.',
+    costar_media_waiting: 'Media met deze co-ster blijft privé totdat het pakket volledig + goedgekeurd is.',
+    costar_held_badge: '🔒 Vastgehouden — co-sterpakket',
+    costar_attach_one: '📎 Opgeslagen! Het wordt openbaar zodra het ID- + toestemmingspakket van je co-ster is goedgekeurd.',
     coperf_cam_h: 'Wie is er in beeld?',
     coperf_cam_note: 'Vink iedereen aan die met jou in beeld komt.',
     coperf_cam_me: 'Alleen ik',
@@ -10039,6 +10279,26 @@ const I18N = {
     coperf_removed: 'Sahne partneri kaldırıldı.',
     coperf_id_sent: '✅ Kimlik gönderildi! SlutCamp yakında inceleyecek.',
     coperf_attach3: 'Lütfen 3 fotoğrafın tamamını ekleyin.',
+    costar_prompt_title: '📸 Bunda kim var?',
+    costar_prompt_solo: '🧍 Sadece ben (solo)',
+    costar_prompt_costar: '👥 Bir yardımcı yıldız da var',
+    costar_prompt_note: 'Başka biri de görünüyorsa aşağıdan seç. Onun kimlik + imzalı onay paketi onaylanmadan bu herkese açık olmaz — o zamana kadar gizli kalır, sen de kurulumuna devam edebilirsin.',
+    costar_prompt_pick: 'Seninle birlikte kim görünüyor?',
+    costar_prompt_pickone: 'En az bir yardımcı yıldız seç — ya da Solo’yu seç.',
+    costar_prompt_none: 'Henüz kayıtlı yardımcı yıldız yok — önce Ayarlar’daki Yardımcı Oyuncular bölümünden ekle.',
+    costar_prompt_go: 'Yükle',
+    costar_status_cleared: 'paket onaylandı ✓',
+    costar_status_waiting: 'paket bekliyor',
+    costar_consent: 'Onay formu',
+    costar_consent_onfile: 'dosyada ✓',
+    costar_consent_missing: 'eksik',
+    costar_consent_note: 'Herhangi bir standart imzalı onay/izin formu olur — fotoğrafı veya PDF’si yeterli.',
+    costar_consent_upload: 'Formu yükle',
+    costar_consent_saved: '📄 Onay formu kaydedildi!',
+    costar_media_ready: 'Bu yardımcı yıldızla olan medya herkese açık olabilir.',
+    costar_media_waiting: 'Bu yardımcı yıldızla olan medya, paket tamamlanıp onaylanana kadar gizli kalır.',
+    costar_held_badge: '🔒 Bekletiliyor — yardımcı yıldız paketi',
+    costar_attach_one: '📎 Kaydedildi! Yardımcı yıldızının kimlik + onay paketi onaylanınca herkese açık olacak.',
     coperf_cam_h: 'Kamerada kim var?',
     coperf_cam_note: 'Seninle birlikte kamerada yer alacak herkesi işaretle.',
     coperf_cam_me: 'Sadece ben',
@@ -10739,9 +10999,11 @@ function openPhotoCropper(file, onCrop) {
 }
 
 /* POST a single file via multipart (no JSON content-type — browser sets the boundary) */
-async function apiUpload(path, file, field) {
+async function apiUpload(path, file, field, extra) {
   const fd = new FormData();
   fd.append(field || 'photo', file);
+  // Extra multipart fields ride along (the Solo/Co-Star declaration).
+  if (extra) for (const k of Object.keys(extra)) fd.append(k, extra[k]);
   const headers = {};
   if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
   const r = await fetch('/api' + path, { method: 'POST', headers, body: fd });
@@ -15425,13 +15687,13 @@ async function vModelSettings() {
         </div>
         <div style="margin-top:12px">
           <div class="muted small" style="margin-bottom:6px">${t('pv_blurb')}</div>
-          ${m.preview_video_url ? `<video src="${esc(m.preview_video_url)}" autoplay muted loop playsinline style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:2px solid var(--purple)"></video><br>` : ''}
+          ${m.preview_video_url ? `<video data-media-url="${esc(m.preview_video_url)}" src="${esc(m.preview_video_url)}" autoplay muted loop playsinline style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:2px solid var(--purple)"></video><br>` : ''}
           <button class="btn ghost small" id="s-preview-video" style="margin-top:6px">${m.preview_video_url ? t('pv_change') : t('pv_upload')}</button>
           ${m.preview_video_url ? `<button class="btn ghost small danger" id="s-preview-remove" style="margin-top:6px;margin-left:6px">${t('remove_btn')}</button>` : ''}
         </div>
         <div style="margin-top:12px">
           <div class="muted small" style="margin-bottom:6px">${t('pv2_blurb')}</div>
-          ${m.preview_video_url_2 ? `<video src="${esc(m.preview_video_url_2)}" autoplay muted loop playsinline style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:2px solid var(--purple)"></video><br>` : ''}
+          ${m.preview_video_url_2 ? `<video data-media-url="${esc(m.preview_video_url_2)}" src="${esc(m.preview_video_url_2)}" autoplay muted loop playsinline style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:2px solid var(--purple)"></video><br>` : ''}
           <button class="btn ghost small" id="s-preview-video2" style="margin-top:6px">${m.preview_video_url_2 ? t('pv_change') : t('pv_upload')}</button>
           ${m.preview_video_url_2 ? `<button class="btn ghost small danger" id="s-preview-remove2" style="margin-top:6px;margin-left:6px">${t('remove_btn')}</button>` : ''}
         </div>
@@ -15448,7 +15710,7 @@ async function vModelSettings() {
         </div>
         <div style="margin-top:12px">
           <div class="muted small" style="margin-bottom:6px">🌐 <b>${t('public_photo_h')}</b><br>${t('public_photo_note')}</div>
-          ${m.public_photo_url ? `<img src="${esc(m.public_photo_url)}" alt="" style="width:120px;height:120px;border-radius:16px;object-fit:cover;border:2px solid var(--purple)"><br>` : ''}
+          ${m.public_photo_url ? `<img data-media-url="${esc(m.public_photo_url)}" src="${esc(m.public_photo_url)}" alt="" style="width:120px;height:120px;border-radius:16px;object-fit:cover;border:2px solid var(--purple)"><br>` : ''}
           <button class="btn ghost small" id="s-public-photo" style="margin-top:6px">${t('public_photo_btn')}</button>
           ${m.public_photo_url ? `<button class="btn ghost small danger" id="s-public-remove" style="margin-top:6px;margin-left:6px">${t('public_photo_remove')}</button>` : ''}
         </div>
@@ -15658,13 +15920,16 @@ async function vModelSettings() {
       inp.remove();
       if (!file) return;
       openPhotoCropper(file, async (cropped) => {
+        const decl = await pickUploadAppearance();
+        if (!decl) return;
         toast('Uploading photo…');
-        const { status, data } = await apiUpload('/model/photo', cropped);
+        const { status, data } = await apiUpload('/model/photo', cropped, 'photo', declFields(decl));
         if (status === 200 && data.ok) {
-          toast('📷 Photo updated!');
+          toast(data.costar_held ? t('costar_attach_one') : '📷 Photo updated!');
           await refreshMe();
           show('modelSettings', {});
-        } else toast('Upload failed — use a JPG/PNG under 5MB.');
+        } else if (declRefused(data)) toast(data.message);
+        else toast('Upload failed — use a JPG/PNG under 5MB.');
       });
     };
     inp.click();
@@ -15680,13 +15945,16 @@ async function vModelSettings() {
       inp.remove();
       if (!file) return;
       openPhotoCropper(file, async (cropped) => {
+        const decl = await pickUploadAppearance();
+        if (!decl) return;
         toast('Uploading photo…');
-        const { status, data } = await apiUpload('/model/public-photo', cropped);
+        const { status, data } = await apiUpload('/model/public-photo', cropped, 'photo', declFields(decl));
         if (status === 200 && data.ok) {
-          toast('📷 Public photo updated!');
+          toast(data.costar_held ? t('costar_attach_one') : '📷 Public photo updated!');
           await refreshMe();
           show('modelSettings', {});
-        } else toast('Upload failed — use a JPG/PNG under 5MB.');
+        } else if (declRefused(data)) toast(data.message);
+        else toast('Upload failed — use a JPG/PNG under 5MB.');
       });
     };
     inp.click();
@@ -15713,18 +15981,24 @@ async function vModelSettings() {
       const f = inp.files[0]; inp.remove();
       if (!f) return;
       if (f.size > 15 * 1024 * 1024) return toast(t('pv_too_big'));
+      const decl = await pickUploadAppearance();
+      if (!decl) return;
       toast(t('pv_uploading'));
       const fd = new FormData(); fd.append('video', f);
+      const df = declFields(decl);
+      fd.append('appearance', df.appearance);
+      if (df.costar_ids) fd.append('costar_ids', df.costar_ids);
       const headers = {};
       if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
       try {
         const r = await fetch('/api/model/preview-video', { method: 'POST', headers, body: fd });
         const data = await r.json();
         if (r.status === 200 && data.ok) {
-          toast(t('pv_live_toast'));
+          toast(data.costar_held ? t('costar_attach_one') : t('pv_live_toast'));
           await refreshMe();
           show('modelSettings', {});
-        } else toast(t('pv_failed'));
+        } else if (declRefused(data)) toast(data.message);
+        else toast(t('pv_failed'));
       } catch (e) { toast(t('pv_conn_failed')); }
     };
     document.body.appendChild(inp);
@@ -15747,18 +16021,24 @@ async function vModelSettings() {
       const f = inp.files[0]; inp.remove();
       if (!f) return;
       if (f.size > 15 * 1024 * 1024) return toast(t('pv_too_big'));
+      const decl = await pickUploadAppearance();
+      if (!decl) return;
       toast(t('pv_uploading'));
       const fd = new FormData(); fd.append('video', f);
+      const df = declFields(decl);
+      fd.append('appearance', df.appearance);
+      if (df.costar_ids) fd.append('costar_ids', df.costar_ids);
       const headers = {};
       if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
       try {
         const r = await fetch('/api/model/preview-video-2', { method: 'POST', headers, body: fd });
         const data = await r.json();
         if (r.status === 200 && data.ok) {
-          toast(t('pv_live_toast'));
+          toast(data.costar_held ? t('costar_attach_one') : t('pv_live_toast'));
           await refreshMe();
           show('modelSettings', {});
-        } else toast(t('pv_failed'));
+        } else if (declRefused(data)) toast(data.message);
+        else toast(t('pv_failed'));
       } catch (e) { toast(t('pv_conn_failed')); }
     };
     document.body.appendChild(inp);
@@ -15784,13 +16064,16 @@ async function vModelSettings() {
       inp.remove();
       if (!file) return;
       openPhotoCropper(file, async (cropped) => {
+        const decl = await pickUploadAppearance();
+        if (!decl) return;
         toast('Uploading photo…');
-        const { status, data } = await apiUpload('/model/gallery-photo', cropped);
+        const { status, data } = await apiUpload('/model/gallery-photo', cropped, 'photo', declFields(decl));
         if (status === 200 && data.ok) {
-          toast('📷 Photo added!');
+          toast(data.costar_held ? t('costar_attach_one') : '📷 Photo added!');
           await refreshMe();
           show('modelSettings', {});
         } else if (data && data.error === 'gallery_full') toast(t('gallery_full'));
+        else if (declRefused(data)) toast(data.message);
         else toast('Upload failed — use a JPG/PNG under 5MB.');
       });
     };
@@ -16030,6 +16313,40 @@ async function vModelSettings() {
   };
   // 👥 Co-Performers card (async fill; the house account's is empty)
   renderCoPerfCard();
+  // 🔒 Co-star held-media badges (async; marks what the gate holds)
+  markHeldMediaBadges();
+}
+
+/* Co-star gate, her own view (Co-Star Upload Prompt, Oct 22 2026):
+ * Settings shows her ALL her media — the gate only holds it back
+ * from the public surfaces — so held items get a visible badge
+ * explaining why fans can't see them yet. Reads her declarations
+ * from /api/model/media-costars and tags the gallery tiles
+ * ([data-pic]) and the standalone media elements
+ * ([data-media-url]: the two videos + the clean photo). */
+async function markHeldMediaBadges() {
+  let held = [];
+  try {
+    const { status, data } = await api('/model/media-costars');
+    if (status === 200 && data) held = data.held_urls || [];
+  } catch (e) { /* badges are explanatory only */ }
+  if (!held.length) return;
+  const badge = () => {
+    const s = document.createElement('span');
+    s.className = 'set-gallery-badge';
+    s.style.cssText = 'background:var(--red);color:#fff';
+    s.textContent = t('costar_held_badge');
+    return s;
+  };
+  document.querySelectorAll('[data-pic]').forEach((el) => {
+    if (held.includes(el.dataset.pic)) el.appendChild(badge());
+  });
+  document.querySelectorAll('[data-media-url]').forEach((el) => {
+    if (!held.includes(el.dataset.mediaUrl)) return;
+    const s = badge();
+    s.style.cssText += ';display:inline-block;margin:4px 0';
+    el.insertAdjacentElement('afterend', s);
+  });
 }
 
 /* ---------------- CO-PERFORMERS (model Settings card) ---------------- */
@@ -16080,6 +16397,17 @@ async function renderCoPerfCard() {
             <label class="field">Selfie holding ID<input class="input" type="file" id="cp-selfie-${p.id}" accept="image/*"></label>
             <button class="btn small" data-cp-upload="${p.id}">🪪 ${t('coperf_upload_id')}</button>
           </div>` : ''}
+          <div style="margin-top:10px">
+            <div class="muted small" style="margin-bottom:6px">📄 ${t('costar_consent')} — ${p.consent_on_file
+              ? `<span style="color:var(--green)">${t('costar_consent_onfile')}</span>`
+              : `<span style="color:var(--red)">${t('costar_consent_missing')}</span>`}</div>
+            <div class="muted small" style="margin-bottom:6px">${t('costar_consent_note')}</div>
+            <label class="field">${t('costar_consent')}<input class="input" type="file" id="cp-consent-${p.id}" accept="image/*,.pdf"></label>
+            <button class="btn small" data-cp-consent="${p.id}">📄 ${t('costar_consent_upload')}</button>
+          </div>
+          <div class="small" style="margin-top:8px">${p.media_cleared
+            ? `<span style="color:var(--green)">✅ ${t('costar_media_ready')}</span>`
+            : `<span class="muted">⏳ ${t('costar_media_waiting')}</span>`}</div>
         </div>`).join('') : `<div class="muted small" style="margin-bottom:10px">${t('coperf_empty')}</div>`}
       <div style="border-top:1px solid var(--border);padding-top:10px">
         <label class="field">${t('coperf_name')}<input class="input" id="cp-new-name" maxlength="80"></label>
@@ -16151,6 +16479,23 @@ async function renderCoPerfCard() {
       b.disabled = false;
       if (status === 200 && data.ok) { toast(t('coperf_id_sent')); renderCoPerfCard(); }
       else toast(data.message || 'Upload failed — try again.');
+    };
+  });
+  // Consent form upload (Co-Star Upload Prompt, Oct 22 2026): the
+  // fourth packet document — any standard signed consent/release
+  // form, photo or PDF. Rides apiUpload to the consent-form endpoint.
+  box.querySelectorAll('[data-cp-consent]').forEach((b) => {
+    b.onclick = async () => {
+      const id = b.dataset.cpConsent;
+      const f = $(`#cp-consent-${id}`).files[0];
+      if (!f) return toast(t('costar_consent_missing'));
+      if (!(/^(image\/(jpeg|png|webp)|application\/pdf)$/.test(f.type))) return toast('Use a JPG/PNG photo or a PDF.');
+      if (f.size > 10 * 1024 * 1024) return toast('The form must be under 10MB.');
+      b.disabled = true;
+      const { status, data } = await apiUpload(`/model/co-performers/${id}/consent-form`, f, 'consent');
+      b.disabled = false;
+      if (status === 200 && data.ok) { toast(t('costar_consent_saved')); renderCoPerfCard(); }
+      else toast((data && data.message) || 'Upload failed — try again.');
     };
   });
 }
@@ -18477,6 +18822,77 @@ async function rejoinLiveBroadcast(sessionId) {
     startSpeechSafetyBot(sessionId);
     startAudioChunkBot(sessionId);
   }
+}
+
+/* "Solo or Co-Star?" — the upload prompt (Co-Star Upload Prompt,
+ * Oct 22 2026; Asce's directive Oct 21 2026). Every profile-media
+ * upload asks who appears in it; the answer rides along as multipart
+ * fields the server requires on all five media endpoints. Resolves
+ * { appearance:'solo' } or { appearance:'costar', costarIds:[...] },
+ * or null when she backs out (the upload is then aborted). The
+ * co-stars she can pick are her REGISTERED co-performers — the same
+ * records the camera rule and the Manager's ID Checks use — and a
+ * picked co-star whose 2257 packet (ID front/back + selfie + signed
+ * consent form) is not complete + approved yet holds the media
+ * private until it clears; she can always keep setting up. The
+ * house is exempt server-side, so it resolves solo, unprompted. */
+async function pickUploadAppearance() {
+  let partners = [], house = false;
+  try {
+    const cpRes = await api('/model/co-performers');
+    partners = (cpRes.data && cpRes.data.co_performers) || [];
+    house = !!(cpRes.data && cpRes.data.house);
+  } catch (e) { /* the prompt still offers Solo on its own */ }
+  if (house) return { appearance: 'solo' };
+  return new Promise((resolve) => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+    const rows = partners.map((p) => {
+      const hint = p.media_cleared ? t('costar_status_cleared') : t('costar_status_waiting');
+      return `<label class="checkbox-row"><input type="checkbox" data-costar-pick="${p.id}"><span>${esc(p.display_name)} <span class="muted small">(${hint})</span></span></label>`;
+    }).join('');
+    wrap.innerHTML = `
+      <div class="card" style="max-width:420px;width:100%">
+        <div style="font-weight:800;margin-bottom:6px">${t('costar_prompt_title')}</div>
+        <div class="muted small" style="margin-bottom:10px">${t('costar_prompt_note')}</div>
+        <label class="checkbox-row"><input type="radio" name="costar-appearance" value="solo" checked><span>${t('costar_prompt_solo')}</span></label>
+        <label class="checkbox-row"><input type="radio" name="costar-appearance" value="costar"><span>${t('costar_prompt_costar')}</span></label>
+        <div id="costar-picks" style="display:none;margin:6px 0 0 18px">
+          <div class="muted small" style="margin-bottom:6px">${t('costar_prompt_pick')}</div>
+          ${rows || `<div class="muted small">${t('costar_prompt_none')}</div>`}
+        </div>
+        <button class="btn" id="costar-go" style="width:100%;margin-top:12px">${t('costar_prompt_go')}</button>
+        <button class="btn ghost" id="costar-cancel" style="width:100%;margin-top:8px">${t('cancel')}</button>
+      </div>`;
+    document.body.appendChild(wrap);
+    const done = (v) => { wrap.remove(); resolve(v); };
+    const picksBox = wrap.querySelector('#costar-picks');
+    wrap.querySelectorAll('input[name="costar-appearance"]').forEach((r) => {
+      r.onchange = () => {
+        picksBox.style.display = (r.value === 'costar' && r.checked) ? 'block' : 'none';
+      };
+    });
+    wrap.querySelector('#costar-cancel').onclick = () => done(null);
+    wrap.querySelector('#costar-go').onclick = () => {
+      const mode = wrap.querySelector('input[name="costar-appearance"]:checked');
+      if (!mode || mode.value === 'solo') return done({ appearance: 'solo' });
+      const ids = [...wrap.querySelectorAll('[data-costar-pick]:checked')]
+        .map((c) => Number(c.dataset.costarPick));
+      if (!ids.length) { toast(t('costar_prompt_pickone')); return; }
+      done({ appearance: 'costar', costarIds: ids });
+    };
+  });
+}
+// The declaration as multipart fields for the upload endpoints.
+function declFields(decl) {
+  return decl && decl.appearance === 'costar'
+    ? { appearance: 'costar', costar_ids: JSON.stringify(decl.costarIds || []) }
+    : { appearance: 'solo' };
+}
+// True when an upload response is a declaration refusal — the server
+// message is already phrased for her.
+function declRefused(data) {
+  return !!(data && ['appearance_required', 'costar_required', 'bad_costar'].includes(data.error));
 }
 
 /* "Who's on camera?" — the go-live checklist of her APPROVED

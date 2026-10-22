@@ -133,7 +133,7 @@ test('settings: video 2 + gallery managers wired to the new endpoints', () => {
   assert.ok(app.includes("fetch('/api/model/preview-video-2', { method: 'POST', headers, body: fd })"), 'video 2 upload posts to its endpoint');
   assert.ok(app.includes("fetch('/api/model/preview-video-2', { method: 'DELETE', headers })"), 'video 2 remove deletes via its endpoint');
   assert.ok(app.includes('id="s-gallery-add"'), 'gallery add button');
-  assert.ok(app.includes("apiUpload('/model/gallery-photo', cropped)"), 'gallery add uploads via the photo pipeline');
+  assert.ok(app.includes("apiUpload('/model/gallery-photo', cropped, 'photo', declFields(decl))"), 'gallery add uploads via the photo pipeline (with the Solo/Co-Star declaration)');
   assert.ok(app.includes('data-gallery-del="${esc(u)}"'), 'each gallery picture carries a remove control');
   assert.ok(app.includes("method: 'DELETE', headers, body: JSON.stringify({ url: b.dataset.galleryDel })"), 'gallery remove sends the URL');
   assert.ok(app.includes("t('gallery_count', { n: profilePicCount, max: 10 })"), 'visible count of the cap');
@@ -221,6 +221,9 @@ async function req(base, method, p, { body, token } = {}) {
 async function upload(base, p, token, field, blob, filename) {
   const fd = new FormData();
   fd.append(field, blob, filename);
+  // Co-Star Upload Prompt (Oct 22 2026): profile-media uploads carry
+  // the Solo/Co-Star declaration — these fixtures are all solo shots.
+  fd.append('appearance', 'solo');
   const headers = {};
   if (token) headers.authorization = 'Bearer ' + token;
   const r = await fetch(base + p, { method: 'POST', headers, body: fd });
