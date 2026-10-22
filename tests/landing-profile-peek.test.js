@@ -66,7 +66,7 @@ test('landing tiles: live tiles still join the stream directly', () => {
 test('peek guest bar: gated to logged-out guests; fan bar gating untouched', () => {
   assert.ok(peek.includes('const showGuestBar = !S.user;'),
     'guest bar renders only when nobody is signed in');
-  assert.ok(peek.includes("const showMsgBar = !isMe && !!S.user && (S.user.role === 'fan' || isFanPreview());"),
+  assert.ok(peek.includes("const showMsgBar = !isMe && !!S.user && (S.user.role === 'fan' || S.user.is_house || isFanPreview());"),
     'fan Message bar gating unchanged (fans / fan-preview only, never isMe)');
 });
 
