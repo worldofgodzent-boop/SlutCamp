@@ -238,6 +238,12 @@ test('runtime: house texts + joins every live free; ledger untouched; fans still
       const q = await req(base, 'GET', '/api/admin/id-verifications', { ...MGR });
       const row = q.json.verifications.find((v) => v.model_id === acct.id && !v.co_performer_id);
       assert.ok(row, 'own ID submission queued');
+      // PR #86: her own packet cannot be approved until her WOGENT
+      // release is on file — she signs it first, like a real model.
+      const sign = await req(base, 'POST', '/api/model/release/sign', { token: acct.token, body: {
+        legal_name: 'Test Signer', stage_name: acct.username, dob: '1995-05-05',
+        attestations: { adult: true, freewill: true, rights: true } } });
+      assert.equal(sign.status, 200, `release sign ${acct.username}: ${sign.text}`);
       const ap = await req(base, 'POST', `/api/admin/id-verifications/${row.id}/approve`, { ...MGR });
       assert.equal(ap.status, 200, `approve: ${ap.text}`);
     };

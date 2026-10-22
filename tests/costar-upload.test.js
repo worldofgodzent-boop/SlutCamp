@@ -333,6 +333,12 @@ test('live: prompt required, solo unchanged, co-star media held until the packet
       const q = await req(base, 'GET', '/api/admin/id-verifications', { ...MGR });
       const ownRow = q.json.verifications.find((v) => v.model_id === model.id && !v.is_partner);
       assert.ok(ownRow, 'her own packet is in the queue');
+      // PR #86: her own packet cannot be approved until her WOGENT
+      // release is on file — she signs it first, like a real model.
+      const sign = await req(base, 'POST', '/api/model/release/sign', { token: model.token, body: {
+        legal_name: 'Test Signer', stage_name: 'csmodel', dob: '1995-05-05',
+        attestations: { adult: true, freewill: true, rights: true } } });
+      assert.equal(sign.status, 200, `release sign: ${sign.text}`);
       await approveVerif(ownRow.id);
     }
     assert.equal((await rosterRow(model.id)).photo_url, soloUrl,
