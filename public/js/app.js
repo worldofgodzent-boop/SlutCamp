@@ -576,6 +576,21 @@ const I18N = {
     per_voice: '🎙️ Per voice note:',
     explicit_rate_l: 'Live explicit rate — per minute ($)',
     save_rates: 'Save rates',
+    fan_pics_h: '📸 Fan pictures',
+    fan_pics_note: 'Let fans send you pictures right here in chat. Every picture is screened first and arrives blurred — only you can open it, when you choose.',
+    fan_pics_allowed_l: 'Fans can send me pictures',
+    fan_pic_price_l: 'Price per picture',
+    fan_pic_saved: '📸 Fan picture settings saved!',
+    fan_pic_tap: 'Tap to view',
+    fan_pic_from_fan: 'Fan picture',
+    fan_pic_attach_t: 'Send her a picture',
+    fan_pic_cost_confirm: 'Sending a picture to her costs {price}. Send it?',
+    fan_pic_send_btn: 'Send 📸',
+    fan_pic_sent: '📸 Picture sent!',
+    fan_pic_off_toast: 'She isn\'t accepting pictures right now.',
+    fan_pic_screened_toast: 'That picture couldn\'t be sent.',
+    fan_pic_delete: 'Delete picture',
+    fan_pic_deleted: '🗑 Picture deleted',
     stage_rates_h: '🔞 Explicit stage rates',
     ejv_l: '🎥 Explicit video + mic join:',
     ejm_l: '🎙️ Explicit mic join:',
@@ -1404,6 +1419,21 @@ const I18N = {
     per_voice: '🎙️ Por nota de voz:',
     explicit_rate_l: 'Tarifa explícita en vivo — por minuto ($)',
     save_rates: 'Guardar tarifas',
+    fan_pics_h: '📸 Fotos de fans',
+    fan_pics_note: 'Permite que los fans te envíen fotos aquí mismo en el chat. Cada foto se revisa primero y llega borrosa — solo tú puedes abrirla, cuando quieras.',
+    fan_pics_allowed_l: 'Los fans pueden enviarme fotos',
+    fan_pic_price_l: 'Precio por foto',
+    fan_pic_saved: '📸 ¡Ajustes de fotos de fans guardados!',
+    fan_pic_tap: 'Toca para ver',
+    fan_pic_from_fan: 'Foto de un fan',
+    fan_pic_attach_t: 'Enviarle una foto',
+    fan_pic_cost_confirm: 'Enviarle una foto cuesta {price}. ¿Enviarla?',
+    fan_pic_send_btn: 'Enviar 📸',
+    fan_pic_sent: '📸 ¡Foto enviada!',
+    fan_pic_off_toast: 'Ahora mismo no acepta fotos.',
+    fan_pic_screened_toast: 'Esa foto no pudo enviarse.',
+    fan_pic_delete: 'Eliminar foto',
+    fan_pic_deleted: '🗑 Foto eliminada',
     stage_rates_h: '🔞 Tarifas de escenario explícito',
     ejv_l: '🎥 Unión explícita con video + micrófono:',
     ejm_l: '🎙️ Unión explícita solo micrófono:',
@@ -2232,6 +2262,21 @@ const I18N = {
     per_voice: '🎙️ Por mensagem de voz:',
     explicit_rate_l: 'Tarifa explícita ao vivo — por minuto ($)',
     save_rates: 'Salvar tarifas',
+    fan_pics_h: '📸 Fotos de fãs',
+    fan_pics_note: 'Permita que os fãs enviem fotos para você aqui no chat. Cada foto é verificada primeiro e chega borrada — só você pode abri-la, quando quiser.',
+    fan_pics_allowed_l: 'Os fãs podem me enviar fotos',
+    fan_pic_price_l: 'Preço por foto',
+    fan_pic_saved: '📸 Configurações de fotos de fãs salvas!',
+    fan_pic_tap: 'Toque para ver',
+    fan_pic_from_fan: 'Foto de um fã',
+    fan_pic_attach_t: 'Enviar uma foto para ela',
+    fan_pic_cost_confirm: 'Enviar uma foto para ela custa {price}. Enviar?',
+    fan_pic_send_btn: 'Enviar 📸',
+    fan_pic_sent: '📸 Foto enviada!',
+    fan_pic_off_toast: 'Ela não está aceitando fotos agora.',
+    fan_pic_screened_toast: 'Essa foto não pôde ser enviada.',
+    fan_pic_delete: 'Excluir foto',
+    fan_pic_deleted: '🗑 Foto excluída',
     stage_rates_h: '🔞 Tarifas de palco explícito',
     ejv_l: '🎥 Entrada explícita com vídeo + microfone:',
     ejm_l: '🎙️ Entrada explícita só com microfone:',
@@ -3060,6 +3105,21 @@ const I18N = {
     per_voice: '🎙️ Par note vocale :',
     explicit_rate_l: 'Tarif explicite en direct — par minute ($)',
     save_rates: 'Enregistrer les tarifs',
+    fan_pics_h: '📸 Photos des fans',
+    fan_pics_note: 'Autorisez les fans à vous envoyer des photos directement dans le chat. Chaque photo est d\'abord contrôlée et arrive floutée — vous seule pouvez l\'ouvrir, quand vous le choisissez.',
+    fan_pics_allowed_l: 'Les fans peuvent m\'envoyer des photos',
+    fan_pic_price_l: 'Prix par photo',
+    fan_pic_saved: '📸 Réglages des photos de fans enregistrés !',
+    fan_pic_tap: 'Touchez pour voir',
+    fan_pic_from_fan: 'Photo d\'un fan',
+    fan_pic_attach_t: 'Lui envoyer une photo',
+    fan_pic_cost_confirm: 'Lui envoyer une photo coûte {price}. L\'envoyer ?',
+    fan_pic_send_btn: 'Envoyer 📸',
+    fan_pic_sent: '📸 Photo envoyée !',
+    fan_pic_off_toast: 'Elle n\'accepte pas de photos pour le moment.',
+    fan_pic_screened_toast: 'Cette photo n\'a pas pu être envoyée.',
+    fan_pic_delete: 'Supprimer la photo',
+    fan_pic_deleted: '🗑 Photo supprimée',
     stage_rates_h: '🔞 Tarifs de scène explicite',
     ejv_l: '🎥 Rejoindre en vidéo explicite + micro :',
     ejm_l: '🎙️ Rejoindre en micro explicite :',
@@ -3888,6 +3948,21 @@ const I18N = {
     per_voice: '🎙️ Pro Sprachnachricht:',
     explicit_rate_l: 'Expliziter Live-Preis — pro Minute ($)',
     save_rates: 'Preise speichern',
+    fan_pics_h: '📸 Fan-Fotos',
+    fan_pics_note: 'Erlaube Fans, dir hier im Chat Fotos zu schicken. Jedes Foto wird zuerst geprüft und kommt verschwommen an — nur du kannst es öffnen, wann du willst.',
+    fan_pics_allowed_l: 'Fans dürfen mir Fotos schicken',
+    fan_pic_price_l: 'Preis pro Foto',
+    fan_pic_saved: '📸 Fan-Foto-Einstellungen gespeichert!',
+    fan_pic_tap: 'Tippen zum Ansehen',
+    fan_pic_from_fan: 'Fan-Foto',
+    fan_pic_attach_t: 'Ihr ein Foto schicken',
+    fan_pic_cost_confirm: 'Ein Foto an sie zu schicken kostet {price}. Senden?',
+    fan_pic_send_btn: 'Senden 📸',
+    fan_pic_sent: '📸 Foto gesendet!',
+    fan_pic_off_toast: 'Sie nimmt gerade keine Fotos an.',
+    fan_pic_screened_toast: 'Dieses Foto konnte nicht gesendet werden.',
+    fan_pic_delete: 'Foto löschen',
+    fan_pic_deleted: '🗑 Foto gelöscht',
     stage_rates_h: '🔞 Explizite Bühnenpreise',
     ejv_l: '🎥 Explizites Video + Mikrofon beitreten:',
     ejm_l: '🎙️ Explizites Mikrofon beitreten:',
@@ -4716,6 +4791,21 @@ const I18N = {
     per_voice: '🎙️ За голосовое сообщение:',
     explicit_rate_l: 'Тариф откровенного эфира — за минуту ($)',
     save_rates: 'Сохранить тарифы',
+    fan_pics_h: '📸 Фото от фанатов',
+    fan_pics_note: 'Разрешите фанатам присылать вам фото прямо в чате. Каждое фото сначала проверяется и приходит размытым — открыть его можете только вы, когда захотите.',
+    fan_pics_allowed_l: 'Фанаты могут присылать мне фото',
+    fan_pic_price_l: 'Цена за фото',
+    fan_pic_saved: '📸 Настройки фото от фанатов сохранены!',
+    fan_pic_tap: 'Нажмите, чтобы посмотреть',
+    fan_pic_from_fan: 'Фото фаната',
+    fan_pic_attach_t: 'Отправить ей фото',
+    fan_pic_cost_confirm: 'Отправка фото ей стоит {price}. Отправить?',
+    fan_pic_send_btn: 'Отправить 📸',
+    fan_pic_sent: '📸 Фото отправлено!',
+    fan_pic_off_toast: 'Сейчас она не принимает фото.',
+    fan_pic_screened_toast: 'Это фото не удалось отправить.',
+    fan_pic_delete: 'Удалить фото',
+    fan_pic_deleted: '🗑 Фото удалено',
     stage_rates_h: '🔞 Тарифы откровенной сцены',
     ejv_l: '🎥 Откровенное видео + подключение с микрофоном:',
     ejm_l: '🎙️ Откровенное подключение с микрофоном:',
@@ -5544,6 +5634,21 @@ const I18N = {
     per_voice: '🎙️ ボイスノート1件あたり：',
     explicit_rate_l: 'ライブ露骨料金 — 1分あたり（$）',
     save_rates: '料金を保存',
+    fan_pics_h: '📸 ファンの写真',
+    fan_pics_note: 'ファンがチャットで直接あなたに写真を送れるようにします。写真はまず審査され、ぼかされた状態で届きます — 開けるのはあなただけ、開くタイミングもあなた次第です。',
+    fan_pics_allowed_l: 'ファンが私に写真を送れる',
+    fan_pic_price_l: '写真1枚の価格',
+    fan_pic_saved: '📸 ファン写真の設定を保存しました！',
+    fan_pic_tap: 'タップして表示',
+    fan_pic_from_fan: 'ファンの写真',
+    fan_pic_attach_t: '彼女に写真を送る',
+    fan_pic_cost_confirm: '彼女に写真を送ると {price} かかります。送りますか？',
+    fan_pic_send_btn: '送信 📸',
+    fan_pic_sent: '📸 写真を送信しました！',
+    fan_pic_off_toast: '現在、彼女は写真を受け付けていません。',
+    fan_pic_screened_toast: 'その写真は送信できませんでした。',
+    fan_pic_delete: '写真を削除',
+    fan_pic_deleted: '🗑 写真を削除しました',
     stage_rates_h: '🔞 露骨ステージ料金',
     ejv_l: '🎥 露骨ビデオ＋マイク参加：',
     ejm_l: '🎙️ 露骨マイク参加：',
@@ -6372,6 +6477,21 @@ const I18N = {
     per_voice: '🎙️ 每条语音消息：',
     explicit_rate_l: '露骨直播费率 — 每分钟 ($)',
     save_rates: '保存费率',
+    fan_pics_h: '📸 粉丝照片',
+    fan_pics_note: '允许粉丝直接在聊天中给你发送照片。每张照片都会先经过审核，并以模糊状态送达 — 只有你能打开，何时打开由你决定。',
+    fan_pics_allowed_l: '粉丝可以给我发照片',
+    fan_pic_price_l: '每张照片价格',
+    fan_pic_saved: '📸 粉丝照片设置已保存！',
+    fan_pic_tap: '点按查看',
+    fan_pic_from_fan: '粉丝照片',
+    fan_pic_attach_t: '给她发送照片',
+    fan_pic_cost_confirm: '给她发送一张照片需要 {price}。发送吗？',
+    fan_pic_send_btn: '发送 📸',
+    fan_pic_sent: '📸 照片已发送！',
+    fan_pic_off_toast: '她目前不接受照片。',
+    fan_pic_screened_toast: '该照片无法发送。',
+    fan_pic_delete: '删除照片',
+    fan_pic_deleted: '🗑 照片已删除',
     stage_rates_h: '🔞 露骨舞台费率',
     ejv_l: '🎥 露骨视频 + 麦克风加入：',
     ejm_l: '🎙️ 露骨麦克风加入：',
@@ -7200,6 +7320,21 @@ const I18N = {
     per_voice: '🎙️ 음성 메시지 1개당:',
     explicit_rate_l: '라이브 선정적 요금 — 분당 ($)',
     save_rates: '요금 저장',
+    fan_pics_h: '📸 팬 사진',
+    fan_pics_note: '팬이 채팅에서 바로 당신에게 사진을 보낼 수 있게 합니다. 모든 사진은 먼저 검사를 거치고 흐릿하게 도착합니다 — 여는 것은 당신만, 시점도 당신이 정합니다.',
+    fan_pics_allowed_l: '팬이 나에게 사진을 보낼 수 있음',
+    fan_pic_price_l: '사진당 가격',
+    fan_pic_saved: '📸 팬 사진 설정이 저장되었습니다!',
+    fan_pic_tap: '탭하여 보기',
+    fan_pic_from_fan: '팬 사진',
+    fan_pic_attach_t: '그녀에게 사진 보내기',
+    fan_pic_cost_confirm: '그녀에게 사진을 보내는 데 {price}이(가) 듭니다. 보낼까요?',
+    fan_pic_send_btn: '보내기 📸',
+    fan_pic_sent: '📸 사진이 전송되었습니다!',
+    fan_pic_off_toast: '현재 그녀는 사진을 받고 있지 않습니다.',
+    fan_pic_screened_toast: '해당 사진을 보낼 수 없습니다.',
+    fan_pic_delete: '사진 삭제',
+    fan_pic_deleted: '🗑 사진이 삭제되었습니다',
     stage_rates_h: '🔞 선정적 무대 요금',
     ejv_l: '🎥 선정적 영상 + 마이크 참여:',
     ejm_l: '🎙️ 선정적 마이크 참여:',
@@ -8028,6 +8163,21 @@ const I18N = {
     per_voice: '🎙️ Per nota vocale:',
     explicit_rate_l: 'Tariffa live esplicita — per minuto ($)',
     save_rates: 'Salva tariffe',
+    fan_pics_h: '📸 Foto dei fan',
+    fan_pics_note: 'Consenti ai fan di inviarti foto direttamente in chat. Ogni foto viene prima controllata e arriva sfocata — solo tu puoi aprirla, quando vuoi.',
+    fan_pics_allowed_l: 'I fan possono inviarmi foto',
+    fan_pic_price_l: 'Prezzo per foto',
+    fan_pic_saved: '📸 Impostazioni foto dei fan salvate!',
+    fan_pic_tap: 'Tocca per vedere',
+    fan_pic_from_fan: 'Foto di un fan',
+    fan_pic_attach_t: 'Inviale una foto',
+    fan_pic_cost_confirm: 'Inviarle una foto costa {price}. Inviarla?',
+    fan_pic_send_btn: 'Invia 📸',
+    fan_pic_sent: '📸 Foto inviata!',
+    fan_pic_off_toast: 'Al momento non accetta foto.',
+    fan_pic_screened_toast: 'Quella foto non ha potuto essere inviata.',
+    fan_pic_delete: 'Elimina foto',
+    fan_pic_deleted: '🗑 Foto eliminata',
     stage_rates_h: '🔞 Tariffe palco esplicite',
     ejv_l: '🎥 Accesso video + microfono esplicito:',
     ejm_l: '🎙️ Accesso solo microfono esplicito:',
@@ -8856,6 +9006,21 @@ const I18N = {
     per_voice: '🎙️ Za wiadomość głosową:',
     explicit_rate_l: 'Stawka za transmisję erotyczną na żywo — za minutę ($)',
     save_rates: 'Zapisz stawki',
+    fan_pics_h: '📸 Zdjęcia od fanów',
+    fan_pics_note: 'Pozwól fanom wysyłać Ci zdjęcia prosto na czacie. Każde zdjęcie jest najpierw sprawdzane i dociera rozmazane — tylko Ty możesz je otworzyć, kiedy chcesz.',
+    fan_pics_allowed_l: 'Fani mogą wysyłać mi zdjęcia',
+    fan_pic_price_l: 'Cena za zdjęcie',
+    fan_pic_saved: '📸 Zapisano ustawienia zdjęć od fanów!',
+    fan_pic_tap: 'Dotknij, aby zobaczyć',
+    fan_pic_from_fan: 'Zdjęcie od fana',
+    fan_pic_attach_t: 'Wyślij jej zdjęcie',
+    fan_pic_cost_confirm: 'Wysłanie jej zdjęcia kosztuje {price}. Wysłać?',
+    fan_pic_send_btn: 'Wyślij 📸',
+    fan_pic_sent: '📸 Zdjęcie wysłane!',
+    fan_pic_off_toast: 'Obecnie nie przyjmuje zdjęć.',
+    fan_pic_screened_toast: 'Tego zdjęcia nie udało się wysłać.',
+    fan_pic_delete: 'Usuń zdjęcie',
+    fan_pic_deleted: '🗑 Zdjęcie usunięte',
     stage_rates_h: '🔞 Stawki za scenę erotyczną',
     ejv_l: '🎥 Dołączenie erotyczne wideo + mikrofon:',
     ejm_l: '🎙️ Dołączenie erotyczne tylko mikrofon:',
@@ -9684,6 +9849,21 @@ const I18N = {
     per_voice: '🎙️ Per spraaknotitie:',
     explicit_rate_l: 'Live expliciet tarief — per minuut ($)',
     save_rates: 'Tarieven opslaan',
+    fan_pics_h: '📸 Fanfoto\'s',
+    fan_pics_note: 'Laat fans je hier in de chat foto\'s sturen. Elke foto wordt eerst gescreend en komt wazig aan — alleen jij kunt hem openen, wanneer jij wilt.',
+    fan_pics_allowed_l: 'Fans mogen mij foto\'s sturen',
+    fan_pic_price_l: 'Prijs per foto',
+    fan_pic_saved: '📸 Fanfoto-instellingen opgeslagen!',
+    fan_pic_tap: 'Tik om te bekijken',
+    fan_pic_from_fan: 'Fanfoto',
+    fan_pic_attach_t: 'Stuur haar een foto',
+    fan_pic_cost_confirm: 'Een foto naar haar sturen kost {price}. Verzenden?',
+    fan_pic_send_btn: 'Verzenden 📸',
+    fan_pic_sent: '📸 Foto verzonden!',
+    fan_pic_off_toast: 'Ze accepteert momenteel geen foto\'s.',
+    fan_pic_screened_toast: 'Die foto kon niet worden verzonden.',
+    fan_pic_delete: 'Foto verwijderen',
+    fan_pic_deleted: '🗑 Foto verwijderd',
     stage_rates_h: '🔞 Expliciete podiumtarieven',
     ejv_l: '🎥 Expliciete video + microfoon deelname:',
     ejm_l: '🎙️ Expliciete microfoon deelname:',
@@ -10512,6 +10692,21 @@ const I18N = {
     per_voice: '🎙️ Sesli not başına:',
     explicit_rate_l: 'Canlı müstehcen ücreti — dakika başına ($)',
     save_rates: 'Ücretleri kaydet',
+    fan_pics_h: '📸 Hayran fotoğrafları',
+    fan_pics_note: 'Hayranların sohbette doğrudan sana fotoğraf göndermesine izin ver. Her fotoğraf önce taranır ve bulanık gelir — onu yalnızca sen, istediğin zaman açabilirsin.',
+    fan_pics_allowed_l: 'Hayranlar bana fotoğraf gönderebilir',
+    fan_pic_price_l: 'Fotoğraf başına fiyat',
+    fan_pic_saved: '📸 Hayran fotoğrafı ayarları kaydedildi!',
+    fan_pic_tap: 'Görmek için dokun',
+    fan_pic_from_fan: 'Hayran fotoğrafı',
+    fan_pic_attach_t: 'Ona fotoğraf gönder',
+    fan_pic_cost_confirm: 'Ona fotoğraf göndermek {price} tutuyor. Gönderilsin mi?',
+    fan_pic_send_btn: 'Gönder 📸',
+    fan_pic_sent: '📸 Fotoğraf gönderildi!',
+    fan_pic_off_toast: 'Şu anda fotoğraf kabul etmiyor.',
+    fan_pic_screened_toast: 'O fotoğraf gönderilemedi.',
+    fan_pic_delete: 'Fotoğrafı sil',
+    fan_pic_deleted: '🗑 Fotoğraf silindi',
     stage_rates_h: '🔞 Müstehcen sahne ücretleri',
     ejv_l: '🎥 Müstehcen video + mikrofon katılımı:',
     ejm_l: '🎙️ Müstehcen mikrofon katılımı:',
@@ -11254,6 +11449,11 @@ function handleWS(m) {
     if (gg) flyGiftAnim(gg.emoji, m.message.sender_name || 'Someone', gg.name);
   } else if (m.type === 'chat:new') {
     refreshTabBadges();
+  } else if (m.type === 'chat:deleted' && S.view === 'chat' && S.conv && m.conversation_id === S.conv.id) {
+    // A fan picture the model deleted in her thread disappears from
+    // both sides in place.
+    S.messages = S.messages.filter((x) => x.id !== m.message_id);
+    renderMessages();
   } else if (m.type === 'chat:read' && S.view === 'chat' && S.conv && m.conversation_id === S.conv.id) {
     // Read receipts flip in place — a full rebuild just to turn ✓ blue
     // was part of the send/receive glitch.
@@ -15837,6 +16037,16 @@ async function vModelSettings() {
         <div class="muted small" style="margin-top:6px">${t('battle_open_invites_note')}</div>
       </div>
       <div class="card">
+        <div style="font-weight:800;margin-bottom:6px">${t('fan_pics_h')}</div>
+        <div class="row" style="gap:10px;align-items:center">
+          <button class="toggle ${m.fan_pics_allowed ? 'on' : ''}" id="fanpics-toggle" aria-label="${t('fan_pics_allowed_l')}"></button>
+          <span style="font-weight:700">${t('fan_pics_allowed_l')}</span>
+        </div>
+        <div class="muted small" style="margin-top:6px">${t('fan_pics_note')}</div>
+        <label class="field" style="margin-top:10px">${t('fan_pic_price_l')} <b id="s-fanpic-label">${fmt((m.fan_pic_price || 0) * 100)}</b>
+          <input type="range" id="s-fanpic" min="0" max="100" step="1" value="${m.fan_pic_price || 0}" style="width:100%"></label>
+      </div>
+      <div class="card">
         <div style="font-weight:800;margin-bottom:6px">${t('my_rates')}</div>
         <div class="muted small" style="margin-bottom:10px">${t('rates_note')}</div>
         <label class="field">${t('per_text')} <b id="s-msg-label">${fmt(m.per_message_cents || 149)}</b>
@@ -16009,6 +16219,33 @@ async function vModelSettings() {
       toast(next ? '⚔️ PumPum Verse invites ON' : '⚔️ PumPum Verse invites OFF');
     }
   };
+  // Fan Pictures card: toggle saves on tap (battle-toggle pattern);
+  // the price slider saves on release. Both go through the same
+  // profile PUT as her other model-set prices.
+  const fanPicsToggle = $('#fanpics-toggle');
+  if (fanPicsToggle) fanPicsToggle.onclick = async () => {
+    const next = S.model.fan_pics_allowed ? 0 : 1;
+    const { status } = await api('/model/profile', {
+      method: 'PUT', body: JSON.stringify({ fan_pics_allowed: next }) });
+    if (status === 200) {
+      S.model.fan_pics_allowed = next;
+      fanPicsToggle.classList.toggle('on', !!next);
+      toast(t('fan_pic_saved'));
+    } else {
+      toast(t('couldnt_save'));
+    }
+  };
+  const sFanPic = $('#s-fanpic');
+  if (sFanPic) {
+    sFanPic.oninput = () => { $('#s-fanpic-label').textContent = fmt(parseInt(sFanPic.value) * 100); };
+    sFanPic.onchange = async () => {
+      const fan_pic_price = parseInt(sFanPic.value);
+      const { status } = await api('/model/profile', {
+        method: 'PUT', body: JSON.stringify({ fan_pic_price }) });
+      if (status === 200) { S.model.fan_pic_price = fan_pic_price; toast(t('fan_pic_saved')); }
+      else toast(t('couldnt_save'));
+    };
+  }
   $('#s-save').onclick = async () => {
     const per_message_cents = parseInt($('#s-msg').value);
     const per_minute_cents = parseInt($('#s-min').value);
@@ -16976,6 +17213,7 @@ async function vChat(params) {
         <button type="button" class="emoji-btn" id="c-emoji" aria-label="Emoji" ${conv.is_paused ? 'disabled' : ''}>😊</button>
         <textarea id="c-input" rows="1" placeholder="${conv.is_paused ? t('chat_paused_ph') : t('msg_placeholder')}" ${conv.is_paused ? 'disabled' : ''} autocomplete="off" enterkeyhint="send"></textarea>
       </div>
+      ${!conv.is_paused && S.user && (S.user.role === 'fan' || S.user.is_house) && other.fan_pics_allowed ? `<label class="icon-btn" id="c-fanpic" for="fanpic-file" title="${t('fan_pic_attach_t')}">📸</label>` : ''}
       ${isModel ? `<label class="icon-btn" id="c-cam" for="ppv-file-cam" title="Send a photo or video">📷</label>` : ''}
       <div class="composer-slot">
         <button type="button" class="round-act" id="c-mic" aria-label="Voice note" ${conv.is_paused ? 'disabled' : ''}>🎤</button>
@@ -16984,6 +17222,7 @@ async function vChat(params) {
     </div>
     </div>
     <input type="file" id="ppv-file-cam" class="file-offscreen" accept="image/*,video/*">
+    <input type="file" id="fanpic-file" class="file-offscreen" accept="image/jpeg,image/png,image/webp">
     </div>`;
 
   // Notices thread: the composer becomes a static read-only bar —
@@ -17024,6 +17263,18 @@ async function vChat(params) {
     if (!f) return;
     if (f.size > 200 * 1024 * 1024) return toast('File too big — 200MB max.');
     openPpvPriceSheet(f, f.type && f.type.startsWith('video/') ? 'ppv_video' : 'ppv_image');
+  };
+  // Fan picture attach (fan side, only rendered when HER toggle is
+  // on): images only — the same jpeg/png/webp set the server screens
+  // for — then a confirm sheet showing her exact per-picture price.
+  const fpInp = $('#fanpic-file');
+  if (fpInp) fpInp.onchange = () => {
+    const f = fpInp.files && fpInp.files[0];
+    fpInp.value = '';
+    if (!f) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(f.type || '')) return toast(t('fan_pic_screened_toast'), 4000);
+    if (f.size > 200 * 1024 * 1024) return toast('File too big — 200MB max.');
+    openFanPicConfirm(f);
   };
   const gb = $('#c-gift');
   if (gb) gb.onclick = openChatGiftPanel;
@@ -17143,9 +17394,54 @@ function ppvWatermarkHTML(m) {
   return `<span class="media-wm" aria-hidden="true">${tag}</span>`;
 }
 
+/* Fan picture controls (Fan Pictures in Chat, Oct 22 2026): the
+   receiving model's delete affordance under a fan picture, her
+   tap-to-view (the ONLY unblur — POST /api/media/:id/view stamps the
+   viewed state server-side), and her delete of the picture message. */
+function fanPicDeleteHTML(m) {
+  if (!(S.user && S.user.role === 'model' && m.sender_id !== S.user.id)) return '';
+  return `<button type="button" class="media-explicit-toggle" data-fanpic-delete="${m.id}">${t('fan_pic_delete')}</button>`;
+}
+async function viewFanPic(mediaId) {
+  const { status } = await api(`/media/${mediaId}/view`, { method: 'POST' });
+  if (status === 200) {
+    S.messages.forEach((x) => {
+      if (x.media && x.media.id === mediaId) { x.media.unlocked = true; x.media.viewed = true; }
+    });
+    refreshMediaBubble(mediaId);
+  } else {
+    toast('Could not open that picture.');
+  }
+}
+async function deleteFanPic(msgId) {
+  const { status } = await api(`/messages/${msgId}`, { method: 'DELETE' });
+  if (status === 200) {
+    S.messages = S.messages.filter((x) => x.id !== msgId);
+    renderMessages();
+    toast(t('fan_pic_deleted'));
+  } else {
+    toast('Could not delete that picture.');
+  }
+}
+
 function mediaHTML(m) {
   if (!m.media) return '';
   const md = m.media;
+  if (md.kind === 'fan_pic') {
+    // Fan picture: the FAN always sees his own picture normally; the
+    // MODEL sees it blurred behind a Tap-to-view tile until she
+    // deliberately opens it (server stamps the viewed state, and her
+    // payloads only then carry unlocked:true + the file bytes).
+    if (md.unlocked) {
+      const veil = `<span class="media-load"><span class="media-spin"></span><span class="media-load-tx">Loading…</span></span>`;
+      return `<span class="media-wrap media-img is-loading"><img class="ppv-img" data-media-src="${md.id}" alt="photo">${veil}</span>${fanPicDeleteHTML(m)}`;
+    }
+    return `<button class="ppv-lock ppv-tap" data-fanpic-view="${md.id}">
+    <span class="ppv-lock-bg">📸</span>
+    <span class="ppv-lock-label">📸 ${t('fan_pic_from_fan')}</span>
+    <span class="ppv-unlock-btn">${t('fan_pic_tap')}</span>
+  </button>${fanPicDeleteHTML(m)}`;
+  }
   if (md.shielded) {
     // Pre-purchase shield (server-decided): explicit-flagged free media
     // for a fan who has not age-verified. NOT a button — a press must
@@ -17550,6 +17846,12 @@ function bindMessageActions(scope) {
   });
   scope.querySelectorAll('[data-explicit-toggle]').forEach((b) => {
     b.onclick = () => toggleMediaExplicit(parseInt(b.dataset.explicitToggle));
+  });
+  scope.querySelectorAll('[data-fanpic-view]').forEach((b) => {
+    b.onclick = () => viewFanPic(parseInt(b.dataset.fanpicView));
+  });
+  scope.querySelectorAll('[data-fanpic-delete]').forEach((b) => {
+    b.onclick = () => deleteFanPic(parseInt(b.dataset.fanpicDelete));
   });
   scope.querySelectorAll('[data-react]').forEach((b) => {
     b.onclick = (ev) => { ev.stopPropagation(); openReactPop(parseInt(b.dataset.react), b); };
@@ -18080,6 +18382,90 @@ async function uploadMedia(file, kind, priceCents, durationSec, isExplicit) {
       if (S.user && S.user.role === 'fan') {
         setTimeout(() => show('wallet', {}), 800);
       }
+    } else {
+      toast(data.message || 'Upload failed.');
+    }
+  } catch (e) {
+    toast('Upload failed — check your connection.');
+  }
+}
+
+/* ---------------- FAN PICTURES (fan side) ----------------
+   The fan sees her exact per-picture price and confirms BEFORE the
+   send; the server charges only on delivery (after screening). Each
+   pick generates ONE client_request_id: if the fan retries the same
+   send (flaky network re-tap of the same confirm), the retry carries
+   the same id and the server returns the delivered picture instead
+   of charging twice. */
+let fanPicPendingReq = null; // { file, reqId } between pick and a landed send
+function fanPicReqId() {
+  try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch (e) { /* older webview */ }
+  return 'fp-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
+}
+function openFanPicConfirm(file) {
+  const other = (S.conv && S.conv.other) || {};
+  const price = other.fan_pic_price || 0;
+  if (!fanPicPendingReq || fanPicPendingReq.file !== file)
+    fanPicPendingReq = { file, reqId: fanPicReqId() };
+  const overlay = document.createElement('div');
+  overlay.id = 'ppv-price-overlay';
+  overlay.innerHTML = `
+    <div class="crop-box">
+      <div class="crop-title">📸 ${t('fan_pic_attach_t')}</div>
+      <div class="small muted" style="margin-bottom:14px">${t('fan_pic_cost_confirm', { price: fmt(price * 100) })}</div>
+      <div class="crop-actions">
+        <button class="btn ghost" id="fp-cancel">${t('cancel')}</button>
+        <button class="btn" id="fp-send">${t('fan_pic_send_btn')}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#fp-cancel').onclick = () => { fanPicPendingReq = null; overlay.remove(); };
+  overlay.querySelector('#fp-send').onclick = () => { overlay.remove(); uploadFanPic(file); };
+}
+
+async function uploadFanPic(file) {
+  toast('Uploading… ⏳');
+  const reqId = fanPicPendingReq && fanPicPendingReq.file === file
+    ? fanPicPendingReq.reqId : fanPicReqId();
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('conversation_id', S.conv.id);
+  fd.append('kind', 'fan_pic');
+  fd.append('client_request_id', reqId);
+  // Text sitting in the composer rides along as the caption — the
+  // server runs it through the same chat safety monitor.
+  const input = $('#c-input');
+  const caption = input ? input.value.trim() : '';
+  if (caption) fd.append('caption', caption);
+  const headers = {};
+  if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
+  try {
+    const r = await fetch('/api/media/send', { method: 'POST', headers, body: fd });
+    const data = await r.json();
+    if (r.status === 200 && data.blocked) {
+      // Safety monitor stopped the caption — picture not sent, not charged.
+      toast(t('safety_blocked_info'), 6000);
+      return;
+    }
+    if (r.status === 200) {
+      fanPicPendingReq = null;
+      if (caption && input) { input.value = ''; syncChatComposer(); }
+      if (!S.messages.find((x) => x.id === data.message.id)) S.messages.push(data.message);
+      appendMessageBubble(data.message);
+      pinChatScroll();
+      if (data.balance_cents != null && S.wallet) S.wallet.credits_cents = data.balance_cents;
+      toast(t('fan_pic_sent'));
+    } else if (r.status === 402) {
+      const need = data.needed_cents != null ? fmt(data.needed_cents) : '';
+      const bal = data.balance_cents != null ? fmt(data.balance_cents) : '';
+      if (!spendCapToast(data)) toast(`💰 Not enough credits — need ${need} (you have ${bal}). Top up to send!`, 4000);
+      if (S.user && S.user.role === 'fan') setTimeout(() => show('wallet', {}), 800);
+    } else if (r.status === 403 && data.error === 'fan_pics_off') {
+      fanPicPendingReq = null;
+      toast(t('fan_pic_off_toast'), 4000);
+    } else if (r.status === 400 && data.error === 'fan_pic_screening_failed') {
+      fanPicPendingReq = null;
+      toast(t('fan_pic_screened_toast'), 4000);
     } else {
       toast(data.message || 'Upload failed.');
     }

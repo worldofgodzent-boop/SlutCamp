@@ -834,7 +834,9 @@ CREATE TABLE IF NOT EXISTS models (
   explicit_join_cents INTEGER NOT NULL DEFAULT 2500,
   explicit_mic_join_cents INTEGER NOT NULL DEFAULT 1500,
   join_cents INTEGER NOT NULL DEFAULT 1000,
-  mic_join_cents INTEGER NOT NULL DEFAULT 500
+  mic_join_cents INTEGER NOT NULL DEFAULT 500,
+  fan_pics_allowed INTEGER NOT NULL DEFAULT 0,
+  fan_pic_price INTEGER NOT NULL DEFAULT 0
 );
 
 -- Model likes (fans tap heart on model cards)
@@ -1048,11 +1050,14 @@ CREATE TABLE IF NOT EXISTS media_items (
   conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
   sender_id       INTEGER REFERENCES users(id),
   guest_token     TEXT,
-  kind            TEXT NOT NULL CHECK(kind IN ('ppv_image','ppv_video','voice')),
+  kind            TEXT NOT NULL CHECK(kind IN ('ppv_image','ppv_video','voice','fan_pic')),
   mime            TEXT NOT NULL,
   file_path       TEXT NOT NULL,
   price_cents     INTEGER NOT NULL DEFAULT 0,
   duration_sec    INTEGER NOT NULL DEFAULT 0,
+  is_explicit     INTEGER NOT NULL DEFAULT 0,
+  fan_pic_viewed_at TEXT,
+  client_request_id TEXT,
   created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_media_conv ON media_items(conversation_id, id);
@@ -1549,6 +1554,68 @@ addColumnIfMissing('calls', 'booking_id', 'INTEGER REFERENCES bookings(id)');
 addColumnIfMissing('users', 'av_verified_at', 'TEXT');
 addColumnIfMissing('users', 'fan_state', 'TEXT');
 addColumnIfMissing('media_items', 'is_explicit', 'INTEGER NOT NULL DEFAULT 0');
+// Fan Pictures in Chat (owner, Oct 22 2026): a model opts IN to fan
+// pictures (fan_pics_allowed, default OFF) and sets the per-picture
+// price in credits (fan_pic_price; 1 credit = $1; 0 = free). Fan
+// pictures ride media_items as kind 'fan_pic' — chat-only, never
+// profile/feed media. fan_pic_viewed_at stamps the model's deliberate
+// tap-to-view (NULL = still blurred for her); client_request_id is
+// the fan client's per-send idempotency key (a retry of the same
+// send returns the delivered picture instead of charging twice).
+addColumnIfMissing('models', 'fan_pics_allowed', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('models', 'fan_pic_price', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('media_items', 'fan_pic_viewed_at', 'TEXT');
+addColumnIfMissing('media_items', 'client_request_id', 'TEXT');
+db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_media_client_req
+  ON media_items(sender_id, client_request_id) WHERE client_request_id IS NOT NULL`);
+/* media_items kind-CHECK rebuild (Fan Pictures): databases created
+   before this build carry CHECK(kind IN ('ppv_image','ppv_video',
+   'voice')) — rebuild the table with 'fan_pic' added, following the
+   id_verifications rebuild pattern (foreign_keys OFF, copy verbatim,
+   drop, rename). Runs only while the stored DDL lacks 'fan_pic';
+   fresh databases take the new DDL from the schema block above. */
+try {
+  const ddl = db.prepare(`SELECT sql FROM sqlite_master
+    WHERE type = 'table' AND name = 'media_items'`).get();
+  // NB: match the QUOTED kind value — the fan_pic_viewed_at column
+  // added just above also contains the substring "fan_pic", and a
+  // bare substring test would skip the rebuild forever.
+  if (ddl && !(ddl.sql || '').includes("'fan_pic'")) {
+    const cols = db.prepare('PRAGMA table_info(media_items)').all().map((c) => c.name);
+    db.exec('PRAGMA foreign_keys=OFF');
+    try {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        db.exec('DROP TABLE IF EXISTS media_items_fanpic');
+        db.exec(`CREATE TABLE media_items_fanpic (
+          id              INTEGER PRIMARY KEY AUTOINCREMENT,
+          conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+          sender_id       INTEGER REFERENCES users(id),
+          guest_token     TEXT,
+          kind            TEXT NOT NULL CHECK(kind IN ('ppv_image','ppv_video','voice','fan_pic')),
+          mime            TEXT NOT NULL,
+          file_path       TEXT NOT NULL,
+          price_cents     INTEGER NOT NULL DEFAULT 0,
+          duration_sec    INTEGER NOT NULL DEFAULT 0,
+          is_explicit     INTEGER NOT NULL DEFAULT 0,
+          fan_pic_viewed_at TEXT,
+          client_request_id TEXT,
+          created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+        )`);
+        db.exec(`INSERT INTO media_items_fanpic (${cols.join(', ')})
+          SELECT ${cols.join(', ')} FROM media_items`);
+        db.exec('DROP TABLE media_items');
+        db.exec('ALTER TABLE media_items_fanpic RENAME TO media_items');
+        db.exec('CREATE INDEX IF NOT EXISTS idx_media_conv ON media_items(conversation_id, id)');
+        db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_media_client_req
+          ON media_items(sender_id, client_request_id) WHERE client_request_id IS NOT NULL`);
+        db.exec('COMMIT');
+      } catch (e) { db.exec('ROLLBACK'); throw e; }
+    } finally {
+      db.exec('PRAGMA foreign_keys=ON');
+    }
+  }
+} catch (e) { console.log('[migrate] media_items fan_pic rebuild skipped:', e.message); }
 // 1-on-1 slot bookings (Oct 15, 2026): availability caps on the model row;
 // bookings.kind separates instant slot bookings ('slot', confirmed on pay)
 // from the legacy ask-and-approve flow ('request'). Presence stamps drive
@@ -7361,7 +7428,8 @@ function otherParty(conv, ident) {
   if (!otherId) { // guest on the other side (model viewing a guest chat)
     return { id: 0, display_name: 'Guest Fan', role: 'fan', is_online: true,
              per_message_cents: 0, per_minute_cents: 0, per_voice_cents: 0,
-             booking_rate_cents: 0, is_guest: true };
+             booking_rate_cents: 0, is_guest: true,
+             fan_pics_allowed: 0, fan_pic_price: 0 };
   }
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(otherId);
   const m = u.role === 'model' ? db.prepare('SELECT * FROM models WHERE user_id = ?').get(otherId) : null;
@@ -7380,7 +7448,12 @@ function otherParty(conv, ident) {
            per_message_cents: m ? m.per_message_cents : 0,
            per_minute_cents: m ? m.per_minute_cents : 0,
            per_voice_cents: m ? m.per_voice_cents : 0,
-           booking_rate_cents: m ? (m.booking_rate_cents ?? m.per_minute_cents) : 0 };
+           booking_rate_cents: m ? (m.booking_rate_cents ?? m.per_minute_cents) : 0,
+           // Fan Pictures in Chat: the fan-side composer reads HER
+           // toggle + price from here (chat surface only — these
+           // never ride the public model listings).
+           fan_pics_allowed: m ? (m.fan_pics_allowed ? 1 : 0) : 0,
+           fan_pic_price: m ? (m.fan_pic_price || 0) : 0 };
 }
 
 function convWhere(ident) {
@@ -7460,7 +7533,7 @@ app.get('/api/conversations/:id/messages', identMiddleware, (req, res) => {
     SELECT m.*, u.display_name AS sender_name, u.role AS sender_role,
            mi.kind AS media_kind, mi.mime AS media_mime,
            mi.price_cents AS media_price_cents, mi.duration_sec AS media_duration_sec,
-           mi.is_explicit AS media_is_explicit
+           mi.is_explicit AS media_is_explicit, mi.fan_pic_viewed_at AS media_fan_pic_viewed_at
     FROM messages m LEFT JOIN users u ON u.id = m.sender_id
     LEFT JOIN media_items mi ON mi.id = m.media_id
     WHERE m.conversation_id = ? ${before ? 'AND m.id < ?' : ''}
@@ -7511,11 +7584,23 @@ app.get('/api/conversations/:id/messages', identMiddleware, (req, res) => {
         unlocked = false;
         shielded = true;
       }
+      // Fan pictures (Oct 22 2026): the receiving model sees the
+      // picture BLURRED until her deliberate tap-to-view stamps
+      // fan_pic_viewed_at — for her the payload's `unlocked` IS the
+      // viewed state. The sender always sees his own picture, and
+      // admins keep their oversight view.
+      let viewed = null;
+      if (m.media_kind === 'fan_pic') {
+        viewed = !!m.media_fan_pic_viewed_at;
+        if (req.ident.kind === 'user' && req.ident.user.role !== 'admin' &&
+            conv.model_id === req.ident.user.id && m.sender_id !== req.ident.user.id)
+          unlocked = viewed;
+      }
       media = { id: m.media_id, kind: m.media_kind, price_cents: m.media_price_cents,
                 duration_sec: m.media_duration_sec, unlocked,
-                is_explicit: !!m.media_is_explicit, shielded };
+                is_explicit: !!m.media_is_explicit, shielded, viewed };
     }
-    const { media_kind, media_mime, media_price_cents, media_duration_sec, media_is_explicit, ...rest } = m;
+    const { media_kind, media_mime, media_price_cents, media_duration_sec, media_is_explicit, media_fan_pic_viewed_at, ...rest } = m;
     return { ...rest, media,
       reactions: reactionsByMsg[m.id] || [],
       edited: !!m.edited_at,
@@ -7905,7 +7990,146 @@ const MEDIA_LABELS = {
   ppv_image: '📸 Photo',
   ppv_video: '🎥 Video',
   voice: '🎤 Voice note',
+  fan_pic: '📸 Fan picture',
 };
+
+/* Fan picture send (Fan Pictures in Chat, owner Oct 22 2026). Called
+   from POST /api/media/send after the shared upload pipeline has run
+   (the SAME automated screening every media upload passes: the multer
+   file filter + size cap) and after membership/paused checks. `conv`
+   is the already-authorized conversation; the sender sits on its fan
+   side (a registered fan, or the house account fanning a model).
+   Order of operations is the spec: her toggle gate → screening →
+   caption safety scan → idempotency → charge → store + deliver. A
+   refusal at any step deletes the uploaded file, charges nothing and
+   delivers nothing. */
+function sendFanPicture(req, res, conv) {
+  const sender = req.ident.user;
+  const refuse = (status, body) => {
+    try { fs.unlinkSync(req.file.path); } catch (e) { /* already gone */ }
+    return res.status(status).json(body);
+  };
+  const model = db.prepare('SELECT * FROM models WHERE user_id = ?').get(conv.model_id);
+  // 1. Her toggle is the gate: OFF (the default) refuses server-side.
+  if (!model || !model.fan_pics_allowed)
+    return refuse(403, { error: 'fan_pics_off',
+      message: 'She isn\'t accepting pictures in chat right now.' });
+  // 2. SCREENING (hard rule): fan pictures are still IMAGES ONLY, of
+  // the exact types the model photo pipeline accepts (jpeg/png/webp).
+  // Anything else is a screening refusal — never stored, never
+  // delivered, never charged.
+  if (!/^image\/(jpeg|png|webp)$/.test(req.file.mimetype || ''))
+    return refuse(400, { error: 'fan_pic_screening_failed',
+      message: 'That picture couldn\'t be sent. Please send a JPG, PNG or WebP image.' });
+  // 3. Caption: text sent with the picture passes the existing chat
+  // safety monitor (fan-side scope: PII only). A match refuses the
+  // whole send, exactly like a blocked text — incident + strike
+  // recorded, nothing delivered, nothing charged.
+  const caption = String(req.body.caption || '').trim().slice(0, 2000);
+  if (caption) {
+    const matched = chatScan(caption, false);
+    if (matched) {
+      try { fs.unlinkSync(req.file.path); } catch (e) { /* already gone */ }
+      const key = subjectKey(req.ident);
+      db.prepare(`INSERT INTO safety_incidents
+        (conversation_id, sender_id, guest_token, sender_role, sender_name, flagged_text, matched)
+        VALUES (?,?,?,?,?,?,?)`).run(
+        conv.id, sender.id, null, 'fan', sender.display_name, redactForIncident(caption), matched);
+      const totalStrikes = addStrike(key);
+      const incident = db.prepare('SELECT * FROM safety_incidents WHERE id = last_insert_rowid()').get();
+      pushToAdmins({ type: 'safety:incident', incident: { ...incident, total_strikes: totalStrikes } });
+      return res.status(200).json({ blocked: true, matched, strikes: totalStrikes,
+        auto_flagged: totalStrikes >= 3 });
+    }
+  }
+  // 4. Idempotency: a retry carrying the same client_request_id gets
+  // the already-delivered picture back — no second charge, no
+  // duplicate message.
+  const reqId = String(req.body.client_request_id || '').slice(0, 64) || null;
+  const priorFor = () => reqId
+    ? db.prepare('SELECT * FROM media_items WHERE sender_id = ? AND client_request_id = ?')
+        .get(sender.id, reqId)
+    : null;
+  const prior = priorFor();
+  if (prior) {
+    try { fs.unlinkSync(req.file.path); } catch (e) { /* already gone */ }
+    const msg = db.prepare(`
+      SELECT m.*, u.display_name AS sender_name, u.role AS sender_role
+      FROM messages m LEFT JOIN users u ON u.id = m.sender_id WHERE m.media_id = ?`).get(prior.id);
+    const full = { ...msg, sender_name: msg.sender_name || 'Guest Fan',
+      sender_role: msg.sender_role || 'fan',
+      media: { id: prior.id, kind: 'fan_pic', price_cents: 0, duration_sec: 0,
+        unlocked: true, is_explicit: false, shielded: false, viewed: !!prior.fan_pic_viewed_at },
+      reactions: [], edited: false, edited_at: null };
+    return res.json({ message: full, cost_cents: msg.cost_cents || 0, duplicate: true,
+      balance_cents: getWallet(sender.id).credits_cents });
+  }
+  const priceCredits = Number.isInteger(model.fan_pic_price) ? model.fan_pic_price : 0;
+  const costCents = priceCredits * 100;
+  const house = isHouseAccountId(sender.id);
+  // 5. Charge — on delivery only (screening already passed), via the
+  // standard funnel: 60/40 split, recorded like other chat earnings.
+  // Insufficient balance blocks here: nothing stored, nothing
+  // delivered. OWNER COMP: the house is never charged and no
+  // earnings/transaction rows are created for its sends.
+  if (!house && costCents > 0) {
+    try {
+      chargeFan(sender.id, conv.model_id, costCents, 'fan_pic', 'Fan picture', clientIp(req));
+    } catch (e) {
+      return refuse(402, chargeErrorBody(e, costCents, sender.id));
+    }
+  }
+  // 6. Store + deliver.
+  let mediaId = null, msgId = null;
+  try {
+    txn(() => {
+      mediaId = db.prepare(
+        `INSERT INTO media_items (conversation_id, sender_id, guest_token, kind, mime, file_path, price_cents, duration_sec, is_explicit, client_request_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?)`
+      ).run(conv.id, sender.id, null, 'fan_pic', req.file.mimetype, req.file.path,
+            0, 0, 0, reqId).lastInsertRowid;
+      msgId = db.prepare(
+        'INSERT INTO messages (conversation_id, sender_id, guest_token, body, cost_cents, media_id) VALUES (?,?,?,?,?,?)'
+      ).run(conv.id, sender.id, null, caption || MEDIA_LABELS.fan_pic,
+            house ? 0 : costCents, mediaId).lastInsertRowid;
+    });
+  } catch (e) {
+    // Lost a same-request race: the winning send already delivered —
+    // reverse this charge so the fan still pays exactly once.
+    const winner = priorFor();
+    if (winner && !house && costCents > 0) {
+      try { refundFan(sender.id, conv.model_id, costCents, 'fan_pic', 'Fan picture (duplicate send reversed)', clientIp(req)); } catch (_) { /* best effort */ }
+      try { fs.unlinkSync(req.file.path); } catch (_) { /* already gone */ }
+      const msg = db.prepare(`
+        SELECT m.*, u.display_name AS sender_name, u.role AS sender_role
+        FROM messages m LEFT JOIN users u ON u.id = m.sender_id WHERE m.media_id = ?`).get(winner.id);
+      const full = { ...msg, sender_name: msg.sender_name || 'Guest Fan',
+        sender_role: msg.sender_role || 'fan',
+        media: { id: winner.id, kind: 'fan_pic', price_cents: 0, duration_sec: 0,
+          unlocked: true, is_explicit: false, shielded: false, viewed: !!winner.fan_pic_viewed_at },
+        reactions: [], edited: false, edited_at: null };
+      return res.json({ message: full, cost_cents: msg.cost_cents || 0, duplicate: true,
+        balance_cents: getWallet(sender.id).credits_cents });
+    }
+    throw e;
+  }
+  db.prepare(`UPDATE conversations SET updated_at = datetime('now') WHERE id = ?`).run(conv.id);
+  const msg = db.prepare(`
+    SELECT m.*, u.display_name AS sender_name, u.role AS sender_role
+    FROM messages m LEFT JOIN users u ON u.id = m.sender_id WHERE m.id = ?`).get(msgId);
+  const senderMedia = { id: mediaId, kind: 'fan_pic', price_cents: 0, duration_sec: 0,
+    unlocked: true, is_explicit: false, shielded: false, viewed: false };
+  const full = { ...msg, sender_name: msg.sender_name || 'Guest Fan',
+    sender_role: msg.sender_role || 'fan', media: senderMedia,
+    reactions: [], edited: false, edited_at: null };
+  // The model receives it BLURRED (unlocked:false, viewed:false) —
+  // her deliberate tap on the view endpoint is the only unblur.
+  const receiverMsg = { ...full, media: { ...senderMedia, unlocked: false } };
+  pushToSubject(`u:${conv.model_id}`, { type: 'chat:new', conversation_id: conv.id, message: receiverMsg });
+  buzzChatRecipient(conv.model_id, `💬 ${full.sender_name}`, MEDIA_LABELS.fan_pic);
+  return res.json({ message: full, cost_cents: house ? 0 : costCents,
+    balance_cents: getWallet(sender.id).credits_cents });
+}
 
 // POST /api/media/send (multipart: file + fields conversation_id, kind, price_cents, duration_sec)
 // Models attach PPV with a price; fans can send voice notes (billed at her per-voice rate).
@@ -7918,7 +8142,7 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
 
     const conversation_id = parseInt(req.body.conversation_id);
     const kind = req.body.kind;
-    if (!['ppv_image', 'ppv_video', 'voice'].includes(kind)) {
+    if (!['ppv_image', 'ppv_video', 'voice', 'fan_pic'].includes(kind)) {
       fs.unlink(req.file.path, () => {});
       return res.status(400).json({ error: 'bad_kind' });
     }
@@ -7933,6 +8157,19 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
 
     const isModelSender = req.ident.kind === 'user' && req.ident.user.role === 'model';
     const isFanSender = !isModelSender;
+
+    // Fan pictures (owner, Oct 22 2026): kind 'fan_pic' is a FAN-side
+    // send — the sender must sit on the conversation's fan side
+    // (registered fan, or the house account fanning a model) — and it
+    // runs through its own gated flow (her toggle, screening, price).
+    const senderFanSide = req.ident.kind === 'user' && conv.fan_id === req.ident.user.id;
+    if (kind === 'fan_pic') {
+      if (!senderFanSide) {
+        fs.unlink(req.file.path, () => {});
+        return res.status(403).json({ error: 'fans_only' });
+      }
+      return sendFanPicture(req, res, conv);
+    }
 
     // Fans can ONLY send voice notes — no picture/video uploads, ever.
     if (isFanSender && kind !== 'voice') {
@@ -8109,6 +8346,15 @@ app.post('/api/media/:id/file-token', identMiddleware, (req, res) => {
     if (conv && conv.model_id === uid) allowed = true;
   }
   if (!allowed) return res.status(403).json({ error: 'locked' });
+  // Fan picture byte-gate: the receiving model gets NO bytes until
+  // her deliberate tap-to-view stamps fan_pic_viewed_at — a token
+  // minted before she opens it must not unblur the picture.
+  if (media.kind === 'fan_pic' && media.sender_id !== uid &&
+      req.ident.user.role !== 'admin' && !media.fan_pic_viewed_at) {
+    const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(media.conversation_id);
+    if (conv && conv.model_id === uid)
+      return res.status(403).json({ error: 'fan_pic_unviewed' });
+  }
   // Shield byte-gate: free explicit-flagged media stays unservable to a
   // shielded fan even though its price is $0 (mirrors the payload rule).
   if (media.is_explicit && media.price_cents === 0 && media.sender_id !== uid &&
@@ -8155,6 +8401,14 @@ app.get('/api/media/:id/file', (req, res) => {
   }
   if (!allowed) return res.status(403).json({ error: 'locked',
     message: '🔒 Unlock this to view.' });
+  // Fan picture byte-gate (same rule as the token route): no bytes
+  // for the receiving model until her tap-to-view.
+  if (media.kind === 'fan_pic' && media.sender_id !== uid &&
+      ident.user.role !== 'admin' && !media.fan_pic_viewed_at) {
+    const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(media.conversation_id);
+    if (conv && conv.model_id === uid)
+      return res.status(403).json({ error: 'fan_pic_unviewed' });
+  }
   // Shield byte-gate (same rule as the token route): free
   // explicit-flagged media is not served to a shielded fan.
   if (media.is_explicit && media.price_cents === 0 && media.sender_id !== uid &&
@@ -8178,6 +8432,48 @@ app.post('/api/media/:id/explicit', identMiddleware, requireUser, requireRole('m
     req.body.explicit === '1' || req.body.explicit === 'true') ? 1 : 0;
   db.prepare('UPDATE media_items SET is_explicit = ? WHERE id = ?').run(on, media.id);
   res.json({ ok: true, is_explicit: on });
+});
+
+// POST /api/media/:id/view — FAN PICTURE tap-to-view: the receiving
+// model deliberately opens a fan picture. This is the ONLY unblur:
+// it stamps fan_pic_viewed_at, after which her message payloads and
+// the file routes serve her the picture. Hers alone — the fan side
+// of the thread cannot mark her copy viewed.
+app.post('/api/media/:id/view', identMiddleware, requireUser, (req, res) => {
+  const media = db.prepare('SELECT * FROM media_items WHERE id = ?').get(req.params.id);
+  if (!media) return res.status(404).json({ error: 'not_found' });
+  if (media.kind !== 'fan_pic') return res.status(400).json({ error: 'not_fan_pic' });
+  const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(media.conversation_id);
+  if (!conv || conv.model_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+  if (!media.fan_pic_viewed_at)
+    db.prepare("UPDATE media_items SET fan_pic_viewed_at = datetime('now') WHERE id = ?").run(media.id);
+  const fresh = db.prepare('SELECT fan_pic_viewed_at FROM media_items WHERE id = ?').get(media.id);
+  return res.json({ ok: true, viewed: true, viewed_at: fresh.fan_pic_viewed_at });
+});
+
+// DELETE /api/messages/:id — the receiving model's control over a
+// FAN PICTURE in her own thread: she can delete the picture message
+// (message + media rows + file). Scoped to fan_pic media she
+// received — no other message type is deletable through here, and a
+// deletion never refunds a delivered picture (delivery already
+// happened; this is her moderation of her own inbox).
+app.delete('/api/messages/:id', identMiddleware, requireUser, (req, res) => {
+  const msg = db.prepare('SELECT * FROM messages WHERE id = ?').get(req.params.id);
+  if (!msg || !msg.media_id) return res.status(404).json({ error: 'not_found' });
+  const media = db.prepare('SELECT * FROM media_items WHERE id = ?').get(msg.media_id);
+  if (!media || media.kind !== 'fan_pic')
+    return res.status(400).json({ error: 'not_deletable' });
+  const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(msg.conversation_id);
+  if (!conv || conv.model_id !== req.user.id || msg.sender_id === req.user.id)
+    return res.status(403).json({ error: 'forbidden' });
+  txn(() => {
+    db.prepare('DELETE FROM messages WHERE id = ?').run(msg.id);
+    db.prepare('DELETE FROM media_items WHERE id = ?').run(media.id);
+  });
+  try { fs.unlinkSync(media.file_path); } catch (e) { /* already gone */ }
+  for (const key of convPushKeys(conv, `u:${req.user.id}`))
+    pushToSubject(key, { type: 'chat:deleted', conversation_id: conv.id, message_id: msg.id });
+  return res.json({ ok: true });
 });
 
 /* ------------------------------------------------------------------ */
@@ -10174,7 +10470,7 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
   const { bio, per_message_cents, per_minute_cents, per_voice_cents, booking_rate_cents,
           explicit_rate_cents,
           explicit_join_cents, explicit_mic_join_cents, join_cents, mic_join_cents,
-          is_online, tags, battle_invites_open } = req.body || {};
+          is_online, tags, battle_invites_open, fan_pics_allowed, fan_pic_price } = req.body || {};
   const updates = [], params = [];
   // Model-settable 1-on-1 rates (tighter ranges than the admin override)
   const rateRange = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
@@ -10229,6 +10525,19 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
   // invites and schedule showdowns herself.
   if (battle_invites_open === 0 || battle_invites_open === 1) {
     updates.push('battle_invites_open = ?'); params.push(battle_invites_open);
+  }
+  // Fan Pictures in Chat (owner, Oct 22 2026): her opt-in toggle and
+  // the per-picture price in CREDITS (1 credit = $1; 0 = free). The
+  // price band follows her PPV pattern — a whole-credit price from
+  // free up to the $100 PPV ceiling.
+  if (fan_pics_allowed === 0 || fan_pics_allowed === 1) {
+    updates.push('fan_pics_allowed = ?'); params.push(fan_pics_allowed);
+  }
+  if (fan_pic_price !== undefined) {
+    if (!Number.isInteger(fan_pic_price) || fan_pic_price < 0 || fan_pic_price > 100)
+      return res.status(400).json({ error: 'bad_fan_pic_price',
+        message: 'Fan picture price must be a whole number of credits, 0–100.' });
+    updates.push('fan_pic_price = ?'); params.push(fan_pic_price);
   }
   // Discovery tags: must be an array of catalogue strings; unknown tags
   // are dropped, duplicates collapse, and the list caps at MAX_MODEL_TAGS.
