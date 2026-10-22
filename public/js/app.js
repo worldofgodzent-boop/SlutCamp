@@ -21341,7 +21341,8 @@ async function openBattleStage(battleId) {
     toast('Sign up free to watch live 🔴');
     return show('auth', { mode: 'signup', role: 'fan' });
   }
-  if (S.user.role !== 'fan') return toast('Fans only.');
+  // Owner comp: the house account spectates like a fan.
+  if (S.user.role !== 'fan' && !S.user.is_house) return toast('Fans only.');
   battleClientTeardown();
   battleView = { id: battleId, battle: null };
   battleChatMsgs = [];
@@ -21999,7 +22000,9 @@ async function watchLive(sessionId) {
     toast('Sign up free to watch live 🔴');
     return show('auth', { mode: 'signup', role: 'fan' });
   }
-  if (S.user.role !== 'fan') return toast('Fans only.');
+  // Owner comp: the house account watches like a fan (the server
+  // comps its charges — see isOwnerComp in server.js).
+  if (S.user.role !== 'fan' && !S.user.is_house) return toast('Fans only.');
   // Relay first: if she's publishing to Cloudflare, pull from the
   // edge — her one upload serves the whole crowd. The subscribe runs
   // BEFORE the join so the server counts this viewer as relay-served
@@ -22356,7 +22359,16 @@ async function livePayExplicit() {
   const L = S.live;
   if (!L) return;
   const { status, data } = await api(`/live/${L.sessionId}/pay`, { method: 'POST' });
-  if (status === 200) {
+  if (status === 200 && data && data.owner_comp) {
+    // Owner comp: unblurred free — no paying state, no per-minute HUD.
+    L.paying = false;
+    L.entryPaid = true;
+    if (data.explicit_until) L.explicitUntil = data.explicit_until;
+    stopGiftCountdown();
+    applyLiveBlur(false);
+    updateLivePayHUD();
+    toast('🔓 Unblurred — house account 💋');
+  } else if (status === 200) {
     L.paying = true;
     L.entryPaid = true; // per-minute pay counts as entry-paid: stopping drops to gift loop, not entry wall
     stopGiftCountdown();
