@@ -13325,8 +13325,10 @@ function openModelPeek(m, models) {
   // The sticky Message bar is a FAN action: real fans get it, and the
   // admin's fan-preview stands in for a fan so he sees her page as
   // fans do. Models browsing a sister stay look-only (no fan actions),
-  // and nobody ever gets a message-themselves button.
-  const showMsgBar = !isMe && !!S.user && (S.user.role === 'fan' || isFanPreview());
+  // and nobody ever gets a message-themselves button. The house
+  // account rides the fan path (owner comp): it gets the bar too —
+  // the server routes its chats fan-side.
+  const showMsgBar = !isMe && !!S.user && (S.user.role === 'fan' || S.user.is_house || isFanPreview());
   // A logged-out guest gets a bar in the same pinned spot — never a
   // working chat (guests can't message), but the way forward: join /
   // log in, routed to the auth view. Signed-in users never see this
@@ -13519,6 +13521,9 @@ async function vFanModels() {
   await refreshMe();
   const inPreview = isFanPreview();
   const isModelViewer = !!(S.user && (S.user.role === 'model' || inPreview));
+  // Owner comp: the house account is model-role but routes like a
+  // fan wherever a tap is routed by role (live tiles, official card).
+  const isHouseViewer = !!(S.user && S.user.is_house);
   let following = [];
   if (!isModelViewer) {
     try { const f = await api('/follows'); following = f.data.following || []; } catch (e) {}
@@ -13559,12 +13564,13 @@ async function vFanModels() {
   wireSectionTabs(() => show('fanModels', {}));
   // Pinned official card: LIVE → join the stream exactly like a live
   // model tile; quiet → its look-only profile page. Model viewers and
-  // the admin fan-preview stay look-only in both states (the grid rule).
+  // the admin fan-preview stay look-only in both states (the grid rule);
+  // the house account takes the fan path here too (owner comp).
   wireSideSwitch();
   app.querySelectorAll('[data-official]').forEach((b) => {
     b.onclick = () => {
       if (!official) return;
-      if (official.is_live && official.live_session_id && !isModelViewer) {
+      if (official.is_live && official.live_session_id && (!isModelViewer || isHouseViewer)) {
         return watchLive(parseInt(official.live_session_id));
       }
       openModelPeek(official, models);
@@ -13576,7 +13582,7 @@ async function vFanModels() {
   if (hlo) hlo.onclick = () => { if (confirm('Log out of SlutCamp?')) logout(); };
   app.querySelectorAll('[data-model]').forEach((b) => {
     b.onclick = () => {
-      if (isModelViewer) {
+      if (isModelViewer && !isHouseViewer) {
         const m = models.find((x) => x.id === parseInt(b.dataset.model));
         if (m) openModelPeek(m, models);
         return;
@@ -13586,7 +13592,7 @@ async function vFanModels() {
       // Fans land on her profile first (owner, Oct 17 2026): her
       // pictures + preview video, with the Message bar pinned while
       // they scroll — the bar opens the chat from there.
-      if (S.user && S.user.role === 'fan') {
+      if (S.user && (S.user.role === 'fan' || S.user.is_house)) {
         const m = models.find((x) => x.id === parseInt(b.dataset.model));
         if (m) { openModelPeek(m, models); return; }
       }
@@ -13696,7 +13702,7 @@ async function vLives() {
     </div>`;
   app.querySelectorAll('[data-model]').forEach((b) => {
     b.onclick = () => {
-      if ((S.user && S.user.role === 'model') || isFanPreview()) {
+      if ((S.user && S.user.role === 'model' && !S.user.is_house) || isFanPreview()) {
         const m = models.find((x) => x.id === parseInt(b.dataset.model));
         if (m) openModelPeek(m, models);
         return;
@@ -13706,7 +13712,7 @@ async function vLives() {
       // Fans land on her profile first (owner, Oct 17 2026) — same
       // profile-first flow as the home grid; live tiles still join
       // the stream directly above.
-      if (S.user && S.user.role === 'fan') {
+      if (S.user && (S.user.role === 'fan' || S.user.is_house)) {
         const m = models.find((x) => x.id === parseInt(b.dataset.model));
         if (m) { openModelPeek(m, models); return; }
       }
@@ -23346,7 +23352,7 @@ async function routeInitial() {
           const { status } = await api('/me');
           if (status === 200) {
             await refreshMe();
-            if (S.user.role === 'fan') {
+            if (S.user.role === 'fan' || S.user.is_house) {
               if (target.live_session_id) return watchLive(target.live_session_id);
               return openChatWithModel(target.id);
             }

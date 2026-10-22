@@ -74,7 +74,7 @@ test('peek page scrolls in .peek-scroll; the Message bar sits outside it (always
 });
 
 test('sticky Message bar: fan-only, never for herself, label is i18n + her per-message price', () => {
-  assert.ok(peek.includes("const showMsgBar = !isMe && !!S.user && (S.user.role === 'fan' || isFanPreview());"),
+  assert.ok(peek.includes("const showMsgBar = !isMe && !!S.user && (S.user.role === 'fan' || S.user.is_house || isFanPreview());"),
     'bar gated to fans / fan-preview, never isMe, never model viewers');
   assert.ok(peek.includes('${showMsgBar ?'), 'bar renders conditionally');
   assert.ok(peek.includes('data-peek-msg="${m.id}"'), 'button carries her model id');
@@ -100,11 +100,11 @@ test('msg_her_btn i18n key exists in all 13 language tables', () => {
 
 test('fan tile taps land on her profile first (home grid + lives); live still joins the stream', () => {
   const home = app.slice(app.indexOf('async function vFanModels()'), app.indexOf('async function vFanChats()'));
-  assert.ok(home.includes("if (S.user && S.user.role === 'fan')"), 'home grid routes fans to the profile');
+  assert.ok(home.includes("if (S.user && (S.user.role === 'fan' || S.user.is_house))"), 'home grid routes fans to the profile');
   assert.ok(home.includes('if (m) { openModelPeek(m, models); return; }'), 'home fan tap opens the peek');
   assert.ok(home.includes('if (liveId) return watchLive(parseInt(liveId));'), 'home live tiles unchanged');
   const lives = app.slice(app.indexOf('async function vLives()'), app.indexOf('async function vChatList('));
-  assert.ok(lives.includes("if (S.user && S.user.role === 'fan')"), 'lives list routes fans to the profile');
+  assert.ok(lives.includes("if (S.user && (S.user.role === 'fan' || S.user.is_house))"), 'lives list routes fans to the profile');
   assert.ok(lives.includes('if (m) { openModelPeek(m, models); return; }'), 'lives fan tap opens the peek');
   assert.ok(lives.includes('if (liveId) return watchLive(parseInt(liveId));'), 'lives live tiles unchanged');
 });

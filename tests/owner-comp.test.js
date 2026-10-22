@@ -74,6 +74,48 @@ test('static: comp helper, widened gates and refund guards exist; money doors st
   assert.ok(appSrc.includes('data.owner_comp'), 'client handles the comp /pay response');
 });
 
+test('static: tile/peek router sends the house down the fan path (hotfix regression pin)', () => {
+  // The peek sheet's pinned Message bar renders for the house — the
+  // fan action its fan-side server chats hang off. (Field bug: the
+  // sheet was look-only for the house, so a live model could be
+  // SEEN but never entered or messaged.)
+  assert.ok(appSrc.includes(
+    "const showMsgBar = !isMe && !!S.user && (S.user.role === 'fan' || S.user.is_house || isFanPreview());"),
+    'peek Message bar renders for is_house');
+
+  // Home grid (vFanModels): the model-viewer short-circuit that
+  // swallowed every tile tap must exempt the house, and the
+  // official card's live branch must admit it — live tile →
+  // watchLive, non-live tile → peek, exactly like a fan.
+  assert.ok(appSrc.includes('const isHouseViewer = !!(S.user && S.user.is_house);'),
+    'home grid defines isHouseViewer');
+  assert.ok(appSrc.includes('if (isModelViewer && !isHouseViewer) {'),
+    'home grid model-viewer short-circuit exempts the house');
+  assert.ok(appSrc.includes('if (official.is_live && official.live_session_id && (!isModelViewer || isHouseViewer)) {'),
+    'official card live branch admits the house');
+
+  // Live Now grid (vLives): the role guard must exempt the house
+  // while keeping real models and the admin fan-preview look-only.
+  assert.ok(appSrc.includes("if ((S.user && S.user.role === 'model' && !S.user.is_house) || isFanPreview()) {"),
+    'Live Now guard exempts the house, keeps preview look-only');
+  assert.ok(!appSrc.includes("if ((S.user && S.user.role === 'model') || isFanPreview()) {"),
+    'old Live Now guard (house swallowed) is gone');
+
+  // Non-live tiles land the house on the peek (fan profile-first
+  // rule), and the promo/deep-link router sends a live target to
+  // watchLive: the fan-path condition appears in the home grid,
+  // the Live Now grid and the promo router.
+  const fanPath = (appSrc.match(/S\.user\.role === 'fan' \|\| S\.user\.is_house/g) || []).length;
+  assert.ok(fanPath >= 3, `fan-path condition in grid + Live Now + promo router (found ${fanPath})`);
+
+  // The peek's Message-bar button must still route to a chat the
+  // server admits for the house (conversations/start, PR #85) — the
+  // click handler keeps its openChatWithModel route.
+  const peekIdx = appSrc.indexOf('function openModelPeek');
+  const peekBlock = appSrc.slice(peekIdx, peekIdx + 16000);
+  assert.ok(peekBlock.includes('openChatWithModel(id)'), 'peek Message bar opens the chat');
+});
+
 /* ---------------- harness ---------------- */
 
 function freePort() {
