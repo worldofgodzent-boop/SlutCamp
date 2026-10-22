@@ -81,6 +81,9 @@ const PNG_1PX = Buffer.from(
 async function uploadMultipart(p, token, { field = 'photo', withFile = true } = {}) {
   const fd = new FormData();
   if (withFile) fd.append(field, new Blob([PNG_1PX], { type: 'image/png' }), 'pixel.png');
+  // Co-Star Upload Prompt (Oct 22 2026): profile-media uploads carry
+  // the Solo/Co-Star declaration — these fixtures are all solo shots.
+  fd.append('appearance', 'solo');
   const headers = {};
   if (token) headers.authorization = 'Bearer ' + token;
   const r = await fetch(base + p, { method: 'POST', headers, body: fd });

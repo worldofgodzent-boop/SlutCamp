@@ -312,6 +312,11 @@ function seoPublicModels() {
     // short-circuits true for the house. She stays LISTED (name, bio,
     // prices, rank) — only the media waits, and photo_abs falls back
     // to the logo exactly as it already does when she has no photo.
+    // CO-STAR GATE (Oct 22 2026): a clean photo she declared a
+    // co-star in is held the same way until that packet clears —
+    // blanked on the row before the derivation below reads it, so
+    // the logo fallback engages identically.
+    if (r.public_photo_url && heldMediaUrls(r.id).has(r.public_photo_url)) r.public_photo_url = '';
     const pubPhoto = isIdVerified(r.id) ? (r.public_photo_url || '') : '';
     return {
       id: r.id,
@@ -730,6 +735,27 @@ const idUpload = multer({
   limits: { fileSize: 8 * 1024 * 1024 }, // 8MB per ID photo
   fileFilter: (req, file, cb) => {
     const ok = /^image\/(jpeg|png|webp)$/.test(file.mimetype);
+    cb(ok ? null : new Error('bad_file_type'), ok);
+  },
+});
+
+// Co-star consent forms: the same private storage and discipline as
+// ID photos (a signed form carries a legal name + signature — PII),
+// but the file may be a photo OR a PDF: "any consent form will do"
+// (owner, Oct 21 2026) — standard performer release/consent forms
+// are accepted as-is, no SlutCamp-specific form is required.
+const consentUpload = multer({
+  storage: multer.diskStorage({
+    destination: ID_DIR,
+    filename: (req, file, cb) => {
+      const ext = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp',
+                    'application/pdf': '.pdf' }[file.mimetype] || '.jpg';
+      cb(null, 'consent-' + crypto.randomBytes(16).toString('hex') + ext);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB — scanned forms run larger than ID photos
+  fileFilter: (req, file, cb) => {
+    const ok = /^image\/(jpeg|png|webp)$/.test(file.mimetype) || file.mimetype === 'application/pdf';
     cb(ok ? null : new Error('bad_file_type'), ok);
   },
 });
@@ -1915,6 +1941,25 @@ CREATE TABLE IF NOT EXISTS co_performers (
 );
 CREATE INDEX IF NOT EXISTS idx_co_performers_owner ON co_performers(owner_model_id);
 
+-- Co-star media declarations (Co-Star Upload Prompt, Oct 22 2026):
+-- when a model uploads profile media she declares who appears in it;
+-- a 'costar' declaration links the media's /uploads URL to the
+-- co_performers rows of everyone else in frame. The media is public
+-- only while EVERY linked co-star's packet is complete + approved
+-- (see heldMediaUrls). Keyed by URL because upload filenames are
+-- crypto-random: a declaration can never outlive or jump to another
+-- file. Deleting/replacing the media removes its rows.
+CREATE TABLE IF NOT EXISTS media_costars (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  model_id INTEGER NOT NULL REFERENCES users(id),
+  media_url TEXT NOT NULL,
+  co_performer_id INTEGER NOT NULL REFERENCES co_performers(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(model_id, media_url, co_performer_id)
+);
+CREATE INDEX IF NOT EXISTS idx_media_costars_model ON media_costars(model_id);
+CREATE INDEX IF NOT EXISTS idx_media_costars_cp ON media_costars(co_performer_id);
+
 -- Follows: fans follow models to get "she's live" notifications
 CREATE TABLE IF NOT EXISTS follows (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1989,6 +2034,14 @@ CREATE TABLE IF NOT EXISTS tip_sends (
 );
 CREATE INDEX IF NOT EXISTS idx_tipsends_model ON tip_sends(model_id, id);
 `);
+
+/* Co-star consent forms (Co-Star Upload Prompt, Oct 22 2026): the
+   fourth packet document lives on the partner's id_verifications
+   row — a path into the same private ID storage (never served
+   statically), added via the guarded column helper so databases
+   created before this build gain it on boot. Own-ID rows never
+   carry one (a model's own verification needs no consent form). */
+addColumnIfMissing('id_verifications', 'consent_form_path', 'TEXT');
 
 /* One-time migration (Oct 15, 2026): contract_signatures shipped with a
    UNIQUE(user_id) constraint — one signature per user, forever — which
@@ -3264,6 +3317,100 @@ function cameraAllowedIds(modelUserId) {
     .all(modelUserId);
   for (const p of partners) ids.push(p.id);
   return ids;
+}
+
+/* ------------------------------------------------------------------ */
+/* Co-star media gate (Co-Star Upload Prompt, Oct 22 2026; Asce's    */
+/* directive Oct 21 2026). Profile media is declared at upload: SOLO  */
+/* or CO-STAR. A co-star declaration links the media (media_costars)  */
+/* to the co_performers rows of everyone else in frame, and the       */
+/* media is public only while EVERY linked co-star's 2257 packet is   */
+/* COMPLETE (ID front + ID back + selfie-with-ID + a consent form —   */
+/* any standard form) AND APPROVED in the Manager's ID Checks queue.  */
+/* The packet lives on the partner's id_verifications row — the same  */
+/* record the camera rule and the 2257 packet already read — so the   */
+/* declarations reuse the Phase 2 co-performer system end to end:     */
+/* no parallel queue, no duplicate person. This gate stacks ON the    */
+/* upload gate (her own ID approval): a surface shows the media only  */
+/* when both are clear. Her own /api/me is never gated. The house     */
+/* is exempt, as at every gate.                                       */
+/* ------------------------------------------------------------------ */
+
+// The partner's packet documents, read off their verification row.
+function coStarPacketRow(coPerformerId) {
+  return db.prepare(`SELECT id_front_path, id_back_path, selfie_path, consent_form_path
+                     FROM id_verifications WHERE co_performer_id = ?`).get(coPerformerId);
+}
+function coStarPacketComplete(coPerformerId) {
+  const v = coStarPacketRow(coPerformerId);
+  return !!(v && v.id_front_path && v.id_back_path && v.selfie_path && v.consent_form_path);
+}
+// Cleared for posted media = the Manager approved the packet AND
+// the packet is complete. Approval alone (the pre-prompt camera
+// flow never collected a consent form) does not clear media.
+function coStarMediaCleared(coPerformerId) {
+  const cp = db.prepare('SELECT status FROM co_performers WHERE id = ?').get(coPerformerId);
+  return !!(cp && cp.status === 'approved') && coStarPacketComplete(coPerformerId);
+}
+// The set of a model's media URLs currently held by the co-star
+// gate: declared with at least one co-star who is not cleared.
+// Empty for the house (exempt) and for solo-only profiles.
+function heldMediaUrls(modelUserId) {
+  const held = new Set();
+  if (isHouseAccountId(modelUserId)) return held;
+  const rows = db.prepare('SELECT media_url, co_performer_id FROM media_costars WHERE model_id = ?')
+    .all(modelUserId);
+  for (const r of rows) {
+    if (!held.has(r.media_url) && !coStarMediaCleared(r.co_performer_id)) held.add(r.media_url);
+  }
+  return held;
+}
+function recordMediaDecls(modelUserId, mediaUrl, coPerformerIds) {
+  if (!mediaUrl || !coPerformerIds.length) return;
+  const ins = db.prepare(`INSERT OR IGNORE INTO media_costars (model_id, media_url, co_performer_id)
+                          VALUES (?, ?, ?)`);
+  txn(() => { for (const id of coPerformerIds) ins.run(modelUserId, mediaUrl, id); });
+}
+function clearMediaDecls(modelUserId, mediaUrl) {
+  if (!mediaUrl) return;
+  db.prepare('DELETE FROM media_costars WHERE model_id = ? AND media_url = ?')
+    .run(modelUserId, mediaUrl);
+}
+// Parse + validate the Solo/Co-Star declaration on a profile-media
+// upload (multipart fields: appearance, costar_ids as a JSON array).
+// Returns { appearance, costarIds } or { error, message }. The house
+// is exempt: no declaration is required and none is recorded.
+function parseAppearanceDecl(req) {
+  if (isHouseAccountId(req.user.id)) return { appearance: 'solo', costarIds: [] };
+  const body = req.body || {};
+  const appearance = String(body.appearance || '');
+  if (appearance !== 'solo' && appearance !== 'costar') {
+    return { error: 'appearance_required',
+      message: 'Tell us who appears in this: solo, or with a co-star.' };
+  }
+  if (appearance === 'solo') return { appearance, costarIds: [] };
+  let ids = [];
+  try { ids = JSON.parse(String(body.costar_ids || '[]')); } catch (e) { ids = []; }
+  if (!Array.isArray(ids)) ids = [];
+  ids = [...new Set(ids.map((x) => Number(x)).filter((x) => Number.isInteger(x) && x > 0))];
+  if (!ids.length) {
+    return { error: 'costar_required',
+      message: 'Pick at least one co-star who appears in this — or choose Solo.' };
+  }
+  const own = new Set(db.prepare('SELECT id FROM co_performers WHERE owner_model_id = ?')
+    .all(req.user.id).map((r) => r.id));
+  if (ids.some((id) => !own.has(id))) {
+    return { error: 'bad_costar',
+      message: 'A co-star you picked is not registered on your account.' };
+  }
+  return { appearance, costarIds: ids };
+}
+// Shared refusal path for the five profile-media upload endpoints:
+// the declaration is validated BEFORE any state changes, and a
+// refused upload never leaves its file behind.
+function refuseDecl(req, res, decl) {
+  if (req.file) { try { fs.unlinkSync(req.file.path); } catch (e) { /* already gone */ } }
+  return res.status(400).json({ error: decl.error, message: decl.message });
 }
 
 /* ------------------------------------------------------------------ */
@@ -6014,7 +6161,7 @@ app.get('/api/models', (req, res) => {
     // first — the shield withholds both, never the pictures (they ARE
     // the shop window, same rule as photo_url).
     if (dirShielded) { pub.preview_video_url = ''; pub.preview_video_url_2 = ''; }
-    return { ...pub, tags: parseModelTags(rawTags),
+    const shaped = { ...pub, tags: parseModelTags(rawTags),
       gallery_photos: idVerified ? parseGalleryPhotos(rawGallery) : [],
       is_online: effectiveOnline(presence_override, r.is_online),
       is_live: !!r.live_session_id, is_featured: !!r.is_featured,
@@ -6023,6 +6170,25 @@ app.get('/api/models', (req, res) => {
       total_sales: Math.round(r.total_sales_cents || 0) / 100,
       rank_score: r.rank_score || 0,
       rank_position: rankPos.get(r.id) || null };
+    // CO-STAR GATE (Co-Star Upload Prompt, Oct 22 2026): media she
+    // declared a co-star in is additionally withheld — per ITEM, not
+    // per model — until every declared co-star's packet is complete
+    // + approved (heldMediaUrls). Solo media and approved packets
+    // pass byte-for-byte; the house's held set is empty by the same
+    // short-circuit, so the official object below is untouched. Her
+    // own /api/me is not shaped here and keeps everything.
+    if (idVerified) {
+      const held = heldMediaUrls(r.id);
+      if (held.size) {
+        if (held.has(shaped.photo_url)) shaped.photo_url = '';
+        if (held.has(shaped.public_photo_url)) shaped.public_photo_url = '';
+        if (held.has(shaped.preview_video_url)) shaped.preview_video_url = '';
+        if (held.has(shaped.preview_video_url_2)) shaped.preview_video_url_2 = '';
+        if (shaped.gallery_photos.length)
+          shaped.gallery_photos = shaped.gallery_photos.filter((u) => !held.has(u));
+      }
+    }
+    return shaped;
   };
   // The official object: same public shape as a model row (the pinned
   // card and its look-only profile page render from it), flagged, and
@@ -7054,6 +7220,10 @@ function otherParty(conv, ident) {
   // approved — the same blanking GET /api/models applies. Her own
   // thread view never receives her own photo through here (for her,
   // the other party is the fan), so her own views are unaffected.
+  // CO-STAR GATE (Oct 22 2026): if that photo was declared with a
+  // co-star whose packet has not cleared, it is held here too —
+  // blanked on the row before the derivation below reads it.
+  if (m && m.photo_url && heldMediaUrls(otherId).has(m.photo_url)) m.photo_url = '';
   const otherPhoto = m && isIdVerified(otherId) ? (m.photo_url || '') : '';
   return { ...getUserPublic(u), is_online: m ? effectiveOnline(u.presence_override, m.is_online) : false,
            photo_url: otherPhoto,
@@ -9874,11 +10044,23 @@ function setModelPhoto(userId, file) {
   return photo_url;
 }
 
-// Model uploads her own profile photo
+// Model uploads her own profile photo. CO-STAR PROMPT (Oct 22 2026):
+// every profile-media upload carries the Solo/Co-Star declaration
+// (parseAppearanceDecl) — without it the upload is refused and its
+// file removed; with co-stars, the new photo's declarations replace
+// the old photo's (its file is deleted by setModelPhoto anyway).
 app.post('/api/model/photo', identMiddleware, requireUser, requireRole('model'),
   photoUpload.single('photo'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'no_photo' });
-    res.json({ ok: true, photo_url: setModelPhoto(req.user.id, req.file) });
+    const decl = parseAppearanceDecl(req);
+    if (decl.error) return refuseDecl(req, res, decl);
+    const oldUrl = (db.prepare('SELECT photo_url FROM models WHERE user_id = ?')
+      .get(req.user.id) || {}).photo_url || '';
+    const photo_url = setModelPhoto(req.user.id, req.file);
+    clearMediaDecls(req.user.id, oldUrl);
+    recordMediaDecls(req.user.id, photo_url, decl.costarIds);
+    res.json({ ok: true, photo_url,
+      costar_held: decl.costarIds.some((id) => !coStarMediaCleared(id)) });
   });
 
 // Swap a model's PUBLIC photo — the clean one the Google-facing pages
@@ -9900,11 +10082,20 @@ function setModelPublicPhoto(userId, file) {
   return public_photo_url;
 }
 
-// Model uploads her own public (clean) photo — the one Google shows
+// Model uploads her own public (clean) photo — the one Google shows.
+// Carries the same Solo/Co-Star declaration as every profile upload.
 app.post('/api/model/public-photo', identMiddleware, requireUser, requireRole('model'),
   photoUpload.single('photo'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'no_photo' });
-    res.json({ ok: true, public_photo_url: setModelPublicPhoto(req.user.id, req.file) });
+    const decl = parseAppearanceDecl(req);
+    if (decl.error) return refuseDecl(req, res, decl);
+    const oldUrl = (db.prepare('SELECT public_photo_url FROM models WHERE user_id = ?')
+      .get(req.user.id) || {}).public_photo_url || '';
+    const public_photo_url = setModelPublicPhoto(req.user.id, req.file);
+    clearMediaDecls(req.user.id, oldUrl);
+    recordMediaDecls(req.user.id, public_photo_url, decl.costarIds);
+    res.json({ ok: true, public_photo_url,
+      costar_held: decl.costarIds.some((id) => !coStarMediaCleared(id)) });
   });
 
 // Model clears her public photo — public pages fall back to the logo,
@@ -9916,15 +10107,19 @@ app.delete('/api/model/public-photo', identMiddleware, requireUser, requireRole(
     if (oldPath.startsWith(UPLOAD_DIR + path.sep)) {
       try { fs.unlinkSync(oldPath); } catch (e) { /* already gone */ }
     }
+    clearMediaDecls(req.user.id, old.public_photo_url);
   }
   db.prepare("UPDATE models SET public_photo_url = '' WHERE user_id = ?").run(req.user.id);
   res.json({ ok: true, public_photo_url: '' });
 });
 
-// Model uploads her home-screen preview video loop (few seconds, autoplays muted)
+// Model uploads her home-screen preview video loop (few seconds, autoplays muted).
+// Carries the same Solo/Co-Star declaration as every profile upload.
 app.post('/api/model/preview-video', identMiddleware, requireUser, requireRole('model'),
   previewVideoUpload.single('video'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'no_video' });
+    const decl = parseAppearanceDecl(req);
+    if (decl.error) return refuseDecl(req, res, decl);
     // Delete old preview if any
     const old = db.prepare('SELECT preview_video_url FROM models WHERE user_id = ?').get(req.user.id);
     if (old && old.preview_video_url) {
@@ -9932,10 +10127,13 @@ app.post('/api/model/preview-video', identMiddleware, requireUser, requireRole('
       if (oldPath.startsWith(UPLOAD_DIR + path.sep)) {
         try { fs.unlinkSync(oldPath); } catch (e) { /* already gone */ }
       }
+      clearMediaDecls(req.user.id, old.preview_video_url);
     }
     const preview_video_url = '/uploads/' + path.basename(req.file.path);
     db.prepare('UPDATE models SET preview_video_url = ? WHERE user_id = ?').run(preview_video_url, req.user.id);
-    res.json({ ok: true, preview_video_url });
+    recordMediaDecls(req.user.id, preview_video_url, decl.costarIds);
+    res.json({ ok: true, preview_video_url,
+      costar_held: decl.costarIds.some((id) => !coStarMediaCleared(id)) });
   });
 
 // Model removes her preview video (falls back to photo)
@@ -9946,6 +10144,7 @@ app.delete('/api/model/preview-video', identMiddleware, requireUser, requireRole
     if (oldPath.startsWith(UPLOAD_DIR + path.sep)) {
       try { fs.unlinkSync(oldPath); } catch (e) { /* already gone */ }
     }
+    clearMediaDecls(req.user.id, old.preview_video_url);
   }
   db.prepare('UPDATE models SET preview_video_url = ? WHERE user_id = ?').run('', req.user.id);
   res.json({ ok: true });
@@ -9961,10 +10160,13 @@ app.delete('/api/model/preview-video', identMiddleware, requireUser, requireRole
 /* would make an 11th picture is rejected and its file removed.      */
 /* ------------------------------------------------------------------ */
 
-// Model uploads/replaces her SECOND main profile video (same 15MB flow)
+// Model uploads/replaces her SECOND main profile video (same 15MB flow).
+// Carries the same Solo/Co-Star declaration as every profile upload.
 app.post('/api/model/preview-video-2', identMiddleware, requireUser, requireRole('model'),
   previewVideoUpload.single('video'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'no_video' });
+    const decl = parseAppearanceDecl(req);
+    if (decl.error) return refuseDecl(req, res, decl);
     // Delete old second video if any
     const old = db.prepare('SELECT preview_video_url_2 FROM models WHERE user_id = ?').get(req.user.id);
     if (old && old.preview_video_url_2) {
@@ -9972,10 +10174,13 @@ app.post('/api/model/preview-video-2', identMiddleware, requireUser, requireRole
       if (oldPath.startsWith(UPLOAD_DIR + path.sep)) {
         try { fs.unlinkSync(oldPath); } catch (e) { /* already gone */ }
       }
+      clearMediaDecls(req.user.id, old.preview_video_url_2);
     }
     const preview_video_url_2 = '/uploads/' + path.basename(req.file.path);
     db.prepare('UPDATE models SET preview_video_url_2 = ? WHERE user_id = ?').run(preview_video_url_2, req.user.id);
-    res.json({ ok: true, preview_video_url_2 });
+    recordMediaDecls(req.user.id, preview_video_url_2, decl.costarIds);
+    res.json({ ok: true, preview_video_url_2,
+      costar_held: decl.costarIds.some((id) => !coStarMediaCleared(id)) });
   });
 
 // Model removes her second profile video
@@ -9986,6 +10191,7 @@ app.delete('/api/model/preview-video-2', identMiddleware, requireUser, requireRo
     if (oldPath.startsWith(UPLOAD_DIR + path.sep)) {
       try { fs.unlinkSync(oldPath); } catch (e) { /* already gone */ }
     }
+    clearMediaDecls(req.user.id, old.preview_video_url_2);
   }
   db.prepare('UPDATE models SET preview_video_url_2 = ? WHERE user_id = ?').run('', req.user.id);
   res.json({ ok: true });
@@ -9998,6 +10204,8 @@ app.delete('/api/model/preview-video-2', identMiddleware, requireUser, requireRo
 app.post('/api/model/gallery-photo', identMiddleware, requireUser, requireRole('model'),
   photoUpload.single('photo'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'no_photo' });
+    const decl = parseAppearanceDecl(req);
+    if (decl.error) return refuseDecl(req, res, decl);
     const row = db.prepare('SELECT photo_url, gallery_photos FROM models WHERE user_id = ?').get(req.user.id);
     const gallery = parseGalleryPhotos(row.gallery_photos);
     const composed = (row.photo_url ? 1 : 0) + gallery.length;
@@ -10010,9 +10218,11 @@ app.post('/api/model/gallery-photo', identMiddleware, requireUser, requireRole('
     gallery.push(url);
     db.prepare('UPDATE models SET gallery_photos = ? WHERE user_id = ?')
       .run(JSON.stringify(gallery), req.user.id);
+    recordMediaDecls(req.user.id, url, decl.costarIds);
     const updated = db.prepare('SELECT photo_url, gallery_photos FROM models WHERE user_id = ?').get(req.user.id);
     res.json({ ok: true, gallery_photos: parseGalleryPhotos(updated.gallery_photos),
-      profile_pics: profilePicsList(updated), count: profilePicsList(updated).length });
+      profile_pics: profilePicsList(updated), count: profilePicsList(updated).length,
+      costar_held: decl.costarIds.some((id) => !coStarMediaCleared(id)) });
   });
 
 // Model removes ONE picture from her profile gallery (her main photo
@@ -10026,6 +10236,7 @@ app.delete('/api/model/gallery-photo', identMiddleware, requireUser, requireRole
   const next = gallery.filter((u) => u !== url);
   db.prepare('UPDATE models SET gallery_photos = ? WHERE user_id = ?')
     .run(JSON.stringify(next), req.user.id);
+  clearMediaDecls(req.user.id, url);
   const filePath = path.join(UPLOAD_DIR, path.basename(url));
   if (filePath.startsWith(UPLOAD_DIR + path.sep)) {
     try { fs.unlinkSync(filePath); } catch (e) { /* already gone */ }
@@ -10475,6 +10686,7 @@ app.post('/api/model/id-verification', identMiddleware, requireUser, requireRole
 app.get('/api/admin/id-verifications', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
   const rows = db.prepare(`
     SELECT v.id, v.model_id, v.co_performer_id, v.status, v.submitted_at, v.reviewed_at, v.reviewer_note,
+           (v.consent_form_path IS NOT NULL) AS consent_on_file,
            CASE WHEN v.co_performer_id IS NOT NULL THEN cp.display_name ELSE u.display_name END AS display_name,
            u.display_name AS owner_name, u.username,
            cp.display_name AS partner_name
@@ -10503,9 +10715,11 @@ app.post('/api/admin/id-verifications/:id/photo-token', identMiddleware, require
 });
 
 // Admin: view one ID photo (Bearer auth OR short-lived ?t= token). Sensitive PII — never cached.
+// 'consent' serves the co-star's signed consent form (photo or PDF) —
+// the fourth packet document, riding the same token machinery.
 app.get('/api/admin/id-verifications/:id/photo/:which', (req, res) => {
   const which = req.params.which;
-  if (!['front', 'back', 'selfie'].includes(which))
+  if (!['front', 'back', 'selfie', 'consent'].includes(which))
     return res.status(400).json({ error: 'bad_which' });
   let adminId = null;
   if (req.query.t) {
@@ -10520,15 +10734,17 @@ app.get('/api/admin/id-verifications/:id/photo/:which', (req, res) => {
     adminId = ident.user.id;
   }
   if (!adminId) return res.status(403).json({ error: 'forbidden' });
-  const v = db.prepare(`SELECT id_front_path, id_back_path, selfie_path
+  const v = db.prepare(`SELECT id_front_path, id_back_path, selfie_path, consent_form_path
                         FROM id_verifications WHERE id = ?`).get(req.params.id);
   if (!v) return res.status(404).json({ error: 'not_found' });
   const p = which === 'front' ? v.id_front_path
-    : which === 'back' ? v.id_back_path : v.selfie_path;
+    : which === 'back' ? v.id_back_path
+    : which === 'consent' ? v.consent_form_path : v.selfie_path;
   if (!p || !p.startsWith(ID_DIR) || !fs.existsSync(p))
     return res.status(404).json({ error: 'not_found' });
   const ext = path.extname(p).toLowerCase();
-  res.setHeader('Content-Type', ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg');
+  res.setHeader('Content-Type', ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp'
+    : ext === '.pdf' ? 'application/pdf' : 'image/jpeg');
   res.setHeader('Cache-Control', 'private, no-store');
   fs.createReadStream(p).pipe(res);
 });
@@ -10599,6 +10815,9 @@ app.get('/api/admin/id-verifications/:id/2257', identMiddleware, requireUser, re
       documents_on_file: {
         id_front: base(v.id_front_path), id_back: base(v.id_back_path),
         selfie_with_id: base(v.selfie_path),
+        // Co-star packets only (Oct 22 2026): the signed consent form
+        // — any standard consent/release form, kept on this record.
+        consent_form: base(v.consent_form_path),
       },
       documents_location: 'Private storage (id_verification) — admin ID Checks tab only, never public.',
     },
@@ -10631,15 +10850,28 @@ app.get('/api/admin/id-verifications/:id/2257', identMiddleware, requireUser, re
 
 function coPerformerRow(row) {
   if (!row) return null;
+  // Co-star packet flags (Co-Star Upload Prompt, Oct 22 2026): the
+  // four packet documents on the partner's verification row — the
+  // client renders what is still missing and whether posted media
+  // naming this co-star can be public yet (media_cleared).
+  const idDocs = !!(row.v_id_front && row.v_id_back && row.v_selfie);
+  const consent = !!row.v_consent;
+  const packetComplete = idDocs && consent;
   return {
     id: row.id, display_name: row.display_name, gender: row.gender || '',
     dob: row.dob || null, status: row.status,
     verification_status: row.verification_status || null,
+    id_docs_on_file: idDocs,
+    consent_on_file: consent,
+    packet_complete: packetComplete,
+    media_cleared: row.status === 'approved' && packetComplete,
     created_at: row.created_at, updated_at: row.updated_at,
   };
 }
 function ownCoPerformer(req, id) {
-  return db.prepare(`SELECT cp.*, v.status AS verification_status
+  return db.prepare(`SELECT cp.*, v.status AS verification_status,
+                            v.id_front_path AS v_id_front, v.id_back_path AS v_id_back,
+                            v.selfie_path AS v_selfie, v.consent_form_path AS v_consent
                      FROM co_performers cp
                      LEFT JOIN id_verifications v ON v.co_performer_id = cp.id
                      WHERE cp.id = ? AND cp.owner_model_id = ?`).get(id, req.user.id);
@@ -10648,7 +10880,9 @@ function ownCoPerformer(req, id) {
 // Model: list her own co-performers (+ the house flag, mirroring the
 // ID-verification status route: the house Settings hide the card).
 app.get('/api/model/co-performers', identMiddleware, requireUser, requireRole('model'), (req, res) => {
-  const rows = db.prepare(`SELECT cp.*, v.status AS verification_status
+  const rows = db.prepare(`SELECT cp.*, v.status AS verification_status,
+                                  v.id_front_path AS v_id_front, v.id_back_path AS v_id_back,
+                                  v.selfie_path AS v_selfie, v.consent_form_path AS v_consent
                            FROM co_performers cp
                            LEFT JOIN id_verifications v ON v.co_performer_id = cp.id
                            WHERE cp.owner_model_id = ? ORDER BY cp.id`).all(req.user.id);
@@ -10720,11 +10954,14 @@ app.patch('/api/model/co-performers/:id', identMiddleware, requireUser, requireR
 app.delete('/api/model/co-performers/:id', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const row = ownCoPerformer(req, req.params.id);
   if (!row) return res.status(404).json({ error: 'not_found' });
-  const v = db.prepare('SELECT id_front_path, id_back_path, selfie_path FROM id_verifications WHERE co_performer_id = ?')
+  const v = db.prepare('SELECT id_front_path, id_back_path, selfie_path, consent_form_path FROM id_verifications WHERE co_performer_id = ?')
     .get(row.id);
-  if (v) [v.id_front_path, v.id_back_path, v.selfie_path]
+  if (v) [v.id_front_path, v.id_back_path, v.selfie_path, v.consent_form_path]
     .forEach((p) => { if (p) fs.unlink(p, () => {}); });
   txn(() => {
+    // Her media declarations naming this co-star go with her record
+    // (the media itself stays — un-declared, it is solo content).
+    db.prepare('DELETE FROM media_costars WHERE co_performer_id = ?').run(row.id);
     db.prepare('DELETE FROM id_verifications WHERE co_performer_id = ?').run(row.id);
     db.prepare('DELETE FROM co_performers WHERE id = ?').run(row.id);
   });
@@ -10786,6 +11023,74 @@ app.post('/api/model/co-performers/:id/id-verification', identMiddleware, requir
       res.json({ ok: true, status: 'pending' });
     });
   });
+
+// Attach (or replace) the co-star's signed consent form — the fourth
+// packet document (Co-Star Upload Prompt, Oct 22 2026). ANY standard
+// consent/release form is accepted as-is (owner rule) — a photo or
+// PDF, stored in the same private ID storage as the ID photos and
+// reviewed with the packet in the Manager's ID Checks queue. Unlike
+// the ID-photos submission this does NOT reset the packet's status:
+// adding a form to an already-approved partner completes her packet
+// in place (her declared media can go public); adding it before
+// review simply completes what the reviewer sees.
+app.post('/api/model/co-performers/:id/consent-form', identMiddleware, requireUser, requireRole('model'),
+  (req, res) => {
+    const row = ownCoPerformer(req, req.params.id);
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    consentUpload.single('consent')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ error: 'bad_file',
+          message: 'Use a JPG/PNG photo or a PDF of the signed form, under 10MB.' });
+      }
+      if (!req.file) {
+        return res.status(400).json({ error: 'missing_file',
+          message: 'Attach the signed consent form (a photo or PDF).' });
+      }
+      const prev = db.prepare('SELECT id, consent_form_path FROM id_verifications WHERE co_performer_id = ?')
+        .get(row.id);
+      if (prev && prev.consent_form_path) {
+        fs.unlink(prev.consent_form_path, () => { /* replaced */ });
+      }
+      if (prev) {
+        db.prepare('UPDATE id_verifications SET consent_form_path = ? WHERE id = ?')
+          .run(req.file.path, prev.id);
+      } else {
+        db.prepare(`INSERT INTO id_verifications
+                      (model_id, co_performer_id, consent_form_path, status, submitted_at, reviewed_at, reviewer_note)
+                    VALUES (?, ?, ?, 'pending', datetime('now'), NULL, '')`)
+          .run(req.user.id, row.id, req.file.path);
+      }
+      pushToAdmins({ type: 'id_verification:submitted', model_id: req.user.id,
+        model_name: req.user.display_name, co_performer_id: row.id,
+        partner_name: row.display_name, consent_form: true });
+      res.json({ ok: true, consent_on_file: true,
+        packet_complete: coStarPacketComplete(row.id),
+        media_cleared: coStarMediaCleared(row.id),
+        partner: coPerformerRow(ownCoPerformer(req, row.id)) });
+    });
+  });
+
+// The model's co-star declarations + which of her media the co-star
+// gate currently holds (Co-Star Upload Prompt, Oct 22 2026). Her own
+// Settings reads this to badge held items; everything here is her
+// own data — the public surfaces never see it.
+app.get('/api/model/media-costars', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const rows = db.prepare(`SELECT mc.media_url, mc.co_performer_id, cp.display_name
+                           FROM media_costars mc
+                           JOIN co_performers cp ON cp.id = mc.co_performer_id
+                           WHERE mc.model_id = ? ORDER BY mc.id`).all(req.user.id);
+  const held = heldMediaUrls(req.user.id);
+  res.json({
+    house: isHouseAccountId(req.user.id),
+    declarations: rows.map((r) => ({
+      media_url: r.media_url, co_performer_id: r.co_performer_id,
+      display_name: r.display_name,
+      cleared: coStarMediaCleared(r.co_performer_id),
+      held: held.has(r.media_url),
+    })),
+    held_urls: [...held],
+  });
+});
 
 /* ------------------------------------------------------------------ */
 /* Admin: W-9 / 1099 tax dashboard + CSV export (no tax IDs in export) */
