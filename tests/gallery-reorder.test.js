@@ -169,6 +169,9 @@ async function req(base, method, p, { body, token } = {}) {
 async function upload(base, p, token, field, blob, filename) {
   const fd = new FormData();
   fd.append(field, blob, filename);
+  // Co-Star Upload Prompt (Oct 22 2026): the Solo/Co-Star declaration
+  // rides every profile-media upload — these fixtures are solo shots.
+  fd.append('appearance', 'solo');
   const headers = {};
   if (token) headers.authorization = 'Bearer ' + token;
   const r = await fetch(base + p, { method: 'POST', headers, body: fd });

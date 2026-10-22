@@ -880,6 +880,9 @@ async function adminIdChecksBody() {
             ${photoRow(r, 'back', 'ID back')}
             ${photoRow(r, 'selfie', 'Selfie + ID')}
           </div>
+          ${r.is_partner ? `<div class="small" style="margin-bottom:10px">${r.consent_on_file
+            ? `📄 <a href="/api/admin/id-verifications/${r.id}/photo/consent?t=${r._tok}" target="_blank" rel="noopener">Consent form on file</a> <span class="muted">(any standard signed form — opens photo or PDF)</span>`
+            : '<span style="color:var(--red)">📄 No consent form on file — profile media naming this co-star stays held until it lands.</span>'}</div>` : ''}
           <div class="row" style="gap:8px">
             <button class="btn small" data-idv-approve="${r.id}" style="flex:1">✅ Approve</button>
             <button class="btn small danger" data-idv-reject="${r.id}" style="flex:1">❌ Reject</button>
@@ -895,6 +898,7 @@ async function adminIdChecksBody() {
           ${r.is_partner ? '<span class="small" style="color:var(--purple)">👥 Co-performer</span>' : ''}<br>
           <span class="small">${badge(r.status)}</span>
           <span class="small muted"> · reviewed ${esc(r.reviewed_at || '')}</span>
+          ${r.is_partner ? `<br><span class="small muted">📄 Consent form: ${r.consent_on_file ? 'on file ✓' : '<span style="color:var(--red)">MISSING</span>'}</span>` : ''}
           ${r.reviewer_note ? `<br><span class="small muted">Note: ${esc(r.reviewer_note)}</span>` : ''}
           ${r.status === 'rejected' ? ` <button class="btn small ghost" data-idv-approve="${r.id}">Approve anyway</button>` : ''}
           <button class="btn small ghost" data-idv-2257="${r.id}">📄 2257 record</button>
