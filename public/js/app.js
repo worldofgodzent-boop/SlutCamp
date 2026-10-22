@@ -497,6 +497,21 @@ const I18N = {
     enter: 'Enter 🔥',
     settings_h: 'Settings ⚙️',
     id_verified: '✅ ID Verified',
+    release_h: '📄 Performer Release',
+    release_summary: 'In plain words: you confirm you\'re an adult who chose to do this, and you give World Of Godz Entertainment LLC the right to publish and sell your content anywhere.',
+    release_intro: 'Your ID packet needs this signed release before it can be approved — no approval, no going live or cashing out. Read it, check the three boxes, and type your legal name to sign. Signed on paper instead? Upload the signed copy below.',
+    release_attest_age: 'I am 18 or older, and the name and date of birth below are mine.',
+    release_attest_freewill: 'I take part of my own free will — nobody forced or pressured me.',
+    release_attest_rights: 'I grant World Of Godz Entertainment LLC the rights described in this release.',
+    release_legal_name: 'Full legal name (as on your ID)',
+    release_sign_btn: '✍️ Sign the release',
+    release_signed_h: '✅ Release signed',
+    release_signed_sub: 'Signed by {name} · {date} · Release {version}',
+    release_paper_h: '📄 Paper release on file',
+    release_paper_btn: 'Upload a signed paper copy instead',
+    release_missing: 'Not signed yet — your packet stays incomplete until the release is signed or a signed paper copy is uploaded.',
+    release_banner: '📄 One more paper to sign — the WOGENT performer release. It takes a minute, right here in Settings.',
+    release_dismiss: 'Later',
     id_verified_sub: 'Your identity is verified. You\'re cleared to go live and cash out.',
     id_pending: '⏳ ID Under Review',
     coperf_h: '👥 My Co-Performers',
@@ -1310,6 +1325,21 @@ const I18N = {
     enter: 'Entrar 🔥',
     settings_h: 'Ajustes ⚙️',
     id_verified: '✅ Identidad verificada',
+    release_h: '📄 Autorización de la artista',
+    release_summary: 'En palabras simples: confirmas que eres mayor de edad y que elegiste hacer esto, y le das a World Of Godz Entertainment LLC el derecho de publicar y vender tu contenido en cualquier lugar.',
+    release_intro: 'Tu paquete de identificación necesita esta autorización firmada antes de poder aprobarse: sin aprobación no puedes transmitir en vivo ni cobrar. Léela, marca las tres casillas y escribe tu nombre legal para firmar. ¿Ya la firmaste en papel? Sube la copia firmada abajo.',
+    release_attest_age: 'Tengo 18 años o más, y el nombre y la fecha de nacimiento de abajo son míos.',
+    release_attest_freewill: 'Participo por mi propia voluntad: nadie me obligó ni me presionó.',
+    release_attest_rights: 'Concedo a World Of Godz Entertainment LLC los derechos descritos en esta autorización.',
+    release_legal_name: 'Nombre legal completo (como en tu identificación)',
+    release_sign_btn: '✍️ Firmar la autorización',
+    release_signed_h: '✅ Autorización firmada',
+    release_signed_sub: 'Firmada por {name} · {date} · Versión {version}',
+    release_paper_h: '📄 Autorización en papel en archivo',
+    release_paper_btn: 'Subir una copia firmada en papel',
+    release_missing: 'Aún no está firmada: tu paquete queda incompleto hasta que firmes la autorización o subas una copia firmada en papel.',
+    release_banner: '📄 Un papel más por firmar: la autorización de artista de WOGENT. Toma un minuto, aquí mismo en Ajustes.',
+    release_dismiss: 'Más tarde',
     id_verified_sub: 'Tu identidad está verificada. Ya puedes transmitir en vivo y retirar tu dinero.',
     id_pending: '⏳ Identidad en revisión',
     coperf_h: '👥 Mis co-intérpretes',
@@ -2123,6 +2153,21 @@ const I18N = {
     enter: 'Entrar 🔥',
     settings_h: 'Configurações ⚙️',
     id_verified: '✅ Identidade verificada',
+    release_h: '📄 Autorização da artista',
+    release_summary: 'Em palavras simples: você confirma que é maior de idade e que escolheu fazer isso, e concede à World Of Godz Entertainment LLC o direito de publicar e vender seu conteúdo em qualquer lugar.',
+    release_intro: 'Seu pacote de documentos precisa desta autorização assinada antes de ser aprovado — sem aprovação, nada de lives nem saques. Leia, marque as três caixas e digite seu nome legal para assinar. Já assinou no papel? Envie a cópia assinada abaixo.',
+    release_attest_age: 'Tenho 18 anos ou mais, e o nome e a data de nascimento abaixo são meus.',
+    release_attest_freewill: 'Participo por minha livre vontade — ninguém me forçou nem pressionou.',
+    release_attest_rights: 'Concedo à World Of Godz Entertainment LLC os direitos descritos nesta autorização.',
+    release_legal_name: 'Nome legal completo (como no seu documento)',
+    release_sign_btn: '✍️ Assinar a autorização',
+    release_signed_h: '✅ Autorização assinada',
+    release_signed_sub: 'Assinada por {name} · {date} · Versão {version}',
+    release_paper_h: '📄 Autorização em papel arquivada',
+    release_paper_btn: 'Enviar uma cópia assinada em papel',
+    release_missing: 'Ainda não assinada — seu pacote fica incompleto até você assinar a autorização ou enviar uma cópia assinada em papel.',
+    release_banner: '📄 Mais um papel para assinar — a autorização de artista da WOGENT. Leva um minuto, aqui mesmo nas Configurações.',
+    release_dismiss: 'Depois',
     id_verified_sub: 'Sua identidade está verificada. Você já pode entrar ao vivo e sacar seus ganhos.',
     id_pending: '⏳ Identidade em análise',
     coperf_h: '👥 Meus parceiros de cena',
@@ -2936,6 +2981,21 @@ const I18N = {
     enter: 'Entrer 🔥',
     settings_h: 'Paramètres ⚙️',
     id_verified: '✅ Identité vérifiée',
+    release_h: '📄 Autorisation de l\'artiste',
+    release_summary: 'En mots simples : vous confirmez que vous êtes majeure et que vous avez choisi de faire cela, et vous donnez à World Of Godz Entertainment LLC le droit de publier et de vendre votre contenu partout.',
+    release_intro: 'Votre dossier d\'identité a besoin de cette autorisation signée avant de pouvoir être approuvé — sans approbation, pas de live ni de retrait. Lisez-la, cochez les trois cases et tapez votre nom légal pour signer. Déjà signée sur papier ? Téléversez la copie signée ci-dessous.',
+    release_attest_age: 'J\'ai 18 ans ou plus, et le nom et la date de naissance ci-dessous sont les miens.',
+    release_attest_freewill: 'Je participe de mon plein gré — personne ne m\'a forcée ni fait pression.',
+    release_attest_rights: 'J\'accorde à World Of Godz Entertainment LLC les droits décrits dans cette autorisation.',
+    release_legal_name: 'Nom légal complet (comme sur votre pièce d\'identité)',
+    release_sign_btn: '✍️ Signer l\'autorisation',
+    release_signed_h: '✅ Autorisation signée',
+    release_signed_sub: 'Signée par {name} · {date} · Version {version}',
+    release_paper_h: '📄 Autorisation papier au dossier',
+    release_paper_btn: 'Téléverser une copie signée sur papier',
+    release_missing: 'Pas encore signée — votre dossier reste incomplet tant que l\'autorisation n\'est pas signée ou qu\'une copie papier signée n\'est pas téléversée.',
+    release_banner: '📄 Encore un papier à signer — l\'autorisation d\'artiste WOGENT. Une minute, ici même dans les Réglages.',
+    release_dismiss: 'Plus tard',
     id_verified_sub: 'Votre identité est vérifiée. Vous êtes autorisée à passer en direct et à retirer vos gains.',
     id_pending: '⏳ Identité en cours d\'examen',
     coperf_h: '👥 Mes partenaires de scène',
@@ -3749,6 +3809,21 @@ const I18N = {
     enter: 'Eintreten 🔥',
     settings_h: 'Einstellungen ⚙️',
     id_verified: '✅ Ausweis verifiziert',
+    release_h: '📄 Künstler-Freigabe',
+    release_summary: 'In einfachen Worten: Du bestätigst, dass du volljährig bist und dich freiwillig dafür entschieden hast, und du gibst World Of Godz Entertainment LLC das Recht, deine Inhalte überall zu veröffentlichen und zu verkaufen.',
+    release_intro: 'Dein Ausweis-Paket braucht diese unterschriebene Freigabe, bevor es genehmigt werden kann — ohne Genehmigung kein Livegehen und keine Auszahlung. Lies sie, setze die drei Häkchen und tippe deinen gesetzlichen Namen zum Unterschreiben. Schon auf Papier unterschrieben? Lade die unterschriebene Kopie unten hoch.',
+    release_attest_age: 'Ich bin 18 Jahre oder älter, und der Name und das Geburtsdatum unten sind meine.',
+    release_attest_freewill: 'Ich nehme aus freiem Willen teil — niemand hat mich gezwungen oder unter Druck gesetzt.',
+    release_attest_rights: 'Ich gewähre World Of Godz Entertainment LLC die in dieser Freigabe beschriebenen Rechte.',
+    release_legal_name: 'Vollständiger gesetzlicher Name (wie auf deinem Ausweis)',
+    release_sign_btn: '✍️ Freigabe unterschreiben',
+    release_signed_h: '✅ Freigabe unterschrieben',
+    release_signed_sub: 'Unterschrieben von {name} · {date} · Version {version}',
+    release_paper_h: '📄 Papier-Freigabe liegt vor',
+    release_paper_btn: 'Stattdessen eine unterschriebene Papierkopie hochladen',
+    release_missing: 'Noch nicht unterschrieben — dein Paket bleibt unvollständig, bis die Freigabe unterschrieben oder eine unterschriebene Papierkopie hochgeladen ist.',
+    release_banner: '📄 Noch ein Papier zu unterschreiben — die WOGENT-Künstler-Freigabe. Dauert eine Minute, gleich hier in den Einstellungen.',
+    release_dismiss: 'Später',
     id_verified_sub: 'Deine Identität ist verifiziert. Du bist freigegeben zum Live-Gehen und Abheben.',
     id_pending: '⏳ Ausweis wird überprüft',
     coperf_h: '👥 Meine Co-Performer',
@@ -4562,6 +4637,21 @@ const I18N = {
     enter: 'Войти 🔥',
     settings_h: 'Настройки ⚙️',
     id_verified: '✅ Удостоверение подтверждено',
+    release_h: '📄 Разрешение артистки',
+    release_summary: 'Простыми словами: вы подтверждаете, что вы совершеннолетняя и сами выбрали это, и даёте World Of Godz Entertainment LLC право публиковать и продавать ваш контент где угодно.',
+    release_intro: 'Вашему пакету документов нужно это подписанное разрешение, прежде чем его смогут одобрить, — без одобрения нельзя выходить в эфир и выводить деньги. Прочитайте, отметьте три пункта и введите своё официальное имя, чтобы подписать. Уже подписали на бумаге? Загрузите подписанную копию ниже.',
+    release_attest_age: 'Мне 18 лет или больше, и имя и дата рождения ниже — мои.',
+    release_attest_freewill: 'Я участвую по собственной воле — никто меня не принуждал и не давил.',
+    release_attest_rights: 'Я предоставляю World Of Godz Entertainment LLC права, описанные в этом разрешении.',
+    release_legal_name: 'Полное официальное имя (как в документе)',
+    release_sign_btn: '✍️ Подписать разрешение',
+    release_signed_h: '✅ Разрешение подписано',
+    release_signed_sub: 'Подписала {name} · {date} · Версия {version}',
+    release_paper_h: '📄 Бумажное разрешение в деле',
+    release_paper_btn: 'Загрузить подписанную бумажную копию',
+    release_missing: 'Ещё не подписано — ваш пакет останется неполным, пока разрешение не подписано или не загружена подписанная бумажная копия.',
+    release_banner: '📄 Остался один документ — разрешение артистки WOGENT. Это займёт минуту, прямо здесь, в Настройках.',
+    release_dismiss: 'Позже',
     id_verified_sub: 'Ваша личность подтверждена. Вам разрешено выходить в эфир и выводить деньги.',
     id_pending: '⏳ Удостоверение на проверке',
     coperf_h: '👥 Мои партнёры по сцене',
@@ -5375,6 +5465,21 @@ const I18N = {
     enter: '入る 🔥',
     settings_h: '設定 ⚙️',
     id_verified: '✅ 身分証確認済み',
+    release_h: '📄 出演者リリース',
+    release_summary: '簡単に言うと:あなたが成人で、自分の意思でこれを選んだことを確認し、World Of Godz Entertainment LLC にあなたのコンテンツをどこでも公開・販売する権利を与えます。',
+    release_intro: '身分証パケットは、このリリースに署名がないと承認されません。承認されなければ、ライブ配信も出金もできません。読んで、3つのボックスにチェックを入れ、法定氏名を入力して署名してください。すでに紙で署名しましたか?署名済みのコピーを下からアップロードしてください。',
+    release_attest_age: '私は18歳以上で、以下の氏名と生年月日は私のものです。',
+    release_attest_freewill: '私は自分の自由な意思で参加しています。誰にも強制されたり圧力をかけられたりしていません。',
+    release_attest_rights: '私はこのリリースに記載された権利を World Of Godz Entertainment LLC に付与します。',
+    release_legal_name: '法定氏名(身分証の表記どおり)',
+    release_sign_btn: '✍️ リリースに署名する',
+    release_signed_h: '✅ リリース署名済み',
+    release_signed_sub: '{name} が署名 · {date} · バージョン {version}',
+    release_paper_h: '📄 紙のリリースを保管中',
+    release_paper_btn: '署名済みの紙のコピーをアップロード',
+    release_missing: 'まだ署名されていません — リリースに署名するか、署名済みの紙のコピーをアップロードするまで、パケットは未完成のままです。',
+    release_banner: '📄 あと1つ署名する書類があります — WOGENT の出演者リリースです。設定画面のここで、1分で終わります。',
+    release_dismiss: '後で',
     id_verified_sub: '本人確認が完了しました。ライブ配信と出金の準備ができています。',
     id_pending: '⏳ 身分証審査中',
     coperf_h: '👥 共演者',
@@ -6188,6 +6293,21 @@ const I18N = {
     enter: '进入 🔥',
     settings_h: '设置 ⚙️',
     id_verified: '✅ 身份已验证',
+    release_h: '📄 表演者授权书',
+    release_summary: '简单来说:您确认自己已成年,并且是自愿选择这样做的;您授予 World Of Godz Entertainment LLC 在任何地方发布和销售您内容的权利。',
+    release_intro: '您的身份证件包需要这份签署好的授权书才能获得批准——没有批准,就不能直播或提现。请阅读它,勾选三个方框,并输入您的法定姓名进行签署。已经在纸上签了?在下方上传签署好的副本。',
+    release_attest_age: '我已年满18岁,下方的姓名和出生日期是我的。',
+    release_attest_freewill: '我是出于自己的自由意愿参与的——没有人强迫或施压于我。',
+    release_attest_rights: '我授予 World Of Godz Entertainment LLC 本授权书中所述的权利。',
+    release_legal_name: '完整法定姓名(与身份证件上的一致)',
+    release_sign_btn: '✍️ 签署授权书',
+    release_signed_h: '✅ 授权书已签署',
+    release_signed_sub: '由 {name} 签署 · {date} · 版本 {version}',
+    release_paper_h: '📄 纸质授权书已存档',
+    release_paper_btn: '改为上传签署好的纸质副本',
+    release_missing: '尚未签署——在签署授权书或上传签署好的纸质副本之前,您的证件包将保持不完整。',
+    release_banner: '📄 还有一份文件要签——WOGENT 表演者授权书。就在设置里,一分钟搞定。',
+    release_dismiss: '稍后',
     id_verified_sub: '你的身份已验证。你可以开播和提现了。',
     id_pending: '⏳ 身份审核中',
     coperf_h: '👥 我的搭档演员',
@@ -7001,6 +7121,21 @@ const I18N = {
     enter: '입장하기 🔥',
     settings_h: '설정 ⚙️',
     id_verified: '✅ 신분증 인증 완료',
+    release_h: '📄 출연자 동의서',
+    release_summary: '쉽게 말하면: 본인이 성인이며 스스로 선택했음을 확인하고, World Of Godz Entertainment LLC에 콘텐츠를 어디서든 게시하고 판매할 권리를 부여합니다.',
+    release_intro: '신분증 패킷은 이 동의서에 서명해야 승인될 수 있습니다. 승인이 없으면 라이브 방송도 출금도 할 수 없습니다. 읽고, 세 개의 박스에 체크한 뒤, 법적 이름을 입력해 서명하세요. 이미 종이에 서명했나요? 아래에 서명한 사본을 업로드하세요.',
+    release_attest_age: '저는 18세 이상이며, 아래의 이름과 생년월일은 제 것입니다.',
+    release_attest_freewill: '저는 제 자유 의지로 참여합니다 — 아무도 강요하거나 압박하지 않았습니다.',
+    release_attest_rights: '저는 이 동의서에 설명된 권리를 World Of Godz Entertainment LLC에 부여합니다.',
+    release_legal_name: '법적 이름 전체 (신분증에 표시된 대로)',
+    release_sign_btn: '✍️ 동의서에 서명하기',
+    release_signed_h: '✅ 동의서 서명 완료',
+    release_signed_sub: '{name} 서명 · {date} · 버전 {version}',
+    release_paper_h: '📄 종이 동의서 보관 중',
+    release_paper_btn: '대신 서명한 종이 사본 업로드',
+    release_missing: '아직 서명하지 않았습니다 — 동의서에 서명하거나 서명한 종이 사본을 업로드할 때까지 패킷은 미완성 상태로 남습니다.',
+    release_banner: '📄 서명할 서류가 하나 더 있습니다 — WOGENT 출연자 동의서예요. 설정에서 바로, 1분이면 됩니다.',
+    release_dismiss: '나중에',
     id_verified_sub: '신원이 인증되었습니다. 라이브와 출금을 할 수 있습니다.',
     id_pending: '⏳ 신분증 검토 중',
     coperf_h: '👥 내 공연 파트너',
@@ -7814,6 +7949,21 @@ const I18N = {
     enter: 'Entra 🔥',
     settings_h: 'Impostazioni ⚙️',
     id_verified: '✅ Documento verificato',
+    release_h: '📄 Liberatoria della performer',
+    release_summary: 'In parole semplici: confermi di essere maggiorenne e di aver scelto tu di farlo, e concedi a World Of Godz Entertainment LLC il diritto di pubblicare e vendere i tuoi contenuti ovunque.',
+    release_intro: 'Il tuo pacchetto documenti ha bisogno di questa liberatoria firmata prima di poter essere approvato: senza approvazione, niente live e niente prelievi. Leggila, spunta le tre caselle e digita il tuo nome legale per firmare. L\'hai già firmata su carta? Carica sotto la copia firmata.',
+    release_attest_age: 'Ho 18 anni o più, e il nome e la data di nascita qui sotto sono miei.',
+    release_attest_freewill: 'Partecipio di mia libera volontà: nessuno mi ha costretta o fatto pressioni.',
+    release_attest_rights: 'Concedo a World Of Godz Entertainment LLC i diritti descritti in questa liberatoria.',
+    release_legal_name: 'Nome legale completo (come sul documento)',
+    release_sign_btn: '✍️ Firma la liberatoria',
+    release_signed_h: '✅ Liberatoria firmata',
+    release_signed_sub: 'Firmata da {name} · {date} · Versione {version}',
+    release_paper_h: '📄 Liberatoria cartacea in archivio',
+    release_paper_btn: 'Carica invece una copia firmata su carta',
+    release_missing: 'Non ancora firmata: il tuo pacchetto resta incompleto finché non firmi la liberatoria o non carichi una copia cartacea firmata.',
+    release_banner: '📄 Un ultimo documento da firmare: la liberatoria per performer WOGENT. Ci vuole un minuto, proprio qui nelle Impostazioni.',
+    release_dismiss: 'Più tardi',
     id_verified_sub: 'La tua identità è verificata. Sei autorizzata ad andare in diretta e a prelevare i tuoi guadagni.',
     id_pending: '⏳ Documento in revisione',
     coperf_h: '👥 I miei partner di scena',
@@ -8627,6 +8777,21 @@ const I18N = {
     enter: 'Wejdź 🔥',
     settings_h: 'Ustawienia ⚙️',
     id_verified: '✅ Tożsamość zweryfikowana',
+    release_h: '📄 Zgoda wykonawczyni',
+    release_summary: 'Prostymi słowami: potwierdzasz, że jesteś pełnoletnia i sama to wybrałaś, oraz dajesz World Of Godz Entertainment LLC prawo do publikowania i sprzedaży Twoich treści wszędzie.',
+    release_intro: 'Twój pakiet dokumentów potrzebuje tej podpisanej zgody, zanim będzie mógł zostać zatwierdzony — bez zatwierdzenia nie ma transmisji na żywo ani wypłat. Przeczytaj ją, zaznacz trzy pola i wpisz swoje oficjalne imię i nazwisko, aby podpisać. Podpisałaś już na papierze? Prześlij podpisaną kopię poniżej.',
+    release_attest_age: 'Mam 18 lat lub więcej, a poniższe imię i nazwisko oraz data urodzenia są moje.',
+    release_attest_freewill: 'Biorę udział z własnej woli — nikt mnie nie zmuszał ani nie naciskał.',
+    release_attest_rights: 'Udzielam World Of Godz Entertainment LLC praw opisanych w tej zgodzie.',
+    release_legal_name: 'Pełne oficjalne imię i nazwisko (jak w dokumencie)',
+    release_sign_btn: '✍️ Podpisz zgodę',
+    release_signed_h: '✅ Zgoda podpisana',
+    release_signed_sub: 'Podpisała {name} · {date} · Wersja {version}',
+    release_paper_h: '📄 Papierowa zgoda w aktach',
+    release_paper_btn: 'Prześlij podpisaną papierową kopię',
+    release_missing: 'Jeszcze niepodpisana — Twój pakiet pozostanie niekompletny, dopóki nie podpiszesz zgody lub nie prześlesz podpisanej papierowej kopii.',
+    release_banner: '📄 Jeszcze jeden dokument do podpisania — zgoda wykonawczyni WOGENT. Zajmuje minutę, tutaj w Ustawieniach.',
+    release_dismiss: 'Później',
     id_verified_sub: 'Twoja tożsamość jest zweryfikowana. Masz zgodę na transmisje na żywo i wypłatę środków.',
     id_pending: '⏳ Dokument w trakcie sprawdzania',
     coperf_h: '👥 Moi współwykonawcy',
@@ -9440,6 +9605,21 @@ const I18N = {
     enter: 'Binnenkomen 🔥',
     settings_h: 'Instellingen ⚙️',
     id_verified: '✅ ID Geverifieerd',
+    release_h: '📄 Vrijwaring van de artiest',
+    release_summary: 'In gewone woorden: je bevestigt dat je meerderjarig bent en hier zelf voor hebt gekozen, en je geeft World Of Godz Entertainment LLC het recht om je content overal te publiceren en te verkopen.',
+    release_intro: 'Je ID-pakket heeft deze ondertekende vrijwaring nodig voordat het kan worden goedgekeurd — zonder goedkeuring geen live gaan en geen uitbetaling. Lees haar, vink de drie vakjes aan en typ je wettelijke naam om te ondertekenen. Al op papier getekend? Upload de ondertekende kopie hieronder.',
+    release_attest_age: 'Ik ben 18 jaar of ouder, en de naam en geboortedatum hieronder zijn van mij.',
+    release_attest_freewill: 'Ik doe mee uit eigen vrije wil — niemand heeft me gedwongen of onder druk gezet.',
+    release_attest_rights: 'Ik verleen World Of Godz Entertainment LLC de rechten die in deze vrijwaring staan beschreven.',
+    release_legal_name: 'Volledige wettelijke naam (zoals op je ID)',
+    release_sign_btn: '✍️ Onderteken de vrijwaring',
+    release_signed_h: '✅ Vrijwaring ondertekend',
+    release_signed_sub: 'Ondertekend door {name} · {date} · Versie {version}',
+    release_paper_h: '📄 Papieren vrijwaring in het dossier',
+    release_paper_btn: 'Upload in plaats daarvan een ondertekende papieren kopie',
+    release_missing: 'Nog niet ondertekend — je pakket blijft onvolledig totdat de vrijwaring is ondertekend of een ondertekende papieren kopie is geüpload.',
+    release_banner: '📄 Nog één papier te ondertekenen — de WOGENT-artiestenvrijwaring. Kost een minuut, hier in Instellingen.',
+    release_dismiss: 'Later',
     id_verified_sub: 'Je identiteit is geverifieerd. Je bent klaar om live te gaan en geld op te nemen.',
     id_pending: '⏳ ID In Beoordeling',
     coperf_h: '👥 Mijn mede-performers',
@@ -10253,6 +10433,21 @@ const I18N = {
     enter: 'Gir 🔥',
     settings_h: 'Ayarlar ⚙️',
     id_verified: '✅ Kimlik Doğrulandı',
+    release_h: '📄 Sanatçı İzin Belgesi',
+    release_summary: 'Basitçe: yetişkin olduğunuzu ve bunu kendi isteğinizle seçtiğinizi onaylıyorsunuz ve World Of Godz Entertainment LLC\'ye içeriğinizi her yerde yayınlama ve satma hakkını veriyorsunuz.',
+    release_intro: 'Kimlik paketinizin onaylanabilmesi için bu imzalı izin belgesi gerekiyor — onay olmadan canlı yayın da yok, para çekme de yok. Okuyun, üç kutuyu işaretleyin ve imzalamak için yasal adınızı yazın. Kağıt üzerinde zaten imzaladınız mı? İmzalı kopyayı aşağıdan yükleyin.',
+    release_attest_age: '18 yaşında veya daha büyüğüm ve aşağıdaki ad ve doğum tarihi bana ait.',
+    release_attest_freewill: 'Kendi özgür irademle katılıyorum — kimse beni zorlamadı veya baskı yapmadı.',
+    release_attest_rights: 'World Of Godz Entertainment LLC\'ye bu belgede açıklanan hakları veriyorum.',
+    release_legal_name: 'Tam yasal ad (kimliğinizde yazdığı gibi)',
+    release_sign_btn: '✍️ İzin belgesini imzala',
+    release_signed_h: '✅ İzin belgesi imzalandı',
+    release_signed_sub: '{name} tarafından imzalandı · {date} · Sürüm {version}',
+    release_paper_h: '📄 Kağıt izin belgesi dosyada',
+    release_paper_btn: 'Bunun yerine imzalı kağıt kopyayı yükle',
+    release_missing: 'Henüz imzalanmadı — izin belgesi imzalanana veya imzalı kağıt kopya yüklenene kadar paketiniz eksik kalır.',
+    release_banner: '📄 İmzalanacak bir belge daha var — WOGENT sanatçı izin belgesi. Ayarlar\'dan, bir dakikada biter.',
+    release_dismiss: 'Sonra',
     id_verified_sub: 'Kimliğin doğrulandı. Canlıya geçmeye ve para çekmeye hazırsın.',
     id_pending: '⏳ Kimlik İnceleniyor',
     coperf_h: '👥 Sahne Partnerlerim',
@@ -15576,11 +15771,54 @@ async function vModelSettings() {
         <label class="field">Selfie holding ID<input class="input" type="file" id="idv-selfie" accept="image/*"></label>
         <button class="btn" id="idv-submit">Submit for verification</button>
       </div>`;
+  // 📄 WOGENT house release (Release in Onboarding, Oct 22 2026):
+  // part of her ID packet, rendered right under the ID card. The
+  // house account never sees it (it IS the producer). An ID-approved
+  // model who predates the release gets a one-time dismissible
+  // banner pointing here; her approval is untouched either way.
+  const rel = (idvData && idvData.release) || null;
+  const relHouse = !!(idvData && idvData.house);
+  let relDismissed = false;
+  try { relDismissed = localStorage.getItem('release_prompt_dismissed_' + (S.user && S.user.id)) === '1'; } catch (e) { /* ignore */ }
+  const releaseBannerHTML = (!relHouse && !rel && idvStatus === 'approved' && !relDismissed)
+    ? `<div class="card" style="border-color:var(--gold)">
+        <div style="font-weight:800;margin-bottom:8px">${t('release_banner')}</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" id="release-banner-go" style="flex:1">${t('release_sign_btn')}</button>
+          <button class="btn ghost" id="release-banner-no" style="flex:1">${t('release_dismiss')}</button>
+        </div>
+      </div>` : '';
+  const releaseCardHTML = relHouse ? ''
+    : rel
+    ? `<div class="card" style="border-color:var(--green)">
+        <div style="font-weight:800;color:var(--green)">${rel.method === 'paper' ? t('release_paper_h') : t('release_signed_h')}</div>
+        <div class="small muted">${rel.method === 'paper'
+          ? `${esc(rel.signed_at || '')} · ${t('release_h')} ${esc(rel.version || '')}`
+          : t('release_signed_sub', { name: esc(rel.legal_name || ''), date: esc(rel.signed_at || ''), version: esc(rel.version || '') })}</div>
+      </div>`
+    : `<div class="card" id="release-card" style="border-color:var(--red)">
+        <div style="font-weight:800;margin-bottom:6px">${t('release_h')} <span style="color:var(--red)">— Required</span></div>
+        <div class="small" style="margin-bottom:8px"><b>${t('release_summary')}</b></div>
+        <div class="muted small" style="margin-bottom:10px">${t('release_intro')}</div>
+        <div id="release-doc" class="small" style="max-height:230px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;background:rgba(255,255,255,.03)">Loading…</div>
+        <label class="row" style="gap:8px;align-items:flex-start;margin-bottom:8px"><input type="checkbox" id="rel-attest-age" style="width:20px;height:20px;accent-color:var(--pink);flex:none"><span class="small">${t('release_attest_age')}</span></label>
+        <label class="row" style="gap:8px;align-items:flex-start;margin-bottom:8px"><input type="checkbox" id="rel-attest-freewill" style="width:20px;height:20px;accent-color:var(--pink);flex:none"><span class="small">${t('release_attest_freewill')}</span></label>
+        <label class="row" style="gap:8px;align-items:flex-start;margin-bottom:10px"><input type="checkbox" id="rel-attest-rights" style="width:20px;height:20px;accent-color:var(--pink);flex:none"><span class="small">${t('release_attest_rights')}</span></label>
+        <label class="field">${t('release_legal_name')}<input class="input" id="rel-legal-name" maxlength="120" autocomplete="name"></label>
+        <label class="field">${t('stage_name_label')}<input class="input" id="rel-stage-name" maxlength="120" value="${esc(m.display_name || '')}"></label>
+        <label class="field">${t('dob')}<input class="input" id="rel-dob" type="date"></label>
+        <button class="btn" id="rel-sign" style="width:100%">${t('release_sign_btn')}</button>
+        <div style="border-top:1px solid var(--border);margin:14px 0 10px"></div>
+        <label class="field">${t('release_paper_btn')}<input class="input" type="file" id="rel-paper-file" accept="image/*,.pdf"></label>
+        <button class="btn ghost" id="rel-paper-upload" style="width:100%">${t('release_paper_btn')}</button>
+      </div>`;
   app.innerHTML = `
     <div class="header"><h1>${t('settings_h')}</h1></div>
     <div class="screen">
       ${affiliateMergePromptHTML()}
+      ${releaseBannerHTML}
       ${idvBanner}
+      ${releaseCardHTML}
       <div id="coperf-card"></div>
       <button class="btn" id="goto-home" style="width:100%;padding:16px;font-size:17px;font-weight:800;margin-bottom:12px;background:linear-gradient(135deg,var(--pink),#ff8fab);box-shadow:0 6px 22px rgba(255,92,158,.35)">🏠 Home Screen — see the girls 🔥</button>
       ${langCardHTML()}
@@ -16313,8 +16551,89 @@ async function vModelSettings() {
   };
   // 👥 Co-Performers card (async fill; the house account's is empty)
   renderCoPerfCard();
+  // 📄 WOGENT release card (doc load + sign/upload/banner wiring)
+  wireReleaseCard();
   // 🔒 Co-star held-media badges (async; marks what the gate holds)
   markHeldMediaBadges();
+}
+
+/* 📄 WOGENT house release card wiring (Release in Onboarding, Oct 22
+ * 2026): loads the English document into the scroll box, posts the
+ * e-sign (attestations + typed legal name + stage name + DOB) or the
+ * signed paper upload, and runs the one-time banner for ID-approved
+ * models who predate the release. Server responses carry the record;
+ * the Settings re-render shows the signed state. */
+async function wireReleaseCard() {
+  const go = $('#release-banner-go'), no = $('#release-banner-no');
+  if (go) go.onclick = () => {
+    const c = $('#release-card');
+    if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  if (no) no.onclick = () => {
+    try { localStorage.setItem('release_prompt_dismissed_' + S.user.id, '1'); } catch (e) {}
+    const c = no.closest('.card'); if (c) c.remove();
+  };
+  const doc = $('#release-doc');
+  if (doc) {
+    try {
+      const { status, data } = await api('/model/release');
+      if (status === 200 && data && Array.isArray(data.sections)) {
+        doc.innerHTML = data.sections.map((s) =>
+          `<div style="font-weight:800;margin:8px 0 4px">${esc(s.title)}</div><div style="white-space:pre-wrap">${esc(s.body)}</div>`).join('')
+          + `<div class="muted" style="margin-top:8px">Release ${esc(data.version || '')} · ${esc(data.updated || '')} · World Of Godz Entertainment LLC</div>`;
+      } else doc.textContent = 'Could not load the release — reopen Settings to try again.';
+    } catch (e) { doc.textContent = 'Could not load the release — reopen Settings to try again.'; }
+  }
+  const signBtn = $('#rel-sign');
+  if (signBtn) signBtn.onclick = async () => {
+    const body = {
+      legal_name: ($('#rel-legal-name') || {}).value || '',
+      stage_name: ($('#rel-stage-name') || {}).value || '',
+      dob: ($('#rel-dob') || {}).value || '',
+      attestations: {
+        adult: !!($('#rel-attest-age') || {}).checked,
+        freewill: !!($('#rel-attest-freewill') || {}).checked,
+        rights: !!($('#rel-attest-rights') || {}).checked,
+      },
+    };
+    if (!body.attestations.adult || !body.attestations.freewill || !body.attestations.rights
+        || body.legal_name.trim().length < 2 || !body.dob) {
+      return toast(t('release_missing'));
+    }
+    signBtn.disabled = true;
+    const { status, data } = await api('/model/release/sign', { method: 'POST', body: JSON.stringify(body) });
+    signBtn.disabled = false;
+    if (status === 200 && data && data.ok) {
+      toast(t('release_signed_h'));
+      show('modelSettings', {});
+    } else toast((data && data.message) || 'Could not sign — try again.');
+  };
+  const paperBtn = $('#rel-paper-upload');
+  if (paperBtn) paperBtn.onclick = async () => {
+    const f = ($('#rel-paper-file') || {}).files && $('#rel-paper-file').files[0];
+    if (!f) return toast(t('release_missing'));
+    if (!/^image\/(jpeg|png|webp)$/.test(f.type) && f.type !== 'application/pdf')
+      return toast('Use a JPG/PNG photo or a PDF.');
+    if (f.size > 10 * 1024 * 1024) return toast('The file must be under 10MB.');
+    paperBtn.disabled = true;
+    const fd = new FormData();
+    fd.append('release', f);
+    const ln = ($('#rel-legal-name') || {}).value || '';
+    if (ln.trim()) fd.append('legal_name', ln.trim());
+    const headers = {};
+    if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
+    let status = 0, data = {};
+    try {
+      const r = await fetch('/api/model/release/paper', { method: 'POST', headers, body: fd });
+      status = r.status;
+      try { data = await r.json(); } catch (e) { /* non-JSON */ }
+    } catch (e) { /* network */ }
+    paperBtn.disabled = false;
+    if (status === 200 && data.ok) {
+      toast(t('release_paper_h'));
+      show('modelSettings', {});
+    } else toast(data.message || 'Upload failed — try again.');
+  };
 }
 
 /* Co-star gate, her own view (Co-Star Upload Prompt, Oct 22 2026):

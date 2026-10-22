@@ -866,6 +866,36 @@ async function adminIdChecksBody() {
       r._tok = t && t.token;
     } catch (e) { r._tok = null; }
   }
+  // 📄 WOGENT house release (Release in Onboarding, Oct 22 2026): own
+  // rows only — partner rows carry their consent form instead. Tokens
+  // for decided paper rows too, so the signed copy opens from either
+  // list. The reviewer's approval covers ID + release together: an
+  // own packet with no release on file cannot be approved (409).
+  for (const r of decided) {
+    if (!r.is_partner && r.release_paper_on_file) {
+      try {
+        const { data: t } = await api(`/admin/id-verifications/${r.id}/photo-token`, { method: 'POST' });
+        r._tok = t && t.token;
+      } catch (e) { r._tok = null; }
+    }
+  }
+  const releaseLine = (r) => {
+    if (r.is_partner) return '';
+    if (!r.release_on_file)
+      return `<div class="small" style="margin-bottom:10px"><span style="color:var(--red)">📄 Release: MISSING — her packet can't be approved until she signs the WOGENT release (or uploads a signed paper copy) in her Settings.</span></div>`;
+    if (r.release_method === 'paper')
+      return `<div class="small" style="margin-bottom:10px">📄 Release: <b>paper on file</b> · uploaded ${esc(r.release_signed_at || '')}${r._tok ? ` · <a href="/api/admin/id-verifications/${r.id}/photo/release?t=${r._tok}" target="_blank" rel="noopener">View the signed copy</a>` : ''} <span class="muted">(Release ${esc(r.release_version || '')})</span></div>`;
+    const a = r.release_attestations || {};
+    return `<div class="small" style="margin-bottom:10px">📄 Release: <b>signed in app</b> · Release ${esc(r.release_version || '')}
+      <details style="margin-top:4px"><summary style="cursor:pointer">Signed record</summary>
+      <div class="muted" style="margin-top:4px">
+        Legal name: <b>${esc(r.release_legal_name || '')}</b><br>
+        Stage name: ${esc(r.release_stage_name || '')}<br>
+        Date of birth (as entered): ${esc(r.release_dob || '')}<br>
+        Signed: ${esc(r.release_signed_at || '')}<br>
+        Attestations: 18+ ${a.adult ? '✓' : '—'} · free will ${a.freewill ? '✓' : '—'} · rights grant ${a.rights ? '✓' : '—'}
+      </div></details></div>`;
+  };
   const photoRow = (r, which, label) => r._tok
     ? `<div style="flex:1;min-width:120px"><div class="small muted" style="margin-bottom:4px">${label}</div>
        <img src="/api/admin/id-verifications/${r.id}/photo/${which}?t=${r._tok}"
@@ -892,6 +922,7 @@ async function adminIdChecksBody() {
           ${r.is_partner ? `<div class="small" style="margin-bottom:10px">${r.consent_on_file
             ? `📄 <a href="/api/admin/id-verifications/${r.id}/photo/consent?t=${r._tok}" target="_blank" rel="noopener">Consent form on file</a> <span class="muted">(any standard signed form — opens photo or PDF)</span>`
             : '<span style="color:var(--red)">📄 No consent form on file — profile media naming this co-star stays held until it lands.</span>'}</div>` : ''}
+          ${releaseLine(r)}
           <div class="row" style="gap:8px">
             <button class="btn small" data-idv-approve="${r.id}" style="flex:1">✅ Approve</button>
             <button class="btn small danger" data-idv-reject="${r.id}" style="flex:1">❌ Reject</button>
@@ -908,6 +939,7 @@ async function adminIdChecksBody() {
           <span class="small">${badge(r.status)}</span>
           <span class="small muted"> · reviewed ${esc(r.reviewed_at || '')}</span>
           ${r.is_partner ? `<br><span class="small muted">📄 Consent form: ${r.consent_on_file ? 'on file ✓' : '<span style="color:var(--red)">MISSING</span>'}</span>` : ''}
+          ${r.is_partner ? '' : `<br><span class="small muted">📄 Release: ${r.release_on_file ? `on file ✓ (${r.release_method === 'paper' ? 'paper' : 'signed in app'} · ${esc(r.release_version || '')} · ${esc(r.release_signed_at || '')})` : '<span style="color:var(--red)">MISSING</span>'}</span>`}
           ${r.reviewer_note ? `<br><span class="small muted">Note: ${esc(r.reviewer_note)}</span>` : ''}
           ${r.status === 'rejected' ? ` <button class="btn small ghost" data-idv-approve="${r.id}">Approve anyway</button>` : ''}
           <button class="btn small ghost" data-idv-2257="${r.id}">📄 2257 record</button>
@@ -2260,8 +2292,8 @@ function wireAdminBody(tab) {
     app.querySelectorAll('[data-idv-approve]').forEach((b) => b.onclick = async () => {
       const id = b.dataset.idvApprove;
       if (!confirm('Approve this ID verification?')) return;
-      const { status } = await api(`/admin/id-verifications/${id}/approve`, { method: 'POST' });
-      toast(status === 200 ? '✅ ID approved — she can now chat and go live.' : 'Could not approve.');
+      const { status, data } = await api(`/admin/id-verifications/${id}/approve`, { method: 'POST' });
+      toast(status === 200 ? '✅ ID approved — she can now chat and go live.' : ((data && data.message) || 'Could not approve.'));
       if (status === 200) M.reload();
     });
     app.querySelectorAll('[data-idv-reject]').forEach((b) => b.onclick = async () => {
