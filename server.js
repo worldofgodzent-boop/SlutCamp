@@ -27,6 +27,7 @@ const { WebSocketServer } = require('ws');
 const { transcribeAudio } = require('./lib/transcribe');
 const geoLib = require('./lib/geo');
 const shieldLib = require('./lib/shield');
+const relayLib = require('./lib/relay');
 const {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -11166,6 +11167,11 @@ function battleOut(b) {
     host_ready: !!b.host_ready, guest_ready: !!b.guest_ready,
     host: battleUserBrief(b.host_id), guest: battleUserBrief(b.guest_id),
     host_session_id: b.host_session_id, guest_session_id: b.guest_session_id,
+    // Streaming relay advisory: is each side's broadcast published to
+    // Cloudflare right now? Viewers try the relay first for the sides
+    // that are, and mesh for the rest (per-side fallback).
+    host_relay: !!relayPubs.get(b.host_session_id),
+    guest_relay: !!relayPubs.get(b.guest_session_id),
     starts_at: b.starts_at, expires_at: b.expires_at,
     started_at: b.started_at, ends_at: b.ends_at, ended_at: b.ended_at,
     host_score_cents: s.host, guest_score_cents: s.guest,
@@ -11920,9 +11926,12 @@ app.post('/api/battles/:id/enter', identMiddleware, requireUser, (req, res) => {
       .run(sessionId, viewerId);
     if (!before) {
       const sess = db.prepare('SELECT model_id FROM live_sessions WHERE id = ?').get(sessionId);
+      // Relay-served viewers (they subscribed before entering) are
+      // counted by the host, never mesh-connected — same rule as join.
       if (sess) pushToUser(sess.model_id, { type: 'live:viewer-joined',
         session_id: sessionId, fan_id: viewerId,
-        fan_name: req.user.display_name });
+        fan_name: req.user.display_name,
+        ...(relaySubFor(sessionId, viewerId) ? { via_relay: true } : {}) });
     }
   };
   if (isBattler(b, req.user.id)) {
@@ -12703,6 +12712,48 @@ const livePayTimers = new Map(); // "sessionId:fanId" -> interval
  * inventing one. Entries are dropped when the session ends. */
 const liveFaceCaps = new Map();
 
+/* ---------------- Streaming relay (Cloudflare Realtime SFU) ---------
+ * Public lives + PumPum Verse battles ride the relay when it is
+ * configured (lib/relay.js): the host publishes ONE copy to
+ * Cloudflare, viewers pull from the edge, and her phone's uplink stops
+ * being the crowd ceiling. Unconfigured — or any relay failure — and
+ * every flow falls back to the direct per-viewer mesh, unchanged.
+ * 1-on-1 video calls and Private Rooms never use the relay.
+ * State is in-memory like liveFaceCaps: a publication/subscription is
+ * worth exactly as much as the live it belongs to, and a restart ends
+ * lives anyway. Entries drop when the session ends or the viewer
+ * leaves. */
+const relayPubs = new Map();        // liveSessionId -> { cfSessionId, modelId, tracks: [{ trackName, mid, kind }] }
+const relaySubs = new Map();        // cfSessionId -> { userId, liveSessionId, mids: [String] }
+const relaySubByViewer = new Map(); // `${liveSessionId}:${userId}` -> cfSessionId
+
+function relaySubFor(liveSessionId, userId) {
+  return relaySubByViewer.get(`${liveSessionId}:${userId}`) || null;
+}
+function relayDropSub(cfSessionId, closeRemote = false) {
+  const sub = relaySubs.get(cfSessionId);
+  if (!sub) return;
+  relaySubs.delete(cfSessionId);
+  relaySubByViewer.delete(`${sub.liveSessionId}:${sub.userId}`);
+  if (closeRemote && relayLib.configured())
+    relayLib.closeTracks(cfSessionId, sub.mids.map((mid) => ({ mid }))).catch(() => {});
+}
+function relayDropViewerSub(liveSessionId, userId, closeRemote = false) {
+  const cf = relaySubFor(liveSessionId, userId);
+  if (cf) relayDropSub(cf, closeRemote);
+}
+function relayTeardownSession(liveSessionId) {
+  const pub = relayPubs.get(liveSessionId);
+  if (pub) {
+    relayPubs.delete(liveSessionId);
+    if (relayLib.configured())
+      relayLib.closeTracks(pub.cfSessionId,
+        pub.tracks.map((t) => ({ mid: t.mid }))).catch(() => {});
+  }
+  for (const [cf, sub] of [...relaySubs])
+    if (sub.liveSessionId === liveSessionId) relayDropSub(cf);
+}
+
 function liveTimerKey(sessionId, fanId) { return `${sessionId}:${fanId}`; }
 
 function stopLivePayTimer(sessionId, fanId, clearDb = true) {
@@ -13238,7 +13289,10 @@ app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), 
     }
   }
   res.json({ session_id: Number(info.lastInsertRowid), explicit_rate_cents, title,
-    face_cap: faceCap });
+    face_cap: faceCap,
+    // Streaming relay: her client publishes one copy to Cloudflare
+    // when this is true. Private Rooms are mesh-only by design.
+    relay_enabled: relayLib.configured() && !privEv });
 });
 
 // Fan leaves the live view (stops billing, closes model's peer connection)
@@ -13246,6 +13300,9 @@ app.post('/api/live/:id/leave', identMiddleware, requireUser, requireRole('fan')
   const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
   if (!sess) return res.status(404).json({ error: 'not_found' });
   stopLivePayTimer(sess.id, req.user.id);
+  // A relay viewer leaves the relay too (records drop; his CF
+  // session is closed best-effort). Mesh viewers are untouched.
+  relayDropViewerSub(sess.id, req.user.id, true);
   db.prepare('DELETE FROM live_viewers WHERE session_id = ? AND fan_id = ?')
     .run(sess.id, req.user.id);
   // Leaving while on stage or waiting: drop stage (no refund), cancel pending (refund)
@@ -13350,7 +13407,8 @@ app.get('/api/live/:id', identMiddleware, requireUser, (req, res) => {
     // Face-count guard (Phase 4): the broadcaster's rejoin path reads
     // the session's cap here; null when unknown (e.g. server restart)
     // — the client fails open on null.
-    face_cap: liveFaceCaps.has(sess.id) ? liveFaceCaps.get(sess.id) : null });
+    face_cap: liveFaceCaps.has(sess.id) ? liveFaceCaps.get(sess.id) : null,
+    relay_enabled: relayLib.configured() && !sess.private_event_id });
 });
 
 // Admin: watch a live session as invisible moderator (not counted as viewer, no paywall)
@@ -13380,6 +13438,7 @@ app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
   if (req.user.role !== 'admin' && sess.model_id !== req.user.id)
     return res.status(403).json({ error: 'forbidden' });
   liveFaceCaps.delete(sess.id);
+  relayTeardownSession(sess.id);
   db.prepare(`UPDATE live_sessions SET status = 'ended', ended_at = datetime('now') WHERE id = ?`)
     .run(sess.id);
   // Private Room (Phase 5): the linked event closes with its session.
@@ -13405,6 +13464,135 @@ app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
   pushToUser(sess.model_id, { type: 'live:ended', session_id: sess.id });
   // Phase 6: ending her live mid-battle forfeits the battle.
   try { battleOnSessionEnded(sess.id); } catch (e) {}
+  res.json({ ok: true });
+});
+
+/* ---------------- Streaming relay endpoints -------------------------
+ * The browser never talks to Cloudflare directly (the App Secret
+ * stays here); it hands us SDP and we broker the SFU calls. Every
+ * failure mode answers a clean error and the client falls back to the
+ * mesh — a relay hiccup must never break a live. */
+
+/* Host: publish her broadcast's tracks. Body: { session_id,
+ * sessionDescription: { type: 'offer', sdp }, tracks: [{ mid,
+ * trackName }] }. Answers with the SFU's answer SDP. */
+app.post('/api/relay/publish', identMiddleware, requireUser, requireRole('model'), async (req, res) => {
+  if (!relayLib.configured()) return res.status(503).json({ error: 'relay_disabled' });
+  const sessionId = Number(req.body && req.body.session_id);
+  const sess = Number.isInteger(sessionId)
+    ? db.prepare("SELECT * FROM live_sessions WHERE id = ? AND status = 'live'").get(sessionId)
+    : null;
+  if (!sess || sess.model_id !== req.user.id)
+    return res.status(404).json({ error: 'not_found' });
+  // Private Rooms stay direct P2P by design — the relay is for
+  // public crowds only.
+  if (sess.private_event_id) return res.status(403).json({ error: 'relay_private_room' });
+  const sd = req.body && req.body.sessionDescription;
+  const tracks = req.body && req.body.tracks;
+  if (!sd || sd.type !== 'offer' || typeof sd.sdp !== 'string' || !sd.sdp ||
+      !Array.isArray(tracks) || !tracks.length || tracks.length > 8 ||
+      tracks.some((t) => !t || typeof t.mid !== 'string' || !t.mid ||
+        typeof t.trackName !== 'string' || !t.trackName))
+    return res.status(400).json({ error: 'bad_request' });
+  try {
+    const cfSessionId = await relayLib.createSession();
+    const out = await relayLib.publishTracks(cfSessionId,
+      { type: 'offer', sdp: sd.sdp },
+      tracks.map((t) => ({ location: 'local', mid: t.mid, trackName: t.trackName })));
+    if (!out || !out.sessionDescription)
+      return res.status(502).json({ error: 'relay_upstream' });
+    relayPubs.set(sess.id, { cfSessionId, modelId: req.user.id,
+      tracks: tracks.map((t) => ({ trackName: t.trackName, mid: t.mid,
+        kind: t.trackName === 'audio' ? 'audio' : 'video' })) });
+    res.json({ ok: true, session_id: sess.id, cf_session_id: cfSessionId,
+      sessionDescription: out.sessionDescription });
+  } catch (e) {
+    res.status(502).json({ error: 'relay_upstream' });
+  }
+});
+
+/* Viewer: pull one live session's stream from the relay. Runs BEFORE
+ * join/enter in the client, so a relay-served viewer is on record by
+ * the time he joins and the host counts him instead of mesh-offering.
+ * Body: { session_id }. Answers with the SFU's offer SDP + the track
+ * mids so the browser can answer and map tracks to its elements. */
+app.post('/api/relay/subscribe', identMiddleware, requireUser, async (req, res) => {
+  if (!relayLib.configured()) return res.status(503).json({ error: 'relay_disabled' });
+  const sessionId = Number(req.body && req.body.session_id);
+  const sess = Number.isInteger(sessionId)
+    ? db.prepare("SELECT * FROM live_sessions WHERE id = ? AND status = 'live'").get(sessionId)
+    : null;
+  if (!sess) return res.status(404).json({ error: 'not_live' });
+  if (sess.private_event_id) return res.status(403).json({ error: 'relay_private_room' });
+  // Who may pull a public stream: any fan (his paid gates ride the
+  // join that follows, exactly as in the mesh), or the opposing
+  // battler of a live battle running on this session.
+  if (req.user.role === 'fan') {
+    if (modelRegionBlocked(sess.model_id, geoOfReq(req))) return regionBlocked(res);
+  } else if (req.user.role === 'model') {
+    const b = liveBattleForSession(sess.id);
+    if (!b || !isBattler(b, req.user.id) || sess.model_id === req.user.id)
+      return res.status(403).json({ error: 'forbidden' });
+  } else {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  const pub = relayPubs.get(sess.id);
+  if (!pub) return res.status(409).json({ error: 'relay_unavailable' });
+  try {
+    relayDropViewerSub(sess.id, req.user.id, true); // a re-subscribe replaces the old one
+    const cfSessionId = await relayLib.createSession();
+    const out = await relayLib.subscribeTracks(cfSessionId,
+      pub.tracks.map((t) => ({ location: 'remote', sessionId: pub.cfSessionId,
+        trackName: t.trackName })));
+    if (!out || !out.sessionDescription)
+      return res.status(502).json({ error: 'relay_upstream' });
+    const subTracks = (Array.isArray(out.tracks) ? out.tracks : [])
+      .filter((t) => t && typeof t.mid === 'string')
+      .map((t) => ({ mid: t.mid, trackName: t.trackName,
+        kind: t.trackName === 'audio' ? 'audio' : 'video' }));
+    relaySubs.set(cfSessionId, { userId: req.user.id, liveSessionId: sess.id,
+      mids: subTracks.map((t) => t.mid) });
+    relaySubByViewer.set(`${sess.id}:${req.user.id}`, cfSessionId);
+    res.json({ ok: true, session_id: sess.id, cf_session_id: cfSessionId,
+      sessionDescription: out.sessionDescription, tracks: subTracks });
+  } catch (e) {
+    res.status(502).json({ error: 'relay_upstream' });
+  }
+});
+
+/* Viewer: hand the SFU our browser's answer to its offer. Only the
+ * subscription's owner may renegotiate it. */
+app.post('/api/relay/renegotiate', identMiddleware, requireUser, async (req, res) => {
+  if (!relayLib.configured()) return res.status(503).json({ error: 'relay_disabled' });
+  const cfSessionId = String((req.body && req.body.cf_session_id) || '');
+  const sub = relaySubs.get(cfSessionId);
+  if (!sub || sub.userId !== req.user.id)
+    return res.status(403).json({ error: 'forbidden' });
+  const sd = req.body && req.body.sessionDescription;
+  if (!sd || sd.type !== 'answer' || typeof sd.sdp !== 'string' || !sd.sdp)
+    return res.status(400).json({ error: 'bad_request' });
+  try {
+    await relayLib.renegotiate(cfSessionId, { type: 'answer', sdp: sd.sdp });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(502).json({ error: 'relay_upstream' });
+  }
+});
+
+/* Viewer: done watching through the relay (battle stage leave, live
+ * teardown). Drops the records and tells the host — her viewer-left
+ * handling is idempotent, so this never double-counts against the
+ * /leave push. Always ok: teardown must not fail a closing view. */
+app.post('/api/relay/close', identMiddleware, requireUser, (req, res) => {
+  const cfSessionId = String((req.body && req.body.cf_session_id) || '');
+  const sub = relaySubs.get(cfSessionId);
+  if (sub && sub.userId === req.user.id) {
+    const sess = db.prepare('SELECT model_id FROM live_sessions WHERE id = ?')
+      .get(sub.liveSessionId);
+    relayDropSub(cfSessionId, true);
+    if (sess) pushToUser(sess.model_id, { type: 'live:viewer-left',
+      session_id: sub.liveSessionId, fan_id: req.user.id });
+  }
   res.json({ ok: true });
 });
 
@@ -13457,9 +13645,18 @@ app.post('/api/live/:id/join', identMiddleware, requireUser, requireRole('fan'),
   if (!seatGate(res, sess, req.user.id)) return;
   db.prepare('INSERT OR IGNORE INTO live_viewers (session_id, fan_id) VALUES (?,?)')
     .run(sess.id, req.user.id);
-  // Tell the model someone new is watching (she'll open a peer connection)
-  pushToUser(sess.model_id, { type: 'live:viewer-joined', session_id: sess.id,
-    fan_id: req.user.id, fan_name: req.user.display_name });
+  // Tell the model someone new is watching. A fan who already pulled
+  // the stream from the relay (subscribe happens before join) is
+  // flagged via_relay: she counts him but opens NO mesh peer
+  // connection for him — his copy comes from Cloudflare.
+  if (relaySubFor(sess.id, req.user.id)) {
+    pushToUser(sess.model_id, { type: 'live:viewer-joined', session_id: sess.id,
+      fan_id: req.user.id, fan_name: req.user.display_name, via_relay: true });
+  } else {
+    // Mesh viewer: she'll open a peer connection for him.
+    pushToUser(sess.model_id, { type: 'live:viewer-joined', session_id: sess.id,
+      fan_id: req.user.id, fan_name: req.user.display_name });
+  }
   const model = db.prepare('SELECT display_name FROM users WHERE id = ?').get(sess.model_id);
   const me = db.prepare('SELECT explicit_until, is_paying, explicit_paid FROM live_viewers WHERE session_id = ? AND fan_id = ?')
     .get(sess.id, req.user.id);
@@ -13475,6 +13672,7 @@ app.post('/api/live/:id/join', identMiddleware, requireUser, requireRole('fan'),
     explicit_mic_join_cents: jr.explicit_mic_join_cents,
     join_cents: jr.join_cents,
     mic_join_cents: jr.mic_join_cents,
+    relay_available: relayPubs.has(sess.id),
     priority: currentPriority(sess.id) });
 });
 

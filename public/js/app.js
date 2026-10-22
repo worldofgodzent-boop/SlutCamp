@@ -10901,7 +10901,8 @@ function handleWS(m) {
   } else if (m.type === 'live-signal') {
     if (!routeBattleSignal(m)) handleLiveSignal(m);
   } else if (m.type === 'live:viewer-joined' && S.live && S.live.role === 'model' && m.session_id === S.live.sessionId) {
-    liveModelAddViewer(m.fan_id);
+    if (m.via_relay) { liveRelayViewers.add(m.fan_id); updateLiveViewerCount(); }
+    else liveModelAddViewer(m.fan_id);
   } else if (m.type === 'live:viewer-left' && S.live && S.live.role === 'model' && m.session_id === S.live.sessionId) {
     liveModelRemoveViewer(m.fan_id);
   } else if (m.type === 'live:explicit' && S.live && S.live.role === 'fan' && m.session_id === S.live.sessionId) {
@@ -18344,6 +18345,108 @@ function liveSignal(to, sessionId, payload) {
     S.ws.send(JSON.stringify({ type: 'live-signal', to, session_id: sessionId, payload }));
 }
 
+/* ---------------- STREAMING RELAY (Cloudflare Realtime SFU) ---------
+ * Public lives + battles: the host publishes ONE copy to Cloudflare
+ * and every viewer pulls from the edge, so a crowd stops multiplying
+ * her phone's uplink. Every step here fails soft to the direct mesh —
+ * the mesh below is untouched and remains the only path for 1-on-1
+ * calls and Private Rooms. Inert unless the server has the relay
+ * configured (the /api/relay/* calls simply fail and we mesh). */
+
+const RELAY_ICE = { iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }] };
+let liveRelayViewers = new Set(); // model side: fanIds watching via relay (counted, never mesh-connected)
+
+function relayWaitIce(pc, timeoutMs) {
+  if (pc.iceGatheringState === 'complete') return Promise.resolve();
+  return new Promise((resolve) => {
+    const timer = setTimeout(done, timeoutMs || 2500);
+    function done() {
+      clearTimeout(timer);
+      pc.removeEventListener('icegatheringstatechange', onState);
+      resolve();
+    }
+    function onState() { if (pc.iceGatheringState === 'complete') done(); }
+    pc.addEventListener('icegatheringstatechange', onState);
+  });
+}
+
+/* Host: publish this broadcast's stream to the relay. Resolves true
+ * when the publication is live at Cloudflare; false = she stays
+ * mesh-only and viewers never learn the difference. */
+async function relayPublishStart(sessionId, stream) {
+  let pc = null;
+  try {
+    pc = new RTCPeerConnection(RELAY_ICE);
+    const pending = [];
+    for (const track of stream.getTracks()) {
+      const tr = pc.addTransceiver(track, { direction: 'sendonly' });
+      pending.push({ track, tr });
+    }
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await relayWaitIce(pc);
+    const tracks = pending.map(({ track, tr }) => ({ mid: tr.mid, trackName: track.kind }));
+    const { status, data } = await api('/relay/publish', { method: 'POST',
+      body: JSON.stringify({ session_id: sessionId,
+        sessionDescription: { type: 'offer', sdp: pc.localDescription.sdp }, tracks }) });
+    if (status !== 200 || !data || !data.sessionDescription)
+      throw new Error('publish refused');
+    await pc.setRemoteDescription(new RTCSessionDescription(data.sessionDescription));
+    if (!S.live || S.live.sessionId !== sessionId) throw new Error('live moved on');
+    S.live.relayPC = pc;
+    S.live.relayCfSessionId = data.cf_session_id;
+    return true;
+  } catch (e) {
+    if (pc) { try { pc.close(); } catch (err) {} }
+    return false;
+  }
+}
+
+/* Viewer: pull one session's stream from the relay. Resolves
+ * { pc, cfSessionId } with the whole SFU handshake complete, or null —
+ * the caller then runs today's mesh path untouched. Media accumulates
+ * into pc._relayStream; relayOnMedia delivers it to the view. */
+async function relaySubscribeStart(sessionId) {
+  let pc = null;
+  try {
+    const { status, data } = await api('/relay/subscribe', { method: 'POST',
+      body: JSON.stringify({ session_id: sessionId }) });
+    if (status !== 200 || !data || !data.sessionDescription) return null;
+    pc = new RTCPeerConnection(RELAY_ICE);
+    pc._relayStream = new MediaStream();
+    pc.ontrack = (e) => {
+      if (e.track && !pc._relayStream.getTracks().includes(e.track))
+        pc._relayStream.addTrack(e.track);
+      if (pc._relayMediaCb) pc._relayMediaCb(pc._relayStream);
+    };
+    await pc.setRemoteDescription(new RTCSessionDescription(data.sessionDescription));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    await relayWaitIce(pc);
+    const r2 = await api('/relay/renegotiate', { method: 'POST',
+      body: JSON.stringify({ cf_session_id: data.cf_session_id,
+        sessionDescription: { type: 'answer', sdp: pc.localDescription.sdp } }) });
+    if (r2.status !== 200) throw new Error('renegotiate refused');
+    return { pc, cfSessionId: data.cf_session_id };
+  } catch (e) {
+    if (pc) { try { pc.close(); } catch (err) {} }
+    return null;
+  }
+}
+
+function relayOnMedia(relay, cb) {
+  if (!relay) return;
+  relay.pc._relayMediaCb = cb;
+  if (relay.pc._relayStream.getTracks().length) cb(relay.pc._relayStream);
+}
+
+function relayClose(relay) {
+  if (!relay) return;
+  try { relay.pc.close(); } catch (e) {}
+  api('/relay/close', { method: 'POST',
+    body: JSON.stringify({ cf_session_id: relay.cfSessionId }) }).catch(() => {});
+}
+
 /* --- MODEL: broadcast --- */
 
 async function rejoinLiveBroadcast(sessionId) {
@@ -18369,6 +18472,7 @@ async function rejoinLiveBroadcast(sessionId) {
   loadLeaderboard();
   toast('🔴 Back live! Welcome back 🎉');
   startFaceGuard(sessionId);
+  if (data.relay_enabled) relayPublishStart(sessionId, stream);
   if (!S.live.brb) {
     startSpeechSafetyBot(sessionId);
     startAudioChunkBot(sessionId);
@@ -18472,6 +18576,10 @@ async function startLiveBroadcast() {
   startSpeechSafetyBot(data.session_id);
   startAudioChunkBot(data.session_id);
   startFaceGuard(data.session_id);
+  // Streaming relay: publish one copy to Cloudflare so the crowd
+  // pulls from the edge. Silent no-op when unconfigured/refused —
+  // the mesh carries the live exactly as before.
+  if (data.relay_enabled) relayPublishStart(data.session_id, stream);
 }
 
 /* --- Speech safety bot: transcribes the model's mic, flags personal info/socials --- */
@@ -18735,6 +18843,7 @@ function stopFaceGuard() {
 
 function liveModelAddViewer(fanId) {
   if (!S.live || S.live.role !== 'model') return;
+  if (liveRelayViewers.has(fanId)) return; // relay-served: counted, never mesh-connected
   liveModelRemoveViewer(fanId);
   const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
   S.live.stream.getTracks().forEach((t) => pc.addTrack(t, S.live.stream));
@@ -18751,12 +18860,13 @@ function liveModelAddViewer(fanId) {
 function liveModelRemoveViewer(fanId) {
   const pc = livePCs.get(fanId);
   if (pc) { try { pc.close(); } catch (e) {} livePCs.delete(fanId); }
+  liveRelayViewers.delete(fanId);
   updateLiveViewerCount();
 }
 
 function updateLiveViewerCount() {
   const el = $('#live-viewer-count');
-  if (el) el.textContent = t('watching', { n: livePCs.size });
+  if (el) el.textContent = t('watching', { n: livePCs.size + liveRelayViewers.size });
 }
 
 async function liveToggleExplicit() {
@@ -20705,7 +20815,36 @@ function battleMakeViewerPC(sessionId, modelId, videoElId) {
 }
 function battleCloseViewerPC(sessionId) {
   const pc = battlePCs.get(sessionId);
-  if (pc) { try { pc.close(); } catch (e) {} battlePCs.delete(sessionId); }
+  if (pc) {
+    if (pc._relay) relayClose(pc._relay);
+    try { pc.close(); } catch (e) {}
+    battlePCs.delete(sessionId);
+  }
+}
+/* One battle side's connection: relay first (the host's single
+ * upload serves the whole crowd), mesh on any failure. relayFlag ===
+ * false means the server says that side is not publishing to the
+ * relay — go straight to mesh and skip the doomed round-trip. */
+async function battleConnectSession(sessionId, modelId, videoElId, relayFlag) {
+  if (!sessionId) return;
+  if (relayFlag !== false) {
+    const relay = await relaySubscribeStart(sessionId);
+    if (relay) {
+      battleCloseViewerPC(sessionId);
+      relay.pc._relay = relay;
+      battlePCs.set(sessionId, relay.pc);
+      relayOnMedia(relay, (stream) => {
+        const v = document.getElementById(videoElId);
+        if (v) {
+          v.srcObject = stream;
+          stream.getAudioTracks().forEach((tr) => { tr.enabled = true; });
+          v.play().catch(() => {});
+        }
+      });
+      return;
+    }
+  }
+  battleMakeViewerPC(sessionId, modelId, videoElId);
 }
 function closeAllBattlePCs() {
   for (const sid of [...battlePCs.keys()]) battleCloseViewerPC(sid);
@@ -20805,8 +20944,10 @@ async function vBattleStage(params) {
   battleView = { id: battleId, battle: b };
   // Peers first (so both models' offers find a connection waiting),
   // then enter — the server pushes viewer-joined to both models.
-  battleMakeViewerPC(b.host_session_id, b.host.id, 'battle-vid-a');
-  battleMakeViewerPC(b.guest_session_id, b.guest.id, 'battle-vid-b');
+  // Relay-served sides subscribe before entering, so the hosts count
+  // this fan instead of opening mesh connections for him.
+  await battleConnectSession(b.host_session_id, b.host.id, 'battle-vid-a', b.host_relay);
+  await battleConnectSession(b.guest_session_id, b.guest.id, 'battle-vid-b', b.guest_relay);
   await api(`/battles/${battleId}/enter`, { method: 'POST' });
   renderBattleStage();
   loadBattleChat();
@@ -21177,7 +21318,8 @@ async function battleBattlerConnect(b) {
   const oppSession = b.host.id === S.user.id ? b.guest_session_id : b.host_session_id;
   const opp = battleOppOf(b);
   if (!oppSession || battlePCs.has(oppSession)) return;
-  battleMakeViewerPC(oppSession, opp.id, 'battle-remote');
+  const oppRelay = b.host.id === S.user.id ? b.guest_relay : b.host_relay;
+  await battleConnectSession(oppSession, opp.id, 'battle-remote', oppRelay);
   await api(`/battles/${b.id}/enter`, { method: 'POST' });
 }
 
@@ -21442,14 +21584,29 @@ async function watchLive(sessionId) {
     return show('auth', { mode: 'signup', role: 'fan' });
   }
   if (S.user.role !== 'fan') return toast('Fans only.');
+  // Relay first: if she's publishing to Cloudflare, pull from the
+  // edge — her one upload serves the whole crowd. The subscribe runs
+  // BEFORE the join so the server counts this viewer as relay-served
+  // instead of having her open a mesh connection for him. Any relay
+  // failure leaves relay null and the mesh flow below runs exactly as
+  // it always has.
+  const relay = await relaySubscribeStart(sessionId);
   const { status, data } = await api(`/live/${sessionId}/join`, { method: 'POST' });
-  if (status !== 200) return toast('Stream is offline.');
+  if (status !== 200) { relayClose(relay); return toast('Stream is offline.'); }
 
-  const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-  pc.onicecandidate = (e) => {
-    if (e.candidate) liveSignal(data.model_id, sessionId, { kind: 'ice', candidate: e.candidate });
-  };
-  pc.ontrack = (e) => {
+  let pc;
+  if (relay) {
+    pc = relay.pc;
+    relayOnMedia(relay, (stream) => livePcOnTrack({ streams: [stream] }));
+  } else {
+    pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    pc.onicecandidate = (e) => {
+      if (e.candidate) liveSignal(data.model_id, sessionId, { kind: 'ice', candidate: e.candidate });
+    };
+    pc.ontrack = livePcOnTrack;
+  }
+
+  function livePcOnTrack(e) {
     const v = $('#live-remote');
     if (v) {
       v.srcObject = e.streams[0];
@@ -21483,9 +21640,9 @@ async function watchLive(sessionId) {
       }
     }
     startLiveMonitor();
-  };
+  }
 
-  S.live = { sessionId, role: 'fan', pc, modelId: data.model_id,
+  S.live = { sessionId, role: 'fan', pc, relay, modelId: data.model_id,
              modelName: data.model_name, explicitRate: data.explicit_rate_cents,
              paying: !!data.is_paying, blurred: false, monitorOn: false, aiReady: false,
              countdownInt: null, giftCountdownInt: null, title: data.title || '',
@@ -21962,9 +22119,12 @@ function endLiveView(msg) {
     if (L.stageStream) { L.stageStream.getTracks().forEach((t) => { try { t.stop(); } catch (e) {} }); }
     if (L.role === 'fan') {
       api(`/live/${L.sessionId}/leave`, { method: 'POST' }).catch(() => {});
+      if (L.relay) relayClose(L.relay);
       if (L.pc) { try { L.pc.close(); } catch (e) {} }
     } else if (L.role === 'model') {
       api(`/live/${L.sessionId}/end`, { method: 'POST' }).catch(() => {});
+      if (L.relayPC) { try { L.relayPC.close(); } catch (e) {} }
+      liveRelayViewers.clear();
       for (const [, pc] of livePCs) { try { pc.close(); } catch (e) {} }
       livePCs.clear();
       if (L.stream) L.stream.getTracks().forEach((t) => t.stop());
