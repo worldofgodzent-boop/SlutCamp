@@ -1172,6 +1172,13 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
   border-radius: 50%; background: rgba(16,6,12,.85); color: #fff; font-size: 11px;
   line-height: 1; cursor: pointer; font-family: inherit;
 }
+/* Settings → Clean feed manager: the Add photo / Add video buttons
+   stack full-width, one per line, like the other Settings card
+   buttons — never an inline label-width pair that staggers when it
+   wraps on a phone (Asce's screenshot, Oct 23 2026). The stack's gap
+   is the only spacing: .btn's own top margin is zeroed inside it. */
+.cf-add-stack { display: flex; flex-direction: column; gap: 8px; }
+.cf-add-stack .btn { width: 100%; margin-top: 0; margin-left: 0; }
 .peek-msgbar {
   flex: 0 0 auto; margin-top: 10px; padding-top: 10px;
   border-top: 1px solid rgba(139,92,246,.3);
