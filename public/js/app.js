@@ -389,6 +389,7 @@ const I18N = {
     gate_warn_body: 'WARNING: THIS SITE HAS A ZERO TOLERANCE POLICY FOR UNDERAGE BROADCASTING. IF YOU ARE NOT LEGALLY AN ADULT, OR IF YOU BROADCAST ANY TYPE OF PORN, EROTIC PHOTOS OR VIDEO CONTENT INVOLVING ANYONE UNDER 18, YOUR PERSONAL DATA WILL BE TRANSFERRED TO THE RELEVANT AUTHORITIES FOR ENFORCEMENT UNDER INTERNATIONAL LAWS AGAINST CHILD PORNOGRAPHY.',
     gate_agree: 'I confirm I am 18 years old or older, and I have read, understand and agree to the Terms and Conditions and Privacy Policy.',
     gate_err_agree: 'Please confirm you are 18+ and agree to the Terms and Privacy Policy to enter.',
+    gate_warn_continue: 'Continue',
     welcome_user: 'Welcome, {name}! 🎉',
     logged_out: 'Logged out.',
     qs_sub: 'Create your account — 30 seconds',
@@ -1321,6 +1322,7 @@ const I18N = {
     gate_warn_body: 'ADVERTENCIA: ESTE SITIO TIENE UNA POLÍTICA DE TOLERANCIA CERO FRENTE A LAS TRANSMISIONES DE MENORES. SI NO ERES LEGALMENTE ADULTO, O SI TRANSMITES CUALQUIER TIPO DE PORNOGRAFÍA, FOTOS ERÓTICAS O CONTENIDO EN VIDEO QUE INVOLUCRE A CUALQUIER PERSONA MENOR DE 18 AÑOS, TUS DATOS PERSONALES SERÁN TRANSFERIDOS A LAS AUTORIDADES COMPETENTES PARA SU PERSECUCIÓN BAJO LAS LEYES INTERNACIONALES CONTRA LA PORNOGRAFÍA INFANTIL.',
     gate_agree: 'Confirmo que tengo 18 años o más, y que he leído, entiendo y acepto los Términos y Condiciones y la Política de Privacidad.',
     gate_err_agree: 'Por favor confirma que tienes 18 años o más y acepta los Términos y la Política de Privacidad para entrar.',
+    gate_warn_continue: 'Continuar',
     welcome_user: '¡Bienvenido, {name}! 🎉',
     logged_out: 'Sesión cerrada.',
     qs_sub: 'Crea tu cuenta — 30 segundos',
@@ -2253,6 +2255,7 @@ const I18N = {
     gate_warn_body: 'AVISO: ESTE SITE TEM UMA POLÍTICA DE TOLERÂNCIA ZERO PARA TRANSMISSÕES DE MENORES. SE VOCÊ NÃO FOR LEGALMENTE ADULTO, OU SE TRANSMITIR QUALQUER TIPO DE PORNOGRAFIA, FOTOS ERÓTICAS OU CONTEÚDO EM VÍDEO ENVOLVENDO QUALQUER PESSOA MENOR DE 18 ANOS, SEUS DADOS PESSOAIS SERÃO TRANSFERIDOS ÀS AUTORIDADES COMPETENTES PARA PERSECUÇÃO SOB AS LEIS INTERNACIONAIS CONTRA A PORNOGRAFIA INFANTIL.',
     gate_agree: 'Confirmo que tenho 18 anos ou mais e que li, entendo e concordo com os Termos e Condições e a Política de Privacidade.',
     gate_err_agree: 'Por favor, confirme que você tem 18 anos ou mais e concorde com os Termos e a Política de Privacidade para entrar.',
+    gate_warn_continue: 'Continuar',
     welcome_user: 'Bem-vindo, {name}! 🎉',
     logged_out: 'Você saiu.',
     qs_sub: 'Crie sua conta — 30 segundos',
@@ -3185,6 +3188,7 @@ const I18N = {
     gate_warn_body: 'AVERTISSEMENT : CE SITE APPLIQUE UNE POLITIQUE DE TOLÉRANCE ZÉRO ENVERS LA DIFFUSION PAR DES MINEURS. SI VOUS N\'ÊTES PAS LÉGALEMENT ADULTE, OU SI VOUS DIFFUSEZ TOUT TYPE DE PORNOGRAPHIE, DE PHOTOS ÉROTIQUES OU DE CONTENU VIDÉO IMPLIQUANT UNE PERSONNE DE MOINS DE 18 ANS, VOS DONNÉES PERSONNELLES SERONT TRANSMISES AUX AUTORITÉS COMPÉTENTES POUR POURSUITES EN VERTU DES LOIS INTERNATIONALES CONTRE LA PORNOGRAPHIE INFANTILE.',
     gate_agree: 'Je confirme que j\'ai 18 ans ou plus, et que j\'ai lu, compris et accepté les Conditions Générales et la Politique de Confidentialité.',
     gate_err_agree: 'Veuillez confirmer que vous avez 18 ans ou plus et accepter les Conditions et la Politique de Confidentialité pour entrer.',
+    gate_warn_continue: 'Continuer',
     welcome_user: 'Bienvenue, {name} ! 🎉',
     logged_out: 'Déconnecté.',
     qs_sub: 'Créez votre compte — 30 secondes',
@@ -4117,6 +4121,7 @@ const I18N = {
     gate_warn_body: 'WARNUNG: DIESE SEITE VERFOLGT EINE NULL-TOLERANZ-POLITIK GEGENÜBER SENDUNGEN MINDERJÄHRIGER. WENN DU NICHT GESETZLICH VOLJÄHRIG BIST ODER IRGENDEINE ART VON PORNOGRAFIE, EROTISCHEN FOTOS ODER VIDEOINHALTEN MIT PERSONEN UNTER 18 JAHREN SENDEST, WERDEN DEINE PERSONENBEZOGENEN DATEN AN DIE ZUSTÄNDIGEN BEHÖRDEN ZUR STRAFVERFOLGUNG NACH INTERNATIONALEN GESETZEN GEGEN KINDERPORNOGRAFIE ÜBERMITTELT.',
     gate_agree: 'Ich bestätige, dass ich 18 Jahre alt oder älter bin, und dass ich die Allgemeinen Geschäftsbedingungen und die Datenschutzerklärung gelesen habe, verstehe und akzeptiere.',
     gate_err_agree: 'Bitte bestätige, dass du 18 Jahre oder älter bist, und stimme den Bedingungen und der Datenschutzerklärung zu, um einzutreten.',
+    gate_warn_continue: 'Weiter',
     welcome_user: 'Willkommen, {name}! 🎉',
     logged_out: 'Abgemeldet.',
     qs_sub: 'Erstelle deinen Account — 30 Sekunden',
@@ -5049,6 +5054,7 @@ const I18N = {
     gate_warn_body: 'ПРЕДУПРЕЖДЕНИЕ: НА ЭТОМ САЙТЕ ДЕЙСТВУЕТ ПОЛИТИКА НУЛЕВОЙ ТЕРПИМОСТИ К ВЕЩАНИЮ НЕСОВЕРШЕННОЛЕТНИХ. ЕСЛИ ВЫ НЕ ЯВЛЯЕТЕСЬ СОВЕРШЕННОЛЕТНИМ ПО ЗАКОНУ ИЛИ ТРАНСЛИРУЕТЕ ЛЮБУЮ ПОРНОГРАФИЮ, ЭРОТИЧЕСКИЕ ФОТО ИЛИ ВИДЕОКОНТЕНТ С УЧАСТИЕМ ЛИЦ МОЛОЖЕ 18 ЛЕТ, ВАШИ ПЕРСОНАЛЬНЫЕ ДАННЫЕ БУДУТ ПЕРЕДАНЫ КОМПЕТЕНТНЫМ ОРГАНАМ ДЛЯ ПРЕСЛЕДОВАНИЯ ПО МЕЖДУНАРОДНЫМ ЗАКОНАМ ПРОТИВ ДЕТСКОЙ ПОРНОГРАФИИ.',
     gate_agree: 'Я подтверждаю, что мне 18 лет или больше, и что я прочитал(а), понимаю и соглашаюсь с Условиями использования и Политикой конфиденциальности.',
     gate_err_agree: 'Пожалуйста, подтвердите, что вам 18 лет или больше, и согласитесь с Условиями и Политикой конфиденциальности, чтобы войти.',
+    gate_warn_continue: 'Продолжить',
     welcome_user: 'Добро пожаловать, {name}! 🎉',
     logged_out: 'Вы вышли.',
     qs_sub: 'Создайте ваш аккаунт — 30 секунд',
@@ -5981,6 +5987,7 @@ const I18N = {
     gate_warn_body: '警告：このサイトは未成年者による配信に対して一切の容赦をしない方針を採っています。法的に成人でない場合、または18歳未満の人物を含むあらゆる種類のポルノ、エロ写真、ビデオコンテンツを配信した場合、あなたの個人データは児童ポルノに対する国際法に基づく執行のため、関係当局に転送されます。',
     gate_agree: '私は18歳以上であることを確認し、利用規約とプライバシーポリシーを読み、理解し、同意します。',
     gate_err_agree: '入場するには、18歳以上であることを確認し、利用規約とプライバシーポリシーに同意してください。',
+    gate_warn_continue: '続ける',
     welcome_user: 'ようこそ、{name}さん！ 🎉',
     logged_out: 'ログアウトしました。',
     qs_sub: 'アカウントを作成 — 30秒で完了',
@@ -6913,6 +6920,7 @@ const I18N = {
     gate_warn_body: '警告：本站对未成年人直播实行零容忍政策。如果您未达到法定成年年龄，或广播涉及任何18岁以下人员的任何类型的色情、情色照片或视频内容，您的个人数据将被移交相关当局，根据打击儿童色情的国际法律进行执法。',
     gate_agree: '我确认我已年满18岁，并且已阅读、理解并同意条款与条件和隐私政策。',
     gate_err_agree: '请确认您已年满18岁，并同意条款和隐私政策后再进入。',
+    gate_warn_continue: '继续',
     welcome_user: '欢迎你，{name}！🎉',
     logged_out: '已退出登录。',
     qs_sub: '创建你的账号 — 只需 30 秒',
@@ -7845,6 +7853,7 @@ const I18N = {
     gate_warn_body: '경고: 이 사이트는 미성년자 방송에 대해 무관용 정책을 적용합니다. 법적으로 성인이 아니거나, 18세 미만의 사람이 포함된 모든 유형의 음란물, 에로틱한 사진 또는 동영상 콘텐츠를 방송하는 경우, 귀하의 개인정보는 아동 포르노에 대한 국제법에 따른 집행을 위해 관련 당국에 전달됩니다.',
     gate_agree: '저는 18세 이상임을 확인하며, 이용약관 및 개인정보처리방침을 읽고 이해하였으며 이에 동의합니다.',
     gate_err_agree: '입장하려면 18세 이상임을 확인하고 약관 및 개인정보처리방침에 동의해 주세요.',
+    gate_warn_continue: '계속',
     welcome_user: '환영합니다, {name}님! 🎉',
     logged_out: '로그아웃되었습니다.',
     qs_sub: '계정 만들기 — 30초면 됩니다',
@@ -8777,6 +8786,7 @@ const I18N = {
     gate_warn_body: 'AVVERTIMENTO: QUESTO SITO APPLICA UNA POLITICA DI TOLLERANZA ZERO NEI CONFRONTI DELLE TRASMISSIONI DI MINORI. SE NON SEI LEGALMENTE ADULTO, O SE TRASMETTI QUALSIASI TIPO DI PORNOGRAFIA, FOTO EROTICHE O CONTENUTI VIDEO CHE COINVOLGONO CHIUNQUE SOTTO I 18 ANNI, I TUOI DATI PERSONALI SARANNO TRASFERITI ALLE AUTORITÀ COMPETENTI PER L\'APPLICAZIONE DELLE LEGGI INTERNAZIONALI CONTRO LA PEDOPORNOGRAFIA.',
     gate_agree: 'Confermo di avere 18 anni o più e di aver letto, compreso e accettato i Termini e Condizioni e l\'Informativa sulla Privacy.',
     gate_err_agree: 'Per favore conferma di avere 18 anni o più e accetta i Termini e l\'Informativa sulla Privacy per entrare.',
+    gate_warn_continue: 'Continua',
     welcome_user: 'Benvenuto, {name}! 🎉',
     logged_out: 'Disconnesso.',
     qs_sub: 'Crea il tuo account — 30 secondi',
@@ -9709,6 +9719,7 @@ const I18N = {
     gate_warn_body: 'OSTRZEŻENIE: TA STRONA STOSUJE POLITYKĘ ZERO TOLERANCJI WOBEC NADAWANIA PRZEZ OSOBY NIELETNIE. JEŚLI NIE JESTEŚ PRAWNIE OSOBĄ DOROSŁĄ LUB NADAJESZ JAKIKOLWIEK RODZAJ PORNOGRAFII, EROTYCZNYCH ZDJĘĆ LUB TREŚCI WIDEO Z UDZIAŁEM OSÓB PONIŻEJ 18 ROKU ŻYCIA, TWOJE DANE OSOBOWE ZOSTANĄ PRZEKAZANE WŁAŚCIWYM ORGANOM W CELU ŚCIGANIA NA PODSTAWIE MIĘDZYNARODOWYCH PRZEPISÓW PRZECIWKO PORNOGRAFII DZIECIĘCEJ.',
     gate_agree: 'Potwierdzam, że mam 18 lat lub więcej oraz że przeczytałem(-am), rozumiem i akceptuję Regulamin oraz Politykę Prywatności.',
     gate_err_agree: 'Proszę potwierdź, że masz 18 lat lub więcej, i zaakceptuj Regulamin oraz Politykę Prywatności, aby wejść.',
+    gate_warn_continue: 'Kontynuuj',
     welcome_user: 'Witaj, {name}! 🎉',
     logged_out: 'Wylogowano.',
     qs_sub: 'Utwórz konto — 30 sekund',
@@ -10641,6 +10652,7 @@ const I18N = {
     gate_warn_body: 'WAARSCHUWING: DEZE SITE HANTEERT EEN NULTOLERANTIEBELEID VOOR UITZENDINGEN DOOR MINDERJARIGEN. ALS JE WETTELIJK GEEN VOLWASSENE BENT, OF ALS JE ENIG TYPE PORNO, EROTISCHE FOTO\'S OF VIDEOCONTENT UITZENDT WAARBIJ IEMAND ONDER DE 18 BETROKKEN IS, WORDEN JE PERSOONLIJKE GEGEVENS OVERGEDRAGEN AAN DE RELEVANTE AUTORITEITEN VOOR HANDHAVING ONDER INTERNATIONALE WETTEN TEGEN KINDERPORNOGRAFIE.',
     gate_agree: 'Ik bevestig dat ik 18 jaar of ouder ben, en dat ik de Algemene Voorwaarden en het Privacybeleid heb gelezen, begrijp en ermee akkoord ga.',
     gate_err_agree: 'Bevestig dat je 18 jaar of ouder bent en ga akkoord met de Voorwaarden en het Privacybeleid om binnen te komen.',
+    gate_warn_continue: 'Doorgaan',
     welcome_user: 'Welkom, {name}! 🎉',
     logged_out: 'Uitgelogd.',
     qs_sub: 'Maak je account aan — 30 seconden',
@@ -11573,6 +11585,7 @@ const I18N = {
     gate_warn_body: 'UYARI: BU SİTE, REŞİT OLMAYANLARIN YAYIN YAPMASINA KARŞI SIFIR HOŞGÖRÜ POLİTİKASI UYGULAR. YASAL OLARAK YETİŞKİN DEĞİLSENİZ VEYA 18 YAŞINDAN KÜÇÜK HERHANGİ BİRİNİ İÇEREN HER TÜRLÜ PORNOGRAFİ, EROTİK FOTOĞRAF VEYA VİDEO İÇERİĞİ YAYINLARSANIZ, KİŞİSEL VERİLERİNİZ ÇOCUK PORNOGRAFİSİNE KARŞI ULUSLARARASI YASALAR KAPSAMINDA UYGULAMA İÇİN İLGİLİ MAKAMLARA AKTARILACAKTIR.',
     gate_agree: '18 yaşında veya daha büyük olduğumu ve Şartlar ve Koşullar ile Gizlilik Politikasını okuduğumu, anladığımı ve kabul ettiğimi onaylıyorum.',
     gate_err_agree: 'Lütfen girmek için 18 yaşında veya daha büyük olduğunuzu onaylayın ve Şartlar ile Gizlilik Politikasını kabul edin.',
+    gate_warn_continue: 'Devam et',
     welcome_user: 'Hoş geldin, {name}! 🎉',
     logged_out: 'Çıkış yapıldı.',
     qs_sub: 'Hesabını oluştur — 30 saniye',
@@ -13588,6 +13601,48 @@ function vSectionGate(resume) {
   $('#sec-back').onclick = () => show('landing', {});
 }
 
+/* ---------------- Join warning modal ----------------
+   Entry-warning build, Part 2 (Asce, 2026-10-23): the FIRST tap
+   that starts joining — as a fan, a model, or an affiliate /
+   recruiter — pops this warning BEFORE the signup form, mirroring
+   Part 1's age-gate block: same warn title + red body + agreement
+   checkbox (gate_warn_h / gate_warn_body / gate_agree), Continue
+   blocked until the box is ticked (gate_err_agree), Cancel goes
+   back with no form opened. Acceptance is remembered for the
+   current page load ONLY (this module flag — nothing is stored):
+   starting a second role's signup in the same visit doesn't
+   re-pop, and a fresh page load asks again. The signup forms
+   keep their own DOB + agree18 fields — this modal is the
+   warning layer in front, not a replacement. */
+let joinWarnAccepted = false;
+
+function joinWarningGate(proceed) {
+  if (joinWarnAccepted) { proceed(); return; }
+  const sheet = ftSheet(`
+    <div class="age-gate-warn" style="margin-top:4px">
+      <div class="age-gate-warn-h">${t('gate_warn_h')}</div>
+      <p class="age-gate-warn-body">${t('gate_warn_body')}</p>
+    </div>
+    <label class="age-gate-agree"><input type="checkbox" id="jw-agree">
+      <span>${t('gate_agree')}</span></label>
+    <p id="jw-error" class="age-error hidden"></p>
+    <button class="btn" id="jw-continue" style="width:100%;margin-top:14px">${t('gate_warn_continue')}</button>
+    <button class="sheet-btn" id="jw-cancel">${t('cancel')}</button>`);
+  sheet.querySelector('#jw-cancel').onclick = () => ftCloseSheet();
+  sheet.querySelector('#jw-continue').onclick = () => {
+    const box = sheet.querySelector('#jw-agree');
+    if (!box || !box.checked) {
+      const err = sheet.querySelector('#jw-error');
+      err.textContent = t('gate_err_agree');
+      err.classList.remove('hidden');
+      return;
+    }
+    joinWarnAccepted = true;
+    ftCloseSheet();
+    proceed();
+  };
+}
+
 function vAuth(params) {
   const mode = (params && params.mode) || 'login';
   const role = (params && params.role) || 'fan';
@@ -13656,18 +13711,23 @@ function renderAuthBody(mode, role, loginRole) {
       $('#r-aff').classList.toggle('selected', r === 'affiliate');
       renderSignupFields(r);
     };
-    $('#r-fan').onclick = () => { r = 'fan'; paint(); };
-    $('#r-model').onclick = () => {
+    // Join warning (Part 2): every role start routes through the
+    // warning modal first — a role-card tap or the initial arrival
+    // alike. The form paints only on Continue (or instantly once
+    // the warning was accepted this page load). A model start keeps
+    // its section-router step, which runs after the warning.
+    const startModel = () => {
       // Section router (owner pivot, Oct 18 2026): the "Joining as"
       // pick comes FIRST — the model form never renders before it.
       if (!modelSectionPick) return vSectionGate(() => show('auth', { mode: 'signup', role: 'model' }));
       r = 'model'; paint();
     };
-    $('#r-aff').onclick = () => { r = 'affiliate'; paint(); };
+    $('#r-fan').onclick = () => joinWarningGate(() => { r = 'fan'; paint(); });
+    $('#r-model').onclick = () => joinWarningGate(startModel);
+    $('#r-aff').onclick = () => joinWarningGate(() => { r = 'affiliate'; paint(); });
     // Arriving with the model role pre-picked is routed the same way.
-    if (r === 'model' && !modelSectionPick)
-      return vSectionGate(() => show('auth', { mode: 'signup', role: 'model' }));
-    paint();
+    if (r === 'model') return joinWarningGate(startModel);
+    joinWarningGate(() => paint());
   }
 }
 
@@ -14175,6 +14235,8 @@ function renderSuggestionCard() {
 /* ---------------- MODEL INVITE SIGNUP (?invite=CODE) ---------------- */
 
 async function vInviteSignup(code) {
+  // Join warning (Part 2): the warning pops before this door's flow.
+  if (!joinWarnAccepted) return joinWarningGate(() => vInviteSignup(code));
   // Section router FIRST (owner pivot, Oct 18 2026): the "Joining as"
   // pick precedes the form; it rides into the register call.
   if (!modelSectionPick) return vSectionGate(() => vInviteSignup(code));
@@ -14247,6 +14309,8 @@ async function vInviteSignup(code) {
 
 /* Partner referral signup: model joins through a recruiter's link */
 async function vRecruiterSignup(code) {
+  // Join warning (Part 2): the warning pops before this door's flow.
+  if (!joinWarnAccepted) return joinWarningGate(() => vRecruiterSignup(code));
   // Section router FIRST (owner pivot, Oct 18 2026): the "Joining as"
   // pick precedes the form; it rides into the register call and the
   // referral_code below still attributes her to the recruiter.
@@ -14487,6 +14551,8 @@ function affAgreementSections() {
 
 /* Affiliate signup via Corry's invite link — agreement popup required */
 async function vAffiliateSignup(code) {
+  // Join warning (Part 2): the warning pops before this door's flow.
+  if (!joinWarnAccepted) return joinWarningGate(() => vAffiliateSignup(code));
   // Language switches redraw this form (it isn't a show() view); the
   // agreement summary renders per-language via affAgreementSections().
   entryRerender = () => vAffiliateSignup(code);
@@ -15579,6 +15645,8 @@ async function loadPeekPackages(m) {
 /* ---------------- FAN: quick signup (username + payment, nothing else) ---------------- */
 
 function vQuickSignup() {
+  // Join warning (Part 2): the warning pops before this fan door too.
+  if (!joinWarnAccepted) return joinWarningGate(() => vQuickSignup());
   app.innerHTML = `
     <div class="header"><h1>Slut<span class="logo">Camp</span></h1>
       <div class="sub">${t('qs_sub')}</div></div>
