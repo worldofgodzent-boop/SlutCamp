@@ -36,7 +36,7 @@ const sw = read('public/sw.js');
 
 test('server exposes the deployed build at GET /api/build-id', () => {
   assert.match(server, /app\.get\('\/api\/build-id'/);
-  assert.match(server, /res\.json\(\{ build: BUILD_ID, cache: SW_CACHE_NAME, time: BUILD_TIME \}\)/);
+  assert.match(server, /res\.json\(\{ build: BUILD_ID, cache: SW_CACHE_NAME, time: BUILD_TIME, upload_origin: UPLOAD_ORIGIN \}\)/);
 });
 
 test('build id resolution is boot-guarded (a failure can never break boot)', () => {
