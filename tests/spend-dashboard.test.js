@@ -156,14 +156,14 @@ test('A1: auth gates — guests refused, models forbidden (fans only)', { timeou
   assert.equal(capAsModel.status, 403, `model cap write: ${capAsModel.text}`);
 });
 
-test('A2: empty state — a fresh fan has zeros, all 11 categories, no cap', { timeout: 120000 }, async () => {
+test('A2: empty state — a fresh fan has zeros, all 12 categories, no cap', { timeout: 120000 }, async () => {
   const { base } = await bootA();
   const r = await spending(base, S.fan3);
   assert.equal(r.status, 200, `spending: ${r.text}`);
   assert.equal(r.json.month_cents, 0);
   assert.equal(r.json.lifetime_cents, 0);
   assert.equal(r.json.cap_cents, null);
-  assert.equal(r.json.by_category.length, 11);
+  assert.equal(r.json.by_category.length, 12);
   assert.ok(r.json.by_category.every((c) => c.month_cents === 0 && c.lifetime_cents === 0));
   assert.deepEqual(r.json.top_models, []);
 });
