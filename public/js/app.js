@@ -15,6 +15,21 @@ const esc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;');
 
+/* Canonical origin for share / promo / recruit links (Asce's rule,
+ * 2026-10-23): every link a model pastes anywhere must say
+ * slutcamp.app — never the hosting hostname. The app is also served
+ * from slutcamp.onrender.com, so a link built from location.origin
+ * there sends fans to the wrong front door. On the real domain we
+ * link to the origin we are on; from anywhere else (onrender,
+ * staging, localhost) links still say https://slutcamp.app.
+ * NOT for round-trips that must return to the SERVING origin —
+ * wallet redirects, passkeys and the socket keep location.origin /
+ * location.host on purpose. */
+function canonOrigin() {
+  const h = location.hostname;
+  return (h === 'slutcamp.app' || h === 'www.slutcamp.app') ? location.origin : 'https://slutcamp.app';
+}
+
 function toast(msg, ms) {
   const t = $('#toast');
   t.textContent = msg;
@@ -13595,7 +13610,7 @@ async function vLanding() {
 
 /* Share the app via native share sheet, fallback to copy link */
 async function shareApp() {
-  const url = location.origin;
+  const url = canonOrigin();
   const data = { title: 'SlutCamp', text: 'Chat & video call the models on SlutCamp 🔥 18+ only', url };
   if (navigator.share) {
     try { await navigator.share(data); } catch (e) { /* user cancelled */ }
@@ -17163,7 +17178,7 @@ async function vRecruiter() {
   if (!data || !data.recruiter) { toast(t('rc_load_fail')); return show('landing', {}); }
   const r = data.recruiter;
   const models = data.models || [];
-  const link = `${window.location.origin}/#join/${r.referral_code}`;
+  const link = `${canonOrigin()}/#join/${r.referral_code}`;
   const { data: acctData } = await api('/model/payout-account');
   const { data: wdData } = await api('/model/withdrawals');
   const acct = acctData.account;
@@ -17892,7 +17907,7 @@ async function vModelSettings() {
           <div style="font-weight:800;margin-bottom:4px">${t('promo_link_h')}</div>
           <div class="muted small" style="margin-bottom:8px">${t('promo_link_note')}</div>
           <div class="row" style="gap:8px">
-            <input class="input" id="s-promo-link" readonly value="${esc(location.origin + '/#m/' + (S.user.username || ''))}" style="flex:1" onclick="this.select()">
+            <input class="input" id="s-promo-link" readonly value="${esc(canonOrigin() + '/#m/' + (S.user.username || ''))}" style="flex:1" onclick="this.select()">
             <button class="btn" id="s-promo-copy" style="white-space:nowrap">${t('copy_btn')}</button>
           </div>
         </div>
