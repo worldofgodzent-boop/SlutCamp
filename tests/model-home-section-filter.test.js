@@ -258,6 +258,10 @@ test('live: a MODEL viewer’s home payload is tab-filtered — grid, rail windo
     }
     vdb.close();
     const guyTok = await login(h.base, 'mhguy', 'hunter22');
+    // Release Prompt (Oct 22 2026): both models agree to the WOGENT
+    // release at the door before going live.
+    assert.equal((await req(h.base, 'POST', '/api/model/release/agree', { body: {}, token: guyTok })).status, 200, 'male model agrees to the release');
+    assert.equal((await req(h.base, 'POST', '/api/model/release/agree', { body: {}, token: modelTok })).status, 200, 'female model agrees to the release');
     assert.equal((await req(h.base, 'POST', '/api/live/start', { body: { title: 'Guy live' }, token: guyTok })).status, 200, 'male model goes live');
     assert.equal((await req(h.base, 'POST', '/api/live/start', { body: { title: 'Gal live' }, token: modelTok })).status, 200, 'female model goes live');
     const liveNames = async (p, token) => (await roster(p, token)).live.map((l) => l.model_name).sort();

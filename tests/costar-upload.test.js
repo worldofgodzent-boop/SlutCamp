@@ -131,8 +131,8 @@ test('manager: the ID Checks queue surfaces the consent form', () => {
   assert.ok(mgrSrc.includes('consent_on_file'), 'the queue renders the on-file / missing state');
 });
 
-test('recount: the announcement thread-tap pin still reads exactly 30 after this build', () => {
-  assert.equal(serverSrc.split('/#chat/${conv.id}').length - 1, 30);
+test('recount: the announcement thread-tap pin reads exactly 31 after this build (Release Prompt announcement added one)', () => {
+  assert.equal(serverSrc.split('/#chat/${conv.id}').length - 1, 31);
 });
 
 /* --------------------------- functional boot --------------------------- */

@@ -512,6 +512,12 @@ const I18N = {
     release_missing: 'Not signed yet — your packet stays incomplete until the release is signed or a signed paper copy is uploaded.',
     release_banner: '📄 One more paper to sign — the WOGENT performer release. It takes a minute, right here in Settings.',
     release_dismiss: 'Later',
+    release_gate_h: '📄 We\'ve updated our performer release',
+    release_gate_sub: 'One quick tap and you\'re in',
+    release_gate_body: 'SlutCamp now keeps the WOGENT performer release on file for every model — the standard release that covers your content, kept with your ID records. Read it below, tap I Agree, and you\'re straight in. Until you agree, the app stays paused.',
+    release_gate_agree: 'I Agree',
+    release_gate_out: 'Log out',
+    release_gate_fail: 'Could not save your agreement — try again.',
     id_verified_sub: 'Your identity is verified. You\'re cleared to go live and cash out.',
     id_pending: '⏳ ID Under Review',
     coperf_h: '👥 My Co-Performers',
@@ -1355,6 +1361,12 @@ const I18N = {
     release_missing: 'Aún no está firmada: tu paquete queda incompleto hasta que firmes la autorización o subas una copia firmada en papel.',
     release_banner: '📄 Un papel más por firmar: la autorización de artista de WOGENT. Toma un minuto, aquí mismo en Ajustes.',
     release_dismiss: 'Más tarde',
+    release_gate_h: '📄 Actualizamos nuestra autorización de artista',
+    release_gate_sub: 'Un toque rápido y entras',
+    release_gate_body: 'SlutCamp ahora guarda la autorización de artista de WOGENT en el archivo de cada modelo: es la autorización estándar que cubre tu contenido y se guarda con tus registros de identificación. Léela abajo, toca Acepto y entras al instante. Hasta que aceptes, la app queda en pausa.',
+    release_gate_agree: 'Acepto',
+    release_gate_out: 'Cerrar sesión',
+    release_gate_fail: 'No se pudo guardar tu aceptación: inténtalo de nuevo.',
     id_verified_sub: 'Tu identidad está verificada. Ya puedes transmitir en vivo y retirar tu dinero.',
     id_pending: '⏳ Identidad en revisión',
     coperf_h: '👥 Mis co-intérpretes',
@@ -2198,6 +2210,12 @@ const I18N = {
     release_missing: 'Ainda não assinada — seu pacote fica incompleto até você assinar a autorização ou enviar uma cópia assinada em papel.',
     release_banner: '📄 Mais um papel para assinar — a autorização de artista da WOGENT. Leva um minuto, aqui mesmo nas Configurações.',
     release_dismiss: 'Depois',
+    release_gate_h: '📄 Atualizamos nossa autorização de artista',
+    release_gate_sub: 'Um toque rápido e você entra',
+    release_gate_body: 'A SlutCamp agora mantém a autorização de artista da WOGENT arquivada para cada modelo — é a autorização padrão que cobre seu conteúdo, guardada com seus registros de documento. Leia abaixo, toque em Concordo e você entra na hora. Até concordar, o app fica pausado.',
+    release_gate_agree: 'Concordo',
+    release_gate_out: 'Sair',
+    release_gate_fail: 'Não foi possível salvar sua concordância — tente novamente.',
     id_verified_sub: 'Sua identidade está verificada. Você já pode entrar ao vivo e sacar seus ganhos.',
     id_pending: '⏳ Identidade em análise',
     coperf_h: '👥 Meus parceiros de cena',
@@ -3041,6 +3059,12 @@ const I18N = {
     release_missing: 'Pas encore signée — votre dossier reste incomplet tant que l\'autorisation n\'est pas signée ou qu\'une copie papier signée n\'est pas téléversée.',
     release_banner: '📄 Encore un papier à signer — l\'autorisation d\'artiste WOGENT. Une minute, ici même dans les Réglages.',
     release_dismiss: 'Plus tard',
+    release_gate_h: '📄 Nous avons mis à jour notre autorisation d\'artiste',
+    release_gate_sub: 'Un petit tap et vous êtes dedans',
+    release_gate_body: 'SlutCamp conserve désormais l\'autorisation d\'artiste WOGENT au dossier de chaque modèle — c\'est l\'autorisation standard qui couvre votre contenu, gardée avec vos pièces d\'identité. Lisez-la ci-dessous, touchez Je suis d\'accord, et vous entrez aussitôt. Jusqu\'à votre accord, l\'appli reste en pause.',
+    release_gate_agree: 'Je suis d\'accord',
+    release_gate_out: 'Se déconnecter',
+    release_gate_fail: 'Impossible d\'enregistrer votre accord — réessayez.',
     id_verified_sub: 'Votre identité est vérifiée. Vous êtes autorisée à passer en direct et à retirer vos gains.',
     id_pending: '⏳ Identité en cours d\'examen',
     coperf_h: '👥 Mes partenaires de scène',
@@ -3884,6 +3908,12 @@ const I18N = {
     release_missing: 'Noch nicht unterschrieben — dein Paket bleibt unvollständig, bis die Freigabe unterschrieben oder eine unterschriebene Papierkopie hochgeladen ist.',
     release_banner: '📄 Noch ein Papier zu unterschreiben — die WOGENT-Künstler-Freigabe. Dauert eine Minute, gleich hier in den Einstellungen.',
     release_dismiss: 'Später',
+    release_gate_h: '📄 Wir haben unsere Künstler-Freigabe aktualisiert',
+    release_gate_sub: 'Ein kurzer Tipp und du bist drin',
+    release_gate_body: 'SlutCamp hinterlegt jetzt die WOGENT-Künstler-Freigabe für jedes Model — die Standard-Freigabe, die deine Inhalte abdeckt, aufbewahrt bei deinen Ausweisdaten. Lies sie unten, tippe auf Ich stimme zu, und du bist sofort drin. Bis du zustimmst, bleibt die App pausiert.',
+    release_gate_agree: 'Ich stimme zu',
+    release_gate_out: 'Abmelden',
+    release_gate_fail: 'Deine Zustimmung konnte nicht gespeichert werden — versuch es erneut.',
     id_verified_sub: 'Deine Identität ist verifiziert. Du bist freigegeben zum Live-Gehen und Abheben.',
     id_pending: '⏳ Ausweis wird überprüft',
     coperf_h: '👥 Meine Co-Performer',
@@ -4727,6 +4757,12 @@ const I18N = {
     release_missing: 'Ещё не подписано — ваш пакет останется неполным, пока разрешение не подписано или не загружена подписанная бумажная копия.',
     release_banner: '📄 Остался один документ — разрешение артистки WOGENT. Это займёт минуту, прямо здесь, в Настройках.',
     release_dismiss: 'Позже',
+    release_gate_h: '📄 Мы обновили разрешение артистки',
+    release_gate_sub: 'Одно быстрое нажатие — и вы внутри',
+    release_gate_body: 'SlutCamp теперь хранит разрешение артистки WOGENT в досье каждой модели — это стандартное разрешение на ваш контент, которое хранится вместе с вашими документами. Прочитайте его ниже, нажмите «Согласна» — и вы сразу внутри. Пока вы не согласитесь, приложение на паузе.',
+    release_gate_agree: 'Согласна',
+    release_gate_out: 'Выйти',
+    release_gate_fail: 'Не удалось сохранить ваше согласие — попробуйте ещё раз.',
     id_verified_sub: 'Ваша личность подтверждена. Вам разрешено выходить в эфир и выводить деньги.',
     id_pending: '⏳ Удостоверение на проверке',
     coperf_h: '👥 Мои партнёры по сцене',
@@ -5570,6 +5606,12 @@ const I18N = {
     release_missing: 'まだ署名されていません — リリースに署名するか、署名済みの紙のコピーをアップロードするまで、パケットは未完成のままです。',
     release_banner: '📄 あと1つ署名する書類があります — WOGENT の出演者リリースです。設定画面のここで、1分で終わります。',
     release_dismiss: '後で',
+    release_gate_h: '📄 出演者リリースを更新しました',
+    release_gate_sub: 'ワンタップですぐに入れます',
+    release_gate_body: 'SlutCampでは、すべてのモデルについてWOGENT出演者リリースを保管するようになりました — あなたのコンテンツを対象とする標準のリリースで、身分証記録と一緒に保管されます。下記を読んで「同意します」をタップすれば、すぐに入れます。同意するまで、アプリは停止したままです。',
+    release_gate_agree: '同意します',
+    release_gate_out: 'ログアウト',
+    release_gate_fail: '同意を保存できませんでした — もう一度お試しください。',
     id_verified_sub: '本人確認が完了しました。ライブ配信と出金の準備ができています。',
     id_pending: '⏳ 身分証審査中',
     coperf_h: '👥 共演者',
@@ -6413,6 +6455,12 @@ const I18N = {
     release_missing: '尚未签署——在签署授权书或上传签署好的纸质副本之前,您的证件包将保持不完整。',
     release_banner: '📄 还有一份文件要签——WOGENT 表演者授权书。就在设置里,一分钟搞定。',
     release_dismiss: '稍后',
+    release_gate_h: '📄 我们更新了表演者授权书',
+    release_gate_sub: '轻轻一点即可进入',
+    release_gate_body: 'SlutCamp 现在为每位模特保存 WOGENT 表演者授权书 — 这是涵盖您内容的标准授权书，与您的身份证记录一起保存。请阅读下方内容，点击“我同意”即可立即进入。在您同意之前，应用将保持暂停。',
+    release_gate_agree: '我同意',
+    release_gate_out: '退出登录',
+    release_gate_fail: '无法保存您的同意 — 请重试。',
     id_verified_sub: '你的身份已验证。你可以开播和提现了。',
     id_pending: '⏳ 身份审核中',
     coperf_h: '👥 我的搭档演员',
@@ -7256,6 +7304,12 @@ const I18N = {
     release_missing: '아직 서명하지 않았습니다 — 동의서에 서명하거나 서명한 종이 사본을 업로드할 때까지 패킷은 미완성 상태로 남습니다.',
     release_banner: '📄 서명할 서류가 하나 더 있습니다 — WOGENT 출연자 동의서예요. 설정에서 바로, 1분이면 됩니다.',
     release_dismiss: '나중에',
+    release_gate_h: '📄 출연자 동의서가 업데이트되었습니다',
+    release_gate_sub: '한 번의 탭으로 바로 입장',
+    release_gate_body: '이제 SlutCamp는 모든 모델의 WOGENT 출연자 동의서를 보관합니다 — 당신의 콘텐츠를 다루는 표준 동의서로, 신분증 기록과 함께 보관됩니다. 아래에서 읽고 \'동의합니다\'를 탭하면 바로 입장합니다. 동의하기 전까지 앱은 일시 중지 상태로 유지됩니다.',
+    release_gate_agree: '동의합니다',
+    release_gate_out: '로그아웃',
+    release_gate_fail: '동의를 저장할 수 없습니다 — 다시 시도해 주세요.',
     id_verified_sub: '신원이 인증되었습니다. 라이브와 출금을 할 수 있습니다.',
     id_pending: '⏳ 신분증 검토 중',
     coperf_h: '👥 내 공연 파트너',
@@ -8099,6 +8153,12 @@ const I18N = {
     release_missing: 'Non ancora firmata: il tuo pacchetto resta incompleto finché non firmi la liberatoria o non carichi una copia cartacea firmata.',
     release_banner: '📄 Un ultimo documento da firmare: la liberatoria per performer WOGENT. Ci vuole un minuto, proprio qui nelle Impostazioni.',
     release_dismiss: 'Più tardi',
+    release_gate_h: '📄 Abbiamo aggiornato la liberatoria per performer',
+    release_gate_sub: 'Un tocco veloce e sei dentro',
+    release_gate_body: 'SlutCamp ora conserva la liberatoria per performer WOGENT nel fascicolo di ogni modella — è la liberatoria standard che copre i tuoi contenuti, conservata con i tuoi documenti. Leggila qui sotto, tocca Accetto ed entri subito. Finché non accetti, l\'app resta in pausa.',
+    release_gate_agree: 'Accetto',
+    release_gate_out: 'Esci',
+    release_gate_fail: 'Impossibile salvare la tua accettazione — riprova.',
     id_verified_sub: 'La tua identità è verificata. Sei autorizzata ad andare in diretta e a prelevare i tuoi guadagni.',
     id_pending: '⏳ Documento in revisione',
     coperf_h: '👥 I miei partner di scena',
@@ -8942,6 +9002,12 @@ const I18N = {
     release_missing: 'Jeszcze niepodpisana — Twój pakiet pozostanie niekompletny, dopóki nie podpiszesz zgody lub nie prześlesz podpisanej papierowej kopii.',
     release_banner: '📄 Jeszcze jeden dokument do podpisania — zgoda wykonawczyni WOGENT. Zajmuje minutę, tutaj w Ustawieniach.',
     release_dismiss: 'Później',
+    release_gate_h: '📄 Zaktualizowaliśmy zgodę wykonawczyni',
+    release_gate_sub: 'Jedno szybkie dotknięcie i jesteś w środku',
+    release_gate_body: 'SlutCamp przechowuje teraz zgodę wykonawczyni WOGENT w aktach każdej modelki — to standardowa zgoda obejmująca Twoje treści, przechowywana razem z Twoimi dokumentami. Przeczytaj ją poniżej, dotknij Zgadzam się i od razu wchodzisz. Dopóki się nie zgodzisz, aplikacja pozostaje wstrzymana.',
+    release_gate_agree: 'Zgadzam się',
+    release_gate_out: 'Wyloguj się',
+    release_gate_fail: 'Nie udało się zapisać Twojej zgody — spróbuj ponownie.',
     id_verified_sub: 'Twoja tożsamość jest zweryfikowana. Masz zgodę na transmisje na żywo i wypłatę środków.',
     id_pending: '⏳ Dokument w trakcie sprawdzania',
     coperf_h: '👥 Moi współwykonawcy',
@@ -9785,6 +9851,12 @@ const I18N = {
     release_missing: 'Nog niet ondertekend — je pakket blijft onvolledig totdat de vrijwaring is ondertekend of een ondertekende papieren kopie is geüpload.',
     release_banner: '📄 Nog één papier te ondertekenen — de WOGENT-artiestenvrijwaring. Kost een minuut, hier in Instellingen.',
     release_dismiss: 'Later',
+    release_gate_h: '📄 We hebben onze artiestenvrijwaring bijgewerkt',
+    release_gate_sub: 'Eén snelle tik en je bent binnen',
+    release_gate_body: 'SlutCamp bewaart nu de WOGENT-artiestenvrijwaring in het dossier van elk model — de standaardvrijwaring die je content dekt, bewaard bij je ID-gegevens. Lees hem hieronder, tik op Ik ga akkoord en je bent meteen binnen. Tot je akkoord gaat, blijft de app gepauzeerd.',
+    release_gate_agree: 'Ik ga akkoord',
+    release_gate_out: 'Uitloggen',
+    release_gate_fail: 'Je akkoord kon niet worden opgeslagen — probeer opnieuw.',
     id_verified_sub: 'Je identiteit is geverifieerd. Je bent klaar om live te gaan en geld op te nemen.',
     id_pending: '⏳ ID In Beoordeling',
     coperf_h: '👥 Mijn mede-performers',
@@ -10628,6 +10700,12 @@ const I18N = {
     release_missing: 'Henüz imzalanmadı — izin belgesi imzalanana veya imzalı kağıt kopya yüklenene kadar paketiniz eksik kalır.',
     release_banner: '📄 İmzalanacak bir belge daha var — WOGENT sanatçı izin belgesi. Ayarlar\'dan, bir dakikada biter.',
     release_dismiss: 'Sonra',
+    release_gate_h: '📄 Sanatçı izin belgemizi güncelledik',
+    release_gate_sub: 'Tek dokunuşla içeridesin',
+    release_gate_body: 'SlutCamp artık her model için WOGENT sanatçı izin belgesini dosyada tutuyor — içeriğini kapsayan standart izin belgesi, kimlik kayıtlarınla birlikte saklanıyor. Aşağıdan oku, Kabul Ediyorum\'a dokun ve hemen gir. Kabul edene kadar uygulama duraklatılmış olarak kalır.',
+    release_gate_agree: 'Kabul Ediyorum',
+    release_gate_out: 'Çıkış yap',
+    release_gate_fail: 'Kabulün kaydedilemedi — tekrar dene.',
     id_verified_sub: 'Kimliğin doğrulandı. Canlıya geçmeye ve para çekmeye hazırsın.',
     id_pending: '⏳ Kimlik İnceleniyor',
     coperf_h: '👥 Sahne Partnerlerim',
@@ -11845,6 +11923,13 @@ function show(view, params) {
       && view !== 'modelContract' && MODEL_VIEWS.includes(view)) {
     view = 'modelContract';
   }
+  // Gate: models with no WOGENT release on file sign at the door —
+  // the release screen is the only model surface they can reach
+  // until they tap I Agree (no later, no dismiss).
+  if (S.user && S.user.role === 'model' && S.releaseSigned === false
+      && view !== 'releaseGate' && view !== 'modelContract' && MODEL_VIEWS.includes(view)) {
+    view = 'releaseGate';
+  }
   S.view = view;
   S.viewParams = params || {};
   // Inside a DM conversation the bottom tab bar vanishes for the WHOLE
@@ -11875,7 +11960,7 @@ function show(view, params) {
     chat: vChat,
     liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch, battleStage: vBattleStage,
     bookings: vBookings, terms: vTerms, privacy: vPrivacy, billing: vBilling, statement2257: vStatement2257,
-    managerGate: vManagerGate, modelContract: vModelContract,
+    managerGate: vManagerGate, modelContract: vModelContract, releaseGate: vReleaseGate,
     recruiter: vRecruiter, notifications: vNotifications, dmca: vDmca,
     affiliateAttach: vAffiliateAttach, affiliateMerge: vAffiliateMerge,
     privateEvent: vPrivateEvent,
@@ -13467,6 +13552,10 @@ async function refreshMe() {
   const { status, data } = await api('/me');
   if (status === 200) {
     S.user = data.user; S.wallet = data.wallet; S.model = data.model || null;
+    // Release door (Oct 22 2026): /api/me flags models with no WOGENT
+    // release on file — show() routes them to the one-tap release
+    // screen before anything else (see vReleaseGate).
+    if (S.user && S.user.role === 'model') S.releaseSigned = !data.user.release_missing;
     syncLangFromUser(data.user);
     maybeShowModelWelcome();
     if (data.commission_pct !== undefined) S.commissionPct = data.commission_pct;
@@ -16808,10 +16897,7 @@ async function vModelSettings() {
  * the Settings re-render shows the signed state. */
 async function wireReleaseCard() {
   const go = $('#release-banner-go'), no = $('#release-banner-no');
-  if (go) go.onclick = () => {
-    const c = $('#release-card');
-    if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  if (go) go.onclick = () => show('releaseGate', {});
   if (no) no.onclick = () => {
     try { localStorage.setItem('release_prompt_dismissed_' + S.user.id, '1'); } catch (e) {}
     const c = no.closest('.card'); if (c) c.remove();
@@ -24025,6 +24111,55 @@ async function vModelContract() {
       toast(t('mc_sign_fail'));
       signBtn.disabled = false;
       refresh();
+    }
+  };
+}
+
+/* ---------------- PERFORMER RELEASE GATE (sign at the door) ---------------- */
+/* Release Prompt (Oct 22 2026; Asce, firm: "She shouldn't be able to
+ * make it in the app unless she signs. It's that simple."): a model
+ * with no WOGENT release on file gets ONLY this screen at app entry —
+ * the release presented as an agreement update, full text on screen,
+ * ONE I Agree tap. The tap records her acceptance server-side
+ * (time + IP + text version) and lets her straight in, permanently.
+ * There is no Later and no dismiss: the only other way out of this
+ * screen is Log out. show() routes every model surface here while
+ * S.releaseSigned is false. */
+async function vReleaseGate() {
+  tabbar.classList.add('hidden');
+  app.innerHTML = `
+    <div class="header"><h1>Slut<span class="logo">Camp</span> 📄</h1>
+      <div class="sub">${t('release_gate_sub')}</div></div>
+    <div class="screen">
+      <div id="rel-gate-body"><div class="card" style="text-align:center">${t('mc_loading')}</div></div>
+    </div>`;
+  const { status, data } = await api('/model/release');
+  if (status !== 200) { toast(t('mc_load_fail')); return show('landing', {}); }
+  if (data.signed) { S.releaseSigned = true; return show('modelChats', {}); }
+  app.querySelector('#rel-gate-body').innerHTML = `
+    <div class="card" style="border:2px solid var(--pink);text-align:center">
+      <div style="font-size:40px">📄</div>
+      <div style="font-weight:800;font-size:18px;margin:8px 0">${t('release_gate_h')}</div>
+      <div class="muted small">${t('release_gate_body')}</div>
+    </div>
+    <div class="card" style="max-height:50vh;overflow-y:auto;text-align:left">
+      ${data.sections.map((s) => `<div style="margin-bottom:12px"><div style="font-weight:700">${esc(s.title)}</div><div class="small" style="margin-top:4px;white-space:pre-wrap">${esc(s.body)}</div></div>`).join('')}
+      <div class="muted small" style="margin-top:8px">Release ${esc(data.version || '')} · ${esc(data.updated || '')} · World Of Godz Entertainment LLC</div>
+    </div>
+    <button class="btn" id="rel-gate-agree" style="width:100%">${t('release_gate_agree')}</button>
+    <button class="btn ghost" id="rel-gate-out" style="width:100%;margin-top:12px">${t('release_gate_out')}</button>`;
+  $('#rel-gate-out').onclick = () => logout(false);
+  $('#rel-gate-agree').onclick = async () => {
+    const btn = $('#rel-gate-agree');
+    btn.disabled = true;
+    const { status: st, data: d } = await api('/model/release/agree', { method: 'POST', body: JSON.stringify({}) });
+    if (st === 200 && d && d.ok) {
+      S.releaseSigned = true;
+      toast(t('release_signed_h'));
+      show('modelChats', {});
+    } else {
+      toast(t('release_gate_fail'));
+      btn.disabled = false;
     }
   };
 }
