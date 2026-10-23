@@ -55,8 +55,8 @@ function sliceFn(src, startMarker, endMarker) {
 test('server: schema — model_releases is its own additive table', () => {
   assert.ok(serverSrc.includes('CREATE TABLE IF NOT EXISTS model_releases'),
     'release records table created if missing (boot-safe on lived-in DBs)');
-  assert.ok(serverSrc.includes("method TEXT NOT NULL CHECK(method IN ('esign','paper'))"),
-    'exactly two signing methods: in-app e-sign or paper upload');
+  assert.ok(serverSrc.includes("method TEXT NOT NULL CHECK(method IN ('esign','paper','clickwrap'))"),
+    'three record methods: in-app e-sign, paper upload, or the sign-at-the-door click-agree (Release Prompt)');
   assert.ok(serverSrc.includes('model_id INTEGER NOT NULL UNIQUE REFERENCES users(id)'),
     'one current release record per model');
   const sign = sliceFn(serverSrc, "app.post('/api/model/release/sign'", "// Model: upload a signed PAPER copy");
@@ -140,8 +140,8 @@ test('manager: ID Checks renders the release state for own rows', () => {
   assert.ok(mgrSrc.includes('data.message'), 'an approve refusal surfaces the server message (release_missing)');
 });
 
-test('recount: the announcement thread-tap pin still reads exactly 30 after this build', () => {
-  assert.equal(serverSrc.split('/#chat/${conv.id}').length - 1, 30);
+test('recount: the announcement thread-tap pin reads exactly 31 after the Release Prompt build (its announcement added one)', () => {
+  assert.equal(serverSrc.split('/#chat/${conv.id}').length - 1, 31);
 });
 
 /* --------------------------- functional boot --------------------------- */

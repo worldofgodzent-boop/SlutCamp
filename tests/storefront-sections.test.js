@@ -638,6 +638,10 @@ test('live: filtering matrix — tabs, roles, the storefront invariant, lives, s
     }
     vdb.close();
     const guyTok = (await req(h.base, 'POST', '/api/auth/login', { body: { username: 'secguym', password: 'hunter22' } })).json.token;
+    // Release Prompt (Oct 22 2026): both models agree to the WOGENT
+    // release at the door before going live.
+    assert.equal((await req(h.base, 'POST', '/api/model/release/agree', { body: {}, token: guyTok })).status, 200, 'male model agrees to the release');
+    assert.equal((await req(h.base, 'POST', '/api/model/release/agree', { body: {}, token: galTok })).status, 200, 'female model agrees to the release');
     assert.equal((await req(h.base, 'POST', '/api/live/start', { body: { title: 'Guy live' }, token: guyTok })).status, 200, 'male model goes live');
     assert.equal((await req(h.base, 'POST', '/api/live/start', { body: { title: 'Gal live' }, token: galTok })).status, 200, 'female model goes live');
     const liveNames = async (p) => (await roster(p)).live.map((l) => l.model_name).sort();

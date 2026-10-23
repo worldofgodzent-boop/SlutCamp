@@ -1820,6 +1820,7 @@ addColumnIfMissing('platform_stats', 'safety_announced_at', 'TEXT'); // one-time
 addColumnIfMissing('platform_stats', 'private_room_announced_at', 'TEXT'); // one-time "Private Room" (Phase 5) model broadcast stamp
 addColumnIfMissing('platform_stats', 'private_room_cap', 'INTEGER NOT NULL DEFAULT 2'); // Phase 5: max private rooms per model per week (Manager-adjustable)
 addColumnIfMissing('platform_stats', 'battles_announced_at', 'TEXT'); // one-time "live battles" model broadcast stamp (Phase 6)
+addColumnIfMissing('platform_stats', 'release_prompt_announced_at', 'TEXT'); // one-time "performer release at the door" broadcast stamp
 addColumnIfMissing('models', 'battle_invites_open', 'INTEGER NOT NULL DEFAULT 1'); // Phase 6: "Open to battle invites" Settings toggle (default ON)
 addColumnIfMissing('game_requests', 'battle_id', 'INTEGER'); // Phase 6: set when the buy was escrowed into a live battle (refund path branches on it)
 addColumnIfMissing('conversations', 'is_official', 'INTEGER NOT NULL DEFAULT 0'); // the pinned read-only SlutCamp notices thread
@@ -2163,7 +2164,7 @@ db.exec(`
 CREATE TABLE IF NOT EXISTS model_releases (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   model_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
-  method TEXT NOT NULL CHECK(method IN ('esign','paper')),
+  method TEXT NOT NULL CHECK(method IN ('esign','paper','clickwrap')),
   legal_name TEXT NOT NULL DEFAULT '',
   stage_name TEXT NOT NULL DEFAULT '',
   dob TEXT NOT NULL DEFAULT '',
@@ -2175,6 +2176,49 @@ CREATE TABLE IF NOT EXISTS model_releases (
 );
 CREATE INDEX IF NOT EXISTS idx_model_releases_model ON model_releases(model_id);
 `);
+
+/* One-time migration (Release Prompt, Oct 22 2026): model_releases
+   shipped with CHECK(method IN ('esign','paper')). The sign-at-the-
+   door flow records a third method, 'clickwrap' — a one-tap in-app
+   agreement, stamped with time + IP, never a signature — so the
+   stored DDL gains it. Every existing row is copied verbatim,
+   exactly as signed. Runs only while the stored DDL lacks it. */
+try {
+  const ddl = db.prepare(`SELECT sql FROM sqlite_master
+    WHERE type = 'table' AND name = 'model_releases'`).get();
+  if (ddl && !/'clickwrap'/.test(ddl.sql || '')) {
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.exec(`CREATE TABLE model_releases_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        model_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
+        method TEXT NOT NULL CHECK(method IN ('esign','paper','clickwrap')),
+        legal_name TEXT NOT NULL DEFAULT '',
+        stage_name TEXT NOT NULL DEFAULT '',
+        dob TEXT NOT NULL DEFAULT '',
+        release_version TEXT NOT NULL DEFAULT '',
+        attestations TEXT NOT NULL DEFAULT '',
+        paper_path TEXT,
+        signed_at TEXT NOT NULL DEFAULT (datetime('now')),
+        ip TEXT NOT NULL DEFAULT ''
+      )`);
+      db.exec(`INSERT INTO model_releases_new
+        (id, model_id, method, legal_name, stage_name, dob, release_version,
+         attestations, paper_path, signed_at, ip)
+        SELECT id, model_id, method, legal_name, stage_name, dob, release_version,
+         attestations, paper_path, signed_at, ip
+        FROM model_releases`);
+      db.exec('DROP TABLE model_releases');
+      db.exec('ALTER TABLE model_releases_new RENAME TO model_releases');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_model_releases_model ON model_releases(model_id)');
+      db.exec('COMMIT');
+      console.log('[release] model_releases rebuilt — clickwrap method added, records preserved.');
+    } catch (e) {
+      try { db.exec('ROLLBACK'); } catch (err) { /* already closed */ }
+      throw e;
+    }
+  }
+} catch (e) { console.error('[release] clickwrap migration failed', e); }
 
 /* One-time migration (Oct 15, 2026): contract_signatures shipped with a
    UNIQUE(user_id) constraint — one signature per user, forever — which
@@ -3482,6 +3526,28 @@ function ownPacketComplete(modelUserId) {
                         FROM id_verifications WHERE model_id = ? AND co_performer_id IS NULL`).get(modelUserId);
   return !!(v && v.id_front_path && v.id_back_path && v.selfie_path) && releaseOnFile(modelUserId);
 }
+
+/* ------------------------------------------------------------------ */
+/* Release Prompt (Oct 22 2026; Asce, firm: "She shouldn't be able   */
+/* to make it in the app unless she signs. It's that simple."):      */
+/* models approved before the release joined onboarding carry no     */
+/* model_releases row and were never asked. releasePromptNeeded()    */
+/* is the single truth for the sign-at-the-door gate: a model with   */
+/* no release on file is stopped at app entry until she one-click    */
+/* agrees (POST /api/model/release/agree). The house is exempt (it   */
+/* is the Producer). While her own ID packet is PENDING the          */
+/* onboarding flow is her path — the door never fights it; the       */
+/* moment the packet is decided (approved or rejected) the door      */
+/* applies to her like to everyone else.                             */
+/* ------------------------------------------------------------------ */
+function releasePromptNeeded(modelUserId) {
+  if (isHouseAccountId(modelUserId)) return false;
+  if (modelReleaseRow(modelUserId)) return false;
+  const v = db.prepare(`SELECT status FROM id_verifications
+                        WHERE model_id = ? AND co_performer_id IS NULL`).get(modelUserId);
+  if (v && v.status === 'pending') return false;
+  return true;
+}
 // The client/Manager-safe shape of a release record (never the path).
 function releaseShape(r) {
   if (!r) return null;
@@ -3869,6 +3935,10 @@ const SRV = {
   ann_agreement_15_dm: { en: '📄 Our Model Agreement is now v1.5 — please open the app, read the new version and tap to sign — it takes 20 seconds. Until you sign, going live and earning stay paused. What\'s new: SlutCamp now has Female, Male and Couple sections — your account is in the Female section — and only you and your ID-verified co-performers may appear on camera with you. 💋', es: '📄 Nuestro Acuerdo de Modelo ahora es la v1.5 — abre la app, lee la nueva versión y toca para firmar — toma 20 segundos. Hasta que firmes, salir en vivo y ganar quedan en pausa. Novedad: SlutCamp ahora tiene secciones Femenina, Masculina y de Parejas — tu cuenta está en la sección Femenina — y solo tú y tus co-intérpretes verificados con ID pueden aparecer en cámara contigo. 💋', pt: '📄 Nosso Acordo de Modelo agora é a v1.5 — abra o app, leia a nova versão e toque para assinar — leva 20 segundos. Até você assinar, entrar ao vivo e ganhar ficam pausados. Novidade: a SlutCamp agora tem seções Feminina, Masculina e de Casais — sua conta está na seção Feminina — e só você e seus co-intérpretes verificados com documento podem aparecer na câmera com você. 💋', fr: '📄 Notre Accord de Modèle passe en v1.5 — ouvrez l\'app, lisez la nouvelle version et touchez pour signer — cela prend 20 secondes. Tant que vous n\'avez pas signé, passer en direct et gagner restent en pause. Nouveauté : SlutCamp a maintenant des sections Femmes, Hommes et Couples — votre compte est dans la section Femmes — et seuls vous et vos partenaires vérifiés par pièce d\'identité pouvez apparaître à la caméra avec vous. 💋', de: '📄 Unsere Modellvereinbarung ist jetzt v1.5 — öffne die App, lies die neue Version und tippe zum Unterschreiben — es dauert 20 Sekunden. Bis du unterschreibst, bleiben Livegehen und Verdienen pausiert. Neu: SlutCamp hat jetzt die Sektionen Frauen, Männer und Paare — dein Konto ist in der Sektion Frauen — und nur du und deine per Ausweis verifizierten Co-Performer dürfen mit dir vor der Kamera erscheinen. 💋', ru: '📄 Наше Модельное соглашение обновлено до версии 1.5 — откройте приложение, прочитайте новую версию и нажмите, чтобы подписать — это займёт 20 секунд. Пока вы не подпишете, эфиры и заработок остаются на паузе. Что нового: на SlutCamp теперь есть разделы «Женщины», «Мужчины» и «Пары» — ваш аккаунт находится в разделе «Женщины» — и перед камерой с вами могут появляться только вы и ваши партнёры, подтвердившие личность документом. 💋', ja: '📄 モデル契約がv1.5になりました — アプリを開いて新しい版を読み、タップして署名してください — 20秒で終わります。署名するまで、ライブ配信と収益は一時停止のままです。新機能：SlutCampに女性・男性・カップルのセクションができました — あなたのアカウントは女性セクションです — カメラに映れるのはあなたと身分証で確認済みの共演者だけです。💋', zh: '📄 我们的模特协议已更新到 v1.5 — 请打开应用，阅读新版本并点击签署 — 只需 20 秒。在您签署之前，直播和赚钱功能将保持暂停。新变化：SlutCamp 现在有女性、男性和情侣板块 — 您的账户在女性板块 — 只有您和经过身份证验证的合作表演者可以和您一起出镜。💋', ko: '📄 모델 계약이 v1.5로 업데이트되었습니다 — 앱을 열고 새 버전을 읽은 뒤 탭해서 서명해 주세요 — 20초면 됩니다. 서명하기 전까지는 라이브와 수익이 일시 중지 상태로 유지됩니다. 새로운 점: 이제 SlutCamp에는 여성, 남성, 커플 섹션이 있습니다 — 당신의 계정은 여성 섹션에 있습니다 — 카메라에 함께 나올 수 있는 사람은 당신과 신분증 인증을 마친 공동 출연자뿐입니다. 💋', it: '📄 Il nostro Accordo per Modelli è ora alla v1.5 — apri l\'app, leggi la nuova versione e tocca per firmare — ci vogliono 20 secondi. Finché non firmi, andare in diretta e guadagnare restano in pausa. Novità: SlutCamp ora ha le sezioni Donne, Uomini e Coppie — il tuo account è nella sezione Donne — e solo tu e i tuoi co-protagonisti verificati con documento possono apparire in camera con te. 💋', pl: '📄 Nasza Umowa Modelki ma teraz wersję 1.5 — otwórz aplikację, przeczytaj nową wersję i dotknij, aby podpisać — zajmie to 20 sekund. Dopóki nie podpiszesz, transmisje na żywo i zarobki pozostają wstrzymane. Nowość: SlutCamp ma teraz sekcje Kobiety, Mężczyźni i Pary — Twoje konto jest w sekcji Kobiety — a przed kamerą mogą pojawiać się z Tobą tylko Ty i Twoi zweryfikowani dokumentem współwykonawcy. 💋', nl: '📄 Onze Modelovereenkomst is nu v1.5 — open de app, lees de nieuwe versie en tik om te ondertekenen — het duurt 20 seconden. Tot je ondertekent, blijven live gaan en verdienen gepauzeerd. Nieuw: SlutCamp heeft nu de secties Vrouwen, Mannen en Stellen — jouw account staat in de sectie Vrouwen — en alleen jij en je met ID geverifieerde mede-performers mogen met je voor de camera verschijnen. 💋', tr: '📄 Model Sözleşmemiz artık v1.5 — lütfen uygulamayı açın, yeni sürümü okuyun ve imzalamak için dokunun — 20 saniye sürer. Siz imzalayana kadar canlı yayın ve kazanç duraklatılmış olarak kalır. Yenilik: SlutCamp\'ta artık Kadın, Erkek ve Çift bölümleri var — hesabınız Kadın bölümünde — ve kamerada sizinle yalnızca siz ve kimliği doğrulanmış ortak performansçılarınız görünebilir. 💋' },
   ann_agreement_15_bell_title: { en: '📄 Model Agreement v1.5 — please read & sign', es: '📄 Acuerdo de Modelo v1.5 — léelo y fírmalo', pt: '📄 Acordo de Modelo v1.5 — leia e assine', fr: '📄 Accord de Modèle v1.5 — à lire et signer', de: '📄 Modellvereinbarung v1.5 — bitte lesen & unterschreiben', ru: '📄 Модельное соглашение v1.5 — прочитайте и подпишите', ja: '📄 モデル契約 v1.5 — 読んで署名してください', zh: '📄 模特协议 v1.5 — 请阅读并签署', ko: '📄 모델 계약 v1.5 — 읽고 서명해 주세요', it: '📄 Accordo per Modelli v1.5 — leggi e firma', pl: '📄 Umowa Modelki v1.5 — przeczytaj i podpisz', nl: '📄 Modelovereenkomst v1.5 — lees & onderteken', tr: '📄 Model Sözleşmesi v1.5 — lütfen okuyup imzalayın' },
   ann_agreement_15_bell_body: { en: 'Agreement v1.5 is ready — open the app to read and sign 💋', es: 'El Acuerdo v1.5 está listo — abre la app para leerlo y firmarlo 💋', pt: 'O Acordo v1.5 está pronto — abra o app para ler e assinar 💋', fr: 'L\'accord v1.5 est prêt — ouvrez l\'app pour le lire et le signer 💋', de: 'Vereinbarung v1.5 ist bereit — öffne die App zum Lesen und Unterschreiben 💋', ru: 'Соглашение v1.5 готово — откройте приложение, чтобы прочитать и подписать 💋', ja: '契約v1.5の準備ができました — アプリを開いて読んで署名してね 💋', zh: '协议 v1.5 已准备好 — 打开应用阅读并签署 💋', ko: '계약 v1.5가 준비됐어요 — 앱을 열어 읽고 서명하세요 💋', it: 'L\'accordo v1.5 è pronto — apri l\'app per leggerlo e firmarlo 💋', pl: 'Umowa v1.5 jest gotowa — otwórz aplikację, aby przeczytać i podpisać 💋', nl: 'Overeenkomst v1.5 staat klaar — open de app om te lezen en te ondertekenen 💋', tr: 'Sözleşme v1.5 hazır — okuyup imzalamak için uygulamayı açın 💋' },
+  release_required_live: { en: '📄 One quick signature first — our performer release has to be on file before you can go live. Open SlutCamp and tap I Agree — it takes a few seconds. 💋', es: '📄 Primero una firma rápida: nuestra autorización de artista debe estar en archivo antes de que puedas transmitir en vivo. Abre SlutCamp y toca Acepto — toma unos segundos. 💋', pt: '📄 Primeiro uma assinatura rápida — nossa autorização de artista precisa estar arquivada antes de você entrar ao vivo. Abra o SlutCamp e toque em Concordo — leva alguns segundos. 💋', fr: '📄 D\'abord une signature rapide — notre autorisation d\'artiste doit être au dossier avant que vous puissiez passer en direct. Ouvrez SlutCamp et touchez Je suis d\'accord — quelques secondes suffisent. 💋', de: '📄 Zuerst eine kurze Unterschrift — unsere Künstler-Freigabe muss vorliegen, bevor du live gehen kannst. Öffne SlutCamp und tippe auf Ich stimme zu — es dauert nur wenige Sekunden. 💋', ru: '📄 Сначала одна быстрая подпись — наше разрешение артистки должно быть в файле, прежде чем вы сможете выйти в эфир. Откройте SlutCamp и нажмите «Согласна» — это займёт несколько секунд. 💋', ja: '📄 まず簡単な署名を — ライブを始める前に、出演者リリースがファイルに必要です。SlutCampを開いて「同意します」をタップしてください — 数秒で終わります。💋', zh: '📄 先完成一个快速签署 — 开播前必须先存档我们的表演者授权书。打开 SlutCamp 并点击“我同意” — 只需几秒钟。💋', ko: '📄 먼저 빠른 서명이 필요해요 — 라이브를 시작하려면 출연자 동의서가 파일에 있어야 합니다. SlutCamp를 열고 \'동의합니다\'를 탭하세요 — 몇 초면 됩니다. 💋', it: '📄 Prima una firma veloce — la nostra liberatoria per performer deve essere in archivio prima che tu possa andare live. Apri SlutCamp e tocca Accetto — ci vogliono pochi secondi. 💋', pl: '📄 Najpierw szybki podpis — nasza zgoda wykonawczyni musi być w aktach, zanim będziesz mogła transmitować na żywo. Otwórz SlutCamp i dotknij Zgadzam się — to zajmie kilka sekund. 💋', nl: '📄 Eerst een snelle ondertekening — onze artiestenvrijwaring moet in je dossier staan voordat je live kunt gaan. Open SlutCamp en tik op Ik ga akkoord — het duurt een paar seconden. 💋', tr: '📄 Önce hızlı bir imza — canlı yayına çıkmadan önce sanatçı izin belgemizin dosyada olması gerekiyor. SlutCamp\'i aç ve Kabul Ediyorum\'a dokun — birkaç saniye sürer. 💋' },
+  ann_release_prompt_dm: { en: '📄 Quick signature needed, loves 💋\n\nOur WOGENT performer release now has to be on file for every model — it\'s the standard release that covers your content, kept with your ID records (18 U.S.C. § 2257). If yours isn\'t signed yet, SlutCamp will show it to you the next time you open the app: read it, tap I Agree, and you\'re straight back in — a few seconds, one time only.\n\nUntil it\'s signed, the app stays paused — chatting, going live, everything. Already signed during onboarding? You won\'t see it at all. 💋', es: '📄 Se necesita una firma rápida, amores 💋\n\nNuestra autorización de artista de WOGENT ahora debe estar en el archivo de cada modelo: es la autorización estándar que cubre tu contenido y se guarda con tus registros de identificación (18 U.S.C. § 2257). Si la tuya aún no está firmada, SlutCamp te la mostrará la próxima vez que abras la app: léela, toca Acepto y vuelves a entrar al instante — unos segundos, una sola vez.\n\nHasta que la firmes, la app queda en pausa: chats, transmisiones en vivo, todo. ¿Ya firmaste durante el registro? No la verás en absoluto. 💋', pt: '📄 Precisa de uma assinatura rápida, amores 💋\n\nNossa autorização de artista da WOGENT agora precisa estar arquivada para cada modelo — é a autorização padrão que cobre seu conteúdo, guardada com seus registros de documento (18 U.S.C. § 2257). Se a sua ainda não estiver assinada, o SlutCamp a mostrará na próxima vez que você abrir o app: leia, toque em Concordo e você entra na hora — alguns segundos, uma única vez.\n\nAté assinar, o app fica pausado — chats, lives, tudo. Já assinou durante o cadastro? Você nem vai vê-la. 💋', fr: '📄 Une signature rapide est nécessaire, les amours 💋\n\nNotre autorisation d\'artiste WOGENT doit désormais être au dossier de chaque modèle — c\'est l\'autorisation standard qui couvre votre contenu, conservée avec vos pièces d\'identité (18 U.S.C. § 2257). Si la vôtre n\'est pas encore signée, SlutCamp vous la montrera à la prochaine ouverture de l\'appli : lisez-la, touchez Je suis d\'accord, et vous êtes de retour aussitôt — quelques secondes, une seule fois.\n\nJusqu\'à la signature, l\'appli reste en pause — discussions, directs, tout. Déjà signée pendant l\'inscription ? Vous ne la verrez pas du tout. 💋', de: '📄 Eine kurze Unterschrift ist nötig, ihr Lieben 💋\n\nUnsere WOGENT-Künstler-Freigabe muss jetzt für jedes Model vorliegen — die Standard-Freigabe, die deine Inhalte abdeckt, aufbewahrt bei deinen Ausweisdaten (18 U.S.C. § 2257). Wenn deine noch nicht unterschrieben ist, zeigt SlutCamp sie dir beim nächsten Öffnen der App: lies sie, tippe auf Ich stimme zu, und du bist sofort wieder drin — wenige Sekunden, nur ein einziges Mal.\n\nBis du unterschrieben hast, bleibt die App pausiert — Chats, Livegehen, alles. Schon bei der Anmeldung unterschrieben? Dann siehst du sie gar nicht. 💋', ru: '📄 Нужна одна быстрая подпись, любимые 💋\n\nНаше разрешение артистки WOGENT теперь должно быть в досье каждой модели — это стандартное разрешение на ваш контент, которое хранится вместе с вашими документами (18 U.S.C. § 2257). Если ваше ещё не подписано, SlutCamp покажет его при следующем открытии приложения: прочитайте, нажмите «Согласна» — и вы сразу внутри. Несколько секунд, один раз.\n\nПока не подпишете, приложение на паузе — чаты, эфиры, всё. Уже подписали при регистрации? Вы его вообще не увидите. 💋', ja: '📄 簡単な署名が必要です、みんな 💋\n\nWOGENTの出演者リリースが、すべてのモデルについてファイルに必要になりました — あなたのコンテンツを対象とする標準のリリースで、身分証記録と一緒に保管されます（合衆国法典第18編 §2257）。まだ署名していない場合、次回アプリを開いたときにSlutCampが表示します：読んで「同意します」をタップすれば、すぐに戻ってこられます — 数秒、1回だけです。\n\n署名するまで、アプリは停止したままです — チャットもライブも、すべてです。登録時にすでに署名しましたか？その場合はまったく表示されません。💋', zh: '📄 需要一个快速签署，亲爱的们 💋\n\n我们的 WOGENT 表演者授权书现在必须为每位模特存档 — 这是涵盖您内容的标准授权书，与您的身份证记录一起保存（美国法典第18编 §2257）。如果您尚未签署，下次打开应用时 SlutCamp 会向您展示：阅读后点击“我同意”即可立即回到应用 — 只需几秒，只需一次。\n\n在您签署之前，应用将保持暂停 — 聊天、直播，一切功能。在注册时已经签署过了吗？您根本不会看到它。💋', ko: '📄 빠른 서명이 필요해요, 여러분 💋\n\n이제 WOGENT 출연자 동의서가 모든 모델의 파일에 있어야 합니다 — 당신의 콘텐츠를 다루는 표준 동의서로, 신분증 기록과 함께 보관됩니다(미국 법전 제18편 §2257). 아직 서명하지 않았다면, 다음에 앱을 열 때 SlutCamp가 보여드립니다: 읽고 \'동의합니다\'를 탭하면 바로 돌아올 수 있어요 — 몇 초, 단 한 번만요.\n\n서명하기 전까지 앱은 일시 중지 상태로 유지됩니다 — 채팅, 라이브, 전부요. 가입할 때 이미 서명하셨나요? 전혀 보이지 않을 거예요. 💋', it: '📄 Serve una firma veloce, amori 💋\n\nLa nostra liberatoria per performer WOGENT ora deve essere in archivio per ogni modella — è la liberatoria standard che copre i tuoi contenuti, conservata con i tuoi documenti (18 U.S.C. § 2257). Se la tua non è ancora firmata, SlutCamp te la mostrerà alla prossima apertura dell\'app: leggila, tocca Accetto e sei subito dentro — pochi secondi, una sola volta.\n\nFinché non firmi, l\'app resta in pausa — chat, live, tutto. Hai già firmato durante l\'iscrizione? Non la vedrai affatto. 💋', pl: '📄 Potrzebny szybki podpis, kochane 💋\n\nNasza zgoda wykonawczyni WOGENT musi teraz znajdować się w aktach każdej modelki — to standardowa zgoda obejmująca Twoje treści, przechowywana razem z Twoimi dokumentami (18 U.S.C. § 2257). Jeśli Twoja nie jest jeszcze podpisana, SlutCamp pokaże Ci ją przy następnym otwarciu aplikacji: przeczytaj, dotknij Zgadzam się i od razu wracasz — kilka sekund, tylko raz.\n\nDopóki nie podpiszesz, aplikacja pozostaje wstrzymana — czaty, transmisje, wszystko. Podpisałaś już przy rejestracji? W ogóle jej nie zobaczysz. 💋', nl: '📄 Er is een snelle ondertekening nodig, lieverds 💋\n\nOnze WOGENT-artiestenvrijwaring moet nu in het dossier van elk model staan — de standaardvrijwaring die je content dekt, bewaard bij je ID-gegevens (18 U.S.C. § 2257). Als die van jou nog niet is ondertekend, toont SlutCamp hem de volgende keer dat je de app opent: lees hem, tik op Ik ga akkoord en je bent meteen weer binnen — een paar seconden, één keer maar.\n\nTot je ondertekent, blijft de app gepauzeerd — chatten, live gaan, alles. Al ondertekend bij je aanmelding? Dan zie je hem helemaal niet. 💋', tr: '📄 Hızlı bir imza gerekiyor, canlar 💋\n\nWOGENT sanatçı izin belgemizin artık her modelin dosyasında olması gerekiyor — içeriğini kapsayan standart izin belgesi, kimlik kayıtlarınla birlikte saklanıyor (18 U.S.C. § 2257). Seninki henüz imzalanmadıysa, SlutCamp bir dahaki sefere uygulamayı açtığında sana gösterecek: oku, Kabul Ediyorum\'a dokun ve hemen geri dön — birkaç saniye, yalnızca bir kez.\n\nSen imzalayana kadar uygulama duraklatılmış olarak kalır — sohbet, canlı yayın, her şey. Kayıt sırasında zaten imzaladın mı? Hiç görmeyeceksin. 💋' },
+  ann_release_prompt_bell_title: { en: '📄 Performer release — one quick signature', es: '📄 Autorización de artista — una firma rápida', pt: '📄 Autorização de artista — uma assinatura rápida', fr: '📄 Autorisation d\'artiste — une signature rapide', de: '📄 Künstler-Freigabe — eine kurze Unterschrift', ru: '📄 Разрешение артистки — одна быстрая подпись', ja: '📄 出演者リリース — 簡単な署名を', zh: '📄 表演者授权书 — 快速签署', ko: '📄 출연자 동의서 — 빠른 서명을 해 주세요', it: '📄 Liberatoria per performer — una firma veloce', pl: '📄 Zgoda wykonawczyni — jeden szybki podpis', nl: '📄 Artiestenvrijwaring — één snelle ondertekening', tr: '📄 Sanatçı izin belgesi — hızlı bir imza' },
+  ann_release_prompt_bell_body: { en: 'Tap I Agree in the app to keep using SlutCamp 💋', es: 'Toca Acepto en la app para seguir usando SlutCamp 💋', pt: 'Toque em Concordo no app para continuar usando o SlutCamp 💋', fr: 'Touchez Je suis d\'accord dans l\'appli pour continuer à utiliser SlutCamp 💋', de: 'Tippe in der App auf Ich stimme zu, um SlutCamp weiter zu nutzen 💋', ru: 'Нажмите «Согласна» в приложении, чтобы продолжить пользоваться SlutCamp 💋', ja: 'アプリで「同意します」をタップして、SlutCampを使い続けてください 💋', zh: '在应用中点击“我同意”即可继续使用 SlutCamp 💋', ko: '앱에서 \'동의합니다\'를 탭해 SlutCamp를 계속 이용하세요 💋', it: 'Tocca Accetto nell\'app per continuare a usare SlutCamp 💋', pl: 'Dotknij Zgadzam się w aplikacji, aby dalej korzystać ze SlutCamp 💋', nl: 'Tik op Ik ga akkoord in de app om SlutCamp te blijven gebruiken 💋', tr: 'SlutCamp\'i kullanmaya devam etmek için uygulamada Kabul Ediyorum\'a dokun 💋' },
   ann_storefront_dm: { en: '🆕 NEW: SlutCamp now has sections! Look at the tabs at the top of your home — Female, Male, Couples and All. The store always opens on Female; tap a tab anytime to see more. 💋', es: '🆕 NUEVO: ¡SlutCamp ahora tiene secciones! Mira las pestañas en la parte superior de tu inicio — Femenina, Masculina, Parejas y Todo. La tienda siempre abre en Femenina; toca una pestaña cuando quieras para ver más. 💋', pt: '🆕 NOVO: A SlutCamp agora tem seções! Veja as abas no topo da sua página inicial — Feminina, Masculina, Casais e Tudo. A loja sempre abre na Feminina; toque em uma aba quando quiser para ver mais. 💋', fr: '🆕 NOUVEAU : SlutCamp a maintenant des sections ! Regardez les onglets en haut de votre accueil — Femmes, Hommes, Couples et Tout. La boutique s\'ouvre toujours sur Femmes ; touchez un onglet à tout moment pour en voir plus. 💋', de: '🆕 NEU: SlutCamp hat jetzt Sektionen! Sieh dir die Tabs oben auf deiner Startseite an — Frauen, Männer, Paare und Alle. Der Shop öffnet immer bei Frauen; tippe jederzeit auf einen Tab, um mehr zu sehen. 💋', ru: '🆕 НОВОЕ: На SlutCamp теперь есть разделы! Посмотрите на вкладки вверху вашей главной страницы — Женщины, Мужчины, Пары и Все. Магазин всегда открывается на разделе «Женщины»; коснитесь вкладки в любое время, чтобы увидеть больше. 💋', ja: '🆕 新機能：SlutCampにセクションができました！ホーム上部のタブを見てね — 女性・男性・カップル・すべて。ストアはいつも女性から開きます；もっと見たいときはいつでもタブをタップしてね。💋', zh: '🆕 新功能：SlutCamp 现在有板块了！看看你主页顶部的标签 — 女性、男性、情侣和全部。商店始终从女性板块打开；随时点击标签查看更多。💋', ko: '🆕 새 소식: 이제 SlutCamp에 섹션이 생겼어요! 홈 상단의 탭을 보세요 — 여성, 남성, 커플, 전체. 스토어는 항상 여성에서 열립니다; 더 보고 싶을 땐 언제든 탭을 눌러 보세요. 💋', it: '🆕 NOVITÀ: SlutCamp ora ha le sezioni! Guarda le schede in alto nella tua home — Donne, Uomini, Coppie e Tutto. Il negozio si apre sempre su Donne; tocca una scheda quando vuoi per vedere di più. 💋', pl: '🆕 NOWOŚĆ: SlutCamp ma teraz sekcje! Spójrz na karty u góry strony głównej — Kobiety, Mężczyźni, Pary i Wszystko. Sklep zawsze otwiera się na Kobietach; dotknij karty w każdej chwili, aby zobaczyć więcej. 💋', nl: '🆕 NIEUW: SlutCamp heeft nu secties! Kijk naar de tabs bovenaan je home — Vrouwen, Mannen, Stellen en Alles. De winkel opent altijd op Vrouwen; tik op elk moment op een tab om meer te zien. 💋', tr: '🆕 YENİ: SlutCamp\'ta artık bölümler var! Ana sayfanın üstündeki sekmelere bak — Kadın, Erkek, Çift ve Tümü. Mağaza her zaman Kadın bölümünde açılır; daha fazlasını görmek için istediğin zaman bir sekmeye dokun. 💋' },
   ann_storefront_bell_title: { en: '🆕 New: storefront tabs', es: '🆕 Nuevo: pestañas de secciones', pt: '🆕 Novo: abas de seções', fr: '🆕 Nouveau : onglets de sections', de: '🆕 Neu: Sektion-Tabs', ru: '🆕 Новое: вкладки разделов', ja: '🆕 新機能：セクションタブ', zh: '🆕 新功能：板块标签', ko: '🆕 새 소식: 섹션 탭', it: '🆕 Novità: schede delle sezioni', pl: '🆕 Nowość: karty sekcji', nl: '🆕 Nieuw: sectietabs', tr: '🆕 Yeni: bölüm sekmeleri' },
   ann_storefront_bell_body: { en: 'Female, Male, Couples or All — the tabs at the top of your home 💋', es: 'Femenina, Masculina, Parejas o Todo — las pestañas en la parte superior de tu inicio 💋', pt: 'Feminina, Masculina, Casais ou Tudo — as abas no topo da sua página inicial 💋', fr: 'Femmes, Hommes, Couples ou Tout — les onglets en haut de votre accueil 💋', de: 'Frauen, Männer, Paare oder Alle — die Tabs oben auf deiner Startseite 💋', ru: 'Женщины, Мужчины, Пары или Все — вкладки вверху вашей главной страницы 💋', ja: '女性・男性・カップル・すべて — ホーム上部のタブだよ 💋', zh: '女性、男性、情侣或全部 — 就在你主页顶部的标签 💋', ko: '여성, 남성, 커플 또는 전체 — 홈 상단의 탭이에요 💋', it: 'Donne, Uomini, Coppie o Tutto — le schede in alto nella tua home 💋', pl: 'Kobiety, Mężczyźni, Pary lub Wszystko — karty u góry strony głównej 💋', nl: 'Vrouwen, Mannen, Stellen of Alles — de tabs bovenaan je home 💋', tr: 'Kadın, Erkek, Çift veya Tümü — ana sayfanın üstündeki sekmeler 💋' },
@@ -5155,6 +5225,46 @@ function announceAgreement15ToModels() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Performer release at the door — ONE-TIME announcement (stamp      */
+/* release_prompt_announced_at on platform_stats). Every model hears */
+/* it once — DM + bell in her official SlutCamp thread, copy in her  */
+/* stored language via the SRV table: models approved before the     */
+/* release joined onboarding now meet it as a hard door at app       */
+/* entry — read it, tap I Agree, straight back in — and until she    */
+/* agrees, using SlutCamp stays paused. Models who already signed    */
+/* during onboarding never see the door. Same house-account          */
+/* discipline as announceAgreement15ToModels.                        */
+/* ------------------------------------------------------------------ */
+function announceReleasePromptToModels() {
+  const st = db.prepare('SELECT release_prompt_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.release_prompt_announced_at) return 0;
+  const hid = houseAccountId();
+  if (!hid) return 0;
+  const people = db.prepare(
+    "SELECT id, language FROM users WHERE banned = 0 AND role = 'model' AND id != ?")
+    .all(hid);
+  let sent = 0;
+  for (const p of people) {
+    try {
+      const conv = officialThreadFor(p.id);
+      if (!conv) continue;
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, hid, srv('ann_release_prompt_dm', p.language));
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(p.id, 'release_prompt', srv('ann_release_prompt_bell_title', p.language),
+          srv('ann_release_prompt_bell_body', p.language), `/#chat/${conv.id}`);
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest */ }
+  }
+  if (sent > 0 || people.length === 0) {
+    db.prepare("UPDATE platform_stats SET release_prompt_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
+/* ------------------------------------------------------------------ */
 /* Storefront sections — ONE-TIME announcement to FANS (stamp         */
 /* storefront_announced_at on platform_stats). The home directory     */
 /* gained section tabs (Female / Male / Couples / All) and the store  */
@@ -5543,6 +5653,7 @@ try { const n = announceFaceguardToModels(); if (n) console.log(`[faceguard] Fac
 try { const n = announceSafetyToModels(); if (n) console.log(`[safety] Safety hard-block announced to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announcePrivateRoomsToModels(); if (n) console.log(`[private-room] Private Room announced to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceBattlesToModels(); if (n) console.log(`[battles] Live Battles announced to ${n} models.`); } catch (e) { /* retry next boot */ }
+try { const n = announceReleasePromptToModels(); if (n) console.log(`[release] Performer-release door announced to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = sweepStalePrivateEvents(); if (n) console.log(`[private-room] Swept ${n} stale private event(s) with refunds.`); } catch (e) { /* retry next boot */ }
 
 /* Safety scrub (Safety build, owner-directed 2026-10-20): the messages
@@ -7220,6 +7331,11 @@ app.get('/api/me', identMiddleware, requireUser, (req, res) => {
       mrow.presence_override = req.user.presence_override || 'auto';
     }
     out.model = mrow;
+    // Release Prompt (Oct 22 2026): the client door reads this flag —
+    // a model with no WOGENT release on file (and no packet pending)
+    // is stopped at the release-agreement screen at app entry until
+    // she taps I Agree. Only ever set on a model caller's own payload.
+    out.user.release_missing = releasePromptNeeded(req.user.id);
   }
   if (req.user.role === 'admin' || req.user.role === 'model') out.commission_pct = getCommission();
   res.json(out);
@@ -11319,6 +11435,36 @@ app.post('/api/model/release/paper', identMiddleware, requireUser, requireRole('
     });
   });
 
+// Model: ONE-CLICK agree at the door (Release Prompt, Oct 22 2026).
+// Models who predate the release in onboarding meet it at app entry
+// as an agreement update: the full text on one screen, a single
+// I Agree tap (Asce: "One click and agree, move on"). The tap records
+// her acceptance with the same evidentiary shape the codebase keeps
+// for attestations — WHO (her account + the name on record), WHAT
+// (the release text version pinned, R1.0), WHEN (signed_at), FROM
+// WHERE (ip) — as method 'clickwrap', so the record never pretends
+// to be a signature from the onboarding ceremony. Already on file
+// (either method) → an idempotent no-op that returns the record.
+app.post('/api/model/release/agree', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  if (isHouseAccountId(req.user.id)) return res.json({ ok: true, house: true });
+  const prev = modelReleaseRow(req.user.id);
+  if (prev) return res.json({ ok: true, already: true, version: WOGENT_RELEASE.version,
+    release: releaseShape(prev), packet_complete: ownPacketComplete(req.user.id) });
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
+  const name = String(req.user.display_name || '').trim().slice(0, 120);
+  const attestations = JSON.stringify({ click_agree: true, text_version: WOGENT_RELEASE.version });
+  db.prepare(`INSERT INTO model_releases
+                (model_id, method, legal_name, stage_name, dob, release_version,
+                 attestations, paper_path, signed_at, ip)
+              VALUES (?, 'clickwrap', ?, ?, '', ?, ?, NULL, datetime('now'), ?)`)
+    .run(req.user.id, name, name, WOGENT_RELEASE.version, attestations, ip.slice(0, 60));
+  pushToAdmins({ type: 'release:signed', model_id: req.user.id,
+    model_name: req.user.display_name, method: 'clickwrap' });
+  res.json({ ok: true, version: WOGENT_RELEASE.version,
+    release: releaseShape(modelReleaseRow(req.user.id)),
+    packet_complete: ownPacketComplete(req.user.id) });
+});
+
 // Admin: list all ID verifications (pending first). Partner
 // submissions (Sections Phase 2) ride the SAME queue: their row
 // carries co_performer_id, the displayed name is the PARTNER's, and
@@ -12611,6 +12757,16 @@ function battleEligibleModel(userId) {
   if (!isIdVerified(userId)) return null;
   return u;
 }
+// Release Prompt (Oct 22 2026): battle entry is performing — a model
+// with no WOGENT release on file is refused at every battle door,
+// the same defense-in-depth as /api/live/start (the app door stops
+// her first). Sends the 403 and returns true when she is blocked.
+function battleReleaseBlock(req, res) {
+  if (releaseOnFile(req.user.id)) return false;
+  res.status(403).json({ error: 'release_required',
+    message: srv('release_required_live', userLang(req.user.id)) });
+  return true;
+}
 function validBattleMinutes(v) {
   const m = parseInt(v);
   return BATTLE_MINUTES.includes(m) ? m : null;
@@ -12645,6 +12801,7 @@ app.post('/api/battles/invite', identMiddleware, requireUser, requireRole('model
   battleSweep();
   if (!battleEligibleModel(req.user.id))
     return res.status(403).json({ error: 'id_verification_required' });
+  if (battleReleaseBlock(req, res)) return;
   const opponentId = parseInt(req.body.opponent_id);
   const minutes = validBattleMinutes(req.body.minutes ?? 10);
   if (!minutes) return res.status(400).json({ error: 'bad_minutes' });
@@ -12683,6 +12840,7 @@ app.post('/api/battles/invite', identMiddleware, requireUser, requireRole('model
 app.post('/api/battles/schedule', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   if (!battleEligibleModel(req.user.id))
     return res.status(403).json({ error: 'id_verification_required' });
+  if (battleReleaseBlock(req, res)) return;
   const opponentId = parseInt(req.body.opponent_id);
   const minutes = validBattleMinutes(req.body.minutes ?? 10);
   if (!minutes) return res.status(400).json({ error: 'bad_minutes' });
@@ -12712,6 +12870,7 @@ app.post('/api/battles/pool/enter', identMiddleware, requireUser, requireRole('m
   battleSweep();
   if (!battleEligibleModel(req.user.id))
     return res.status(403).json({ error: 'id_verification_required' });
+  if (battleReleaseBlock(req, res)) return;
   if (!liveSessionOf(req.user.id))
     return res.status(409).json({ error: 'not_live', message: 'Go live first, then enter the battle pool.' });
   if (liveBattleForModel(req.user.id) || pendingBattleFor(req.user.id))
@@ -12746,6 +12905,7 @@ app.post('/api/battles/:id/accept', identMiddleware, requireUser, requireRole('m
   battleSweep();
   const b = loadBattleForAction(req, res);
   if (!b) return;
+  if (battleReleaseBlock(req, res)) return;
   if (b.kind === 'scheduled') {
     if (b.status !== 'scheduled' || b.confirmed)
       return res.status(409).json({ error: 'bad_state', status: b.status });
@@ -12858,6 +13018,7 @@ app.post('/api/battles/:id/rematch', identMiddleware, requireUser, requireRole('
   battleSweep();
   const b = loadBattleForAction(req, res);
   if (!b) return;
+  if (battleReleaseBlock(req, res)) return;
   if (b.status !== 'finished')
     return res.status(409).json({ error: 'bad_state', status: b.status });
   const opponentId = req.user.id === b.host_id ? b.guest_id : b.host_id;
@@ -14197,6 +14358,16 @@ app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), 
   if (!isIdVerified(req.user.id))
     return res.status(403).json({ error: 'id_verification_required',
       message: '🪪 ID verification required — upload your ID in Settings → ID Verification to go live.' });
+  // Release Prompt (Oct 22 2026): defense in depth behind the app
+  // door — a model with no WOGENT release on file cannot start a live
+  // through ANY path (the door normally stops her at app entry, so
+  // only a stale session could ever reach this). A Private Room host
+  // start rides this same endpoint, so it is covered here too. Lives
+  // already in progress are never touched — the check lives only at
+  // session start. The house is exempt via releaseOnFile.
+  if (!releaseOnFile(req.user.id))
+    return res.status(403).json({ error: 'release_required',
+      message: srv('release_required_live', userLang(req.user.id)) });
   // Co-performers (Sections Phase 2; Agreement v1.5 §15): a declared
   // participants list (the "Who's on camera?" checklist — her own id
   // and/or co_performers ids) must be a subset of cameraAllowedIds:

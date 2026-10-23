@@ -265,6 +265,10 @@ async function runScenario(t, active) {
   // the directory assertions below isolate the AV shield alone (the
   // gate itself is pinned by tests/upload-gate.test.js).
   dbExec("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved')", [model.id]);
+  // Release Prompt (Oct 22 2026): going live requires the WOGENT
+  // release on file — she agrees at the door, like a real model.
+  const rel = await req('POST', '/api/model/release/agree', { body: {}, token: model.token });
+  assert.equal(rel.status, 200, `release agree: ${rel.text}`);
   const fan = await mkUser('shieldfan', 'fan', 'Shield Fan');
 
   const convR = await req('POST', '/api/conversations/start', { body: { model_id: model.id }, token: fan.token });

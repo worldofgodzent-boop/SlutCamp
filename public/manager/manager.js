@@ -885,6 +885,14 @@ async function adminIdChecksBody() {
       return `<div class="small" style="margin-bottom:10px"><span style="color:var(--red)">📄 Release: MISSING — her packet can't be approved until she signs the WOGENT release (or uploads a signed paper copy) in her Settings.</span></div>`;
     if (r.release_method === 'paper')
       return `<div class="small" style="margin-bottom:10px">📄 Release: <b>paper on file</b> · uploaded ${esc(r.release_signed_at || '')}${r._tok ? ` · <a href="/api/admin/id-verifications/${r.id}/photo/release?t=${r._tok}" target="_blank" rel="noopener">View the signed copy</a>` : ''} <span class="muted">(Release ${esc(r.release_version || '')})</span></div>`;
+    if (r.release_method === 'clickwrap')
+      return `<div class="small" style="margin-bottom:10px">📄 Release: <b>agreed in app</b> · Release ${esc(r.release_version || '')}
+      <details style="margin-top:4px"><summary style="cursor:pointer">Agreement record</summary>
+      <div class="muted" style="margin-top:4px">
+        Name on record: <b>${esc(r.release_legal_name || '')}</b><br>
+        Agreed: ${esc(r.release_signed_at || '')}<br>
+        One-tap agreement at app entry (Release Prompt) — acceptance stamped with time + IP in her record; no signature ceremony.
+      </div></details></div>`;
     const a = r.release_attestations || {};
     return `<div class="small" style="margin-bottom:10px">📄 Release: <b>signed in app</b> · Release ${esc(r.release_version || '')}
       <details style="margin-top:4px"><summary style="cursor:pointer">Signed record</summary>
@@ -939,7 +947,7 @@ async function adminIdChecksBody() {
           <span class="small">${badge(r.status)}</span>
           <span class="small muted"> · reviewed ${esc(r.reviewed_at || '')}</span>
           ${r.is_partner ? `<br><span class="small muted">📄 Consent form: ${r.consent_on_file ? 'on file ✓' : '<span style="color:var(--red)">MISSING</span>'}</span>` : ''}
-          ${r.is_partner ? '' : `<br><span class="small muted">📄 Release: ${r.release_on_file ? `on file ✓ (${r.release_method === 'paper' ? 'paper' : 'signed in app'} · ${esc(r.release_version || '')} · ${esc(r.release_signed_at || '')})` : '<span style="color:var(--red)">MISSING</span>'}</span>`}
+          ${r.is_partner ? '' : `<br><span class="small muted">📄 Release: ${r.release_on_file ? `on file ✓ (${r.release_method === 'paper' ? 'paper' : r.release_method === 'clickwrap' ? 'agreed in app' : 'signed in app'} · ${esc(r.release_version || '')} · ${esc(r.release_signed_at || '')})` : '<span style="color:var(--red)">MISSING</span>'}</span>`}
           ${r.reviewer_note ? `<br><span class="small muted">Note: ${esc(r.reviewer_note)}</span>` : ''}
           ${r.status === 'rejected' ? ` <button class="btn small ghost" data-idv-approve="${r.id}">Approve anyway</button>` : ''}
           <button class="btn small ghost" data-idv-2257="${r.id}">📄 2257 record</button>

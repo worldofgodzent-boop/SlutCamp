@@ -396,6 +396,10 @@ test('live: house go-live notifies EVERY fan; a regular model’s go-live notifi
   // Both models get ID-verified so they may go live.
   dbExec("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved')", [house.id]);
   dbExec("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved')", [reg.id]);
+  // Release Prompt (Oct 22 2026): the regular model agrees to the
+  // WOGENT release at the door before going live (house is exempt).
+  const rel = await req('POST', '/api/model/release/agree', { body: {}, token: reg.token });
+  assert.equal(rel.status, 200, `release agree: ${rel.text}`);
 
   const liveNotifs = async (token) => {
     const n = await req('GET', '/api/notifications', { token });
