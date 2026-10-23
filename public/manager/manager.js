@@ -262,6 +262,9 @@ function bookingWhen(at) {
 async function adminDashBody(s, o) {
   // Money comes from the /admin/overview LEDGER sums (one ruler, matching
   // windows) — never the platform_stats counter or the commission setting.
+  // The "Fan money added" tiles read o.money_in_* from the same payload:
+  // combined wallet loads (all rails), summed server-side by
+  // loadTotalsBySource — the Payouts "Money in" aggregator itself.
   const t = (o && o.today) || {};
   const a = (o && o.all_time) || {};
   const eff = (part, whole) => (whole > 0 ? `${(part / whole * 100).toFixed(1)}%` : null);
@@ -269,6 +272,8 @@ async function adminDashBody(s, o) {
   const aEff = eff(a.platform_cents, a.gross_cents);
   return `
     <div class="stat-grid">
+      <div class="stat"><div class="n" style="color:var(--green)">${fmt(o.money_in_all_time_cents || 0)}</div><div class="l">💰 Fan money added · all-time</div></div>
+      <div class="stat"><div class="n">${fmt(o.money_in_today_cents || 0)}</div><div class="l">Fan money added · today</div></div>
       <div class="stat"><div class="n" style="color:var(--green)">${fmt(t.platform_cents || 0)}</div><div class="l">Platform earnings today</div>${tEff ? `<div class="l" style="font-size:11px">${tEff} of today's gross</div>` : ''}</div>
       <div class="stat"><div class="n">${fmt(t.model_cents || 0)}</div><div class="l">Models earned today</div></div>
       ${t.recruiter_cents > 0 ? `<div class="stat"><div class="n">${fmt(t.recruiter_cents)}</div><div class="l">Recruiters today</div></div>` : ''}

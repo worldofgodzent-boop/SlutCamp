@@ -17041,7 +17041,16 @@ app.get('/api/admin/overview', ...adminOnly, (req, res) => {
     WHERE is_test = 0 AND type IN ('message','call','tip','ppv','voice','live_explicit','gift','game')`;
   const today = db.prepare(LEDGER_SUM + ' AND created_at >= ?').get(chicagoStartOfDaySql());
   const allTime = db.prepare(LEDGER_SUM).get();
-  res.json({ ...row, gross_today_cents: today.gross_cents, today, all_time: allTime });
+  // "Fan money added" — ONE combined total of outside money loaded
+  // into fan wallets across every rail (CCBill + crypto + admin credit
+  // grants + refund re-credits). Computed by loadTotalsBySource, the
+  // very function that feeds the Payouts "Money in" breakdown, so
+  // this Overview headline can never drift from the table it sums.
+  const moneyInToday = loadTotalsBySource(chicagoStartOfDaySql());
+  const moneyInAllTime = loadTotalsBySource(null);
+  res.json({ ...row, gross_today_cents: today.gross_cents, today, all_time: allTime,
+    money_in_today_cents: moneyInToday.total_cents,
+    money_in_all_time_cents: moneyInAllTime.total_cents });
 });
 
 app.get('/api/admin/stats', ...adminOnly, (req, res) => {
