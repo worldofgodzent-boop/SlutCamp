@@ -204,6 +204,15 @@ const I18N = {
     gallery_removed: 'Picture removed 🖼️',
     gallery_reordered: 'Picture order saved ✨',
     gallery_drag_hint: 'Hold a picture and drag it where you want — the first picture tops your profile.',
+    feed_h: '📸 Clean feed',
+    feed_note: 'Your clean feed shows on your public page — clean, clothes-on posts fans and Google can see free. Separate from your profile above: that can stay wild; this one is clean only. Fans find you here and message you from your profile 💋',
+    feed_add_photo: '＋ Add clean photo',
+    feed_add_video: '＋ Add clean video',
+    feed_count: '{n} of {max}',
+    feed_full: 'That part of your feed is full — remove one to post another.',
+    feed_removed: 'Removed from your clean feed 💋',
+    feed_empty: 'Nothing posted yet — add your first clean photo 💋',
+    feed_posted: 'Posted to your clean feed 📸',
     tap_to_mute: 'Tap to mute',
     new_models_title: '🆕 New models you may like',
     new_badge: 'NEW',
@@ -1132,6 +1141,15 @@ const I18N = {
     gallery_removed: 'Foto eliminada 🖼️',
     gallery_reordered: 'Orden de fotos guardado ✨',
     gallery_drag_hint: 'Mantén presionada una foto y arrástrala donde quieras: la primera foto encabeza tu perfil.',
+    feed_h: '📸 Feed limpio',
+    feed_note: 'Tu feed limpio se muestra en tu página pública: publicaciones limpias, con ropa, que los fans y Google pueden ver gratis. Es aparte de tu perfil de arriba: ese puede seguir atrevido; este es solo limpio. Los fans te encuentran aquí y te escriben desde tu perfil 💋',
+    feed_add_photo: '＋ Añadir foto limpia',
+    feed_add_video: '＋ Añadir video limpio',
+    feed_count: '{n} de {max}',
+    feed_full: 'Esa parte de tu feed está llena: quita uno para publicar otro.',
+    feed_removed: 'Quitado de tu feed limpio 💋',
+    feed_empty: 'Aún no publicaste nada: añade tu primera foto limpia 💋',
+    feed_posted: 'Publicado en tu feed limpio 📸',
     tap_to_mute: 'Toca para silenciar',
     new_models_title: '🆕 Modelos nuevas que te pueden gustar',
     new_badge: 'NUEVA',
@@ -2060,6 +2078,15 @@ const I18N = {
     gallery_removed: 'Foto removida 🖼️',
     gallery_reordered: 'Ordem das fotos salva ✨',
     gallery_drag_hint: 'Segure uma foto e arraste para onde quiser — a primeira foto fica no topo do seu perfil.',
+    feed_h: '📸 Feed limpo',
+    feed_note: 'Seu feed limpo aparece na sua página pública — posts limpos, com roupa, que os fãs e o Google veem de graça. É separado do seu perfil acima: ele pode continuar ousado; este é só limpo. Os fãs te encontram aqui e te mandam mensagem pelo seu perfil 💋',
+    feed_add_photo: '＋ Adicionar foto limpa',
+    feed_add_video: '＋ Adicionar vídeo limpo',
+    feed_count: '{n} de {max}',
+    feed_full: 'Essa parte do seu feed está cheia — remova um para postar outro.',
+    feed_removed: 'Removido do seu feed limpo 💋',
+    feed_empty: 'Nada postado ainda — adicione sua primeira foto limpa 💋',
+    feed_posted: 'Postado no seu feed limpo 📸',
     tap_to_mute: 'Toque para silenciar',
     new_models_title: '🆕 Modelos novas que você pode gostar',
     new_badge: 'NOVA',
@@ -2988,6 +3015,15 @@ const I18N = {
     gallery_removed: 'Photo retirée 🖼️',
     gallery_reordered: 'Ordre des photos enregistré ✨',
     gallery_drag_hint: 'Maintiens une photo et fais-la glisser où tu veux — la première photo est en haut de ton profil.',
+    feed_h: '📸 Fil propre',
+    feed_note: 'Ton fil propre s\'affiche sur ta page publique — des publications propres et habillées que les fans et Google voient gratuitement. C\'est séparé de ton profil ci-dessus : lui peut rester osé ; celui-ci est propre uniquement. Les fans te trouvent ici et t\'écrivent depuis ton profil 💋',
+    feed_add_photo: '＋ Ajouter une photo propre',
+    feed_add_video: '＋ Ajouter une vidéo propre',
+    feed_count: '{n} sur {max}',
+    feed_full: 'Cette partie de ton fil est pleine — retires-en un pour en publier un autre.',
+    feed_removed: 'Retiré de ton fil propre 💋',
+    feed_empty: 'Rien de publié pour le moment — ajoute ta première photo propre 💋',
+    feed_posted: 'Publié dans ton fil propre 📸',
     tap_to_mute: 'Touchez pour couper le son',
     new_models_title: '🆕 Nouveaux modèles qui pourraient vous plaire',
     new_badge: 'NOUVEAU',
@@ -3916,6 +3952,15 @@ const I18N = {
     gallery_removed: 'Bild entfernt 🖼️',
     gallery_reordered: 'Bildreihenfolge gespeichert ✨',
     gallery_drag_hint: 'Halte ein Bild gedrückt und ziehe es an die gewünschte Stelle — das erste Bild steht oben auf deinem Profil.',
+    feed_h: '📸 Sauberer Feed',
+    feed_note: 'Dein sauberer Feed erscheint auf deiner öffentlichen Seite — saubere, bekleidete Posts, die Fans und Google kostenlos sehen. Er ist getrennt von deinem Profil oben: das darf wild bleiben; dieser ist nur sauber. Fans finden dich hier und schreiben dir über dein Profil 💋',
+    feed_add_photo: '＋ Sauberes Foto hinzufügen',
+    feed_add_video: '＋ Sauberes Video hinzufügen',
+    feed_count: '{n} von {max}',
+    feed_full: 'Dieser Teil deines Feeds ist voll — entferne einen, um einen anderen zu posten.',
+    feed_removed: 'Aus deinem sauberen Feed entfernt 💋',
+    feed_empty: 'Noch nichts gepostet — füge dein erstes sauberes Foto hinzu 💋',
+    feed_posted: 'In deinem sauberen Feed gepostet 📸',
     tap_to_mute: 'Zum Stummschalten tippen',
     new_models_title: '🆕 Neue Modelle, die dir gefallen könnten',
     new_badge: 'NEU',
@@ -4844,6 +4889,15 @@ const I18N = {
     gallery_removed: 'Фото удалено 🖼️',
     gallery_reordered: 'Порядок фото сохранён ✨',
     gallery_drag_hint: 'Удерживай фото и перетаскивай его куда хочешь — первое фото будет наверху твоего профиля.',
+    feed_h: '📸 Чистая лента',
+    feed_note: 'Твоя чистая лента показывается на твоей публичной странице — чистые посты в одежде, которые фанаты и Google видят бесплатно. Она отделена от твоего профиля выше: он может оставаться дерзким; эта — только чистая. Фанаты находят тебя здесь и пишут тебе с твоего профиля 💋',
+    feed_add_photo: '＋ Добавить чистое фото',
+    feed_add_video: '＋ Добавить чистое видео',
+    feed_count: '{n} из {max}',
+    feed_full: 'Эта часть твоей ленты заполнена — удали один пост, чтобы опубликовать другой.',
+    feed_removed: 'Удалено из твоей чистой ленты 💋',
+    feed_empty: 'Пока ничего не опубликовано — добавь своё первое чистое фото 💋',
+    feed_posted: 'Опубликовано в твоей чистой ленте 📸',
     tap_to_mute: 'Нажмите, чтобы выключить звук',
     new_models_title: '🆕 Новые модели, которые могут вам понравиться',
     new_badge: 'НОВАЯ',
@@ -5772,6 +5826,15 @@ const I18N = {
     gallery_removed: '写真を削除しました 🖼️',
     gallery_reordered: '写真の順番を保存しました ✨',
     gallery_drag_hint: '写真を長押しして好きな場所にドラッグ — 最初の写真がプロフィールのトップになります。',
+    feed_h: '📸 クリーンフィード',
+    feed_note: 'クリーンフィードはあなたの公開ページに表示されます — ファンとGoogleが無料で見られる、服を着たクリーンな投稿です。上のプロフィールとは別物です：そちらは好きなだけ大胆でOK — フィードはクリーンのみ。ファンはここであなたを見つけて、プロフィールからメッセージします 💋',
+    feed_add_photo: '＋ クリーンな写真を追加',
+    feed_add_video: '＋ クリーンな動画を追加',
+    feed_count: '{n} / {max}',
+    feed_full: 'その部分はいっぱいです — 1つ削除してから投稿してね。',
+    feed_removed: 'クリーンフィードから削除しました 💋',
+    feed_empty: 'まだ投稿がありません — 最初のクリーンな写真を追加してね 💋',
+    feed_posted: 'クリーンフィードに投稿しました 📸',
     tap_to_mute: 'タップでミュート',
     new_models_title: '🆕 おすすめの新人モデル',
     new_badge: 'NEW',
@@ -6700,6 +6763,15 @@ const I18N = {
     gallery_removed: '照片已删除 🖼️',
     gallery_reordered: '照片顺序已保存 ✨',
     gallery_drag_hint: '按住照片并拖动到想要的位置 — 第一张照片会显示在主页顶部。',
+    feed_h: '📸 纯净动态',
+    feed_note: '你的纯净动态会显示在公开页面上 — 穿着得体的纯净内容，粉丝和 Google 可以免费查看。它与上面的资料分开：那边可以尽情大胆，这边只发纯净内容。粉丝在这里找到你，并通过你的资料给你发消息 💋',
+    feed_add_photo: '＋ 添加纯净照片',
+    feed_add_video: '＋ 添加纯净视频',
+    feed_count: '{n} / {max}',
+    feed_full: '这部分已满 — 先删除一个再发布新的。',
+    feed_removed: '已从你的纯净动态中删除 💋',
+    feed_empty: '还没有发布任何内容 — 添加你的第一张纯净照片吧 💋',
+    feed_posted: '已发布到你的纯净动态 📸',
     tap_to_mute: '点击静音',
     new_models_title: '🆕 你可能喜欢的新模特',
     new_badge: 'NEW',
@@ -7628,6 +7700,15 @@ const I18N = {
     gallery_removed: '사진이 삭제됐어요 🖼️',
     gallery_reordered: '사진 순서가 저장됐어요 ✨',
     gallery_drag_hint: '사진을 길게 눌러 원하는 위치로 드래그하세요 — 첫 번째 사진이 프로필 맨 위에 표시돼요.',
+    feed_h: '📸 클린 피드',
+    feed_note: '클린 피드는 당신의 공개 페이지에 표시돼요 — 팬들과 Google이 무료로 볼 수 있는, 옷을 입은 클린한 게시물이에요. 위의 프로필과는 별개예요: 그쪽은 원하는 만큼 과감해도 되고 — 피드는 클린 전용이에요. 팬들은 여기서 당신을 찾고 프로필에서 메시지를 보내요 💋',
+    feed_add_photo: '＋ 클린 사진 추가',
+    feed_add_video: '＋ 클린 영상 추가',
+    feed_count: '{n} / {max}',
+    feed_full: '그 부분이 가득 찼어요 — 하나를 삭제하고 새로 올려 주세요.',
+    feed_removed: '클린 피드에서 삭제했어요 💋',
+    feed_empty: '아직 게시물이 없어요 — 첫 클린 사진을 추가해 보세요 💋',
+    feed_posted: '클린 피드에 올렸어요 📸',
     tap_to_mute: '탭하면 음소거됩니다',
     new_models_title: '🆕 마음에 들 수 있는 새 모델',
     new_badge: '신규',
@@ -8556,6 +8637,15 @@ const I18N = {
     gallery_removed: 'Foto rimossa 🖼️',
     gallery_reordered: 'Ordine delle foto salvato ✨',
     gallery_drag_hint: 'Tieni premuta una foto e trascinala dove vuoi: la prima foto va in cima al tuo profilo.',
+    feed_h: '📸 Feed pulito',
+    feed_note: 'Il tuo feed pulito appare sulla tua pagina pubblica — post puliti e vestiti che i fan e Google vedono gratis. È separato dal tuo profilo sopra: quello può restare audace; questo è solo pulito. I fan ti trovano qui e ti scrivono dal tuo profilo 💋',
+    feed_add_photo: '＋ Aggiungi foto pulita',
+    feed_add_video: '＋ Aggiungi video pulito',
+    feed_count: '{n} di {max}',
+    feed_full: 'Quella parte del tuo feed è piena — rimuovine uno per pubblicarne un altro.',
+    feed_removed: 'Rimosso dal tuo feed pulito 💋',
+    feed_empty: 'Ancora nessun post — aggiungi la tua prima foto pulita 💋',
+    feed_posted: 'Pubblicato nel tuo feed pulito 📸',
     tap_to_mute: 'Tocca per silenziare',
     new_models_title: '🆕 Nuove modelle che potrebbero piacerti',
     new_badge: 'NUOVA',
@@ -9484,6 +9574,15 @@ const I18N = {
     gallery_removed: 'Zdjęcie usunięte 🖼️',
     gallery_reordered: 'Kolejność zdjęć zapisana ✨',
     gallery_drag_hint: 'Przytrzymaj zdjęcie i przeciągnij je w wybrane miejsce — pierwsze zdjęcie znajdzie się na górze profilu.',
+    feed_h: '📸 Czysty feed',
+    feed_note: 'Twój czysty feed pokazuje się na Twojej publicznej stronie — czyste, ubrane posty, które fani i Google widzą za darmo. Jest oddzielony od Twojego profilu powyżej: ten może pozostać odważny; ten jest tylko czysty. Fani znajdują Cię tutaj i piszą do Ciebie z Twojego profilu 💋',
+    feed_add_photo: '＋ Dodaj czyste zdjęcie',
+    feed_add_video: '＋ Dodaj czysty film',
+    feed_count: '{n} z {max}',
+    feed_full: 'Ta część Twojego feedu jest pełna — usuń jeden post, aby opublikować inny.',
+    feed_removed: 'Usunięto z Twojego czystego feedu 💋',
+    feed_empty: 'Nic jeszcze nie opublikowano — dodaj swoje pierwsze czyste zdjęcie 💋',
+    feed_posted: 'Opublikowano w Twoim czystym feedzie 📸',
     tap_to_mute: 'Dotknij, aby wyciszyć',
     new_models_title: '🆕 Nowe modelki, które mogą Ci się spodobać',
     new_badge: 'NOWA',
@@ -10412,6 +10511,15 @@ const I18N = {
     gallery_removed: 'Foto verwijderd 🖼️',
     gallery_reordered: 'Foto-volgorde opgeslagen ✨',
     gallery_drag_hint: 'Houd een foto ingedrukt en sleep hem waar je wilt — de eerste foto staat bovenaan je profiel.',
+    feed_h: '📸 Schone feed',
+    feed_note: 'Je schone feed staat op je openbare pagina — schone, geklede posts die fans en Google gratis zien. Hij staat los van je profiel hierboven: dat mag wild blijven; deze is alleen schoon. Fans vinden je hier en sturen je een bericht via je profiel 💋',
+    feed_add_photo: '＋ Schone foto toevoegen',
+    feed_add_video: '＋ Schone video toevoegen',
+    feed_count: '{n} van {max}',
+    feed_full: 'Dat deel van je feed is vol — verwijder er een om een andere te posten.',
+    feed_removed: 'Verwijderd uit je schone feed 💋',
+    feed_empty: 'Nog niets gepost — voeg je eerste schone foto toe 💋',
+    feed_posted: 'Gepost in je schone feed 📸',
     tap_to_mute: 'Tik om te dempen',
     new_models_title: '🆕 Nieuwe modellen die je misschien leuk vindt',
     new_badge: 'NIEUW',
@@ -11340,6 +11448,15 @@ const I18N = {
     gallery_removed: 'Fotoğraf kaldırıldı 🖼️',
     gallery_reordered: 'Fotoğraf sırası kaydedildi ✨',
     gallery_drag_hint: 'Bir fotoğrafı basılı tutup istediğin yere sürükle — ilk fotoğraf profilinin en üstünde yer alır.',
+    feed_h: '📸 Temiz akış',
+    feed_note: 'Temiz akışın herkese açık sayfanda görünür — hayranların ve Google\'ın ücretsiz gördüğü temiz, giyinik paylaşımlar. Yukarıdaki profilinden ayrıdır: orası cesur kalabilir; burası yalnızca temizdir. Hayranlar seni burada bulur ve profilinden sana mesaj atar 💋',
+    feed_add_photo: '＋ Temiz fotoğraf ekle',
+    feed_add_video: '＋ Temiz video ekle',
+    feed_count: '{n} / {max}',
+    feed_full: 'Akışının o kısmı dolu — başka paylaşmak için birini kaldır.',
+    feed_removed: 'Temiz akışından kaldırıldı 💋',
+    feed_empty: 'Henüz bir şey paylaşılmadı — ilk temiz fotoğrafını ekle 💋',
+    feed_posted: 'Temiz akışına paylaşıldı 📸',
     tap_to_mute: 'Sessize almak için dokun',
     new_models_title: '🆕 Beğenebileceğin yeni modeller',
     new_badge: 'YENİ',
@@ -13912,6 +14029,83 @@ async function doPasskeyLogin() {
 }
 
 /* Settings card (fan wallet + model settings): enroll / list / remove. */
+// Clean feed manager (Settings → My Photo → Clean feed, Oct 23
+// 2026): her dedicated CLEAN posts for public surfaces — up to 10
+// pictures + 2 videos (the 12-slot shape). Uploads carry the same
+// Solo/Co-Star declaration as every profile-media upload
+// (pickUploadAppearance) and ride the same endpoint discipline; a
+// held item (co-star packet incomplete) shows the same "waiting on
+// co-star ID" badge her gallery uses. Deleting removes the post
+// everywhere at once (public page, /feed stream, app profile).
+async function loadCleanFeedSettings() {
+  const box = $('#cleanfeed-box');
+  if (!box) return;
+  const { data } = await api('/model/feed');
+  const items = (data && data.items) || [];
+  const maxP = (data && data.max_photos) || 10;
+  const maxV = (data && data.max_videos) || 2;
+  const pics = items.filter((i) => i.kind === 'photo');
+  const vids = items.filter((i) => i.kind === 'video');
+  const cell = (i) => i.kind === 'video'
+    ? `<div class="set-gallery-item"><video src="${esc(i.url)}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;border-radius:10px;background:#000" muted playsinline loop preload="metadata"></video>${i.held ? `<span class="set-gallery-badge">${t('costar_held_badge')}</span>` : ''}<button class="set-gallery-del" data-feed-del="${i.id}">✕</button></div>`
+    : `<div class="set-gallery-item"><img src="${esc(i.url)}" alt="">${i.held ? `<span class="set-gallery-badge">${t('costar_held_badge')}</span>` : ''}<button class="set-gallery-del" data-feed-del="${i.id}">✕</button></div>`;
+  box.innerHTML = `
+    <div class="muted small" style="margin-bottom:4px">🖼 ${t('feed_count', { n: pics.length, max: maxP })} · 🎬 ${t('feed_count', { n: vids.length, max: maxV })}</div>
+    ${items.length ? `<div class="set-gallery-grid">${items.map(cell).join('')}</div>` : `<div class="muted small">${t('feed_empty')}</div>`}
+    <div style="margin-top:8px">
+      ${pics.length < maxP ? `<button class="btn ghost small" id="cf-add-photo">${t('feed_add_photo')}</button>` : ''}
+      ${vids.length < maxV ? `<button class="btn ghost small" id="cf-add-video" style="margin-left:6px">${t('feed_add_video')}</button>` : ''}
+      ${(pics.length >= maxP || vids.length >= maxV) ? `<div class="muted small" style="margin-top:6px">${t('feed_full')}</div>` : ''}
+    </div>`;
+  box.querySelectorAll('[data-feed-del]').forEach((b) => {
+    b.onclick = async () => {
+      const res = await api(`/model/feed/${b.dataset.feedDel}`, { method: 'DELETE' });
+      if (res.status === 200) { toast(t('feed_removed')); loadCleanFeedSettings(); }
+      else toast(t('couldnt_save'));
+    };
+  });
+  const addP = box.querySelector('#cf-add-photo');
+  if (addP) addP.onclick = () => openPhotoCropper(async (blob) => {
+    const decl = await pickUploadAppearance();
+    if (!decl) return;
+    const fd = new FormData();
+    fd.append('photo', blob, 'photo.jpg');
+    for (const [k, v] of Object.entries(declFields(decl))) fd.append(k, v);
+    const r = await apiUpload('/model/feed/photo', fd);
+    if (declRefused(r)) return;
+    if (r.status === 200) { toast(t('feed_posted')); loadCleanFeedSettings(); }
+    else if (r.data && r.data.error === 'feed_full_photos') toast(t('feed_full'));
+    else toast((r.data && r.data.message) || t('couldnt_save'));
+  });
+  const addV = box.querySelector('#cf-add-video');
+  if (addV) addV.onclick = () => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'video/mp4,video/quicktime,video/webm';
+    inp.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0.01';
+    document.body.appendChild(inp);
+    inp.onchange = async () => {
+      const f = inp.files && inp.files[0];
+      inp.remove();
+      if (!f) return;
+      if (f.size > 15 * 1024 * 1024) { toast('⚠️ That video is too big — 15MB max, keep it short 💋'); return; }
+      const decl = await pickUploadAppearance();
+      if (!decl) return;
+      const fd = new FormData();
+      fd.append('video', f);
+      for (const [k, v] of Object.entries(declFields(decl))) fd.append(k, v);
+      const headers = {};
+      if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
+      const resp = await fetch('/api/model/feed/video', { method: 'POST', headers, body: fd }).catch(() => null);
+      const data = resp ? await resp.json().catch(() => ({})) : {};
+      if (declRefused({ status: resp ? resp.status : 0, data })) return;
+      if (resp && resp.status === 200) { toast(t('feed_posted')); loadCleanFeedSettings(); }
+      else if (data && data.error === 'feed_full_videos') toast(t('feed_full'));
+      else toast((data && data.message) || t('couldnt_save'));
+    };
+    inp.click();
+  };
+}
+
 async function renderPkSettingsCard() {
   const host = document.getElementById('pk-card');
   if (!host) return;
@@ -14710,6 +14904,7 @@ function openModelPeek(m, models) {
     ${m.bio ? `<div class="muted small" style="margin-top:10px">${esc(m.bio)}</div>` : ''}
     <div id="peek-pr"></div>
     <div id="peek-packages"></div>
+    <div id="peek-feed"></div>
     ${(m.tags && m.tags.length) ? `<div class="peek-tags">${m.tags.map((tg) => `<button class="disc-chip" data-peek-tag="${esc(tg)}">${esc(tg)}</button>`).join('')}</div>` : ''}
     ${similarModels(m, models).length ? `
     <div style="font-weight:800;margin:14px 0 8px;text-align:left">${t('more_like_her')}</div>
@@ -14757,6 +14952,7 @@ function openModelPeek(m, models) {
     // Custom Packages: her pre-made packages + the custom request
     // box (fan-side surface; the loader itself gates fan/house).
     if (!isOfficial) loadPeekPackages(m);
+    if (!isOfficial) loadPeekFeed(m);
     // The peek panel becomes a flex column: her page scrolls inside
     // .peek-scroll while the Message bar (fan view) stays pinned to
     // the bottom of the sheet — visible at all times while scrolling.
@@ -15494,6 +15690,25 @@ async function loadPkgModelOrders() {
 }
 
 /* Peek (fan side): her pre-made packages + the custom request box. */
+// Her clean feed inside the profile peek (Oct 23 2026): reads the
+// same public endpoint her public page renders from, so the app
+// shows exactly what the web shows — gate-cleared items only.
+// Public content, so no sign-in gate (unlike packages, which are
+// fan commerce). Renders nothing when she has no cleared posts.
+async function loadPeekFeed(m) {
+  const box = document.getElementById('peek-feed');
+  if (!box) return;
+  const { data } = await api(`/models/${m.id}/feed`);
+  const items = (data && data.items) || [];
+  if (!items.length) return;
+  box.innerHTML = `
+    <div style="font-weight:800;margin:14px 0 8px;text-align:left">${t('feed_h')}</div>
+    <div class="peek-gallery">${items.map((i) => i.kind === 'video'
+      ? `<video class="peek-gallery-img" src="${esc(i.url)}" muted playsinline loop preload="metadata" controls></video>`
+      : `<img class="peek-gallery-img" src="${esc(i.url)}" alt="" loading="lazy">`).join('')}
+    </div>`;
+}
+
 async function loadPeekPackages(m) {
   const box = document.getElementById('peek-packages');
   if (!box || !S.user || !(S.user.role === 'fan' || S.user.is_house)) return;
@@ -17726,6 +17941,11 @@ async function vModelSettings() {
           ${m.public_photo_url ? `<button class="btn ghost small danger" id="s-public-remove" style="margin-top:6px;margin-left:6px">${t('public_photo_remove')}</button>` : ''}
         </div>
       </div>
+      <div class="card">
+        <div style="font-weight:800;font-size:17px;margin-bottom:6px">${t('feed_h')}</div>
+        <div class="muted small" style="margin-bottom:8px">${t('feed_note')}</div>
+        <div id="cleanfeed-box"><div class="muted small">…</div></div>
+      </div>
       ${affiliateCardHTML()}
       <div class="card" id="tax-card"><div class="muted small">Loading tax info…</div></div>
       <div id="pk-card"></div>
@@ -18010,6 +18230,7 @@ async function vModelSettings() {
   $('#s-logout').onclick = () => logout();
   renderPkSettingsCard();
   renderPwSettingsCard();
+  loadCleanFeedSettings();
   const sAth = $('#s-ath');
   if (sAth) sAth.onclick = openAthSheet;
   // Preview video upload (offscreen input for iOS)
@@ -19909,6 +20130,36 @@ function openPpvPriceSheet(file, kind) {
   };
 }
 
+/* ---------------- UPLOAD SIDE DOOR (up.slutcamp.app) ----------------
+   When the server advertises an upload_origin (GET /api/build-id,
+   driven by the server's UPLOAD_ORIGIN env), chat-media uploads POST
+   to that origin instead of same-origin: the main site sits behind
+   Cloudflare's proxy, whose 100MB request cap would refuse the
+   biggest PPV videos (chat allows 200MB), so the upload subdomain
+   answers DNS-only, straight to the same app. The auth headers ride
+   along unchanged (token headers, no cookies). Empty origin =
+   same-origin — the resolved URL is exactly '/api/media/send',
+   byte-for-byte the pre-door behavior. */
+let _uploadOrigin = null;       // null = unresolved; '' = same-origin
+let _uploadOriginPromise = null;
+function resolveUploadOrigin() {
+  if (_uploadOrigin !== null) return Promise.resolve(_uploadOrigin);
+  if (!_uploadOriginPromise) {
+    _uploadOriginPromise = fetch('/api/build-id', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        _uploadOrigin = d && typeof d.upload_origin === 'string'
+          ? d.upload_origin.replace(/\/+$/, '') : '';
+        return _uploadOrigin;
+      })
+      .catch(() => { _uploadOrigin = ''; return _uploadOrigin; });
+  }
+  return _uploadOriginPromise;
+}
+async function mediaSendUrl() {
+  return (await resolveUploadOrigin()) + '/api/media/send';
+}
+
 async function uploadMedia(file, kind, priceCents, durationSec, isExplicit) {
   toast('Uploading… ⏳');
   const fd = new FormData();
@@ -19922,7 +20173,7 @@ async function uploadMedia(file, kind, priceCents, durationSec, isExplicit) {
   if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
   else if (S.guestToken) headers['X-Guest-Token'] = S.guestToken;
   try {
-    const r = await fetch('/api/media/send', { method: 'POST', headers, body: fd });
+    const r = await fetch(await mediaSendUrl(), { method: 'POST', headers, body: fd });
     const data = await r.json();
     if (r.status === 200) {
       if (!S.messages.find((x) => x.id === data.message.id)) S.messages.push(data.message);
@@ -19997,7 +20248,7 @@ async function uploadFanPic(file) {
   const headers = {};
   if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
   try {
-    const r = await fetch('/api/media/send', { method: 'POST', headers, body: fd });
+    const r = await fetch(await mediaSendUrl(), { method: 'POST', headers, body: fd });
     const data = await r.json();
     if (r.status === 200 && data.blocked) {
       // Safety monitor stopped the caption — picture not sent, not charged.

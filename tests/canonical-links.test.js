@@ -192,12 +192,15 @@ test.after(async () => {
 
 const ONRENDER = 'slutcamp.onrender.com';
 
-test('server pin: the redirect middleware is the first app.use and host-exact', () => {
+test('server pin: the redirect middleware sits after the upload-door host gate, before routes', () => {
   const firstUse = serverSrc.indexOf('app.use(');
   const gateAt = serverSrc.indexOf("req.hostname !== 'slutcamp.onrender.com'");
   assert.ok(gateAt !== -1, 'canonical-host middleware present');
-  assert.ok(gateAt > firstUse && gateAt < serverSrc.indexOf('app.use(', firstUse + 1),
-    'the host check lives inside the very first app.use');
+  assert.ok(serverSrc.slice(firstUse, serverSrc.indexOf('app.use(', firstUse + 1)).includes('UPLOAD_HOST'),
+    'the upload-door host gate is the first app.use');
+  assert.ok(gateAt > firstUse, 'canonical redirect runs AFTER the upload-door host gate');
+  assert.ok(gateAt < serverSrc.indexOf('express.json'),
+    'canonical redirect runs BEFORE body parsing / route handling');
   assert.ok(serverSrc.includes("res.redirect(301, 'https://slutcamp.app' + req.url)"),
     'redirect target is the canonical origin + the untouched req.url');
 });
@@ -253,8 +256,9 @@ test('server: the real domain is NOT redirected', async () => {
 
 test('server: the upload-door host is NOT redirected by this rule', async () => {
   const r = await rawReq('GET', '/', 'up.slutcamp.app');
-  assert.equal(r.status, 200);
-  assert.equal(r.headers.location, undefined);
+  assert.equal(r.headers.location, undefined, 'no canonical redirect for the door host');
+  assert.equal(r.status, 404,
+    'the upload-door host gate itself answers (it serves only /api/media/send)');
 });
 
 test('server: any other host (localhost) passes through untouched', async () => {
