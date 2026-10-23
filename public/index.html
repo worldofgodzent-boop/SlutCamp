@@ -67,8 +67,16 @@
     <h1 class="age-gate-logo">SLUT<span>CAMP</span></h1>
     <div class="age-gate-q" id="gate-q">VERIFY YOUR AGE</div>
     <p class="age-gate-sub" id="gate-sub">Enter your date of birth. You must be 18 or older to enter.</p>
+    <div class="age-gate-warn" id="gate-warn">
+      <div class="age-gate-warn-h" id="gate-warn-h">⚠️ Important — read our rules carefully</div>
+      <p class="age-gate-warn-body" id="gate-warn-body">WARNING: THIS SITE HAS A ZERO TOLERANCE POLICY FOR UNDERAGE BROADCASTING. IF YOU ARE NOT LEGALLY AN ADULT, OR IF YOU BROADCAST ANY TYPE OF PORN, EROTIC PHOTOS OR VIDEO CONTENT INVOLVING ANYONE UNDER 18, YOUR PERSONAL DATA WILL BE TRANSFERRED TO THE RELEVANT AUTHORITIES FOR ENFORCEMENT UNDER INTERNATIONAL LAWS AGAINST CHILD PORNOGRAPHY.</p>
+    </div>
     <form id="age-form">
       <input id="age-dob" type="date" class="age-input" min="1900-01-01" required>
+      <label class="age-gate-agree" for="gate-agree">
+        <input type="checkbox" id="gate-agree">
+        <span id="gate-agree-text">I confirm I am 18 years old or older, and I have read, understand and agree to the Terms and Conditions and Privacy Policy.</span>
+      </label>
       <!-- Language at the door: app.js fills this picker in below the
            age input, before she enters anything (EN/ES/PT). -->
       <div class="lang-row" id="gate-lang"></div>
