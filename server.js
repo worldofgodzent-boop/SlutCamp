@@ -123,6 +123,67 @@ function decTax(stored) {
 }
 function taxKeyIsEphemeral() { taxKey(); return _taxKeyEphemeral; }
 
+/* ------------------------------------------------------------------ */
+/* Upload side door — up.slutcamp.app (2026-10-23)                     */
+/*                                                                     */
+/* The main site sits behind Cloudflare's proxy, whose request-body  */
+/* cap (100 MB on Free/Pro) would refuse the biggest chat-media      */
+/* uploads: POST /api/media/send deliberately allows 200 MB (phone     */
+/* videos, owner's design) and it is the ONLY flow above the proxy    */
+/* cap — every other upload in the app is ≤15 MB. So chat-media       */
+/* uploads get a side door: up.slutcamp.app is a DNS-only (grey-      */
+/* cloud) CNAME to this very same Render service, added as a Render   */
+/* custom domain, so those requests reach this app WITHOUT crossing   */
+/* the proxy. The client learns the door's origin from GET             */
+/* /api/build-id (upload_origin, fed by the UPLOAD_ORIGIN env) and    */
+/* posts there only when it is set; empty = same-origin, exactly      */
+/* the pre-door behavior.                                             */
+/*                                                                     */
+/* This host serves ONE route. Everything else on it 404s, so the    */
+/* door can never become a second, un-proxied copy of the site.       */
+/* Auth needs no help here: identity rides the Authorization /       */
+/* X-Guest-Token headers (getIdentity reads no cookies), so a send    */
+/* through the door authenticates exactly like a same-origin send —   */
+/* the browser only needs CORS permission, granted below to the      */
+/* app's own origins and to no one else. No credentials mode: the     */
+/* Access-Control-Allow-Credentials header is never sent.            */
+/* ------------------------------------------------------------------ */
+const UPLOAD_ORIGIN = String(process.env.UPLOAD_ORIGIN || '').trim().replace(/\/+$/, '');
+const UPLOAD_HOST = 'up.slutcamp.app';
+const APP_ORIGINS = ['https://slutcamp.app', 'https://www.slutcamp.app'];
+const isMediaSendPath = (p) => p === '/api/media/send' || p === '/api/media/send/';
+
+app.use((req, res, next) => {
+  if ((req.hostname || '').toLowerCase() === UPLOAD_HOST && !isMediaSendPath(req.path)) {
+    return res.status(404).json({ error: 'not_found' });
+  }
+  next();
+});
+
+/* CORS for the media-send route only. A trusted app origin gets its
+   origin echoed (never '*': the response carries per-user data) plus
+   a real preflight answer; any other origin gets no CORS headers at
+   all, so browsers block the call — and its preflight falls through
+   to the same 404 an OPTIONS here has always gotten. Same-origin
+   calls (no Origin header) pass through untouched. */
+function mediaSendCors(req, res, next) {
+  const origin = req.headers.origin;
+  const trusted = !!origin && APP_ORIGINS.includes(origin);
+  if (trusted) {
+    res.set('Access-Control-Allow-Origin', origin);
+    res.vary('Origin');
+  }
+  if (req.method === 'OPTIONS') {
+    if (!trusted) return next();
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Guest-Token');
+    res.set('Access-Control-Max-Age', '86400');
+    return res.status(204).end();
+  }
+  next();
+}
+app.use('/api/media/send', mediaSendCors);
+
 app.use(express.json({ limit: '256kb' }));
 
 /* ------------------------------------------------------------------ */
@@ -19959,6 +20020,8 @@ app.put('/api/admin/settings', ...adminOnly, (req, res) => {
 /* ------------------------------------------------------------------ */
 
 wss.on('connection', (ws, req) => {
+  // The upload door host serves /api/media/send only — no sockets.
+  if (String(req.headers.host || '').toLowerCase().split(':')[0] === UPLOAD_HOST) { ws.close(4404, 'not_found'); return; }
   const url = new URL(req.url, 'http://localhost');
   const token = url.searchParams.get('token');
   const guestToken = url.searchParams.get('guest_token');
@@ -20057,7 +20120,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISO
    startUpdateWatcher in public/js/app.js): when the answer differs from
    the build the page loaded under, the app reloads itself at the first
    idle moment — the client half of forced refresh on every deploy. */
-app.get('/api/build-id', (req, res) => res.json({ build: BUILD_ID, cache: SW_CACHE_NAME, time: BUILD_TIME }));
+app.get('/api/build-id', (req, res) => res.json({ build: BUILD_ID, cache: SW_CACHE_NAME, time: BUILD_TIME, upload_origin: UPLOAD_ORIGIN }));
 
 app.get('/boss', (req, res) => {
   res.send(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Slut Manager</title></head><body><script>location.replace('/manager');</script></body></html>`);

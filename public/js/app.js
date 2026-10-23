@@ -20115,6 +20115,36 @@ function openPpvPriceSheet(file, kind) {
   };
 }
 
+/* ---------------- UPLOAD SIDE DOOR (up.slutcamp.app) ----------------
+   When the server advertises an upload_origin (GET /api/build-id,
+   driven by the server's UPLOAD_ORIGIN env), chat-media uploads POST
+   to that origin instead of same-origin: the main site sits behind
+   Cloudflare's proxy, whose 100MB request cap would refuse the
+   biggest PPV videos (chat allows 200MB), so the upload subdomain
+   answers DNS-only, straight to the same app. The auth headers ride
+   along unchanged (token headers, no cookies). Empty origin =
+   same-origin — the resolved URL is exactly '/api/media/send',
+   byte-for-byte the pre-door behavior. */
+let _uploadOrigin = null;       // null = unresolved; '' = same-origin
+let _uploadOriginPromise = null;
+function resolveUploadOrigin() {
+  if (_uploadOrigin !== null) return Promise.resolve(_uploadOrigin);
+  if (!_uploadOriginPromise) {
+    _uploadOriginPromise = fetch('/api/build-id', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        _uploadOrigin = d && typeof d.upload_origin === 'string'
+          ? d.upload_origin.replace(/\/+$/, '') : '';
+        return _uploadOrigin;
+      })
+      .catch(() => { _uploadOrigin = ''; return _uploadOrigin; });
+  }
+  return _uploadOriginPromise;
+}
+async function mediaSendUrl() {
+  return (await resolveUploadOrigin()) + '/api/media/send';
+}
+
 async function uploadMedia(file, kind, priceCents, durationSec, isExplicit) {
   toast('Uploading… ⏳');
   const fd = new FormData();
@@ -20128,7 +20158,7 @@ async function uploadMedia(file, kind, priceCents, durationSec, isExplicit) {
   if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
   else if (S.guestToken) headers['X-Guest-Token'] = S.guestToken;
   try {
-    const r = await fetch('/api/media/send', { method: 'POST', headers, body: fd });
+    const r = await fetch(await mediaSendUrl(), { method: 'POST', headers, body: fd });
     const data = await r.json();
     if (r.status === 200) {
       if (!S.messages.find((x) => x.id === data.message.id)) S.messages.push(data.message);
@@ -20203,7 +20233,7 @@ async function uploadFanPic(file) {
   const headers = {};
   if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
   try {
-    const r = await fetch('/api/media/send', { method: 'POST', headers, body: fd });
+    const r = await fetch(await mediaSendUrl(), { method: 'POST', headers, body: fd });
     const data = await r.json();
     if (r.status === 200 && data.blocked) {
       // Safety monitor stopped the caption — picture not sent, not charged.
