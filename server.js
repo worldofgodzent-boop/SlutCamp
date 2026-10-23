@@ -362,6 +362,19 @@ const SEO_CSS = `
   .price { font-size:18px; margin:10px 0; }
   .social { font-size:16px; margin:16px 0 0; }
   .cta { display:inline-block; margin-top:16px; background:linear-gradient(135deg,#8b5cf6,#ff5c9e); color:#fff; font-weight:800; font-size:18px; padding:14px 34px; border-radius:999px; text-decoration:none; }
+  .feedh { font-size:22px; margin:30px 0 4px; text-align:left; }
+  .feedgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-top:14px; }
+  .feedgrid img, .feedgrid video { width:100%; height:190px; object-fit:cover; display:block; border-radius:14px; background:#2c1522; }
+  .ftabs { margin:16px 0 4px; }
+  .ftabs a { display:inline-block; margin:3px; padding:6px 14px; border:1px solid #8b5cf6; border-radius:999px; text-decoration:none; font-size:14px; font-weight:700; }
+  .ftabs a.on { background:linear-gradient(135deg,#8b5cf6,#ff5c9e); color:#fff; border-color:transparent; }
+  .fcard { background:#241019; border-radius:16px; overflow:hidden; margin:18px auto; max-width:520px; text-align:left; }
+  .fcard .fhead { display:flex; align-items:center; gap:10px; padding:10px 12px; }
+  .fcard .fhead img { width:38px; height:38px; border-radius:50%; object-fit:cover; }
+  .fcard .fhead a { color:#f5eef4; text-decoration:none; font-weight:800; }
+  .fcard .un { color:#c9a8c4; font-size:13px; }
+  .fcard .fmedia img, .fcard .fmedia video { width:100%; display:block; background:#2c1522; }
+  .fcard .ffoot { padding:10px 12px; }
   .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px; margin-top:20px; }
   .card { background:#241019; border-radius:16px; overflow:hidden; text-decoration:none; color:#f5eef4; display:block; }
   .card img { width:100%; height:170px; object-fit:cover; display:block; background:#2c1522; }
@@ -430,7 +443,7 @@ const seoBrand = `<div class="brand"><a href="/">Slut<span class="camp">Camp</sp
 const SOCIAL_X_URL = 'https://x.com/SlutCampApp';
 const SOCIAL_INSTAGRAM_URL = 'https://instagram.com/slcamp__';
 const seoSocialLinks = `<a href="${SOCIAL_X_URL}" target="_blank" rel="noopener">X</a> · <a href="${SOCIAL_INSTAGRAM_URL}" target="_blank" rel="noopener">Instagram</a>`;
-const seoFooter = `<footer>SlutCamp is an 18+ platform. You must be of legal age in your location to use it.<br><a href="/models">All models</a> · <a href="/join">Become a model</a> · <a href="/">Open the app</a><br><a href="/#terms">Terms</a> · <a href="/#privacy">Privacy</a> · <a href="/#billing">Billing &amp; Refunds</a> · <a href="/#2257">2257</a> · <a href="/#dmca">DMCA</a><br>${seoSocialLinks}<br>Operated by World of Godz Entertainment LLC</footer>`;
+const seoFooter = `<footer>SlutCamp is an 18+ platform. You must be of legal age in your location to use it.<br><a href="/models">All models</a> · <a href="/feed">Clean feed</a> · <a href="/join">Become a model</a> · <a href="/">Open the app</a><br><a href="/#terms">Terms</a> · <a href="/#privacy">Privacy</a> · <a href="/#billing">Billing &amp; Refunds</a> · <a href="/#2257">2257</a> · <a href="/#dmca">DMCA</a><br>${seoSocialLinks}<br>Operated by World of Godz Entertainment LLC</footer>`;
 
 // GET /models/:username — her public, crawlable page.
 app.get('/models/:username', (req, res) => {
@@ -457,6 +470,18 @@ app.get('/models/:username', (req, res) => {
   // social links (spec, Oct 22 2026: nowhere else in v1).
   const socialHtml = isHouseAccountId(m.id)
     ? `<p class="social">Follow SlutCamp: ${seoSocialLinks}</p>` : '';
+  // Clean feed (Oct 23 2026): her gate-cleared clean posts render
+  // under the hero — the same shaping (cleanFeedItemsFor) the /feed
+  // stream and her in-app profile read, so every public surface
+  // agrees item-for-item. Nothing renders when she has no cleared
+  // posts; the house renders none under its flag.
+  const feedItems = cleanFeedItemsFor(m.id);
+  const feedHtml = feedItems.length ? `
+<h2 class="feedh">📸 ${seoEsc(m.display_name)}’s clean feed</h2>
+<div class="feedgrid">${feedItems.map((it) => it.kind === 'video'
+    ? `<video src="${seoEsc(it.url)}" muted playsinline loop preload="metadata" controls></video>`
+    : `<img src="${seoEsc(it.url)}" alt="${seoEsc(m.display_name)} — clean feed post" loading="lazy">`).join('')}
+</div>` : '';
   res.type('html').set('Cache-Control', 'public, max-age=300').send(`<!DOCTYPE html>
 <html lang="en">
 <head>${seoHead({ title, desc, url, image: m.photo_abs })}</head>
@@ -474,6 +499,7 @@ ${seoBrand}
   ${socialHtml}
 </div>
 ${m.bio ? `<p class="bio">${seoEsc(m.bio)}</p>` : ''}
+${feedHtml}
 ${seoFooter}
 </div></body></html>`);
 });
@@ -483,7 +509,7 @@ ${seoFooter}
 // Couple sections only — Male-section models stay out of the public
 // index/sitemap for now; their individual pages are unchanged.
 app.get('/models', (req, res) => {
-  const models = seoPublicModels().filter((m) => m.section !== 'male');
+  const models = seoPublicModels().filter((m) => m.section !== 'male').filter(seoIndexVisible);
   const url = SEO_ORIGIN + '/models';
   res.type('html').set('Cache-Control', 'public, max-age=300').send(`<!DOCTYPE html>
 <html lang="en">
@@ -499,7 +525,7 @@ ${seoFooter}
 
 // GET /tags/:tag — hub for one Discovery tag (live tags only).
 app.get('/tags/:tag', (req, res) => {
-  const models = seoPublicModels();
+  const models = seoPublicModels().filter(seoIndexVisible);
   const live = seoLiveTags(models);
   const tag = live.find((t) => seoTagSlug(t) === String(req.params.tag || '').toLowerCase());
   if (!tag) return res.status(404).type('html').set('Cache-Control', 'public, max-age=300')
@@ -588,6 +614,42 @@ ${seoFooter}
 </div></body></html>`);
 });
 
+// GET /feed — the public clean-feed stream (Clean Model Feed,
+// Oct 23 2026): cleared clean posts from every model in one
+// section, newest first, each card leading to her public page —
+// the discovery surface the per-model feeds feed into. Section
+// tabs follow the storefront pattern (entry lands on Female;
+// ?section= picks the tab). EN-only like every public page.
+app.get('/feed', (req, res) => {
+  const want = String(req.query.section || 'female').toLowerCase();
+  const section = ['female', 'male', 'couple'].includes(want) ? want : 'female';
+  const items = cleanFeedStream(section);
+  const url = SEO_ORIGIN + '/feed' + (section === 'female' ? '' : `?section=${section}`);
+  const tab = (s, label) => `<a class="${s === section ? 'on' : ''}" href="/feed${s === 'female' ? '' : `?section=${s}`}">${label}</a>`;
+  const cards = items.map((it) => {
+    const m = it.model;
+    const media = it.kind === 'video'
+      ? `<video src="${seoEsc(it.url)}" muted playsinline loop preload="metadata" controls></video>`
+      : `<img src="${seoEsc(it.url)}" alt="${seoEsc(m.display_name)} — clean feed post" loading="lazy">`;
+    return `<div class="fcard">
+  <div class="fhead"><img src="${seoEsc(m.public_photo_url || '/img/lips-logo.png')}" alt=""><a href="${seoEsc(m.url)}">${seoEsc(m.display_name)}</a><span class="un">@${seoEsc(m.username)}</span></div>
+  <div class="fmedia">${media}</div>
+  <div class="ffoot"><a href="${seoEsc(m.url)}">See her page →</a></div>
+</div>`;
+  }).join('\n');
+  res.type('html').set('Cache-Control', 'public, max-age=300').send(`<!DOCTYPE html>
+<html lang="en">
+<head>${seoHead({ title: 'Clean Feed — SlutCamp Models | 18+', desc: 'Browse clean photos and short videos from SlutCamp models — free. Tap through to her page to chat, watch her live and book private video calls.', url })}</head>
+<body><div class="wrap">
+${seoBrand}
+<h1>Clean feed</h1>
+<p class="pitch">Clean photos and short videos from our models — free to browse. Tap through to her page to chat 💋</p>
+<div class="ftabs">${tab('female', 'Female')}${tab('couple', 'Couple')}${tab('male', 'Male')}</div>
+${cards || '<p class="pitch">No clean posts here yet — check back soon 💋</p>'}
+${seoFooter}
+</div></body></html>`);
+});
+
 // GET /sitemap.xml — DYNAMIC (replaces the old 1-URL static file):
 // roster changes flow in automatically, no manual step. No lastmod:
 // neither models nor users carries a real updated_at, and a faked
@@ -596,13 +658,14 @@ app.get('/sitemap.xml', (req, res) => {
   // Same public-index scope as GET /models: Female + Couple sections
   // only (Male-section models are out of the public index in Phase 1;
   // their individual pages still serve, they are just not listed).
-  const models = seoPublicModels().filter((m) => m.section !== 'male');
+  const models = seoPublicModels().filter((m) => m.section !== 'male').filter(seoIndexVisible);
   const liveTags = seoLiveTags(models);
   const entry = (loc, freq, pri) =>
     `  <url>\n    <loc>${seoEsc(loc)}</loc>\n    <changefreq>${freq}</changefreq>\n    <priority>${pri}</priority>\n  </url>`;
   const urls = [
     entry(SEO_ORIGIN + '/', 'daily', '1.0'),
     entry(SEO_ORIGIN + '/models', 'daily', '0.9'),
+    entry(SEO_ORIGIN + '/feed', 'daily', '0.8'),
     entry(SEO_ORIGIN + '/join', 'weekly', '0.8'),
     entry(SEO_ORIGIN + '/payouts', 'weekly', '0.8'),
     ...models.map((m) => entry(SEO_ORIGIN + m.url, 'daily', '0.7')),
@@ -1910,6 +1973,7 @@ addColumnIfMissing('platform_stats', 'safety_announced_at', 'TEXT'); // one-time
 addColumnIfMissing('platform_stats', 'private_room_announced_at', 'TEXT'); // one-time "Private Room" (Phase 5) model broadcast stamp
 addColumnIfMissing('platform_stats', 'private_room_cap', 'INTEGER NOT NULL DEFAULT 2'); // Phase 5: max private rooms per model per week (Manager-adjustable)
 addColumnIfMissing('platform_stats', 'battles_announced_at', 'TEXT'); // one-time "live battles" model broadcast stamp (Phase 6)
+addColumnIfMissing('platform_stats', 'clean_feed_announced_at', 'TEXT'); // one-time "clean public feed" model broadcast stamp
 addColumnIfMissing('platform_stats', 'release_prompt_announced_at', 'TEXT'); // one-time "performer release at the door" broadcast stamp
 addColumnIfMissing('models', 'battle_invites_open', 'INTEGER NOT NULL DEFAULT 1'); // Phase 6: "Open to battle invites" Settings toggle (default ON)
 addColumnIfMissing('game_requests', 'battle_id', 'INTEGER'); // Phase 6: set when the buy was escrowed into a live battle (refund path branches on it)
@@ -2155,6 +2219,25 @@ CREATE TABLE IF NOT EXISTS media_costars (
 );
 CREATE INDEX IF NOT EXISTS idx_media_costars_model ON media_costars(model_id);
 CREATE INDEX IF NOT EXISTS idx_media_costars_cp ON media_costars(co_performer_id);
+
+-- Clean public feed (Clean Model Feed, Oct 23 2026): the model's
+-- dedicated CLEAN posts for public surfaces — up to 10 pictures +
+-- 2 videos (12 slots, Asce's decided shape), a media set SEPARATE
+-- from her in-app profile media, which may be explicit by design
+-- and never crosses to public pages. Rows are pointers at /uploads
+-- files uploaded through the shared photo / preview-video
+-- pipelines; visibility is derived at read time by
+-- cleanFeedItemsFor (ID gate + co-star holds + the house flag),
+-- never stored, so an approval or a cleared packet posts the media
+-- with nothing to re-upload — the upload-gate pattern.
+CREATE TABLE IF NOT EXISTS clean_feed_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  model_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL CHECK(kind IN ('photo','video')),
+  file_url TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_clean_feed_model ON clean_feed_items(model_id, id);
 
 -- Follows: fans follow models to get "she's live" notifications
 CREATE TABLE IF NOT EXISTS follows (
@@ -3825,6 +3908,98 @@ function refuseDecl(req, res, decl) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Clean public feed (Clean Model Feed, Oct 23 2026). An              */
+/* Instagram-style feed of CLEAN (clothes-on) posts — up to 10        */
+/* pictures + 2 videos per model (12 slots: Asce's decided shape,     */
+/* mirroring her profile media caps) — that fans browse FREE on       */
+/* public surfaces: her server-rendered public page, the public       */
+/* /feed stream, and her in-app profile. Explicit stays paid; the     */
+/* clean rule binds public surfaces only, so the feed is a            */
+/* DEDICATED media set (clean_feed_items), never her in-app           */
+/* gallery / preview media, which may be explicit by design (her      */
+/* app profile pic is the one free hook; public pages have always     */
+/* read clean media only — the public_photo_url precedent). Uploads   */
+/* ride the shared photo / preview-video pipelines and carry the      */
+/* same Solo/Co-Star declaration as every profile-media upload;       */
+/* reads stack the same gates as every public surface: her ID         */
+/* approved (isIdVerified), per-item co-star holds (heldMediaUrls),   */
+/* public visibility (role / banned / is_hidden via the callers).     */
+/*                                                                    */
+/* HOUSE FLAG — decided by Asce, Oct 23 2026: "House accounts stays   */
+/* private." The house account stays OUT of the public feed and OUT   */
+/* of the public SEO index (the /models grid, tag hubs, sitemap) as   */
+/* a standing rule, carried by this ONE flag. Default false (house   */
+/* excluded). Flip to true to restore the house on those surfaces.    */
+/* Its individual page /models/asceaaspade serves either way —        */
+/* index exclusion never unpublishes a page (the Male-section         */
+/* precedent) — and in-app the house was never in the roster or       */
+/* ranks, so the flag changes nothing there.                          */
+/* ------------------------------------------------------------------ */
+const HOUSE_IN_PUBLIC_FEED_AND_INDEX = false;
+
+// One predicate for every public-index consumer (the /models grid,
+// tag hubs, the sitemap): is this shaped public row part of the
+// public index under the house flag?
+function seoIndexVisible(m) {
+  return HOUSE_IN_PUBLIC_FEED_AND_INDEX || !isHouseAccountId(m.id);
+}
+
+const CLEAN_FEED_MAX_PHOTOS = 10;
+const CLEAN_FEED_MAX_VIDEOS = 2;
+
+// A model's clean-feed items, shaped for one consumer class.
+// Public consumers (the default) get ONLY gate-cleared items: the
+// house under its flag, her ID approved, no co-star-held URLs, and
+// the per-kind caps re-applied on read so the 12-slot shape holds
+// even if a cap ever changes. forOwner (her Settings manager) gets
+// everything, each item flagged `held` while a co-star packet still
+// holds it — her own surfaces are never gated (the /api/me
+// precedent), and she can always keep setting up.
+function cleanFeedItemsFor(modelId, { forOwner = false } = {}) {
+  const rows = db.prepare(`SELECT id, kind, file_url, created_at FROM clean_feed_items
+    WHERE model_id = ? ORDER BY id DESC`).all(modelId);
+  if (forOwner) {
+    const held = heldMediaUrls(modelId);
+    return rows.map((r) => ({ id: r.id, kind: r.kind, url: r.file_url,
+      created_at: r.created_at, held: held.has(r.file_url) }));
+  }
+  if (isHouseAccountId(modelId) && !HOUSE_IN_PUBLIC_FEED_AND_INDEX) return [];
+  if (!isIdVerified(modelId)) return [];
+  const held = heldMediaUrls(modelId);
+  let photos = 0, videos = 0;
+  const out = [];
+  for (const r of rows) {
+    if (held.has(r.file_url)) continue;
+    if (r.kind === 'photo') { if (photos >= CLEAN_FEED_MAX_PHOTOS) continue; photos++; }
+    else { if (videos >= CLEAN_FEED_MAX_VIDEOS) continue; videos++; }
+    out.push({ id: r.id, kind: r.kind, url: r.file_url, created_at: r.created_at });
+  }
+  return out;
+}
+
+// The public /feed stream for one section: cleared clean posts from
+// every model on the public roster in that section, newest first.
+// Built FROM seoPublicModels + cleanFeedItemsFor so the stream can
+// never disagree with her public page about what is public — her
+// card photo is the same gate-cleared clean public photo, and the
+// house flag filters the stream exactly as it filters the index.
+function cleanFeedStream(section, limit = 60) {
+  const models = seoPublicModels()
+    .filter((m) => (m.section || 'female') === (section || 'female'))
+    .filter(seoIndexVisible);
+  const items = [];
+  for (const m of models) {
+    for (const it of cleanFeedItemsFor(m.id)) {
+      items.push({ ...it, model: { id: m.id, username: m.username,
+        display_name: m.display_name, public_photo_url: m.public_photo_url,
+        url: m.url, is_live: m.is_live, is_online: m.is_online } });
+    }
+  }
+  items.sort((a, b) => b.id - a.id);
+  return items.slice(0, limit);
+}
+
+/* ------------------------------------------------------------------ */
 /* Safety monitor                                                      */
 /* ------------------------------------------------------------------ */
 
@@ -4105,6 +4280,9 @@ const SRV = {
   ann_battles_dm: { en: '⚔️ NEW: PumPum Verse is here!\n\nPick a rival and go live together on a split-screen stage — two phones, one room, one scoreboard. Battle to see who can get the fans spending the most!\n\nThree ways in: invite a model while you\'re live, schedule a showdown for later, or jump into a random battle and get matched.\n\nThe money is simple and out in the open — no secrets: SlutCamp takes its standard cut first, then the pot splits 60% to the winner and 40% to the loser. Nobody walks away empty, and ties split 50/50.\n\nYour Game Category stays open during battles too — fans can buy from your list the whole time, and every credit counts toward your score.\n\nMay the best girl win 💋', es: '⚔️ ¡NOVEDAD: LLEGÓ PUMPUM VERSE!\n\nElige una rival y salgan en vivo juntas en un escenario dividido — dos teléfonos, una sala, un marcador. ¡Compitan por ver quién hace que los fans gasten más!\n\nTres formas de entrar: invita a una modelo mientras estás en vivo, programa un duelo para después, o entra a una batalla aleatoria y te emparejamos.\n\nEl dinero es simple y a la vista — sin secretos: SlutCamp toma primero su comisión estándar, y luego el bote se reparte 60% para la ganadora y 40% para la perdedora. Nadie se va con las manos vacías, y los empates se reparten 50/50.\n\nTu Categoría de Juego también sigue abierta durante las batallas — los fans pueden comprar de tu lista todo el tiempo, y cada crédito cuenta para tu marcador.\n\n¡Que gane la mejor! 💋', pt: '⚔️ NOVO: O PUMPUM VERSE CHEGOU!\n\nEscolha uma rival e entrem ao vivo juntas num palco dividido — dois celulares, uma sala, um placar. Batalhem para ver quem faz os fãs gastarem mais!\n\nTrês formas de entrar: convide uma modelo enquanto você está ao vivo, agende um duelo para depois, ou entre numa batalha aleatória e seja pareada.\n\nO dinheiro é simples e aberto — sem segredos: a SlutCamp tira primeiro sua comissão padrão, e depois o pote se divide 60% para a vencedora e 40% para a perdedora. Ninguém sai de mãos vazias, e empates dividem 50/50.\n\nSua Categoria de Jogo continua aberta durante as batalhas também — os fãs podem comprar da sua lista o tempo todo, e cada crédito conta para o seu placar.\n\nQue vença a melhor! 💋', fr: '⚔️ NOUVEAU : PUMPUM VERSE EST LÀ !\n\nChoisissez une rivale et passez en direct ensemble sur une scène partagée — deux téléphones, une salle, un tableau de score. Affrontez-vous pour voir qui fera le plus dépenser les fans !\n\nTrois façons d\'entrer : invitez une modèle pendant votre direct, programmez un duel pour plus tard, ou lancez une bataille aléatoire et soyez jumelée.\n\nL\'argent est simple et au grand jour — aucun secret : SlutCamp prend d\'abord sa commission standard, puis le pot se partage 60 % pour la gagnante et 40 % pour la perdante. Personne ne repart les mains vides, et les égalités se partagent 50/50.\n\nVotre Catégorie de Jeu reste aussi ouverte pendant les batailles — les fans peuvent acheter dans votre liste à tout moment, et chaque crédit compte pour votre score.\n\nQue la meilleure gagne 💋', de: '⚔️ NEU: PUMPUM VERSE IST DA!\n\nSuch dir eine Rivalin und geht gemeinsam auf einer geteilten Bühne live — zwei Handys, ein Raum, eine Punktetafel. Kämpft darum, wer die Fans am meisten ausgeben lässt!\n\nDrei Wege hinein: Lade ein Model ein, während du live bist, plane ein Showdown für später oder steig in einen Zufalls-Battle ein und werde gematcht.\n\nDas Geld ist einfach und offen — keine Geheimnisse: SlutCamp nimmt zuerst seine übliche Provision, dann wird der Pot 60 % an die Gewinnerin und 40 % an die Verliererin aufgeteilt. Niemand geht leer aus, und bei Gleichstand wird 50/50 geteilt.\n\nDeine Spiel-Kategorie bleibt auch während der Battles geöffnet — Fans können die ganze Zeit von deiner Liste kaufen, und jeder Credit zählt für deinen Punktestand.\n\nMöge die Beste gewinnen 💋', ru: '⚔️ НОВОЕ: PUMPUM VERSE УЖЕ ЗДЕСЬ!\n\nВыберите соперницу и выходите в эфир вместе на разделённой сцене — два телефона, одна комната, одно табло. Сражайтесь за то, кто заставит фанатов потратить больше!\n\nТри способа войти: пригласите модель, пока вы в эфире, запланируйте поединок на потом или вступайте в случайный баттл — мы подберём соперницу.\n\nДеньги — просто и открыто, без секретов: SlutCamp сначала берёт свою стандартную комиссию, затем банк делится 60% победительнице и 40% проигравшей. Никто не уходит с пустыми руками, а ничьи делятся 50/50.\n\nВаша игровая категория тоже остаётся открытой во время баттлов — фанаты могут покупать из вашего списка всё время, и каждый кредит идёт в ваш счёт.\n\nПусть победит лучшая 💋', ja: '⚔️ 新機能：PumPum Verseが登場！\n\nライバルを選んで、分割画面のステージで一緒にライブ配信 — スマホ2台、1つのルーム、1つのスコアボード。ファンにどちらが多く使わせるか競い合おう！\n\n入り方3通り：ライブ中にモデルを招待する、後日に対決を予約する、ランダムバトルに参加してマッチングされる。\n\nお金はシンプルでオープン — 秘密なし：SlutCampがまず通常の手数料を引き、残りのポットは勝者60％／敗者40％に分かれます。誰も手ぶらでは帰らず、引き分けは50/50です。\n\nバトル中もゲームカテゴリーは開いたまま — ファンはいつでもあなたのリストから買えて、すべてのクレジットがスコアに加算されます。\n\n最強の勝者になろう 💋', zh: '⚔️ 新功能：PumPum Verse来了！\n\n挑选一个对手，在分屏舞台上一起直播 — 两部手机、一个房间、一个记分牌。比一比谁能让粉丝花得更多！\n\n三种参与方式：直播时邀请一位模特、预约稍后的对决，或者加入随机对战由系统为你匹配。\n\n钱的规则简单透明 — 没有秘密：SlutCamp 先扣除标准佣金，然后奖池按赢家 60% / 输家 40% 分配。没有人空手而归，平局 50/50。\n\n对战期间你的游戏菜单也保持开放 — 粉丝可以随时购买你列表里的项目，每个积分都计入你的分数。\n\n愿最棒的女孩获胜 💋', ko: '⚔️ 새 기능: PumPum Verse가 왔어요!\n\n라이벌을 골라 분할 화면 무대에서 함께 라이브를 켜세요 — 휴대폰 두 대, 하나의 방, 하나의 스코어보드. 팬들이 누구에게 더 많이 쓰게 하는지 겨뤄 보세요!\n\n참여 방법 세 가지: 라이브 중에 모델을 초대하기, 나중 대결 예약하기, 또는 랜덤 배틀에 참가해 매칭받기.\n\n돈은 간단하고 투명해요 — 비밀 없음: SlutCamp가 먼저 표준 수수료를 떼고, 남은 팟은 승자 60% / 패자 40%로 나뉩니다. 빈손으로 가는 사람은 없고, 무승부는 50/50이에요.\n\n배틀 중에도 게임 카테고리는 열려 있어요 — 팬들은 언제든 당신의 리스트에서 살 수 있고, 모든 크레딧이 점수에 반영됩니다.\n\n최고의 그녀가 이기길 💋', it: '⚔️ NOVITÀ: È ARRIVATO PUMPUM VERSE!\n\nScegli una rivale e andate live insieme su un palco diviso — due telefoni, una stanza, un tabellone. Sfida a chi fa spendere di più i fan!\n\nTre modi per entrare: invita una modella mentre sei live, programma una sfida per dopo, oppure entra in una battaglia casuale e fatti abbinare.\n\nI soldi sono semplici e alla luce del sole — niente segreti: SlutCamp prende prima la sua commissione standard, poi il montepremi si divide 60% alla vincitrice e 40% alla perdente. Nessuna torna a mani vuote, e i pareggi si dividono 50/50.\n\nAnche la tua Categoria Giochi resta aperta durante le battaglie — i fan possono comprare dalla tua lista in qualsiasi momento, e ogni credito conta per il tuo punteggio.\n\nChe vinca la migliore 💋', pl: '⚔️ NOWOŚĆ: PUMPUM VERSE JUŻ JEST!\n\nWybierz rywalkę i wyjdźcie razem na żywo na podzielonej scenie — dwa telefony, jeden pokój, jedna tabela wyników. Walczcie o to, która sprawi, że fani wydadzą więcej!\n\nTrzy sposoby wejścia: zaproś modelkę, gdy jesteś na żywo, zaplanuj pojedynek na później albo dołącz do losowej bitwy, a my dobierzemy przeciwniczkę.\n\nPieniądze są proste i jawne — bez tajemnic: SlutCamp najpierw pobiera swoją standardową prowizję, a potem pula dzieli się 60% dla zwyciężczyni i 40% dla przegranej. Nikt nie odchodzi z pustymi rękami, a remisy dzielą się 50/50.\n\nTwoja Kategoria Gier też pozostaje otwarta podczas bitew — fani mogą kupować z Twojej listy przez cały czas, a każdy kredyt liczy się do Twojego wyniku.\n\nNiech wygra najlepsza 💋', nl: '⚔️ NIEUW: PUMPUM VERSE IS ER!\n\nKies een rivaal en ga samen live op een gesplitst podium — twee telefoons, één kamer, één scorebord. Strijd om wie de fans het meest laat uitgeven!\n\nDrie manieren om mee te doen: nodig een model uit terwijl je live bent, plan een showdown voor later, of doe mee aan een willekeurige battle en word gematcht.\n\nHet geld is simpel en open — geen geheimen: SlutCamp neemt eerst zijn standaardcommissie, daarna wordt de pot 60% voor de winnaar en 40% voor de verliezer verdeeld. Niemand gaat met lege handen weg, en gelijkspel wordt 50/50 gedeeld.\n\nJe Gamecategorie blijft ook tijdens battles open — fans kunnen de hele tijd van je lijst kopen, en elke credit telt mee voor je score.\n\nMoge de beste winnen 💋', tr: '⚔️ YENİ: PUMPUM VERSE GELDİ!\n\nBir rakip seç ve bölünmüş sahnede birlikte canlı yayına çık — iki telefon, bir oda, bir skor tablosu. Hayranlara en çok harcamayı kimin yaptıracağını görmek için savaş!\n\nÜç giriş yolu: canlı yayındayken bir modeli davet et, sonrası için bir kapışma planla ya da rastgele savaşa girip eşleş.\n\nPara basit ve açık — sır yok: SlutCamp önce standart komisyonunu alır, sonra pot kazanan %60 / kaybeden %40 olarak bölünür. Kimse eli boş ayrılmaz, beraberlikler 50/50 bölünür.\n\nOyun Kategorin savaşlar sırasında da açık kalır — hayranlar listenizden her zaman satın alabilir ve her kredi skoruna sayılır.\n\nEn iyisi kazansın 💋' },
   ann_battles_bell_title: { en: '⚔️ NEW: PumPum Verse!', es: '⚔️ ¡Novedad: PumPum Verse!', pt: '⚔️ Novo: PumPum Verse!', fr: '⚔️ Nouveau : PumPum Verse !', de: '⚔️ Neu: PumPum Verse!', ru: '⚔️ Новое: PumPum Verse!', ja: '⚔️ 新機能：PumPum Verse！', zh: '⚔️ 新功能：PumPum Verse！', ko: '⚔️ 새 기능: PumPum Verse!', it: '⚔️ Novità: PumPum Verse!', pl: '⚔️ Nowość: PumPum Verse!', nl: '⚔️ Nieuw: PumPum Verse!', tr: '⚔️ Yeni: PumPum Verse!' },
   ann_battles_bell_body: { en: 'Face off in PumPum Verse — winner takes the bigger cut. Tap to read 💋', es: 'Enfréntate en PumPum Verse — la ganadora se lleva la mayor parte. Toca para leer 💋', pt: 'Batalhe no PumPum Verse — a vencedora fica com a maior parte. Toque para ler 💋', fr: 'Affrontez-vous dans PumPum Verse — la gagnante prend la plus grosse part. Touchez pour lire 💋', de: 'Kämpfe in PumPum Verse live gegen ein anderes Model — die Gewinnerin bekommt den größeren Anteil. Tippe zum Lesen 💋', ru: 'Сразитесь в PumPum Verse — победительница забирает большую часть. Нажмите, чтобы прочитать 💋', ja: 'PumPum Verseで別のモデルと対戦 — 勝者が大きな取り分をゲット。タップして読む 💋', zh: '在PumPum Verse与其他模特对战 — 赢家拿大头。点开阅读 💋', ko: 'PumPum Verse에서 다른 모델과 대결하세요 — 승자가 더 큰 몫을 가져갑니다. 탭해서 읽기 💋', it: 'Sfida un\'altra modella in PumPum Verse — la vincitrice prende la fetta più grande. Tocca per leggere 💋', pl: 'Walcz w PumPum Verse z inną modelką — zwyciężczyni bierze większą część. Dotknij, aby przeczytać 💋', nl: 'Battle in PumPum Verse tegen een ander model — de winnaar pakt het grootste deel. Tik om te lezen 💋', tr: 'PumPum Verse\'te başka bir modelle savaş — kazanan büyük payı alır. Okumak için dokun 💋' },
+  ann_cleanfeed_dm: { en: '📸 NEW UPDATE: Your CLEAN FEED is live!\n\nYour public SlutCamp page now has a clean feed — post clean, clothes-on pictures and short videos there, and fans (and Google) can browse them free. It is separate from your in-app profile: that one can stay exactly as wild as you like — the feed is clean only.\n\nYou get 12 slots: 10 pictures + 2 videos. Post from Settings → My Photo → Clean feed. Fans who find you in the feed tap through to your page and message you there 💋\n\nYour page: https://slutcamp.app/models/{username}', es: '📸 ¡NOVEDAD: TU FEED LIMPIO YA ESTÁ EN VIVO!\n\nTu página pública de SlutCamp ahora tiene un feed limpio: publica ahí fotos con ropa y videos cortos limpios, y los fans (y Google) podrán verlos gratis. Es aparte de tu perfil en la app: ese puede seguir tan atrevido como quieras — el feed es solo limpio.\n\nTienes 12 espacios: 10 fotos + 2 videos. Publica desde Ajustes → Mi foto → Feed limpio. Los fans que te encuentren en el feed tocan para ir a tu página y escribirte ahí 💋\n\nTu página: https://slutcamp.app/models/{username}', pt: '📸 NOVIDADE: SEU FEED LIMPO ESTÁ NO AR!\n\nSua página pública da SlutCamp agora tem um feed limpo — poste fotos com roupa e vídeos curtos limpos lá, e os fãs (e o Google) podem vê-los de graça. É separado do seu perfil no app: esse pode continuar tão ousado quanto você quiser — o feed é só limpo.\n\nVocê tem 12 espaços: 10 fotos + 2 vídeos. Poste em Configurações → Minha foto → Feed limpo. Os fãs que te acharem no feed tocam para ir à sua página e te mandar mensagem lá 💋\n\nSua página: https://slutcamp.app/models/{username}', fr: '📸 NOUVEAU : TON FIL PROPRE EST EN LIGNE !\n\nTa page publique SlutCamp a maintenant un fil propre — publie là des photos habillées et de courtes vidéos propres, et les fans (et Google) pourront les parcourir gratuitement. C\'est séparé de ton profil dans l\'app : celui-là peut rester aussi osé que tu veux — le fil est propre uniquement.\n\nTu as 12 emplacements : 10 photos + 2 vidéos. Publie depuis Réglages → Ma photo → Fil propre. Les fans qui te trouvent dans le fil touchent pour aller sur ta page et t\'écrire là 💋\n\nTa page : https://slutcamp.app/models/{username}', de: '📸 NEU: DEIN SAUBERER FEED IST LIVE!\n\nDeine öffentliche SlutCamp-Seite hat jetzt einen sauberen Feed — poste dort saubere, bekleidete Bilder und kurze Videos, und Fans (und Google) können sie kostenlos durchsehen. Er ist getrennt von deinem App-Profil: das darf so wild bleiben, wie du willst — der Feed ist nur sauber.\n\nDu hast 12 Plätze: 10 Bilder + 2 Videos. Poste über Einstellungen → Mein Foto → Sauberer Feed. Fans, die dich im Feed finden, tippen sich zu deiner Seite durch und schreiben dir dort 💋\n\nDeine Seite: https://slutcamp.app/models/{username}', ru: '📸 НОВОЕ: ТВОЯ ЧИСТАЯ ЛЕНТА УЖЕ РАБОТАЕТ!\n\nНа твоей публичной странице SlutCamp теперь есть чистая лента — публикуй там чистые фото в одежде и короткие видео, и фанаты (и Google) смогут смотреть их бесплатно. Она отделена от твоего профиля в приложении: он может оставаться таким дерзким, как хочешь — лента только чистая.\n\nУ тебя 12 слотов: 10 фото + 2 видео. Публикуй через Настройки → Моё фото → Чистая лента. Фанаты, нашедшие тебя в ленте, переходят на твою страницу и пишут тебе там 💋\n\nТвоя страница: https://slutcamp.app/models/{username}', ja: '📸 新機能：クリーンフィードが公開されました！\n\nあなたのSlutCamp公開ページにクリーンフィードができました — 服を着たクリーンな写真と短い動画を投稿すれば、ファン（とGoogle）が無料で見られます。アプリ内プロフィールとは別物です：そちらは好きなだけ大胆でOK — フィードはクリーンのみ。\n\n枠は12個：写真10枚＋動画2本。設定 → 私の写真 → クリーンフィード から投稿してね。フィードで見つけたファンはあなたのページに来てメッセージをくれます 💋\n\nあなたのページ：https://slutcamp.app/models/{username}', zh: '📸 新功能：你的纯净动态上线了！\n\n你的 SlutCamp 公开页面现在有纯净动态了 — 在那里发布穿着得体的纯净照片和短视频，粉丝（和 Google）可以免费浏览。它与应用内资料分开：那边可以尽情大胆 — 动态只发纯净内容。\n\n你有 12 个位置：10 张照片 + 2 个视频。在 设置 → 我的照片 → 纯净动态 发布。在动态里找到你的粉丝会点进你的页面给你发消息 💋\n\n你的页面：https://slutcamp.app/models/{username}', ko: '📸 새 기능: 클린 피드가 시작됐어요!\n\n이제 당신의 SlutCamp 공개 페이지에 클린 피드가 생겼어요 — 옷을 입은 클린한 사진과 짧은 영상을 올리면 팬들(과 Google)이 무료로 볼 수 있어요. 앱 내 프로필과는 별개예요: 그쪽은 원하는 만큼 과감해도 되고 — 피드는 클린 전용이에요.\n\n슬롯은 12개: 사진 10장 + 영상 2개. 설정 → 내 사진 → 클린 피드에서 올려 주세요. 피드에서 당신을 발견한 팬은 페이지로 들어와 메시지를 보내요 💋\n\n내 페이지: https://slutcamp.app/models/{username}', it: '📸 NOVITÀ: IL TUO FEED PULITO È LIVE!\n\nLa tua pagina pubblica SlutCamp ora ha un feed pulito — pubblica lì foto vestite e brevi video puliti, e i fan (e Google) potranno sfogliarli gratis. È separato dal tuo profilo in-app: quello può restare audace quanto vuoi — il feed è solo pulito.\n\nHai 12 spazi: 10 foto + 2 video. Pubblica da Impostazioni → La mia foto → Feed pulito. I fan che ti trovano nel feed toccano per arrivare alla tua pagina e scriverti lì 💋\n\nLa tua pagina: https://slutcamp.app/models/{username}', pl: '📸 NOWOŚĆ: TWÓJ CZYSTY FEED JUŻ DZIAŁA!\n\nTwoja publiczna strona SlutCamp ma teraz czysty feed — publikuj tam czyste, ubrane zdjęcia i krótkie filmy, a fani (i Google) będą mogli przeglądać je za darmo. Jest oddzielony od Twojego profilu w aplikacji: ten może pozostać tak odważny, jak chcesz — feed jest tylko czysty.\n\nMasz 12 miejsc: 10 zdjęć + 2 filmy. Publikuj przez Ustawienia → Moje zdjęcie → Czysty feed. Fani, którzy znajdą Cię w feedzie, przechodzą na Twoją stronę i piszą do Ciebie tam 💋\n\nTwoja strona: https://slutcamp.app/models/{username}', nl: '📸 NIEUW: JE SCHONE FEED IS LIVE!\n\nJe openbare SlutCamp-pagina heeft nu een schone feed — post daar schone, geklede foto\'s en korte video\'s, en fans (en Google) kunnen ze gratis bekijken. Hij staat los van je app-profiel: dat mag zo wild blijven als je wilt — de feed is alleen schoon.\n\nJe hebt 12 plekken: 10 foto\'s + 2 video\'s. Post via Instellingen → Mijn foto → Schone feed. Fans die je in de feed vinden, tikken door naar je pagina en sturen je daar een bericht 💋\n\nJe pagina: https://slutcamp.app/models/{username}', tr: '📸 YENİ: TEMİZ AKIŞIN YAYINDA!\n\nSlutCamp herkese açık sayfanda artık bir temiz akış var — oraya temiz, giyinik fotoğraflar ve kısa videolar paylaş, hayranlar (ve Google) ücretsiz göz atabilsin. Uygulama içi profilinden ayrıdır: orası istediğin kadar cesur kalabilir — akış yalnızca temizdir.\n\n12 alanın var: 10 fotoğraf + 2 video. Ayarlar → Fotoğrafım → Temiz akış üzerinden paylaş. Seni akışta bulan hayranlar sayfana dokunup sana oradan mesaj atar 💋\n\nSayfan: https://slutcamp.app/models/{username}' },
+  ann_cleanfeed_bell_title: { en: '📸 Your clean feed is live!', es: '📸 ¡Tu feed limpio ya está en vivo!', pt: '📸 Seu feed limpo está no ar!', fr: '📸 Ton fil propre est en ligne !', de: '📸 Dein sauberer Feed ist live!', ru: '📸 Твоя чистая лента уже работает!', ja: '📸 クリーンフィードが公開されました！', zh: '📸 你的纯净动态上线了！', ko: '📸 클린 피드가 시작됐어요!', it: '📸 Il tuo feed pulito è live!', pl: '📸 Twój czysty feed już działa!', nl: '📸 Je schone feed is live!', tr: '📸 Temiz akışın yayında!' },
+  ann_cleanfeed_bell_body: { en: 'Post clean pictures + videos — Settings → My Photo → Clean feed 💋', es: 'Publica fotos y videos limpios — Ajustes → Mi foto → Feed limpio 💋', pt: 'Poste fotos e vídeos limpos — Configurações → Minha foto → Feed limpo 💋', fr: 'Publie des photos + vidéos propres — Réglages → Ma photo → Fil propre 💋', de: 'Poste saubere Bilder + Videos — Einstellungen → Mein Foto → Sauberer Feed 💋', ru: 'Публикуй чистые фото + видео — Настройки → Моё фото → Чистая лента 💋', ja: 'クリーンな写真＋動画を投稿 — 設定 → 私の写真 → クリーンフィード 💋', zh: '发布纯净照片＋视频 — 设置 → 我的照片 → 纯净动态 💋', ko: '클린한 사진 + 영상을 올려 주세요 — 설정 → 내 사진 → 클린 피드 💋', it: 'Pubblica foto + video puliti — Impostazioni → La mia foto → Feed pulito 💋', pl: 'Publikuj czyste zdjęcia + filmy — Ustawienia → Moje zdjęcie → Czysty feed 💋', nl: 'Post schone foto\'s + video\'s — Instellingen → Mijn foto → Schone feed 💋', tr: 'Temiz fotoğraf + video paylaş — Ayarlar → Fotoğrafım → Temiz akış 💋' },
   battle_bell_invite_title: { en: '⚔️ PumPum Verse challenge!', es: '⚔️ ¡Desafío PumPum Verse!', pt: '⚔️ Desafio PumPum Verse!', fr: '⚔️ Défi PumPum Verse !', de: '⚔️ PumPum Verse-Herausforderung!', ru: '⚔️ Вызов в PumPum Verse!', ja: '⚔️ PumPum Verseの挑戦状！', zh: '⚔️ PumPum Verse挑战！', ko: '⚔️ PumPum Verse 도전장!', it: '⚔️ Sfida PumPum Verse!', pl: '⚔️ Wyzwanie PumPum Verse!', nl: '⚔️ PumPum Verse-uitdaging!', tr: '⚔️ PumPum Verse meydan okuması!' },
   battle_bell_invite_body: { en: '{name} wants to battle you live for {minutes} minutes — winner takes the bigger cut. Open the app to answer ⚔️', es: '{name} quiere enfrentarte en vivo por {minutes} minutos — la ganadora se lleva la mayor parte. Abre la app para responder ⚔️', pt: '{name} quer batalhar com você ao vivo por {minutes} minutos — a vencedora fica com a maior parte. Abra o app para responder ⚔️', fr: '{name} veut vous affronter en direct pendant {minutes} minutes — la gagnante prend la plus grosse part. Ouvrez l\'appli pour répondre ⚔️', de: '{name} will {minutes} Minuten live gegen dich kämpfen — die Gewinnerin bekommt den größeren Anteil. Öffne die App, um zu antworten ⚔️', ru: '{name} хочет сразиться с вами в эфире на {minutes} минут — победительница забирает большую часть. Откройте приложение, чтобы ответить ⚔️', ja: '{name}が{minutes}分間のライブバトルを申し込んでいます — 勝者が大きな取り分をゲット。アプリを開いて答えてね ⚔️', zh: '{name} 想和你进行 {minutes} 分钟的直播对战 — 赢家拿大头。打开应用回复 ⚔️', ko: '{name}님이 {minutes}분 라이브 배틀을 신청했어요 — 승자가 더 큰 몫을 가져갑니다. 앱을 열어 답하세요 ⚔️', it: '{name} vuole sfidarti in live per {minutes} minuti — la vincitrice prende la fetta più grande. Apri l\'app per rispondere ⚔️', pl: '{name} chce walczyć z Tobą na żywo przez {minutes} minut — zwyciężczyni bierze większą część. Otwórz aplikację, aby odpowiedzieć ⚔️', nl: '{name} wil {minutes} minuten live tegen je battelen — de winnaar pakt het grootste deel. Open de app om te antwoorden ⚔️', tr: '{name} seninle {minutes} dakika canlı savaşmak istiyor — kazanan büyük payı alır. Cevaplamak için uygulamayı aç ⚔️' },
   battle_bell_won_title: { en: '🏆 You WON your PumPum Verse!', es: '🏆 ¡GANASTE tu PumPum Verse!', pt: '🏆 Você VENCEU seu PumPum Verse!', fr: '🏆 Vous avez GAGNÉ votre PumPum Verse !', de: '🏆 Du hast dein PumPum Verse GEWONNEN!', ru: '🏆 Вы ВЫИГРАЛИ PumPum Verse!', ja: '🏆 PumPum Verseに勝利！', zh: '🏆 你赢得了PumPum Verse！', ko: '🏆 PumPum Verse에서 승리했어요!', it: '🏆 Hai VINTO il tuo PumPum Verse!', pl: '🏆 WYGRAŁAŚ swój PumPum Verse!', nl: '🏆 Je hebt je PumPum Verse GEWONNEN!', tr: '🏆 PumPum Verse\'i KAZANDIN!' },
@@ -5629,6 +5807,41 @@ function announceBattlesToModels() {
   return sent;
 }
 
+/* Clean-feed launch blast — ONE TIME, guarded by the
+   clean_feed_announced_at stamp on platform_stats (the battles
+   pattern): one DM + one bell per model in her own language, the
+   DM carrying her public page link. The house account is a model-
+   role user and receives it like any other model — its page has no
+   public feed under the house flag, but the announcement explains
+   the feed itself, and the house is not special-cased anywhere in
+   announcements (the battles blast precedent). */
+function announceCleanFeedToModels() {
+  const st = db.prepare('SELECT clean_feed_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.clean_feed_announced_at) return 0;
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin) return 0;
+  const models = db.prepare("SELECT id, username, language FROM users WHERE role = 'model' AND banned = 0").all();
+  let sent = 0;
+  for (const m of models) {
+    if (m.id === admin.id) continue;
+    try {
+      const conv = announcementThreadFor(m.id, 'model', admin.id);
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, conv.senderId, srv('ann_cleanfeed_dm', m.language, { username: m.username }));
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(m.id, 'cleanfeed', srv('ann_cleanfeed_bell_title', m.language),
+          srv('ann_cleanfeed_bell_body', m.language), `/#chat/${conv.id}`);
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest */ }
+  }
+  if (sent > 0 || models.length === 0) {
+    db.prepare("UPDATE platform_stats SET clean_feed_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
 /* Fan blast — ONE-TIME bell + Web Push to every fan (stamp           */
 /* fan_preview_announced_at on platform_stats). Fans have no email or */
 /* text channel today (no provider; users held no contact info until  */
@@ -5813,6 +6026,7 @@ try { const n = announceFaceguardToModels(); if (n) console.log(`[faceguard] Fac
 try { const n = announceSafetyToModels(); if (n) console.log(`[safety] Safety hard-block announced to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announcePrivateRoomsToModels(); if (n) console.log(`[private-room] Private Room announced to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceBattlesToModels(); if (n) console.log(`[battles] Live Battles announced to ${n} models.`); } catch (e) { /* retry next boot */ }
+try { const n = announceCleanFeedToModels(); if (n) console.log(`[cleanfeed] Clean feed announced to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceReleasePromptToModels(); if (n) console.log(`[release] Performer-release door announced to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = sweepStalePrivateEvents(); if (n) console.log(`[private-room] Swept ${n} stale private event(s) with refunds.`); } catch (e) { /* retry next boot */ }
 
@@ -11047,6 +11261,85 @@ app.delete('/api/model/gallery-photo', identMiddleware, requireUser, requireRole
   const updated = db.prepare('SELECT photo_url, gallery_photos FROM models WHERE user_id = ?').get(req.user.id);
   res.json({ ok: true, gallery_photos: parseGalleryPhotos(updated.gallery_photos),
     profile_pics: profilePicsList(updated), count: profilePicsList(updated).length });
+});
+
+/* ------------------------------------------------------------------ */
+/* Clean feed routes (Clean Model Feed, Oct 23 2026). Hers to        */
+/* manage: list / post a picture / post a video / remove — the       */
+/* uploads carry the same Solo/Co-Star declaration as every          */
+/* profile-media endpoint (parseAppearanceDecl + refuseDecl), ride   */
+/* the same multer pipelines (photo-* / preview-* names, both         */
+/* whitelisted for public /uploads serving), and the 12-slot caps     */
+/* (10 pictures + 2 videos) are enforced here, server-side. A        */
+/* refused or over-cap upload never leaves its file behind.          */
+/* ------------------------------------------------------------------ */
+
+app.get('/api/model/feed', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  res.json({ items: cleanFeedItemsFor(req.user.id, { forOwner: true }),
+    max_photos: CLEAN_FEED_MAX_PHOTOS, max_videos: CLEAN_FEED_MAX_VIDEOS });
+});
+
+// One upload path for both kinds: validate the declaration first
+// (a refusal deletes the spooled file), then the per-kind cap (an
+// over-cap file is deleted too), then record decls + the item.
+function handleCleanFeedUpload(req, res, kind) {
+  if (!req.file) return res.status(400).json({ error: kind === 'photo' ? 'no_photo' : 'no_video' });
+  const decl = parseAppearanceDecl(req);
+  if (decl.error) return refuseDecl(req, res, decl);
+  const cap = kind === 'photo' ? CLEAN_FEED_MAX_PHOTOS : CLEAN_FEED_MAX_VIDEOS;
+  const n = db.prepare('SELECT COUNT(*) AS n FROM clean_feed_items WHERE model_id = ? AND kind = ?')
+    .get(req.user.id, kind).n;
+  if (n >= cap) {
+    try { fs.unlinkSync(req.file.path); } catch (e) { /* already gone */ }
+    return res.status(400).json({ error: kind === 'photo' ? 'feed_full_photos' : 'feed_full_videos',
+      message: kind === 'photo'
+        ? `Your clean feed already has ${CLEAN_FEED_MAX_PHOTOS} pictures — remove one to post another.`
+        : `Your clean feed already has ${CLEAN_FEED_MAX_VIDEOS} videos — remove one to post another.` });
+  }
+  const url = '/uploads/' + path.basename(req.file.path);
+  const info = db.prepare('INSERT INTO clean_feed_items (model_id, kind, file_url) VALUES (?, ?, ?)')
+    .run(req.user.id, kind, url);
+  recordMediaDecls(req.user.id, url, decl.costarIds);
+  const item = db.prepare('SELECT id, kind, file_url, created_at FROM clean_feed_items WHERE id = ?')
+    .get(info.lastInsertRowid);
+  res.json({ ok: true,
+    item: { id: item.id, kind: item.kind, url: item.file_url, created_at: item.created_at },
+    costar_held: decl.costarIds.some((id) => !coStarMediaCleared(id)) });
+}
+
+app.post('/api/model/feed/photo', identMiddleware, requireUser, requireRole('model'),
+  photoUpload.single('photo'), (req, res) => handleCleanFeedUpload(req, res, 'photo'));
+
+app.post('/api/model/feed/video', identMiddleware, requireUser, requireRole('model'),
+  previewVideoUpload.single('video'), (req, res) => handleCleanFeedUpload(req, res, 'video'));
+
+// Remove one of her feed posts: the row, its file, and its co-star
+// declarations all go (the setModelPublicPhoto deletion discipline).
+app.delete('/api/model/feed/:itemId', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const item = db.prepare('SELECT * FROM clean_feed_items WHERE id = ? AND model_id = ?')
+    .get(req.params.itemId, req.user.id);
+  if (!item) return res.status(404).json({ error: 'not_found' });
+  const p = path.join(UPLOAD_DIR, path.basename(item.file_url));
+  if (p.startsWith(UPLOAD_DIR + path.sep)) {
+    try { fs.unlinkSync(p); } catch (e) { /* already gone */ }
+  }
+  clearMediaDecls(req.user.id, item.file_url);
+  db.prepare('DELETE FROM clean_feed_items WHERE id = ?').run(item.id);
+  res.json({ ok: true });
+});
+
+// A model's clean feed, public: her in-app profile reads exactly
+// what her public page renders — one shaping function
+// (cleanFeedItemsFor), so the surfaces can never disagree. Hidden
+// models are not public at all (their public page 404s too);
+// region-blocked models are invisible to a blocked viewer (the
+// directory rule); the house answers empty under its flag.
+app.get('/api/models/:id/feed', (req, res) => {
+  const model = db.prepare(`SELECT u.id FROM users u JOIN models m ON m.user_id = u.id
+    WHERE u.id = ? AND u.role = 'model' AND u.banned = 0 AND m.is_hidden = 0`).get(req.params.id);
+  if (!model) return res.status(404).json({ error: 'model_not_found' });
+  if (modelRegionBlocked(model.id, geoOfReq(req))) return res.json({ items: [] });
+  res.json({ items: cleanFeedItemsFor(model.id) });
 });
 
 // Model reorders her profile pictures (hold-and-drag in Settings,

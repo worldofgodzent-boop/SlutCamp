@@ -63,10 +63,10 @@ test('server: schema — media_costars table + consent column, boot-safe migrati
     'consent path added to pre-existing databases via the guarded column helper');
 });
 
-test('server: the declaration is parsed on all five profile-media uploads', () => {
-  assert.equal(serverSrc.split('const decl = parseAppearanceDecl(req);').length - 1, 5,
-    'photo, public-photo, preview-video, preview-video-2, gallery-photo');
-  assert.equal(serverSrc.split('if (decl.error) return refuseDecl(req, res, decl);').length - 1, 5,
+test('server: the declaration is parsed on all five profile-media uploads + the clean-feed handler', () => {
+  assert.equal(serverSrc.split('const decl = parseAppearanceDecl(req);').length - 1, 6,
+    'photo, public-photo, preview-video, preview-video-2, gallery-photo, clean-feed (one handler serves both feed routes)');
+  assert.equal(serverSrc.split('if (decl.error) return refuseDecl(req, res, decl);').length - 1, 6,
     'every refusal removes the uploaded file and answers 400');
   assert.ok(serverSrc.includes("return { error: 'appearance_required'"), 'missing declaration refused');
   assert.ok(serverSrc.includes("return { error: 'costar_required'"), 'co-star with nobody picked refused');
@@ -131,8 +131,8 @@ test('manager: the ID Checks queue surfaces the consent form', () => {
   assert.ok(mgrSrc.includes('consent_on_file'), 'the queue renders the on-file / missing state');
 });
 
-test('recount: the announcement thread-tap pin reads exactly 31 after this build (Release Prompt announcement added one)', () => {
-  assert.equal(serverSrc.split('/#chat/${conv.id}').length - 1, 31);
+test('recount: the announcement thread-tap pin reads exactly 32 after this build (Clean Feed announcement added one)', () => {
+  assert.equal(serverSrc.split('/#chat/${conv.id}').length - 1, 32);
 });
 
 /* --------------------------- functional boot --------------------------- */

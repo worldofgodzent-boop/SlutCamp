@@ -277,9 +277,11 @@ test('pin: exactly 31 thread links exist server-side — no more, no fewer', () 
   // where the invite message itself lives; and the Live Battles
   // broadcast joined with Phase 6 (PumPum Verse) — its bell links
   // each model to her official Notices thread, the same sanctioned
-  // pattern.) Any other bell gaining
-  // a '/#chat/' link (or one of the 30 losing it) trips this count.
-  assert.equal(server.split('/#chat/${conv.id}').length - 1, 31);
+  // pattern; and the Clean Feed announcement joined with the Clean
+  // Feed build — its bell links each model to her announcement
+  // thread, the same sanctioned pattern.) Any other bell gaining
+  // a '/#chat/' link (or one of the 31 losing it) trips this count.
+  assert.equal(server.split('/#chat/${conv.id}').length - 1, 32);
 });
 
 test('pin: non-DM bells keep their links (tip/facetime/live/booking untouched)', () => {
