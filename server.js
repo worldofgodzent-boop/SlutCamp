@@ -184,6 +184,27 @@ function mediaSendCors(req, res, next) {
 }
 app.use('/api/media/send', mediaSendCors);
 
+/* Canonical host (Asce's rule, 2026-10-23): slutcamp.app is the only  */
+/* front door fans should ever see. The service also answers on        */
+/* slutcamp.onrender.com (Render's hostname), and models kept pasting  */
+/* onrender promo links because the app built them from the serving    */
+/* origin (see canonOrigin() in app.js for the client half). A human   */
+/* landing on the onrender host with a normal page request is 301'd    */
+/* to the same path + query on https://slutcamp.app — the browser      */
+/* carries the #fragment across itself, so hash routes like            */
+/* #m/<name> survive. API calls are NOT redirected (API clients,        */
+/* webhooks and health checks on the origin host keep working), and    */
+/* only GET/HEAD page loads move: a POST is never answered with a      */
+/* redirect it cannot faithfully replay. Every other host — the real   */
+/* domain, up.slutcamp.app, localhost — passes through untouched.      */
+/* ------------------------------------------------------------------ */
+app.use((req, res, next) => {
+  if (req.hostname !== 'slutcamp.onrender.com') return next();
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  if (req.path.startsWith('/api/') || req.path === '/ws') return next();
+  return res.redirect(301, 'https://slutcamp.app' + req.url);
+});
+
 app.use(express.json({ limit: '256kb' }));
 
 /* ------------------------------------------------------------------ */
