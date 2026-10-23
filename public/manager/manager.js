@@ -1138,6 +1138,15 @@ async function adminTaxBody() {
 async function adminMoreBody(s) {
   const { data: tfa } = await api('/admin/2fa').catch(() => ({ data: {} }));
   const tfaOn = !!(tfa && tfa.on);
+  // Owner Delegate seat (owner sees the controls; the audit is readable
+  // by both principals and badges every delegate row as Ms. Pink).
+  const isOwner = !!(M.user && M.user.role === 'admin');
+  const { data: dlgData } = isOwner
+    ? await api('/admin/delegate').catch(() => ({ data: {} }))
+    : { data: {} };
+  const dlg = dlgData && dlgData.delegate ? dlgData.delegate : null;
+  const { data: auditData } = await api('/admin/audit?limit=25').catch(() => ({ data: {} }));
+  const auditRows = (auditData && auditData.audit) || [];
   const { data: pkStatus } = await api('/manager/passkey/status').catch(() => ({ data: {} }));
   const { data: pkList } = await api('/auth/passkey/list').catch(() => ({ data: { credentials: [] } }));
   const pkEnrolled = !!(pkStatus && pkStatus.enrolled);
@@ -1172,6 +1181,39 @@ async function adminMoreBody(s) {
         <button class="btn small" id="pk-add">${pkEnrolled ? 'Add this device' : 'Set up Face ID'}</button>
       </div>
       <div class="muted small" id="pk-set-msg" style="margin-top:6px"></div>
+    </div>
+    ${isOwner && dlg ? `
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🪪 Delegate seat — Ms. Pink</div>
+      <div class="muted small">A separate named account (<b>@${esc(dlg.username)}</b>) with full Manager access, its own password + Face ID, and every action audit-logged and badged as Ms. Pink. It is <b>not</b> your login. Turning it off kills her sessions and removes her passkeys instantly — your own login and Face ID are never touched.</div>
+      <div class="row" style="margin-top:8px;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="small" style="font-weight:800;color:${dlg.enabled ? 'var(--green)' : 'var(--muted)'}">${dlg.enabled ? '✅ ENABLED' : '⛔ DISABLED'}</span>
+        <span class="small muted">Face ID: ${dlg.has_passkey ? `✅ ${dlg.passkey_count} passkey${dlg.passkey_count === 1 ? '' : 's'}` : '⛔ none enrolled'}</span>
+        <span class="small muted">Active sessions: ${dlg.active_sessions}</span>
+        ${dlg.enroll_window_open ? '<span class="small" style="color:var(--green)">Passkey setup window: OPEN (15 min)</span>' : ''}
+      </div>
+      <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">
+        ${dlg.enabled
+          ? '<button class="btn small ghost" id="dlg-disable">Disable + revoke</button>'
+          : '<button class="btn small" id="dlg-enable">Enable seat</button>'}
+        <button class="btn small ghost" id="dlg-setpw">Set password</button>
+        <button class="btn small ghost" id="dlg-enroll">Start passkey setup</button>
+      </div>
+      <div id="dlg-pw-body" style="margin-top:8px"></div>
+      <div class="muted small" id="dlg-msg" style="margin-top:6px"></div>
+    </div>` : ''}
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🪪 Delegate activity — audit log</div>
+      <div class="muted small">Everything the delegate seat does in the Manager is recorded here. Rows badged <span class="dlg-badge">🪪 Ms. Pink</span> are delegate actions — never the owner's.</div>
+      <div style="margin-top:6px">
+      ${auditRows.length ? auditRows.map((r) => `
+        <div class="dlg-audit-row">
+          <span class="small"><b>${esc(r.action)}</b>${r.target_id ? ` <span class="muted">#${esc(String(r.target_id))}</span>` : ''}</span>
+          ${r.actor_badge ? '<span class="dlg-badge">🪪 Ms. Pink</span>' : '<span class="small muted">owner</span>'}
+          <span class="small muted">${esc(String(r.created_at || '').slice(0, 16).replace('T', ' '))}</span>
+          ${r.reason ? `<div class="small muted">Reason: ${esc(r.reason)}</div>` : ''}
+        </div>`).join('') : '<div class="empty">No delegate activity yet.</div>'}
+      </div>
     </div>
     <div class="card">
       <div style="font-weight:800;margin-bottom:6px">🔑 Change password</div>
@@ -1446,6 +1488,16 @@ function presenceBuckets(samples, n) {
 
 function wireAdminBody(tab) {
   const go = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
+  // Delegate danger-action rail: when the signed-in principal is the
+  // delegate seat, destructive actions need a stated reason (the
+  // server enforces it too and logs it). Returns the fetch body or
+  // null when the delegate cancels / gives no reason.
+  const dlgBody = (label) => {
+    if (!M.user || M.user.role !== 'owner_delegate') return {};
+    const reason = prompt(`You are the delegate — state the reason for ${label} (recorded in the audit log):`);
+    if (!reason || !reason.trim()) { toast('A reason is required for the delegate seat'); return null; }
+    return { reason: reason.trim() };
+  };
   go('#go-safety', () => M.go('safety'));
   go('#a-logout', () => M.logout());
 
@@ -1575,7 +1627,10 @@ function wireAdminBody(tab) {
           ? `Delete ${name}'s affiliate account for good?\n\n• Her affiliate link stops working\n• Her models keep their accounts (they just stop being attributed to her)\n• She is signed out and can never log in with this account again\n• Her username is freed, so she can sign up fresh later\n\nThis cannot be undone.`
           : `Remove ${name}'s affiliate side only?\n\n• Her affiliate link stops working and her models detach\n• Her ${b.dataset.affRole === 'model' ? 'model' : 'fan'} account, earnings and login stay exactly as they are\n\nThis cannot be undone.`;
         if (!confirm(msg)) return;
-        const { status, data: r } = await api(`/admin/affiliates/${id}`, { method: 'DELETE' });
+        const dbody = dlgBody('deleting this affiliate');
+        if (dbody === null) return;
+        const { status, data: r } = await api(`/admin/affiliates/${id}`, {
+          method: 'DELETE', body: JSON.stringify(dbody) });
         if (status === 200 && r && r.ok) {
           toast(r.mode === 'account_retired'
             ? `🗑 ${name}'s affiliate account is deleted`
@@ -1680,6 +1735,52 @@ function wireAdminBody(tab) {
       const { status } = await api(`/auth/passkey/${b.dataset.pkDel}`, { method: 'DELETE' });
       if (status === 200) { toast('Passkey removed'); return M.reload(); }
       toast('Remove failed');
+    };
+  });
+
+  // 🪪 Delegate seat controls (Settings, owner only — the server
+  // refuses these for the delegate itself).
+  go('#dlg-enable', async () => {
+    const { status } = await api('/admin/delegate/enable', { method: 'POST', body: '{}' });
+    if (status === 200) { toast('🪪 Delegate seat ENABLED'); return M.reload(); }
+    toast('Could not enable the seat');
+  });
+  go('#dlg-disable', async () => {
+    if (!confirm('Disable the delegate seat? Her sessions end now and her passkeys are removed. Your own login is untouched.')) return;
+    const { status } = await api('/admin/delegate/disable', { method: 'POST', body: '{}' });
+    if (status === 200) { toast('⛔ Delegate seat disabled + revoked'); return M.reload(); }
+    toast('Could not disable the seat');
+  });
+  go('#dlg-enroll', async () => {
+    const { status } = await api('/admin/delegate/enroll-passkey', { method: 'POST', body: '{}' });
+    const msg = $('#dlg-msg');
+    if (status === 200) {
+      if (msg) msg.textContent = 'Passkey setup window is OPEN for 15 minutes — Ms. Pink completes Face ID setup in her own browser now.';
+      toast('🪪 Passkey setup window opened (15 min)');
+      return;
+    }
+    toast('Could not open the setup window');
+  });
+  go('#dlg-setpw', () => {
+    const box = $('#dlg-pw-body');
+    if (!box) return;
+    box.innerHTML = `
+      <label class="field">New delegate password${pwField('dlg-pw-new', 'new-password')}</label>
+      <label class="field">Confirm it${pwField('dlg-pw-confirm', 'new-password')}</label>
+      <button class="btn small" id="dlg-pw-save">Save delegate password</button>
+      <div class="muted small" style="margin-top:6px">Type the password you generated for the seat (store it in the Secure Vault — it is never shown again). Saving signs the delegate out everywhere.</div>`;
+    $('#dlg-pw-save').onclick = async () => {
+      const nw = $('#dlg-pw-new').value, cf = $('#dlg-pw-confirm').value;
+      if (!nw || !cf) return toast('Fill in both password fields');
+      if (nw !== cf) return toast("Passwords don't match");
+      if (nw.length < 10) return toast('Delegate password needs at least 10 characters');
+      const { status, data } = await api('/admin/delegate/set-password', {
+        method: 'POST', body: JSON.stringify({ password: nw }),
+      });
+      if (status === 200) { box.innerHTML = ''; toast('✅ Delegate password set'); return; }
+      if (data && data.error === 'default_password') return toast("That's a well-known default password — pick something only you know");
+      if (data && data.error === 'weak_password') return toast('Password too weak — at least 10 characters');
+      toast('Could not set the password — try again');
     };
   });
 
@@ -1939,7 +2040,11 @@ function wireAdminBody(tab) {
   document.querySelectorAll('[data-pt-del]').forEach((b) => {
     b.onclick = async () => {
       if (!confirm(`Remove partner ${b.dataset.ptName}?\n\nTheir models stay on the app — their 20% cut reverts to you. The partner's login stops working.`)) return;
-      await api(`/admin/recruiters/${b.dataset.ptDel}`, { method: 'DELETE' });
+      const dbody = dlgBody('removing this partner');
+      if (dbody === null) return;
+      const { status, data } = await api(`/admin/recruiters/${b.dataset.ptDel}`, {
+        method: 'DELETE', body: JSON.stringify(dbody) });
+      if (status !== 200) { toast((data && data.message) || 'Remove failed — please try again.'); return; }
       toast('Partner removed');
       M.reload();
     };
@@ -2041,7 +2146,10 @@ function wireAdminBody(tab) {
   document.querySelectorAll('[data-m-del]').forEach((b) => {
     b.onclick = async () => {
       if (!confirm('Remove this model permanently?')) return;
-      const { status, data } = await api(`/admin/models/${b.dataset.mDel}`, { method: 'DELETE' });
+      const dbody = dlgBody('removing this model');
+      if (dbody === null) return;
+      const { status, data } = await api(`/admin/models/${b.dataset.mDel}`, {
+        method: 'DELETE', body: JSON.stringify(dbody) });
       if (status === 200 && data && data.ok) { toast('🗑 Model removed.'); M.reload(); }
       else toast((data && data.message) || 'Remove failed — please try again.');
     };
@@ -2295,8 +2403,16 @@ function wireAdminBody(tab) {
   // Settings
   go('#set-comm-go', async () => {
     const commission_pct = parseInt($('#set-comm').value);
+    const body = { commission_pct };
+    // Delegate rail: changing the commission needs a stated reason
+    // (it lands in the audit log). The owner is never prompted.
+    if (M.user && M.user.role === 'owner_delegate') {
+      const reason = prompt('You are the delegate — state the reason for changing the commission (recorded in the audit log):');
+      if (!reason || !reason.trim()) return toast('A reason is required for the delegate seat');
+      body.reason = reason.trim();
+    }
     const { status } = await api('/admin/settings', {
-      method: 'PUT', body: JSON.stringify({ commission_pct }) });
+      method: 'PUT', body: JSON.stringify(body) });
     toast(status === 200 ? `✅ Commission set to ${commission_pct}%` : 'Use 0–90');
     if (status === 200) M.reload();
   });
@@ -2821,6 +2937,7 @@ function pkErrText(e) {
   if (e && e.name === 'NotAllowedError') return 'Face ID was cancelled or timed out — try again.';
   if (e && e.name === 'InvalidStateError') return 'This device already has a passkey for the account.';
   if (e && e.message === 'no_passkey') return 'No Face ID passkey is set up for this account yet.';
+  if (e && e.message === 'enrollment_requires_owner') return 'Passkey setup for the delegate seat must be started by the owner first (Settings → 🪪 Delegate seat → Start passkey setup), then completed here within 15 minutes.';
   if (e && e.message === 'verification_failed') return "Face ID didn't match — try again.";
   return "Face ID didn't work — try again.";
 }
@@ -3007,6 +3124,8 @@ function renderLogin(err) {
     if (r.status === 429) return renderLogin('Too many tries — wait a minute ⏳');
     if (r.status === 403 && data.error === 'not_manager')
       return renderLogin(data.message || 'This app is for the SlutCamp manager account only');
+    if (r.status === 403 && data.error === 'delegate_disabled')
+      return renderLogin(data.message || 'The delegate seat is disabled.');
     if (r.status === 403 && data.error === 'banned') return renderLogin('This account is banned.');
     return renderLogin('Login failed — check your details.');
   };
@@ -3036,7 +3155,7 @@ function renderShell() {
     </div>
     <div class="mgr-shell">
       <aside class="mgr-side">
-        <div class="mgr-side-user">Signed in as <b id="mgr-user">${esc(M.user ? M.user.display_name : '')}</b></div>
+        <div class="mgr-side-user">Signed in as <b id="mgr-user">${esc(M.user ? M.user.display_name : '')}</b>${M.user && M.user.role === 'owner_delegate' ? '<br><span class="dlg-badge">🪪 Ms. Pink · Owner Delegate</span>' : ''}</div>
         <nav id="mgr-nav">
           ${NAV_GROUPS.map(([heading, ids]) => `
             <div class="mgr-nav-group">
@@ -3064,7 +3183,7 @@ function renderShell() {
 (async function boot() {
   if (M.token) {
     const { status, data } = await api('/me');
-    if (status === 200 && data.user && data.user.role === 'admin') {
+    if (status === 200 && data.user && (data.user.role === 'admin' || data.user.role === 'owner_delegate')) {
       M.user = data.user;
       enterManager(); // existing session → Face ID gate / setup / straight in
       return;

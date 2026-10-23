@@ -942,7 +942,7 @@ CREATE TABLE IF NOT EXISTS users (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   username      TEXT UNIQUE NOT NULL COLLATE NOCASE,
   password_hash TEXT NOT NULL,
-  role          TEXT NOT NULL CHECK(role IN ('fan','model','admin','recruiter')),
+  role          TEXT NOT NULL CHECK(role IN ('fan','model','admin','recruiter','owner_delegate')),
   display_name  TEXT NOT NULL,
   dob           TEXT,
   banned        INTEGER NOT NULL DEFAULT 0,
@@ -1919,6 +1919,13 @@ addColumnIfMissing('users', 'email', 'TEXT');
 // is_online toggle decides; 'on'/'off' force what fans SEE. Display/discovery
 // only — never blocks her app, messages or going live (Asce, Oct 14 2026).
 addColumnIfMissing('users', 'presence_override', "TEXT NOT NULL DEFAULT 'auto'");
+/* Owner Delegate seat state (2026-10-23): delegate_enabled is the
+ * owner's on/off switch for the mspink seat (0 = seat ships dark:
+ * sign-in refused, sessions dead). delegate_enroll_until is the
+ * epoch-ms deadline of an owner-opened passkey enrollment window —
+ * the delegate may only register a passkey while a window is open. */
+addColumnIfMissing('users', 'delegate_enabled', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('users', 'delegate_enroll_until', 'TEXT');
 
 // Model welcome celebration: welcomed_at NULL = not yet welcomed. Everyone
 // who already has an account when this ships counts as welcomed — only NEW
@@ -2123,6 +2130,36 @@ function affiliateFlagsFor(user) {
         SELECT id, username, password_hash, role, display_name, dob, banned, created_at FROM users;
       DROP TABLE users;
       ALTER TABLE users_new RENAME TO users;
+    `);
+  } finally {
+    db.exec('PRAGMA foreign_keys=ON');
+  }
+})();
+
+/* Allow the 'owner_delegate' role (Owner Delegate seat, approved by
+ * Asce 2026-10-23): rebuild the users table if its CHECK doesn't
+ * include the role yet. Unlike the recruiter rebuild above, this one
+ * preserves the live table's exact DDL (only the role CHECK is
+ * widened) and copies every column the live table actually has, so
+ * the migration is safe on a mature database. */
+(function allowDelegateRole() {
+  let row = null;
+  try { row = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get(); } catch (e) { /* ignore */ }
+  if (!row || !row.sql || row.sql.includes("'owner_delegate'")) return;
+  const newSql = row.sql.replace(/CHECK\s*\(\s*role\s+IN\s*\(([^)]*)\)\s*\)/i,
+    (m, inner) => `CHECK(role IN (${inner.trim()},'owner_delegate'))`);
+  if (newSql === row.sql) return;
+  const cols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
+  if (!cols.length) return;
+  const colList = cols.join(', ');
+  const body = newSql.substring(newSql.indexOf('('));
+  db.exec('PRAGMA foreign_keys=OFF');
+  try {
+    db.exec(`
+      CREATE TABLE users_delegate_new ${body};
+      INSERT INTO users_delegate_new (${colList}) SELECT ${colList} FROM users;
+      DROP TABLE users;
+      ALTER TABLE users_delegate_new RENAME TO users;
     `);
   } finally {
     db.exec('PRAGMA foreign_keys=ON');
@@ -3407,6 +3444,25 @@ db.exec(`CREATE TABLE IF NOT EXISTS webauthn_credentials (
   last_used_at TEXT
 )`);
 addColumnIfMissing('sessions', 'passkey_verified_at', 'TEXT'); // set when this session passed the Manager Face ID step-up; enforced by requirePasskeyStepUp once the admin has a passkey enrolled
+/* Manager audit log (Owner Delegate, 2026-10-23): EVERY action the
+ * owner_delegate seat takes through the Manager gates lands here —
+ * actor, action, target, reason/detail, timestamp — owner-visible in
+ * the Manager, badged as Ms. Pink so delegate work is never mistaken
+ * for the owner's own. Owner (admin) seat-management actions are
+ * logged too, with actor = the admin. */
+db.exec(`CREATE TABLE IF NOT EXISTS manager_audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_user_id INTEGER NOT NULL,
+  actor_username TEXT NOT NULL,
+  actor_role TEXT NOT NULL,
+  action TEXT NOT NULL,
+  target_type TEXT,
+  target_id TEXT,
+  detail TEXT,
+  reason TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+)`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_manager_audit_created ON manager_audit_log(created_at DESC)');
 const bannedGuests = new Set();  // guest tokens banned by admin (in-memory, MVP)
 const socketsBySubject = new Map(); // 'u:123' | 'g:token' -> Set<ws>
 const adminTempTokens = new Map();  // tempToken -> { userId, expiresAt } (2FA pending)
@@ -3628,6 +3684,215 @@ const requireRole = (...roles) => (req, res, next) => {
   req.user = req.ident.user;
   next();
 };
+
+/* ------------------------------------------------------------------ */
+/* Owner Delegate (approved by Asce 2026-10-23 — "Build the delegate  */
+/* for yourself… The moderator is for the humans").                    */
+/*                                                                    */
+/* A SEPARATE named seat (username mspink, role 'owner_delegate')     */
+/* with full Manager parity, reached through ONE explicit capability  */
+/* helper — isManagerPrincipal — used by every Manager gate, never    */
+/* by scattering role==='admin' edits. The moderator role's            */
+/* default-deny is untouched by this: only admin + owner_delegate     */
+/* are Manager principals.                                            */
+/*                                                                    */
+/* Seat rules on top of parity:                                       */
+/* - Ships DISABLED (users.delegate_enabled = 0): sign-in refused     */
+/*   until the owner enables it from his own account.                 */
+/* - NO bootstrap pass: with no delegate passkey enrolled the seat    */
+/*   stays locked; every delegate session must pass the WebAuthn      */
+/*   step-up, and delegate passkey enrollment only runs inside an     */
+/*   owner-opened window (users.delegate_enroll_until).               */
+/* - Delegate sessions expire after 12h (owner sessions do not).      */
+/* - Every delegate Manager mutation is written to manager_audit_log  */
+/*   and the sensitive ones bell the owner.                           */
+/* - Danger actions (account deletion, commission change, processor   */
+/*   settings) require a reason when the delegate does them.          */
+/* ------------------------------------------------------------------ */
+const DELEGATE_USERNAME = 'mspink';
+const DELEGATE_SESSION_MAX_MS = 12 * 60 * 60 * 1000;
+
+const isManagerPrincipal = (user) =>
+  !!user && (user.role === 'admin' || user.role === 'owner_delegate');
+const isDelegateUser = (user) => !!user && user.role === 'owner_delegate';
+
+function delegateSeatUser() {
+  return db.prepare("SELECT * FROM users WHERE role = 'owner_delegate' ORDER BY id ASC LIMIT 1").get() || null;
+}
+function delegateSeatEnabled(user) {
+  return !!user && Number(user.delegate_enabled || 0) === 1;
+}
+function delegateEnrollWindowOpen(user) {
+  if (!user || !user.delegate_enroll_until) return false;
+  return Number(user.delegate_enroll_until) > Date.now();
+}
+
+/* Manager gate with parity: admin OR an ENABLED delegate seat. A
+ * disabled delegate is refused here even with a live session (the
+ * owner flipping the switch kills access immediately; revocation
+ * also deletes the sessions + passkeys outright). */
+const requireManager = (req, res, next) => {
+  if (req.ident.kind !== 'user' || !isManagerPrincipal(req.ident.user)) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  if (isDelegateUser(req.ident.user) && !delegateSeatEnabled(req.ident.user)) {
+    return res.status(403).json({ error: 'delegate_disabled' });
+  }
+  req.user = req.ident.user;
+  next();
+};
+
+/* Manager step-up for principals. Runs AFTER requireManager
+ * (req.user set). Admin keeps the long-standing bootstrap rule (no
+ * enrolled passkey → pass; enrolled → session must be verified).
+ * The delegate is stricter, by design: no enrolled passkey → locked;
+ * session must be step-up verified; sessions older than 12h die. */
+const requireManagerStepUp = (req, res, next) => {
+  if (!req.user) return next();
+  if (!isDelegateUser(req.user)) return requirePasskeyStepUp(req, res, next);
+  const token = (req.headers.authorization || '').slice(7);
+  const sess = token
+    ? db.prepare('SELECT created_at FROM sessions WHERE token = ?').get(token) : null;
+  if (sess && sess.created_at) {
+    const born = Date.parse(String(sess.created_at).replace(' ', 'T') + 'Z');
+    if (Number.isFinite(born) && Date.now() - born > DELEGATE_SESSION_MAX_MS) {
+      deleteSession(token);
+      return res.status(403).json({ error: 'session_expired' });
+    }
+  }
+  if (!adminHasPasskey(req.user.id)) {
+    return res.status(403).json({ error: 'passkey_required', enrolled: false });
+  }
+  if (!sessionPasskeyVerified(token)) {
+    return res.status(403).json({ error: 'passkey_required', enrolled: true });
+  }
+  return next();
+};
+
+/* Audit writer. Actor is taken from the request's authenticated
+ * user; detail is a small curated object (never raw bodies — bodies
+ * can carry passwords). Failures here must never fail the action. */
+function logManagerAudit(actor, action, opts = {}) {
+  if (!actor) return;
+  try {
+    db.prepare(`INSERT INTO manager_audit_log
+      (actor_user_id, actor_username, actor_role, action, target_type, target_id, detail, reason)
+      VALUES (?,?,?,?,?,?,?,?)`)
+      .run(actor.id, actor.username, actor.role, String(action || '').slice(0, 120),
+        opts.targetType || null,
+        opts.targetId != null ? String(opts.targetId).slice(0, 60) : null,
+        opts.detail ? JSON.stringify(opts.detail).slice(0, 1000) : null,
+        opts.reason ? String(opts.reason).slice(0, 500) : null);
+  } catch (e) { /* audit must never break the Manager */ }
+}
+
+/* Bell every OWNER (role='admin' — never the delegate) about delegate
+ * activity: sign-ins and sensitive actions. Wrapped like every bell:
+ * a failure here never blocks the underlying action. */
+function bellOwnersDelegateActivity(actionLabel) {
+  try {
+    const admins = db.prepare("SELECT id, language FROM users WHERE role = 'admin'").all();
+    for (const a of admins) {
+      try {
+        notifyUser(a.id, 'delegate_alert',
+          srv('bell_delegate_title', a.language),
+          srv('bell_delegate_body', a.language, { action: actionLabel }),
+          '/manager');
+      } catch (e) { /* one admin's bell must not block the others */ }
+    }
+  } catch (e) { /* bells are a bonus; the action is the deliverable */ }
+}
+
+/* Delegate mutations of the Manager surface are sensitive when they
+ * move money, ban, change settings, or create accounts — those bell
+ * the owner in addition to the audit row. Matched on METHOD + route
+ * template, never on raw URLs. */
+const DELEGATE_SENSITIVE_ROUTES = [
+  'POST /api/admin/fans/:id/credits',
+  'POST /api/admin/fans/:id/ban',
+  'POST /api/admin/fans/:id/unban',
+  'POST /api/admin/fans/:id/freeze',
+  'POST /api/admin/fans/:id/unfreeze',
+  'POST /api/admin/withdrawals/:id/pay',
+  'POST /api/admin/withdrawals/:id/reject',
+  'POST /api/admin/payouts/:id',
+  'PUT /api/admin/settings',
+  'POST /api/admin/crypto-settings',
+  'POST /api/admin/models',
+  'DELETE /api/admin/models/:id',
+  'POST /api/admin/recruiters',
+  'DELETE /api/admin/affiliates/:id',
+  'DELETE /api/admin/recruiters/:id',
+  'POST /api/admin/ccbill/orders/:id/credit',
+  'POST /api/admin/refunds',
+];
+
+/* Trailing middleware of the Manager chain: after the handler runs,
+ * a SUCCESSFUL (2xx/3xx) mutation by the delegate is audit-logged
+ * with its route template + target id + stated reason, and the
+ * sensitive ones bell the owner. Reads (GET) are not logged. */
+const auditDelegateMutation = (req, res, next) => {
+  if (!req.user || !isDelegateUser(req.user)) return next();
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+  res.on('finish', () => {
+    try {
+      if (res.statusCode >= 400) return;
+      const routePath = req.route && req.route.path ? req.route.path : req.path;
+      // Normalize numeric ids in the fallback path so the action is
+      // always the route template (sensitive-route matching uses it).
+      const action = `${req.method} ${String(routePath).replace(/\/\d+(?=\/|$)/g, '/:id')}`;
+      const targetId = req.params && (req.params.id || req.params.userId) || null;
+      const reason = req.body && typeof req.body.reason === 'string' ? req.body.reason : null;
+      logManagerAudit(req.user, action, {
+        targetType: 'route', targetId, reason,
+        detail: { status: res.statusCode },
+      });
+      if (DELEGATE_SENSITIVE_ROUTES.includes(action)) {
+        bellOwnersDelegateActivity(action);
+      }
+    } catch (e) { /* never break the response */ }
+  });
+  return next();
+};
+
+/* Danger-action reason rule (delegate only): deleting accounts,
+ * changing the commission, and changing processor settings require a
+ * stated reason, which lands in the audit row. Admin is unaffected —
+ * his house, his rules; the delegate seat carries the extra rail. */
+function delegateReasonRequired(req, res) {
+  if (!isDelegateUser(req.user)) return false;
+  const reason = req.body && typeof req.body.reason === 'string' ? req.body.reason.trim() : '';
+  if (reason) return false;
+  res.status(400).json({ error: 'reason_required',
+    message: 'The delegate seat must state a reason for this action. It is recorded in the audit log.' });
+  return true;
+}
+
+/* Protected accounts for DELEGATE-initiated model deletion: the
+ * standing never-purge set (any admin, the house account, fandemo,
+ * the CCBill review account) PLUS any model with pictures on her
+ * profile or an approved ID verification — real models who joined.
+ * The owner's own delete keeps the existing money-history guard
+ * only; this wider net is the delegate's rail. */
+function delegateDeleteProtected(user) {
+  if (!user) return true;
+  if (isAffiliateDeleteProtected(user)) return true;
+  try {
+    const m = db.prepare('SELECT photo_url, public_photo_url, gallery_photos FROM models WHERE user_id = ?').get(user.id);
+    if (m) {
+      if (m.photo_url || m.public_photo_url) return true;
+      try {
+        const g = JSON.parse(m.gallery_photos || '[]');
+        if (Array.isArray(g) && g.length) return true;
+      } catch (e) { /* malformed gallery JSON is not a picture */ }
+    }
+    const idv = db.prepare(
+      "SELECT id FROM id_verifications WHERE model_id = ? AND co_performer_id IS NULL AND status = 'approved' LIMIT 1"
+    ).get(user.id);
+    if (idv) return true;
+  } catch (e) { /* tables exist on every supported schema */ }
+  return false;
+}
 
 /* Fan-facing viewer doors, widened for the house account (owner comp,
  * 2026-10-22): fans pass as always; the house account (a model-role
@@ -4270,6 +4535,8 @@ const SRV = {
   ann_profile_media_bell_body: { en: 'Fans see up to 10 pictures and both your profile videos. Add yours in Settings 💋', es: 'Los fans ven hasta 10 fotos y tus dos videos de perfil. Agrega los tuyos en Ajustes 💋', pt: 'Os fãs veem até 10 fotos e os seus dois vídeos de perfil. Adicione os seus em Configurações 💋', fr: 'Les fans voient jusqu\'à 10 photos et tes deux vidéos de profil. Ajoute les tiennes dans Paramètres 💋', de: 'Fans sehen bis zu 10 Bilder und beide deiner Profilvideos. Füge deine in den Einstellungen hinzu 💋', ru: 'Фанаты видят до 10 фото и оба твоих видео профиля. Добавь свои в Настройках 💋', ja: 'ファンには写真が最大10枚とプロフィール動画2本の両方が表示されます。設定で追加してね 💋', zh: '粉丝能看到多达 10 张照片和你的两段主页视频。在设置中添加 💋', ko: '팬들은 사진 최대 10장과 프로필 영상 두 개를 모두 봐요. 설정에서 추가하세요 💋', it: 'I fan vedono fino a 10 foto ed entrambi i tuoi video profilo. Aggiungi i tuoi in Impostazioni 💋', pl: 'Fani widzą do 10 zdjęć i oba Twoje filmy profilowe. Dodaj swoje w Ustawieniach 💋', nl: 'Fans zien tot 10 foto\'s en allebei je profielvideo\'s. Voeg de jouwe toe in Instellingen 💋', tr: 'Hayranlar 10 fotoğrafını ve iki profil videonu da görüyor. Seninkileri Ayarlar\'dan ekle 💋' },
   suggest_admin_title: { en: '💡 New suggestion from {username}', es: '💡 Nueva sugerencia de {username}', pt: '💡 Nova sugestão de {username}', fr: '💡 Nouvelle suggestion de {username}', de: '💡 Neuer Vorschlag von {username}', ru: '💡 Новое предложение от {username}', ja: '💡 {username} さんからの新しい提案', zh: '💡 来自 {username} 的新建议', ko: '💡 {username}님의 새 건의', it: '💡 Nuovo suggerimento da {username}', pl: '💡 Nowa sugestia od {username}', nl: '💡 Nieuwe suggestie van {username}', tr: '💡 {username} kullanıcısından yeni öneri' },
   bell_new_model_title: { en: '🆕 New model joined', es: '🆕 Nueva modelo registrada', pt: '🆕 Nova modelo cadastrada', fr: '🆕 Nouveau modèle inscrit', de: '🆕 Neues Model registriert', ru: '🆕 Новая модель присоединилась', ja: '🆕 新しいモデルが参加しました', zh: '🆕 新模特加入', ko: '🆕 새 모델이 가입했어요', it: '🆕 Nuova modella registrata', pl: '🆕 Nowa modelka dołączyła', nl: '🆕 Nieuw model aangemeld', tr: '🆕 Yeni model katıldı' },
+  bell_delegate_title: { en: '🪪 Ms. Pink — delegate activity', es: '🪪 Ms. Pink — actividad de delegada', pt: '🪪 Ms. Pink — atividade de delegada', fr: '🪪 Ms. Pink — activité de déléguée', de: '🪪 Ms. Pink — Aktivität der Vertreterin', ru: '🪪 Ms. Pink — действия представителя', ja: '🪪 Ms. Pink — 代理人のアクティビティ', zh: '🪪 Ms. Pink — 代理人动态', ko: '🪪 Ms. Pink — 대리인 활동', it: '🪪 Ms. Pink — attività della delegata', pl: '🪪 Ms. Pink — aktywność delegatki', nl: '🪪 Ms. Pink — activiteit van gedelegeerde', tr: '🪪 Ms. Pink — delege etkinliği' },
+  bell_delegate_body: { en: 'Your owner delegate (Ms. Pink) did: {action}. Full details are in the Manager audit log.', es: 'Tu delegada propietaria (Ms. Pink) hizo: {action}. Los detalles completos están en el registro de auditoría del Manager.', pt: 'Sua delegada proprietária (Ms. Pink) fez: {action}. Os detalhes completos estão no registro de auditoria do Manager.', fr: 'Votre déléguée propriétaire (Ms. Pink) a fait : {action}. Tous les détails sont dans le journal d\'audit du Manager.', de: 'Deine Eigentümer-Vertreterin (Ms. Pink) hat Folgendes getan: {action}. Alle Details stehen im Audit-Protokoll des Managers.', ru: 'Ваш представитель владельца (Ms. Pink) выполнила: {action}. Полные сведения — в журнале аудита Manager.', ja: 'オーナー代理人（Ms. Pink）が行いました：{action}。詳細はManagerの監査ログにあります。', zh: '您的所有者代理人（Ms. Pink）执行了：{action}。完整详情见 Manager 审计日志。', ko: '소유자 대리인(Ms. Pink)이 수행했어요: {action}. 전체 내역은 Manager 감사 로그에 있어요.', it: 'La tua delegata proprietaria (Ms. Pink) ha fatto: {action}. I dettagli completi sono nel registro di controllo del Manager.', pl: 'Twoja delegatka właściciela (Ms. Pink) wykonała: {action}. Pełne szczegóły znajdują się w dzienniku audytu Managera.', nl: 'Je eigenaar-gedelegeerde (Ms. Pink) deed: {action}. Alle details staan in het auditlogboek van de Manager.', tr: 'Sahip delegentiz (Ms. Pink) şunu yaptı: {action}. Tüm ayrıntılar Manager denetim günlüğünde.' },
   bell_section_female: { en: 'Female', es: 'Femenina', pt: 'Feminina', fr: 'Femmes', de: 'Frauen', ru: 'Женщины', ja: '女性', zh: '女性', ko: '여성', it: 'Donne', pl: 'Kobiety', nl: 'Vrouwen', tr: 'Kadın' },
   bell_section_male: { en: 'Male', es: 'Masculina', pt: 'Masculina', fr: 'Hommes', de: 'Männer', ru: 'Мужчины', ja: '男性', zh: '男性', ko: '남성', it: 'Uomini', pl: 'Mężczyźni', nl: 'Mannen', tr: 'Erkek' },
   bell_section_couple: { en: 'Couple', es: 'Parejas', pt: 'Casais', fr: 'Couples', de: 'Paare', ru: 'Пары', ja: 'カップル', zh: '情侣', ko: '커플', it: 'Coppie', pl: 'Pary', nl: 'Stellen', tr: 'Çift' },
@@ -6015,6 +6282,26 @@ function announceSuggestionBoxToFans() {
   return sent;
 }
 
+/* Owner Delegate seat — created on EVERY boot if missing (production
+ * included), and it ships DISABLED with NO usable password: the stored
+ * hash is of a random throwaway secret that is never recorded anywhere,
+ * so sign-in is impossible until the owner sets a real password through
+ * the Manager seat controls (POST /api/admin/delegate/set-password) and
+ * enables the seat. No password is created in code, chat, or any file. */
+/* NOTE: invoked AFTER seed() below — seed() only populates an EMPTY
+ * users table, so the seat must never be the first row in it. */
+function ensureDelegateSeat() {
+  try {
+    if (db.prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)').get(DELEGATE_USERNAME)) return;
+    const throwaway = crypto.randomBytes(48).toString('hex'); // never stored, never logged
+    const id = createUser(DELEGATE_USERNAME, throwaway, 'owner_delegate', 'Ms. Pink', null);
+    db.prepare('UPDATE users SET delegate_enabled = 0 WHERE id = ?').run(id);
+    console.log('[delegate] owner-delegate seat created DISABLED (owner sets its password in the Manager)');
+  } catch (e) {
+    console.log('[delegate] seat ensure failed:', e.message);
+  }
+}
+
 function seed() {
   // Demo accounts are DEV-ONLY and strictly opt-in (SEED_DEMO=1). A seeded
   // fan carries $100 of test credits and every seeded password is printed
@@ -6053,6 +6340,7 @@ function seed() {
   console.log('Seeded: admin/admin123 · bunny|stacey|bella/model123 · fandemo/fan123 ($100)');
 }
 seed();
+ensureDelegateSeat();
 /* The official house account's username (see houseAccountId(), far   */
 /* below). Declared HERE, before the boot-time announcement sweeps    */
 /* run: since the Oct 18 2026 notices build those sweeps resolve the  */
@@ -7307,7 +7595,7 @@ app.post('/api/auth/login', (req, res) => {
   // "you're on the manager account" interstitial instead of dropping him
   // straight into the app. Admin API endpoints stay unreachable from the
   // public app regardless (X-Manager header rule above).
-  res.json({ token, user: getUserPublic(user), manager_account: user.role === 'admin' });
+  res.json({ token, user: getUserPublic(user), manager_account: isManagerPrincipal(user) });
 });
 
 app.post('/api/auth/logout', identMiddleware, requireUser, (req, res) => {
@@ -7449,6 +7737,13 @@ function touchCredential(credRow, newCounter) {
 
 // --- Enrollment (any logged-in user): step 1, ceremony options ---
 app.post('/api/auth/passkey/register-options', identMiddleware, requireUser, async (req, res) => {
+  // Delegate seat: enrollment ONLY inside an owner-opened window (the
+  // owner starts it from his own session; Ms. Pink completes it in her
+  // browser). Everyone else's enrollment flow is untouched.
+  if (isDelegateUser(req.user) && !delegateEnrollWindowOpen(req.user)) {
+    return res.status(403).json({ error: 'enrollment_requires_owner',
+      message: 'Passkey setup for the delegate seat must be started by the owner in the Manager.' });
+  }
   try {
     const { rpID } = webauthnRp(req);
     const options = await generateRegistrationOptions({
@@ -7474,6 +7769,10 @@ app.post('/api/auth/passkey/register-options', identMiddleware, requireUser, asy
 
 // --- Enrollment (any logged-in user): step 2, verify + store ---
 app.post('/api/auth/passkey/register-verify', identMiddleware, requireUser, async (req, res) => {
+  if (isDelegateUser(req.user) && !delegateEnrollWindowOpen(req.user)) {
+    return res.status(403).json({ error: 'enrollment_requires_owner',
+      message: 'Passkey setup for the delegate seat must be started by the owner in the Manager.' });
+  }
   const response = (req.body && req.body.response) || req.body;
   const challenge = takeChallenge('reg:' + req.user.id);
   if (!challenge) return res.status(400).json({ error: 'challenge_expired' });
@@ -7508,6 +7807,12 @@ app.post('/api/auth/passkey/register-verify', identMiddleware, requireUser, asyn
       cred.counter || 0,
       JSON.stringify(cred.transports || []),
       label);
+  if (isDelegateUser(req.user)) {
+    // One window, one enrollment: close it and tell the owner.
+    db.prepare('UPDATE users SET delegate_enroll_until = NULL WHERE id = ?').run(req.user.id);
+    logManagerAudit(req.user, 'passkey_enrolled', { detail: { label } });
+    bellOwnersDelegateActivity('enrolled a Manager passkey');
+  }
   res.json({ ok: true });
 });
 
@@ -7552,14 +7857,16 @@ app.post('/api/auth/passkey/login-verify', async (req, res) => {
   if (user.banned) return res.status(403).json({ error: 'banned' });
   if (user.status === 'frozen') return res.status(403).json({ error: 'account_frozen',
     message: 'Your account has been frozen due to a billing dispute. Contact support.' });
+  if (isDelegateUser(user) && !delegateSeatEnabled(user))
+    return res.status(403).json({ error: 'delegate_disabled' });
   const token = createSession(user.id);
   // TN periodic re-verification stamp (see password login). Dormant-safe.
   try { avSvc.stampReattestation(user.id); } catch (e) { /* never block a login */ }
-  res.json({ token, user: getUserPublic(user), manager_account: user.role === 'admin' });
+  res.json({ token, user: getUserPublic(user), manager_account: isManagerPrincipal(user) });
 });
 
 // --- Manager step-up: step 1 (admin session required) ---
-app.post('/api/manager/passkey/stepup-options', identMiddleware, requireUser, requireRole('admin'), async (req, res) => {
+app.post('/api/manager/passkey/stepup-options', identMiddleware, requireUser, requireManager, async (req, res) => {
   const creds = credsOfUser(req.user.id);
   if (creds.length === 0) return res.status(400).json({ error: 'no_passkey' });
   try {
@@ -7581,7 +7888,7 @@ app.post('/api/manager/passkey/stepup-options', identMiddleware, requireUser, re
 });
 
 // --- Manager step-up: step 2 — stamps the CURRENT session as passkey-verified ---
-app.post('/api/manager/passkey/stepup-verify', identMiddleware, requireUser, requireRole('admin'), async (req, res) => {
+app.post('/api/manager/passkey/stepup-verify', identMiddleware, requireUser, requireManager, async (req, res) => {
   const response = (req.body || {}).response || req.body;
   const result = await verifyPasskeyAssertion(req, req.user, 'stepup:' + req.user.id, response);
   if (!result) return res.status(401).json({ error: 'verification_failed' });
@@ -7594,7 +7901,7 @@ app.post('/api/manager/passkey/stepup-verify', identMiddleware, requireUser, req
 // --- Manager Face ID status for the CURRENT admin session ---
 // enrolled: the admin has ≥1 passkey (so the step-up is enforced).
 // verified: this session has already passed the step-up.
-app.get('/api/manager/passkey/status', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+app.get('/api/manager/passkey/status', identMiddleware, requireUser, requireManager, (req, res) => {
   const token = (req.headers.authorization || '').slice(7);
   res.json({
     enrolled: adminHasPasskey(req.user.id),
@@ -7663,10 +7970,21 @@ app.post('/api/manager/login', (req, res) => {
   if (!user || !bcrypt.compareSync(password || '', user.password_hash))
     return res.status(401).json({ error: 'bad_login' });
   if (user.banned) return res.status(403).json({ error: 'banned' });
-  if (user.role !== 'admin') return res.status(403).json({ error: 'not_manager',
+  if (!isManagerPrincipal(user)) return res.status(403).json({ error: 'not_manager',
     message: 'This app is for the SlutCamp manager account only' });
+  // The delegate seat ships DISABLED: until the owner enables it, even
+  // the correct password is refused here (and the seat has no usable
+  // password at all until the owner sets one — see the seat controls).
+  if (isDelegateUser(user) && !delegateSeatEnabled(user))
+    return res.status(403).json({ error: 'delegate_disabled',
+      message: 'The delegate seat is disabled. The owner can enable it in the Manager.' });
 
   const token = createSession(user.id);
+  if (isDelegateUser(user)) {
+    // Owner visibility from the very first step: audit + bell.
+    logManagerAudit(user, 'manager_login', { detail: { ip: clientIp(req) } });
+    bellOwnersDelegateActivity('signed in to the Manager');
+  }
   res.json({ token, user: getUserPublic(user), manager_account: true });
 });
 
@@ -11765,7 +12083,7 @@ app.post('/api/affiliate/merge', identMiddleware, requireUser, (req, res) => {
 });
 
 // Admin: list all models with contract signature status
-app.get('/api/admin/contracts', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+app.get('/api/admin/contracts', identMiddleware, requireUser, requireManager, requireManagerStepUp, auditDelegateMutation, (req, res) => {
   const rows = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.banned,
            cs.contract_version, cs.signed_at, cs.display_name AS signed_name
@@ -11987,7 +12305,7 @@ app.post('/api/model/release/agree', identMiddleware, requireUser, requireRole('
 // carries co_performer_id, the displayed name is the PARTNER's, and
 // username stays the account owner's — the Manager renders them
 // labeled as co-performers of @owner so the two kinds never blur.
-app.get('/api/admin/id-verifications', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+app.get('/api/admin/id-verifications', identMiddleware, requireUser, requireManager, requireManagerStepUp, auditDelegateMutation, (req, res) => {
   const rows = db.prepare(`
     SELECT v.id, v.model_id, v.co_performer_id, v.status, v.submitted_at, v.reviewed_at, v.reviewer_note,
            (v.consent_form_path IS NOT NULL) AS consent_on_file,
@@ -12029,7 +12347,7 @@ app.get('/api/admin/id-verifications', identMiddleware, requireUser, requireRole
 // back / selfie) for the issuing admin and dies at expiry (2 min) — the
 // review screen needs all three images, so tokens are NOT single-use.
 const idPhotoTokens = new Map(); // token -> { verificationId, adminId, expires }
-app.post('/api/admin/id-verifications/:id/photo-token', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+app.post('/api/admin/id-verifications/:id/photo-token', identMiddleware, requireUser, requireManager, requireManagerStepUp, auditDelegateMutation, (req, res) => {
   const v = db.prepare('SELECT id FROM id_verifications WHERE id = ?').get(req.params.id);
   if (!v) return res.status(404).json({ error: 'not_found' });
   const now = Date.now();
@@ -12058,8 +12376,10 @@ app.get('/api/admin/id-verifications/:id/photo/:which', (req, res) => {
     } else return res.status(403).json({ error: 'bad_token' });
   } else {
     const ident = getIdentity(req);
-    if (!ident || ident.kind !== 'user' || ident.user.role !== 'admin')
+    if (!ident || ident.kind !== 'user' || !isManagerPrincipal(ident.user))
       return res.status(401).json({ error: 'login_required' });
+    if (isDelegateUser(ident.user) && !delegateSeatEnabled(ident.user))
+      return res.status(403).json({ error: 'delegate_disabled' });
     adminId = ident.user.id;
   }
   if (!adminId) return res.status(403).json({ error: 'forbidden' });
@@ -12087,7 +12407,7 @@ app.get('/api/admin/id-verifications/:id/photo/:which', (req, res) => {
 // (Sections Phase 2) — the camera rule reads co_performers.status,
 // the queue reads id_verifications.status, and they must never
 // disagree.
-app.post('/api/admin/id-verifications/:id/approve', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+app.post('/api/admin/id-verifications/:id/approve', identMiddleware, requireUser, requireManager, requireManagerStepUp, auditDelegateMutation, (req, res) => {
   const v = db.prepare('SELECT * FROM id_verifications WHERE id = ?').get(req.params.id);
   if (!v) return res.status(404).json({ error: 'not_found' });
   // Packet completeness (Release in Onboarding, Oct 22 2026): an OWN
@@ -12112,7 +12432,7 @@ app.post('/api/admin/id-verifications/:id/approve', identMiddleware, requireUser
 });
 
 // Admin: reject an ID verification (with note so she knows what to fix)
-app.post('/api/admin/id-verifications/:id/reject', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+app.post('/api/admin/id-verifications/:id/reject', identMiddleware, requireUser, requireManager, requireManagerStepUp, auditDelegateMutation, (req, res) => {
   const v = db.prepare('SELECT * FROM id_verifications WHERE id = ?').get(req.params.id);
   if (!v) return res.status(404).json({ error: 'not_found' });
   const note = String(req.body.note || '').trim().slice(0, 300);
@@ -12131,7 +12451,7 @@ app.post('/api/admin/id-verifications/:id/reject', identMiddleware, requireUser,
 // themselves stay in private storage, viewable only in the ID Checks tab;
 // this packet is the index record tying the performer, her verification,
 // and her signed agreement together for the records custodian.
-app.get('/api/admin/id-verifications/:id/2257', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+app.get('/api/admin/id-verifications/:id/2257', identMiddleware, requireUser, requireManager, requireManagerStepUp, auditDelegateMutation, (req, res) => {
   const v = db.prepare('SELECT * FROM id_verifications WHERE id = ?').get(req.params.id);
   if (!v) return res.status(404).json({ error: 'not_found' });
   const u = db.prepare(`SELECT id, username, display_name, role, dob, created_at,
@@ -12474,7 +12794,7 @@ function taxDashboardRows() {
   `).all();
 }
 
-app.get('/api/admin/tax', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+app.get('/api/admin/tax', identMiddleware, requireUser, requireManager, requireManagerStepUp, auditDelegateMutation, (req, res) => {
   const rows = taxDashboardRows().map((r) => ({
     id: r.id, username: r.username, display_name: r.display_name, role: r.role,
     earner_name: r.earner_name, recruiter_city: r.recruiter_city, banned: !!r.banned,
@@ -12498,7 +12818,7 @@ function csvCell(v) {
 }
 
 // CSV for the accountant: legal names, addresses, totals — NO tax IDs.
-app.get('/api/admin/tax/export', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+app.get('/api/admin/tax/export', identMiddleware, requireUser, requireManager, requireManagerStepUp, auditDelegateMutation, (req, res) => {
   const year = new Date().getFullYear();
   const rows = db.prepare(`
     SELECT tp.legal_name, tp.business_name, tp.tax_id_type, tp.address_line1, tp.address_line2,
@@ -14250,7 +14570,114 @@ app.post('/api/calls/:id/explicit-decline', identMiddleware, requireUser, requir
 /* Admin SMS 2FA settings (Twilio)                                     */
 /* ------------------------------------------------------------------ */
 
-const adminOnly = [identMiddleware, requireUser, requireRole('admin'), requirePasskeyStepUp];
+const adminOnly = [identMiddleware, requireUser, requireManager, requireManagerStepUp, auditDelegateMutation];
+/* Owner-only chain for the delegate seat controls themselves: the
+ * delegate can run the whole Manager but can never enable, disable,
+ * re-password, or enroll ITSELF — those stay with role='admin'. */
+const ownerOnly = [identMiddleware, requireUser, requireRole('admin'), requirePasskeyStepUp];
+
+/* ------------------------------------------------------------------ */
+/* Owner Delegate seat controls (OWNER ONLY — the delegate can never  */
+/* manage itself). The seat ships disabled with NO usable password:   */
+/* the owner sets the password here, from his own stepped-up session. */
+/* The password is typed by the owner into this Manager flow (having  */
+/* generated/stored it via the Secure Vault) — it is never created    */
+/* in code, never logged, and never appears in any response but the   */
+/* single set call's own { ok } (the value itself is never echoed).   */
+/* ------------------------------------------------------------------ */
+function delegateSeatState() {
+  const seat = delegateSeatUser();
+  if (!seat) return null;
+  const creds = db.prepare('SELECT COUNT(*) AS n FROM webauthn_credentials WHERE user_id = ?').get(seat.id).n;
+  const sessions = db.prepare('SELECT COUNT(*) AS n FROM sessions WHERE user_id = ?').get(seat.id).n;
+  return {
+    id: seat.id,
+    username: seat.username,
+    display_name: seat.display_name,
+    role: seat.role,
+    enabled: delegateSeatEnabled(seat),
+    has_passkey: creds > 0,
+    passkey_count: creds,
+    active_sessions: sessions,
+    enroll_window_open: delegateEnrollWindowOpen(seat),
+    created_at: seat.created_at,
+  };
+}
+
+app.get('/api/admin/delegate', ...ownerOnly, (req, res) => {
+  const state = delegateSeatState();
+  if (!state) return res.status(404).json({ error: 'no_delegate_seat' });
+  res.json({ delegate: state });
+});
+
+app.post('/api/admin/delegate/enable', ...ownerOnly, (req, res) => {
+  const seat = delegateSeatUser();
+  if (!seat) return res.status(404).json({ error: 'no_delegate_seat' });
+  db.prepare('UPDATE users SET delegate_enabled = 1 WHERE id = ?').run(seat.id);
+  logManagerAudit(req.user, 'delegate_enable', { targetType: 'user', targetId: seat.id });
+  res.json({ ok: true, delegate: delegateSeatState() });
+});
+
+/* REVOCATION: disable the seat, kill every delegate session, remove
+ * every delegate passkey. Scoped strictly to the delegate's user id —
+ * the owner's own login, sessions and Face ID are never touched. */
+app.post('/api/admin/delegate/disable', ...ownerOnly, (req, res) => {
+  const seat = delegateSeatUser();
+  if (!seat) return res.status(404).json({ error: 'no_delegate_seat' });
+  db.prepare('UPDATE users SET delegate_enabled = 0, delegate_enroll_until = NULL WHERE id = ?').run(seat.id);
+  deleteUserSessions(seat.id);
+  db.prepare('DELETE FROM webauthn_credentials WHERE user_id = ?').run(seat.id);
+  logManagerAudit(req.user, 'delegate_disable', { targetType: 'user', targetId: seat.id });
+  res.json({ ok: true, delegate: delegateSeatState() });
+});
+
+/* Owner sets the delegate's password (the app's owner flow for the
+ * seat). Same strength rules as the self-service change-password:
+ * no seed defaults, 10–128 chars. Setting it kills the delegate's
+ * existing sessions so the new password is the only way back in. */
+app.post('/api/admin/delegate/set-password', ...ownerOnly, (req, res) => {
+  const seat = delegateSeatUser();
+  if (!seat) return res.status(404).json({ error: 'no_delegate_seat' });
+  const next = typeof (req.body || {}).password === 'string' ? req.body.password : '';
+  if (SEED_DEFAULT_PASSWORDS.includes(next.toLowerCase()))
+    return res.status(400).json({ error: 'default_password' });
+  if (next.length < 10 || next.length > 128)
+    return res.status(400).json({ error: 'weak_password' });
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+    .run(bcrypt.hashSync(next, 10), seat.id);
+  deleteUserSessions(seat.id);
+  logManagerAudit(req.user, 'delegate_password_set', { targetType: 'user', targetId: seat.id });
+  res.json({ ok: true });
+});
+
+/* Owner opens the 15-minute passkey enrollment window; the delegate
+ * completes registration in her own browser inside that window. */
+app.post('/api/admin/delegate/enroll-passkey', ...ownerOnly, (req, res) => {
+  const seat = delegateSeatUser();
+  if (!seat) return res.status(404).json({ error: 'no_delegate_seat' });
+  const until = Date.now() + 15 * 60 * 1000;
+  db.prepare('UPDATE users SET delegate_enroll_until = ? WHERE id = ?').run(String(until), seat.id);
+  logManagerAudit(req.user, 'delegate_enroll_opened', { targetType: 'user', targetId: seat.id });
+  res.json({ ok: true, enroll_until: until, delegate: delegateSeatState() });
+});
+
+/* The audit view: every logged Manager action by the delegate (and
+ * the owner's seat actions), newest first. Rows carry actor_role so
+ * the client badges delegate rows as Ms. Pink. Readable by any
+ * Manager principal; the log itself is append-only from the API. */
+app.get('/api/admin/audit', ...adminOnly, (req, res) => {
+  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 100));
+  const rows = db.prepare(`SELECT id, actor_user_id, actor_username, actor_role,
+      action, target_type, target_id, detail, reason, created_at
+    FROM manager_audit_log ORDER BY id DESC LIMIT ?`).all(limit);
+  res.json({
+    audit: rows.map((r) => ({
+      ...r,
+      actor_badge: r.actor_role === 'owner_delegate' ? 'Ms. Pink' : null,
+      detail: (() => { try { return r.detail ? JSON.parse(r.detail) : null; } catch (e) { return null; } })(),
+    })),
+  });
+});
 
 // --- Visitor analytics (Corry Oct 11, 2026): track visits + sources for growth ---
 db.exec(`
@@ -18575,6 +19002,17 @@ app.post('/api/admin/models/:id/reset-password', ...adminOnly, (req, res) => {
 app.delete('/api/admin/models/:id', ...adminOnly, (req, res) => {
   const u = db.prepare(`SELECT * FROM users WHERE id = ? AND role = 'model'`).get(req.params.id);
   if (!u) return res.status(404).json({ error: 'not_found' });
+  // Delegate rails (owner keeps his existing rules): a reason is
+  // required, and the protected set — house, fandemo, the CCBill
+  // review account, any model with pictures or an approved ID — can
+  // never be deleted by the delegate seat.
+  if (isDelegateUser(req.user)) {
+    if (delegateReasonRequired(req, res)) return;
+    if (delegateDeleteProtected(u)) {
+      return res.status(403).json({ error: 'protected_account',
+        message: `${u.display_name} is a protected account (house / review / has pictures or an approved ID) — the delegate seat cannot remove her. Ask the owner.` });
+    }
+  }
   const uid = u.id;
   const tableExists = (t) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?").get(t);
   const countWhere = (t, c, val) => tableExists(t)
@@ -18975,6 +19413,7 @@ app.delete('/api/admin/affiliates/:id', ...adminOnly, (req, res) => {
   const u = db.prepare(`SELECT u.*, r.id AS recruiter_row_id FROM users u
     LEFT JOIN recruiters r ON r.user_id = u.id WHERE u.id = ?`).get(req.params.id);
   if (!u) return res.status(404).json({ error: 'not_found' });
+  if (isDelegateUser(req.user) && delegateReasonRequired(req, res)) return;
   if (isAffiliateDeleteProtected(u))
     return res.status(403).json({ error: 'protected_account',
       message: 'This account is protected and cannot be deleted.' });
@@ -19017,6 +19456,7 @@ app.delete('/api/admin/affiliates/:id', ...adminOnly, (req, res) => {
 
 // Admin: remove a partner (their models stay; revenue reverts to Corry)
 app.delete('/api/admin/recruiters/:id', ...adminOnly, (req, res) => {
+  if (isDelegateUser(req.user) && delegateReasonRequired(req, res)) return;
   const r = db.prepare('SELECT * FROM recruiters WHERE id = ?').get(req.params.id);
   if (!r) return res.status(404).json({ error: 'not_found' });
   db.prepare('DELETE FROM recruiters WHERE id = ?').run(r.id); // models.recruiter_id → NULL via FK
@@ -19304,12 +19744,12 @@ app.get('/api/ccbill/return', (req, res) => {
   res.redirect(302, `/?ccbill=${ok ? 'success' : 'fail'}`);
 });
 
-app.get('/api/admin/ccbill/orders', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+app.get('/api/admin/ccbill/orders', identMiddleware, requireUser, requireManager, requireManagerStepUp, auditDelegateMutation, (req, res) => {
   const rows = db.prepare(`SELECT o.*, u.username FROM ccbill_orders o
     JOIN users u ON u.id = o.user_id ORDER BY o.id DESC LIMIT 100`).all();
   res.json({ orders: rows });
 });
-app.post('/api/admin/ccbill/orders/:id/credit', identMiddleware, requireUser, requireRole('admin'), (req, res) => {
+app.post('/api/admin/ccbill/orders/:id/credit', identMiddleware, requireUser, requireManager, requireManagerStepUp, auditDelegateMutation, (req, res) => {
   const r = ccbillSvc.markCreditedAdmin(parseInt(req.params.id, 10), req.user.id);
   if (r.error) return res.status(400).json({ error: r.error });
   res.json({ ok: true });
@@ -19563,6 +20003,8 @@ app.get('/api/admin/crypto-treasury', ...adminOnly, async (req, res) => {
 });
 
 app.post('/api/admin/crypto-settings', ...adminOnly, (req, res) => {
+  // Processor settings are a danger action for the delegate seat.
+  if (isDelegateUser(req.user) && delegateReasonRequired(req, res)) return;
   res.json({ settings: cryptoSvc.saveSettings(req.body || {}) });
 });
 
@@ -19606,12 +20048,15 @@ app.post('/api/presence/ping', (req, res) => {
 /* Moderator-panel guard: admins only, everyone else (fans, models,
    guests) gets 403 — counts are staff information. */
 const modOnly = (req, res, next) => {
-  if (req.ident.kind !== 'user' || req.ident.user.role !== 'admin') {
+  if (req.ident.kind !== 'user' || !isManagerPrincipal(req.ident.user)) {
     return res.status(403).json({ error: 'forbidden' });
   }
+  if (isDelegateUser(req.ident.user) && !delegateSeatEnabled(req.ident.user)) {
+    return res.status(403).json({ error: 'delegate_disabled' });
+  }
   req.user = req.ident.user;
-  // Same Face ID step-up rule as /api/admin/* (no-op until a passkey exists).
-  return requirePasskeyStepUp(req, res, next);
+  // Same Face ID step-up rule as /api/admin/* (principal-aware).
+  return requireManagerStepUp(req, res, next);
 };
 
 app.get('/api/mod/presence', identMiddleware, modOnly, (req, res) => {
@@ -19964,6 +20409,10 @@ app.post('/api/admin/chargebacks', ...adminOnly, (req, res) => {
 
 app.put('/api/admin/settings', ...adminOnly, (req, res) => {
   const out = { ok: true };
+  // Changing the commission is a danger action for the delegate seat:
+  // a stated reason is required and lands in the audit log.
+  if (req.body.commission_pct !== undefined && isDelegateUser(req.user)
+      && delegateReasonRequired(req, res)) return;
   if (req.body.commission_pct !== undefined) {
     const pct = parseInt(req.body.commission_pct);
     if (!Number.isInteger(pct) || pct < 0 || pct > 90)

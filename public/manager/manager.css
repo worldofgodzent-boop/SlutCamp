@@ -378,3 +378,12 @@ label.field { display: block; margin-top: 14px; font-size: 14px; font-weight: 60
   }
   .mgr-login-wrap { min-height: 100%; }
 }
+
+/* Owner Delegate seat (2026-10-23): the persistent actor badge + audit
+   row badge, so delegate work is never mistaken for the owner's. */
+.dlg-badge {
+  display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 999px;
+  background: rgba(236,72,153,.16); border: 1px solid rgba(236,72,153,.55);
+  color: #f9a8d4; font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.dlg-audit-row { padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
