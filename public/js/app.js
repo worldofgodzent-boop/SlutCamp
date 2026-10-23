@@ -156,6 +156,9 @@ const I18N = {
     disc_band2: '$$',
     disc_band3: '$$$',
     disc_tag_any: '🏷️ All tags',
+    disc_age_pref: 'Age Preference',
+    disc_age_any: 'Any age',
+    disc_age_save: 'Save',
     sort_top: '👑 Top ranked',
     sort_liked: '⭐ Most liked',
     sort_online: '🟢 Online first',
@@ -1084,6 +1087,9 @@ const I18N = {
     disc_band2: '$$',
     disc_band3: '$$$',
     disc_tag_any: '🏷️ Todas las etiquetas',
+    disc_age_pref: 'Preferencia de edad',
+    disc_age_any: 'Cualquier edad',
+    disc_age_save: 'Guardar',
     sort_top: '👑 Mejor clasificadas',
     sort_liked: '⭐ Más gustadas',
     sort_online: '🟢 En línea primero',
@@ -2012,6 +2018,9 @@ const I18N = {
     disc_band2: '$$',
     disc_band3: '$$$',
     disc_tag_any: '🏷️ Todas as etiquetas',
+    disc_age_pref: 'Preferência de idade',
+    disc_age_any: 'Qualquer idade',
+    disc_age_save: 'Salvar',
     sort_top: '👑 Topo do ranking',
     sort_liked: '⭐ Mais curtidas',
     sort_online: '🟢 Online primeiro',
@@ -2940,6 +2949,9 @@ const I18N = {
     disc_band2: '$$',
     disc_band3: '$$$',
     disc_tag_any: '🏷️ Tous les tags',
+    disc_age_pref: 'Préférence d\'âge',
+    disc_age_any: 'Tout âge',
+    disc_age_save: 'Enregistrer',
     sort_top: '👑 Mieux classées',
     sort_liked: '⭐ Plus aimées',
     sort_online: '🟢 En ligne d\'abord',
@@ -3868,6 +3880,9 @@ const I18N = {
     disc_band2: '$$',
     disc_band3: '$$$',
     disc_tag_any: '🏷️ Alle Tags',
+    disc_age_pref: 'Alterspräferenz',
+    disc_age_any: 'Jedes Alter',
+    disc_age_save: 'Speichern',
     sort_top: '👑 Top-bewertet',
     sort_liked: '⭐ Am meisten geliked',
     sort_online: '🟢 Online zuerst',
@@ -4796,6 +4811,9 @@ const I18N = {
     disc_band2: '$$',
     disc_band3: '$$$',
     disc_tag_any: '🏷️ Все теги',
+    disc_age_pref: 'Предпочтение по возрасту',
+    disc_age_any: 'Любой возраст',
+    disc_age_save: 'Сохранить',
     sort_top: '👑 Топ рейтинга',
     sort_liked: '⭐ Самые любимые',
     sort_online: '🟢 Сначала онлайн',
@@ -5724,6 +5742,9 @@ const I18N = {
     disc_band2: '$$',
     disc_band3: '$$$',
     disc_tag_any: '🏷️ すべてのタグ',
+    disc_age_pref: '年齢の好み',
+    disc_age_any: '年齢問わず',
+    disc_age_save: '保存',
     sort_top: '👑 ランキング上位',
     sort_liked: '⭐ いいねが多い順',
     sort_online: '🟢 オンライン優先',
@@ -6652,6 +6673,9 @@ const I18N = {
     disc_band2: '$$',
     disc_band3: '$$$',
     disc_tag_any: '🏷️ 所有标签',
+    disc_age_pref: '年龄偏好',
+    disc_age_any: '不限年龄',
+    disc_age_save: '保存',
     sort_top: '👑 排名最高',
     sort_liked: '⭐ 最受欢迎',
     sort_online: '🟢 在线优先',
@@ -7580,6 +7604,9 @@ const I18N = {
     disc_band2: '$$',
     disc_band3: '$$$',
     disc_tag_any: '🏷️ 모든 태그',
+    disc_age_pref: '연령 선호',
+    disc_age_any: '모든 연령',
+    disc_age_save: '저장',
     sort_top: '👑 인기 순위순',
     sort_liked: '⭐ 좋아요 많은 순',
     sort_online: '🟢 온라인 우선',
@@ -8508,6 +8535,9 @@ const I18N = {
     disc_band2: '$$',
     disc_band3: '$$$',
     disc_tag_any: '🏷️ Tutti i tag',
+    disc_age_pref: 'Preferenza di età',
+    disc_age_any: 'Qualsiasi età',
+    disc_age_save: 'Salva',
     sort_top: '👑 Più votate',
     sort_liked: '⭐ Più apprezzate',
     sort_online: '🟢 Prima le online',
@@ -9436,6 +9466,9 @@ const I18N = {
     disc_band2: '$$',
     disc_band3: '$$$',
     disc_tag_any: '🏷️ Wszystkie tagi',
+    disc_age_pref: 'Preferencja wieku',
+    disc_age_any: 'Dowolny wiek',
+    disc_age_save: 'Zapisz',
     sort_top: '👑 Najwyżej oceniane',
     sort_liked: '⭐ Najbardziej lubiane',
     sort_online: '🟢 Najpierw online',
@@ -10364,6 +10397,9 @@ const I18N = {
     disc_band2: '$$',
     disc_band3: '$$$',
     disc_tag_any: '🏷️ Alle tags',
+    disc_age_pref: 'Leeftijdsvoorkeur',
+    disc_age_any: 'Alle leeftijden',
+    disc_age_save: 'Opslaan',
     sort_top: '👑 Hoogst gerangschikt',
     sort_liked: '⭐ Meest geliket',
     sort_online: '🟢 Eerst online',
@@ -11292,6 +11328,9 @@ const I18N = {
     disc_band2: '$$',
     disc_band3: '$$$',
     disc_tag_any: '🏷️ Tüm etiketler',
+    disc_age_pref: 'Yaş Tercihi',
+    disc_age_any: 'Her yaş',
+    disc_age_save: 'Kaydet',
     sort_top: '👑 En üst sıralama',
     sort_liked: '⭐ En çok beğenilen',
     sort_online: '🟢 Önce çevrimiçi',
@@ -13127,7 +13166,39 @@ const DISCOVERY_TAGS = [
   'Tattoos', 'Piercings', 'Latina', 'Ebony',
   'Blonde', 'Brunette', 'Redhead', 'Curvy', 'Petite', 'MILF',
 ];
-const disc = { q: '', online: false, live: false, price: 'any', tag: '', sort: 'top' };
+const disc = { q: '', online: false, live: false, price: 'any', tag: '', sort: 'top', ageMin: 18, ageMax: 65 };
+
+/* Age Preference (fan filter, Asce Oct 23 2026 — Pink-style, placed as
+ * a pill in the directory filter row): the fan picks a min–max age and
+ * the grid shows only models inside it. Bounds 18..65, where 65 means
+ * 65 and over; the full range is the filter OFF. The choice is a
+ * device-level preference (guests included) persisted in localStorage.
+ * Her age comes from the payload's computed `age` (never her dob, never
+ * displayed); a model with no dob on file carries age null and passes
+ * every setting — she is never hidden over a data gap. */
+const AGE_PREF_KEY = 'sc_age_pref';
+const AGE_PREF_MIN = 18;
+const AGE_PREF_MAX = 65;
+function saveAgePref() {
+  try {
+    localStorage.setItem(AGE_PREF_KEY, JSON.stringify({ min: disc.ageMin, max: disc.ageMax }));
+  } catch (e) { /* private mode — the choice just lasts the session */ }
+}
+(function loadAgePref() {
+  try {
+    const raw = localStorage.getItem(AGE_PREF_KEY);
+    if (!raw) return;
+    const p = JSON.parse(raw);
+    const clamp = (v, dflt) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? Math.max(AGE_PREF_MIN, Math.min(AGE_PREF_MAX, Math.round(n))) : dflt;
+    };
+    const lo = clamp(p && p.min, AGE_PREF_MIN);
+    const hi = clamp(p && p.max, AGE_PREF_MAX);
+    disc.ageMin = Math.min(lo, hi);
+    disc.ageMax = Math.max(lo, hi);
+  } catch (e) { /* bad stored value — full range stands */ }
+})();
 
 /* Storefront section tabs (owner pivot, final simplification
  * Oct 18 2026): a slim strip at the top of the home/directory —
@@ -13158,7 +13229,8 @@ function discPriceBand(cents) {
 }
 
 function discActive(d) {
-  return !!(d.q || d.online || d.live || d.price !== 'any' || d.tag || d.sort !== 'top');
+  return !!(d.q || d.online || d.live || d.price !== 'any' || d.tag || d.sort !== 'top'
+    || (d.ageMin || 18) > 18 || (d.ageMax == null ? 65 : d.ageMax) < 65);
 }
 
 /* Pure filter + sort over the /api/models payload. The featured model is
@@ -13175,6 +13247,14 @@ function applyDiscovery(models, d) {
     if (d.live && !m.is_live) return false;
     if (d.price !== 'any' && discPriceBand(m.per_message_cents) !== Number(d.price)) return false;
     if (d.tag && !(m.tags || []).includes(d.tag)) return false;
+    /* Age Preference: only a model WITH a computed age can fall outside
+     * the range — age null (no dob on file) always passes. A max of 65
+     * is open-ended (65 and over), so it never excludes from above. */
+    if (m.age != null) {
+      const aMin = d.ageMin == null ? 18 : d.ageMin;
+      const aMax = d.ageMax == null ? 65 : d.ageMax;
+      if (m.age < aMin || (aMax < 65 && m.age > aMax)) return false;
+    }
     return true;
   });
   const rank = (m) => m.rank_score || 0;
@@ -13273,6 +13353,7 @@ function discoveryBarHTML(models) {
     </div>
     <div class="disc-row disc-chips">
       <button class="disc-chip ${disc.online ? 'on' : ''}" data-disc-toggle="online">${t('disc_online')}</button>
+      <button class="disc-chip ${(disc.ageMin > 18 || disc.ageMax < 65) ? 'on' : ''}" id="disc-age">🎂 ${(disc.ageMin > 18 || disc.ageMax < 65) ? `${disc.ageMin}–${disc.ageMax >= 65 ? '65+' : disc.ageMax}` : t('disc_age_any')}</button>
       ${tagOptions.length ? `<span class="disc-selectwrap"><select class="input disc-sort disc-tagpick" id="disc-tag" aria-label="${t('disc_tag_any')}">
         <option value="" ${disc.tag ? '' : 'selected'}>${t('disc_tag_any')}</option>
         ${tagOptions.map((tg) => `<option value="${esc(tg)}" ${disc.tag === tg ? 'selected' : ''}>${esc(tg)}</option>`).join('')}
@@ -13295,11 +13376,87 @@ function wireDiscovery(viewName) {
   });
   const tg = $('#disc-tag');
   if (tg) tg.addEventListener('change', () => apply(() => { disc.tag = tg.value; }));
+  const ag = $('#disc-age');
+  if (ag) ag.onclick = () => openAgeSheet(() => apply(() => {}));
   const cl = $('#disc-clear');
   if (cl) cl.onclick = () => apply(() => {
     disc.q = ''; disc.online = false; disc.live = false;
     disc.price = 'any'; disc.tag = ''; disc.sort = 'top';
+    disc.ageMin = 18; disc.ageMax = 65; saveAgePref();
   });
+}
+
+/* Age Preference sheet (Pink's pattern, the app's sheet style): one
+ * dual-thumb slider, live readout, Save / Cancel / Any age. Edits stay
+ * local to the sheet until Save — Cancel walks away with the directory
+ * untouched. "Any age" is the reset: full range, saved, done. */
+function openAgeSheet(onDone) {
+  let sheet = document.getElementById('ageSheet');
+  if (!sheet) {
+    sheet = document.createElement('div');
+    sheet.id = 'ageSheet';
+    sheet.className = 'lang-sheet age-sheet';
+    document.body.appendChild(sheet);
+    sheet.addEventListener('click', (e) => { if (e.target === sheet) closeAgeSheet(); });
+  }
+  let lo = disc.ageMin;
+  let hi = disc.ageMax;
+  sheet.innerHTML = `
+    <div class="lang-sheet-card">
+      <div class="lang-sheet-title">🎂 ${t('disc_age_pref')}</div>
+      <div class="age-readout" id="age-readout"></div>
+      <div class="age-dual">
+        <div class="age-track"></div>
+        <div class="age-fill" id="age-fill"></div>
+        <input type="range" id="age-min" min="18" max="65" step="1" value="${lo}" aria-label="${t('disc_age_pref')}">
+        <input type="range" id="age-max" min="18" max="65" step="1" value="${hi}" aria-label="${t('disc_age_pref')}">
+      </div>
+      <div class="age-sheet-btns">
+        <button type="button" class="btn ghost" id="age-any">${t('disc_age_any')}</button>
+        <button type="button" class="btn ghost" id="age-cancel">${t('cancel')}</button>
+        <button type="button" class="btn" id="age-save">${t('disc_age_save')}</button>
+      </div>
+    </div>`;
+  sheet.hidden = false;
+  const minEl = sheet.querySelector('#age-min');
+  const maxEl = sheet.querySelector('#age-max');
+  const out = sheet.querySelector('#age-readout');
+  const fill = sheet.querySelector('#age-fill');
+  const paint = () => {
+    out.textContent = `${lo} – ${hi >= 65 ? '65+' : hi}`;
+    const span = 65 - 18;
+    fill.style.left = `${((lo - 18) / span) * 100}%`;
+    fill.style.width = `${((hi - lo) / span) * 100}%`;
+    /* Whichever end of the range the fan is working, its thumb rides
+     * on top — at a collapsed range the far thumb must stay grabbable. */
+    minEl.style.zIndex = lo > 55 ? 3 : 5;
+    maxEl.style.zIndex = lo > 55 ? 5 : 3;
+  };
+  minEl.addEventListener('input', () => {
+    lo = Math.min(Number(minEl.value) || 18, hi);
+    minEl.value = lo;
+    paint();
+  });
+  maxEl.addEventListener('input', () => {
+    hi = Math.max(Number(maxEl.value) || 65, lo);
+    maxEl.value = hi;
+    paint();
+  });
+  paint();
+  const commit = (min, max) => {
+    disc.ageMin = min;
+    disc.ageMax = max;
+    saveAgePref();
+    closeAgeSheet();
+    if (onDone) onDone();
+  };
+  sheet.querySelector('#age-save').onclick = () => commit(lo, hi);
+  sheet.querySelector('#age-any').onclick = () => commit(18, 65);
+  sheet.querySelector('#age-cancel').onclick = () => closeAgeSheet();
+}
+function closeAgeSheet() {
+  const sheet = document.getElementById('ageSheet');
+  if (sheet) sheet.hidden = true;
 }
 
 function homeTilesHTML(models, heartFor, opts) {

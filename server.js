@@ -6540,7 +6540,7 @@ function postToOfficialThread(userId, text) {
 app.get('/api/models', (req, res) => {
   const houseId = houseAccountId();
   const rows = db.prepare(`
-    SELECT u.id, u.username, u.display_name, u.presence_override, u.created_at, m.bio, m.per_message_cents,
+    SELECT u.id, u.username, u.display_name, u.presence_override, u.created_at, u.dob, m.bio, m.per_message_cents,
            m.per_minute_cents, m.per_voice_cents, m.booking_rate_cents, m.section, m.is_online, m.photo_url, m.public_photo_url, m.tags,
            m.preview_video_url, m.preview_video_url_2, m.gallery_photos, m.is_featured, m.rank_score,
            ls.id AS live_session_id, ls.explicit_rate_cents AS live_explicit_rate_cents,
@@ -6618,7 +6618,9 @@ app.get('/api/models', (req, res) => {
     const summary = sched.length
       ? sched.map((s) => `${days[s.day_of_week]} ${s.start_time.replace(/^0/, '')}`).join(', ')
       : '';
-    const { presence_override, tags: rawTags, gallery_photos: rawGallery, ...pub } = r;
+    /* dob is destructured OUT of the payload on purpose: it feeds only
+     * the computed `age` below and must never ship to the client. */
+    const { presence_override, tags: rawTags, gallery_photos: rawGallery, dob: dobRaw, ...pub } = r;
     // The payload carries the EFFECTIVE booking rate under the same name
     // as the column: her dedicated booking rate when set, her video-call
     // per-minute rate until then — so the fan booking sheet's quote is
@@ -6654,6 +6656,11 @@ app.get('/api/models', (req, res) => {
       likes_count: r.like_count || 0,
       total_sales: Math.round(r.total_sales_cents || 0) / 100,
       rank_score: r.rank_score || 0,
+      /* Age Preference filter input: whole years from her dob, or null
+       * when no dob is on file (null passes every filter setting). Her
+       * age is never rendered on tiles/profiles — the number exists
+       * only so the fan-side filter can slice the roster. */
+      age: ageFromDob(dobRaw),
       rank_position: rankPos.get(r.id) || null };
     // CO-STAR GATE (Co-Star Upload Prompt, Oct 22 2026): media she
     // declared a co-star in is additionally withheld — per ITEM, not
@@ -6705,6 +6712,21 @@ app.post('/api/models/:id/like', identMiddleware, requireUser, requireRole('fan'
 /* ------------------------------------------------------------------ */
 /* Auth                                                                */
 /* ------------------------------------------------------------------ */
+
+/* Whole years old from a stored dob (same birthday-boundary math as
+ * isAdult), or null when there is no usable dob on file. Powers the
+ * directory's Age Preference filter: ONLY this number ever leaves the
+ * server — the dob itself is never shipped in any payload. */
+function ageFromDob(dob) {
+  if (!dob) return null;
+  const birth = new Date(dob + 'T00:00:00');
+  if (isNaN(birth)) return null;
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const m = now.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+  return age;
+}
 
 function isAdult(dob) {
   if (!dob) return false;
