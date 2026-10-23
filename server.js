@@ -963,7 +963,7 @@ CREATE TABLE IF NOT EXISTS users (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   username      TEXT UNIQUE NOT NULL COLLATE NOCASE,
   password_hash TEXT NOT NULL,
-  role          TEXT NOT NULL CHECK(role IN ('fan','model','admin','recruiter')),
+  role          TEXT NOT NULL CHECK(role IN ('fan','model','admin','recruiter','moderator')),
   display_name  TEXT NOT NULL,
   dob           TEXT,
   banned        INTEGER NOT NULL DEFAULT 0,
@@ -1912,6 +1912,12 @@ addColumnIfMissing('models', 'rank_score', 'REAL NOT NULL DEFAULT 0');
 addColumnIfMissing('models', 'rank_notice_pos', 'INTEGER');
 // Fraud protection: account status ('active' | 'frozen') + ledger IP on every money row
 addColumnIfMissing('users', 'status', "TEXT NOT NULL DEFAULT 'active'");
+// Worker revocation stamp (Moderator Role build): set when the owner
+// disables a moderator account from the Manager. Non-null = the
+// account is dead everywhere: getIdentity refuses every session and
+// both login doors refuse new ones. Only ever set on role='moderator'
+// rows by the owner disable action; re-enable clears it.
+addColumnIfMissing('users', 'disabled_at', 'TEXT');
 addColumnIfMissing('transactions', 'ip', 'TEXT');
 
 // Display name changes: fans get 1 per 30 days (self-service); models submit requests for admin approval
@@ -2149,6 +2155,80 @@ function affiliateFlagsFor(user) {
     db.exec('PRAGMA foreign_keys=ON');
   }
 })();
+
+/* Allow the 'moderator' role (Moderator Role build): same rebuild
+ * pattern as allowRecruiterRole above, but DYNAMIC — the new table is
+ * created from the live sqlite_master definition with only the role
+ * CHECK widened, and every current column is copied, so columns added
+ * since the recruiter rebuild (language, email, status, disabled_at…)
+ * survive. Runs only while the stored CHECK lacks 'moderator'. */
+(function allowModeratorRole() {
+  let row = null;
+  try { row = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get(); } catch (e) { /* ignore */ }
+  if (!row || !row.sql || row.sql.includes("'moderator'")) return;
+  const widened = row.sql.replace(/CHECK\s*\(\s*role\s+IN\s*\(([^)]*)\)\s*\)/i,
+    (m, inner) => `CHECK(role IN (${inner},'moderator'))`);
+  if (widened === row.sql) return;
+  const cols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
+  if (!cols.length) return;
+  const colList = cols.join(', ');
+  db.exec('PRAGMA foreign_keys=OFF');
+  try {
+    db.exec(widened.replace(/CREATE TABLE\s+"?users"?\s*\(/i, 'CREATE TABLE users_new ('));
+    db.exec(`INSERT INTO users_new (${colList}) SELECT ${colList} FROM users`);
+    db.exec('DROP TABLE users');
+    db.exec('ALTER TABLE users_new RENAME TO users');
+  } finally {
+    db.exec('PRAGMA foreign_keys=ON');
+  }
+})();
+
+/* ---------------- Moderator (worker) role — schema ----------------
+ * Invite-link onboarding (owner generates a labeled, single-use,
+ * 7-day link per hire; the token alone binds role='moderator' at
+ * signup — no other path can mint the role), the worker audit trail,
+ * and the owner-approval queue for deactivation / hide / fan-ban
+ * requests (filed by models themselves or by moderators). */
+db.exec(`
+CREATE TABLE IF NOT EXISTS moderator_invites (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  code       TEXT UNIQUE NOT NULL,
+  label      TEXT NOT NULL DEFAULT '',
+  created_by INTEGER NOT NULL REFERENCES users(id),
+  used_by    INTEGER REFERENCES users(id),
+  is_revoked INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  used_at    TEXT,
+  expires_at TEXT NOT NULL DEFAULT (datetime('now', '+7 days'))
+);
+CREATE TABLE IF NOT EXISTS moderator_actions (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  worker_id   INTEGER NOT NULL REFERENCES users(id),
+  action      TEXT NOT NULL,
+  target_type TEXT NOT NULL DEFAULT '',
+  target_id   INTEGER,
+  detail      TEXT NOT NULL DEFAULT '',
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_mod_actions_worker ON moderator_actions(worker_id, id);
+CREATE TABLE IF NOT EXISTS deactivation_requests (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  type        TEXT NOT NULL CHECK(type IN ('deactivate','hide','fan_ban')),
+  model_id    INTEGER REFERENCES users(id),
+  fan_id      INTEGER REFERENCES users(id),
+  requested_by INTEGER NOT NULL REFERENCES users(id),
+  reason      TEXT NOT NULL DEFAULT '',
+  status      TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','denied')),
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  resolved_at TEXT,
+  resolved_by INTEGER REFERENCES users(id)
+);
+CREATE INDEX IF NOT EXISTS idx_deact_status ON deactivation_requests(status, id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_deact_one_pending_model
+  ON deactivation_requests(model_id) WHERE status = 'pending' AND type IN ('deactivate','hide');
+`);
+/* Stream flags get the same open/dismissed lifecycle as chat incidents. */
+addColumnIfMissing('stream_flags', 'status', "TEXT NOT NULL DEFAULT 'open'");
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS sms_codes (
@@ -2403,6 +2483,14 @@ CREATE INDEX IF NOT EXISTS idx_tipsends_model ON tip_sends(model_id, id);
    created before this build gain it on boot. Own-ID rows never
    carry one (a model's own verification needs no consent form). */
 addColumnIfMissing('id_verifications', 'consent_form_path', 'TEXT');
+
+/* ID cases a moderator escalates leave her queue for the owner's
+ * (Moderator Role build): the stamp lives on the verification row
+ * itself so the owner's ID Checks list shows why it landed with him.
+ * The owner's approve/reject clears the stamp. */
+addColumnIfMissing('id_verifications', 'escalated_at', 'TEXT');
+addColumnIfMissing('id_verifications', 'escalated_by', 'INTEGER');
+addColumnIfMissing('id_verifications', 'escalation_reason', "TEXT NOT NULL DEFAULT ''");
 
 /* WOGENT house release (Release in Onboarding, Oct 22 2026): the
    account-owning model's signed performer release lives in its OWN
@@ -3523,6 +3611,7 @@ function getIdentity(req) {
     if (!user) return null;
     if (user.banned) return { kind: 'banned' };
     if (user.status === 'frozen') return { kind: 'frozen' };
+    if (user.disabled_at) return { kind: 'disabled' };
     return { kind: 'user', user };
   }
   const g = req.headers['x-guest-token'] || (req.body && req.body.guest_token) || req.query.guest_token;
@@ -3632,6 +3721,8 @@ function identMiddleware(req, res, next) {
   if (ident.kind === 'banned') return res.status(403).json({ error: 'banned' });
   if (ident.kind === 'frozen') return res.status(403).json({ error: 'account_frozen',
     message: 'Your account has been frozen due to a billing dispute. Contact support.' });
+  if (ident.kind === 'disabled') return res.status(403).json({ error: 'account_disabled',
+    message: 'This account has been disabled. Contact SlutCamp if you think this is a mistake.' });
   req.ident = ident;
   next();
 }
@@ -4235,6 +4326,13 @@ function createUser(username, password, role, displayName, dob, language) {
 /* below — this table covers everything composed at a call site.      */
 /* ------------------------------------------------------------------ */
 const SRV = {
+  bell_deact_hide_title: { en: '🙈 Your profile is hidden', es: '🙈 Tu perfil está oculto', pt: '🙈 Seu perfil está oculto', fr: '🙈 Votre profil est masqué', de: '🙈 Dein Profil ist verborgen', ru: '🙈 Ваш профиль скрыт', ja: '🙈 プロフィールが非表示になりました', zh: '🙈 你的主页已隐藏', ko: '🙈 프로필이 숨겨졌습니다', it: '🙈 Il tuo profilo è nascosto', pl: '🙈 Twój profil jest ukryty', nl: '🙈 Je profiel is verborgen', tr: '🙈 Profilin gizlendi' },
+  bell_deact_hide_body: { en: 'Asce approved your request — your profile is now hidden on SlutCamp. Message us any time if you want to come back.', es: 'Asce aprobó tu solicitud — tu perfil está oculto en SlutCamp. Escríbenos cuando quieras volver.', pt: 'Asce aprovou sua solicitação — seu perfil está oculto na SlutCamp. Fale com a gente quando quiser voltar.', fr: 'Asce a approuvé votre demande — votre profil est masqué sur SlutCamp. Écrivez-nous quand vous voulez revenir.', de: 'Asce hat deine Anfrage genehmigt — dein Profil ist auf SlutCamp verborgen. Schreib uns jederzeit, wenn du zurückkommen willst.', ru: 'Asce одобрил ваш запрос — ваш профиль скрыт на SlutCamp. Напишите нам в любое время, если захотите вернуться.', ja: 'Asceがリクエストを承認しました — あなたのプロフィールはSlutCampで非表示です。戻りたくなったらいつでもメッセージしてね。', zh: 'Asce 已批准你的请求 — 你的主页已在 SlutCamp 隐藏。想回来时随时给我们发消息。', ko: 'Asce가 요청을 승인했습니다 — 프로필이 SlutCamp에서 숨겨졌습니다. 돌아오고 싶을 때 언제든 메시지를 보내세요.', it: 'Asce ha approvato la tua richiesta — il tuo profilo è nascosto su SlutCamp. Scrivici quando vuoi tornare.', pl: 'Asce zatwierdził Twoją prośbę — Twój profil jest ukryty na SlutCamp. Napisz do nas, gdy zechcesz wrócić.', nl: 'Asce heeft je verzoek goedgekeurd — je profiel is verborgen op SlutCamp. Stuur ons een bericht wanneer je terug wilt komen.', tr: 'Asce isteğini onayladı — profilin SlutCamp\'ta gizlendi. Geri dönmek istediğinde bize mesaj at.' },
+  bell_deact_done_title: { en: '👋 Your account was deactivated', es: '👋 Tu cuenta fue desactivada', pt: '👋 Sua conta foi desativada', fr: '👋 Votre compte a été désactivé', de: '👋 Dein Konto wurde deaktiviert', ru: '👋 Ваш аккаунт деактивирован', ja: '👋 アカウントが無効化されました', zh: '👋 你的账号已停用', ko: '👋 계정이 비활성화되었습니다', it: '👋 Il tuo account è stato disattivato', pl: '👋 Twoje konto zostało dezaktywowane', nl: '👋 Je account is gedeactiveerd', tr: '👋 Hesabın devre dışı bırakıldı' },
+  bell_deact_done_body: { en: 'Asce approved your request and your SlutCamp account is deactivated. We wish you all the best — message us any time.', es: 'Asce aprobó tu solicitud y tu cuenta de SlutCamp está desactivada. Te deseamos lo mejor — escríbenos cuando quieras.', pt: 'Asce aprovou sua solicitação e sua conta na SlutCamp foi desativada. Desejamos tudo de bom — fale com a gente quando quiser.', fr: 'Asce a approuvé votre demande et votre compte SlutCamp est désactivé. Nous vous souhaitons le meilleur — écrivez-nous quand vous voulez.', de: 'Asce hat deine Anfrage genehmigt und dein SlutCamp-Konto ist deaktiviert. Wir wünschen dir alles Gute — schreib uns jederzeit.', ru: 'Asce одобрил ваш запрос, и ваш аккаунт SlutCamp деактивирован. Желаем вам всего наилучшего — напишите нам в любое время.', ja: 'Asceがリクエストを承認し、あなたのSlutCampアカウントは無効化されました。お元気で — いつでもメッセージしてね。', zh: 'Asce 已批准你的请求，你的 SlutCamp 账号已停用。祝你一切顺利 — 随时给我们发消息。', ko: 'Asce가 요청을 승인하여 SlutCamp 계정이 비활성화되었습니다. 항상 행복하세요 — 언제든 메시지를 보내세요.', it: 'Asce ha approvato la tua richiesta e il tuo account SlutCamp è disattivato. Ti auguriamo il meglio — scrivici quando vuoi.', pl: 'Asce zatwierdził Twoją prośbę i Twoje konto SlutCamp zostało dezaktywowane. Życzymy Ci wszystkiego dobrego — napisz do nas w każdej chwili.', nl: 'Asce heeft je verzoek goedgekeurd en je SlutCamp-account is gedeactiveerd. We wensen je het beste — stuur ons gerust een bericht.', tr: 'Asce isteğini onayladı ve SlutCamp hesabın devre dışı bırakıldı. Sana en iyisini diliyoruz — bize her zaman mesaj atabilirsin.' },
+  bell_deact_denied_title: { en: 'Asce reviewed your request', es: 'Tu solicitud fue revisada', pt: 'Sua solicitação foi analisada', fr: 'Votre demande a été examinée', de: 'Deine Anfrage wurde geprüft', ru: 'Ваш запрос рассмотрен', ja: 'リクエストが確認されました', zh: '你的请求已审核', ko: '요청이 검토되었습니다', it: 'La tua richiesta è stata esaminata', pl: 'Twoja prośba została rozpatrzona', nl: 'Je verzoek is beoordeeld', tr: 'İsteğin incelendi' },
+  bell_deact_denied_body: { en: 'Asce reviewed your request and your account stays as it is for now. Message us if you want to talk it over.', es: 'Asce revisó tu solicitud y tu cuenta sigue como está por ahora. Escríbenos en Mensajes si quieres hablarlo.', pt: 'Asce analisou sua solicitação e sua conta continua como está por enquanto. Fale com a gente em Mensagens se quiser conversar sobre isso.', fr: 'Asce a examiné votre demande et votre compte reste tel quel pour le moment. Écrivez-nous dans Messages si vous voulez en discuter.', de: 'Asce hat deine Anfrage geprüft und dein Konto bleibt vorerst wie es ist. Schreib uns in den Nachrichten, wenn du darüber sprechen möchtest.', ru: 'Asce рассмотрел ваш запрос, и ваш аккаунт пока остаётся как есть. Напишите нам в Сообщениях, если хотите это обсудить.', ja: 'Asceがリクエストを確認し、アカウントは当面そのままです。相談したいことがあればメッセージで話してね。', zh: 'Asce 已审核你的请求，你的账号暂时保持不变。如果你想商量，请在消息中联系我们。', ko: 'Asce가 요청을 검토했고 계정은 당분간 그대로 유지됩니다. 상의하고 싶으면 메시지로 연락하세요.', it: 'Asce ha esaminato la tua richiesta e il tuo account resta com\'è per ora. Scrivici in Messaggi se vuoi parlarne.', pl: 'Asce rozpatrzył Twoją prośbę i Twoje konto na razie pozostaje bez zmian. Napisz do nas w Wiadomościach, jeśli chcesz o tym porozmawiać.', nl: 'Asce heeft je verzoek beoordeeld en je account blijft voorlopig zoals het is. Stuur ons een bericht in Berichten als je het wilt bespreken.', tr: 'Asce isteğini inceledi ve hesabın şimdilik olduğu gibi kalıyor. Konuşmak istersen Mesajlar\'dan bize yaz.' },
+  bell_live_ended_title: { en: '🔴 Your live was ended', es: '🔴 Tu transmisión en vivo fue terminada', pt: '🔴 Sua live foi encerrada', fr: '🔴 Votre direct a été terminé', de: '🔴 Dein Livestream wurde beendet', ru: '🔴 Ваш прямой эфир завершён', ja: '🔴 ライブが終了されました', zh: '🔴 你的直播已被结束', ko: '🔴 라이브가 종료되었습니다', it: '🔴 La tua live è stata terminata', pl: '🔴 Twoja transmisja na żywo została zakończona', nl: '🔴 Je live is beëindigd', tr: '🔴 Canlı yayının sonlandırıldı' },
   guide_video_text: { en: '🎬 Watch your 1-minute tour: https://slutcamp.app/video/model-guide.mp4', es: '🎬 Mira tu tour de 1 minuto: https://slutcamp.app/video/model-guide.mp4', pt: '🎬 Assista ao seu tour de 1 minuto: https://slutcamp.app/video/model-guide.mp4', fr: '🎬 Regardez votre visite d\'1 minute : https://slutcamp.app/video/model-guide.mp4', de: '🎬 Schau dir deine 1-minütige Tour an: https://slutcamp.app/video/model-guide.mp4', ru: '🎬 Смотрите ваш 1-минутный тур: https://slutcamp.app/video/model-guide.mp4', ja: '🎬 1分ツアーを見てね：https://slutcamp.app/video/model-guide.mp4', zh: '🎬 观看你的 1 分钟导览：https://slutcamp.app/video/model-guide.mp4', ko: '🎬 1분 투어 보기: https://slutcamp.app/video/model-guide.mp4', it: '🎬 Guarda il tuo tour di 1 minuto: https://slutcamp.app/video/model-guide.mp4', pl: '🎬 Obejrzyj swoją 1-minutową wycieczkę: https://slutcamp.app/video/model-guide.mp4', nl: '🎬 Bekijk je 1-minuut tour: https://slutcamp.app/video/model-guide.mp4', tr: '🎬 1 dakikalık turunu izle: https://slutcamp.app/video/model-guide.mp4' },
   ath_video_text: { en: '📲 Put SlutCamp on your home screen — watch this, takes 30 seconds: https://slutcamp.app/video/add-to-home-screen.mp4', es: '📲 Pon SlutCamp en tu pantalla de inicio — mira esto, toma 30 segundos: https://slutcamp.app/video/add-to-home-screen.mp4', pt: '📲 Coloque a SlutCamp na sua tela inicial — assista a isto, leva 30 segundos: https://slutcamp.app/video/add-to-home-screen.mp4', fr: '📲 Mettez SlutCamp sur votre écran d\'accueil — regardez ceci, ça prend 30 secondes : https://slutcamp.app/video/add-to-home-screen.mp4', de: '📲 SlutCamp auf deinen Startbildschirm legen — schau dir das an, dauert 30 Sekunden: https://slutcamp.app/video/add-to-home-screen.mp4', ru: '📲 Добавьте SlutCamp на главный экран — посмотрите это, займёт 30 секунд: https://slutcamp.app/video/add-to-home-screen.mp4', ja: '📲 SlutCampをホーム画面に追加 — これを見てね、30秒で終わるよ：https://slutcamp.app/video/add-to-home-screen.mp4', zh: '📲 把 SlutCamp 放到你的主屏幕 — 看看这个，只需 30 秒：https://slutcamp.app/video/add-to-home-screen.mp4', ko: '📲 홈 화면에 SlutCamp 추가하기 — 이 영상을 보세요, 30초면 됩니다: https://slutcamp.app/video/add-to-home-screen.mp4', it: '📲 Metti SlutCamp sulla tua schermata home — guarda questo, ci vogliono 30 secondi: https://slutcamp.app/video/add-to-home-screen.mp4', pl: '📲 Umieść SlutCamp na ekranie głównym — obejrzyj to, zajmuje 30 sekund: https://slutcamp.app/video/add-to-home-screen.mp4', nl: '📲 Zet SlutCamp op je startscherm — bekijk dit, duurt 30 seconden: https://slutcamp.app/video/add-to-home-screen.mp4', tr: '📲 SlutCamp\'i ana ekranına koy — bunu izle, 30 saniye sürer: https://slutcamp.app/video/add-to-home-screen.mp4' },
   bell_welcome_title: { en: '🎉 Welcome to SlutCamp!', es: '🎉 ¡Bienvenida a SlutCamp!', pt: '🎉 Bem-vinda à SlutCamp!', fr: '🎉 Bienvenue sur SlutCamp !', de: '🎉 Willkommen bei SlutCamp!', ru: '🎉 Добро пожаловать в SlutCamp!', ja: '🎉 SlutCampへようこそ！', zh: '🎉 欢迎来到 SlutCamp！', ko: '🎉 SlutCamp에 오신 것을 환영합니다!', it: '🎉 Benvenuta su SlutCamp!', pl: '🎉 Witaj w SlutCamp!', nl: '🎉 Welkom bij SlutCamp!', tr: '🎉 SlutCamp\'e hoş geldin!' },
@@ -7316,6 +7414,8 @@ app.post('/api/auth/login', (req, res) => {
   if (user.banned) return res.status(403).json({ error: 'banned' });
   if (user.status === 'frozen') return res.status(403).json({ error: 'account_frozen',
     message: 'Your account has been frozen due to a billing dispute. Contact support.' });
+  if (user.disabled_at) return res.status(403).json({ error: 'account_disabled',
+    message: 'This account has been disabled. Contact SlutCamp if you think this is a mistake.' });
 
   if (guest_token) mergeGuestIntoUser(user.id, guest_token);
 
@@ -7328,7 +7428,7 @@ app.post('/api/auth/login', (req, res) => {
   // "you're on the manager account" interstitial instead of dropping him
   // straight into the app. Admin API endpoints stay unreachable from the
   // public app regardless (X-Manager header rule above).
-  res.json({ token, user: getUserPublic(user), manager_account: user.role === 'admin' });
+  res.json({ token, user: getUserPublic(user), manager_account: user.role === 'admin' || user.role === 'moderator' });
 });
 
 app.post('/api/auth/logout', identMiddleware, requireUser, (req, res) => {
@@ -7684,8 +7784,15 @@ app.post('/api/manager/login', (req, res) => {
   if (!user || !bcrypt.compareSync(password || '', user.password_hash))
     return res.status(401).json({ error: 'bad_login' });
   if (user.banned) return res.status(403).json({ error: 'banned' });
-  if (user.role !== 'admin') return res.status(403).json({ error: 'not_manager',
-    message: 'This app is for the SlutCamp manager account only' });
+  if (user.disabled_at) return res.status(403).json({ error: 'account_disabled',
+    message: 'This account has been disabled. Contact SlutCamp if you think this is a mistake.' });
+  // The Manager door serves the owner AND his hired moderators
+  // (Moderator Role build): a moderator signs in here password-only —
+  // no Face ID step-up; the role's narrow scope is the protection.
+  // Every other account is still refused.
+  if (user.role !== 'admin' && user.role !== 'moderator')
+    return res.status(403).json({ error: 'not_manager',
+      message: 'This app is for the SlutCamp manager account only' });
 
   const token = createSession(user.id);
   res.json({ token, user: getUserPublic(user), manager_account: true });
@@ -12123,7 +12230,8 @@ app.post('/api/admin/id-verifications/:id/approve', identMiddleware, requireUser
       message: 'Her packet is missing the signed WOGENT performer release — she signs it in her Settings (or uploads a signed paper copy) before this packet can be approved.' });
   txn(() => {
     db.prepare(`UPDATE id_verifications SET status = 'approved', reviewed_at = datetime('now'),
-                reviewer_note = '' WHERE id = ?`).run(v.id);
+                reviewer_note = '', escalated_at = NULL, escalated_by = NULL,
+                escalation_reason = '' WHERE id = ?`).run(v.id);
     if (v.co_performer_id)
       db.prepare(`UPDATE co_performers SET status = 'approved', updated_at = datetime('now')
                   WHERE id = ?`).run(v.co_performer_id);
@@ -12139,7 +12247,8 @@ app.post('/api/admin/id-verifications/:id/reject', identMiddleware, requireUser,
   const note = String(req.body.note || '').trim().slice(0, 300);
   txn(() => {
     db.prepare(`UPDATE id_verifications SET status = 'rejected', reviewed_at = datetime('now'),
-                reviewer_note = ? WHERE id = ?`).run(note, v.id);
+                reviewer_note = ?, escalated_at = NULL, escalated_by = NULL,
+                escalation_reason = '' WHERE id = ?`).run(note, v.id);
     if (v.co_performer_id)
       db.prepare(`UPDATE co_performers SET status = 'rejected', updated_at = datetime('now')
                   WHERE id = ?`).run(v.co_performer_id);
@@ -15156,11 +15265,12 @@ app.post('/api/admin/live/:id/unwatch', ...adminOnly, (req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
-  const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
-  if (!sess) return res.status(404).json({ error: 'not_found' });
-  if (req.user.role !== 'admin' && sess.model_id !== req.user.id)
-    return res.status(403).json({ error: 'forbidden' });
+/* Full live teardown, shared by the host/admin end route below and
+ * the moderator force-end (Moderator Role build): relay down, private
+ * event closed, pay timers stopped, stage requests declined+refunded,
+ * game requests refunded, viewers + host notified, battle forfeited.
+ * `ip` is the acting request's client IP for refund ledger rows. */
+function endLiveSession(sess, ip) {
   liveFaceCaps.delete(sess.id);
   relayTeardownSession(sess.id);
   db.prepare(`UPDATE live_sessions SET status = 'ended', ended_at = datetime('now') WHERE id = ?`)
@@ -15180,7 +15290,7 @@ app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
     const compReq = isHouseAccountId(r.fan_id);
     if (!compReq) {
       refundFan(r.fan_id, sess.model_id, fee, 'live_join_refund',
-        `🎥 Stream ended — join request refunded`, clientIp(req));
+        `🎥 Stream ended — join request refunded`, ip);
     }
     pushToUser(r.fan_id, { type: 'live:join-declined', session_id: sess.id,
       request_id: r.id, refunded_cents: compReq ? 0 : fee,
@@ -15188,11 +15298,19 @@ app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
   }
   dropStageFan(sess.id, 'stream_ended');
   // Game Category: requests she never got to are refunded in full.
-  refundPendingGameRequests(sess, clientIp(req));
+  refundPendingGameRequests(sess, ip);
   pushLiveViewers(sess.id, { type: 'live:ended', session_id: sess.id });
   pushToUser(sess.model_id, { type: 'live:ended', session_id: sess.id });
   // Phase 6: ending her live mid-battle forfeits the battle.
   try { battleOnSessionEnded(sess.id); } catch (e) {}
+}
+
+app.post('/api/live/:id/end', identMiddleware, requireUser, (req, res) => {
+  const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
+  if (!sess) return res.status(404).json({ error: 'not_found' });
+  if (req.user.role !== 'admin' && sess.model_id !== req.user.id)
+    return res.status(403).json({ error: 'forbidden' });
+  endLiveSession(sess, clientIp(req));
   res.json({ ok: true });
 });
 
@@ -18209,6 +18327,7 @@ app.get('/api/admin/overview', ...adminOnly, (req, res) => {
       (SELECT COUNT(*) FROM users u WHERE u.merged_into IS NULL
         AND (u.role = 'recruiter' OR EXISTS (SELECT 1 FROM recruiters r WHERE r.user_id = u.id)) AND u.status != 'deleted') AS affiliates,
       (SELECT COUNT(*) FROM dmca_notices WHERE status IN ('received','under_review')) AS open_dmca,
+      (SELECT COUNT(*) FROM deactivation_requests WHERE status = 'pending') AS pending_deactivation_requests,
       (SELECT COUNT(*) FROM safety_incidents WHERE status = 'open') AS open_incidents`).get();
   const LEDGER_SUM = `
     SELECT COALESCE(SUM(gross_cents),0) AS gross_cents,
@@ -19622,6 +19741,800 @@ app.post('/api/presence/ping', (req, res) => {
   }
   if (key) presenceSvc.ping(key, role);
   res.status(204).end();
+});
+
+/* =====================================================================
+ * MODERATOR (WORKER) ROLE — hired human staff with a deliberately
+ * narrow slice of the Manager (spec: moderator-role-spec.md).
+ *
+ * Default-deny shape: every moderator endpoint below lives under its
+ * own /api/mod/* route behind moderatorOnly — NOTHING under
+ * /api/admin/* accepts the role, so money views/flows, bank info,
+ * settings, contracts, worker management and this audit trail stay
+ * unreachable by construction, and the payloads shaped here carry no
+ * money fields at all (absent, not zeroed). A moderator can never
+ * deactivate/hide/ban anyone: staff file requests into the owner's
+ * deactivation_requests queue instead. Every moderator mutation —
+ * and the invite/disable lifecycle around the accounts themselves —
+ * is written to moderator_actions; only the owner can read it.
+ * ===================================================================== */
+const moderatorOnly = [identMiddleware, requireUser, requireRole('moderator')];
+
+function logModAction(workerId, action, targetType, targetId, detail) {
+  try {
+    db.prepare(`INSERT INTO moderator_actions (worker_id, action, target_type, target_id, detail)
+      VALUES (?, ?, ?, ?, ?)`)
+      .run(workerId, action, targetType || '', targetId == null ? null : targetId,
+        String(detail || '').slice(0, 1000));
+  } catch (e) { /* the audit trail is a backstop, never a blocker */ }
+}
+
+/* Bell every admin about a fresh owner-approval request. */
+function bellAdminsRequest(title, body) {
+  try {
+    const admins = db.prepare("SELECT id FROM users WHERE role = 'admin'").all();
+    for (const a of admins) {
+      try { notifyUser(a.id, 'deactivation_request', title, body, '/manager'); } catch (e) { /* per-admin bonus */ }
+    }
+  } catch (e) { /* bells are a bonus; the queue row is the record */ }
+}
+
+/* A case in the ID queue is ESCALATED — the owner's, not the
+ * moderator's — when the packet is incomplete, the performer's signed
+ * release/consent is missing, the subject already carries an
+ * enforcement flag or an open safety incident, or a moderator stamped
+ * it up. `v` is a raw id_verifications row. */
+function idCaseClass(v) {
+  const reasons = [];
+  if (v.escalated_at) reasons.push('escalated_by_worker');
+  if (!v.id_front_path || !v.id_back_path || !v.selfie_path) reasons.push('incomplete_packet');
+  if (v.co_performer_id) {
+    if (!v.consent_form_path) reasons.push('missing_consent');
+  } else if (!releaseOnFile(v.model_id)) reasons.push('missing_release');
+  const strike = db.prepare('SELECT flagged FROM strikes WHERE subject_key = ?').get('u:' + v.model_id);
+  if (strike && strike.flagged) reasons.push('subject_flagged');
+  const openInc = db.prepare("SELECT COUNT(*) AS c FROM safety_incidents WHERE status = 'open' AND sender_id = ?").get(v.model_id);
+  if (openInc && openInc.c > 0) reasons.push('open_safety_incident');
+  return { queue: reasons.length ? 'escalated' : 'standard', reasons };
+}
+
+/* Insert a staff message into the staff member's support thread with
+ * one user, creating the thread if needed. Orientation mirrors the
+ * admin threads: with a fan the staff member is the model-side party;
+ * with a model the staff member is the fan-side party. */
+function staffSayToUser(staff, other, body) {
+  let conv;
+  if (other.role === 'fan') {
+    conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(other.id, staff.id);
+    if (!conv) {
+      const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(other.id, staff.id);
+      conv = { id: Number(info.lastInsertRowid) };
+    }
+  } else {
+    conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(staff.id, other.id);
+    if (!conv) {
+      const info = db.prepare('INSERT INTO conversations (fan_id, model_id) VALUES (?,?)').run(staff.id, other.id);
+      conv = { id: Number(info.lastInsertRowid) };
+    }
+  }
+  const info = db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+    .run(conv.id, staff.id, body);
+  db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+  return { conversation_id: conv.id, message_id: Number(info.lastInsertRowid) };
+}
+
+/* Moderator Overview — counts only. No money figure of any kind is
+ * computed here, so none can leak into a worker's payload. */
+app.get('/api/mod/overview', ...moderatorOnly, (req, res) => {
+  const pendingRows = db.prepare("SELECT * FROM id_verifications WHERE status = 'pending'").all();
+  let escalated = 0;
+  for (const v of pendingRows) if (idCaseClass(v).queue === 'escalated') escalated++;
+  const one = (sql, ...a) => db.prepare(sql).get(...a).c;
+  res.json({
+    pending_id_reviews: pendingRows.length - escalated,
+    escalated_id_reviews: escalated,
+    live_now: one("SELECT COUNT(*) AS c FROM live_sessions WHERE status = 'live'"),
+    fans: one("SELECT COUNT(*) AS c FROM users WHERE role = 'fan' AND banned = 0"),
+    models: one("SELECT COUNT(*) AS c FROM users WHERE role = 'model' AND banned = 0"),
+    open_incidents: one("SELECT COUNT(*) AS c FROM safety_incidents WHERE status = 'open'"),
+    open_stream_flags: one("SELECT COUNT(*) AS c FROM stream_flags WHERE status = 'open'"),
+    new_suggestions: one("SELECT COUNT(*) AS c FROM suggestions WHERE status = 'new'"),
+    my_pending_requests: one("SELECT COUNT(*) AS c FROM deactivation_requests WHERE status = 'pending' AND requested_by = ?", req.user.id),
+  });
+});
+
+/* Moderator ID Checks — the pending queue, each case classified
+ * standard (she may decide it) or escalated (owner-only). Document
+ * paths are never serialized — presence booleans only, and the
+ * photos themselves ride the owner's token-gated photo route. */
+app.get('/api/mod/id-verifications', ...moderatorOnly, (req, res) => {
+  const rows = db.prepare(`
+    SELECT v.*, u.username, u.display_name AS owner_name, cp.display_name AS partner_name
+    FROM id_verifications v JOIN users u ON u.id = v.model_id
+    LEFT JOIN co_performers cp ON cp.id = v.co_performer_id
+    WHERE v.status = 'pending' ORDER BY v.submitted_at ASC`).all();
+  res.json({ verifications: rows.map((v) => {
+    const own = !v.co_performer_id;
+    const rel = own ? db.prepare('SELECT method, legal_name, stage_name, dob, release_version, signed_at, (paper_path IS NOT NULL) AS paper FROM model_releases WHERE model_id = ?').get(v.model_id) : null;
+    const cls = idCaseClass(v);
+    return {
+      id: v.id, model_id: v.model_id, co_performer_id: v.co_performer_id,
+      status: v.status, submitted_at: v.submitted_at, reviewer_note: v.reviewer_note,
+      consent_on_file: v.consent_form_path ? 1 : 0,
+      display_name: own ? v.owner_name : v.partner_name,
+      owner_name: v.owner_name, username: v.username, partner_name: v.partner_name,
+      is_partner: own ? 0 : 1,
+      has_front: v.id_front_path ? 1 : 0, has_back: v.id_back_path ? 1 : 0,
+      has_selfie: v.selfie_path ? 1 : 0,
+      release_on_file: own && rel ? 1 : 0,
+      release_method: own && rel ? rel.method : null,
+      release_legal_name: own && rel ? rel.legal_name : null,
+      release_stage_name: own && rel ? rel.stage_name : null,
+      release_dob: own && rel ? rel.dob : null,
+      release_version: own && rel ? rel.release_version : null,
+      release_signed_at: own && rel ? rel.signed_at : null,
+      release_paper_on_file: own && rel ? rel.paper : 0,
+      escalated_at: v.escalated_at, escalation_reason: v.escalation_reason,
+      queue: cls.queue, escalate_reasons: cls.reasons,
+    };
+  }) });
+});
+
+/* Photo tokens for the moderator review screen — same short-lived
+ * token map the owner's screen uses; the photo route itself only
+ * checks token + verification id. */
+app.post('/api/mod/id-verifications/:id/photo-token', ...moderatorOnly, (req, res) => {
+  const v = db.prepare('SELECT id FROM id_verifications WHERE id = ?').get(req.params.id);
+  if (!v) return res.status(404).json({ error: 'not_found' });
+  const now = Date.now();
+  for (const [t, ft] of idPhotoTokens) if (ft.expires <= now) idPhotoTokens.delete(t);
+  const token = crypto.randomBytes(24).toString('hex');
+  idPhotoTokens.set(token, { verificationId: v.id, adminId: req.user.id,
+    expires: now + 120 * 1000 });
+  res.json({ token });
+});
+
+/* Shared gate for moderator ID decisions: the case must be pending
+ * and STANDARD — escalated cases answer 403 and stay the owner's. */
+function modIdCaseOrFail(req, res) {
+  const v = db.prepare('SELECT * FROM id_verifications WHERE id = ?').get(req.params.id);
+  if (!v) { res.status(404).json({ error: 'not_found' }); return null; }
+  if (v.status !== 'pending') { res.status(409).json({ error: 'not_pending' }); return null; }
+  const cls = idCaseClass(v);
+  if (cls.queue === 'escalated') {
+    res.status(403).json({ error: 'escalated_case',
+      message: 'This case is flagged for the owner — it is read-only for moderators.',
+      reasons: cls.reasons });
+    return null;
+  }
+  return v;
+}
+
+app.post('/api/mod/id-verifications/:id/approve', ...moderatorOnly, (req, res) => {
+  const v = modIdCaseOrFail(req, res);
+  if (!v) return;
+  // Same hard rule as the owner's queue (defense in depth — the case
+  // class already escalates these): no approval without the release.
+  if (!v.co_performer_id && !releaseOnFile(v.model_id))
+    return res.status(409).json({ error: 'release_missing',
+      message: 'Her packet is missing the signed WOGENT performer release.' });
+  txn(() => {
+    db.prepare(`UPDATE id_verifications SET status = 'approved', reviewed_at = datetime('now'),
+                reviewer_note = '' WHERE id = ?`).run(v.id);
+    if (v.co_performer_id)
+      db.prepare(`UPDATE co_performers SET status = 'approved', updated_at = datetime('now')
+                  WHERE id = ?`).run(v.co_performer_id);
+  });
+  pushToSubject(`u:${v.model_id}`, { type: 'id_verified', status: 'approved' });
+  logModAction(req.user.id, 'id_approve', 'id_verification', v.id,
+    `model_id ${v.model_id}${v.co_performer_id ? ` co-performer ${v.co_performer_id}` : ''}`);
+  res.json({ ok: true });
+});
+
+app.post('/api/mod/id-verifications/:id/reject', ...moderatorOnly, (req, res) => {
+  const note = String((req.body && req.body.note) || '').trim().slice(0, 300);
+  if (!note) return res.status(400).json({ error: 'note_required',
+    message: 'A rejection needs a reason — she sees it and fixes exactly that.' });
+  const v = modIdCaseOrFail(req, res);
+  if (!v) return;
+  txn(() => {
+    db.prepare(`UPDATE id_verifications SET status = 'rejected', reviewed_at = datetime('now'),
+                reviewer_note = ? WHERE id = ?`).run(note, v.id);
+    if (v.co_performer_id)
+      db.prepare(`UPDATE co_performers SET status = 'rejected', updated_at = datetime('now')
+                  WHERE id = ?`).run(v.co_performer_id);
+  });
+  pushToSubject(`u:${v.model_id}`, { type: 'id_verified', status: 'rejected', note });
+  logModAction(req.user.id, 'id_reject', 'id_verification', v.id,
+    `model_id ${v.model_id}: ${note}`);
+  res.json({ ok: true });
+});
+
+/* Escalate a case to the owner with a reason — a decision a
+ * moderator can take on ANY pending case: it stamps the row and the
+ * case leaves her authority for the owner's queue. */
+app.post('/api/mod/id-verifications/:id/escalate', ...moderatorOnly, (req, res) => {
+  const reason = String((req.body && req.body.reason) || '').trim().slice(0, 300);
+  if (!reason) return res.status(400).json({ error: 'reason_required',
+    message: 'Say why this case needs the owner.' });
+  const v = db.prepare('SELECT * FROM id_verifications WHERE id = ?').get(req.params.id);
+  if (!v) return res.status(404).json({ error: 'not_found' });
+  if (v.status !== 'pending') return res.status(409).json({ error: 'not_pending' });
+  if (v.escalated_at) return res.status(409).json({ error: 'already_escalated' });
+  db.prepare(`UPDATE id_verifications SET escalated_at = datetime('now'), escalated_by = ?,
+              escalation_reason = ? WHERE id = ?`).run(req.user.id, reason, v.id);
+  logModAction(req.user.id, 'id_escalate', 'id_verification', v.id,
+    `model_id ${v.model_id}: ${reason}`);
+  bellAdminsRequest('🪪 ID case escalated to you',
+    `A moderator escalated the ID packet of model #${v.model_id}: ${reason}`);
+  res.json({ ok: true });
+});
+
+/* ---------------- Moderator Safety ----------------
+ * Flagged chat messages + strikes and live-stream flags: review,
+ * dismiss false flags, and send official warnings. Chat pause/resume
+ * stays the owner's tool — it is not in the worker allowlist. */
+app.get('/api/mod/safety/incidents', ...moderatorOnly, (req, res) => {
+  const status = ['open', 'resolved', 'dismissed'].includes(req.query.status) ? req.query.status : 'open';
+  const rows = db.prepare('SELECT * FROM safety_incidents WHERE status = ? ORDER BY id DESC LIMIT 200').all(status);
+  res.json({ incidents: rows });
+});
+
+app.post('/api/mod/safety/incidents/:id/dismiss', ...moderatorOnly, (req, res) => {
+  const inc = db.prepare('SELECT * FROM safety_incidents WHERE id = ?').get(req.params.id);
+  if (!inc) return res.status(404).json({ error: 'not_found' });
+  db.prepare("UPDATE safety_incidents SET status = 'dismissed' WHERE id = ?").run(inc.id);
+  logModAction(req.user.id, 'flag_dismiss', 'safety_incident', inc.id,
+    `sender ${inc.sender_name || inc.sender_id}: ${String(inc.flagged_text || '').slice(0, 120)}`);
+  res.json({ ok: true });
+});
+
+/* Official warning: the moderator's own words, delivered as a bell
+ * AND a message in her support thread with that user, so it cannot
+ * be missed. Guest senders have no account to warn. */
+app.post('/api/mod/safety/incidents/:id/warn', ...moderatorOnly, (req, res) => {
+  const message = String((req.body && req.body.message) || '').trim().slice(0, 1000);
+  if (!message) return res.status(400).json({ error: 'message_required',
+    message: 'Write the warning first.' });
+  const inc = db.prepare('SELECT * FROM safety_incidents WHERE id = ?').get(req.params.id);
+  if (!inc) return res.status(404).json({ error: 'not_found' });
+  if (!inc.sender_id) return res.status(400).json({ error: 'no_recipient',
+    message: 'This flag came from a guest — there is no account to warn.' });
+  const target = db.prepare('SELECT id, role, display_name FROM users WHERE id = ?').get(inc.sender_id);
+  if (!target) return res.status(404).json({ error: 'not_found' });
+  try { notifyUser(target.id, 'warning', '⚠️ Official warning — SlutCamp Moderation', message, '/#inbox'); } catch (e) { /* bell is a bonus */ }
+  staffSayToUser(req.user, target, `⚠️ Official warning from SlutCamp Moderation:\n\n${message}`);
+  logModAction(req.user.id, 'warning_sent', 'user', target.id,
+    `incident ${inc.id}: ${message.slice(0, 200)}`);
+  res.json({ ok: true });
+});
+
+app.get('/api/mod/safety/stream-flags', ...moderatorOnly, (req, res) => {
+  const rows = db.prepare(`
+    SELECT f.id, f.session_id, f.sender_id, f.sender_name, f.flagged_text, f.matched,
+           f.status, f.created_at, u.display_name AS model_name
+    FROM stream_flags f JOIN live_sessions s ON s.id = f.session_id
+    JOIN users u ON u.id = s.model_id
+    ORDER BY f.id DESC LIMIT 200`).all();
+  res.json({ flags: rows });
+});
+
+app.post('/api/mod/safety/stream-flags/:id/dismiss', ...moderatorOnly, (req, res) => {
+  const f = db.prepare('SELECT * FROM stream_flags WHERE id = ?').get(req.params.id);
+  if (!f) return res.status(404).json({ error: 'not_found' });
+  db.prepare("UPDATE stream_flags SET status = 'dismissed' WHERE id = ?").run(f.id);
+  logModAction(req.user.id, 'stream_flag_dismiss', 'stream_flag', f.id,
+    `session ${f.session_id}: ${String(f.flagged_text || '').slice(0, 120)}`);
+  res.json({ ok: true });
+});
+
+/* ---------------- Moderator Fans ----------------
+ * Roster + support threads. The SELECT is the whole guarantee: no
+ * credits, no spend, no load history exists in a moderator payload
+ * because none is ever read. */
+app.get('/api/mod/fans', ...moderatorOnly, (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const cols = `id, username, display_name, banned, created_at,
+    (SELECT MAX(created_at) FROM sessions WHERE user_id = users.id) AS last_login_at`;
+  const rows = q
+    ? db.prepare(`SELECT ${cols} FROM users WHERE role = 'fan' AND (username LIKE ? OR display_name LIKE ?) ORDER BY id DESC LIMIT 200`).all(`%${q}%`, `%${q}%`)
+    : db.prepare(`SELECT ${cols} FROM users WHERE role = 'fan' ORDER BY id DESC LIMIT 200`).all();
+  res.json({ fans: rows });
+});
+
+app.get('/api/mod/fans/:id/thread', ...moderatorOnly, (req, res) => {
+  const f = db.prepare("SELECT id, display_name FROM users WHERE id = ? AND role = 'fan'").get(req.params.id);
+  if (!f) return res.status(404).json({ error: 'not_found' });
+  const conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(f.id, req.user.id);
+  if (!conv) return res.json({ conversation_id: null, messages: [] });
+  db.prepare('UPDATE messages SET is_read = 1 WHERE conversation_id = ? AND sender_id = ?').run(conv.id, f.id);
+  const messages = db.prepare(`
+    SELECT msg.id, msg.body, msg.created_at, msg.sender_id,
+           CASE WHEN msg.sender_id = ? THEN 'You (Moderator)' ELSE ? END AS sender_name
+    FROM messages msg WHERE msg.conversation_id = ? ORDER BY msg.id ASC LIMIT 200`)
+    .all(req.user.id, f.display_name, conv.id);
+  res.json({ conversation_id: conv.id, messages });
+});
+
+/* Reply as the moderator — her own name on the thread, free by
+ * construction (staff messages are inserted, never charged). */
+app.post('/api/mod/fans/:id/message', ...moderatorOnly, (req, res) => {
+  const f = db.prepare("SELECT id, display_name, role FROM users WHERE id = ? AND role = 'fan'").get(req.params.id);
+  if (!f) return res.status(404).json({ error: 'not_found' });
+  const body = String((req.body && req.body.body) || '').trim().slice(0, 2000);
+  if (!body) return res.status(400).json({ error: 'empty', message: 'Write a message first.' });
+  const out = staffSayToUser(req.user, f, body);
+  try { notifyUser(f.id, 'message', `💬 ${req.user.display_name} (Moderator)`, body.slice(0, 90), `/#chat/${out.conversation_id}`); } catch (e) { /* bell is a bonus */ }
+  logModAction(req.user.id, 'fan_reply', 'user', f.id, body.slice(0, 200));
+  res.json({ ok: true, ...out });
+});
+
+/* A moderator cannot ban a fan — she FILES it, with a reason, into
+ * the owner's approval queue. The fan's account does not change
+ * unless the owner approves. */
+app.post('/api/mod/fans/:id/ban-request', ...moderatorOnly, (req, res) => {
+  const reason = String((req.body && req.body.reason) || '').trim().slice(0, 500);
+  if (!reason) return res.status(400).json({ error: 'reason_required',
+    message: 'A ban request needs a reason for the owner.' });
+  const f = db.prepare("SELECT id, display_name, username FROM users WHERE id = ? AND role = 'fan'").get(req.params.id);
+  if (!f) return res.status(404).json({ error: 'not_found' });
+  const existing = db.prepare(`SELECT id FROM deactivation_requests
+    WHERE type = 'fan_ban' AND fan_id = ? AND status = 'pending'`).get(f.id);
+  if (existing) return res.status(409).json({ error: 'request_pending',
+    message: 'A ban request for this fan is already waiting on the owner.' });
+  const info = db.prepare(`INSERT INTO deactivation_requests (type, fan_id, requested_by, reason)
+    VALUES ('fan_ban', ?, ?, ?)`).run(f.id, req.user.id, reason);
+  logModAction(req.user.id, 'fan_ban_request', 'user', f.id, reason);
+  bellAdminsRequest('🚫 Fan-ban request', `${req.user.display_name} (moderator) asked to ban fan @${f.username}: ${reason}`);
+  res.json({ ok: true, request_id: Number(info.lastInsertRowid) });
+});
+
+/* ---------------- Moderator Models ----------------
+ * Models awaiting ID approval — the same queue the ID Checks screen
+ * decides, grouped by model. No earnings figures: none are read. */
+app.get('/api/mod/models/pending', ...moderatorOnly, (req, res) => {
+  const rows = db.prepare(`
+    SELECT u.id, u.username, u.display_name, u.created_at, u.banned,
+           m.is_hidden,
+           (SELECT v.id FROM id_verifications v WHERE v.model_id = u.id
+              AND v.co_performer_id IS NULL AND v.status = 'pending'
+            ORDER BY v.id DESC LIMIT 1) AS pending_verification_id,
+           (SELECT v.status FROM id_verifications v WHERE v.model_id = u.id
+              AND v.co_performer_id IS NULL ORDER BY v.id DESC LIMIT 1) AS id_status
+    FROM users u LEFT JOIN models m ON m.user_id = u.id
+    WHERE u.role = 'model' ORDER BY u.id DESC`).all();
+  res.json({ models: rows.filter((r) => r.id_status !== 'approved').map((r) => {
+    let queue = null;
+    if (r.pending_verification_id) {
+      const v = db.prepare('SELECT * FROM id_verifications WHERE id = ?').get(r.pending_verification_id);
+      if (v) queue = idCaseClass(v).queue;
+    }
+    return { ...r, queue };
+  }) });
+});
+
+app.get('/api/mod/models/:id/thread', ...moderatorOnly, (req, res) => {
+  const m = db.prepare("SELECT id, display_name FROM users WHERE id = ? AND role = 'model'").get(req.params.id);
+  if (!m) return res.status(404).json({ error: 'not_found' });
+  const conv = db.prepare('SELECT id FROM conversations WHERE fan_id = ? AND model_id = ?').get(req.user.id, m.id);
+  if (!conv) return res.json({ conversation_id: null, messages: [] });
+  db.prepare('UPDATE messages SET is_read = 1 WHERE conversation_id = ? AND sender_id = ?').run(conv.id, m.id);
+  const messages = db.prepare(`
+    SELECT msg.id, msg.body, msg.created_at, msg.sender_id,
+           CASE WHEN msg.sender_id = ? THEN 'You (Moderator)' ELSE ? END AS sender_name
+    FROM messages msg WHERE msg.conversation_id = ? ORDER BY msg.id ASC LIMIT 200`)
+    .all(req.user.id, m.display_name, conv.id);
+  res.json({ conversation_id: conv.id, messages });
+});
+
+app.post('/api/mod/models/:id/message', ...moderatorOnly, (req, res) => {
+  const m = db.prepare("SELECT id, display_name, role FROM users WHERE id = ? AND role = 'model'").get(req.params.id);
+  if (!m) return res.status(404).json({ error: 'not_found' });
+  const body = String((req.body && req.body.body) || '').trim().slice(0, 2000);
+  if (!body) return res.status(400).json({ error: 'empty', message: 'Write a message first.' });
+  const out = staffSayToUser(req.user, m, body);
+  try { notifyUser(m.id, 'message', `💬 ${req.user.display_name} (Moderator)`, body.slice(0, 90), `/#chat/${out.conversation_id}`); } catch (e) { /* bell is a bonus */ }
+  logModAction(req.user.id, 'model_reply', 'user', m.id, body.slice(0, 200));
+  res.json({ ok: true, ...out });
+});
+
+/* File a deactivate/hide request for a model into the owner's queue
+ * (e.g. she asked in chat). Her account stays fully active — only
+ * the owner's approval changes anything. */
+app.post('/api/mod/models/:id/deactivation-request', ...moderatorOnly, (req, res) => {
+  const type = req.body && req.body.type;
+  if (!['deactivate', 'hide'].includes(type))
+    return res.status(400).json({ error: 'bad_type', message: "type must be 'deactivate' or 'hide'." });
+  const reason = String((req.body && req.body.reason) || '').trim().slice(0, 500);
+  if (!reason) return res.status(400).json({ error: 'reason_required',
+    message: 'The request needs a reason for the owner.' });
+  const m = db.prepare("SELECT id, display_name, username FROM users WHERE id = ? AND role = 'model'").get(req.params.id);
+  if (!m) return res.status(404).json({ error: 'not_found' });
+  const existing = db.prepare(`SELECT id FROM deactivation_requests
+    WHERE model_id = ? AND status = 'pending' AND type IN ('deactivate','hide')`).get(m.id);
+  if (existing) return res.status(409).json({ error: 'request_pending',
+    message: 'A request for this model is already waiting on the owner.' });
+  const info = db.prepare(`INSERT INTO deactivation_requests (type, model_id, requested_by, reason)
+    VALUES (?, ?, ?, ?)`).run(type, m.id, req.user.id, reason);
+  logModAction(req.user.id, 'deactivation_request', 'user', m.id, `${type}: ${reason}`);
+  bellAdminsRequest(type === 'hide' ? '🙈 Hide request' : '👋 Deactivation request',
+    `${req.user.display_name} (moderator) filed a ${type} request for @${m.username}: ${reason}`);
+  res.json({ ok: true, request_id: Number(info.lastInsertRowid) });
+});
+
+/* Requests this moderator filed, with the owner's outcomes. */
+app.get('/api/mod/requests', ...moderatorOnly, (req, res) => {
+  const rows = db.prepare(`
+    SELECT r.*, mu.username AS model_username, mu.display_name AS model_name,
+           fu.username AS fan_username, fu.display_name AS fan_name
+    FROM deactivation_requests r
+    LEFT JOIN users mu ON mu.id = r.model_id
+    LEFT JOIN users fu ON fu.id = r.fan_id
+    WHERE r.requested_by = ? ORDER BY r.id DESC LIMIT 100`).all(req.user.id);
+  res.json({ requests: rows });
+});
+
+/* ---------------- Moderator Affiliates ----------------
+ * Roster view only — who the affiliates are and how many models each
+ * onboarded. No earnings columns are read, so none can leak. (The
+ * app has no affiliate approval state: affiliates are approved at
+ * signup by the shipped one-account build, so there is no approval
+ * action to expose here.) */
+app.get('/api/mod/affiliates', ...moderatorOnly, (req, res) => {
+  const rows = db.prepare(`
+    SELECT u.id AS user_id, u.username, u.display_name, u.banned,
+           u.created_at AS signed_up_at, a.city, a.referral_code,
+           (SELECT COUNT(*) FROM models mm WHERE mm.recruiter_id = a.id) AS models_onboarded
+    FROM users u LEFT JOIN recruiters a ON a.user_id = u.id
+    WHERE u.merged_into IS NULL AND u.status != 'deleted'
+      AND (u.role = 'recruiter' OR a.id IS NOT NULL)
+    ORDER BY u.display_name`).all();
+  res.json({ affiliates: rows });
+});
+
+/* ---------------- Moderator Lives ----------------
+ * Who is live right now (no join/gift/priority money columns — none
+ * are read), silent watch, and the one hard power a moderator holds:
+ * END a live for a clear violation, with a mandatory reason that is
+ * audited and told to the model. */
+app.get('/api/mod/live', ...moderatorOnly, (req, res) => {
+  const rows = db.prepare(`
+    SELECT s.id, s.model_id, s.title, s.is_explicit, s.started_at,
+           u.display_name AS model_name,
+           (SELECT COUNT(*) FROM live_viewers v WHERE v.session_id = s.id) AS viewers
+    FROM live_sessions s JOIN users u ON u.id = s.model_id
+    WHERE s.status = 'live' ORDER BY s.started_at DESC`).all();
+  res.json({ sessions: rows });
+});
+
+app.post('/api/mod/live/:id/watch', ...moderatorOnly, (req, res) => {
+  const sess = db.prepare(`SELECT * FROM live_sessions WHERE id = ? AND status = 'live'`)
+    .get(req.params.id);
+  if (!sess) return res.status(404).json({ error: 'not_live' });
+  pushToUser(sess.model_id, { type: 'live:viewer-joined', session_id: sess.id,
+    fan_id: req.user.id, fan_name: '🛡️ Moderator', is_mod: true });
+  const model = db.prepare('SELECT display_name FROM users WHERE id = ?').get(sess.model_id);
+  res.json({ ok: true, session_id: sess.id, model_id: sess.model_id,
+    model_name: model.display_name, title: sess.title || '',
+    is_explicit: !!sess.is_explicit, brb: !!sess.brb, is_mod: true });
+});
+
+app.post('/api/mod/live/:id/unwatch', ...moderatorOnly, (req, res) => {
+  const sess = db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(req.params.id);
+  if (sess) pushToUser(sess.model_id, { type: 'live:viewer-left', session_id: sess.id, fan_id: req.user.id });
+  res.json({ ok: true });
+});
+
+app.post('/api/mod/live/:id/end', ...moderatorOnly, (req, res) => {
+  const reason = String((req.body && req.body.reason) || '').trim().slice(0, 500);
+  if (!reason) return res.status(400).json({ error: 'reason_required',
+    message: 'Ending a live needs a reason — it is recorded and the model is told.' });
+  const sess = db.prepare(`SELECT * FROM live_sessions WHERE id = ? AND status = 'live'`)
+    .get(req.params.id);
+  if (!sess) return res.status(404).json({ error: 'not_live' });
+  endLiveSession(sess, clientIp(req));
+  const model = db.prepare('SELECT language FROM users WHERE id = ?').get(sess.model_id);
+  try {
+    notifyUser(sess.model_id, 'live_ended',
+      srv('bell_live_ended_title', model ? model.language : 'en'),
+      reason, '/#inbox');
+  } catch (e) { /* the teardown already happened; the bell is a bonus */ }
+  logModAction(req.user.id, 'live_end', 'live_session', sess.id,
+    `model_id ${sess.model_id}: ${reason}`);
+  res.json({ ok: true });
+});
+
+/* ---------------- Moderator Suggestion Box ----------------
+ * Read + triage status; replies go through the fan/model support
+ * threads above (the suggester's role picks the thread). */
+app.get('/api/mod/suggestions', ...moderatorOnly, (req, res) => {
+  const rows = db.prepare(`
+    SELECT s.id, s.user_id, s.username, s.body, s.status, s.created_at,
+           u.role AS suggester_role
+    FROM suggestions s LEFT JOIN users u ON u.id = s.user_id
+    ORDER BY (s.status = 'new') DESC, s.id DESC LIMIT 200`).all();
+  res.json({ suggestions: rows });
+});
+
+app.post('/api/mod/suggestions/:id/status', ...moderatorOnly, (req, res) => {
+  const status = req.body && req.body.status;
+  if (!['new', 'read', 'done'].includes(status))
+    return res.status(400).json({ error: 'bad_status' });
+  const s = db.prepare('SELECT * FROM suggestions WHERE id = ?').get(req.params.id);
+  if (!s) return res.status(404).json({ error: 'not_found' });
+  db.prepare('UPDATE suggestions SET status = ? WHERE id = ?').run(status, s.id);
+  logModAction(req.user.id, 'suggestion_status', 'suggestion', s.id, `→ ${status}`);
+  res.json({ ok: true });
+});
+
+/* ---------------- Deactivation / hide lifecycle ----------------
+ * A model asks from her own Settings; the account stays FULLY active
+ * until the owner approves. One pending request per model. */
+app.post('/api/model/deactivation-request', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const type = req.body && req.body.type;
+  if (!['deactivate', 'hide'].includes(type))
+    return res.status(400).json({ error: 'bad_type', message: "type must be 'deactivate' or 'hide'." });
+  const reason = String((req.body && req.body.reason) || '').trim().slice(0, 500);
+  if (!reason) return res.status(400).json({ error: 'reason_required',
+    message: 'Please tell Asce why — he reads every request himself.' });
+  const existing = db.prepare(`SELECT id FROM deactivation_requests
+    WHERE model_id = ? AND status = 'pending' AND type IN ('deactivate','hide')`).get(req.user.id);
+  if (existing) return res.status(409).json({ error: 'request_pending',
+    message: 'You already have a request waiting — Asce will review it.' });
+  const info = db.prepare(`INSERT INTO deactivation_requests (type, model_id, requested_by, reason)
+    VALUES (?, ?, ?, ?)`).run(type, req.user.id, req.user.id, reason);
+  bellAdminsRequest(type === 'hide' ? '🙈 Hide request' : '👋 Deactivation request',
+    `@${req.user.username} asked to ${type === 'hide' ? 'hide her profile' : 'deactivate her account'}: ${reason}`);
+  res.json({ ok: true, request_id: Number(info.lastInsertRowid) });
+});
+
+app.get('/api/model/deactivation-request', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const row = db.prepare(`SELECT id, type, reason, status, created_at, resolved_at
+    FROM deactivation_requests WHERE model_id = ? ORDER BY id DESC LIMIT 1`).get(req.user.id);
+  res.json({ request: row || null });
+});
+
+/* Owner: the approval queue (Manager 📥 Requests screen + the
+ * Overview tile count). */
+app.get('/api/admin/deactivation-requests', ...adminOnly, (req, res) => {
+  const rows = db.prepare(`
+    SELECT r.*, mu.username AS model_username, mu.display_name AS model_name,
+           fu.username AS fan_username, fu.display_name AS fan_name,
+           qu.username AS requested_by_name, qu.display_name AS requested_by_display,
+           qu.role AS requested_by_role
+    FROM deactivation_requests r
+    LEFT JOIN users mu ON mu.id = r.model_id
+    LEFT JOIN users fu ON fu.id = r.fan_id
+    LEFT JOIN users qu ON qu.id = r.requested_by
+    ORDER BY (r.status = 'pending') DESC, r.id DESC LIMIT 200`).all();
+  res.json({ requests: rows });
+});
+
+/* Tell the model the outcome: a bell in her language plus a message
+ * in her admin thread carrying the same words. For an approved
+ * deactivation she cannot sign in to read either — the rows are the
+ * record, and she sees them if the account is ever restored. */
+function notifyModelRequestOutcome(modelId, titleKey, bodyKey) {
+  const m = db.prepare('SELECT id, language FROM users WHERE id = ?').get(modelId);
+  if (!m) return;
+  const title = srv(titleKey, m.language);
+  const body = srv(bodyKey, m.language);
+  try { notifyUser(m.id, 'deactivation_request', title, body, '/#inbox'); } catch (e) { /* bonus */ }
+  const admin = db.prepare("SELECT id, role FROM users WHERE role = 'admin' ORDER BY id LIMIT 1").get();
+  if (admin) {
+    try { staffSayToUser(admin, { id: m.id, role: 'model' }, `${title}\n\n${body}`); } catch (e) { /* bonus */ }
+  }
+}
+
+app.post('/api/admin/deactivation-requests/:id/approve', ...adminOnly, (req, res) => {
+  const r = db.prepare("SELECT * FROM deactivation_requests WHERE id = ? AND status = 'pending'").get(req.params.id);
+  if (!r) return res.status(404).json({ error: 'not_found' });
+  if (r.type === 'fan_ban') {
+    db.prepare('UPDATE users SET banned = 1 WHERE id = ?').run(r.fan_id);
+    deleteUserSessions(r.fan_id);
+  } else if (r.type === 'hide') {
+    db.prepare('UPDATE models SET is_hidden = 1 WHERE user_id = ?').run(r.model_id);
+    notifyModelRequestOutcome(r.model_id, 'bell_deact_hide_title', 'bell_deact_hide_body');
+  } else if (r.type === 'deactivate') {
+    const live = db.prepare("SELECT * FROM live_sessions WHERE model_id = ? AND status = 'live'").get(r.model_id);
+    if (live) { try { endLiveSession(live, clientIp(req)); } catch (e) { /* ban below still applies */ } }
+    // The outcome note lands before the ban so the record exists.
+    notifyModelRequestOutcome(r.model_id, 'bell_deact_done_title', 'bell_deact_done_body');
+    db.prepare('UPDATE users SET banned = 1 WHERE id = ?').run(r.model_id);
+    deleteUserSessions(r.model_id);
+  }
+  db.prepare(`UPDATE deactivation_requests SET status = 'approved',
+    resolved_at = datetime('now'), resolved_by = ? WHERE id = ?`).run(req.user.id, r.id);
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/deactivation-requests/:id/deny', ...adminOnly, (req, res) => {
+  const r = db.prepare("SELECT * FROM deactivation_requests WHERE id = ? AND status = 'pending'").get(req.params.id);
+  if (!r) return res.status(404).json({ error: 'not_found' });
+  db.prepare(`UPDATE deactivation_requests SET status = 'denied',
+    resolved_at = datetime('now'), resolved_by = ? WHERE id = ?`).run(req.user.id, r.id);
+  if (r.type !== 'fan_ban' && r.model_id)
+    notifyModelRequestOutcome(r.model_id, 'bell_deact_denied_title', 'bell_deact_denied_body');
+  res.json({ ok: true });
+});
+
+/* ---------------- Workers: invites, accounts, audit (owner) ------- */
+app.post('/api/admin/moderator-invites', ...adminOnly, (req, res) => {
+  const label = String((req.body && req.body.label) || '').trim().slice(0, 80);
+  if (!label) return res.status(400).json({ error: 'label_required',
+    message: "Label the link with the hire's name — one link per person." });
+  const code = crypto.randomBytes(9).toString('hex');
+  const info = db.prepare(`INSERT INTO moderator_invites (code, label, created_by) VALUES (?, ?, ?)`)
+    .run(code, label, req.user.id);
+  const inv = db.prepare('SELECT * FROM moderator_invites WHERE id = ?').get(Number(info.lastInsertRowid));
+  logModAction(req.user.id, 'invite_created', 'moderator_invite', inv.id, `label: ${label}`);
+  res.json({ ok: true, invite: { ...inv, url: `https://slutcamp.app/moderator-invite/${code}` } });
+});
+
+app.get('/api/admin/moderator-invites', ...adminOnly, (req, res) => {
+  const rows = db.prepare(`
+    SELECT i.*, u.display_name AS used_by_name, u.username AS used_by_username
+    FROM moderator_invites i LEFT JOIN users u ON u.id = i.used_by
+    ORDER BY i.id DESC LIMIT 100`).all();
+  const nowSql = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  res.json({ invites: rows.map((i) => ({
+    ...i,
+    url: `https://slutcamp.app/moderator-invite/${i.code}`,
+    status: i.used_by ? 'used' : i.is_revoked ? 'revoked' : (i.expires_at <= nowSql ? 'expired' : 'active'),
+  })) });
+});
+
+app.post('/api/admin/moderator-invites/:id/revoke', ...adminOnly, (req, res) => {
+  const inv = db.prepare('SELECT * FROM moderator_invites WHERE id = ?').get(req.params.id);
+  if (!inv) return res.status(404).json({ error: 'not_found' });
+  if (inv.used_by) return res.status(409).json({ error: 'already_used',
+    message: 'This link already created an account — disable the moderator instead.' });
+  db.prepare('UPDATE moderator_invites SET is_revoked = 1 WHERE id = ?').run(inv.id);
+  logModAction(req.user.id, 'invite_revoked', 'moderator_invite', inv.id, `label: ${inv.label}`);
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/moderators', ...adminOnly, (req, res) => {
+  const rows = db.prepare(`
+    SELECT id, username, display_name, email, created_at, disabled_at,
+           (SELECT MAX(created_at) FROM sessions WHERE user_id = users.id) AS last_login_at
+    FROM users WHERE role = 'moderator' ORDER BY id`).all();
+  res.json({ moderators: rows });
+});
+
+/* Revoke a moderator: stamp the account disabled and kill every
+ * live session in the same request — access ends NOW, not at the
+ * next token expiry. Sign-in is refused while the stamp stands. */
+app.post('/api/admin/moderators/:id/disable', ...adminOnly, (req, res) => {
+  const m = db.prepare("SELECT id, display_name FROM users WHERE id = ? AND role = 'moderator'").get(req.params.id);
+  if (!m) return res.status(404).json({ error: 'not_found' });
+  db.prepare("UPDATE users SET disabled_at = datetime('now') WHERE id = ?").run(m.id);
+  deleteUserSessions(m.id);
+  logModAction(req.user.id, 'moderator_disabled', 'user', m.id, m.display_name);
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/moderators/:id/enable', ...adminOnly, (req, res) => {
+  const m = db.prepare("SELECT id, display_name FROM users WHERE id = ? AND role = 'moderator'").get(req.params.id);
+  if (!m) return res.status(404).json({ error: 'not_found' });
+  db.prepare('UPDATE users SET disabled_at = NULL WHERE id = ?').run(m.id);
+  logModAction(req.user.id, 'moderator_enabled', 'user', m.id, m.display_name);
+  res.json({ ok: true });
+});
+
+/* The worker audit trail — owner-only by construction (adminOnly);
+ * moderators have no route that reads moderator_actions. */
+app.get('/api/admin/moderator-actions', ...adminOnly, (req, res) => {
+  const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 200));
+  const rows = db.prepare(`
+    SELECT a.*, u.display_name AS worker_name, u.username AS worker_username, u.role AS worker_role
+    FROM moderator_actions a LEFT JOIN users u ON u.id = a.worker_id
+    ORDER BY a.id DESC LIMIT ?`).all(limit);
+  res.json({ actions: rows });
+});
+
+/* ---------------- Moderator invite links (public) ------------------
+ * The token IS the onboarding: whoever opens the link signs up with
+ * their name, email and their own password, and the account is
+ * created with role 'moderator' bound server-side. Single-use,
+ * 7-day expiry, revocable while unused. No other signup path can
+ * produce the role (the public role whitelist stays fan/model). */
+function moderatorInviteState(code) {
+  const inv = db.prepare('SELECT * FROM moderator_invites WHERE code = ?').get(String(code || ''));
+  if (!inv) return { inv: null, error: 'invite_not_found' };
+  if (inv.used_by) return { inv, error: 'invite_used' };
+  if (inv.is_revoked) return { inv, error: 'invite_revoked' };
+  const nowSql = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  if (inv.expires_at <= nowSql) return { inv, error: 'invite_expired' };
+  return { inv, error: null };
+}
+
+app.get('/api/moderator-invite/:code', (req, res) => {
+  const { inv, error } = moderatorInviteState(req.params.code);
+  if (error) return res.json({ valid: false, error });
+  res.json({ valid: true, label: inv.label });
+});
+
+app.post('/api/moderator-invite/:code/signup', (req, res) => {
+  const { inv, error } = moderatorInviteState(req.params.code);
+  if (error) return res.status(400).json({ error });
+  const displayName = String((req.body && req.body.display_name) || '').trim().slice(0, 60);
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase();
+  const password = String((req.body && req.body.password) || '');
+  if (!displayName) return res.status(400).json({ error: 'name_required', message: 'Your name is required.' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    return res.status(400).json({ error: 'bad_email', message: 'Enter a valid email — it becomes your sign-in.' });
+  if (password.length < 6)
+    return res.status(400).json({ error: 'weak_password', message: 'Password must be at least 6 characters.' });
+  const taken = db.prepare('SELECT id FROM users WHERE username = ?').get(email);
+  if (taken) return res.status(409).json({ error: 'email_taken',
+    message: 'An account with this email already exists — sign in instead.' });
+  let user;
+  try {
+    const newId = createUser(email, password, 'moderator', displayName, null, 'en');
+    user = db.prepare('SELECT * FROM users WHERE id = ?').get(newId);
+  } catch (e) {
+    return res.status(409).json({ error: 'email_taken', message: 'An account with this email already exists.' });
+  }
+  db.prepare('UPDATE users SET email = ? WHERE id = ?').run(email, user.id);
+  db.prepare(`UPDATE moderator_invites SET used_by = ?, used_at = datetime('now') WHERE id = ?`)
+    .run(user.id, inv.id);
+  logModAction(user.id, 'invite_signup', 'moderator_invite', inv.id, `label: ${inv.label}`);
+  const token = createSession(user.id);
+  res.json({ ok: true, token, user: getUserPublic(user), manager_account: true });
+});
+
+/* The signup page a hire lands on from the owner's link. Plain
+ * server-rendered form (same pattern as /join): it validates the
+ * token, takes name/email/password, and sends her to the Manager. */
+app.get('/moderator-invite/:code', (req, res) => {
+  const { inv, error } = moderatorInviteState(req.params.code);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  res.set('Cache-Control', 'no-store');
+  if (error) {
+    return res.type('html').send(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>SlutCamp — Invite</title></head>
+<body style="font-family:system-ui;background:#14101a;color:#f5eef7;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0">
+<div style="max-width:420px;padding:24px;text-align:center">
+<h1 style="color:#ff5da2">This invite link is no longer valid</h1>
+<p style="color:#cbb8d4">It may have been used, revoked, or expired. Ask Asce for a fresh link.</p>
+</div></body></html>`);
+  }
+  res.type('html').send(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Join the SlutCamp team</title></head>
+<body style="font-family:system-ui;background:#14101a;color:#f5eef7;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0">
+<div style="max-width:420px;width:100%;padding:24px;box-sizing:border-box">
+<h1 style="color:#ff5da2;margin-bottom:4px">Join the SlutCamp team 💋</h1>
+<p style="color:#cbb8d4;margin-top:0">Hi ${esc(inv.label)} — Asce invited you to join SlutCamp as a <b>moderator</b>. Create your own account below; you'll sign in through the Manager app.</p>
+<form id="f">
+<label style="display:block;margin:14px 0 4px">Your name</label>
+<input id="nm" required maxlength="60" value="${esc(inv.label)}" style="width:100%;padding:10px;border-radius:8px;border:1px solid #4a3552;background:#1e1626;color:#fff;box-sizing:border-box">
+<label style="display:block;margin:14px 0 4px">Email (your sign-in)</label>
+<input id="em" type="email" required style="width:100%;padding:10px;border-radius:8px;border:1px solid #4a3552;background:#1e1626;color:#fff;box-sizing:border-box">
+<label style="display:block;margin:14px 0 4px">Choose a password</label>
+<input id="pw" type="password" required minlength="6" style="width:100%;padding:10px;border-radius:8px;border:1px solid #4a3552;background:#1e1626;color:#fff;box-sizing:border-box">
+<label style="display:flex;gap:8px;margin:16px 0;color:#cbb8d4;font-size:14px"><input type="checkbox" id="ag" required> I'm 18 or older and I agree to the Terms of Service and Privacy Policy.</label>
+<button id="go" style="width:100%;padding:12px;border:0;border-radius:8px;background:#ff5da2;color:#fff;font-weight:700;font-size:16px;cursor:pointer">Create my account</button>
+<p id="err" style="color:#ff8080;min-height:20px"></p>
+<p id="done" style="display:none;color:#9fe8b1">✅ Your moderator account is ready. <a href="/manager" style="color:#ff5da2">Open the Manager to sign in →</a></p>
+</form>
+<script>
+document.getElementById('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const err = document.getElementById('err');
+  err.textContent = '';
+  const r = await fetch('/api/moderator-invite/${esc(req.params.code)}/signup', { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ display_name: document.getElementById('nm').value,
+      email: document.getElementById('em').value, password: document.getElementById('pw').value }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { err.textContent = d.message || d.error || 'Something went wrong — try again.'; return; }
+  document.getElementById('go').style.display = 'none';
+  document.getElementById('done').style.display = 'block';
+});
+</script>
+</div></body></html>`);
 });
 
 /* Moderator-panel guard: admins only, everyone else (fans, models,

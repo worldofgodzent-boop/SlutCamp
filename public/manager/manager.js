@@ -1448,6 +1448,50 @@ function wireAdminBody(tab) {
   const go = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
   go('#go-safety', () => M.go('safety'));
   go('#a-logout', () => M.logout());
+  go('#ov-requests', () => M.go('requests'));
+
+  // 📥 Deactivation / Hide / Fan-ban Requests — the owner's approval
+  // queue. Approving applies the change immediately; denying closes
+  // the request and the model is notified politely (server-side).
+  if (tab === 'requests') {
+    document.querySelectorAll('[data-req-approve]').forEach((b) => { b.onclick = async () => {
+      if (!confirm('Approve this request? The change takes effect immediately.')) return;
+      const { status } = await api(`/admin/deactivation-requests/${b.dataset.reqApprove}/approve`, { method: 'POST' });
+      toast(status === 200 ? '✅ Approved' : 'Could not approve.'); if (status === 200) M.render();
+    }; });
+    document.querySelectorAll('[data-req-deny]').forEach((b) => { b.onclick = async () => {
+      const { status } = await api(`/admin/deactivation-requests/${b.dataset.reqDeny}/deny`, { method: 'POST' });
+      toast(status === 200 ? 'Denied — the model was notified politely' : 'Could not deny.'); if (status === 200) M.render();
+    }; });
+  }
+
+  // 🧑‍💼 Workers — moderator invite links, live accounts (disable /
+  // re-enable), and the audit log.
+  if (tab === 'workers') {
+    const create = document.getElementById('winv-create');
+    if (create) create.onclick = async () => {
+      const label = (document.getElementById('winv-label').value || '').trim();
+      if (!label) return toast("Put the hire's name first.");
+      const { status, data } = await api('/admin/moderator-invites', { method: 'POST', body: JSON.stringify({ label }) });
+      if (status !== 200 || !data.invite) return toast('Could not create the invite.');
+      document.getElementById('winv-out').innerHTML = `<div class="small" style="margin-bottom:6px">Send this link to ${esc(label)}:</div><input class="input" readonly value="${esc(data.invite.url)}" style="width:100%" onclick="this.select()">`;
+      setTimeout(() => M.render(), 1500);
+    };
+    document.querySelectorAll('[data-winv-revoke]').forEach((b) => { b.onclick = async () => {
+      if (!confirm('Revoke this invite link? It stops working immediately.')) return;
+      const { status } = await api(`/admin/moderator-invites/${b.dataset.winvRevoke}/revoke`, { method: 'POST' });
+      toast(status === 200 ? 'Link revoked' : 'Could not revoke.'); if (status === 200) M.render();
+    }; });
+    document.querySelectorAll('[data-wmod-disable]').forEach((b) => { b.onclick = async () => {
+      if (!confirm('Disable this moderator NOW? Their sessions end immediately and sign-in is refused until you re-enable them.')) return;
+      const { status } = await api(`/admin/moderators/${b.dataset.wmodDisable}/disable`, { method: 'POST' });
+      toast(status === 200 ? '🚫 Moderator disabled' : 'Could not disable.'); if (status === 200) M.render();
+    }; });
+    document.querySelectorAll('[data-wmod-enable]').forEach((b) => { b.onclick = async () => {
+      const { status } = await api(`/admin/moderators/${b.dataset.wmodEnable}/enable`, { method: 'POST' });
+      toast(status === 200 ? '✅ Moderator re-enabled' : 'Could not re-enable.'); if (status === 200) M.render();
+    }; });
+  }
 
   // 📦 Packages — settle a hold from the order card (either way is
   // final; the server refuses a second settle on a settled order).
@@ -2471,17 +2515,18 @@ const NAV = [
   ['packages', '📦 Packages'],
   ['refunds', '💳 Refunds'], ['disputes', '⚠️ Disputes'],
   ['analytics', '📈 Analytics'], ['more', '⚙️ Settings'],
+  ['requests', '📥 Requests'], ['workers', '🧑‍💼 Workers'],
 ];
 
 /* Sidebar grouping for the same screens (NAV above stays the flat
    source of labels/titles). '' heading = no heading row. */
 const NAV_GROUPS = [
   ['', ['dash']],
-  ['People', ['models', 'idchecks', 'fans', 'suggestions', 'partners', 'affiliates']],
+  ['People', ['models', 'idchecks', 'fans', 'suggestions', 'partners', 'affiliates', 'requests']],
   ['Money', ['payouts', 'tax', 'refunds', 'disputes', 'packages']],
   ['Safety & Content', ['chats', 'live', 'safety', 'dmca']],
   ['Growth', ['invites', 'bookings', 'contracts', 'analytics']],
-  ['Settings', ['more']],
+  ['Settings', ['more', 'workers']],
 ];
 
 const PRESENCE_CARD = `
@@ -2511,6 +2556,7 @@ async function overviewBody(stats) {
       <div class="stat"><div class="n">${o.models ?? '—'}</div><div class="l">Models</div></div>
       <div class="stat"><div class="n">${o.affiliates ?? '—'}</div><div class="l">Affiliates</div></div>
       <div class="stat"><div class="n" style="color:${o.open_dmca ? 'var(--red)' : 'inherit'}">${o.open_dmca ?? '—'}</div><div class="l">Open DMCA</div></div>
+      <div class="stat" id="ov-requests" style="cursor:pointer"><div class="n" style="color:${o.pending_deactivation_requests ? 'var(--yellow, #fbbf24)' : 'inherit'}">${o.pending_deactivation_requests ?? '—'}</div><div class="l">Deactivation / Hide Requests 📥</div></div>
       <div class="stat"><div class="n" style="color:var(--green)">${fmt(o.gross_today_cents || 0)}</div><div class="l">Gross today</div></div>
     </div>`;
   return PRESENCE_CARD + tiles + (await adminDashBody(stats, o));
@@ -2526,6 +2572,7 @@ const SCREENS = {
   disputes: adminDisputesBody, tax: adminTaxBody, dmca: adminDmcaBody,
   suggestions: adminSuggestionsBody,
   analytics: adminAnalyticsBody, more: adminMoreBody,
+  requests: adminRequestsBody, workers: adminWorkersBody,
   peek: peekBody, watch: watchBody,
 };
 
@@ -2575,6 +2622,18 @@ M.render = async () => {
   stopPresence();
   document.querySelectorAll('#mgr-nav [data-screen]').forEach((b) =>
     b.classList.toggle('active', b.dataset.screen === M.screen));
+  if (M.user && M.user.role === 'moderator') {
+    // Moderator shell: counts come from /api/mod/overview (the server
+    // refuses her /api/admin/*), bodies from MOD_SCREENS only.
+    const { data: ov } = await api('/mod/overview');
+    const sb = document.getElementById('badge-safety');
+    if (sb) { const n = (ov && ov.open_incidents) || 0; sb.textContent = n || ''; sb.classList.toggle('hidden', !n); }
+    const bodyFn = MOD_SCREENS[M.screen] || modDashBody;
+    app.innerHTML = `<div class="mgr-h">${(MOD_NAV.find((n) => n[0] === M.screen) || [])[1] || ''}</div>` + (await bodyFn({}));
+    wireModBody(M.screen);
+    if (M.screen === 'watch') wireWatch();
+    return;
+  }
   const { data: stats } = await api('/admin/stats');
   const s = stats || {};
   const sb = document.getElementById('badge-safety');
@@ -2622,7 +2681,8 @@ function liveSignal(to, sessionId, payload) {
 }
 
 M.watchLive = async (sessionId) => {
-  const { status, data } = await api(`/admin/live/${sessionId}/watch`, { method: 'POST' });
+  const base = M.user && M.user.role === 'moderator' ? '/mod/live' : '/admin/live';
+  const { status, data } = await api(`${base}/${sessionId}/watch`, { method: 'POST' });
   if (status !== 200) return toast('Stream is offline.');
   M.live = { sessionId: parseInt(sessionId), pc: null, modelId: data.model_id,
              modelName: data.model_name, title: data.title || '',
@@ -2662,6 +2722,16 @@ function wireWatch() {
   L.chatPoll = setInterval(() => { if (M.screen === 'watch' && M.live === L) loadMgrStreamChat(); }, 5000);
   $('#mgr-leave-btn').onclick = () => leaveWatch(true);
   $('#mgr-end-btn').onclick = async () => {
+    if (M.user && M.user.role === 'moderator') {
+      // Moderator force-end: a reason is mandatory — it is audited
+      // server-side and told to the model.
+      const reason = prompt('Why are you ending this live? (required — recorded and told to the model)');
+      if (!reason || !reason.trim()) return;
+      const { status, data } = await api(`/mod/live/${L.sessionId}/end`, { method: 'POST', body: JSON.stringify({ reason: reason.trim() }) });
+      toast(status === 200 ? 'Stream ended.' : (data && data.message) || 'Could not end the stream.');
+      if (status === 200) leaveWatch(false);
+      return;
+    }
     if (!confirm('End this live stream?')) return;
     await api(`/live/${L.sessionId}/end`, { method: 'POST' });
     toast('Stream ended.');
@@ -2673,10 +2743,13 @@ async function leaveWatch(unwatch) {
   const L = M.live;
   if (!L) return;
   if (L.chatPoll) clearInterval(L.chatPoll);
-  if (unwatch) { try { await api(`/admin/live/${L.sessionId}/unwatch`, { method: 'POST' }); } catch (e) {} }
+  if (unwatch) {
+    const base = M.user && M.user.role === 'moderator' ? '/mod/live' : '/admin/live';
+    try { await api(`${base}/${L.sessionId}/unwatch`, { method: 'POST' }); } catch (e) {}
+  }
   if (L.pc) { try { L.pc.close(); } catch (e) {} }
   M.live = null;
-  M.go('live');
+  M.go(M.user && M.user.role === 'moderator' ? 'modlive' : 'live');
 }
 
 async function loadMgrStreamChat() {
@@ -2852,6 +2925,387 @@ async function pkVerifyStepUp() {
   return true;
 }
 
+/* ---------------- Deactivation / Hide Requests (owner queue) -------- */
+async function adminRequestsBody() {
+  const { data } = await api('/admin/deactivation-requests');
+  const rs = (data && data.requests) || [];
+  if (!rs.length) return '<div class="empty">No requests.</div>';
+  const who = (r) => r.type === 'fan_ban' ? `Fan @${esc(r.fan_username || '')}` : `Model @${esc(r.model_username || '')}`;
+  const kind = (r) => r.type === 'fan_ban' ? '🚫 Ban fan' : r.type === 'hide' ? '🙈 Hide profile' : '👋 Deactivate account';
+  return rs.map((r) => `
+   <div class="card" style="padding:12px;margin-bottom:10px;${r.status !== 'pending' ? 'opacity:.65' : ''}">
+     <div><b>${kind(r)}</b> · ${who(r)} <span class="small muted">· ${fmtDT(r.created_at)}</span></div>
+     <div class="small" style="margin:6px 0">Filed by ${esc(r.requested_by_display || r.requested_by_name || '')} (${esc(r.requested_by_role || '')})</div>
+     <div style="white-space:pre-wrap;font-size:14px">“${esc(r.reason || '')}”</div>
+     ${r.status === 'pending'
+       ? `<div class="row" style="gap:8px;margin-top:8px"><button class="btn" data-req-approve="${r.id}">✅ Approve</button><button class="btn ghost" data-req-deny="${r.id}">Deny</button></div>`
+       : `<div class="small muted" style="margin-top:6px">${r.status === 'approved' ? '✅ Approved' : '❌ Denied'} · ${fmtDT(r.resolved_at || '')}</div>`}
+   </div>`).join('');
+}
+
+/* ---------------- Workers: moderator invites, accounts, audit ------ */
+async function adminWorkersBody() {
+  const [inv, mods, acts] = await Promise.all([
+    api('/admin/moderator-invites'), api('/admin/moderators'), api('/admin/moderator-actions?limit=100'),
+  ]);
+  const invites = (inv.data && inv.data.invites) || [];
+  const moderators = (mods.data && mods.data.moderators) || [];
+  const actions = (acts.data && acts.data.actions) || [];
+  return `
+  <div class="card" style="padding:14px;margin-bottom:12px">
+    <div style="font-weight:800;margin-bottom:6px">✉️ New moderator invite link</div>
+    <div class="small muted" style="margin-bottom:8px">One link per hire, labeled with their name. It works once, expires in 7 days, and the account it creates is a moderator — nothing else can make one. Send the link to the hire yourself.</div>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <input class="input" id="winv-label" placeholder="Hire's name" style="flex:1;min-width:180px">
+      <button class="btn" id="winv-create">Create invite link</button>
+    </div>
+    <div id="winv-out" style="margin-top:8px"></div>
+  </div>
+  <div class="card" style="padding:14px;margin-bottom:12px">
+    <div style="font-weight:800;margin-bottom:8px">🔗 Invite links</div>
+    ${invites.map((i) => `
+      <div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+        <b>${esc(i.label)}</b> <span class="small">· ${esc(i.status)}</span>
+        <span class="small muted">· created ${fmtDT(i.created_at)} · expires ${fmtDT(i.expires_at)}${i.used_by_name ? ' · used by ' + esc(i.used_by_name) : ''}</span>
+        <div class="row" style="gap:8px;margin-top:4px;flex-wrap:wrap">
+          <input class="input" readonly value="${esc(i.url)}" style="flex:1;min-width:220px" onclick="this.select()">
+          ${i.status === 'active' ? `<button class="btn ghost" data-winv-revoke="${i.id}">Revoke</button>` : ''}
+        </div>
+      </div>`).join('') || '<div class="small muted">No invites yet.</div>'}
+  </div>
+  <div class="card" style="padding:14px;margin-bottom:12px">
+    <div style="font-weight:800;margin-bottom:8px">🧑‍💼 Moderators</div>
+    ${moderators.map((m) => `
+      <div class="row" style="gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap;align-items:center">
+        <span class="grow"><b>${esc(m.display_name)}</b> <span class="small muted">@${esc(m.username)} · ${esc(m.email || '')} · joined ${fmtDT(m.created_at)}${m.last_login_at ? ' · last in ' + fmtDT(m.last_login_at) : ''}</span></span>
+        ${m.disabled_at
+          ? `<span class="small" style="color:var(--red)">DISABLED ${fmtDT(m.disabled_at)}</span><button class="btn" data-wmod-enable="${m.id}">Re-enable</button>`
+          : `<button class="btn danger" data-wmod-disable="${m.id}">Disable access</button>`}
+      </div>`).join('') || '<div class="small muted">No moderators yet — send an invite link.</div>'}
+  </div>
+  <div class="card" style="padding:14px">
+    <div style="font-weight:800;margin-bottom:8px">🧾 Worker audit log</div>
+    ${actions.map((a) => `
+      <div class="small" style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+        <span class="muted">${fmtDT(a.created_at)}</span> · <b>${esc(a.worker_name || '')}</b> (${esc(a.worker_role || '')}) · ${esc(a.action)}${a.target_type ? ' · ' + esc(a.target_type) + ' #' + (a.target_id ?? '') : ''}${a.detail ? ' — ' + esc(a.detail) : ''}
+      </div>`).join('') || '<div class="small muted">No worker actions logged yet.</div>'}
+  </div>`;
+}
+
+/* =====================================================================
+ * MODERATOR MODE — a hired moderator signs into this same app and gets
+ * a restricted shell: only the screens below exist for her, every one
+ * backed by /api/mod/* (the server refuses her everywhere else).
+ * Password-only sign-in: no Face ID gate is ever shown to a moderator.
+ * ===================================================================== */
+const MOD_NAV = [
+  ['moddash', '📊 Overview'], ['modidchecks', '🪪 ID Checks'], ['modsafety', '🛡️ Safety'],
+  ['modfans', '🧑 Fans'], ['modmodels', '💃 Models pending'], ['modaffiliates', '🔗 Affiliates'],
+  ['modlive', '🔴 Live'], ['modsuggestions', '💡 Suggestions'], ['modrequests', '📥 My Requests'],
+];
+const MOD_NAV_GROUPS = [
+  ['', ['moddash']],
+  ['Support', ['modidchecks', 'modfans', 'modmodels', 'modsuggestions']],
+  ['Safety & Content', ['modsafety', 'modlive']],
+  ['People', ['modaffiliates', 'modrequests']],
+];
+
+async function modDashBody() {
+  const { data: o } = await api('/mod/overview');
+  const d = o || {};
+  const tile = (n, l, warn) => `<div class="stat"><div class="n" style="${warn && n ? 'color:var(--yellow,#fbbf24)' : ''}">${n ?? '—'}</div><div class="l">${l}</div></div>`;
+  return `<div class="stat-grid" style="margin-bottom:12px">
+    ${tile(d.pending_id_reviews, 'ID cases to review', true)}
+    ${tile(d.escalated_id_reviews, 'Escalated to Asce')}
+    ${tile(d.live_now, 'Live now')}
+    ${tile(d.open_incidents, 'Open chat flags', true)}
+    ${tile(d.open_stream_flags, 'Open stream flags', true)}
+    ${tile(d.new_suggestions, 'New suggestions')}
+    ${tile(d.fans, 'Fans')}
+    ${tile(d.models, 'Models')}
+    ${tile(d.my_pending_requests, 'My requests waiting on Asce')}
+  </div>
+  <div class="card" style="padding:12px"><b>How moderation works here</b>
+  <div class="small muted" style="margin-top:6px">You review ID packets, answer fans and models, watch lives and keep chats safe. Money, payouts and account bans are Asce's — when something needs him (a ban, a deactivation, a borderline ID), file it and it lands in his queue. Everything you do is logged under your name.</div></div>`;
+}
+
+async function modIdChecksBody() {
+  const { data } = await api('/mod/id-verifications');
+  const vs = (data && data.verifications) || [];
+  if (!vs.length) return '<div class="empty">No ID packets waiting. 🎉</div>';
+  return vs.map((v) => `
+   <div class="card" style="padding:12px;margin-bottom:10px">
+     <div><b>${esc(v.display_name || '')}</b> <span class="muted small">@${esc(v.username || '')}</span>
+       ${v.is_partner ? '<span class="small">· co-performer of ' + esc(v.owner_name || '') + '</span>' : ''}
+       <span class="small muted">· sent ${fmtDT(v.submitted_at)}</span></div>
+     <div class="small" style="margin:6px 0">
+       ID front ${v.has_front ? '✅' : '❌'} · back ${v.has_back ? '✅' : '❌'} · selfie ${v.has_selfie ? '✅' : '❌'}
+       ${v.is_partner ? `· consent ${v.consent_on_file ? '✅' : '❌'}` : `· WOGENT release ${v.release_on_file ? '✅ ' + esc(v.release_method || '') : '❌ missing'}`}
+     </div>
+     ${v.queue === 'escalated'
+       ? `<div class="small" style="color:var(--yellow,#fbbf24)">🔒 Escalated to Asce — read-only for moderators. Reasons: ${esc((v.escalate_reasons || []).join(', '))}${v.escalation_reason ? ' · “' + esc(v.escalation_reason) + '”' : ''}</div>
+          <div class="row" style="gap:8px;margin-top:8px"><button class="btn ghost" data-modid-photos="${v.id}">🖼 View photos</button></div>`
+       : `<div class="row" style="gap:8px;flex-wrap:wrap">
+            <button class="btn ghost" data-modid-photos="${v.id}">🖼 View photos</button>
+            <button class="btn" data-modid-approve="${v.id}">✅ Approve</button>
+            <button class="btn ghost" data-modid-reject="${v.id}">↩ Reject…</button>
+            <button class="btn ghost" data-modid-escalate="${v.id}">⬆ Escalate…</button>
+          </div>`}
+     <div id="modid-photos-${v.id}"></div>
+   </div>`).join('');
+}
+
+async function modSafetyBody() {
+  const { data } = await api('/mod/safety/incidents?status=open');
+  const incs = (data && data.incidents) || [];
+  const { data: fd } = await api('/mod/safety/stream-flags');
+  const flags = ((fd && fd.flags) || []).filter((f) => f.status === 'open');
+  return `
+   <div style="font-weight:800;margin-bottom:8px">💬 Flagged chat messages (${incs.length})</div>
+   ${incs.map((i) => `
+   <div class="card" style="padding:12px;margin-bottom:10px">
+     <div class="small muted">${fmtDT(i.created_at)} · from <b>${esc(i.sender_name || '')}</b> (${esc(i.sender_role || '')}) · matched: ${esc(i.matched || '')}</div>
+     <div style="white-space:pre-wrap;font-size:14px;margin:6px 0">“${esc(i.flagged_text || '')}”</div>
+     <div class="row" style="gap:8px;flex-wrap:wrap">
+       <button class="btn ghost" data-modinc-dismiss="${i.id}">Dismiss (false flag)</button>
+       ${i.sender_id ? `<button class="btn" data-modinc-warn="${i.id}">⚠️ Send official warning…</button>` : ''}
+     </div>
+   </div>`).join('') || '<div class="empty">No open chat flags. 🎉</div>'}
+   <div style="font-weight:800;margin:16px 0 8px">🔴 Flagged live chat (${flags.length})</div>
+   ${flags.map((f) => `
+   <div class="card" style="padding:12px;margin-bottom:10px">
+     <div class="small muted">${fmtDT(f.created_at)} · ${esc(f.model_name || '')}'s live · from <b>${esc(f.sender_name || '')}</b> · matched: ${esc(f.matched || '')}</div>
+     <div style="white-space:pre-wrap;font-size:14px;margin:6px 0">“${esc(f.flagged_text || '')}”</div>
+     <button class="btn ghost" data-modflag-dismiss="${f.id}">Dismiss (false flag)</button>
+   </div>`).join('') || '<div class="empty">No open stream flags.</div>'}`;
+}
+
+async function modFansBody() {
+  const q = M.modFanQ || '';
+  const { data } = await api('/mod/fans' + (q ? '?q=' + encodeURIComponent(q) : ''));
+  const fans = (data && data.fans) || [];
+  return `
+   <div class="row" style="gap:8px;margin-bottom:12px">
+     <input class="input" id="modfan-q" placeholder="Search fans…" value="${esc(q)}" style="flex:1">
+     <button class="btn" id="modfan-go">Search</button>
+   </div>
+   ${fans.map((f) => `
+   <div class="card" style="padding:12px;margin-bottom:10px">
+     <div><b>${esc(f.display_name || '')}</b> <span class="muted small">@${esc(f.username || '')}</span>
+       ${f.banned ? '<span class="small" style="color:var(--red)">banned</span>' : ''}
+       <span class="small muted">· joined ${fmtDT(f.created_at)}${f.last_login_at ? ' · last in ' + fmtDT(f.last_login_at) : ''}</span></div>
+     <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">
+       <button class="btn ghost" data-modfan-thread="${f.id}">💬 Thread</button>
+       <button class="btn ghost" data-modfan-ban="${f.id}">🚫 Request ban…</button>
+     </div>
+     <div id="modfan-thread-${f.id}"></div>
+   </div>`).join('') || '<div class="empty">No fans found.</div>'}`;
+}
+
+async function modModelsBody() {
+  const { data } = await api('/mod/models/pending');
+  const ms = (data && data.models) || [];
+  if (!ms.length) return '<div class="empty">Every model is ID-approved. 🎉</div>';
+  return ms.map((m) => `
+   <div class="card" style="padding:12px;margin-bottom:10px">
+     <div><b>${esc(m.display_name || '')}</b> <span class="muted small">@${esc(m.username || '')}</span>
+       <span class="small muted">· joined ${fmtDT(m.created_at)}</span></div>
+     <div class="small" style="margin:6px 0">ID: ${m.id_status === 'pending' ? '⏳ waiting in ID Checks' + (m.queue === 'escalated' ? ' (escalated to Asce)' : '') : m.id_status === 'rejected' ? '↩ rejected — she can resubmit' : 'not submitted yet'}${m.is_hidden ? ' · 🙈 hidden' : ''}${m.banned ? ' · banned' : ''}</div>
+     <div class="row" style="gap:8px;flex-wrap:wrap">
+       <button class="btn ghost" data-modmodel-thread="${m.id}">💬 Thread</button>
+       <button class="btn ghost" data-modmodel-hide="${m.id}">🙈 File hide request…</button>
+       <button class="btn ghost" data-modmodel-deact="${m.id}">👋 File deactivation…</button>
+     </div>
+     <div id="modmodel-thread-${m.id}"></div>
+   </div>`).join('');
+}
+
+async function modAffiliatesBody() {
+  const { data } = await api('/mod/affiliates');
+  const as = (data && data.affiliates) || [];
+  if (!as.length) return '<div class="empty">No affiliates yet.</div>';
+  return as.map((a) => `
+   <div class="card" style="padding:12px;margin-bottom:10px">
+     <div><b>${esc(a.display_name || '')}</b> <span class="muted small">@${esc(a.username || '')}</span>${a.banned ? ' <span class="small" style="color:var(--red)">banned</span>' : ''}</div>
+     <div class="small muted" style="margin-top:4px">Code: ${esc(a.referral_code || '—')}${a.city ? ' · ' + esc(a.city) : ''} · models onboarded: ${a.models_onboarded ?? 0} · joined ${fmtDT(a.signed_up_at)}</div>
+   </div>`).join('');
+}
+
+async function modLiveBody() {
+  const { data } = await api('/mod/live');
+  const ss = (data && data.sessions) || [];
+  if (!ss.length) return '<div class="empty">Nobody is live right now.</div>';
+  return ss.map((s) => `
+   <div class="card" style="padding:12px;margin-bottom:10px">
+     <div><b>${esc(s.model_name || '')}</b> ${s.is_explicit ? '🔞' : ''} <span class="small muted">· ${s.viewers} watching · since ${fmtDT(s.started_at)}</span></div>
+     ${s.title ? `<div style="font-size:14px;margin:4px 0">${esc(s.title)}</div>` : ''}
+     <div class="row" style="gap:8px;margin-top:8px">
+       <button class="btn" data-modlive-watch="${s.id}">👁 Watch</button>
+       <button class="btn danger" data-modlive-end="${s.id}">End live…</button>
+     </div>
+   </div>`).join('');
+}
+
+async function modSuggestionsBody() {
+  const { data } = await api('/mod/suggestions');
+  const ss = (data && data.suggestions) || [];
+  if (!ss.length) return '<div class="empty">No suggestions.</div>';
+  return ss.map((s) => `
+   <div class="card" style="padding:12px;margin-bottom:10px">
+     <div class="small muted">${fmtDT(s.created_at)} · from <b>${esc(s.username || '')}</b> · status: ${esc(s.status)}</div>
+     <div style="white-space:pre-wrap;font-size:14px;margin:6px 0">${esc(s.body || '')}</div>
+     <div class="row" style="gap:8px;flex-wrap:wrap">
+       ${s.status !== 'read' ? `<button class="btn ghost" data-modsg-status="read:${s.id}">Mark read</button>` : ''}
+       ${s.status !== 'done' ? `<button class="btn ghost" data-modsg-status="done:${s.id}">Mark done</button>` : ''}
+       ${(s.suggester_role === 'fan' || s.suggester_role === 'model') ? `<button class="btn" data-modsg-reply="${s.suggester_role}:${s.user_id}">💬 Reply</button>` : ''}
+     </div>
+   </div>`).join('');
+}
+
+async function modRequestsBody() {
+  const { data } = await api('/mod/requests');
+  const rs = (data && data.requests) || [];
+  if (!rs.length) return '<div class="empty">You have not filed any requests yet.</div>';
+  const kind = (r) => r.type === 'fan_ban' ? `🚫 Ban fan @${esc(r.fan_username || '')}` : r.type === 'hide' ? `🙈 Hide @${esc(r.model_username || '')}` : `👋 Deactivate @${esc(r.model_username || '')}`;
+  return rs.map((r) => `
+   <div class="card" style="padding:12px;margin-bottom:10px">
+     <div><b>${kind(r)}</b> <span class="small muted">· ${fmtDT(r.created_at)}</span></div>
+     <div style="white-space:pre-wrap;font-size:14px;margin:6px 0">“${esc(r.reason || '')}”</div>
+     <div class="small">${r.status === 'pending' ? '⏳ Waiting on Asce' : r.status === 'approved' ? '✅ Asce approved it' : '❌ Asce denied it'}${r.resolved_at ? ' · ' + fmtDT(r.resolved_at) : ''}</div>
+   </div>`).join('');
+}
+
+const MOD_SCREENS = {
+  moddash: modDashBody, modidchecks: modIdChecksBody, modsafety: modSafetyBody,
+  modfans: modFansBody, modmodels: modModelsBody, modaffiliates: modAffiliatesBody,
+  modlive: modLiveBody, modsuggestions: modSuggestionsBody, modrequests: modRequestsBody,
+  watch: watchBody,
+};
+
+/* Moderator support thread: read + reply inside a fan/model card. */
+async function modLoadThread(kind, userId, boxId) {
+  const box = document.getElementById(boxId); if (!box) return;
+  const { data } = await api(`/mod/${kind}/${userId}/thread`);
+  const msgs = (data && data.messages) || [];
+  box.innerHTML = `
+    <div style="max-height:300px;overflow:auto;margin:8px 0">
+      ${msgs.map((m) => `<div style="margin-bottom:6px"><b class="small">${esc(m.sender_name || '')}</b> <span class="small muted">${fmtDT(m.created_at)}</span><div style="white-space:pre-wrap;font-size:14px">${esc(m.body || '')}</div></div>`).join('') || '<div class="small muted">No messages yet.</div>'}
+    </div>
+    <div class="row" style="gap:8px">
+      <input class="input" id="${boxId}-text" placeholder="Reply as moderator…" style="flex:1">
+      <button class="btn" id="${boxId}-send">Send</button>
+    </div>`;
+  document.getElementById(boxId + '-send').onclick = async () => {
+    const inp = document.getElementById(boxId + '-text');
+    const body = (inp.value || '').trim(); if (!body) return;
+    const { status } = await api(`/mod/${kind}/${userId}/message`, { method: 'POST', body: JSON.stringify({ body }) });
+    if (status === 200) { toast('💬 Sent'); modLoadThread(kind, userId, boxId); }
+    else toast('Could not send.');
+  };
+}
+
+function wireModBody(tab) {
+  const all = (sel) => document.querySelectorAll(sel);
+  if (tab === 'modidchecks') {
+    all('[data-modid-photos]').forEach((b) => { b.onclick = async () => {
+      const id = b.dataset.modidPhotos;
+      const { data } = await api(`/mod/id-verifications/${id}/photo-token`, { method: 'POST' });
+      const box = document.getElementById('modid-photos-' + id);
+      if (!data || !data.token || !box) return;
+      const kinds = [['front', 'ID front'], ['back', 'ID back'], ['selfie', 'Selfie holding ID'], ['consent', 'Consent form'], ['release', 'Paper release']];
+      box.innerHTML = kinds.map(([k, l]) => `<div style="margin-top:8px"><div class="small muted">${l}</div><img src="/api/admin/id-verifications/${id}/photo/${k}?t=${data.token}" style="max-width:100%;border-radius:8px" onerror="this.parentNode.style.display='none'"></div>`).join('');
+    }; });
+    all('[data-modid-approve]').forEach((b) => { b.onclick = async () => {
+      if (!confirm('Approve this ID packet?')) return;
+      const { status, data } = await api(`/mod/id-verifications/${b.dataset.modidApprove}/approve`, { method: 'POST' });
+      toast(status === 200 ? '✅ Approved' : (data && data.message) || 'Could not approve.');
+      if (status === 200) M.render();
+    }; });
+    all('[data-modid-reject]').forEach((b) => { b.onclick = async () => {
+      const note = prompt('Why is this packet rejected? She sees this reason:');
+      if (!note || !note.trim()) return;
+      const { status, data } = await api(`/mod/id-verifications/${b.dataset.modidReject}/reject`, { method: 'POST', body: JSON.stringify({ note: note.trim() }) });
+      toast(status === 200 ? '↩ Rejected' : (data && data.message) || 'Could not reject.');
+      if (status === 200) M.render();
+    }; });
+    all('[data-modid-escalate]').forEach((b) => { b.onclick = async () => {
+      const reason = prompt('Why does this case need Asce?');
+      if (!reason || !reason.trim()) return;
+      const { status, data } = await api(`/mod/id-verifications/${b.dataset.modidEscalate}/escalate`, { method: 'POST', body: JSON.stringify({ reason: reason.trim() }) });
+      toast(status === 200 ? '⬆ Escalated to Asce' : (data && data.message) || 'Could not escalate.');
+      if (status === 200) M.render();
+    }; });
+  }
+  if (tab === 'modsafety') {
+    all('[data-modinc-dismiss]').forEach((b) => { b.onclick = async () => {
+      const { status } = await api(`/mod/safety/incidents/${b.dataset.modincDismiss}/dismiss`, { method: 'POST' });
+      toast(status === 200 ? 'Dismissed' : 'Could not dismiss.'); if (status === 200) M.render();
+    }; });
+    all('[data-modinc-warn]').forEach((b) => { b.onclick = async () => {
+      const message = prompt('Official warning — write it exactly as the user will read it:');
+      if (!message || !message.trim()) return;
+      const { status, data } = await api(`/mod/safety/incidents/${b.dataset.modincWarn}/warn`, { method: 'POST', body: JSON.stringify({ message: message.trim() }) });
+      toast(status === 200 ? '⚠️ Warning sent' : (data && data.message) || 'Could not send.');
+    }; });
+    all('[data-modflag-dismiss]').forEach((b) => { b.onclick = async () => {
+      const { status } = await api(`/mod/safety/stream-flags/${b.dataset.modflagDismiss}/dismiss`, { method: 'POST' });
+      toast(status === 200 ? 'Dismissed' : 'Could not dismiss.'); if (status === 200) M.render();
+    }; });
+  }
+  if (tab === 'modfans') {
+    const goBtn = document.getElementById('modfan-go');
+    if (goBtn) goBtn.onclick = () => { M.modFanQ = (document.getElementById('modfan-q').value || '').trim(); M.render(); };
+    all('[data-modfan-thread]').forEach((b) => { b.onclick = () => modLoadThread('fans', b.dataset.modfanThread, 'modfan-thread-' + b.dataset.modfanThread); });
+    all('[data-modfan-ban]').forEach((b) => { b.onclick = async () => {
+      const reason = prompt('Why should Asce ban this fan?');
+      if (!reason || !reason.trim()) return;
+      const { status, data } = await api(`/mod/fans/${b.dataset.modfanBan}/ban-request`, { method: 'POST', body: JSON.stringify({ reason: reason.trim() }) });
+      toast(status === 200 ? '🚫 Ban request filed for Asce' : (data && data.message) || 'Could not file.');
+    }; });
+    if (M.modOpenThread && M.modOpenThread.kind === 'fans') {
+      const id = M.modOpenThread.id; M.modOpenThread = null;
+      modLoadThread('fans', id, 'modfan-thread-' + id);
+    }
+  }
+  if (tab === 'modmodels') {
+    all('[data-modmodel-thread]').forEach((b) => { b.onclick = () => modLoadThread('models', b.dataset.modmodelThread, 'modmodel-thread-' + b.dataset.modmodelThread); });
+    const fileReq = async (id, type) => {
+      const reason = prompt(type === 'hide' ? 'Why should Asce hide this model? (she stays active until he approves)' : 'Why should Asce deactivate this model? (she stays active until he approves)');
+      if (!reason || !reason.trim()) return;
+      const { status, data } = await api(`/mod/models/${id}/deactivation-request`, { method: 'POST', body: JSON.stringify({ type, reason: reason.trim() }) });
+      toast(status === 200 ? '📥 Request filed for Asce' : (data && data.message) || 'Could not file.');
+    };
+    all('[data-modmodel-hide]').forEach((b) => { b.onclick = () => fileReq(b.dataset.modmodelHide, 'hide'); });
+    all('[data-modmodel-deact]').forEach((b) => { b.onclick = () => fileReq(b.dataset.modmodelDeact, 'deactivate'); });
+    if (M.modOpenThread && M.modOpenThread.kind === 'models') {
+      const id = M.modOpenThread.id; M.modOpenThread = null;
+      modLoadThread('models', id, 'modmodel-thread-' + id);
+    }
+  }
+  if (tab === 'modlive') {
+    all('[data-modlive-watch]').forEach((b) => { b.onclick = () => M.watchLive(b.dataset.modliveWatch); });
+    all('[data-modlive-end]').forEach((b) => { b.onclick = async () => {
+      const reason = prompt('Why are you ending this live? (required — recorded and told to the model)');
+      if (!reason || !reason.trim()) return;
+      const { status, data } = await api(`/mod/live/${b.dataset.modliveEnd}/end`, { method: 'POST', body: JSON.stringify({ reason: reason.trim() }) });
+      toast(status === 200 ? '🔴 Live ended' : (data && data.message) || 'Could not end.');
+      if (status === 200) M.render();
+    }; });
+  }
+  if (tab === 'modsuggestions') {
+    all('[data-modsg-status]').forEach((b) => { b.onclick = async () => {
+      const [status, id] = b.dataset.modsgStatus.split(':');
+      const r = await api(`/mod/suggestions/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) });
+      if (r.status === 200) M.render(); else toast('Could not update.');
+    }; });
+    all('[data-modsg-reply]').forEach((b) => { b.onclick = () => {
+      const [role, id] = b.dataset.modsgReply.split(':');
+      M.modOpenThread = { kind: role === 'fan' ? 'fans' : 'models', id };
+      M.go(role === 'fan' ? 'modfans' : 'modmodels');
+    }; });
+  }
+}
+
 let pkGateShown = false;
 
 /* Post-password routing: ask the server whether this admin session may
@@ -2868,6 +3322,14 @@ async function passkeyGate(onPass) {
 }
 
 function enterManager() {
+  // Moderators sign in password-only — no Face ID step-up exists on
+  // worker accounts; the narrow role scope is their protection, and
+  // the owner can disable the account instantly from Workers.
+  if (M.user && M.user.role === 'moderator') {
+    M.screen = 'moddash';
+    M.wsConnect(); renderShell(); M.render();
+    return;
+  }
   passkeyGate(() => { M.wsConnect(); renderShell(); M.render(); });
 }
 
@@ -3007,13 +3469,18 @@ function renderLogin(err) {
     if (r.status === 429) return renderLogin('Too many tries — wait a minute ⏳');
     if (r.status === 403 && data.error === 'not_manager')
       return renderLogin(data.message || 'This app is for the SlutCamp manager account only');
+    if (r.status === 403 && data.error === 'account_disabled')
+      return renderLogin('This account has been disabled — talk to Asce.');
     if (r.status === 403 && data.error === 'banned') return renderLogin('This account is banned.');
     return renderLogin('Login failed — check your details.');
   };
 }
 
 function renderShell() {
-  const labelOf = (id) => (NAV.find((n) => n[0] === id) || [])[1] || id;
+  const isMod = !!(M.user && M.user.role === 'moderator');
+  const navList = isMod ? MOD_NAV : NAV;
+  const navGroups = isMod ? MOD_NAV_GROUPS : NAV_GROUPS;
+  const labelOf = (id) => (navList.find((n) => n[0] === id) || [])[1] || id;
   const navBtn = (id) => {
     const label = labelOf(id);
     const sp = label.indexOf(' ');
@@ -3030,15 +3497,15 @@ function renderShell() {
         <b>Slut Manager</b>
       </div>
       <div class="mgr-top-actions">
-        <button class="mgr-top-btn" id="mgr-preview">👁 Preview</button>
+        ${isMod ? '' : '<button class="mgr-top-btn" id="mgr-preview">👁 Preview</button>'}
         <button class="mgr-top-btn ghost" id="mgr-logout2">Log out</button>
       </div>
     </div>
     <div class="mgr-shell">
       <aside class="mgr-side">
-        <div class="mgr-side-user">Signed in as <b id="mgr-user">${esc(M.user ? M.user.display_name : '')}</b></div>
+        <div class="mgr-side-user">Signed in as <b id="mgr-user">${esc(M.user ? M.user.display_name : '')}</b>${isMod ? ' <span class="small muted">(Moderator)</span>' : ''}</div>
         <nav id="mgr-nav">
-          ${NAV_GROUPS.map(([heading, ids]) => `
+          ${navGroups.map(([heading, ids]) => `
             <div class="mgr-nav-group">
               ${heading ? `<div class="mgr-nav-h">${heading}</div>` : ''}
               ${ids.map(navBtn).join('')}
@@ -3051,7 +3518,8 @@ function renderShell() {
   document.querySelectorAll('#mgr-nav [data-screen]').forEach((b) => {
     b.onclick = () => M.go(b.dataset.screen);
   });
-  document.getElementById('mgr-preview').onclick = () => {
+  const previewBtn = document.getElementById('mgr-preview');
+  if (previewBtn) previewBtn.onclick = () => {
     // Hand-off: the public app (same origin, same stored session) boots in
     // fan-preview mode when this one-shot flag is set. Preview controls
     // exist only here — never inside the public app.
@@ -3064,9 +3532,9 @@ function renderShell() {
 (async function boot() {
   if (M.token) {
     const { status, data } = await api('/me');
-    if (status === 200 && data.user && data.user.role === 'admin') {
+    if (status === 200 && data.user && (data.user.role === 'admin' || data.user.role === 'moderator')) {
       M.user = data.user;
-      enterManager(); // existing session → Face ID gate / setup / straight in
+      enterManager(); // existing session → Face ID gate / setup / straight in (moderators skip the gate)
       return;
     }
     M.token = null;
