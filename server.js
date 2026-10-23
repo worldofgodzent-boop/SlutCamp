@@ -1437,6 +1437,96 @@ CREATE TABLE IF NOT EXISTS suggestions (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_suggestions_status ON suggestions(status, id);
+
+-- Custom Packages (owner, Oct 22 2026): a model's pre-made shippable
+-- packages, fan custom-package requests with their own negotiation
+-- threads, and orders whose money sits in a HOLD (escrow) between
+-- payment and release/refund. Physical shipping only in v1.
+CREATE TABLE IF NOT EXISTS model_packages (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  model_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title       TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  price_cents INTEGER NOT NULL DEFAULT 0,
+  photo_path  TEXT,
+  is_active   INTEGER NOT NULL DEFAULT 1,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_model_packages_model ON model_packages(model_id, is_active, id);
+
+-- A request is a fan asking one model for a custom package. It is a
+-- DISTINCT thread type (conversations has UNIQUE(fan_id, model_id), so
+-- a second per-pair thread cannot live there): it sits in Messages as
+-- its own 📦 thread until she quotes, declines, or the fan withdraws.
+-- status: open → quoted → ordered | declined | withdrawn.
+CREATE TABLE IF NOT EXISTS package_requests (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  fan_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  model_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  description TEXT NOT NULL DEFAULT '',
+  status      TEXT NOT NULL DEFAULT 'open'
+    CHECK(status IN ('open','quoted','declined','withdrawn','ordered')),
+  quote_cents INTEGER,
+  order_id    INTEGER,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  decided_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_pkg_requests_model ON package_requests(model_id, status, id);
+CREATE INDEX IF NOT EXISTS idx_pkg_requests_fan ON package_requests(fan_id, status, id);
+
+CREATE TABLE IF NOT EXISTS package_request_messages (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  request_id INTEGER NOT NULL REFERENCES package_requests(id) ON DELETE CASCADE,
+  sender_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body       TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_pkg_req_msgs ON package_request_messages(request_id, id);
+
+-- The escrow record IS the order (the battle_spend pattern): at
+-- payment the fan is debited and a 'package' ledger row is written
+-- with zero splits; the money moves to the model only at release
+-- (fan-confirmed receipt, 7-days-after-shipped auto-release, or a
+-- Manager release) and back to the fan only at refund. title +
+-- description are SNAPSHOTS: later package edits or deletion never
+-- rewrite what was bought. Shipping fields live ONLY here and are
+-- served ONLY on the order detail, to the fulfilling model and the
+-- fan himself.
+CREATE TABLE IF NOT EXISTS package_orders (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  package_id    INTEGER,
+  request_id    INTEGER,
+  fan_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  model_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title         TEXT NOT NULL DEFAULT '',
+  description   TEXT NOT NULL DEFAULT '',
+  price_cents   INTEGER NOT NULL DEFAULT 0,
+  status        TEXT NOT NULL DEFAULT 'held'
+    CHECK(status IN ('held','shipped','disputed','released','refunded')),
+  ship_name     TEXT NOT NULL DEFAULT '',
+  ship_street   TEXT NOT NULL DEFAULT '',
+  ship_city     TEXT NOT NULL DEFAULT '',
+  ship_state    TEXT NOT NULL DEFAULT '',
+  ship_zip      TEXT NOT NULL DEFAULT '',
+  ship_country  TEXT NOT NULL DEFAULT '',
+  ship_email    TEXT NOT NULL DEFAULT '',
+  tracking      TEXT,
+  client_request_id TEXT,
+  hold_txn_id   INTEGER,
+  dispute_reason TEXT,
+  disputed_at   TEXT,
+  shipped_at    TEXT,
+  released_at   TEXT,
+  refunded_at   TEXT,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_pkg_orders_model ON package_orders(model_id, status, id);
+CREATE INDEX IF NOT EXISTS idx_pkg_orders_fan ON package_orders(fan_id, status, id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pkg_orders_client_req
+  ON package_orders(fan_id, client_request_id) WHERE client_request_id IS NOT NULL;
 `);
 
 db.prepare(`INSERT OR IGNORE INTO platform_stats (id, earnings_cents, commission_pct)
@@ -2556,11 +2646,14 @@ function splitPayment(grossCents, modelUserId) {
  * WHAT COUNTS AS SPEND — exactly the rows chargeFan()/refundFan() write:
  *   charges (positive gross): message, voice, ppv, tip, tip_menu, call,
  *     call_explicit, live_explicit, live_explicit_entry, live_join_request,
- *     game, gift, priority (pay-to-speak TTS), booking
+ *     game, gift, priority (pay-to-speak TTS), booking — plus 'package',
+ *     the custom-package HOLD row, written by the package escrow helper
+ *     through the same assertFanCanSpend gate (gross counts at payment;
+ *     the model/platform splits stay 0 until the hold releases).
  *   refunds (negative gross, netting against spend via the signed sum):
  *     call_refund → calls, live_join_refund → lives, game_refund → games,
- *     booking_refund / booking_no_show → bookings, and refundFan's generic
- *     'refund' → its own 'refunds' bucket.
+ *     booking_refund / booking_no_show → bookings, package_refund →
+ *     packages, and refundFan's generic 'refund' → its own 'refunds' bucket.
  * EXCLUDED, deliberately:
  *   - is_test rows — the same exclusion every money display in this file
  *     uses (pre-launch test money never counts);
@@ -2592,10 +2685,12 @@ const SPEND_CATEGORY_TYPES = {
   bookings: ['booking'],
   games: ['game'],
   tts: ['priority'],
+  packages: ['package'],
 };
 const SPEND_REFUND_TYPE_CATEGORY = {
   call_refund: 'calls', live_join_refund: 'lives', game_refund: 'games',
   booking_refund: 'bookings', booking_no_show: 'bookings', refund: 'refunds',
+  package_refund: 'packages',
 };
 const SPEND_TYPE_CATEGORY = {};
 for (const [cat, types] of Object.entries(SPEND_CATEGORY_TYPES))
@@ -3912,6 +4007,20 @@ const SRV = {
   ann_faceguard_dm: { en: 'Hey loves — quick update 💋\n\nSlutCamp now watches out for you while you\'re live. If you\'re on camera with someone, just declare them before you go live (Settings → My Co-Performers — they must be ID-approved first, same as always).\n\nWhile you\'re live, the app quietly counts faces on YOUR camera only. If an extra person who wasn\'t declared steps into frame, you\'ll get a warning first — and if they stay, the live ends. Nothing is recorded and no pictures leave your phone — it only counts.\n\nSolo lives? Nothing changes at all.\n\nThis protects YOUR account: nobody unverified can appear on your live and put your earnings at risk. 🎥✨', es: 'Hola amores — una novedad rápida 💋\n\nSlutCamp ahora te cuida mientras estás en vivo. Si estás frente a cámara con alguien, solo decláralo antes de salir en vivo (Ajustes → Mis co-intérpretes — primero deben tener su ID aprobada, como siempre).\n\nMientras estás en vivo, la app cuenta en silencio los rostros solo en TU cámara. Si entra en cuadro una persona extra que no fue declarada, primero recibirás un aviso — y si se queda, el en vivo termina. Nada se graba y ninguna foto sale de tu teléfono — solo cuenta.\n\n¿En vivos sola? Nada cambia.\n\nEsto protege TU cuenta: nadie sin verificar puede aparecer en tu en vivo ni poner en riesgo tus ganancias. 🎥✨', pt: 'Oi, amores — uma novidade rápida 💋\n\nA SlutCamp agora cuida de você enquanto você está ao vivo. Se você estiver em frente à câmera com alguém, é só declarar antes de entrar ao vivo (Configurações → Meus parceiros de cena — eles precisam ter o documento aprovado primeiro, como sempre).\n\nEnquanto você está ao vivo, o app conta discretamente os rostos apenas na SUA câmera. Se uma pessoa extra que não foi declarada entrar no quadro, você recebe um aviso primeiro — e se ela ficar, a live termina. Nada é gravado e nenhuma foto sai do seu celular — ele só conta.\n\nLives solo? Nada muda.\n\nIsso protege a SUA conta: ninguém sem verificação pode aparecer na sua live e colocar seus ganhos em risco. 🎥✨', fr: 'Coucou les amours — une petite nouveauté 💋\n\nSlutCamp veille maintenant sur vous pendant vos directs. Si vous êtes à l\'écran avec quelqu\'un, déclarez-le simplement avant de passer en direct (Paramètres → Mes partenaires de scène — leur pièce d\'identité doit d\'abord être approuvée, comme toujours).\n\nPendant votre direct, l\'appli compte discrètement les visages sur VOTRE caméra uniquement. Si une personne supplémentaire non déclarée entre dans le cadre, vous recevez d\'abord un avertissement — et si elle reste, le direct se termine. Rien n\'est enregistré et aucune photo ne quitte votre téléphone — ça compte, c\'est tout.\n\nDes directs en solo ? Rien ne change du tout.\n\nCela protège VOTRE compte : personne sans vérification ne peut apparaître dans votre direct et mettre vos revenus en danger. 🎥✨', de: 'Hey ihr Lieben — ein kurzes Update 💋\n\nSlutCamp passt jetzt auf dich auf, während du live bist. Wenn du mit jemandem vor der Kamera bist, melde ihn einfach an, bevor du live gehst (Einstellungen → Meine Co-Performer — sie müssen zuerst per Ausweis freigegeben sein, wie immer).\n\nWährend du live bist, zählt die App leise die Gesichter — nur auf DEINER Kamera. Kommt eine zusätzliche Person ins Bild, die nicht angemeldet war, bekommst du zuerst eine Warnung — und wenn sie bleibt, endet der Livestream. Nichts wird aufgezeichnet und keine Bilder verlassen dein Handy — es wird nur gezählt.\n\nSolo-Lives? Da ändert sich gar nichts.\n\nDas schützt DEIN Konto: Niemand ohne Verifizierung kann in deinem Live auftauchen und deine Einnahmen gefährden. 🎥✨', ru: 'Привет, любимые — короткое обновление 💋\n\nSlutCamp теперь присматривает за вами, пока вы в эфире. Если вы в кадре с кем-то, просто укажите этого человека перед выходом в эфир (Настройки → Мои партнёры по сцене — сначала нужно одобрение удостоверения личности, как всегда).\n\nПока вы в эфире, приложение тихо считает лица — только на ВАШЕЙ камере. Если в кадр войдёт лишний человек, который не был указан, вы сначала получите предупреждение — а если он останется, эфир завершится. Ничего не записывается, и никакие фото не покидают ваш телефон — приложение только считает.\n\nСольные эфиры? Ничего не меняется.\n\nЭто защищает ВАШ аккаунт: никто без проверки не сможет появиться в вашем эфире и поставить под угрозу ваш заработок. 🎥✨', ja: 'みんな、こんにちは — ちょっとしたアップデートです 💋\n\nSlutCampは、あなたがライブ配信中も見守るようになりました。誰かと一緒にカメラに映る場合は、配信を始める前に申告してください（設定 → 共演者 — これまで通り、最初に身分証の承認が必要です）。\n\n配信中、アプリはあなたのカメラだけの顔の数をそっと数えます。申告されていない人が画面に入ると、まず警告が出ます — それでも残る場合、配信は終了します。何も録画されず、写真があなたのスマホから出ることもありません — 数えるだけです。\n\nソロ配信？何も変わりません。\n\nこれはあなたのアカウントを守ります：未確認の人があなたのライブに現れて、あなたの収入を危険にさらすことはありません。 🎥✨', zh: '亲爱的们 — 一个快速更新 💋\n\nSlutCamp 现在会在你直播时守护你。如果你和别人一起出现在镜头前，只需在开播前申报即可（设置 → 我的搭档演员 — 和以前一样，他们必须先通过身份证审核）。\n\n直播期间，应用会悄悄统计人脸数量 — 只统计你自己的摄像头画面。如果有未申报的人进入画面，你会先收到一个警告 — 如果对方继续停留，直播将结束。不会录制任何内容，也没有任何照片会离开你的手机 — 它只是计数。\n\n单人直播？一切照旧，毫无变化。\n\n这是为了保护你的账户：任何未经验证的人都不能出现在你的直播中，让你的收入面临风险。 🎥✨', ko: '안녕하세요, 여러분 — 빠른 업데이트예요 💋\n\n이제 SlutCamp가 라이브 중에 여러분을 지켜드립니다. 누군가와 함께 카메라 앞에 있다면, 라이브를 시작하기 전에 신고만 해주세요 (설정 → 내 공연 파트너 — 언제나처럼 먼저 신분증 승인이 필요합니다).\n\n라이브 중에는 앱이 당신의 카메라에서만 조용히 얼굴 수를 셉니다. 신고되지 않은 사람이 화면에 들어오면 먼저 경고가 표시되고 — 그래도 남아 있으면 라이브가 종료됩니다. 아무것도 녹화되지 않고 어떤 사진도 휴대폰 밖으로 나가지 않습니다 — 그저 세기만 합니다.\n\n솔로 라이브요? 아무것도 변하지 않습니다.\n\n이것은 당신의 계정을 보호합니다: 인증되지 않은 사람은 누구도 당신의 라이브에 나타나 당신의 수익을 위험에 빠뜨릴 수 없습니다. 🎥✨', it: 'Ciao amori — un aggiornamento veloce 💋\n\nSlutCamp ora veglia su di te mentre sei live. Se sei davanti alla telecamera con qualcuno, dichiaralo semplicemente prima di andare live (Impostazioni → I miei partner di scena — devono prima avere il documento approvato, come sempre).\n\nMentre sei live, l\'app conta discretamente i volti solo sulla TUA telecamera. Se entra nell\'inquadratura una persona in più che non è stata dichiarata, riceverai prima un avviso — e se resta, la live termina. Non viene registrato nulla e nessuna foto lascia il tuo telefono — conta e basta.\n\nLive da sola? Non cambia assolutamente nulla.\n\nQuesto protegge il TUO account: nessuno senza verifica può apparire nella tua live e mettere a rischio i tuoi guadagni. 🎥✨', pl: 'Hej kochane — szybka aktualizacja 💋\n\nSlutCamp teraz czuwa nad Tobą, gdy jesteś na żywo. Jeśli jesteś przed kamerą z kimś, po prostu zadeklaruj tę osobę przed rozpoczęciem transmisji (Ustawienia → Moi współwykonawcy — najpierw muszą mieć zatwierdzony dokument tożsamości, jak zawsze).\n\nPodczas transmisji aplikacja po cichu liczy twarze — tylko na TWOJEJ kamerze. Jeśli w kadr wejdzie dodatkowa osoba, która nie została zadeklarowana, najpierw otrzymasz ostrzeżenie — a jeśli zostanie, transmisja się zakończy. Nic nie jest nagrywane i żadne zdjęcia nie opuszczają Twojego telefonu — aplikacja tylko liczy.\n\nTransmisje solo? Nic się nie zmienia.\n\nTo chroni TWOJE konto: nikt niezweryfikowany nie może pojawić się na Twojej transmisji i narazić Twoich zarobków na ryzyko. 🎥✨', nl: 'Hey lieverds — een snelle update 💋\n\nSlutCamp let nu op je terwijl je live bent. Als je met iemand voor de camera staat, geef die persoon dan gewoon aan voordat je live gaat (Instellingen → Mijn mede-performers — ze moeten eerst hun ID goedgekeurd hebben, zoals altijd).\n\nTerwijl je live bent, telt de app in stilte de gezichten — alleen op JOUW camera. Komt er een extra persoon in beeld die niet is aangegeven, dan krijg je eerst een waarschuwing — en als die persoon blijft, eindigt de live. Er wordt niets opgenomen en er verlaten geen foto\'s je telefoon — de app telt alleen.\n\nSolo-lives? Er verandert helemaal niets.\n\nDit beschermt JOUW account: niemand zonder verificatie kan in je live verschijnen en je inkomsten in gevaar brengen. 🎥✨', tr: 'Selam canlar — hızlı bir güncelleme 💋\n\nSlutCamp artık canlı yayındayken seni koruyor. Kamerada biriyle birlikteysen, canlıya başlamadan önce o kişiyi bildirmen yeterli (Ayarlar → Sahne Partnerlerim — her zamanki gibi önce kimliklerinin onaylanması gerekir).\n\nCanlı yayın sırasında uygulama sessizce yüzleri sayar — yalnızca SENİN kameranda. Bildirilmemiş fazladan bir kişi kadraja girerse önce bir uyarı alırsın — ve kalırsa canlı yayın sona erer. Hiçbir şey kaydedilmez ve hiçbir fotoğraf telefonundan çıkmaz — yalnızca sayar.\n\nTek başına canlı yayınlar mı? Hiçbir şey değişmiyor.\n\nBu, SENİN hesabını korur: doğrulanmamış hiç kimse canlı yayınında görünüp kazancını riske atamaz. 🎥✨' },
   ann_faceguard_bell_title: { en: '📣 New: camera protection for your lives', es: '📣 Nuevo: protección de cámara para tus en vivos', pt: '📣 Novo: proteção de câmera para suas lives', fr: '📣 Nouveau : protection caméra pour vos directs', de: '📣 Neu: Kameraschutz für deine Lives', ru: '📣 Новое: защита камеры для ваших эфиров', ja: '📣 新機能：ライブのカメラ保護', zh: '📣 新功能：直播摄像头保护', ko: '📣 새 기능: 라이브 카메라 보호', it: '📣 Novità: protezione telecamera per le tue live', pl: '📣 Nowość: ochrona kamery na Twoich transmisjach', nl: '📣 Nieuw: camerabescherming voor je lives', tr: '📣 Yeni: canlı yayınların için kamera koruması' },
   ann_faceguard_bell_body: { en: 'SlutCamp now counts faces on your live — declare who\'s on camera. Tap to read 💋', es: 'SlutCamp ahora cuenta los rostros en tu en vivo — declara quién está frente a cámara. Toca para leer 💋', pt: 'A SlutCamp agora conta os rostos na sua live — declare quem está na câmera. Toque para ler 💋', fr: 'SlutCamp compte maintenant les visages dans votre direct — déclarez qui est à l\'écran. Touchez pour lire 💋', de: 'SlutCamp zählt jetzt die Gesichter in deinem Live — melde an, wer vor der Kamera ist. Tippe zum Lesen 💋', ru: 'SlutCamp теперь считает лица в вашем эфире — укажите, кто в кадре. Нажмите, чтобы прочитать 💋', ja: 'SlutCampはあなたのライブで顔の数を数えるようになりました — カメラに映る人を申告してね。タップして読む 💋', zh: 'SlutCamp 现在会统计你直播中的人脸 — 请申报谁在镜头前。点开阅读 💋', ko: '이제 SlutCamp가 라이브에서 얼굴 수를 셉니다 — 카메라 앞에 있는 사람을 신고하세요. 탭해서 읽기 💋', it: 'SlutCamp ora conta i volti nella tua live — dichiara chi è davanti alla telecamera. Tocca per leggere 💋', pl: 'SlutCamp liczy teraz twarze na Twojej transmisji — zadeklaruj, kto jest przed kamerą. Dotknij, aby przeczytać 💋', nl: 'SlutCamp telt nu de gezichten in je live — geef aan wie er voor de camera staat. Tik om te lezen 💋', tr: 'SlutCamp artık canlı yayınında yüzleri sayıyor — kamerada kimin olduğunu bildir. Okumak için dokun 💋' },
+  pkg_bell_new_request_title: { en: '📦 New custom package request', es: '📦 Nueva solicitud de paquete personalizado', pt: '📦 Novo pedido de pacote personalizado', fr: '📦 Nouvelle demande de colis personnalisé', de: '📦 Neue Anfrage für ein individuelles Paket', ru: '📦 Новый запрос на индивидуальный пакет', ja: '📦 カスタムパッケージの新しいリクエスト', zh: '📦 新的定制包裹请求', ko: '📦 새 맞춤 패키지 요청', it: '📦 Nuova richiesta di pacchetto personalizzato', pl: '📦 Nowa prośba o pakiet niestandardowy', nl: '📦 Nieuw verzoek voor een pakket op maat', tr: '📦 Yeni özel paket isteği' },
+  pkg_bell_new_request_body: { en: '{fan} wants a custom package from you — open the request thread, talk it over and name your price 💋', es: '{fan} quiere un paquete personalizado tuyo — abre el hilo de la solicitud, háblenlo y pon tu precio 💋', pt: '{fan} quer um pacote personalizado seu — abra o tópico do pedido, conversem e diga seu preço 💋', fr: '{fan} veut un colis personnalisé de votre part — ouvrez le fil de la demande, discutez-en et fixez votre prix 💋', de: '{fan} möchte ein individuelles Paket von dir — öffne die Anfrage, besprecht es und nenne deinen Preis 💋', ru: '{fan} хочет от вас индивидуальный пакет — откройте ветку запроса, обсудите и назовите свою цену 💋', ja: '{fan}さんがあなたにカスタムパッケージを希望しています — リクエストを開いて相談し、価格を決めてください 💋', zh: '{fan} 想要你的定制包裹 — 打开请求对话，聊一聊并报出你的价格 💋', ko: '{fan}님이 맞춤 패키지를 원해요 — 요청 스레드를 열고 상의한 뒤 가격을 정하세요 💋', it: '{fan} vuole un pacchetto personalizzato da te — apri la conversazione della richiesta, parlatene e fai il tuo prezzo 💋', pl: '{fan} chce od Ciebie pakiet niestandardowy — otwórz wątek prośby, omówcie to i podaj swoją cenę 💋', nl: '{fan} wil een pakket op maat van je — open het verzoek, bespreek het en noem je prijs 💋', tr: '{fan} senden özel bir paket istiyor — istek sohbetini aç, konuşup fiyatını belirle 💋' },
+  pkg_bell_quote_title: { en: '📦 She named her price', es: '📦 Ella puso su precio', pt: '📦 Ela definiu o preço dela', fr: '📦 Elle a fixé son prix', de: '📦 Sie hat ihren Preis genannt', ru: '📦 Она назвала свою цену', ja: '📦 彼女が価格を提示しました', zh: '📦 她已经报价了', ko: '📦 그녀가 가격을 제시했어요', it: '📦 Ha fatto il suo prezzo', pl: '📦 Podała swoją cenę', nl: '📦 Ze heeft haar prijs genoemd', tr: '📦 Fiyatını belirledi' },
+  pkg_bell_quote_body: { en: 'Your custom package from {model} is quoted at {price} — accept it in the request thread to pay and send your shipping address 💋', es: 'Tu paquete personalizado de {model} tiene un precio de {price} — acéptalo en el hilo de la solicitud para pagar y enviar tu dirección 💋', pt: 'Seu pacote personalizado de {model} foi cotado em {price} — aceite no tópico do pedido para pagar e enviar seu endereço 💋', fr: 'Votre colis personnalisé de {model} est proposé à {price} — acceptez-le dans le fil de la demande pour payer et envoyer votre adresse 💋', de: 'Dein individuelles Paket von {model} kostet {price} — nimm es in der Anfrage an, um zu zahlen und deine Adresse zu senden 💋', ru: 'Ваш индивидуальный пакет от {model} оценён в {price} — примите его в ветке запроса, чтобы оплатить и отправить адрес доставки 💋', ja: '{model}さんのカスタムパッケージは{price}と見積もられました — リクエストで承諾して支払い、配送先を送ってください 💋', zh: '你向 {model} 定制的包裹报价为 {price} — 在请求对话中接受即可付款并填写收货地址 💋', ko: '{model}님의 맞춤 패키지 견적은 {price}입니다 — 요청 스레드에서 수락하고 결제와 배송지를 입력하세요 💋', it: 'Il tuo pacchetto personalizzato da {model} è quotato {price} — accettalo nella conversazione della richiesta per pagare e inviare il tuo indirizzo 💋', pl: 'Twój pakiet niestandardowy od {model} wyceniono na {price} — zaakceptuj go w wątku prośby, aby zapłacić i podać adres wysyłki 💋', nl: 'Je pakket op maat van {model} is geprijsd op {price} — accepteer het in het verzoek om te betalen en je adres te sturen 💋', tr: '{model} kişisinden özel paketin {price} olarak fiyatlandırıldı — istek sohbetinde kabul edip ödemeni yap ve kargo adresini gönder 💋' },
+  pkg_bell_order_title: { en: '📦 New package order — paid', es: '📦 Nuevo pedido de paquete — pagado', pt: '📦 Novo pedido de pacote — pago', fr: '📦 Nouvelle commande de colis — payée', de: '📦 Neue Paketbestellung — bezahlt', ru: '📦 Новый заказ пакета — оплачено', ja: '📦 新しいパッケージ注文 — 支払い済み', zh: '📦 新的包裹订单 — 已付款', ko: '📦 새 패키지 주문 — 결제 완료', it: '📦 Nuovo ordine pacchetto — pagato', pl: '📦 Nowe zamówienie pakietu — opłacone', nl: '📦 Nieuwe pakketbestelling — betaald', tr: '📦 Yeni paket siparişi — ödendi' },
+  pkg_bell_order_body: { en: '{fan} paid {price} for "{title}". The money is held safely until he confirms delivery (or 7 days after you mark it shipped). His shipping address is on the order 💋', es: '{fan} pagó {price} por "{title}". El dinero queda retenido de forma segura hasta que confirme la entrega (o 7 días después de que lo marques enviado). Su dirección está en el pedido 💋', pt: '{fan} pagou {price} por "{title}". O dinheiro fica retido com segurança até ele confirmar a entrega (ou 7 dias depois que você marcar como enviado). O endereço dele está no pedido 💋', fr: '{fan} a payé {price} pour « {title} ». L\'argent est gardé en sécurité jusqu\'à ce qu\'il confirme la livraison (ou 7 jours après l\'envoi). Son adresse est sur la commande 💋', de: '{fan} hat {price} für „{title}“ bezahlt. Das Geld wird sicher verwahrt, bis er die Lieferung bestätigt (oder 7 Tage, nachdem du es als versendet markiert hast). Seine Adresse steht auf der Bestellung 💋', ru: '{fan} оплатил {price} за «{title}». Деньги надёжно удерживаются, пока он не подтвердит доставку (или через 7 дней после отметки об отправке). Его адрес — в заказе 💋', ja: '{fan}さんが「{title}」に{price}を支払いました。お金は、彼が受け取りを確認するまで（または発送マーク後7日まで）安全に預かります。配送先は注文に記載されています 💋', zh: '{fan} 已为“{title}”支付 {price}。款项会被安全保管，直到他确认收货（或你在标记发货后 7 天）。他的收货地址就在订单里 💋', ko: '{fan}님이 "{title}"에 {price}를 결제했어요. 돈은 그가 수령을 확인할 때까지(또는 발송 표시 후 7일까지) 안전하게 보관됩니다. 배송지는 주문에 있어요 💋', it: '{fan} ha pagato {price} per "{title}". I soldi sono custoditi al sicuro finché non conferma la consegna (o 7 giorni dopo che lo segni come spedito). Il suo indirizzo è nell\'ordine 💋', pl: '{fan} zapłacił {price} za „{title}”. Pieniądze są bezpiecznie wstrzymane, dopóki nie potwierdzi dostawy (lub 7 dni po tym, jak oznaczysz wysyłkę). Jego adres jest w zamówieniu 💋', nl: '{fan} heeft {price} betaald voor "{title}". Het geld wordt veilig vastgehouden tot hij de levering bevestigt (of 7 dagen nadat je het als verzonden markeert). Zijn adres staat op de bestelling 💋', tr: '{fan}, "{title}" için {price} ödedi. Para, teslimatı onaylayana kadar (veya kargolandı olarak işaretledikten 7 gün sonra) güvenle tutulur. Adresi siparişte 💋' },
+  pkg_bell_shipped_title: { en: '📦 Your package is on its way', es: '📦 Tu paquete va en camino', pt: '📦 Seu pacote está a caminho', fr: '📦 Votre colis est en route', de: '📦 Dein Paket ist unterwegs', ru: '📦 Ваш пакет уже в пути', ja: '📦 パッケージが発送されました', zh: '📦 你的包裹已寄出', ko: '📦 패키지가 발송되었어요', it: '📦 Il tuo pacchetto è in viaggio', pl: '📦 Twoja paczka jest w drodze', nl: '📦 Je pakket is onderweg', tr: '📦 Paketin yolda' },
+  pkg_bell_shipped_body: { en: '"{title}" from {model} has shipped{tracking}. When it arrives, confirm receipt in your orders so she gets paid 💋', es: '"{title}" de {model} ya fue enviado{tracking}. Cuando llegue, confirma la recepción en tus pedidos para que ella reciba su pago 💋', pt: '"{title}" de {model} foi enviado{tracking}. Quando chegar, confirme o recebimento nos seus pedidos para ela ser paga 💋', fr: '« {title} » de {model} a été expédié{tracking}. À la réception, confirmez la livraison dans vos commandes pour qu\'elle soit payée 💋', de: '„{title}“ von {model} wurde versendet{tracking}. Bestätige den Erhalt in deinen Bestellungen, sobald es da ist, damit sie bezahlt wird 💋', ru: '«{title}» от {model} отправлен{tracking}. Когда получите, подтвердите доставку в своих заказах, чтобы она получила оплату 💋', ja: '{model}さんの「{title}」が発送されました{tracking}。届いたら注文画面で受け取りを確認して、彼女に支払われるようにしてください 💋', zh: '来自 {model} 的“{title}”已寄出{tracking}。收到后请在你的订单中确认收货，她就能收到款项 💋', ko: '{model}님의 "{title}"이(가) 발송되었어요{tracking}. 도착하면 주문에서 수령을 확인해 그녀가 정산받게 해주세요 💋', it: '"{title}" di {model} è stato spedito{tracking}. Quando arriva, conferma la consegna nei tuoi ordini così lei viene pagata 💋', pl: '„{title}” od {model} zostało wysłane{tracking}. Gdy dotrze, potwierdź odbiór w swoich zamówieniach, żeby dostała zapłatę 💋', nl: '"{title}" van {model} is verzonden{tracking}. Bevestig de ontvangst in je bestellingen zodra het er is, zodat zij betaald wordt 💋', tr: '{model} kişisinden "{title}" kargoya verildi{tracking}. Ulaşınca siparişlerinden teslim aldığını onayla ki ödemesini alsın 💋' },
+  pkg_bell_released_title: { en: '💰 Package money released', es: '💰 Dinero del paquete liberado', pt: '💰 Dinheiro do pacote liberado', fr: '💰 Argent du colis débloqué', de: '💰 Paketgeld freigegeben', ru: '💰 Деньги за пакет выплачены', ja: '💰 パッケージ代金が支払われました', zh: '💰 包裹款项已放款', ko: '💰 패키지 대금이 정산되었어요', it: '💰 Soldi del pacchetto sbloccati', pl: '💰 Pieniądze za pakiet zwolnione', nl: '💰 Pakketgeld vrijgegeven', tr: '💰 Paket parası serbest bırakıldı' },
+  pkg_bell_released_body: { en: '{price} from "{title}" just landed in your earnings (your 60%) 💋', es: '{price} de "{title}" acaba de llegar a tus ganancias (tu 60%) 💋', pt: '{price} de "{title}" acabou de cair nos seus ganhos (seus 60%) 💋', fr: '{price} de « {title} » viennent d\'arriver dans vos gains (vos 60 %) 💋', de: '{price} aus „{title}“ sind gerade in deinen Einnahmen gelandet (deine 60 %) 💋', ru: '{price} за «{title}» только что поступили в ваш заработок (ваши 60%) 💋', ja: '「{title}」の{price}があなたの収益に入りました（あなたの60%）💋', zh: '“{title}”的 {price} 已进入你的收入（你的 60%）💋', ko: '"{title}"의 {price}가 방금 수익에 들어왔어요 (당신의 60%) 💋', it: '{price} da "{title}" sono appena arrivati nei tuoi guadagni (il tuo 60%) 💋', pl: '{price} z „{title}” właśnie trafiło do Twoich zarobków (Twoje 60%) 💋', nl: '{price} van "{title}" staat net in je inkomsten (jouw 60%) 💋', tr: '"{title}" siparişinden {price} az önce kazancına eklendi (senin %60\'ın) 💋' },
+  pkg_bell_refunded_title: { en: '📦 Package refunded', es: '📦 Paquete reembolsado', pt: '📦 Pacote reembolsado', fr: '📦 Colis remboursé', de: '📦 Paket erstattet', ru: '📦 Возврат за пакет', ja: '📦 パッケージが返金されました', zh: '📦 包裹已退款', ko: '📦 패키지가 환불되었어요', it: '📦 Pacchetto rimborsato', pl: '📦 Zwrot za pakiet', nl: '📦 Pakket terugbetaald', tr: '📦 Paket iade edildi' },
+  pkg_bell_refunded_body: { en: 'Your {price} for "{title}" is back in your wallet — the order was refunded from the hold.', es: 'Tus {price} por "{title}" están de vuelta en tu billetera — el pedido fue reembolsado desde la retención.', pt: 'Seus {price} por "{title}" estão de volta na sua carteira — o pedido foi reembolsado da retenção.', fr: 'Vos {price} pour « {title} » sont de retour dans votre portefeuille — la commande a été remboursée depuis la réserve.', de: 'Deine {price} für „{title}“ sind zurück in deinem Wallet — die Bestellung wurde aus der Verwahrung erstattet.', ru: 'Ваши {price} за «{title}» вернулись в ваш кошелёк — заказ возвращён из удержания.', ja: '「{title}」の{price}がウォレットに戻りました — 注文は預かり金から返金されました。', zh: '你为“{title}”支付的 {price} 已退回你的钱包 — 该订单已从保管款中退款。', ko: '"{title}"에 대한 {price}가 지갑으로 돌아왔어요 — 주문이 보관금에서 환불되었습니다.', it: 'I tuoi {price} per "{title}" sono tornati nel tuo portafoglio — l\'ordine è stato rimborsato dalla trattenuta.', pl: 'Twoje {price} za „{title}” wróciło do portfela — zamówienie zostało zwrócone z depozytu.', nl: 'Je {price} voor "{title}" is terug in je wallet — de bestelling is terugbetaald uit de reservering.', tr: '"{title}" için ödediğin {price} cüzdanına geri döndü — sipariş tutulan paradan iade edildi.' },
+  pkg_bell_dispute_title: { en: '⚠️ A package order was disputed', es: '⚠️ Un pedido de paquete fue disputado', pt: '⚠️ Um pedido de pacote foi contestado', fr: '⚠️ Une commande de colis a été contestée', de: '⚠️ Eine Paketbestellung wurde beanstandet', ru: '⚠️ По заказу пакета открыт спор', ja: '⚠️ パッケージ注文に異議が申し立てられました', zh: '⚠️ 一个包裹订单被提出争议', ko: '⚠️ 패키지 주문에 이의가 제기되었어요', it: '⚠️ Un ordine pacchetto è stato contestato', pl: '⚠️ Zamówienie pakietu zostało zakwestionowane', nl: '⚠️ Een pakketbestelling is betwist', tr: '⚠️ Bir paket siparişine itiraz edildi' },
+  pkg_bell_dispute_body: { en: '{fan} opened a dispute on "{title}" ({price}). The money stays held while SlutCamp reviews it — check the order for his reason.', es: '{fan} abrió una disputa sobre "{title}" ({price}). El dinero queda retenido mientras SlutCamp lo revisa — mira el pedido para ver su motivo.', pt: '{fan} abriu uma contestação sobre "{title}" ({price}). O dinheiro fica retido enquanto a SlutCamp analisa — veja o pedido para ler o motivo dele.', fr: '{fan} a contesté « {title} » ({price}). L\'argent reste bloqué pendant que SlutCamp examine — consultez la commande pour son motif.', de: '{fan} hat „{title}“ ({price}) beanstandet. Das Geld bleibt verwahrt, während SlutCamp prüft — sein Grund steht auf der Bestellung.', ru: '{fan} открыл спор по «{title}» ({price}). Деньги остаются удержанными, пока SlutCamp разбирается — причина указана в заказе.', ja: '{fan}さんが「{title}」（{price}）に異議を申し立てました。SlutCampが確認する間、お金は預かったままです — 注文で理由を確認してください。', zh: '{fan} 对“{title}”（{price}）提出了争议。SlutCamp 审核期间款项将继续保管 — 请在订单中查看他的理由。', ko: '{fan}님이 "{title}"({price})에 이의를 제기했어요. SlutCamp가 검토하는 동안 돈은 계속 보관됩니다 — 주문에서 사유를 확인하세요.', it: '{fan} ha contestato "{title}" ({price}). I soldi restano trattenuti mentre SlutCamp controlla — vedi il suo motivo nell\'ordine.', pl: '{fan} zakwestionował „{title}” ({price}). Pieniądze zostają wstrzymane, póki SlutCamp to sprawdzi — powód jest w zamówieniu.', nl: '{fan} heeft "{title}" ({price}) betwist. Het geld blijft vaststaan terwijl SlutCamp het beoordeelt — bekijk zijn reden op de bestelling.', tr: '{fan}, "{title}" ({price}) siparişine itiraz etti. SlutCamp incelerken para tutulu kalır — gerekçesini siparişte gör.' },
   ann_safety_dm: { en: 'Hey loves — a safety update that protects your money 💋\n\nSlutCamp now BLOCKS messages that contain personal contact info or off-platform links — phone numbers, emails, socials, other platforms, payment apps — before they\'re ever sent. The other person never sees them, your chat keeps flowing, and nobody gets pulled off the app where your earnings (and your safety) aren\'t protected.\n\n🚫 The same goes for profiles: bios can\'t mention other websites, platforms, link pages, or payment services — SlutCamp is your whole storefront, and everything you earn here is protected here.\n\nIf a message of yours gets blocked, the app will tell you why — just reword it and keep the conversation (and the spending 💰) right here.\n\nKeep it on SlutCamp, keep it safe, keep it paid. 💋', es: 'Hola amores — una novedad de seguridad que protege su dinero 💋\n\nSlutCamp ahora BLOQUEA los mensajes que contienen información de contacto personal o enlaces fuera de la plataforma — números de teléfono, correos, redes sociales, otras plataformas, apps de pago — antes de que se envíen. La otra persona nunca los ve, tu chat sigue fluyendo y nadie te saca de la app, donde tus ganancias (y tu seguridad) no están protegidas.\n\n🚫 Lo mismo va para los perfiles: las biografías no pueden mencionar otros sitios web, plataformas, páginas de enlaces ni servicios de pago — SlutCamp es todo tu escaparate, y todo lo que ganas aquí está protegido aquí.\n\nSi un mensaje tuyo es bloqueado, la app te dirá por qué — solo reformúlalo y mantén la conversación (y el gasto 💰) aquí mismo.\n\nManténlo en SlutCamp, manténlo seguro, manténlo pagado. 💋', pt: 'Oi, amores — uma novidade de segurança que protege o seu dinheiro 💋\n\nA SlutCamp agora BLOQUEIA mensagens com informações de contato pessoais ou links para fora da plataforma — telefones, e-mails, redes sociais, outras plataformas, apps de pagamento — antes de serem enviadas. A outra pessoa nunca as vê, seu chat continua fluindo e ninguém te tira do app, onde seus ganhos (e sua segurança) não estão protegidos.\n\n🚫 O mesmo vale para os perfis: bios não podem mencionar outros sites, plataformas, páginas de links ou serviços de pagamento — a SlutCamp é toda a sua vitrine, e tudo o que você ganha aqui está protegido aqui.\n\nSe uma mensagem sua for bloqueada, o app vai te contar o porquê — é só reformular e manter a conversa (e os gastos 💰) aqui mesmo.\n\nMantenha no SlutCamp, mantenha seguro, mantenha pago. 💋', fr: 'Coucou les amours — une nouveauté sécurité qui protège votre argent 💋\n\nSlutCamp BLOQUE désormais les messages contenant des coordonnées personnelles ou des liens hors plateforme — numéros de téléphone, e-mails, réseaux sociaux, autres plateformes, applications de paiement — avant même leur envoi. L\'autre personne ne les voit jamais, votre discussion continue, et personne ne vous entraîne hors de l\'appli, où vos revenus (et votre sécurité) ne sont pas protégés.\n\n🚫 Même règle pour les profils : les bios ne peuvent pas mentionner d\'autres sites web, plateformes, pages de liens ni services de paiement — SlutCamp est toute votre vitrine, et tout ce que vous gagnez ici est protégé ici.\n\nSi l\'un de vos messages est bloqué, l\'appli vous expliquera pourquoi — reformulez-le et gardez la conversation (et les dépenses 💰) ici même.\n\nGardez tout sur SlutCamp : en sécurité, et rémunéré. 💋', de: 'Hey ihr Lieben — ein Sicherheits-Update, das euer Geld schützt 💋\n\nSlutCamp BLOCKIERT jetzt Nachrichten mit persönlichen Kontaktdaten oder Links zu anderen Plattformen — Telefonnummern, E-Mails, Social Media, andere Plattformen, Zahlungs-Apps — bevor sie gesendet werden. Die andere Person sieht sie nie, euer Chat läuft weiter, und niemand lockt euch aus der App, wo eure Einnahmen (und eure Sicherheit) nicht geschützt sind.\n\n🚫 Dasselbe gilt für Profile: Bios dürfen keine anderen Websites, Plattformen, Linkseiten oder Zahlungsdienste erwähnen — SlutCamp ist deine gesamte Verkaufsfläche, und alles, was du hier verdienst, ist hier geschützt.\n\nWird eine deiner Nachrichten blockiert, sagt dir die App warum — formuliere sie einfach um und behalte das Gespräch (und die Ausgaben 💰) hier.\n\nBehalte es auf SlutCamp, behalte es sicher, behalte es bezahlt. 💋', ru: 'Привет, любимые — обновление безопасности, которое защищает ваши деньги 💋\n\nSlutCamp теперь БЛОКИРУЕТ сообщения с личными контактами или ссылками на сторонние платформы — номера телефонов, e-mail, соцсети, другие платформы, платёжные приложения — до того, как они отправятся. Другой человек их никогда не увидит, ваш чат продолжается, и никого не уводят из приложения, где ваш заработок (и ваша безопасность) не защищены.\n\n🚫 То же правило для профилей: в описании нельзя упоминать другие сайты, платформы, страницы ссылок или платёжные сервисы — SlutCamp — это вся ваша витрина, и всё, что вы зарабатываете здесь, защищено здесь.\n\nЕсли ваше сообщение заблокируют, приложение объяснит почему — просто переформулируйте и оставьте разговор (и траты 💰) здесь.\n\nДержите всё на SlutCamp — в безопасности и за деньги. 💋', ja: 'みんな、こんにちは — あなたのお金を守るセキュリティアップデートです 💋\n\nSlutCampは、個人の連絡先やプラットフォーム外のリンクを含むメッセージ（電話番号、メール、SNS、他のプラットフォーム、支払いアプリ）を、送信される前にブロックするようになりました。相手がそれを見ることはなく、チャットはそのまま続き、あなたの収入（と安全）が守られない場所へ誰かが誘い出すこともありません。\n\n🚫 プロフィールも同じです：プロフィールには他のウェブサイト、プラットフォーム、リンクページ、支払いサービスを記載できません — SlutCampがあなたのすべての店舗であり、ここで得たものはここで守られます。\n\nメッセージがブロックされたら、アプリが理由を教えてくれます — 言い方を変えて、会話（とお金💰）はここで続けましょう。\n\nSlutCampに留めて、安全に、しっかり稼ぎましょう。💋', zh: '亲爱的们 — 一个保护你收入的安全更新 💋\n\nSlutCamp 现在会在消息发送之前，拦截包含个人联系方式或站外链接的内容 — 电话号码、电子邮件、社交账号、其他平台、支付应用。对方永远看不到，聊天照常继续，也没人能把你带到没有收入（和安全）保障的地方。\n\n🚫 主页也一样：简介不能提及其他网站、平台、链接页或支付服务 — SlutCamp 就是你的整个店面，你在这里赚到的一切都在这里受到保护。\n\n如果你的消息被拦截，应用会告诉你原因 — 换个说法，把对话（和消费💰）留在这里就好。\n\n留在 SlutCamp，安全又赚钱。💋', ko: '안녕하세요, 여러분 — 여러분의 수익을 지켜주는 보안 업데이트예요 💋\n\n이제 SlutCamp는 개인 연락처나 플랫폼 외부 링크가 포함된 메시지(전화번호, 이메일, SNS, 다른 플랫폼, 결제 앱)를 전송되기 전에 차단합니다. 상대방은 절대 볼 수 없고, 채팅은 그대로 이어지며, 누구도 수익(과 안전)이 보호되지 않는 곳으로 당신을 데려갈 수 없어요.\n\n🚫 프로필도 마찬가지예요: 소개글에는 다른 웹사이트, 플랫폼, 링크 페이지, 결제 서비스를 언급할 수 없어요 — SlutCamp가 당신의 전체 매장이며, 여기서 번 모든 것은 여기서 보호됩니다.\n\n메시지가 차단되면 앱이 이유를 알려줍니다 — 표현만 바꿔서 대화(와 소비💰)를 여기서 이어가세요.\n\nSlutCamp에 머물고, 안전하게, 확실히 버세요. 💋', it: 'Ciao amori — un aggiornamento di sicurezza che protegge i vostri soldi 💋\n\nSlutCamp ora BLOCCA i messaggi che contengono contatti personali o link fuori piattaforma — numeri di telefono, e-mail, social, altre piattaforme, app di pagamento — prima che vengano inviati. L\'altra persona non li vede mai, la chat continua a scorrere e nessuno viene portato fuori dall\'app, dove i vostri guadagni (e la vostra sicurezza) non sono protetti.\n\n🚫 Stessa regola per i profili: le bio non possono menzionare altri siti web, piattaforme, pagine di link o servizi di pagamento — SlutCamp è tutta la tua vetrina, e tutto ciò che guadagni qui è protetto qui.\n\nSe un tuo messaggio viene bloccato, l\'app ti dirà perché — riformulalo e mantieni la conversazione (e la spesa 💰) qui dentro.\n\nTienilo su SlutCamp, tienilo al sicuro, tienilo pagato. 💋', pl: 'Hej kochane — aktualizacja bezpieczeństwa, która chroni Wasze pieniądze 💋\n\nSlutCamp BLOKUJE teraz wiadomości zawierające osobiste dane kontaktowe lub linki poza platformę — numery telefonów, e-maile, media społecznościowe, inne platformy, aplikacje płatnicze — zanim zostaną wysłane. Druga osoba nigdy ich nie widzi, Wasz czat toczy się dalej i nikt nie wyciąga Was z aplikacji tam, gdzie Wasze zarobki (i bezpieczeństwo) nie są chronione.\n\n🚫 Ta sama zasada dotyczy profili: opisy nie mogą wspominać innych stron, platform, stron z linkami ani usług płatniczych — SlutCamp to cała Wasza witryna, a wszystko, co tu zarabiacie, jest tu chronione.\n\nJeśli Twoja wiadomość zostanie zablokowana, aplikacja powie Ci dlaczego — po prostu ją przeformułuj i prowadź rozmowę (oraz wydatki 💰) tutaj.\n\nTrzymaj to na SlutCamp — bezpiecznie i za pieniądze. 💋', nl: 'Hey lieverds — een veiligheidsupdate die je geld beschermt 💋\n\nSlutCamp BLOKKEERT nu berichten met persoonlijke contactgegevens of links naar buiten het platform — telefoonnummers, e-mails, socials, andere platforms, betaalapps — voordat ze worden verzonden. De andere persoon ziet ze nooit, je chat loopt gewoon door en niemand wordt weggelokt uit de app, waar je inkomsten (en je veiligheid) niet beschermd zijn.\n\n🚫 Hetzelfde geldt voor profielen: bio\'s mogen geen andere websites, platforms, linkpagina\'s of betaaldiensten vermelden — SlutCamp is je hele winkel, en alles wat je hier verdient, is hier beschermd.\n\nWordt een bericht van jou geblokkeerd, dan vertelt de app je waarom — herformuleer het en houd het gesprek (en de bestedingen 💰) hier.\n\nHoud het op SlutCamp, houd het veilig, houd het betaald. 💋', tr: 'Selam canlar — paranızı koruyan bir güvenlik güncellemesi 💋\n\nSlutCamp artık kişisel iletişim bilgileri veya platform dışı bağlantılar içeren mesajları — telefon numaraları, e-postalar, sosyal medya, diğer platformlar, ödeme uygulamaları — gönderilmeden önce ENGELLİYOR. Diğer kişi onları asla görmez, sohbetiniz akmaya devam eder ve kimse sizi kazancınızın (ve güvenliğinizin) korunmadığı bir yere çekemez.\n\n🚫 Aynı kural profiller için de geçerli: biyografilerde başka web siteleri, platformlar, bağlantı sayfaları veya ödeme hizmetlerinden bahsedilemez — SlutCamp tüm vitrininizdir ve burada kazandığınız her şey burada korunur.\n\nBir mesajınız engellenirse uygulama size nedenini söyler — sadece yeniden yazın ve sohbeti (ve harcamayı 💰) burada tutun.\n\nSlutCamp\'ta tutun, güvende tutun, kazançlı tutun. 💋' },
   ann_safety_bell_title: { en: '🛡️ New: off-platform blocking is on', es: '🛡️ Nuevo: bloqueo fuera de la plataforma activado', pt: '🛡️ Novo: bloqueio fora da plataforma ativado', fr: '🛡️ Nouveau : blocage hors plateforme activé', de: '🛡️ Neu: Blockierung außerhalb der Plattform ist aktiv', ru: '🛡️ Новое: блокировка вне платформы включена', ja: '🛡️ 新機能：プラットフォーム外への誘導をブロック', zh: '🛡️ 新功能：站外拦截已开启', ko: '🛡️ 새 기능: 플랫폼 외부 차단이 켜졌어요', it: '🛡️ Novità: blocco fuori piattaforma attivo', pl: '🛡️ Nowość: blokowanie poza platformą włączone', nl: '🛡️ Nieuw: blokkeren buiten het platform staat aan', tr: '🛡️ Yeni: platform dışı engelleme açık' },
   ann_privateroom_dm: { en: '📣 NEW: The Private Room 🔒\n\nYour public room is open to everybody — anyone can join, tip, and have fun. But there are too many fans in there to give all of them real attention.\n\nThe Private Room is different. You set the max number of people allowed in, pick your day, and set your price. It\'s special, because now your top spenders get your real attention — and you can please several of them at once. These are your whales 🐳 — the big-money spenders. The $5 spenders stay outside looking in.\n\nThe rules: max 2 private rooms per week — that\'s what keeps them exclusive. Check your Top Spenders list in the app, pick your guests, and send them the invite before the door closes. 💋', es: '📣 NUEVO: La Sala Privada 🔒\n\nTu sala pública está abierta para todos — cualquiera puede entrar, dar propinas y divertirse. Pero hay demasiados fans ahí para darles a todos tu verdadera atención.\n\nLa Sala Privada es diferente. Tú pones el máximo de personas, eliges tu día y fijas tu precio. Es especial, porque ahora tus mayores gastadores reciben tu verdadera atención — y puedes complacer a varios a la vez. Son tus ballenas 🐳 — los que gastan en grande. Los de $5 se quedan fuera mirando.\n\nLas reglas: máximo 2 salas privadas por semana — eso es lo que las mantiene exclusivas. Revisa tu lista de Mayores Gastadores en la app, elige a tus invitados y envíales la invitación antes de que se cierre la puerta. 💋', pt: '📣 NOVO: A Sala Privada 🔒\n\nSua sala pública é aberta para todo mundo — qualquer um pode entrar, dar gorjetas e se divertir. Mas há fãs demais lá dentro para dar atenção de verdade a todos.\n\nA Sala Privada é diferente. Você define o máximo de pessoas, escolhe o dia e define seu preço. É especial, porque agora seus maiores gastadores ganham sua atenção de verdade — e você pode agradar vários ao mesmo tempo. São suas baleias 🐳 — quem gasta alto. Os de $5 ficam do lado de fora só olhando.\n\nAs regras: no máximo 2 salas privadas por semana — é isso que as mantém exclusivas. Veja sua lista de Maiores Gastadores no app, escolha seus convidados e envie o convite antes que a porta feche. 💋', fr: '📣 NOUVEAU : Le Salon Privé 🔒\n\nTon salon public est ouvert à tout le monde — n\'importe qui peut entrer, donner des pourboires et s\'amuser. Mais il y a trop de fans pour leur donner à tous ta vraie attention.\n\nLe Salon Privé, c\'est différent. Tu fixes le nombre maximum de personnes, tu choisis ton jour et ton prix. C\'est spécial, parce que tes plus gros dépensiers reçoivent enfin ta vraie attention — et tu peux en satisfaire plusieurs à la fois. Ce sont tes baleines 🐳 — ceux qui dépensent gros. Ceux à $5 restent dehors à regarder.\n\nLes règles : maximum 2 salons privés par semaine — c\'est ce qui les garde exclusifs. Regarde ta liste de Meilleurs Dépensiers dans l\'appli, choisis tes invités et envoie-leur l\'invitation avant que la porte se ferme. 💋', de: '📣 NEU: Der Private Raum 🔒\n\nDein öffentlicher Raum ist für alle offen — jeder kann reinkommen, Trinkgeld geben und Spaß haben. Aber es sind zu viele Fans drin, um allen deine echte Aufmerksamkeit zu schenken.\n\nDer Private Raum ist anders. Du legst die maximale Personenanzahl fest, wählst deinen Tag und setzt deinen Preis. Er ist besonders, weil deine Top-Ausgeber jetzt deine echte Aufmerksamkeit bekommen — und du kannst mehrere gleichzeitig verwöhnen. Das sind deine Wale 🐳 — die großen Geldausgeber. Die $5-Leute bleiben draußen und schauen nur zu.\n\nDie Regeln: maximal 2 private Räume pro Woche — das hält sie exklusiv. Schau dir deine Top-Ausgeber-Liste in der App an, wähle deine Gäste und schick ihnen die Einladung, bevor die Tür schließt. 💋', ru: '📣 НОВОЕ: Приватная комната 🔒\n\nТвоя публичная комната открыта для всех — любой может зайти, дать чаевые и повеселиться. Но там слишком много поклонников, чтобы уделить настоящее внимание каждому.\n\nПриватная комната — это другое. Ты сама устанавливаешь максимум гостей, выбираешь день и назначаешь цену. Она особенная: теперь твои самые щедрые поклонники получают твоё настоящее внимание — и ты можешь радовать нескольких сразу. Это твои киты 🐳 — те, кто тратит по-крупному. Те, что по $5, остаются снаружи и только смотрят.\n\nПравила: максимум 2 приватные комнаты в неделю — именно это сохраняет их эксклюзивность. Открой список своих Топ-спонсоров в приложении, выбери гостей и отправь им приглашение, пока дверь не закрылась. 💋', ja: '📣 新機能：プライベートルーム 🔒\n\nあなたの公開ルームは誰でも入れます — 誰でも参加して、チップを渡して、楽しめます。でも、ファンが多すぎて全員に本当の注意を向けることはできません。\n\nプライベートルームは違います。最大人数を決め、日を選び、価格を設定するのはあなた。その特別さは、あなたのトップスペンダーがあなたの本当の注意を受けられること — そして一度に何人も喜ばせられます。彼らはあなたのクジラ 🐳 — 大きく使う人たち。$5の人たちは外から眺めるだけです。\n\nルール：プライベートルームは週に最大2回まで — それが特別感を保ちます。アプリのトップスペンダーリストを確認して、ゲストを選び、ドアが閉まる前に招待を送りましょう。💋', zh: '📣 新功能：私人房间 🔒\n\n你的公开房间对所有人开放 — 任何人都可以进来、打赏、玩得开心。但里面粉丝太多，你没法真正关注每一个人。\n\n私人房间不一样。由你设定最多人数、挑选日子、定下价格。它特别，是因为你消费最高的粉丝能得到你真正的关注 — 你还能同时取悦好几个人。他们是你的鲸鱼 🐳 — 真正的大额消费者。那些花 $5 的人只能在外面看着。\n\n规则：每周最多 2 场私人房间 — 这正是它保持专属的原因。在应用里查看你的顶级消费者名单，挑选客人，在大门关闭前把邀请发给他们。💋', ko: '📣 새 기능: 프라이빗 룸 🔒\n\n당신의 공개 룸은 모두에게 열려 있어요 — 누구나 들어와서 팁을 주고 즐길 수 있죠. 하지만 팬이 너무 많아서 모두에게 진짜 관심을 쏟을 수는 없어요.\n\n프라이빗 룸은 달라요. 최대 인원을 정하고, 날짜를 고르고, 가격을 정하는 건 당신이에요. 특별한 이유는, 당신의 탑 소비자들이 이제 당신의 진짜 관심을 받을 수 있기 때문이에요 — 그리고 한 번에 여러 명을 만족시킬 수 있어요. 그들은 당신의 고래 🐳 — 크게 쓰는 사람들이에요. $5짜리 소비자들은 밖에서 구경만 하죠.\n\n규칙: 프라이빗 룸은 주당 최대 2회 — 그게 바로 특별함을 지키는 방법이에요. 앱에서 탑 소비 목록을 확인하고, 게스트를 고르고, 문이 닫히기 전에 초대를 보내세요. 💋', it: '📣 NOVITÀ: La Stanza Privata 🔒\n\nLa tua stanza pubblica è aperta a tutti — chiunque può entrare, lasciare mance e divertirsi. Ma ci sono troppi fan per dare a tutti la tua vera attenzione.\n\nLa Stanza Privata è diversa. Imposti tu il numero massimo di persone, scegli il giorno e fissi il prezzo. È speciale, perché ora i tuoi maggiori spenditori ricevono la tua vera attenzione — e puoi accontentarne diversi alla volta. Sono le tue balene 🐳 — quelli che spendono tanto. Quelli da $5 restano fuori a guardare.\n\nLe regole: massimo 2 stanze private a settimana — è questo che le mantiene esclusive. Controlla la tua lista dei Maggiori Spenditori nell\'app, scegli i tuoi ospiti e manda loro l\'invito prima che la porta si chiuda. 💋', pl: '📣 NOWOŚĆ: Pokój Prywatny 🔒\n\nTwój pokój publiczny jest otwarty dla wszystkich — każdy może wejść, dać napiwek i dobrze się bawić. Ale jest tam za dużo fanów, by każdemu poświęcić prawdziwą uwagę.\n\nPokój Prywatny jest inny. Sama ustalasz maksymalną liczbę osób, wybierasz dzień i ustalasz cenę. Jest wyjątkowy, bo teraz Twoi najwięksi wydawcy dostają Twoją prawdziwą uwagę — a Ty możesz zadowolić kilku naraz. To Twoje wieloryby 🐳 — ci, którzy wydają dużo. Ci za $5 zostają na zewnątrz i tylko patrzą.\n\nZasady: maksymalnie 2 pokoje prywatne w tygodniu — to właśnie utrzymuje ich ekskluzywność. Sprawdź swoją listę Największych Wydawców w aplikacji, wybierz gości i wyślij im zaproszenie, zanim drzwi się zamkną. 💋', nl: '📣 NIEUW: De Privékamer 🔒\n\nJe openbare kamer is voor iedereen open — iedereen kan binnenkomen, fooien geven en plezier maken. Maar er zijn te veel fans om ze allemaal je echte aandacht te geven.\n\nDe Privékamer is anders. Jij stelt het maximum aantal mensen in, kiest je dag en bepaalt je prijs. Het is bijzonder, want nu krijgen je grootste uitgevers je echte aandacht — en je kunt er meerdere tegelijk plezieren. Dat zijn je walvissen 🐳 — de grote uitgevers. De $5-mensen blijven buiten staan kijken.\n\nDe regels: maximaal 2 privékamers per week — dat houdt ze exclusief. Bekijk je Topuitgeverslijst in de app, kies je gasten en stuur ze de uitnodiging voordat de deur sluit. 💋', tr: '📣 YENİ: Özel Oda 🔒\n\nHerkese açık odan herkese açık — herkes girebilir, bahşiş verebilir ve eğlenebilir. Ama orada herkese gerçek ilgini verebileceğinden çok daha fazla hayran var.\n\nÖzel Oda farklı. Maksimum kişi sayısını sen belirlersin, gününü sen seçersin ve fiyatını sen koyarsın. O özel, çünkü artık en çok harcama yapanların gerçek ilgini alıyor — ve aynı anda birkaçını birden mutlu edebilirsiniz. Onlar sizin balinalarınız 🐳 — büyük harcama yapanlar. $5\'likler dışarıda izlemekle kalır.\n\nKurallar: haftada en fazla 2 özel oda — onları özel kılan da bu. Uygulamadaki En Çok Harcayanlar listene bak, misafirlerini seç ve kapı kapanmadan daveti gönder. 💋' },
@@ -16799,6 +16908,645 @@ app.get('/api/admin/bookings', ...adminOnly, (req, res) => {
     JOIN users uf ON uf.id = b.fan_id
     ORDER BY b.scheduled_at DESC LIMIT 100`).all();
   res.json({ bookings: rows });
+});
+
+/* ------------------------------------------------------------------ */
+/* CUSTOM PACKAGES (owner, Oct 22 2026)                                */
+/*                                                                     */
+/* Fans buy a model's pre-made shippable packages, or request a        */
+/* custom one: the request is its own 📦 thread (NOT a chat —          */
+/* conversations is UNIQUE per fan/model pair) where they talk it      */
+/* through, SHE names the price, and the fan accepts → shipping form →  */
+/* pays. Money is HELD at payment (battle-escrow pattern: the fan is   */
+/* debited, a 'package' ledger row carries the gross with zero         */
+/* splits) and released to her only on fan-confirmed receipt, 7 days    */
+/* after she marks it shipped, or a Manager release; refunded in full  */
+/* from the hold if it never ships (fan cancel after 7 days, or a      */
+/* Manager refund). While held, the money is in NEITHER party's        */
+/* spendable balance. The ONLY return address anywhere in the flow is  */
+/* the SlutCamp business address — her home address never exists in    */
+/* this system. Shipping details live on the order row and are served  */
+/* ONLY on the order detail, ONLY to the fulfilling model and the fan  */
+/* himself. The house account can neither buy (fan role only) nor be   */
+/* bought from (it is the app itself — the cannot_message_official     */
+/* precedent), so it never appears in a package transaction at all.    */
+/* ------------------------------------------------------------------ */
+
+const PKG_RETURN_ADDRESS = {
+  name: 'World Of Godz Entertainment LLC',
+  street: '500 Navarro St, 2nd Floor, PMB 7239',
+  city: 'San Antonio', state: 'TX', zip: '78205', country: 'USA',
+};
+const pkgReturnBlock = () =>
+  `${PKG_RETURN_ADDRESS.name}\n${PKG_RETURN_ADDRESS.street}\n` +
+  `${PKG_RETURN_ADDRESS.city}, ${PKG_RETURN_ADDRESS.state} ${PKG_RETURN_ADDRESS.zip}`;
+const PKG_MAX_PRICE_CREDITS = 1000000; // $1,000,000 — her call, sanity ceiling
+
+function pkgPriceCents(raw) {
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1 || n > PKG_MAX_PRICE_CREDITS) return null;
+  return n * 100;
+}
+
+function parseShipping(body) {
+  const f = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
+  const s = {
+    ship_name: f(body && body.ship_name, 120),
+    ship_street: f(body && body.ship_street, 200),
+    ship_city: f(body && body.ship_city, 80),
+    ship_state: f(body && body.ship_state, 80),
+    ship_zip: f(body && body.ship_zip, 20),
+    ship_country: f(body && body.ship_country, 80),
+    ship_email: f(body && body.ship_email, 160),
+  };
+  if (!s.ship_name || !s.ship_street || !s.ship_city || !s.ship_state || !s.ship_zip || !s.ship_country)
+    return { error: 'bad_shipping' };
+  if (!EMAIL_RE.test(s.ship_email)) return { error: 'bad_email' };
+  return { shipping: s };
+}
+
+/* Small public identity for request/order payloads — mirrors the
+ * otherParty photo gates (ID-verified + co-star hold) so a package
+ * surface never leaks a held photo either. */
+function pkgParty(userId) {
+  const u = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  if (!u) return { id: userId, display_name: '?', username: '', photo_url: '' };
+  let photo = '';
+  if (u.role === 'model') {
+    const m = db.prepare('SELECT photo_url FROM models WHERE user_id = ?').get(userId);
+    if (m && m.photo_url && isIdVerified(userId) && !heldMediaUrls(userId).has(m.photo_url))
+      photo = m.photo_url;
+  }
+  return { id: u.id, display_name: u.display_name, username: u.username, photo_url: photo };
+}
+
+function packageOut(p) {
+  return { id: p.id, model_id: p.model_id, title: p.title, description: p.description,
+    price_cents: p.price_cents, photo_url: p.photo_path || '',
+    is_active: !!p.is_active, created_at: p.created_at, updated_at: p.updated_at };
+}
+
+/* Order payload. detail=false (lists) NEVER carries ship_* fields —
+ * the fan's shipping details are visible only on the order itself.
+ * detail=true adds them for the two people allowed to see them (the
+ * fan who owns the order, the model who fulfills it) and, for the
+ * model only, the hard-coded business return address block. */
+function packageOrderOut(o, viewerId, detail) {
+  const out = { id: o.id, package_id: o.package_id, request_id: o.request_id,
+    fan: pkgParty(o.fan_id), model: pkgParty(o.model_id),
+    title: o.title, description: o.description, price_cents: o.price_cents,
+    status: o.status, tracking: o.tracking || '',
+    dispute_reason: o.status === 'disputed' ? (o.dispute_reason || '') : '',
+    created_at: o.created_at, shipped_at: o.shipped_at,
+    released_at: o.released_at, refunded_at: o.refunded_at,
+    can_cancel: o.status === 'held' &&
+      db.prepare("SELECT datetime(?, '+7 days') <= datetime('now') AS due").get(o.created_at).due === 1,
+    can_confirm: o.status === 'shipped',
+    can_dispute: o.status === 'held' || o.status === 'shipped' };
+  if (detail) {
+    out.ship_name = o.ship_name; out.ship_street = o.ship_street;
+    out.ship_city = o.ship_city; out.ship_state = o.ship_state;
+    out.ship_zip = o.ship_zip; out.ship_country = o.ship_country;
+    out.ship_email = o.ship_email;
+    if (viewerId === o.model_id) {
+      out.return_address = { ...PKG_RETURN_ADDRESS };
+      out.return_block = pkgReturnBlock();
+    }
+  }
+  return out;
+}
+
+function pkgNotify(userId, type, titleKey, bodyKey, vars, link) {
+  try {
+    notifyUser(userId, type, srv(titleKey, userLang(userId)),
+      srv(bodyKey, userLang(userId), vars), link || '/#chats');
+  } catch (e) { /* the bell is a bonus; the state change is the deliverable */ }
+}
+
+/* Create an order in the HOLD: idempotency first (a retry with the
+ * same client_request_id returns the existing order, charged once),
+ * then the spend gate (balance + monthly cap, exactly like every
+ * other charge), then ONE transaction that inserts the order, debits
+ * the fan and writes the zero-split 'package' ledger row — if the
+ * unique client_request_id index fires, the whole thing rolls back
+ * and the winner's order is returned instead. */
+function createPackageOrder({ fanId, modelId, packageId = null, requestId = null,
+  title, description, priceCents, shipping, clientRequestId, ip }) {
+  const reqId = String(clientRequestId || '').slice(0, 64) || null;
+  if (reqId) {
+    const prior = db.prepare('SELECT * FROM package_orders WHERE fan_id = ? AND client_request_id = ?')
+      .get(fanId, reqId);
+    if (prior) return { order: prior, duplicate: true };
+  }
+  assertFanCanSpend(fanId, priceCents);
+  let orderId = null;
+  try {
+    txn(() => {
+      const info = db.prepare(`INSERT INTO package_orders
+        (package_id, request_id, fan_id, model_id, title, description, price_cents, status,
+         ship_name, ship_street, ship_city, ship_state, ship_zip, ship_country, ship_email,
+         client_request_id)
+        VALUES (?,?,?,?,?,?,?,'held',?,?,?,?,?,?,?,?)`)
+        .run(packageId, requestId, fanId, modelId, title, description, priceCents,
+          shipping.ship_name, shipping.ship_street, shipping.ship_city, shipping.ship_state,
+          shipping.ship_zip, shipping.ship_country, shipping.ship_email, reqId);
+      orderId = Number(info.lastInsertRowid);
+      db.prepare('UPDATE wallets SET credits_cents = credits_cents - ? WHERE user_id = ?')
+        .run(priceCents, fanId);
+      const tx = db.prepare(`INSERT INTO transactions
+        (fan_id, model_id, type, gross_cents, model_cents, platform_cents, recruiter_id, recruiter_cents, note, ip, available_at)
+        VALUES (?,?, 'package', ?, 0, 0, NULL, 0, ?, ?, ?)`)
+        .run(fanId, modelId, priceCents, `📦 Package #${orderId} — ${title}`.slice(0, 300),
+          ip || null, earningsAvailableAt());
+      db.prepare('UPDATE package_orders SET hold_txn_id = ? WHERE id = ?')
+        .run(Number(tx.lastInsertRowid), orderId);
+    });
+  } catch (e) {
+    if (reqId) {
+      const winner = db.prepare('SELECT * FROM package_orders WHERE fan_id = ? AND client_request_id = ?')
+        .get(fanId, reqId);
+      if (winner) return { order: winner, duplicate: true };
+    }
+    throw e;
+  }
+  const order = db.prepare('SELECT * FROM package_orders WHERE id = ?').get(orderId);
+  const fan = pkgParty(fanId);
+  pkgNotify(modelId, 'package_order', 'pkg_bell_order_title', 'pkg_bell_order_body',
+    { fan: fan.display_name, price: fmt$(priceCents), title }, '/#settings');
+  pushToUser(modelId, { type: 'pkgorder:update', order_id: orderId });
+  return { order, duplicate: false };
+}
+
+/* Release a hold to the model: the standard 60/40 split (plus the
+ * recruiter lane when she has one), credited like all other income —
+ * earnings land on her wallet, the platform share on platform_stats,
+ * and the 'package_release' ledger row carries the split with the
+ * standard payout-protection available_at. Conditional on the order
+ * still being releasable, so racers (fan confirm vs sweep vs Manager)
+ * can never pay twice. */
+function releasePackageHold(order, note) {
+  if (!order || !['held', 'shipped', 'disputed'].includes(order.status)) return false;
+  const { modelCents, platformCents, recruiterCents, recruiterId, recruiterUserId } =
+    splitPayment(order.price_cents, order.model_id);
+  let done = false;
+  txn(() => {
+    const claim = db.prepare(`UPDATE package_orders
+      SET status = 'released', released_at = datetime('now'), updated_at = datetime('now')
+      WHERE id = ? AND status IN ('held','shipped','disputed')`).run(order.id);
+    if (!claim.changes) return;
+    done = true;
+    db.prepare('UPDATE wallets SET earnings_cents = earnings_cents + ? WHERE user_id = ?')
+      .run(modelCents, order.model_id);
+    db.prepare('UPDATE platform_stats SET earnings_cents = earnings_cents + ? WHERE id = 1')
+      .run(platformCents);
+    if (recruiterUserId && recruiterCents > 0)
+      db.prepare('UPDATE wallets SET earnings_cents = earnings_cents + ? WHERE user_id = ?')
+        .run(recruiterCents, recruiterUserId);
+    db.prepare(`INSERT INTO transactions
+      (fan_id, model_id, type, gross_cents, model_cents, platform_cents, recruiter_id, recruiter_cents, note, available_at)
+      VALUES (?,?, 'package_release', 0, ?, ?, ?, ?, ?, ?)`)
+      .run(order.fan_id, order.model_id, modelCents, platformCents, recruiterId, recruiterCents,
+        (note || `📦 Package #${order.id} released`).slice(0, 300), earningsAvailableAt());
+  });
+  if (done) {
+    try { recomputeModelRank(order.model_id); } catch (e) { /* rank is a bonus */ }
+    pkgNotify(order.model_id, 'package_released', 'pkg_bell_released_title', 'pkg_bell_released_body',
+      { price: fmt$(modelCents), title: order.title }, '/#settings');
+    pushToUser(order.fan_id, { type: 'pkgorder:update', order_id: order.id });
+    pushToUser(order.model_id, { type: 'pkgorder:update', order_id: order.id });
+  }
+  return done;
+}
+
+/* Refund a hold back to the fan in full: he is re-credited and a
+ * negative 'package_refund' row nets his spend back down. The model
+ * was never credited while held, so nobody is debited (the
+ * refundBattleEscrow shape). */
+function refundPackageHold(order, note) {
+  if (!order || !['held', 'shipped', 'disputed'].includes(order.status)) return false;
+  let done = false;
+  txn(() => {
+    const claim = db.prepare(`UPDATE package_orders
+      SET status = 'refunded', refunded_at = datetime('now'), updated_at = datetime('now')
+      WHERE id = ? AND status IN ('held','shipped','disputed')`).run(order.id);
+    if (!claim.changes) return;
+    done = true;
+    db.prepare('UPDATE wallets SET credits_cents = credits_cents + ? WHERE user_id = ?')
+      .run(order.price_cents, order.fan_id);
+    db.prepare(`INSERT INTO transactions
+      (fan_id, model_id, type, gross_cents, model_cents, platform_cents, recruiter_id, recruiter_cents, note)
+      VALUES (?,?, 'package_refund', ?, 0, 0, NULL, 0, ?)`)
+      .run(order.fan_id, order.model_id, -order.price_cents,
+        (note || `📦 Package #${order.id} refunded`).slice(0, 300));
+  });
+  if (done) {
+    pkgNotify(order.fan_id, 'package_refunded', 'pkg_bell_refunded_title', 'pkg_bell_refunded_body',
+      { price: fmt$(order.price_cents), title: order.title }, '/#wallet');
+    pushToUser(order.fan_id, { type: 'pkgorder:update', order_id: order.id });
+    pushToUser(order.model_id, { type: 'pkgorder:update', order_id: order.id });
+  }
+  return done;
+}
+
+/* Auto-release: shipped 7+ days ago with no dispute → her money.
+ * Disputed orders are 'disputed', never 'shipped', so a dispute
+ * freezes the timer by construction. Runs on a 60s interval and
+ * lazily from the order reads (the booking-sweep pattern). */
+function packageAutoReleaseSweep() {
+  const due = db.prepare(`SELECT * FROM package_orders
+    WHERE status = 'shipped' AND shipped_at <= datetime('now', '-7 days')`).all();
+  for (const o of due) {
+    try { releasePackageHold(o, `📦 Package #${o.id} auto-released (7 days after shipping)`); }
+    catch (e) { console.error('package auto-release', e); }
+  }
+}
+setInterval(() => { try { packageAutoReleaseSweep(); } catch (e) {} }, 60 * 1000);
+
+/* ---------------- model side: her package list ---------------- */
+
+app.get('/api/model/packages', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const rows = db.prepare('SELECT * FROM model_packages WHERE model_id = ? ORDER BY id')
+    .all(req.user.id);
+  res.json({ packages: rows.map(packageOut) });
+});
+
+app.post('/api/model/packages', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const title = String((req.body || {}).title || '').trim().slice(0, 120);
+  const description = String((req.body || {}).description || '').trim().slice(0, 2000);
+  const priceCents = pkgPriceCents((req.body || {}).price_credits);
+  if (!title) return res.status(400).json({ error: 'bad_title' });
+  if (priceCents == null) return res.status(400).json({ error: 'bad_package_price' });
+  const info = db.prepare(`INSERT INTO model_packages (model_id, title, description, price_cents)
+    VALUES (?,?,?,?)`).run(req.user.id, title, description, priceCents);
+  const row = db.prepare('SELECT * FROM model_packages WHERE id = ?').get(Number(info.lastInsertRowid));
+  res.json({ package: packageOut(row) });
+});
+
+app.put('/api/model/packages/:id', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const row = db.prepare('SELECT * FROM model_packages WHERE id = ? AND model_id = ?')
+    .get(req.params.id, req.user.id);
+  if (!row) return res.status(404).json({ error: 'not_found' });
+  const b = req.body || {};
+  const title = b.title !== undefined ? String(b.title || '').trim().slice(0, 120) : row.title;
+  if (!title) return res.status(400).json({ error: 'bad_title' });
+  const description = b.description !== undefined
+    ? String(b.description || '').trim().slice(0, 2000) : row.description;
+  let priceCents = row.price_cents;
+  if (b.price_credits !== undefined) {
+    priceCents = pkgPriceCents(b.price_credits);
+    if (priceCents == null) return res.status(400).json({ error: 'bad_package_price' });
+  }
+  const isActive = b.is_active !== undefined ? (b.is_active ? 1 : 0) : row.is_active;
+  db.prepare(`UPDATE model_packages SET title = ?, description = ?, price_cents = ?,
+    is_active = ?, updated_at = datetime('now') WHERE id = ?`)
+    .run(title, description, priceCents, isActive, row.id);
+  res.json({ package: packageOut(db.prepare('SELECT * FROM model_packages WHERE id = ?').get(row.id)) });
+});
+
+app.delete('/api/model/packages/:id', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const row = db.prepare('SELECT * FROM model_packages WHERE id = ? AND model_id = ?')
+    .get(req.params.id, req.user.id);
+  if (!row) return res.status(404).json({ error: 'not_found' });
+  // Orders keep their snapshots; deleting a listing never rewrites one.
+  if (row.photo_path) { try { fs.unlinkSync(path.join(UPLOAD_DIR, path.basename(row.photo_path))); } catch (e) {} }
+  db.prepare('DELETE FROM model_packages WHERE id = ?').run(row.id);
+  res.json({ ok: true });
+});
+
+/* Package photo: the SHARED profile-photo pipeline (photoUpload —
+ * images only, 5MB cap, photo-<hex> names the public /uploads
+ * whitelist serves — package photos are public profile content). */
+app.post('/api/model/packages/:id/photo', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  photoUpload.single('file')(req, res, (err) => {
+    if (err || !req.file) return res.status(400).json({ error: 'bad_file' });
+    const row = db.prepare('SELECT * FROM model_packages WHERE id = ? AND model_id = ?')
+      .get(req.params.id, req.user.id);
+    if (!row) {
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+      return res.status(404).json({ error: 'not_found' });
+    }
+    if (row.photo_path) { try { fs.unlinkSync(path.join(UPLOAD_DIR, path.basename(row.photo_path))); } catch (e) {} }
+    const url = '/uploads/' + req.file.filename;
+    db.prepare("UPDATE model_packages SET photo_path = ?, updated_at = datetime('now') WHERE id = ?")
+      .run(url, row.id);
+    res.json({ photo_url: url });
+  });
+});
+
+/* ---------------- fan side: browse + buy a pre-made package ---------------- */
+
+app.get('/api/models/:id/packages', (req, res) => {
+  const model = db.prepare(`SELECT u.id FROM users u JOIN models m ON m.user_id = u.id
+    WHERE u.id = ? AND u.role = 'model' AND u.banned = 0`).get(req.params.id);
+  if (!model) return res.status(404).json({ error: 'model_not_found' });
+  // The house account is the app itself, not a seller (owner-comp
+  // precedent): it lists no packages and can never be bought from.
+  if (isHouseAccountId(model.id)) return res.json({ packages: [] });
+  const rows = db.prepare(`SELECT * FROM model_packages
+    WHERE model_id = ? AND is_active = 1 ORDER BY id`).all(model.id);
+  res.json({ packages: rows.map(packageOut) });
+});
+
+app.post('/api/packages/:id/buy', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const pkg = db.prepare('SELECT * FROM model_packages WHERE id = ?').get(req.params.id);
+  if (!pkg || !pkg.is_active) return res.status(404).json({ error: 'package_not_found' });
+  const model = db.prepare(`SELECT u.id FROM users u WHERE u.id = ? AND u.role = 'model' AND u.banned = 0`)
+    .get(pkg.model_id);
+  if (!model) return res.status(404).json({ error: 'model_not_found' });
+  if (isHouseAccountId(pkg.model_id))
+    return res.status(403).json({ error: 'official_account',
+      message: 'SlutCamp is the app itself — it doesn\'t sell packages.' });
+  if (modelRegionBlocked(pkg.model_id, geoOfReq(req))) return regionBlocked(res);
+  const parsed = parseShipping(req.body);
+  if (parsed.error) return res.status(400).json({ error: parsed.error });
+  let out;
+  try {
+    out = createPackageOrder({ fanId: req.user.id, modelId: pkg.model_id, packageId: pkg.id,
+      title: pkg.title, description: pkg.description, priceCents: pkg.price_cents,
+      shipping: parsed.shipping, clientRequestId: (req.body || {}).client_request_id,
+      ip: clientIp(req) });
+  } catch (e) {
+    return res.status(402).json(chargeErrorBody(e, pkg.price_cents, req.user.id));
+  }
+  res.json({ order: packageOrderOut(out.order, req.user.id, true), duplicate: out.duplicate,
+    balance_cents: getWallet(req.user.id).credits_cents });
+});
+
+/* ---------------- custom package requests ---------------- */
+
+function packageRequestOut(r, viewerId) {
+  const last = db.prepare(`SELECT * FROM package_request_messages
+    WHERE request_id = ? ORDER BY id DESC LIMIT 1`).get(r.id);
+  return { id: r.id, fan: pkgParty(r.fan_id), model: pkgParty(r.model_id),
+    description: r.description, status: r.status, quote_cents: r.quote_cents,
+    order_id: r.order_id, created_at: r.created_at, updated_at: r.updated_at,
+    last_message: last ? { body: last.body, sender_id: last.sender_id, created_at: last.created_at } : null,
+    mine: viewerId === r.fan_id ? 'fan' : 'model' };
+}
+
+function getRequestFor(req, res) {
+  const r = db.prepare('SELECT * FROM package_requests WHERE id = ?').get(req.params.id);
+  if (!r) { res.status(404).json({ error: 'not_found' }); return null; }
+  if (r.fan_id !== req.user.id && r.model_id !== req.user.id) {
+    res.status(403).json({ error: 'forbidden' }); return null;
+  }
+  return r;
+}
+
+/* Safety scan for request-thread text (the create body AND thread
+ * messages): the same chatScan both directions as chat. A match
+ * refuses the send and strikes the sender — no safety_incidents row,
+ * because that table is keyed to a conversations row and a request
+ * thread is not one; the strike + refusal are the enforcement. */
+function pkgScanBlock(req, res, text, isModelSender) {
+  const matched = chatScan(text, isModelSender);
+  if (!matched) return false;
+  const totalStrikes = addStrike(subjectKey(req.ident));
+  res.status(200).json({ blocked: true, matched, strikes: totalStrikes,
+    auto_flagged: totalStrikes >= 3 });
+  return true;
+}
+
+app.post('/api/package-requests', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const modelId = parseInt((req.body || {}).model_id);
+  const description = String((req.body || {}).description || '').trim().slice(0, 2000);
+  if (!description) return res.status(400).json({ error: 'empty_request' });
+  const model = db.prepare(`SELECT u.id FROM users u JOIN models m ON m.user_id = u.id
+    WHERE u.id = ? AND u.role = 'model' AND u.banned = 0`).get(modelId);
+  if (!model) return res.status(404).json({ error: 'model_not_found' });
+  if (isHouseAccountId(model.id))
+    return res.status(403).json({ error: 'official_account',
+      message: 'SlutCamp is the app itself — you can\'t request a package from it.' });
+  if (modelRegionBlocked(model.id, geoOfReq(req))) return regionBlocked(res);
+  if (pkgScanBlock(req, res, description, false)) return;
+  const info = db.prepare(`INSERT INTO package_requests (fan_id, model_id, description)
+    VALUES (?,?,?)`).run(req.user.id, model.id, description);
+  const r = db.prepare('SELECT * FROM package_requests WHERE id = ?').get(Number(info.lastInsertRowid));
+  db.prepare(`INSERT INTO package_request_messages (request_id, sender_id, body) VALUES (?,?,?)`)
+    .run(r.id, req.user.id, description);
+  const fan = pkgParty(req.user.id);
+  pkgNotify(model.id, 'package_request', 'pkg_bell_new_request_title', 'pkg_bell_new_request_body',
+    { fan: fan.display_name }, '/#chats');
+  pushToUser(model.id, { type: 'pkgreq:new', request_id: r.id });
+  res.json({ request: packageRequestOut(r, req.user.id) });
+});
+
+app.get('/api/package-requests', identMiddleware, requireUser, (req, res) => {
+  const col = req.user.role === 'model' ? 'model_id' : 'fan_id';
+  const rows = db.prepare(`SELECT * FROM package_requests WHERE ${col} = ?
+    ORDER BY updated_at DESC LIMIT 100`).all(req.user.id);
+  res.json({ requests: rows.map((r) => packageRequestOut(r, req.user.id)) });
+});
+
+app.get('/api/package-requests/:id', identMiddleware, requireUser, (req, res) => {
+  const r = getRequestFor(req, res);
+  if (!r) return;
+  const messages = db.prepare(`SELECT * FROM package_request_messages
+    WHERE request_id = ? ORDER BY id ASC LIMIT 200`).all(r.id);
+  res.json({ request: packageRequestOut(r, req.user.id),
+    messages: messages.map((m) => ({ id: m.id, sender_id: m.sender_id, body: m.body,
+      created_at: m.created_at, sender_name: pkgParty(m.sender_id).display_name })) });
+});
+
+app.post('/api/package-requests/:id/messages', identMiddleware, requireUser, (req, res) => {
+  const r = getRequestFor(req, res);
+  if (!r) return;
+  if (!['open', 'quoted'].includes(r.status))
+    return res.status(409).json({ error: 'thread_closed' });
+  const text = String((req.body || {}).body || '').trim().slice(0, 2000);
+  if (!text) return res.status(400).json({ error: 'empty_message' });
+  const isModelSender = req.user.id === r.model_id;
+  if (pkgScanBlock(req, res, text, isModelSender)) return;
+  const info = db.prepare(`INSERT INTO package_request_messages (request_id, sender_id, body)
+    VALUES (?,?,?)`).run(r.id, req.user.id, text);
+  db.prepare("UPDATE package_requests SET updated_at = datetime('now') WHERE id = ?").run(r.id);
+  const otherId = isModelSender ? r.fan_id : r.model_id;
+  pushToUser(otherId, { type: 'pkgreq:message', request_id: r.id });
+  res.json({ message: { id: Number(info.lastInsertRowid), sender_id: req.user.id, body: text } });
+});
+
+app.post('/api/package-requests/:id/quote', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const r = getRequestFor(req, res);
+  if (!r) return;
+  if (r.model_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+  if (!['open', 'quoted'].includes(r.status))
+    return res.status(409).json({ error: 'thread_closed' });
+  const priceCents = pkgPriceCents((req.body || {}).price_credits);
+  if (priceCents == null) return res.status(400).json({ error: 'bad_package_price' });
+  db.prepare(`UPDATE package_requests SET status = 'quoted', quote_cents = ?,
+    updated_at = datetime('now') WHERE id = ?`).run(priceCents, r.id);
+  const model = pkgParty(r.model_id);
+  pkgNotify(r.fan_id, 'package_quote', 'pkg_bell_quote_title', 'pkg_bell_quote_body',
+    { model: model.display_name, price: fmt$(priceCents) }, '/#chats');
+  pushToUser(r.fan_id, { type: 'pkgreq:update', request_id: r.id });
+  res.json({ request: packageRequestOut(db.prepare('SELECT * FROM package_requests WHERE id = ?').get(r.id), req.user.id) });
+});
+
+app.post('/api/package-requests/:id/decline', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const r = getRequestFor(req, res);
+  if (!r) return;
+  if (r.model_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+  if (!['open', 'quoted'].includes(r.status))
+    return res.status(409).json({ error: 'thread_closed' });
+  db.prepare(`UPDATE package_requests SET status = 'declined', decided_at = datetime('now'),
+    updated_at = datetime('now') WHERE id = ?`).run(r.id);
+  pushToUser(r.fan_id, { type: 'pkgreq:update', request_id: r.id });
+  res.json({ ok: true });
+});
+
+app.post('/api/package-requests/:id/withdraw', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const r = getRequestFor(req, res);
+  if (!r) return;
+  if (r.fan_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+  if (!['open', 'quoted'].includes(r.status))
+    return res.status(409).json({ error: 'thread_closed' });
+  db.prepare(`UPDATE package_requests SET status = 'withdrawn', decided_at = datetime('now'),
+    updated_at = datetime('now') WHERE id = ?`).run(r.id);
+  pushToUser(r.model_id, { type: 'pkgreq:update', request_id: r.id });
+  res.json({ ok: true });
+});
+
+app.post('/api/package-requests/:id/accept', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const r = getRequestFor(req, res);
+  if (!r) return;
+  if (r.fan_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+  if (r.status === 'ordered' && r.order_id) {
+    const existing = db.prepare('SELECT * FROM package_orders WHERE id = ?').get(r.order_id);
+    if (existing) return res.json({ order: packageOrderOut(existing, req.user.id, true), duplicate: true,
+      balance_cents: getWallet(req.user.id).credits_cents });
+  }
+  if (r.status !== 'quoted' || !r.quote_cents)
+    return res.status(409).json({ error: 'not_quoted' });
+  const parsed = parseShipping(req.body);
+  if (parsed.error) return res.status(400).json({ error: parsed.error });
+  let out;
+  try {
+    out = createPackageOrder({ fanId: req.user.id, modelId: r.model_id, requestId: r.id,
+      title: '📦 Custom package', description: r.description, priceCents: r.quote_cents,
+      shipping: parsed.shipping, clientRequestId: (req.body || {}).client_request_id,
+      ip: clientIp(req) });
+  } catch (e) {
+    return res.status(402).json(chargeErrorBody(e, r.quote_cents, req.user.id));
+  }
+  db.prepare(`UPDATE package_requests SET status = 'ordered', order_id = ?,
+    decided_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`)
+    .run(out.order.id, r.id);
+  res.json({ order: packageOrderOut(out.order, req.user.id, true), duplicate: out.duplicate,
+    balance_cents: getWallet(req.user.id).credits_cents });
+});
+
+/* ---------------- orders ---------------- */
+
+function getOrderFor(req, res) {
+  const o = db.prepare('SELECT * FROM package_orders WHERE id = ?').get(req.params.id);
+  if (!o) { res.status(404).json({ error: 'not_found' }); return null; }
+  if (o.fan_id !== req.user.id && o.model_id !== req.user.id) {
+    res.status(403).json({ error: 'forbidden' }); return null;
+  }
+  return o;
+}
+
+app.get('/api/orders', identMiddleware, requireUser, (req, res) => {
+  packageAutoReleaseSweep();
+  const col = req.user.role === 'model' ? 'model_id' : 'fan_id';
+  const rows = db.prepare(`SELECT * FROM package_orders WHERE ${col} = ?
+    ORDER BY id DESC LIMIT 100`).all(req.user.id);
+  res.json({ orders: rows.map((o) => packageOrderOut(o, req.user.id, false)) });
+});
+
+app.get('/api/orders/:id', identMiddleware, requireUser, (req, res) => {
+  packageAutoReleaseSweep();
+  const o = getOrderFor(req, res);
+  if (!o) return;
+  res.json({ order: packageOrderOut(o, req.user.id, true) });
+});
+
+app.post('/api/orders/:id/ship', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const o = getOrderFor(req, res);
+  if (!o) return;
+  if (o.model_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+  if (o.status !== 'held') return res.status(409).json({ error: 'not_held' });
+  const tracking = String((req.body || {}).tracking || '').trim().slice(0, 120) || null;
+  db.prepare(`UPDATE package_orders SET status = 'shipped', tracking = ?,
+    shipped_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`).run(tracking, o.id);
+  const fresh = db.prepare('SELECT * FROM package_orders WHERE id = ?').get(o.id);
+  const model = pkgParty(o.model_id);
+  pkgNotify(o.fan_id, 'package_shipped', 'pkg_bell_shipped_title', 'pkg_bell_shipped_body',
+    { title: o.title, model: model.display_name,
+      tracking: tracking ? ` · Tracking: ${tracking}` : '' }, '/#wallet');
+  pushToUser(o.fan_id, { type: 'pkgorder:update', order_id: o.id });
+  res.json({ order: packageOrderOut(fresh, req.user.id, true) });
+});
+
+app.post('/api/orders/:id/confirm-receipt', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const o = getOrderFor(req, res);
+  if (!o) return;
+  if (o.fan_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+  if (o.status !== 'shipped') return res.status(409).json({ error: 'not_shipped' });
+  releasePackageHold(o, `📦 Package #${o.id} released (fan confirmed receipt)`);
+  res.json({ order: packageOrderOut(db.prepare('SELECT * FROM package_orders WHERE id = ?').get(o.id), req.user.id, true) });
+});
+
+app.post('/api/orders/:id/cancel', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const o = getOrderFor(req, res);
+  if (!o) return;
+  if (o.fan_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+  if (o.status === 'shipped') return res.status(409).json({ error: 'already_shipped' });
+  if (o.status !== 'held') return res.status(409).json({ error: 'not_held' });
+  const due = db.prepare("SELECT datetime(?, '+7 days') <= datetime('now') AS due").get(o.created_at).due;
+  if (!due) return res.status(400).json({ error: 'cancel_too_early',
+    message: 'You can cancel for a full refund once 7 days have passed without it shipping.' });
+  refundPackageHold(o, `📦 Package #${o.id} refunded (never shipped, fan cancelled)`);
+  res.json({ order: packageOrderOut(db.prepare('SELECT * FROM package_orders WHERE id = ?').get(o.id), req.user.id, true) });
+});
+
+app.post('/api/orders/:id/dispute', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+  const o = getOrderFor(req, res);
+  if (!o) return;
+  if (o.fan_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+  if (!['held', 'shipped'].includes(o.status))
+    return res.status(409).json({ error: 'not_disputable' });
+  const reason = String((req.body || {}).reason || '').trim().slice(0, 300);
+  if (!reason) return res.status(400).json({ error: 'reason_required' });
+  db.prepare(`UPDATE package_orders SET status = 'disputed', dispute_reason = ?,
+    disputed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`).run(reason, o.id);
+  const fan = pkgParty(o.fan_id);
+  pkgNotify(o.model_id, 'package_dispute', 'pkg_bell_dispute_title', 'pkg_bell_dispute_body',
+    { fan: fan.display_name, title: o.title, price: fmt$(o.price_cents) }, '/#settings');
+  pushToAdmins({ type: 'pkgorder:dispute', order_id: o.id });
+  res.json({ order: packageOrderOut(db.prepare('SELECT * FROM package_orders WHERE id = ?').get(o.id), req.user.id, true) });
+});
+
+/* ---------------- Manager: package orders ---------------- */
+
+app.get('/api/admin/package-orders', ...adminOnly, (req, res) => {
+  const status = String(req.query.status || '');
+  const rows = db.prepare(`
+    SELECT o.*, uf.display_name AS fan_name, uf.username AS fan_username,
+           um.display_name AS model_name, um.username AS model_username
+    FROM package_orders o
+    JOIN users uf ON uf.id = o.fan_id
+    JOIN users um ON um.id = o.model_id
+    ${['held', 'shipped', 'disputed', 'released', 'refunded'].includes(status) ? 'WHERE o.status = ?' : ''}
+    ORDER BY CASE o.status WHEN 'disputed' THEN 0 WHEN 'held' THEN 1 WHEN 'shipped' THEN 2 ELSE 3 END, o.id DESC
+    LIMIT 200`).all(...( ['held', 'shipped', 'disputed', 'released', 'refunded'].includes(status) ? [status] : []));
+  res.json({ orders: rows });
+});
+
+app.post('/api/admin/package-orders/:id/release', ...adminOnly, (req, res) => {
+  const o = db.prepare('SELECT * FROM package_orders WHERE id = ?').get(req.params.id);
+  if (!o) return res.status(404).json({ error: 'not_found' });
+  if (!releasePackageHold(o, `📦 Package #${o.id} released by Manager`))
+    return res.status(409).json({ error: 'not_held' });
+  res.json({ ok: true, order: db.prepare('SELECT * FROM package_orders WHERE id = ?').get(o.id) });
+});
+
+app.post('/api/admin/package-orders/:id/refund', ...adminOnly, (req, res) => {
+  const o = db.prepare('SELECT * FROM package_orders WHERE id = ?').get(req.params.id);
+  if (!o) return res.status(404).json({ error: 'not_found' });
+  if (!refundPackageHold(o, `📦 Package #${o.id} refunded by Manager`))
+    return res.status(409).json({ error: 'not_held' });
+  res.json({ ok: true, order: db.prepare('SELECT * FROM package_orders WHERE id = ?').get(o.id) });
 });
 
 /* ------------------------------------------------------------------ */

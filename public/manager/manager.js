@@ -978,6 +978,38 @@ async function adminBookingsBody() {
       </div>`).join('') || '<div class="empty">No bookings yet.</div>'}`;
 }
 
+/* 📦 Custom Packages — every package order with its hold state.
+   Money sits HELD between the fan's payment and delivery; from here
+   the Manager resolves a held / shipped / disputed order either way:
+   release pays the model her 60/40 split, refund returns the fan in
+   full. Settled orders are read-only history. */
+async function adminPackagesBody() {
+  const { data } = await api('/admin/package-orders');
+  const orders = (data && data.orders) || [];
+  const badge = (s) => ({ held: '⏳ held', shipped: '📮 shipped', disputed: '⚠️ DISPUTED',
+    released: '✅ released', refunded: '💸 refunded' }[s] || s);
+  const heldTotal = orders.filter((o) => ['held', 'shipped', 'disputed'].includes(o.status))
+    .reduce((a, o) => a + (o.price_cents || 0), 0);
+  return `
+    <div style="font-weight:800;margin-bottom:6px">📦 Package orders (disputes first)</div>
+    <div class="small muted" style="margin-bottom:10px">Money is <b>held</b> from payment until the fan confirms delivery, 7 days pass after shipping, or you settle it here. Held right now: <b style="color:var(--green)">${fmt(heldTotal)}</b> across open orders below. The fan's shipping details are on each card — they exist only for fulfillment.</div>
+    ${orders.map((o) => `
+      <div class="card" style="padding:10px;margin-bottom:8px;${o.status === 'disputed' ? 'border:1px solid var(--red)' : ''}">
+        <div class="row" style="align-items:flex-start">
+          <span class="grow"><b>#${o.id} ${esc(o.title)}</b> — <b>${esc(o.fan_name)}</b> → <b>${esc(o.model_name)}</b><br>
+            <span class="small muted">${String(o.created_at || '').slice(0, 16)} · <b style="color:var(--green)">${fmt(o.price_cents)}</b>${o.tracking ? ` · 📮 ${esc(o.tracking)}` : ''}${o.shipped_at ? ` · shipped ${String(o.shipped_at).slice(0, 10)}` : ''}</span><br>
+            <span class="small muted">Ship to: ${esc(o.ship_name)} · ${esc(o.ship_street)} · ${esc(o.ship_city)}, ${esc(o.ship_state)} ${esc(o.ship_zip)} · ${esc(o.ship_country)} · ${esc(o.ship_email)}</span>
+            ${o.status === 'disputed' ? `<br><span class="small" style="color:var(--red)">⚠️ ${esc(o.dispute_reason || '')}</span>` : ''}
+          </span>
+          <span style="text-align:right;flex-shrink:0">${badge(o.status)}<br>
+            ${['held', 'shipped', 'disputed'].includes(o.status) ? `
+            <button class="btn small" data-pkg-release="${o.id}" style="margin-top:6px">Release to model</button>
+            <button class="btn small ghost" data-pkg-refund="${o.id}" style="margin-top:6px">Refund fan</button>` : ''}
+          </span>
+        </div>
+      </div>`).join('') || '<div class="empty">No package orders yet.</div>'}`;
+}
+
 /* 🔗 Affiliates — signup + §10 quota tracking with username/password
    reset (owner requests, Oct 17 2026: "add a Affiliate section that
    keep track of how many affiliate signed up" + "a section like this
@@ -1416,6 +1448,27 @@ function wireAdminBody(tab) {
   const go = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
   go('#go-safety', () => M.go('safety'));
   go('#a-logout', () => M.logout());
+
+  // 📦 Packages — settle a hold from the order card (either way is
+  // final; the server refuses a second settle on a settled order).
+  if (tab === 'packages') {
+    document.querySelectorAll('[data-pkg-release]').forEach((b) => {
+      b.onclick = async () => {
+        if (!confirm(`Release package order #${b.dataset.pkgRelease} to the model? She gets her 60% split now.`)) return;
+        const { status } = await api(`/admin/package-orders/${b.dataset.pkgRelease}/release`, { method: 'POST' });
+        toast(status === 200 ? '✅ Released to the model' : 'Could not release that order.');
+        if (status === 200) M.render();
+      };
+    });
+    document.querySelectorAll('[data-pkg-refund]').forEach((b) => {
+      b.onclick = async () => {
+        if (!confirm(`Refund package order #${b.dataset.pkgRefund} to the fan in full?`)) return;
+        const { status } = await api(`/admin/package-orders/${b.dataset.pkgRefund}/refund`, { method: 'POST' });
+        toast(status === 200 ? '💸 Refunded to the fan' : 'Could not refund that order.');
+        if (status === 200) M.render();
+      };
+    });
+  }
 
   // 💡 Suggestions — status cycle buttons (new → read → done → new)
   if (tab === 'suggestions') {
@@ -2415,6 +2468,7 @@ const NAV = [
   ['live', '🔴 Live'], ['payouts', '💸 Payouts'], ['tax', '🧾 Tax'],
   ['dmca', '⚖️ DMCA'], ['fans', '🧑 Fans'], ['suggestions', '💡 Suggestions'], ['bookings', '📅 Bookings'],
   ['contracts', '📝 Contracts'], ['partners', '🤝 Partners'], ['affiliates', '🔗 Affiliates'],
+  ['packages', '📦 Packages'],
   ['refunds', '💳 Refunds'], ['disputes', '⚠️ Disputes'],
   ['analytics', '📈 Analytics'], ['more', '⚙️ Settings'],
 ];
@@ -2424,7 +2478,7 @@ const NAV = [
 const NAV_GROUPS = [
   ['', ['dash']],
   ['People', ['models', 'idchecks', 'fans', 'suggestions', 'partners', 'affiliates']],
-  ['Money', ['payouts', 'tax', 'refunds', 'disputes']],
+  ['Money', ['payouts', 'tax', 'refunds', 'disputes', 'packages']],
   ['Safety & Content', ['chats', 'live', 'safety', 'dmca']],
   ['Growth', ['invites', 'bookings', 'contracts', 'analytics']],
   ['Settings', ['more']],
@@ -2467,6 +2521,7 @@ const SCREENS = {
   chats: adminChatsBody, safety: adminSafetyBody, live: adminLiveBody,
   models: adminModelsBody, invites: adminInvitesBody, payouts: adminPayoutsBody,
   fans: adminFansBody, bookings: adminBookingsBody, contracts: adminContractsBody,
+  packages: adminPackagesBody,
   idchecks: adminIdChecksBody, partners: adminPartnersBody, affiliates: adminAffiliatesBody, refunds: adminRefundsBody,
   disputes: adminDisputesBody, tax: adminTaxBody, dmca: adminDmcaBody,
   suggestions: adminSuggestionsBody,

@@ -583,6 +583,85 @@ const I18N = {
     explicit_rate_l: 'Live explicit rate — per minute ($)',
     save_rates: 'Save rates',
     fan_pics_h: '📸 Fan pictures',
+    pkgs_h: '📦 My Packages',
+    pkg_new: '+ New package',
+    pkg_title: 'Title',
+    pkg_desc: 'Description (what\'s inside)',
+    pkg_price: 'Price (credits, 1 = $1)',
+    pkg_photo: 'Photo',
+    pkg_photo_add: '📷 Add a photo',
+    pkg_photo_change: '📷 Change photo',
+    pkg_active: 'Active',
+    pkg_inactive: 'Hidden',
+    pkg_save: 'Save package',
+    pkg_saved: 'Package saved ✓',
+    pkg_delete: 'Delete',
+    pkg_delete_confirm: 'Delete this package? Orders already paid are not affected.',
+    pkg_deleted: 'Package deleted',
+    pkg_none_mine: 'No packages yet — create your first one below.',
+    pkg_buy_h: '📦 Packages',
+    pkg_buy: 'Buy — {price}',
+    pkg_buy_none: 'No packages right now.',
+    pkg_req_h: '💌 Want something custom?',
+    pkg_req_btn: 'Request a custom package',
+    pkg_req_desc_ph: 'Tell her what you\'d love in your package…',
+    pkg_req_send: 'Send request',
+    pkg_req_sent: 'Request sent ✓ She\'ll reply in the request thread.',
+    pkg_req_open: 'Open thread',
+    pkg_thread_h: '📦 Custom package',
+    pkg_price_set: 'Her price: {price}',
+    pkg_quote_btn: 'Name your price',
+    pkg_quote_ph: 'Price in credits',
+    pkg_quote_send: 'Send price',
+    pkg_quote_sent: 'Price sent ✓',
+    pkg_accept: 'Accept & pay — {price}',
+    pkg_accept_done: 'Paid ✓ Your package order is in.',
+    pkg_decline: 'Decline',
+    pkg_declined: 'Declined',
+    pkg_withdraw: 'Withdraw request',
+    pkg_withdrawn: 'Withdrawn',
+    pkg_status_open: 'Waiting for her reply',
+    pkg_status_quoted: 'She named a price',
+    pkg_status_declined: 'Declined',
+    pkg_status_withdrawn: 'Withdrawn',
+    pkg_status_ordered: 'Ordered ✓',
+    pkg_orders_h: '📦 Package orders',
+    pkg_orders_none: 'No package orders yet.',
+    pkg_ship_btn: 'Mark shipped',
+    pkg_tracking_ph: 'Tracking number (optional)',
+    pkg_shipped: 'Marked shipped ✓',
+    pkg_confirm_btn: '✓ Confirm receipt',
+    pkg_confirmed: 'Confirmed — she got paid ✓',
+    pkg_cancel_btn: 'Cancel & refund',
+    pkg_cancel_too_early: 'Not yet — you can cancel for a full refund 7 days after paying if it hasn\'t shipped.',
+    pkg_dispute_btn: '⚠️ Something\'s wrong',
+    pkg_dispute_ph: 'Tell us what happened — SlutCamp will review the held money.',
+    pkg_dispute_send: 'Send dispute',
+    pkg_dispute_sent: 'Dispute sent — the money stays held while we review.',
+    pkg_st_held: 'Paid · waiting to ship',
+    pkg_st_shipped: 'Shipped',
+    pkg_st_disputed: 'Under review',
+    pkg_st_released: 'Delivered · paid',
+    pkg_st_refunded: 'Refunded',
+    pkg_ship_to: 'Ship to',
+    pkg_return_addr: 'Return address — use ONLY this one, never your home address',
+    pkg_ship_form_h: '📮 Where should she send it?',
+    pkg_ship_name: 'Full name',
+    pkg_ship_street: 'Street address',
+    pkg_ship_city: 'City',
+    pkg_ship_state: 'State / region',
+    pkg_ship_zip: 'ZIP / postal code',
+    pkg_ship_country: 'Country',
+    pkg_ship_email: 'Email (for delivery updates)',
+    pkg_pay_btn: 'Pay {price} & order',
+    pkg_hold_note: 'Your credits are held safely and only released to her when you confirm delivery — or 7 days after she marks it shipped.',
+    pkg_thread_closed: 'This request is closed.',
+    pkg_send_ph: 'Message…',
+    pkg_send: 'Send',
+    pkg_inbox_h: '📦 Package requests',
+    pkg_order_n: 'Package #{id}',
+    pkg_tracking: 'Tracking: {n}',
+    spend_cat_packages: 'Packages',
     fan_pics_note: 'Let fans send you pictures right here in chat. Every picture is screened first and arrives blurred — only you can open it, when you choose.',
     fan_pics_allowed_l: 'Fans can send me pictures',
     fan_pic_price_l: 'Price per picture',
@@ -1432,6 +1511,85 @@ const I18N = {
     explicit_rate_l: 'Tarifa explícita en vivo — por minuto ($)',
     save_rates: 'Guardar tarifas',
     fan_pics_h: '📸 Fotos de fans',
+    pkgs_h: '📦 Mis paquetes',
+    pkg_new: '+ Nuevo paquete',
+    pkg_title: 'Título',
+    pkg_desc: 'Descripción (qué contiene)',
+    pkg_price: 'Precio (créditos, 1 = $1)',
+    pkg_photo: 'Foto',
+    pkg_photo_add: '📷 Añadir una foto',
+    pkg_photo_change: '📷 Cambiar foto',
+    pkg_active: 'Activo',
+    pkg_inactive: 'Oculto',
+    pkg_save: 'Guardar paquete',
+    pkg_saved: 'Paquete guardado ✓',
+    pkg_delete: 'Eliminar',
+    pkg_delete_confirm: '¿Eliminar este paquete? Los pedidos ya pagados no se ven afectados.',
+    pkg_deleted: 'Paquete eliminado',
+    pkg_none_mine: 'Aún no tienes paquetes — crea el primero abajo.',
+    pkg_buy_h: '📦 Paquetes',
+    pkg_buy: 'Comprar — {price}',
+    pkg_buy_none: 'No hay paquetes por ahora.',
+    pkg_req_h: '💌 ¿Quieres algo personalizado?',
+    pkg_req_btn: 'Solicitar un paquete personalizado',
+    pkg_req_desc_ph: 'Cuéntale qué te encantaría en tu paquete…',
+    pkg_req_send: 'Enviar solicitud',
+    pkg_req_sent: 'Solicitud enviada ✓ Ella responderá en el hilo de la solicitud.',
+    pkg_req_open: 'Abrir hilo',
+    pkg_thread_h: '📦 Paquete personalizado',
+    pkg_price_set: 'Su precio: {price}',
+    pkg_quote_btn: 'Pon tu precio',
+    pkg_quote_ph: 'Precio en créditos',
+    pkg_quote_send: 'Enviar precio',
+    pkg_quote_sent: 'Precio enviado ✓',
+    pkg_accept: 'Aceptar y pagar — {price}',
+    pkg_accept_done: 'Pagado ✓ Tu pedido de paquete está hecho.',
+    pkg_decline: 'Rechazar',
+    pkg_declined: 'Rechazado',
+    pkg_withdraw: 'Retirar solicitud',
+    pkg_withdrawn: 'Retirado',
+    pkg_status_open: 'Esperando su respuesta',
+    pkg_status_quoted: 'Ella puso un precio',
+    pkg_status_declined: 'Rechazado',
+    pkg_status_withdrawn: 'Retirado',
+    pkg_status_ordered: 'Pedido ✓',
+    pkg_orders_h: '📦 Pedidos de paquetes',
+    pkg_orders_none: 'Aún no hay pedidos de paquetes.',
+    pkg_ship_btn: 'Marcar enviado',
+    pkg_tracking_ph: 'Número de seguimiento (opcional)',
+    pkg_shipped: 'Marcado como enviado ✓',
+    pkg_confirm_btn: '✓ Confirmar recepción',
+    pkg_confirmed: 'Confirmado — ella recibió su pago ✓',
+    pkg_cancel_btn: 'Cancelar y reembolsar',
+    pkg_cancel_too_early: 'Todavía no — puedes cancelar con reembolso completo 7 días después de pagar si no se ha enviado.',
+    pkg_dispute_btn: '⚠️ Algo salió mal',
+    pkg_dispute_ph: 'Cuéntanos qué pasó — SlutCamp revisará el dinero retenido.',
+    pkg_dispute_send: 'Enviar disputa',
+    pkg_dispute_sent: 'Disputa enviada — el dinero queda retenido mientras revisamos.',
+    pkg_st_held: 'Pagado · esperando envío',
+    pkg_st_shipped: 'Enviado',
+    pkg_st_disputed: 'En revisión',
+    pkg_st_released: 'Entregado · pagado',
+    pkg_st_refunded: 'Reembolsado',
+    pkg_ship_to: 'Enviar a',
+    pkg_return_addr: 'Dirección de devolución — usa SOLO esta, nunca tu dirección de casa',
+    pkg_ship_form_h: '📮 ¿A dónde debe enviarlo?',
+    pkg_ship_name: 'Nombre completo',
+    pkg_ship_street: 'Dirección',
+    pkg_ship_city: 'Ciudad',
+    pkg_ship_state: 'Estado / región',
+    pkg_ship_zip: 'Código postal',
+    pkg_ship_country: 'País',
+    pkg_ship_email: 'Correo (para novedades de entrega)',
+    pkg_pay_btn: 'Pagar {price} y pedir',
+    pkg_hold_note: 'Tus créditos quedan retenidos de forma segura y solo se liberan cuando confirmas la entrega — o 7 días después de que ella lo marque enviado.',
+    pkg_thread_closed: 'Esta solicitud está cerrada.',
+    pkg_send_ph: 'Mensaje…',
+    pkg_send: 'Enviar',
+    pkg_inbox_h: '📦 Solicitudes de paquetes',
+    pkg_order_n: 'Paquete n.º {id}',
+    pkg_tracking: 'Seguimiento: {n}',
+    spend_cat_packages: 'Paquetes',
     fan_pics_note: 'Permite que los fans te envíen fotos aquí mismo en el chat. Cada foto se revisa primero y llega borrosa — solo tú puedes abrirla, cuando quieras.',
     fan_pics_allowed_l: 'Los fans pueden enviarme fotos',
     fan_pic_price_l: 'Precio por foto',
@@ -2281,6 +2439,85 @@ const I18N = {
     explicit_rate_l: 'Tarifa explícita ao vivo — por minuto ($)',
     save_rates: 'Salvar tarifas',
     fan_pics_h: '📸 Fotos de fãs',
+    pkgs_h: '📦 Meus pacotes',
+    pkg_new: '+ Novo pacote',
+    pkg_title: 'Título',
+    pkg_desc: 'Descrição (o que vai dentro)',
+    pkg_price: 'Preço (créditos, 1 = $1)',
+    pkg_photo: 'Foto',
+    pkg_photo_add: '📷 Adicionar uma foto',
+    pkg_photo_change: '📷 Trocar foto',
+    pkg_active: 'Ativo',
+    pkg_inactive: 'Oculto',
+    pkg_save: 'Salvar pacote',
+    pkg_saved: 'Pacote salvo ✓',
+    pkg_delete: 'Excluir',
+    pkg_delete_confirm: 'Excluir este pacote? Pedidos já pagos não são afetados.',
+    pkg_deleted: 'Pacote excluído',
+    pkg_none_mine: 'Nenhum pacote ainda — crie o primeiro abaixo.',
+    pkg_buy_h: '📦 Pacotes',
+    pkg_buy: 'Comprar — {price}',
+    pkg_buy_none: 'Nenhum pacote no momento.',
+    pkg_req_h: '💌 Quer algo personalizado?',
+    pkg_req_btn: 'Pedir um pacote personalizado',
+    pkg_req_desc_ph: 'Conte a ela o que você adoraria no seu pacote…',
+    pkg_req_send: 'Enviar pedido',
+    pkg_req_sent: 'Pedido enviado ✓ Ela responderá no tópico do pedido.',
+    pkg_req_open: 'Abrir conversa',
+    pkg_thread_h: '📦 Pacote personalizado',
+    pkg_price_set: 'O preço dela: {price}',
+    pkg_quote_btn: 'Defina seu preço',
+    pkg_quote_ph: 'Preço em créditos',
+    pkg_quote_send: 'Enviar preço',
+    pkg_quote_sent: 'Preço enviado ✓',
+    pkg_accept: 'Aceitar e pagar — {price}',
+    pkg_accept_done: 'Pago ✓ Seu pedido de pacote foi registrado.',
+    pkg_decline: 'Recusar',
+    pkg_declined: 'Recusado',
+    pkg_withdraw: 'Retirar pedido',
+    pkg_withdrawn: 'Retirado',
+    pkg_status_open: 'Aguardando a resposta dela',
+    pkg_status_quoted: 'Ela definiu um preço',
+    pkg_status_declined: 'Recusado',
+    pkg_status_withdrawn: 'Retirado',
+    pkg_status_ordered: 'Pedido ✓',
+    pkg_orders_h: '📦 Pedidos de pacotes',
+    pkg_orders_none: 'Nenhum pedido de pacote ainda.',
+    pkg_ship_btn: 'Marcar como enviado',
+    pkg_tracking_ph: 'Código de rastreio (opcional)',
+    pkg_shipped: 'Marcado como enviado ✓',
+    pkg_confirm_btn: '✓ Confirmar recebimento',
+    pkg_confirmed: 'Confirmado — ela foi paga ✓',
+    pkg_cancel_btn: 'Cancelar e reembolsar',
+    pkg_cancel_too_early: 'Ainda não — você pode cancelar com reembolso total 7 dias após o pagamento se não tiver sido enviado.',
+    pkg_dispute_btn: '⚠️ Algo deu errado',
+    pkg_dispute_ph: 'Conte o que aconteceu — a SlutCamp vai analisar o dinheiro retido.',
+    pkg_dispute_send: 'Enviar contestação',
+    pkg_dispute_sent: 'Contestação enviada — o dinheiro fica retido enquanto analisamos.',
+    pkg_st_held: 'Pago · aguardando envio',
+    pkg_st_shipped: 'Enviado',
+    pkg_st_disputed: 'Em análise',
+    pkg_st_released: 'Entregue · pago',
+    pkg_st_refunded: 'Reembolsado',
+    pkg_ship_to: 'Enviar para',
+    pkg_return_addr: 'Endereço de devolução — use SOMENTE este, nunca o seu endereço de casa',
+    pkg_ship_form_h: '📮 Para onde ela deve enviar?',
+    pkg_ship_name: 'Nome completo',
+    pkg_ship_street: 'Endereço',
+    pkg_ship_city: 'Cidade',
+    pkg_ship_state: 'Estado / região',
+    pkg_ship_zip: 'CEP / código postal',
+    pkg_ship_country: 'País',
+    pkg_ship_email: 'E-mail (para atualizações de entrega)',
+    pkg_pay_btn: 'Pagar {price} e pedir',
+    pkg_hold_note: 'Seus créditos ficam retidos com segurança e só são liberados quando você confirma a entrega — ou 7 dias depois que ela marcar como enviado.',
+    pkg_thread_closed: 'Este pedido está encerrado.',
+    pkg_send_ph: 'Mensagem…',
+    pkg_send: 'Enviar',
+    pkg_inbox_h: '📦 Pedidos de pacotes',
+    pkg_order_n: 'Pacote nº {id}',
+    pkg_tracking: 'Rastreio: {n}',
+    spend_cat_packages: 'Pacotes',
     fan_pics_note: 'Permita que os fãs enviem fotos para você aqui no chat. Cada foto é verificada primeiro e chega borrada — só você pode abri-la, quando quiser.',
     fan_pics_allowed_l: 'Os fãs podem me enviar fotos',
     fan_pic_price_l: 'Preço por foto',
@@ -3130,6 +3367,85 @@ const I18N = {
     explicit_rate_l: 'Tarif explicite en direct — par minute ($)',
     save_rates: 'Enregistrer les tarifs',
     fan_pics_h: '📸 Photos des fans',
+    pkgs_h: '📦 Mes colis',
+    pkg_new: '+ Nouveau colis',
+    pkg_title: 'Titre',
+    pkg_desc: 'Description (ce qu\'il contient)',
+    pkg_price: 'Prix (crédits, 1 = 1 $)',
+    pkg_photo: 'Photo',
+    pkg_photo_add: '📷 Ajouter une photo',
+    pkg_photo_change: '📷 Changer la photo',
+    pkg_active: 'Actif',
+    pkg_inactive: 'Masqué',
+    pkg_save: 'Enregistrer le colis',
+    pkg_saved: 'Colis enregistré ✓',
+    pkg_delete: 'Supprimer',
+    pkg_delete_confirm: 'Supprimer ce colis ? Les commandes déjà payées ne sont pas affectées.',
+    pkg_deleted: 'Colis supprimé',
+    pkg_none_mine: 'Pas encore de colis — créez le premier ci-dessous.',
+    pkg_buy_h: '📦 Colis',
+    pkg_buy: 'Acheter — {price}',
+    pkg_buy_none: 'Aucun colis pour le moment.',
+    pkg_req_h: '💌 Envie de quelque chose de personnalisé ?',
+    pkg_req_btn: 'Demander un colis personnalisé',
+    pkg_req_desc_ph: 'Dites-lui ce que vous aimeriez dans votre colis…',
+    pkg_req_send: 'Envoyer la demande',
+    pkg_req_sent: 'Demande envoyée ✓ Elle répondra dans le fil de la demande.',
+    pkg_req_open: 'Ouvrir le fil',
+    pkg_thread_h: '📦 Colis personnalisé',
+    pkg_price_set: 'Son prix : {price}',
+    pkg_quote_btn: 'Fixez votre prix',
+    pkg_quote_ph: 'Prix en crédits',
+    pkg_quote_send: 'Envoyer le prix',
+    pkg_quote_sent: 'Prix envoyé ✓',
+    pkg_accept: 'Accepter et payer — {price}',
+    pkg_accept_done: 'Payé ✓ Votre commande de colis est enregistrée.',
+    pkg_decline: 'Refuser',
+    pkg_declined: 'Refusé',
+    pkg_withdraw: 'Retirer la demande',
+    pkg_withdrawn: 'Retiré',
+    pkg_status_open: 'En attente de sa réponse',
+    pkg_status_quoted: 'Elle a fixé un prix',
+    pkg_status_declined: 'Refusé',
+    pkg_status_withdrawn: 'Retiré',
+    pkg_status_ordered: 'Commandé ✓',
+    pkg_orders_h: '📦 Commandes de colis',
+    pkg_orders_none: 'Aucune commande de colis pour le moment.',
+    pkg_ship_btn: 'Marquer comme expédié',
+    pkg_tracking_ph: 'Numéro de suivi (facultatif)',
+    pkg_shipped: 'Marqué comme expédié ✓',
+    pkg_confirm_btn: '✓ Confirmer la réception',
+    pkg_confirmed: 'Confirmé — elle a été payée ✓',
+    pkg_cancel_btn: 'Annuler et rembourser',
+    pkg_cancel_too_early: 'Pas encore — vous pourrez annuler avec remboursement intégral 7 jours après le paiement s\'il n\'a pas été expédié.',
+    pkg_dispute_btn: '⚠️ Quelque chose ne va pas',
+    pkg_dispute_ph: 'Dites-nous ce qui s\'est passé — SlutCamp examinera l\'argent bloqué.',
+    pkg_dispute_send: 'Envoyer la contestation',
+    pkg_dispute_sent: 'Contestation envoyée — l\'argent reste bloqué pendant notre examen.',
+    pkg_st_held: 'Payé · en attente d\'expédition',
+    pkg_st_shipped: 'Expédié',
+    pkg_st_disputed: 'En cours d\'examen',
+    pkg_st_released: 'Livré · payé',
+    pkg_st_refunded: 'Remboursé',
+    pkg_ship_to: 'Expédier à',
+    pkg_return_addr: 'Adresse de retour — utilisez UNIQUEMENT celle-ci, jamais votre adresse personnelle',
+    pkg_ship_form_h: '📮 Où doit-elle l\'envoyer ?',
+    pkg_ship_name: 'Nom complet',
+    pkg_ship_street: 'Adresse',
+    pkg_ship_city: 'Ville',
+    pkg_ship_state: 'État / région',
+    pkg_ship_zip: 'Code postal',
+    pkg_ship_country: 'Pays',
+    pkg_ship_email: 'E-mail (pour les nouvelles de livraison)',
+    pkg_pay_btn: 'Payer {price} et commander',
+    pkg_hold_note: 'Vos crédits sont gardés en sécurité et ne lui sont versés que lorsque vous confirmez la livraison — ou 7 jours après l\'expédition.',
+    pkg_thread_closed: 'Cette demande est close.',
+    pkg_send_ph: 'Message…',
+    pkg_send: 'Envoyer',
+    pkg_inbox_h: '📦 Demandes de colis',
+    pkg_order_n: 'Colis n° {id}',
+    pkg_tracking: 'Suivi : {n}',
+    spend_cat_packages: 'Colis',
     fan_pics_note: 'Autorisez les fans à vous envoyer des photos directement dans le chat. Chaque photo est d\'abord contrôlée et arrive floutée — vous seule pouvez l\'ouvrir, quand vous le choisissez.',
     fan_pics_allowed_l: 'Les fans peuvent m\'envoyer des photos',
     fan_pic_price_l: 'Prix par photo',
@@ -3979,6 +4295,85 @@ const I18N = {
     explicit_rate_l: 'Expliziter Live-Preis — pro Minute ($)',
     save_rates: 'Preise speichern',
     fan_pics_h: '📸 Fan-Fotos',
+    pkgs_h: '📦 Meine Pakete',
+    pkg_new: '+ Neues Paket',
+    pkg_title: 'Titel',
+    pkg_desc: 'Beschreibung (was drin ist)',
+    pkg_price: 'Preis (Credits, 1 = $1)',
+    pkg_photo: 'Foto',
+    pkg_photo_add: '📷 Foto hinzufügen',
+    pkg_photo_change: '📷 Foto ändern',
+    pkg_active: 'Aktiv',
+    pkg_inactive: 'Versteckt',
+    pkg_save: 'Paket speichern',
+    pkg_saved: 'Paket gespeichert ✓',
+    pkg_delete: 'Löschen',
+    pkg_delete_confirm: 'Dieses Paket löschen? Bereits bezahlte Bestellungen sind nicht betroffen.',
+    pkg_deleted: 'Paket gelöscht',
+    pkg_none_mine: 'Noch keine Pakete — erstelle unten dein erstes.',
+    pkg_buy_h: '📦 Pakete',
+    pkg_buy: 'Kaufen — {price}',
+    pkg_buy_none: 'Gerade keine Pakete.',
+    pkg_req_h: '💌 Etwas ganz Persönliches gefällig?',
+    pkg_req_btn: 'Individuelles Paket anfragen',
+    pkg_req_desc_ph: 'Sag ihr, was du dir in deinem Paket wünscht…',
+    pkg_req_send: 'Anfrage senden',
+    pkg_req_sent: 'Anfrage gesendet ✓ Sie antwortet in der Anfrage.',
+    pkg_req_open: 'Anfrage öffnen',
+    pkg_thread_h: '📦 Individuelles Paket',
+    pkg_price_set: 'Ihr Preis: {price}',
+    pkg_quote_btn: 'Nenne deinen Preis',
+    pkg_quote_ph: 'Preis in Credits',
+    pkg_quote_send: 'Preis senden',
+    pkg_quote_sent: 'Preis gesendet ✓',
+    pkg_accept: 'Annehmen & zahlen — {price}',
+    pkg_accept_done: 'Bezahlt ✓ Deine Paketbestellung ist da.',
+    pkg_decline: 'Ablehnen',
+    pkg_declined: 'Abgelehnt',
+    pkg_withdraw: 'Anfrage zurückziehen',
+    pkg_withdrawn: 'Zurückgezogen',
+    pkg_status_open: 'Wartet auf ihre Antwort',
+    pkg_status_quoted: 'Sie hat einen Preis genannt',
+    pkg_status_declined: 'Abgelehnt',
+    pkg_status_withdrawn: 'Zurückgezogen',
+    pkg_status_ordered: 'Bestellt ✓',
+    pkg_orders_h: '📦 Paketbestellungen',
+    pkg_orders_none: 'Noch keine Paketbestellungen.',
+    pkg_ship_btn: 'Als versendet markieren',
+    pkg_tracking_ph: 'Sendungsnummer (optional)',
+    pkg_shipped: 'Als versendet markiert ✓',
+    pkg_confirm_btn: '✓ Erhalt bestätigen',
+    pkg_confirmed: 'Bestätigt — sie wurde bezahlt ✓',
+    pkg_cancel_btn: 'Stornieren & erstatten',
+    pkg_cancel_too_early: 'Noch nicht — du kannst 7 Tage nach der Zahlung mit voller Erstattung stornieren, wenn es nicht versendet wurde.',
+    pkg_dispute_btn: '⚠️ Etwas stimmt nicht',
+    pkg_dispute_ph: 'Erzähl uns, was passiert ist — SlutCamp prüft das verwahrte Geld.',
+    pkg_dispute_send: 'Beanstandung senden',
+    pkg_dispute_sent: 'Beanstandung gesendet — das Geld bleibt verwahrt, während wir prüfen.',
+    pkg_st_held: 'Bezahlt · Versand ausstehend',
+    pkg_st_shipped: 'Versendet',
+    pkg_st_disputed: 'In Prüfung',
+    pkg_st_released: 'Geliefert · bezahlt',
+    pkg_st_refunded: 'Erstattet',
+    pkg_ship_to: 'Senden an',
+    pkg_return_addr: 'Rücksendeadresse — NUR diese verwenden, niemals deine Privatadresse',
+    pkg_ship_form_h: '📮 Wohin soll sie es senden?',
+    pkg_ship_name: 'Vollständiger Name',
+    pkg_ship_street: 'Straße und Hausnummer',
+    pkg_ship_city: 'Stadt',
+    pkg_ship_state: 'Bundesland / Region',
+    pkg_ship_zip: 'Postleitzahl',
+    pkg_ship_country: 'Land',
+    pkg_ship_email: 'E-Mail (für Lieferinfos)',
+    pkg_pay_btn: '{price} zahlen & bestellen',
+    pkg_hold_note: 'Deine Credits werden sicher verwahrt und erst freigegeben, wenn du die Lieferung bestätigst — oder 7 Tage, nachdem sie es als versendet markiert hat.',
+    pkg_thread_closed: 'Diese Anfrage ist geschlossen.',
+    pkg_send_ph: 'Nachricht…',
+    pkg_send: 'Senden',
+    pkg_inbox_h: '📦 Paketanfragen',
+    pkg_order_n: 'Paket #{id}',
+    pkg_tracking: 'Sendung: {n}',
+    spend_cat_packages: 'Pakete',
     fan_pics_note: 'Erlaube Fans, dir hier im Chat Fotos zu schicken. Jedes Foto wird zuerst geprüft und kommt verschwommen an — nur du kannst es öffnen, wann du willst.',
     fan_pics_allowed_l: 'Fans dürfen mir Fotos schicken',
     fan_pic_price_l: 'Preis pro Foto',
@@ -4828,6 +5223,85 @@ const I18N = {
     explicit_rate_l: 'Тариф откровенного эфира — за минуту ($)',
     save_rates: 'Сохранить тарифы',
     fan_pics_h: '📸 Фото от фанатов',
+    pkgs_h: '📦 Мои пакеты',
+    pkg_new: '+ Новый пакет',
+    pkg_title: 'Название',
+    pkg_desc: 'Описание (что внутри)',
+    pkg_price: 'Цена (кредиты, 1 = $1)',
+    pkg_photo: 'Фото',
+    pkg_photo_add: '📷 Добавить фото',
+    pkg_photo_change: '📷 Сменить фото',
+    pkg_active: 'Активен',
+    pkg_inactive: 'Скрыт',
+    pkg_save: 'Сохранить пакет',
+    pkg_saved: 'Пакет сохранён ✓',
+    pkg_delete: 'Удалить',
+    pkg_delete_confirm: 'Удалить этот пакет? Уже оплаченные заказы не пострадают.',
+    pkg_deleted: 'Пакет удалён',
+    pkg_none_mine: 'Пакетов пока нет — создайте первый ниже.',
+    pkg_buy_h: '📦 Пакеты',
+    pkg_buy: 'Купить — {price}',
+    pkg_buy_none: 'Сейчас пакетов нет.',
+    pkg_req_h: '💌 Хотите что-то особенное?',
+    pkg_req_btn: 'Запросить индивидуальный пакет',
+    pkg_req_desc_ph: 'Расскажите ей, что вы хотели бы в своём пакете…',
+    pkg_req_send: 'Отправить запрос',
+    pkg_req_sent: 'Запрос отправлен ✓ Она ответит в ветке запроса.',
+    pkg_req_open: 'Открыть ветку',
+    pkg_thread_h: '📦 Индивидуальный пакет',
+    pkg_price_set: 'Её цена: {price}',
+    pkg_quote_btn: 'Назовите свою цену',
+    pkg_quote_ph: 'Цена в кредитах',
+    pkg_quote_send: 'Отправить цену',
+    pkg_quote_sent: 'Цена отправлена ✓',
+    pkg_accept: 'Принять и оплатить — {price}',
+    pkg_accept_done: 'Оплачено ✓ Ваш заказ пакета оформлен.',
+    pkg_decline: 'Отклонить',
+    pkg_declined: 'Отклонено',
+    pkg_withdraw: 'Отозвать запрос',
+    pkg_withdrawn: 'Отозвано',
+    pkg_status_open: 'Ожидает её ответа',
+    pkg_status_quoted: 'Она назвала цену',
+    pkg_status_declined: 'Отклонено',
+    pkg_status_withdrawn: 'Отозвано',
+    pkg_status_ordered: 'Заказано ✓',
+    pkg_orders_h: '📦 Заказы пакетов',
+    pkg_orders_none: 'Заказов пакетов пока нет.',
+    pkg_ship_btn: 'Отметить отправленным',
+    pkg_tracking_ph: 'Трек-номер (необязательно)',
+    pkg_shipped: 'Отмечено отправленным ✓',
+    pkg_confirm_btn: '✓ Подтвердить получение',
+    pkg_confirmed: 'Подтверждено — она получила оплату ✓',
+    pkg_cancel_btn: 'Отменить и вернуть деньги',
+    pkg_cancel_too_early: 'Ещё рано — вы сможете отменить с полным возвратом через 7 дней после оплаты, если пакет не отправлен.',
+    pkg_dispute_btn: '⚠️ Что-то не так',
+    pkg_dispute_ph: 'Расскажите, что случилось — SlutCamp проверит удержанные деньги.',
+    pkg_dispute_send: 'Отправить спор',
+    pkg_dispute_sent: 'Спор отправлен — деньги остаются удержанными на время проверки.',
+    pkg_st_held: 'Оплачено · ожидает отправки',
+    pkg_st_shipped: 'Отправлено',
+    pkg_st_disputed: 'На проверке',
+    pkg_st_released: 'Доставлено · оплачено',
+    pkg_st_refunded: 'Возвращено',
+    pkg_ship_to: 'Отправить',
+    pkg_return_addr: 'Обратный адрес — используйте ТОЛЬКО этот, никогда не домашний',
+    pkg_ship_form_h: '📮 Куда ей отправить?',
+    pkg_ship_name: 'Полное имя',
+    pkg_ship_street: 'Улица и дом',
+    pkg_ship_city: 'Город',
+    pkg_ship_state: 'Штат / регион',
+    pkg_ship_zip: 'Почтовый индекс',
+    pkg_ship_country: 'Страна',
+    pkg_ship_email: 'Email (для новостей о доставке)',
+    pkg_pay_btn: 'Оплатить {price} и заказать',
+    pkg_hold_note: 'Ваши кредиты надёжно удерживаются и выплачиваются ей только когда вы подтвердите доставку — или через 7 дней после отметки об отправке.',
+    pkg_thread_closed: 'Этот запрос закрыт.',
+    pkg_send_ph: 'Сообщение…',
+    pkg_send: 'Отправить',
+    pkg_inbox_h: '📦 Запросы пакетов',
+    pkg_order_n: 'Пакет №{id}',
+    pkg_tracking: 'Трек: {n}',
+    spend_cat_packages: 'Пакеты',
     fan_pics_note: 'Разрешите фанатам присылать вам фото прямо в чате. Каждое фото сначала проверяется и приходит размытым — открыть его можете только вы, когда захотите.',
     fan_pics_allowed_l: 'Фанаты могут присылать мне фото',
     fan_pic_price_l: 'Цена за фото',
@@ -5677,6 +6151,85 @@ const I18N = {
     explicit_rate_l: 'ライブ露骨料金 — 1分あたり（$）',
     save_rates: '料金を保存',
     fan_pics_h: '📸 ファンの写真',
+    pkgs_h: '📦 マイパッケージ',
+    pkg_new: '+ 新しいパッケージ',
+    pkg_title: 'タイトル',
+    pkg_desc: '説明（中身）',
+    pkg_price: '価格（クレジット、1 = $1）',
+    pkg_photo: '写真',
+    pkg_photo_add: '📷 写真を追加',
+    pkg_photo_change: '📷 写真を変更',
+    pkg_active: '公開中',
+    pkg_inactive: '非表示',
+    pkg_save: 'パッケージを保存',
+    pkg_saved: 'パッケージを保存しました ✓',
+    pkg_delete: '削除',
+    pkg_delete_confirm: 'このパッケージを削除しますか？支払い済みの注文には影響しません。',
+    pkg_deleted: 'パッケージを削除しました',
+    pkg_none_mine: 'まだパッケージがありません — 下で最初の一つを作りましょう。',
+    pkg_buy_h: '📦 パッケージ',
+    pkg_buy: '購入 — {price}',
+    pkg_buy_none: '現在パッケージはありません。',
+    pkg_req_h: '💌 カスタムが欲しい？',
+    pkg_req_btn: 'カスタムパッケージをリクエスト',
+    pkg_req_desc_ph: 'パッケージに入れてほしいものを彼女に伝えて…',
+    pkg_req_send: 'リクエストを送信',
+    pkg_req_sent: 'リクエストを送信しました ✓ 彼女はリクエスト内で返信します。',
+    pkg_req_open: 'スレッドを開く',
+    pkg_thread_h: '📦 カスタムパッケージ',
+    pkg_price_set: '彼女の価格：{price}',
+    pkg_quote_btn: '価格を決める',
+    pkg_quote_ph: '価格（クレジット）',
+    pkg_quote_send: '価格を送信',
+    pkg_quote_sent: '価格を送信しました ✓',
+    pkg_accept: '承諾して支払う — {price}',
+    pkg_accept_done: '支払い完了 ✓ パッケージの注文が入りました。',
+    pkg_decline: '辞退する',
+    pkg_declined: '辞退されました',
+    pkg_withdraw: 'リクエストを取り下げる',
+    pkg_withdrawn: '取り下げ済み',
+    pkg_status_open: '彼女の返信待ち',
+    pkg_status_quoted: '彼女が価格を提示しました',
+    pkg_status_declined: '辞退されました',
+    pkg_status_withdrawn: '取り下げ済み',
+    pkg_status_ordered: '注文済み ✓',
+    pkg_orders_h: '📦 パッケージ注文',
+    pkg_orders_none: 'まだパッケージ注文はありません。',
+    pkg_ship_btn: '発送済みにする',
+    pkg_tracking_ph: '追跡番号（任意）',
+    pkg_shipped: '発送済みにしました ✓',
+    pkg_confirm_btn: '✓ 受け取りを確認',
+    pkg_confirmed: '確認しました — 彼女に支払われました ✓',
+    pkg_cancel_btn: 'キャンセルして返金',
+    pkg_cancel_too_early: 'まだです — 発送されていない場合、支払いから7日後に全額返金でキャンセルできます。',
+    pkg_dispute_btn: '⚠️ 問題があります',
+    pkg_dispute_ph: '何が起きたか教えてください — SlutCampが預かり金を確認します。',
+    pkg_dispute_send: '異議を送信',
+    pkg_dispute_sent: '異議を送信しました — 確認中はお金が預かりのままになります。',
+    pkg_st_held: '支払い済み · 発送待ち',
+    pkg_st_shipped: '発送済み',
+    pkg_st_disputed: '確認中',
+    pkg_st_released: '配達済み · 支払い済み',
+    pkg_st_refunded: '返金済み',
+    pkg_ship_to: '配送先',
+    pkg_return_addr: '返送先住所 — 必ずこの住所のみを使い、自宅住所は絶対に使わないでください',
+    pkg_ship_form_h: '📮 配送先はどこですか？',
+    pkg_ship_name: '氏名',
+    pkg_ship_street: '住所',
+    pkg_ship_city: '市区町村',
+    pkg_ship_state: '都道府県',
+    pkg_ship_zip: '郵便番号',
+    pkg_ship_country: '国',
+    pkg_ship_email: 'メール（配送のお知らせ用）',
+    pkg_pay_btn: '{price}を支払って注文',
+    pkg_hold_note: 'クレジットは安全に預かられ、あなたが受け取りを確認したとき — または彼女が発送マークをしてから7日後に彼女へ支払われます。',
+    pkg_thread_closed: 'このリクエストは終了しています。',
+    pkg_send_ph: 'メッセージ…',
+    pkg_send: '送信',
+    pkg_inbox_h: '📦 パッケージリクエスト',
+    pkg_order_n: 'パッケージ #{id}',
+    pkg_tracking: '追跡：{n}',
+    spend_cat_packages: 'パッケージ',
     fan_pics_note: 'ファンがチャットで直接あなたに写真を送れるようにします。写真はまず審査され、ぼかされた状態で届きます — 開けるのはあなただけ、開くタイミングもあなた次第です。',
     fan_pics_allowed_l: 'ファンが私に写真を送れる',
     fan_pic_price_l: '写真1枚の価格',
@@ -6526,6 +7079,85 @@ const I18N = {
     explicit_rate_l: '露骨直播费率 — 每分钟 ($)',
     save_rates: '保存费率',
     fan_pics_h: '📸 粉丝照片',
+    pkgs_h: '📦 我的包裹',
+    pkg_new: '+ 新建包裹',
+    pkg_title: '标题',
+    pkg_desc: '描述（里面有什么）',
+    pkg_price: '价格（点数，1 = $1）',
+    pkg_photo: '照片',
+    pkg_photo_add: '📷 添加照片',
+    pkg_photo_change: '📷 更换照片',
+    pkg_active: '上架中',
+    pkg_inactive: '已隐藏',
+    pkg_save: '保存包裹',
+    pkg_saved: '包裹已保存 ✓',
+    pkg_delete: '删除',
+    pkg_delete_confirm: '删除这个包裹？已付款的订单不受影响。',
+    pkg_deleted: '包裹已删除',
+    pkg_none_mine: '还没有包裹 — 在下方创建你的第一个。',
+    pkg_buy_h: '📦 包裹',
+    pkg_buy: '购买 — {price}',
+    pkg_buy_none: '目前没有包裹。',
+    pkg_req_h: '💌 想要定制款？',
+    pkg_req_btn: '请求定制包裹',
+    pkg_req_desc_ph: '告诉她你想在包裹里放什么…',
+    pkg_req_send: '发送请求',
+    pkg_req_sent: '请求已发送 ✓ 她会在请求对话中回复。',
+    pkg_req_open: '打开对话',
+    pkg_thread_h: '📦 定制包裹',
+    pkg_price_set: '她的价格：{price}',
+    pkg_quote_btn: '报出你的价格',
+    pkg_quote_ph: '价格（点数）',
+    pkg_quote_send: '发送报价',
+    pkg_quote_sent: '报价已发送 ✓',
+    pkg_accept: '接受并付款 — {price}',
+    pkg_accept_done: '已付款 ✓ 你的包裹订单已提交。',
+    pkg_decline: '拒绝',
+    pkg_declined: '已拒绝',
+    pkg_withdraw: '撤回请求',
+    pkg_withdrawn: '已撤回',
+    pkg_status_open: '等待她回复',
+    pkg_status_quoted: '她已报价',
+    pkg_status_declined: '已拒绝',
+    pkg_status_withdrawn: '已撤回',
+    pkg_status_ordered: '已下单 ✓',
+    pkg_orders_h: '📦 包裹订单',
+    pkg_orders_none: '还没有包裹订单。',
+    pkg_ship_btn: '标记为已发货',
+    pkg_tracking_ph: '快递单号（可选）',
+    pkg_shipped: '已标记发货 ✓',
+    pkg_confirm_btn: '✓ 确认收货',
+    pkg_confirmed: '已确认 — 她已收到款项 ✓',
+    pkg_cancel_btn: '取消并退款',
+    pkg_cancel_too_early: '还不行 — 如果尚未发货，付款 7 天后可取消并全额退款。',
+    pkg_dispute_btn: '⚠️ 出了点问题',
+    pkg_dispute_ph: '告诉我们发生了什么 — SlutCamp 会审核保管的款项。',
+    pkg_dispute_send: '提交争议',
+    pkg_dispute_sent: '争议已提交 — 审核期间款项继续保管。',
+    pkg_st_held: '已付款 · 待发货',
+    pkg_st_shipped: '已发货',
+    pkg_st_disputed: '审核中',
+    pkg_st_released: '已送达 · 已付款',
+    pkg_st_refunded: '已退款',
+    pkg_ship_to: '寄送至',
+    pkg_return_addr: '退货地址 — 只能用这个，绝不要用你的家庭地址',
+    pkg_ship_form_h: '📮 应该寄到哪里？',
+    pkg_ship_name: '全名',
+    pkg_ship_street: '街道地址',
+    pkg_ship_city: '城市',
+    pkg_ship_state: '州/地区',
+    pkg_ship_zip: '邮编',
+    pkg_ship_country: '国家',
+    pkg_ship_email: '邮箱（用于配送通知）',
+    pkg_pay_btn: '支付 {price} 并下单',
+    pkg_hold_note: '你的点数会被安全保管，只有在你确认收货后 — 或她标记发货 7 天后 — 才会放给她。',
+    pkg_thread_closed: '此请求已关闭。',
+    pkg_send_ph: '消息…',
+    pkg_send: '发送',
+    pkg_inbox_h: '📦 包裹请求',
+    pkg_order_n: '包裹 #{id}',
+    pkg_tracking: '单号：{n}',
+    spend_cat_packages: '包裹',
     fan_pics_note: '允许粉丝直接在聊天中给你发送照片。每张照片都会先经过审核，并以模糊状态送达 — 只有你能打开，何时打开由你决定。',
     fan_pics_allowed_l: '粉丝可以给我发照片',
     fan_pic_price_l: '每张照片价格',
@@ -7375,6 +8007,85 @@ const I18N = {
     explicit_rate_l: '라이브 선정적 요금 — 분당 ($)',
     save_rates: '요금 저장',
     fan_pics_h: '📸 팬 사진',
+    pkgs_h: '📦 내 패키지',
+    pkg_new: '+ 새 패키지',
+    pkg_title: '제목',
+    pkg_desc: '설명 (내용물)',
+    pkg_price: '가격 (크레딧, 1 = $1)',
+    pkg_photo: '사진',
+    pkg_photo_add: '📷 사진 추가',
+    pkg_photo_change: '📷 사진 변경',
+    pkg_active: '활성',
+    pkg_inactive: '숨김',
+    pkg_save: '패키지 저장',
+    pkg_saved: '패키지가 저장되었어요 ✓',
+    pkg_delete: '삭제',
+    pkg_delete_confirm: '이 패키지를 삭제할까요? 이미 결제된 주문에는 영향이 없습니다.',
+    pkg_deleted: '패키지가 삭제되었어요',
+    pkg_none_mine: '아직 패키지가 없어요 — 아래에서 첫 패키지를 만들어 보세요.',
+    pkg_buy_h: '📦 패키지',
+    pkg_buy: '구매 — {price}',
+    pkg_buy_none: '지금은 패키지가 없어요.',
+    pkg_req_h: '💌 맞춤 제작을 원하세요?',
+    pkg_req_btn: '맞춤 패키지 요청',
+    pkg_req_desc_ph: '패키지에 무엇을 담으면 좋을지 그녀에게 말해보세요…',
+    pkg_req_send: '요청 보내기',
+    pkg_req_sent: '요청을 보냈어요 ✓ 그녀가 요청 스레드에서 답할 거예요.',
+    pkg_req_open: '스레드 열기',
+    pkg_thread_h: '📦 맞춤 패키지',
+    pkg_price_set: '그녀의 가격: {price}',
+    pkg_quote_btn: '가격 정하기',
+    pkg_quote_ph: '가격 (크레딧)',
+    pkg_quote_send: '가격 보내기',
+    pkg_quote_sent: '가격을 보냈어요 ✓',
+    pkg_accept: '수락하고 결제 — {price}',
+    pkg_accept_done: '결제 완료 ✓ 패키지 주문이 접수되었어요.',
+    pkg_decline: '거절',
+    pkg_declined: '거절됨',
+    pkg_withdraw: '요청 철회',
+    pkg_withdrawn: '철회됨',
+    pkg_status_open: '그녀의 답변 대기 중',
+    pkg_status_quoted: '그녀가 가격을 제시했어요',
+    pkg_status_declined: '거절됨',
+    pkg_status_withdrawn: '철회됨',
+    pkg_status_ordered: '주문 완료 ✓',
+    pkg_orders_h: '📦 패키지 주문',
+    pkg_orders_none: '아직 패키지 주문이 없어요.',
+    pkg_ship_btn: '발송됨으로 표시',
+    pkg_tracking_ph: '운송장 번호 (선택)',
+    pkg_shipped: '발송됨으로 표시했어요 ✓',
+    pkg_confirm_btn: '✓ 수령 확인',
+    pkg_confirmed: '확인했어요 — 그녀가 정산받았어요 ✓',
+    pkg_cancel_btn: '취소하고 환불',
+    pkg_cancel_too_early: '아직 안 돼요 — 발송되지 않았다면 결제 7일 후 전액 환불로 취소할 수 있어요.',
+    pkg_dispute_btn: '⚠️ 문제가 있어요',
+    pkg_dispute_ph: '무슨 일이 있었는지 알려주세요 — SlutCamp가 보관 중인 돈을 검토합니다.',
+    pkg_dispute_send: '이의 제기 보내기',
+    pkg_dispute_sent: '이의를 보냈어요 — 검토하는 동안 돈은 계속 보관됩니다.',
+    pkg_st_held: '결제됨 · 발송 대기',
+    pkg_st_shipped: '발송됨',
+    pkg_st_disputed: '검토 중',
+    pkg_st_released: '배송 완료 · 정산됨',
+    pkg_st_refunded: '환불됨',
+    pkg_ship_to: '배송지',
+    pkg_return_addr: '반송 주소 — 이 주소만 사용하고, 집 주소는 절대 쓰지 마세요',
+    pkg_ship_form_h: '📮 어디로 보내면 될까요?',
+    pkg_ship_name: '이름',
+    pkg_ship_street: '도로명 주소',
+    pkg_ship_city: '도시',
+    pkg_ship_state: '주/지역',
+    pkg_ship_zip: '우편번호',
+    pkg_ship_country: '국가',
+    pkg_ship_email: '이메일 (배송 알림용)',
+    pkg_pay_btn: '{price} 결제하고 주문',
+    pkg_hold_note: '크레딧은 안전하게 보관되며, 수령을 확인했을 때 — 또는 그녀가 발송 표시를 한 지 7일 후에 그녀에게 지급됩니다.',
+    pkg_thread_closed: '이 요청은 종료되었어요.',
+    pkg_send_ph: '메시지…',
+    pkg_send: '보내기',
+    pkg_inbox_h: '📦 패키지 요청',
+    pkg_order_n: '패키지 #{id}',
+    pkg_tracking: '운송장: {n}',
+    spend_cat_packages: '패키지',
     fan_pics_note: '팬이 채팅에서 바로 당신에게 사진을 보낼 수 있게 합니다. 모든 사진은 먼저 검사를 거치고 흐릿하게 도착합니다 — 여는 것은 당신만, 시점도 당신이 정합니다.',
     fan_pics_allowed_l: '팬이 나에게 사진을 보낼 수 있음',
     fan_pic_price_l: '사진당 가격',
@@ -8224,6 +8935,85 @@ const I18N = {
     explicit_rate_l: 'Tariffa live esplicita — per minuto ($)',
     save_rates: 'Salva tariffe',
     fan_pics_h: '📸 Foto dei fan',
+    pkgs_h: '📦 I miei pacchetti',
+    pkg_new: '+ Nuovo pacchetto',
+    pkg_title: 'Titolo',
+    pkg_desc: 'Descrizione (cosa contiene)',
+    pkg_price: 'Prezzo (crediti, 1 = $1)',
+    pkg_photo: 'Foto',
+    pkg_photo_add: '📷 Aggiungi una foto',
+    pkg_photo_change: '📷 Cambia foto',
+    pkg_active: 'Attivo',
+    pkg_inactive: 'Nascosto',
+    pkg_save: 'Salva pacchetto',
+    pkg_saved: 'Pacchetto salvato ✓',
+    pkg_delete: 'Elimina',
+    pkg_delete_confirm: 'Eliminare questo pacchetto? Gli ordini già pagati non sono interessati.',
+    pkg_deleted: 'Pacchetto eliminato',
+    pkg_none_mine: 'Nessun pacchetto ancora — crea il primo qui sotto.',
+    pkg_buy_h: '📦 Pacchetti',
+    pkg_buy: 'Compra — {price}',
+    pkg_buy_none: 'Nessun pacchetto al momento.',
+    pkg_req_h: '💌 Vuoi qualcosa di personalizzato?',
+    pkg_req_btn: 'Richiedi un pacchetto personalizzato',
+    pkg_req_desc_ph: 'Dille cosa ti piacerebbe nel tuo pacchetto…',
+    pkg_req_send: 'Invia richiesta',
+    pkg_req_sent: 'Richiesta inviata ✓ Risponderà nella conversazione della richiesta.',
+    pkg_req_open: 'Apri conversazione',
+    pkg_thread_h: '📦 Pacchetto personalizzato',
+    pkg_price_set: 'Il suo prezzo: {price}',
+    pkg_quote_btn: 'Fai il tuo prezzo',
+    pkg_quote_ph: 'Prezzo in crediti',
+    pkg_quote_send: 'Invia prezzo',
+    pkg_quote_sent: 'Prezzo inviato ✓',
+    pkg_accept: 'Accetta e paga — {price}',
+    pkg_accept_done: 'Pagato ✓ Il tuo ordine pacchetto è registrato.',
+    pkg_decline: 'Rifiuta',
+    pkg_declined: 'Rifiutato',
+    pkg_withdraw: 'Ritira richiesta',
+    pkg_withdrawn: 'Ritirato',
+    pkg_status_open: 'In attesa della sua risposta',
+    pkg_status_quoted: 'Ha fatto un prezzo',
+    pkg_status_declined: 'Rifiutato',
+    pkg_status_withdrawn: 'Ritirato',
+    pkg_status_ordered: 'Ordinato ✓',
+    pkg_orders_h: '📦 Ordini pacchetto',
+    pkg_orders_none: 'Nessun ordine pacchetto ancora.',
+    pkg_ship_btn: 'Segna come spedito',
+    pkg_tracking_ph: 'Numero di tracciamento (facoltativo)',
+    pkg_shipped: 'Segnato come spedito ✓',
+    pkg_confirm_btn: '✓ Conferma consegna',
+    pkg_confirmed: 'Confermato — lei è stata pagata ✓',
+    pkg_cancel_btn: 'Annulla e rimborsa',
+    pkg_cancel_too_early: 'Non ancora — puoi annullare con rimborso completo 7 giorni dopo il pagamento se non è stato spedito.',
+    pkg_dispute_btn: '⚠️ Qualcosa non va',
+    pkg_dispute_ph: 'Raccontaci cosa è successo — SlutCamp esaminerà i soldi trattenuti.',
+    pkg_dispute_send: 'Invia contestazione',
+    pkg_dispute_sent: 'Contestazione inviata — i soldi restano trattenuti durante la verifica.',
+    pkg_st_held: 'Pagato · in attesa di spedizione',
+    pkg_st_shipped: 'Spedito',
+    pkg_st_disputed: 'In verifica',
+    pkg_st_released: 'Consegnato · pagato',
+    pkg_st_refunded: 'Rimborsato',
+    pkg_ship_to: 'Spedisci a',
+    pkg_return_addr: 'Indirizzo di reso — usa SOLO questo, mai il tuo indirizzo di casa',
+    pkg_ship_form_h: '📮 Dove deve spedirlo?',
+    pkg_ship_name: 'Nome completo',
+    pkg_ship_street: 'Indirizzo',
+    pkg_ship_city: 'Città',
+    pkg_ship_state: 'Stato / regione',
+    pkg_ship_zip: 'CAP',
+    pkg_ship_country: 'Paese',
+    pkg_ship_email: 'Email (per aggiornamenti sulla consegna)',
+    pkg_pay_btn: 'Paga {price} e ordina',
+    pkg_hold_note: 'I tuoi crediti sono custoditi al sicuro e le vengono versati solo quando confermi la consegna — o 7 giorni dopo che li segna come spediti.',
+    pkg_thread_closed: 'Questa richiesta è chiusa.',
+    pkg_send_ph: 'Messaggio…',
+    pkg_send: 'Invia',
+    pkg_inbox_h: '📦 Richieste pacchetto',
+    pkg_order_n: 'Pacchetto n. {id}',
+    pkg_tracking: 'Tracciamento: {n}',
+    spend_cat_packages: 'Pacchetti',
     fan_pics_note: 'Consenti ai fan di inviarti foto direttamente in chat. Ogni foto viene prima controllata e arriva sfocata — solo tu puoi aprirla, quando vuoi.',
     fan_pics_allowed_l: 'I fan possono inviarmi foto',
     fan_pic_price_l: 'Prezzo per foto',
@@ -9073,6 +9863,85 @@ const I18N = {
     explicit_rate_l: 'Stawka za transmisję erotyczną na żywo — za minutę ($)',
     save_rates: 'Zapisz stawki',
     fan_pics_h: '📸 Zdjęcia od fanów',
+    pkgs_h: '📦 Moje pakiety',
+    pkg_new: '+ Nowy pakiet',
+    pkg_title: 'Tytuł',
+    pkg_desc: 'Opis (co jest w środku)',
+    pkg_price: 'Cena (kredyty, 1 = $1)',
+    pkg_photo: 'Zdjęcie',
+    pkg_photo_add: '📷 Dodaj zdjęcie',
+    pkg_photo_change: '📷 Zmień zdjęcie',
+    pkg_active: 'Aktywny',
+    pkg_inactive: 'Ukryty',
+    pkg_save: 'Zapisz pakiet',
+    pkg_saved: 'Pakiet zapisany ✓',
+    pkg_delete: 'Usuń',
+    pkg_delete_confirm: 'Usunąć ten pakiet? Już opłacone zamówienia nie zostaną naruszone.',
+    pkg_deleted: 'Pakiet usunięty',
+    pkg_none_mine: 'Brak pakietów — utwórz pierwszy poniżej.',
+    pkg_buy_h: '📦 Pakiety',
+    pkg_buy: 'Kup — {price}',
+    pkg_buy_none: 'Brak pakietów w tej chwili.',
+    pkg_req_h: '💌 Chcesz coś niestandardowego?',
+    pkg_req_btn: 'Poproś o pakiet niestandardowy',
+    pkg_req_desc_ph: 'Powiedz jej, co chciałbyś w swojej paczce…',
+    pkg_req_send: 'Wyślij prośbę',
+    pkg_req_sent: 'Prośba wysłana ✓ Odpowie w wątku prośby.',
+    pkg_req_open: 'Otwórz wątek',
+    pkg_thread_h: '📦 Pakiet niestandardowy',
+    pkg_price_set: 'Jej cena: {price}',
+    pkg_quote_btn: 'Podaj swoją cenę',
+    pkg_quote_ph: 'Cena w kredytach',
+    pkg_quote_send: 'Wyślij cenę',
+    pkg_quote_sent: 'Cena wysłana ✓',
+    pkg_accept: 'Zaakceptuj i zapłać — {price}',
+    pkg_accept_done: 'Opłacone ✓ Twoje zamówienie pakietu zostało przyjęte.',
+    pkg_decline: 'Odrzuć',
+    pkg_declined: 'Odrzucono',
+    pkg_withdraw: 'Wycofaj prośbę',
+    pkg_withdrawn: 'Wycofano',
+    pkg_status_open: 'Oczekiwanie na jej odpowiedź',
+    pkg_status_quoted: 'Podała cenę',
+    pkg_status_declined: 'Odrzucono',
+    pkg_status_withdrawn: 'Wycofano',
+    pkg_status_ordered: 'Zamówiono ✓',
+    pkg_orders_h: '📦 Zamówienia pakietów',
+    pkg_orders_none: 'Brak zamówień pakietów.',
+    pkg_ship_btn: 'Oznacz jako wysłane',
+    pkg_tracking_ph: 'Numer śledzenia (opcjonalnie)',
+    pkg_shipped: 'Oznaczono jako wysłane ✓',
+    pkg_confirm_btn: '✓ Potwierdź odbiór',
+    pkg_confirmed: 'Potwierdzono — otrzymała zapłatę ✓',
+    pkg_cancel_btn: 'Anuluj i zwróć',
+    pkg_cancel_too_early: 'Jeszcze nie — możesz anulować z pełnym zwrotem 7 dni po zapłacie, jeśli nie zostało wysłane.',
+    pkg_dispute_btn: '⚠️ Coś jest nie tak',
+    pkg_dispute_ph: 'Powiedz nam, co się stało — SlutCamp sprawdzi wstrzymane pieniądze.',
+    pkg_dispute_send: 'Wyślij spór',
+    pkg_dispute_sent: 'Spór wysłany — pieniądze zostają wstrzymane na czas weryfikacji.',
+    pkg_st_held: 'Opłacone · czeka na wysyłkę',
+    pkg_st_shipped: 'Wysłane',
+    pkg_st_disputed: 'W trakcie weryfikacji',
+    pkg_st_released: 'Dostarczone · opłacone',
+    pkg_st_refunded: 'Zwrócono',
+    pkg_ship_to: 'Wyślij do',
+    pkg_return_addr: 'Adres zwrotny — używaj TYLKO tego, nigdy adresu domowego',
+    pkg_ship_form_h: '📮 Dokąd ma to wysłać?',
+    pkg_ship_name: 'Imię i nazwisko',
+    pkg_ship_street: 'Ulica i numer',
+    pkg_ship_city: 'Miasto',
+    pkg_ship_state: 'Stan / region',
+    pkg_ship_zip: 'Kod pocztowy',
+    pkg_ship_country: 'Kraj',
+    pkg_ship_email: 'E-mail (do powiadomień o dostawie)',
+    pkg_pay_btn: 'Zapłać {price} i zamów',
+    pkg_hold_note: 'Twoje kredyty są bezpiecznie wstrzymane i trafiają do niej dopiero, gdy potwierdzisz dostawę — lub 7 dni po tym, jak oznaczy wysyłkę.',
+    pkg_thread_closed: 'Ta prośba jest zamknięta.',
+    pkg_send_ph: 'Wiadomość…',
+    pkg_send: 'Wyślij',
+    pkg_inbox_h: '📦 Prośby o pakiety',
+    pkg_order_n: 'Pakiet nr {id}',
+    pkg_tracking: 'Śledzenie: {n}',
+    spend_cat_packages: 'Pakiety',
     fan_pics_note: 'Pozwól fanom wysyłać Ci zdjęcia prosto na czacie. Każde zdjęcie jest najpierw sprawdzane i dociera rozmazane — tylko Ty możesz je otworzyć, kiedy chcesz.',
     fan_pics_allowed_l: 'Fani mogą wysyłać mi zdjęcia',
     fan_pic_price_l: 'Cena za zdjęcie',
@@ -9922,6 +10791,85 @@ const I18N = {
     explicit_rate_l: 'Live expliciet tarief — per minuut ($)',
     save_rates: 'Tarieven opslaan',
     fan_pics_h: '📸 Fanfoto\'s',
+    pkgs_h: '📦 Mijn pakketten',
+    pkg_new: '+ Nieuw pakket',
+    pkg_title: 'Titel',
+    pkg_desc: 'Beschrijving (wat erin zit)',
+    pkg_price: 'Prijs (credits, 1 = $1)',
+    pkg_photo: 'Foto',
+    pkg_photo_add: '📷 Foto toevoegen',
+    pkg_photo_change: '📷 Foto wijzigen',
+    pkg_active: 'Actief',
+    pkg_inactive: 'Verborgen',
+    pkg_save: 'Pakket opslaan',
+    pkg_saved: 'Pakket opgeslagen ✓',
+    pkg_delete: 'Verwijderen',
+    pkg_delete_confirm: 'Dit pakket verwijderen? Al betaalde bestellingen blijven onaangetast.',
+    pkg_deleted: 'Pakket verwijderd',
+    pkg_none_mine: 'Nog geen pakketten — maak hieronder je eerste.',
+    pkg_buy_h: '📦 Pakketten',
+    pkg_buy: 'Kopen — {price}',
+    pkg_buy_none: 'Op dit moment geen pakketten.',
+    pkg_req_h: '💌 Iets op maat gewenst?',
+    pkg_req_btn: 'Vraag een pakket op maat aan',
+    pkg_req_desc_ph: 'Vertel haar wat je graag in je pakket wilt…',
+    pkg_req_send: 'Verzoek sturen',
+    pkg_req_sent: 'Verzoek verzonden ✓ Ze antwoordt in het verzoek.',
+    pkg_req_open: 'Open het gesprek',
+    pkg_thread_h: '📦 Pakket op maat',
+    pkg_price_set: 'Haar prijs: {price}',
+    pkg_quote_btn: 'Noem je prijs',
+    pkg_quote_ph: 'Prijs in credits',
+    pkg_quote_send: 'Prijs sturen',
+    pkg_quote_sent: 'Prijs verzonden ✓',
+    pkg_accept: 'Accepteren & betalen — {price}',
+    pkg_accept_done: 'Betaald ✓ Je pakketbestelling is geplaatst.',
+    pkg_decline: 'Afwijzen',
+    pkg_declined: 'Afgewezen',
+    pkg_withdraw: 'Verzoek intrekken',
+    pkg_withdrawn: 'Ingetrokken',
+    pkg_status_open: 'Wacht op haar antwoord',
+    pkg_status_quoted: 'Ze heeft een prijs genoemd',
+    pkg_status_declined: 'Afgewezen',
+    pkg_status_withdrawn: 'Ingetrokken',
+    pkg_status_ordered: 'Besteld ✓',
+    pkg_orders_h: '📦 Pakketbestellingen',
+    pkg_orders_none: 'Nog geen pakketbestellingen.',
+    pkg_ship_btn: 'Markeer als verzonden',
+    pkg_tracking_ph: 'Track & trace-nummer (optioneel)',
+    pkg_shipped: 'Gemarkeerd als verzonden ✓',
+    pkg_confirm_btn: '✓ Ontvangst bevestigen',
+    pkg_confirmed: 'Bevestigd — zij is betaald ✓',
+    pkg_cancel_btn: 'Annuleren & terugbetalen',
+    pkg_cancel_too_early: 'Nog niet — je kunt 7 dagen na betaling annuleren met volledige terugbetaling als het niet is verzonden.',
+    pkg_dispute_btn: '⚠️ Er is iets mis',
+    pkg_dispute_ph: 'Vertel ons wat er is gebeurd — SlutCamp beoordeelt het vastgehouden geld.',
+    pkg_dispute_send: 'Betwisting sturen',
+    pkg_dispute_sent: 'Betwisting verzonden — het geld blijft vaststaan terwijl we beoordelen.',
+    pkg_st_held: 'Betaald · wacht op verzending',
+    pkg_st_shipped: 'Verzonden',
+    pkg_st_disputed: 'In beoordeling',
+    pkg_st_released: 'Geleverd · betaald',
+    pkg_st_refunded: 'Terugbetaald',
+    pkg_ship_to: 'Verzenden naar',
+    pkg_return_addr: 'Retouradres — gebruik ALLEEN dit adres, nooit je huisadres',
+    pkg_ship_form_h: '📮 Waar moet ze het heen sturen?',
+    pkg_ship_name: 'Volledige naam',
+    pkg_ship_street: 'Straatadres',
+    pkg_ship_city: 'Stad',
+    pkg_ship_state: 'Staat / regio',
+    pkg_ship_zip: 'Postcode',
+    pkg_ship_country: 'Land',
+    pkg_ship_email: 'E-mail (voor bezorgupdates)',
+    pkg_pay_btn: 'Betaal {price} & bestel',
+    pkg_hold_note: 'Je credits worden veilig vastgehouden en pas aan haar uitbetaald als je de levering bevestigt — of 7 dagen nadat ze het als verzonden markeert.',
+    pkg_thread_closed: 'Dit verzoek is gesloten.',
+    pkg_send_ph: 'Bericht…',
+    pkg_send: 'Sturen',
+    pkg_inbox_h: '📦 Pakketverzoeken',
+    pkg_order_n: 'Pakket #{id}',
+    pkg_tracking: 'Tracking: {n}',
+    spend_cat_packages: 'Pakketten',
     fan_pics_note: 'Laat fans je hier in de chat foto\'s sturen. Elke foto wordt eerst gescreend en komt wazig aan — alleen jij kunt hem openen, wanneer jij wilt.',
     fan_pics_allowed_l: 'Fans mogen mij foto\'s sturen',
     fan_pic_price_l: 'Prijs per foto',
@@ -10771,6 +11719,85 @@ const I18N = {
     explicit_rate_l: 'Canlı müstehcen ücreti — dakika başına ($)',
     save_rates: 'Ücretleri kaydet',
     fan_pics_h: '📸 Hayran fotoğrafları',
+    pkgs_h: '📦 Paketlerim',
+    pkg_new: '+ Yeni paket',
+    pkg_title: 'Başlık',
+    pkg_desc: 'Açıklama (içinde ne var)',
+    pkg_price: 'Fiyat (kredi, 1 = $1)',
+    pkg_photo: 'Fotoğraf',
+    pkg_photo_add: '📷 Fotoğraf ekle',
+    pkg_photo_change: '📷 Fotoğrafı değiştir',
+    pkg_active: 'Aktif',
+    pkg_inactive: 'Gizli',
+    pkg_save: 'Paketi kaydet',
+    pkg_saved: 'Paket kaydedildi ✓',
+    pkg_delete: 'Sil',
+    pkg_delete_confirm: 'Bu paket silinsin mi? Ödenmiş siparişler etkilenmez.',
+    pkg_deleted: 'Paket silindi',
+    pkg_none_mine: 'Henüz paket yok — ilkini aşağıdan oluştur.',
+    pkg_buy_h: '📦 Paketler',
+    pkg_buy: 'Satın al — {price}',
+    pkg_buy_none: 'Şu anda paket yok.',
+    pkg_req_h: '💌 Özel bir şey ister misin?',
+    pkg_req_btn: 'Özel paket iste',
+    pkg_req_desc_ph: 'Paketinde ne olmasını istediğini ona söyle…',
+    pkg_req_send: 'İsteği gönder',
+    pkg_req_sent: 'İstek gönderildi ✓ İstek sohbetinde yanıt verecek.',
+    pkg_req_open: 'Sohbeti aç',
+    pkg_thread_h: '📦 Özel paket',
+    pkg_price_set: 'Onun fiyatı: {price}',
+    pkg_quote_btn: 'Fiyatını belirle',
+    pkg_quote_ph: 'Kredi olarak fiyat',
+    pkg_quote_send: 'Fiyatı gönder',
+    pkg_quote_sent: 'Fiyat gönderildi ✓',
+    pkg_accept: 'Kabul et ve öde — {price}',
+    pkg_accept_done: 'Ödendi ✓ Paket siparişin alındı.',
+    pkg_decline: 'Reddet',
+    pkg_declined: 'Reddedildi',
+    pkg_withdraw: 'İsteği geri çek',
+    pkg_withdrawn: 'Geri çekildi',
+    pkg_status_open: 'Onun yanıtı bekleniyor',
+    pkg_status_quoted: 'Fiyatını belirledi',
+    pkg_status_declined: 'Reddedildi',
+    pkg_status_withdrawn: 'Geri çekildi',
+    pkg_status_ordered: 'Sipariş verildi ✓',
+    pkg_orders_h: '📦 Paket siparişleri',
+    pkg_orders_none: 'Henüz paket siparişi yok.',
+    pkg_ship_btn: 'Kargolandı işaretle',
+    pkg_tracking_ph: 'Takip numarası (isteğe bağlı)',
+    pkg_shipped: 'Kargolandı işaretlendi ✓',
+    pkg_confirm_btn: '✓ Teslim aldım',
+    pkg_confirmed: 'Onaylandı — ödemesini aldı ✓',
+    pkg_cancel_btn: 'İptal et ve iade al',
+    pkg_cancel_too_early: 'Henüz değil — kargolanmadıysa ödemeden 7 gün sonra tam iade ile iptal edebilirsin.',
+    pkg_dispute_btn: '⚠️ Bir sorun var',
+    pkg_dispute_ph: 'Ne olduğunu bize anlat — SlutCamp tutulan parayı inceleyecek.',
+    pkg_dispute_send: 'İtirazı gönder',
+    pkg_dispute_sent: 'İtiraz gönderildi — biz incelerken para tutulu kalır.',
+    pkg_st_held: 'Ödendi · kargo bekleniyor',
+    pkg_st_shipped: 'Kargolandı',
+    pkg_st_disputed: 'İnceleniyor',
+    pkg_st_released: 'Teslim edildi · ödendi',
+    pkg_st_refunded: 'İade edildi',
+    pkg_ship_to: 'Gönderilecek adres',
+    pkg_return_addr: 'İade adresi — SADECE bunu kullan, asla ev adresini kullanma',
+    pkg_ship_form_h: '📮 Nereye göndersin?',
+    pkg_ship_name: 'Ad soyad',
+    pkg_ship_street: 'Sokak adresi',
+    pkg_ship_city: 'Şehir',
+    pkg_ship_state: 'Eyalet / bölge',
+    pkg_ship_zip: 'Posta kodu',
+    pkg_ship_country: 'Ülke',
+    pkg_ship_email: 'E-posta (teslimat bildirimleri için)',
+    pkg_pay_btn: '{price} öde ve sipariş ver',
+    pkg_hold_note: 'Kredilerin güvenle tutulur ve yalnızca teslimatı onayladığında — veya kargolandı işaretledikten 7 gün sonra — ona verilir.',
+    pkg_thread_closed: 'Bu istek kapandı.',
+    pkg_send_ph: 'Mesaj…',
+    pkg_send: 'Gönder',
+    pkg_inbox_h: '📦 Paket istekleri',
+    pkg_order_n: 'Paket #{id}',
+    pkg_tracking: 'Takip: {n}',
+    spend_cat_packages: 'Paketler',
     fan_pics_note: 'Hayranların sohbette doğrudan sana fotoğraf göndermesine izin ver. Her fotoğraf önce taranır ve bulanık gelir — onu yalnızca sen, istediğin zaman açabilirsin.',
     fan_pics_allowed_l: 'Hayranlar bana fotoğraf gönderebilir',
     fan_pic_price_l: 'Fotoğraf başına fiyat',
@@ -11527,6 +12554,18 @@ function handleWS(m) {
     if (gg) flyGiftAnim(gg.emoji, m.message.sender_name || 'Someone', gg.name);
   } else if (m.type === 'chat:new') {
     refreshTabBadges();
+  } else if (m.type === 'pkgreq:message' || m.type === 'pkgreq:new' || m.type === 'pkgreq:update') {
+    // Package request thread: re-render in place, but never eat a
+    // half-typed reply — a non-empty composer defers the refresh.
+    if (S.view === 'pkgRequest' && m.request_id) {
+      const inp = $('#pk-input');
+      if (!inp || !inp.value) show('pkgRequest', { id: m.request_id });
+    } else if (S.view === 'fanChats' || S.view === 'modelChats') {
+      show(S.view, {});
+    }
+    refreshTabBadges();
+  } else if (m.type === 'pkgorder:update') {
+    refreshTabBadges();
   } else if (m.type === 'chat:deleted' && S.view === 'chat' && S.conv && m.conversation_id === S.conv.id) {
     // A fan picture the model deleted in her thread disappears from
     // both sides in place.
@@ -11913,7 +12952,7 @@ async function refreshTabBadges() {
   } catch (e) { /* ignore */ }
 }
 
-const MODEL_VIEWS = ['modelChats', 'modelEarnings', 'modelSettings', 'bookings', 'liveBroadcast', 'chat'];
+const MODEL_VIEWS = ['modelChats', 'modelEarnings', 'modelSettings', 'bookings', 'liveBroadcast', 'chat', 'pkgRequest'];
 
 function show(view, params) {
   // Any show() navigation means a pre-login entry form was left behind.
@@ -11964,6 +13003,7 @@ function show(view, params) {
     recruiter: vRecruiter, notifications: vNotifications, dmca: vDmca,
     affiliateAttach: vAffiliateAttach, affiliateMerge: vAffiliateMerge,
     privateEvent: vPrivateEvent,
+    pkgRequest: vPackageRequest,
   };
   // Fan-preview placeholders: chats/bookings/wallet run on a fan's own data
   // and would 403 for an admin token — show the friendly note instead.
@@ -13654,6 +14694,7 @@ function openModelPeek(m, models) {
     <div id="peek-battles"></div>
     ${m.bio ? `<div class="muted small" style="margin-top:10px">${esc(m.bio)}</div>` : ''}
     <div id="peek-pr"></div>
+    <div id="peek-packages"></div>
     ${(m.tags && m.tags.length) ? `<div class="peek-tags">${m.tags.map((tg) => `<button class="disc-chip" data-peek-tag="${esc(tg)}">${esc(tg)}</button>`).join('')}</div>` : ''}
     ${similarModels(m, models).length ? `
     <div style="font-weight:800;margin:14px 0 8px;text-align:left">${t('more_like_her')}</div>
@@ -13698,6 +14739,9 @@ function openModelPeek(m, models) {
         });
       }).catch(() => {});
     }
+    // Custom Packages: her pre-made packages + the custom request
+    // box (fan-side surface; the loader itself gates fan/house).
+    if (!isOfficial) loadPeekPackages(m);
     // The peek panel becomes a flex column: her page scrolls inside
     // .peek-scroll while the Message bar (fan view) stays pinned to
     // the bottom of the sheet — visible at all times while scrolling.
@@ -14031,6 +15075,7 @@ async function vChatList(role) {
     </div>
     <div class="screen" style="padding:8px">
       ${sideSwitchHTML('main')}
+      <div id="pkg-req-box"></div>
       ${convs.map((c) => `
         <button class="list-item" data-conv="${c.id}">
           ${avatarHTML(c.other.display_name, 'sm', c.other.photo_url)}
@@ -14067,12 +15112,416 @@ async function vChatList(role) {
     }).catch(() => {});
   }
   wireSideSwitch();
+  loadPkgRequestBox();
   app.querySelectorAll('[data-conv]').forEach((b) => {
     b.onclick = async () => {
       const c = convs.find((x) => x.id === parseInt(b.dataset.conv));
       show('chat', { conv: c });
     };
   });
+}
+
+/* ---------------- CUSTOM PACKAGES ----------------
+   Pre-made packages on her profile (fan buys → shipping form → pay),
+   custom requests as their own 📦 threads in Messages (talk → she
+   names the price → fan accepts → shipping form → pay), and orders
+   with the money HELD until delivery is confirmed / 7 days pass
+   after shipping. Shipping details exist only on the order; lists
+   never carry them. */
+function pkgReqId() {
+  try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch (e) { /* older webview */ }
+  return 'pk-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
+}
+const PKG_STATUS_KEYS = { held: 'pkg_st_held', shipped: 'pkg_st_shipped', disputed: 'pkg_st_disputed', released: 'pkg_st_released', refunded: 'pkg_st_refunded' };
+function pkgStatusLabel(st) { return t(PKG_STATUS_KEYS[st] || 'pkg_st_held'); }
+const PKG_REQ_STATUS_KEYS = { open: 'pkg_status_open', quoted: 'pkg_status_quoted', declined: 'pkg_status_declined', withdrawn: 'pkg_status_withdrawn', ordered: 'pkg_status_ordered' };
+
+function pkgOrderRowHTML(o, mine) {
+  const other = mine === 'model' ? o.fan : o.model;
+  return `<button class="list-item" data-pkg-order="${o.id}">
+    ${avatarHTML(other.display_name, 'sm', other.photo_url)}
+    <span class="grow">
+      <span class="title">${esc(o.title)}</span><br>
+      <span class="preview">${pkgStatusLabel(o.status)} · ${fmt(o.price_cents)} · ${esc(other.display_name)}</span>
+    </span>
+  </button>`;
+}
+
+/* Shipping sheet: the fan's address + email, collected at PAYMENT
+ * time only, then POSTed with the order. One client_request_id per
+ * sheet open: a retry of the same tap reuses it and the server
+ * returns the already-created order instead of charging twice. */
+function pkgShippingSheet(priceCents, submit) {
+  const reqId = pkgReqId();
+  const sheet = ftSheet(`
+    <div class="sheet-title">${t('pkg_ship_form_h')}</div>
+    <label class="field">${t('pkg_ship_name')}<input class="input" id="pk-name" autocomplete="name" maxlength="120"></label>
+    <label class="field">${t('pkg_ship_street')}<input class="input" id="pk-street" autocomplete="street-address" maxlength="200"></label>
+    <div class="row" style="gap:8px">
+      <label class="field" style="flex:1">${t('pkg_ship_city')}<input class="input" id="pk-city" maxlength="80"></label>
+      <label class="field" style="flex:1">${t('pkg_ship_state')}<input class="input" id="pk-state" maxlength="80"></label>
+    </div>
+    <div class="row" style="gap:8px">
+      <label class="field" style="flex:1">${t('pkg_ship_zip')}<input class="input" id="pk-zip" maxlength="20"></label>
+      <label class="field" style="flex:1">${t('pkg_ship_country')}<input class="input" id="pk-country" maxlength="80"></label>
+    </div>
+    <label class="field">${t('pkg_ship_email')}<input class="input" id="pk-email" type="email" maxlength="160"></label>
+    <div class="muted small" style="margin:8px 0">${t('pkg_hold_note')}</div>
+    <button class="btn" id="pk-pay" style="width:100%">${t('pkg_pay_btn', { price: fmt(priceCents) })}</button>
+    <button class="sheet-btn" id="pk-cancel">${t('cancel')}</button>`);
+  sheet.querySelector('#pk-cancel').onclick = () => ftCloseSheet();
+  sheet.querySelector('#pk-pay').onclick = async () => {
+    const body = {
+      ship_name: sheet.querySelector('#pk-name').value,
+      ship_street: sheet.querySelector('#pk-street').value,
+      ship_city: sheet.querySelector('#pk-city').value,
+      ship_state: sheet.querySelector('#pk-state').value,
+      ship_zip: sheet.querySelector('#pk-zip').value,
+      ship_country: sheet.querySelector('#pk-country').value,
+      ship_email: sheet.querySelector('#pk-email').value,
+      client_request_id: reqId,
+    };
+    const btn = sheet.querySelector('#pk-pay');
+    btn.disabled = true;
+    const res = await submit(body);
+    btn.disabled = false;
+    if (!res) return;
+    if (res.status === 402) { toast(res.data && res.data.message ? res.data.message : t('insufficient')); return; }
+    if (res.status !== 200) { toast(t('couldnt_save')); return; }
+    ftCloseSheet();
+  };
+  return sheet;
+}
+
+/* Order detail sheet: the ONLY surface that renders shipping
+ * details (the server only sends them here, and only to the fan who
+ * ordered or the model fulfilling it). Actions by role + state. */
+async function showPkgOrderSheet(orderId) {
+  const { status, data } = await api(`/orders/${orderId}`);
+  if (status !== 200 || !data || !data.order) { toast(t('couldnt_save')); return; }
+  const o = data.order;
+  const mine = S.user && S.user.id === o.model.id ? 'model' : 'fan';
+  const other = mine === 'model' ? o.fan : o.model;
+  const addr = [o.ship_name, o.ship_street, `${o.ship_city}, ${o.ship_state} ${o.ship_zip}`, o.ship_country, o.ship_email]
+    .filter(Boolean).map(esc).join('<br>');
+  const sheet = ftSheet(`
+    <div class="sheet-title">${esc(o.title)}</div>
+    <div class="peek-rows">
+      <div class="peek-row"><span>${t('pkg_order_n', { id: o.id })}</span><b>${pkgStatusLabel(o.status)}</b></div>
+      <div class="peek-row"><span>👤</span><b>${esc(other.display_name)}</b></div>
+      <div class="peek-row"><span>${t('pkg_price')}</span><b>${fmt(o.price_cents)}</b></div>
+      ${o.tracking ? `<div class="peek-row"><span>📮</span><b>${t('pkg_tracking', { n: esc(o.tracking) })}</b></div>` : ''}
+      ${o.status === 'disputed' && o.dispute_reason ? `<div class="peek-row"><span>⚠️</span><b>${esc(o.dispute_reason)}</b></div>` : ''}
+    </div>
+    <div style="font-weight:800;margin:12px 0 4px">${t('pkg_ship_to')}</div>
+    <div class="muted small" style="text-align:left">${addr}</div>
+    ${mine === 'model' && o.return_block ? `
+    <div style="font-weight:800;margin:12px 0 4px">${t('pkg_return_addr')}</div>
+    <div class="muted small" style="text-align:left">${esc(o.return_block).replace(/\n/g, '<br>')}</div>` : ''}
+    <div id="pk-actions" style="margin-top:14px"></div>
+    <button class="sheet-btn" onclick="document.getElementById('ft-sheet').remove()">Close</button>`);
+  const act = sheet.querySelector('#pk-actions');
+  const rerender = () => { ftCloseSheet(); showPkgOrderSheet(orderId); };
+  if (mine === 'model' && o.status === 'held') {
+    act.innerHTML = `<input class="input" id="pk-tracking" placeholder="${t('pkg_tracking_ph')}" maxlength="120" style="margin-bottom:8px">
+      <button class="btn" id="pk-ship" style="width:100%">${t('pkg_ship_btn')}</button>`;
+    act.querySelector('#pk-ship').onclick = async () => {
+      const { status: st } = await api(`/orders/${o.id}/ship`, {
+        method: 'POST', body: JSON.stringify({ tracking: act.querySelector('#pk-tracking').value }) });
+      if (st === 200) { toast(t('pkg_shipped')); rerender(); if (S.view === 'modelSettings') loadPkgModelOrders(); if (S.view === 'wallet') show(S.view, {}); }
+      else toast(t('couldnt_save'));
+    };
+  }
+  if (mine === 'fan' && o.status === 'shipped') {
+    act.innerHTML = `<button class="btn" id="pk-confirm" style="width:100%">${t('pkg_confirm_btn')}</button>`;
+    act.querySelector('#pk-confirm').onclick = async () => {
+      const { status: st } = await api(`/orders/${o.id}/confirm-receipt`, { method: 'POST' });
+      if (st === 200) { toast(t('pkg_confirmed')); rerender(); if (S.view === 'wallet') show('wallet', {}); }
+      else toast(t('couldnt_save'));
+    };
+  }
+  if (mine === 'fan' && (o.status === 'held' || o.status === 'shipped')) {
+    const extra = document.createElement('div');
+    extra.style.marginTop = '8px';
+    extra.innerHTML = `
+      ${o.status === 'held' ? `<button class="btn ghost" id="pk-cancel-order" style="width:100%;margin-bottom:8px">${t('pkg_cancel_btn')}</button>` : ''}
+      <button class="btn ghost" id="pk-dispute" style="width:100%">${t('pkg_dispute_btn')}</button>
+      <div id="pk-dispute-box"></div>`;
+    act.appendChild(extra);
+    const cancelBtn = extra.querySelector('#pk-cancel-order');
+    if (cancelBtn) cancelBtn.onclick = async () => {
+      const { status: st, data: d } = await api(`/orders/${o.id}/cancel`, { method: 'POST' });
+      if (st === 200) { toast(t('pkg_st_refunded')); rerender(); if (S.view === 'wallet') show('wallet', {}); }
+      else if (d && d.error === 'cancel_too_early') toast(t('pkg_cancel_too_early'));
+      else toast(t('couldnt_save'));
+    };
+    extra.querySelector('#pk-dispute').onclick = () => {
+      const box = extra.querySelector('#pk-dispute-box');
+      box.innerHTML = `<textarea class="input" id="pk-dispute-text" rows="3" maxlength="300" placeholder="${t('pkg_dispute_ph')}" style="margin-top:8px"></textarea>
+        <button class="btn" id="pk-dispute-send" style="width:100%;margin-top:6px">${t('pkg_dispute_send')}</button>`;
+      box.querySelector('#pk-dispute-send').onclick = async () => {
+        const reason = box.querySelector('#pk-dispute-text').value.trim();
+        if (!reason) return;
+        const { status: st } = await api(`/orders/${o.id}/dispute`, {
+          method: 'POST', body: JSON.stringify({ reason }) });
+        if (st === 200) { toast(t('pkg_dispute_sent')); rerender(); }
+        else toast(t('couldnt_save'));
+      };
+    };
+  }
+}
+
+/* Orders list into a container (wallet for fans, Settings for her). */
+async function loadPkgOrdersInto(el, mine) {
+  if (!el) return;
+  const { data } = await api('/orders');
+  const orders = (data && data.orders) || [];
+  el.innerHTML = orders.length
+    ? orders.map((o) => pkgOrderRowHTML(o, mine)).join('')
+    : `<div class="muted small">${t('pkg_orders_none')}</div>`;
+  el.querySelectorAll('[data-pkg-order]').forEach((b) => {
+    b.onclick = () => showPkgOrderSheet(parseInt(b.dataset.pkgOrder));
+  });
+}
+
+/* Chat-list box: this user's package requests (fan or model side). */
+async function loadPkgRequestBox() {
+  const box = document.getElementById('pkg-req-box');
+  if (!box) return;
+  const { data } = await api('/package-requests');
+  const reqs = (data && data.requests) || [];
+  if (!reqs.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div style="font-weight:800;margin:6px 4px 8px">${t('pkg_inbox_h')}</div>` +
+    reqs.slice(0, 20).map((r) => {
+      const other = r.mine === 'model' ? r.fan : r.model;
+      return `<button class="list-item" data-pkg-req="${r.id}">
+        ${avatarHTML(other.display_name, 'sm', other.photo_url)}
+        <span class="grow">
+          <span class="title">${esc(other.display_name)}</span><br>
+          <span class="preview">${t(PKG_REQ_STATUS_KEYS[r.status] || 'pkg_status_open')}${r.last_message ? ' · ' + esc(r.last_message.body).slice(0, 40) : ''}</span>
+        </span>
+      </button>`;
+    }).join('');
+  box.querySelectorAll('[data-pkg-req]').forEach((b) => {
+    b.onclick = () => show('pkgRequest', { id: parseInt(b.dataset.pkgReq) });
+  });
+}
+
+/* The request thread: messages, then the role/state action bar —
+ * she quotes (open/quoted), he accepts (quoted), either side closes. */
+async function vPackageRequest({ id }) {
+  const { status, data } = await api(`/package-requests/${id}`);
+  if (status !== 200 || !data || !data.request) {
+    app.innerHTML = `<div class="header"><h1>${t('pkg_thread_h')}</h1></div><div class="screen"><div class="card muted">—</div></div>`;
+    return;
+  }
+  const r = data.request;
+  const mine = r.mine;
+  const other = mine === 'model' ? r.fan : r.model;
+  const msgs = data.messages || [];
+  app.innerHTML = `
+    <div class="header"><h1>${t('pkg_thread_h')}</h1><div class="sub">${esc(other.display_name)}</div></div>
+    <div class="screen">
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:4px">${t(PKG_REQ_STATUS_KEYS[r.status] || 'pkg_status_open')}</div>
+        ${r.quote_cents ? `<div class="muted small">${t('pkg_price_set', { price: fmt(r.quote_cents) })}</div>` : ''}
+        ${r.order_id ? `<button class="btn ghost" id="pk-open-order" style="margin-top:8px">${t('pkg_order_n', { id: r.order_id })}</button>` : ''}
+      </div>
+      <div id="pk-msgs">
+        ${msgs.map((m) => `
+        <div class="msg-row ${m.sender_id === (S.user && S.user.id) ? 'mine' : ''}" style="margin-bottom:8px">
+          <div class="bubble" style="max-width:85%">${esc(m.body)}</div>
+        </div>`).join('')}
+      </div>
+      ${['open', 'quoted'].includes(r.status) ? `
+      <div class="row" style="gap:8px;margin-top:10px">
+        <input class="input" id="pk-input" placeholder="${t('pkg_send_ph')}" maxlength="2000" style="flex:1">
+        <button class="btn" id="pk-send">${t('pkg_send')}</button>
+      </div>
+      <div id="pk-actions" style="margin-top:10px"></div>` : `<div class="muted small" style="margin-top:10px">${t('pkg_thread_closed')}</div>`}
+    </div>`;
+  const openOrder = $('#pk-open-order');
+  if (openOrder) openOrder.onclick = () => showPkgOrderSheet(r.order_id);
+  if (!['open', 'quoted'].includes(r.status)) return;
+  const input = $('#pk-input');
+  const send = async () => {
+    const body = input.value.trim();
+    if (!body) return;
+    const { status: st, data: d } = await api(`/package-requests/${r.id}/messages`, {
+      method: 'POST', body: JSON.stringify({ body }) });
+    if (d && d.blocked) { toast(d.matched && d.matched.message ? d.matched.message : '⚠️ Blocked by the safety filter'); return; }
+    if (st === 200) show('pkgRequest', { id: r.id });
+  };
+  $('#pk-send').onclick = send;
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
+  const act = $('#pk-actions');
+  if (mine === 'model') {
+    act.innerHTML = `
+      <div class="row" style="gap:8px">
+        <input class="input" id="pk-quote" type="number" min="1" max="1000000" step="1" placeholder="${t('pkg_quote_ph')}" style="flex:1" value="${r.quote_cents ? r.quote_cents / 100 : ''}">
+        <button class="btn" id="pk-quote-send">${t('pkg_quote_send')}</button>
+      </div>
+      <button class="btn ghost" id="pk-decline" style="width:100%;margin-top:8px">${t('pkg_decline')}</button>`;
+    act.querySelector('#pk-quote-send').onclick = async () => {
+      const price = parseInt(act.querySelector('#pk-quote').value);
+      if (!price || price < 1) return toast(t('pkg_quote_ph'));
+      const { status: st } = await api(`/package-requests/${r.id}/quote`, {
+        method: 'POST', body: JSON.stringify({ price_credits: price }) });
+      if (st === 200) { toast(t('pkg_quote_sent')); show('pkgRequest', { id: r.id }); }
+      else toast(t('couldnt_save'));
+    };
+    act.querySelector('#pk-decline').onclick = async () => {
+      const { status: st } = await api(`/package-requests/${r.id}/decline`, { method: 'POST' });
+      if (st === 200) { toast(t('pkg_declined')); show('pkgRequest', { id: r.id }); }
+    };
+  } else {
+    act.innerHTML = `
+      ${r.status === 'quoted' && r.quote_cents ? `<button class="btn" id="pk-accept" style="width:100%">${t('pkg_accept', { price: fmt(r.quote_cents) })}</button>` : ''}
+      <button class="btn ghost" id="pk-withdraw" style="width:100%;margin-top:8px">${t('pkg_withdraw')}</button>`;
+    const acc = act.querySelector('#pk-accept');
+    if (acc) acc.onclick = () => {
+      pkgShippingSheet(r.quote_cents, async (body) => {
+        const res = await api(`/package-requests/${r.id}/accept`, {
+          method: 'POST', body: JSON.stringify(body) });
+        if (res.status === 200) { toast(t('pkg_accept_done')); show('pkgRequest', { id: r.id }); }
+        return res;
+      });
+    };
+    act.querySelector('#pk-withdraw').onclick = async () => {
+      const { status: st } = await api(`/package-requests/${r.id}/withdraw`, { method: 'POST' });
+      if (st === 200) { toast(t('pkg_withdrawn')); show('pkgRequest', { id: r.id }); }
+    };
+  }
+}
+
+/* Settings (model): her package manager — create / edit / photo /
+ * active toggle / delete, backed by /api/model/packages. */
+async function loadPkgManager() {
+  const box = document.getElementById('pkg-mgr');
+  if (!box) return;
+  const { data } = await api('/model/packages');
+  const pkgs = (data && data.packages) || [];
+  const editorHTML = (p) => `
+    <div class="card" data-pkg-editor="${p ? p.id : 'new'}" style="margin-top:10px">
+      <label class="field">${t('pkg_title')}<input class="input pk-title" maxlength="120" value="${p ? esc(p.title) : ''}"></label>
+      <label class="field">${t('pkg_desc')}<textarea class="input pk-desc" rows="2" maxlength="2000">${p ? esc(p.description) : ''}</textarea></label>
+      <label class="field">${t('pkg_price')}<input class="input pk-price" type="number" min="1" max="1000000" step="1" value="${p ? p.price_cents / 100 : ''}"></label>
+      ${p ? `<div class="row" style="gap:10px;align-items:center;margin:6px 0">
+        ${p.photo_url ? `<img src="${esc(p.photo_url)}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:10px">` : ''}
+        <label class="btn ghost small">${p.photo_url ? t('pkg_photo_change') : t('pkg_photo_add')}<input type="file" class="pk-photo file-offscreen" accept="image/jpeg,image/png,image/webp"></label>
+        <button class="toggle ${p.is_active ? 'on' : ''} pk-active" aria-label="${t('pkg_active')}"></button>
+        <span class="small" style="font-weight:700">${p.is_active ? t('pkg_active') : t('pkg_inactive')}</span>
+      </div>` : ''}
+      <div class="row" style="gap:8px">
+        <button class="btn pk-save" style="flex:1">${t('pkg_save')}</button>
+        ${p ? `<button class="btn ghost pk-del">${t('pkg_delete')}</button>` : ''}
+      </div>
+    </div>`;
+  box.innerHTML = `<div class="card">
+      <div style="font-weight:800;margin-bottom:6px">${t('pkgs_h')}</div>
+      ${pkgs.length ? '' : `<div class="muted small">${t('pkg_none_mine')}</div>`}
+    </div>
+    ${pkgs.map(editorHTML).join('')}
+    <div style="font-weight:800;margin:14px 0 4px">${t('pkg_new')}</div>
+    ${editorHTML(null)}`;
+  box.querySelectorAll('[data-pkg-editor]').forEach((card) => {
+    const idAttr = card.dataset.pkgEditor;
+    const isNew = idAttr === 'new';
+    const pkgId = isNew ? null : parseInt(idAttr);
+    const saveBtn = card.querySelector('.pk-save');
+    saveBtn.onclick = async () => {
+      const payload = {
+        title: card.querySelector('.pk-title').value,
+        description: card.querySelector('.pk-desc').value,
+        price_credits: parseInt(card.querySelector('.pk-price').value),
+      };
+      if (!payload.title.trim() || !payload.price_credits) return toast(t('couldnt_save'));
+      const { status } = await api(isNew ? '/model/packages' : `/model/packages/${pkgId}`, {
+        method: isNew ? 'POST' : 'PUT', body: JSON.stringify(payload) });
+      if (status === 200) { toast(t('pkg_saved')); loadPkgManager(); }
+      else toast(t('couldnt_save'));
+    };
+    if (!isNew) {
+      const photoInput = card.querySelector('.pk-photo');
+      if (photoInput) photoInput.onchange = async () => {
+        const file = photoInput.files && photoInput.files[0];
+        if (!file) return;
+        const fd = new FormData();
+        fd.append('file', file);
+        const { status } = await api(`/model/packages/${pkgId}/photo`, { method: 'POST', body: fd });
+        if (status === 200) { toast(t('pkg_saved')); loadPkgManager(); }
+        else toast(t('couldnt_save'));
+      };
+      const activeBtn = card.querySelector('.pk-active');
+      if (activeBtn) activeBtn.onclick = async () => {
+        const p = pkgs.find((x) => x.id === pkgId);
+        const { status } = await api(`/model/packages/${pkgId}`, {
+          method: 'PUT', body: JSON.stringify({ is_active: p && p.is_active ? 0 : 1 }) });
+        if (status === 200) loadPkgManager(); else toast(t('couldnt_save'));
+      };
+      const delBtn = card.querySelector('.pk-del');
+      if (delBtn) delBtn.onclick = async () => {
+        if (!window.confirm(t('pkg_delete_confirm'))) return;
+        const { status } = await api(`/model/packages/${pkgId}`, { method: 'DELETE' });
+        if (status === 200) { toast(t('pkg_deleted')); loadPkgManager(); }
+        else toast(t('couldnt_save'));
+      };
+    }
+  });
+}
+
+/* Settings (model): her package orders (fulfillment list). */
+async function loadPkgModelOrders() {
+  const el = document.getElementById('pkg-model-orders');
+  if (!el) return;
+  el.innerHTML = `<div class="card"><div style="font-weight:800;margin-bottom:6px">${t('pkg_orders_h')}</div><div id="pkg-model-orders-list"></div></div>`;
+  loadPkgOrdersInto(el.querySelector('#pkg-model-orders-list'), 'model');
+}
+
+/* Peek (fan side): her pre-made packages + the custom request box. */
+async function loadPeekPackages(m) {
+  const box = document.getElementById('peek-packages');
+  if (!box || !S.user || !(S.user.role === 'fan' || S.user.is_house)) return;
+  const { data } = await api(`/models/${m.id}/packages`);
+  const pkgs = (data && data.packages) || [];
+  box.innerHTML = `
+    <div style="font-weight:800;margin:14px 0 8px;text-align:left">${t('pkg_buy_h')}</div>
+    ${pkgs.length ? pkgs.map((p) => `
+    <div class="card" style="text-align:left">
+      ${p.photo_url ? `<img src="${esc(p.photo_url)}" alt="${esc(p.title)}" style="width:100%;border-radius:10px;margin-bottom:8px">` : ''}
+      <div style="font-weight:800">${esc(p.title)}</div>
+      ${p.description ? `<div class="muted small">${esc(p.description)}</div>` : ''}
+      <button class="btn" data-peek-buy="${p.id}" style="width:100%;margin-top:8px">${t('pkg_buy', { price: fmt(p.price_cents) })}</button>
+    </div>`).join('') : `<div class="muted small" style="text-align:left">${t('pkg_buy_none')}</div>`}
+    <div class="card" style="text-align:left">
+      <div style="font-weight:800;margin-bottom:6px">${t('pkg_req_h')}</div>
+      <textarea class="input" id="peek-pkg-req" rows="3" maxlength="2000" placeholder="${t('pkg_req_desc_ph')}"></textarea>
+      <button class="btn" id="peek-pkg-req-send" style="width:100%;margin-top:8px">${t('pkg_req_send')}</button>
+    </div>`;
+  box.querySelectorAll('[data-peek-buy]').forEach((b) => {
+    b.onclick = () => {
+      const p = pkgs.find((x) => x.id === parseInt(b.dataset.peekBuy));
+      if (!p) return;
+      pkgShippingSheet(p.price_cents, async (body) => {
+        const res = await api(`/packages/${p.id}/buy`, { method: 'POST', body: JSON.stringify(body) });
+        if (res.status === 200) { toast(t('pkg_accept_done')); showPkgOrderSheet(res.data.order.id); }
+        return res;
+      });
+    };
+  });
+  const sendBtn = box.querySelector('#peek-pkg-req-send');
+  if (sendBtn) sendBtn.onclick = async () => {
+    const description = box.querySelector('#peek-pkg-req').value.trim();
+    if (!description) return;
+    const { status, data } = await api('/package-requests', {
+      method: 'POST', body: JSON.stringify({ model_id: m.id, description }) });
+    if (data && data.blocked) { toast(data.matched && data.matched.message ? data.matched.message : '⚠️ Blocked by the safety filter'); return; }
+    if (status === 200 && data.request) {
+      toast(t('pkg_req_sent'));
+      ftCloseSheet();
+      show('pkgRequest', { id: data.request.id });
+    } else toast(t('couldnt_save'));
+  };
 }
 
 /* ---------------- FAN: quick signup (username + payment, nothing else) ---------------- */
@@ -14285,6 +15734,7 @@ async function vWallet() {
       </div>
       <div id="affiliate-prompt"></div>
       <div id="spend-card"></div>
+      <div class="card"><div style="font-weight:800;margin-bottom:6px">${t('pkg_orders_h')}</div><div id="pkg-fan-orders"></div></div>
       ${pkgs.map((p) => `
         <button class="pkg" data-pkg="${p.id}">
           <span class="pkg-coin">🪙</span>
@@ -14333,6 +15783,7 @@ async function vWallet() {
       <button class="btn ghost" id="w-logout">${t('log_out')}</button>
     </div>`;
   renderSpendCard();
+  loadPkgOrdersInto(document.getElementById('pkg-fan-orders'), 'fan');
   app.querySelectorAll('[data-pkg]').forEach((b) => {
     b.onclick = async () => {
       if (ccbCfg.configured) {
@@ -16135,6 +17586,8 @@ async function vModelSettings() {
         <label class="field" style="margin-top:10px">${t('fan_pic_price_l')} <b id="s-fanpic-label">${fmt((m.fan_pic_price || 0) * 100)}</b>
           <input type="range" id="s-fanpic" min="0" max="100" step="1" value="${m.fan_pic_price || 0}" style="width:100%"></label>
       </div>
+      <div id="pkg-mgr"></div>
+      <div id="pkg-model-orders"></div>
       <div class="card">
         <div style="font-weight:800;margin-bottom:6px">${t('my_rates')}</div>
         <div class="muted small" style="margin-bottom:10px">${t('rates_note')}</div>
@@ -16335,6 +17788,9 @@ async function vModelSettings() {
       else toast(t('couldnt_save'));
     };
   }
+  // Custom Packages: her package manager + her fulfillment orders.
+  loadPkgManager();
+  loadPkgModelOrders();
   $('#s-save').onclick = async () => {
     const per_message_cents = parseInt($('#s-msg').value);
     const per_minute_cents = parseInt($('#s-min').value);
