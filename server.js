@@ -2859,11 +2859,47 @@ function modelEarningsCents(modelUserId) {
   return db.prepare(`SELECT COALESCE(SUM(model_cents), 0) AS cents FROM transactions
                      WHERE model_id = ? AND type <> 'payout' AND is_test = 0`).get(modelUserId).cents;
 }
+
+/* F1 rank-position cache (traffic prep, Oct 23 2026): the section
+ * ladders were recomputed from scratch on EVERY read — GET /api/models,
+ * every public page render and every rank-congrats evaluation each ran
+ * the full-roster pass again (measured on the Pro instance: p50 4.4s /
+ * 7.8s / 12.4s at 100 / 300 / 600 concurrent). The derivation now caches
+ * its Map and serves it until the inputs move. A cached Map is served
+ * only while ALL of these hold:
+ *   1. No server-side writer of a rank input has run since the compute.
+ *      Every such writer calls invalidateRankPositions() — the audited
+ *      set: recomputeModelRank (likes + every earnings credit/reversal,
+ *      which all funnel through it), createUser (roster), live start,
+ *      the model settings save, name changes, and the admin presence /
+ *      section / model-edit / remove / merge / invite-revoke writes.
+ *   2. PRAGMA data_version is unchanged — any write committed by
+ *      ANOTHER connection (an ops script, a second process) bumps it,
+ *      so off-process changes are never served stale either.
+ *   3. The Map is younger than the TTL — a backstop so even a writer
+ *      nobody audited self-heals within a minute.
+ * The computation itself, its ordering chain and its tiebreaks are
+ * untouched: same data in, same positions out — only faster. */
+const RANK_POSITIONS_TTL_MS = 60 * 1000;
+let rankPositionsCache = null; // { map, dataVersion, at }
+let rankPositionsDirty = true;
+function invalidateRankPositions() { rankPositionsDirty = true; }
+function rankDataVersion() {
+  try {
+    const row = db.prepare('PRAGMA data_version').get();
+    return row ? row.data_version : null;
+  } catch (e) { return null; }
+}
 function recomputeModelRank(modelUserId) {
   if (!modelUserId) return 0;
   const likes = db.prepare('SELECT COUNT(*) AS n FROM model_likes WHERE model_id = ?').get(modelUserId).n;
   const score = Math.round((likes + modelEarningsCents(modelUserId) / 100) * 100) / 100;
   db.prepare('UPDATE models SET rank_score = ? WHERE user_id = ?').run(score, modelUserId);
+  // The stored score is a ladder input — the cached positions are
+  // stale from this moment (F1 cache; see the note above). This call
+  // is what keeps the rank-congrats evaluation just below honest: it
+  // runs BEFORE it, so the evaluation recomputes fresh positions.
+  invalidateRankPositions();
   // Rank congrats (owner, Oct 19 2026): a recompute is the only moment
   // a ladder can move, so her section gets evaluated for top-3 climbs
   // here. The boot backfill also lands in this function —
@@ -2893,6 +2929,14 @@ function recomputeAllModelRanks() {
  * The ONE derivation behind GET /api/models, seoPublicModels() and
  * the rank-congrats evaluation, so they can never disagree. */
 function computeSectionRankPositions() {
+  // F1 cache: serve the last computed Map while it is provably fresh
+  // (no audited writer ran, no other connection committed, TTL young).
+  const dv = rankDataVersion();
+  if (!rankPositionsDirty && rankPositionsCache && dv !== null
+      && dv === rankPositionsCache.dataVersion
+      && (Date.now() - rankPositionsCache.at) < RANK_POSITIONS_TTL_MS) {
+    return rankPositionsCache.map;
+  }
   const rankOrder = db.prepare(`
     SELECT u.id, m.section,
            (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) AS like_count
@@ -2912,6 +2956,12 @@ function computeSectionRankPositions() {
     ladderCounts[sec] = (ladderCounts[sec] || 0) + 1;
     rankPos.set(r.id, ladderCounts[sec]);
   }
+  // F1 cache: remember this compute. The data_version fingerprint is
+  // the one read BEFORE the query above, so a commit from another
+  // connection landing during the compute still mismatches on the
+  // next call and forces a fresh pass — never a stale serve.
+  rankPositionsCache = { map: rankPos, dataVersion: dv, at: Date.now() };
+  rankPositionsDirty = false;
   return rankPos;
 }
 
@@ -3900,6 +3950,7 @@ function createUser(username, password, role, displayName, dob, language) {
   db.prepare('INSERT INTO wallets (user_id) VALUES (?)').run(info.lastInsertRowid);
   if (role === 'model') {
     db.prepare('INSERT INTO models (user_id) VALUES (?)').run(info.lastInsertRowid);
+    invalidateRankPositions(); // a new model joins the ladder (F1 cache)
     // Automatic: the congratulations/welcome message lands in her inbox.
     try { sendModelWelcome(Number(info.lastInsertRowid)); } catch (e) { /* boot sweep retries */ }
     // Right behind it: the "how it works / how you make money" playbook DM.
@@ -7472,6 +7523,7 @@ app.patch('/api/me/display-name', identMiddleware, requireUser, (req, res) => {
   }
   db.prepare(`UPDATE users SET display_name = ?, name_changed_at = datetime('now') WHERE id = ?`)
     .run(name, req.user.id);
+  invalidateRankPositions(); // display_name is a ladder tiebreak (F1 cache)
   res.json({ ok: true, display_name: name });
 });
 
@@ -10775,6 +10827,7 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
   if (!updates.length) return res.status(400).json({ error: 'nothing_to_update' });
   params.push(req.user.id);
   db.prepare(`UPDATE models SET ${updates.join(', ')} WHERE user_id = ?`).run(...params);
+  invalidateRankPositions(); // the save can carry is_online, a ladder tiebreak (F1 cache)
   // Going offline empties her video call line (refunded + notified).
   if (is_online === 0) ftCancelAll(req.user.id, 'she went offline');
   res.json({ model: db.prepare('SELECT * FROM models WHERE user_id = ?').get(req.user.id) });
@@ -11352,6 +11405,7 @@ app.post('/api/affiliate/merge', identMiddleware, requireUser, (req, res) => {
     return { referral_code: primaryCode, models_onboarded: models,
              earnings_cents: wallet ? wallet.earnings_cents : 0 };
   });
+  invalidateRankPositions(); // the merge retired a login (banned) — roster changed (F1 cache)
   const fresh = db.prepare('SELECT * FROM users WHERE id = ?').get(survivor.id);
   res.json({ ok: true, ...result, ...affiliateFlagsFor(fresh) });
 });
@@ -14546,6 +14600,7 @@ app.post('/api/live/start', identMiddleware, requireUser, requireRole('model'), 
     .run(req.user.id, explicit_rate_cents, title, privEv ? privEv.id : null);
   liveFaceCaps.set(Number(info.lastInsertRowid), faceCap);
   db.prepare('UPDATE models SET is_online = 1 WHERE user_id = ?').run(req.user.id);
+  invalidateRankPositions(); // is_online is a ladder tiebreak (F1 cache)
   // Notify followers: "she's live!" — EXCEPT the official house account
   // (owner, Oct 17 2026): when the app itself goes live, EVERY fan is
   // notified, follower or not. Joining, tipping and in-live spending
@@ -18066,6 +18121,7 @@ app.post('/api/admin/models/:id/presence', ...adminOnly, (req, res) => {
   if (u.is_featured)
     return res.status(400).json({ error: 'featured_account', message: 'The featured system account has no presence control.' });
   db.prepare('UPDATE users SET presence_override = ? WHERE id = ?').run(mode, u.id);
+  invalidateRankPositions(); // presence is a ladder tiebreak (F1 cache)
   res.json({ id: u.id, presence_override: mode, online: effectiveOnline(mode, u.is_online) });
 });
 
@@ -18081,6 +18137,7 @@ app.post('/api/admin/models/presence-all-online', ...adminOnly, (req, res) => {
   const total = db.prepare(`SELECT COUNT(*) AS n FROM users WHERE ${covered}`).get().n;
   const info = db.prepare(
     `UPDATE users SET presence_override = 'on' WHERE ${covered}`).run();
+  invalidateRankPositions(); // presence is a ladder tiebreak (F1 cache)
   res.json({ ok: true, updated: info.changes, total });
 });
 
@@ -18096,6 +18153,7 @@ app.patch('/api/admin/models/:id/section', ...adminOnly, (req, res) => {
   if (!m) return res.status(404).json({ error: 'not_found' });
   const oldSection = m.section || 'female';
   db.prepare('UPDATE models SET section = ? WHERE user_id = ?').run(section, req.params.id);
+  invalidateRankPositions(); // she changed ladders (F1 cache) — before the congrats evaluation below reads positions
   // A section move re-deals BOTH ladders without any rank recompute —
   // evaluate both for rank congrats (a move INTO a top-3 spot is a
   // genuine new standing on that ladder).
@@ -18136,6 +18194,7 @@ app.put('/api/admin/models/:id', ...adminOnly, (req, res) => {
   if (is_online === 0 || is_online === 1) { upd.push('is_online = ?'); params.push(is_online); }
   if (is_hidden === 0 || is_hidden === 1) { upd.push('is_hidden = ?'); params.push(is_hidden); }
   if (upd.length) { params.push(u.id); db.prepare(`UPDATE models SET ${upd.join(', ')} WHERE user_id = ?`).run(...params); }
+  invalidateRankPositions(); // this edit can carry display_name / banned / is_online / is_hidden — all ladder inputs (F1 cache)
   res.json({ ok: true });
 });
 
@@ -18245,6 +18304,7 @@ app.delete('/api/admin/models/:id', ...adminOnly, (req, res) => {
       throw e;
     }
     deleteUserSessions(uid);
+    invalidateRankPositions(); // the account left the roster entirely (F1 cache)
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: 'delete_failed', message: 'Remove failed: ' + e.message });
@@ -18322,6 +18382,7 @@ app.post('/api/admin/invites/:id/revoke', ...adminOnly, (req, res) => {
   let modelDeactivated = false;
   if (req.body.deactivate_model && inv.used_by) {
     db.prepare(`UPDATE users SET banned = 1 WHERE id = ? AND role = 'model'`).run(inv.used_by);
+    invalidateRankPositions(); // a banned model leaves the ladder (F1 cache)
     modelDeactivated = true;
   }
   res.json({ ok: true, model_deactivated: modelDeactivated });
@@ -18596,6 +18657,7 @@ app.delete('/api/admin/affiliates/:id', ...adminOnly, (req, res) => {
       .run(tombstone, bcrypt.hashSync(crypto.randomBytes(24).toString('hex'), 10), u.id);
     return 'account_retired';
   });
+  invalidateRankPositions(); // a retirement bans the login — if it held a model row, the ladder changed (F1 cache)
   res.json({ ok: true, mode });
 });
 
@@ -18605,6 +18667,7 @@ app.delete('/api/admin/recruiters/:id', ...adminOnly, (req, res) => {
   if (!r) return res.status(404).json({ error: 'not_found' });
   db.prepare('DELETE FROM recruiters WHERE id = ?').run(r.id); // models.recruiter_id → NULL via FK
   db.prepare('UPDATE users SET banned = 1 WHERE id = ?').run(r.user_id);
+  invalidateRankPositions(); // a banned login leaves any ladder it held (F1 cache)
   res.json({ ok: true });
 });
 
@@ -18618,6 +18681,7 @@ app.patch('/api/admin/recruiters/:id', ...adminOnly, (req, res) => {
   if (!name) return res.status(400).json({ error: 'missing_name' });
   db.prepare('UPDATE recruiters SET name = ? WHERE id = ?').run(name, r.id);
   db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(name, r.user_id);
+  invalidateRankPositions(); // display_name is a ladder tiebreak (F1 cache)
   res.json({ ok: true, id: r.id, name });
 });
 
@@ -18640,6 +18704,7 @@ app.post('/api/admin/name-change-requests/:id', ...adminOnly, (req, res) => {
     db.prepare(`UPDATE name_change_requests SET status = 'approved', resolved_at = datetime('now') WHERE id = ?`).run(r.id);
     db.prepare(`UPDATE users SET display_name = ?, name_changed_at = datetime('now') WHERE id = ?`)
       .run(r.requested_name, r.user_id);
+    invalidateRankPositions(); // display_name is a ladder tiebreak (F1 cache)
     pushToSubject(`u:${r.user_id}`, { type: 'name_change:approved', new_name: r.requested_name });
   } else if (action === 'reject') {
     db.prepare(`UPDATE name_change_requests SET status = 'rejected', resolved_at = datetime('now') WHERE id = ?`).run(r.id);
