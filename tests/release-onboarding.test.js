@@ -140,8 +140,8 @@ test('manager: ID Checks renders the release state for own rows', () => {
   assert.ok(mgrSrc.includes('data.message'), 'an approve refusal surfaces the server message (release_missing)');
 });
 
-test('recount: the announcement thread-tap pin reads exactly 31 after the Release Prompt build (its announcement added one)', () => {
-  assert.equal(serverSrc.split('/#chat/${conv.id}').length - 1, 31);
+test('recount: the announcement thread-tap pin reads exactly 32 after the Clean Feed build (its announcement added one)', () => {
+  assert.equal(serverSrc.split('/#chat/${conv.id}').length - 1, 32);
 });
 
 /* --------------------------- functional boot --------------------------- */
