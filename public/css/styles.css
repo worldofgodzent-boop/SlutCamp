@@ -1950,6 +1950,12 @@ body.in-home:has(> #phone > .sc-theme-promo):not(:has(> #phone > .sc-theme-banne
 .lang-check { color: var(--pink); }
 .lang-row { display: flex; justify-content: center; margin-top: 12px; }
 
+/* Brand social footer on the home views (owner, Oct 24 2026): the
+   "Follow SlutCamp:" line + brand X / Instagram links, centered under
+   a faint pink rule, matching the public pages' footer presentation. */
+.app-social-footer { text-align: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,92,158,.25); }
+.app-social-footer a { color: var(--pink); font-weight: 700; text-decoration: none; }
+
 /* Storefront section tabs (owner pivot, Oct 18 2026): ONE slim row at
    the top of the home/directory — Female / Male / Couples / All.
    Scrolls horizontally on narrow screens rather than wrapping. */

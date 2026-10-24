@@ -150,6 +150,7 @@ const I18N = {
     role_word_model: 'model',
     role_word_affiliate: 'affiliate',
     share_app: '📤 Share SlutCamp',
+    follow_slutcamp: 'Follow SlutCamp:',
     ath_card_t: 'Put SlutCamp on your home screen',
     ath_card_sub: 'Opens like a real app, one tap.',
     ath_btn: 'Add the app',
@@ -1087,6 +1088,7 @@ const I18N = {
     role_word_model: 'modelo',
     role_word_affiliate: 'afiliado',
     share_app: '📤 Compartir SlutCamp',
+    follow_slutcamp: 'Sigue a SlutCamp:',
     ath_card_t: 'Pon SlutCamp en tu pantalla de inicio',
     ath_card_sub: 'Se abre como una app real, con un toque.',
     ath_btn: 'Añadir la app',
@@ -2024,6 +2026,7 @@ const I18N = {
     role_word_model: 'modelo',
     role_word_affiliate: 'afiliado',
     share_app: '📤 Compartilhar o SlutCamp',
+    follow_slutcamp: 'Siga a SlutCamp:',
     ath_card_t: 'Coloque o SlutCamp na sua tela inicial',
     ath_card_sub: 'Abre como um app de verdade, com um toque.',
     ath_btn: 'Adicionar o app',
@@ -2961,6 +2964,7 @@ const I18N = {
     role_word_model: 'modèle',
     role_word_affiliate: 'affilié',
     share_app: '📤 Partager SlutCamp',
+    follow_slutcamp: 'Suivez SlutCamp :',
     ath_card_t: 'Mettez SlutCamp sur votre écran d\'accueil',
     ath_card_sub: 'S\'ouvre comme une vraie appli, en un toucher.',
     ath_btn: 'Ajouter l\'appli',
@@ -3898,6 +3902,7 @@ const I18N = {
     role_word_model: 'Model',
     role_word_affiliate: 'Affiliate',
     share_app: '📤 SlutCamp teilen',
+    follow_slutcamp: 'Folge SlutCamp:',
     ath_card_t: 'SlutCamp auf deinen Startbildschirm legen',
     ath_card_sub: 'Öffnet sich wie eine echte App, mit einem Tipp.',
     ath_btn: 'App hinzufügen',
@@ -4835,6 +4840,7 @@ const I18N = {
     role_word_model: 'модели',
     role_word_affiliate: 'партнёра',
     share_app: '📤 Поделиться SlutCamp',
+    follow_slutcamp: 'Подписывайтесь на SlutCamp:',
     ath_card_t: 'Добавьте SlutCamp на главный экран',
     ath_card_sub: 'Открывается как настоящее приложение, одним касанием.',
     ath_btn: 'Добавить приложение',
@@ -5772,6 +5778,7 @@ const I18N = {
     role_word_model: 'モデル',
     role_word_affiliate: 'アフィリエイト',
     share_app: '📤 SlutCampをシェア',
+    follow_slutcamp: 'SlutCampをフォロー：',
     ath_card_t: 'SlutCampをホーム画面に追加',
     ath_card_sub: 'ワンタップで本物のアプリみたいに開けるよ。',
     ath_btn: 'アプリを追加',
@@ -6709,6 +6716,7 @@ const I18N = {
     role_word_model: '模特',
     role_word_affiliate: '推广伙伴',
     share_app: '📤 分享 SlutCamp',
+    follow_slutcamp: '关注 SlutCamp：',
     ath_card_t: '把 SlutCamp 放到你的主屏幕',
     ath_card_sub: '像真正的应用一样打开，一点即达。',
     ath_btn: '添加应用',
@@ -7646,6 +7654,7 @@ const I18N = {
     role_word_model: '모델',
     role_word_affiliate: '제휴 파트너',
     share_app: '📤 SlutCamp 공유하기',
+    follow_slutcamp: 'SlutCamp 팔로우:',
     ath_card_t: '홈 화면에 SlutCamp 추가하기',
     ath_card_sub: '한 번의 탭으로 실제 앱처럼 열립니다.',
     ath_btn: '앱 추가하기',
@@ -8583,6 +8592,7 @@ const I18N = {
     role_word_model: 'modella',
     role_word_affiliate: 'affiliato',
     share_app: '📤 Condividi SlutCamp',
+    follow_slutcamp: 'Segui SlutCamp:',
     ath_card_t: 'Metti SlutCamp sulla tua schermata home',
     ath_card_sub: 'Si apre come una vera app, con un tocco.',
     ath_btn: 'Aggiungi l\'app',
@@ -9520,6 +9530,7 @@ const I18N = {
     role_word_model: 'modelka',
     role_word_affiliate: 'afiliant',
     share_app: '📤 Udostępnij SlutCamp',
+    follow_slutcamp: 'Obserwuj SlutCamp:',
     ath_card_t: 'Umieść SlutCamp na ekranie głównym',
     ath_card_sub: 'Otwiera się jak prawdziwa aplikacja, jednym dotknięciem.',
     ath_btn: 'Dodaj aplikację',
@@ -10457,6 +10468,7 @@ const I18N = {
     role_word_model: 'model',
     role_word_affiliate: 'affiliate',
     share_app: '📤 Deel SlutCamp',
+    follow_slutcamp: 'Volg SlutCamp:',
     ath_card_t: 'Zet SlutCamp op je startscherm',
     ath_card_sub: 'Opent als een echte app, met één tik.',
     ath_btn: 'Voeg de app toe',
@@ -11394,6 +11406,7 @@ const I18N = {
     role_word_model: 'model',
     role_word_affiliate: 'ortak',
     share_app: '📤 SlutCamp\'i Paylaş',
+    follow_slutcamp: 'SlutCamp\'i takip et:',
     ath_card_t: 'SlutCamp\'i ana ekranına koy',
     ath_card_sub: 'Gerçek bir uygulama gibi açılır, tek dokunuşla.',
     ath_btn: 'Uygulamayı ekle',
@@ -13503,6 +13516,25 @@ function officialCardHTML(official) {
     </button>`;
 }
 
+/* The brand's official socials at the foot of the HOME views
+   (owner, Oct 24 2026: "we need it on footer of home page. This will
+   help us grow") — the in-app twin of the public pages' footer
+   links (PR #89, server.js SOCIAL_* constants): X @SlutCampApp +
+   Instagram @slcamp__, BRAND accounts only — never the owner's
+   personal handles. ONE helper rendered by BOTH home views (the
+   signed-out landing and the signed-in fan home), so every home
+   visitor sees the same footer. Plain outbound links — new tab +
+   rel="noopener", no tracking parameters, no embeds, no feeds. The
+   labels are the brand names themselves ("X" / "Instagram"),
+   exactly like the public footer; only the "Follow SlutCamp:"
+   lead-in is prose, and it goes through STR (follow_slutcamp). */
+const APP_SOCIAL_X_URL = 'https://x.com/SlutCampApp';
+const APP_SOCIAL_INSTAGRAM_URL = 'https://instagram.com/slcamp__';
+function appSocialFooterHTML() {
+  return `
+    <div class="app-social-footer"><span class="muted small">${t('follow_slutcamp')}</span> <a href="${APP_SOCIAL_X_URL}" target="_blank" rel="noopener">X</a> <span class="muted">·</span> <a href="${APP_SOCIAL_INSTAGRAM_URL}" target="_blank" rel="noopener">Instagram</a></div>`;
+}
+
 /* ---------------- LANDING (public model grid) ---------------- */
 
 async function vLanding() {
@@ -13548,6 +13580,7 @@ async function vLanding() {
       </div>
       <div class="lang-row">${langPillsHTML()}</div>
       <p class="muted small" style="text-align:center;margin-top:16px">${t('terms_line')} <a href="javascript:void(0)" id="go-terms" style="color:var(--pink)">${t('terms')}</a> · <a href="javascript:void(0)" id="go-privacy" style="color:var(--pink)">Privacy</a> · <a href="javascript:void(0)" id="go-billing" style="color:var(--pink)">Billing & Refunds</a> · <a href="javascript:void(0)" id="go-2257" style="color:var(--pink)">2257 Statement</a> · <a href="javascript:void(0)" id="go-dmca" style="color:var(--pink)">DMCA</a>.</p>
+      ${appSocialFooterHTML()}
     </div>`;
   wireSectionTabs(() => show('landing', {}));
   wireHouseBanner();
@@ -15099,6 +15132,7 @@ async function vFanModels() {
         ? `<div class="empty"><div class="big">😴</div>${t('no_models')}</div>`
         : shown.length ? homeTilesHTML(shown, heartFor, { crown: !discActive(disc), rankBadges: !discActive(disc) })
         : `<div class="empty"><div class="big">🔍</div>${t('no_matches')}</div>`}
+      ${appSocialFooterHTML()}
     </div>`;
   wireAthCard();
   wireHouseBanner();
