@@ -18385,15 +18385,28 @@ app.post('/api/admin/safety/ban-guest', ...adminOnly, (req, res) => {
 /* ---- model / fan / payout / settings management (unchanged logic) ---- */
 
 app.get('/api/admin/models', ...adminOnly, (req, res) => {
+  // last_login_at: the model's most recent session row — the SAME
+  // source of truth as the Fans tab (a session is created at login,
+  // password or passkey), so this is the LOGIN moment only; a
+  // still-open session never refreshes it. NULL when she has never
+  // logged in since tracking began (Manager renders "Never").
+  // Default order stays display_name; ?sort=recent puts the most
+  // recent login first (never-logged-in last, name breaks ties).
+  const order = String(req.query.sort || '') === 'recent'
+    ? '(s.last_login_at IS NULL) ASC, s.last_login_at DESC, u.display_name'
+    : 'u.display_name';
   res.json({ models: db.prepare(`
     SELECT u.id, u.username, u.display_name, u.banned, u.created_at, u.presence_override,
            m.bio, m.per_message_cents, m.per_minute_cents, m.section, m.is_online, m.photo_url, m.is_hidden, m.is_featured,
            r.name AS recruiter_name,
            w.earnings_cents, w.paid_out_cents,
-           (w.earnings_cents - w.paid_out_cents) AS pending_cents
+           (w.earnings_cents - w.paid_out_cents) AS pending_cents,
+           s.last_login_at
     FROM users u JOIN models m ON m.user_id = u.id JOIN wallets w ON w.user_id = u.id
     LEFT JOIN recruiters r ON r.id = m.recruiter_id
-    WHERE u.role = 'model' ORDER BY u.display_name`).all() });
+    LEFT JOIN (SELECT user_id, MAX(created_at) AS last_login_at
+               FROM sessions GROUP BY user_id) s ON s.user_id = u.id
+    WHERE u.role = 'model' ORDER BY ${order}`).all() });
 });
 
 
