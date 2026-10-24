@@ -611,6 +611,50 @@ async function adminInvitesBody() {
     ${modelInvites.map((inv) => inviteCard(inv, false)).join('') || '<div class="empty">No invite links yet.</div>'}`;
 }
 
+/* 🎁 Promo links — OVERSIGHT ONLY: campaigns are created in the app
+ * by the house account and funded by the house account's own wallet.
+ * This screen lists them with granted totals + the house balance that
+ * backs the grants, and can pause/resume. No create, no funding here. */
+async function adminPromosBody() {
+  const { data } = await api('/admin/promos');
+  const promos = (data && data.promos) || [];
+  const houseBalance = data && typeof data.house_balance_cents === 'number' ? data.house_balance_cents : 0;
+  const baseUrl = window.location.origin;
+  const promoCard = (c) => {
+    const url = `${baseUrl}/#promo/${c.code}`;
+    const state = !c.active ? '<span style="color:var(--red)">⏸ Paused</span>'
+      : c.remaining_cents < c.amount_cents ? '<span style="color:var(--red)">💸 Budget used up</span>'
+      : houseBalance < c.amount_cents ? '<span style="color:var(--yellow)">⚠️ House wallet too low to grant</span>'
+      : '<span style="color:var(--green)">✅ Live</span>';
+    return `
+      <div class="card" style="padding:12px">
+        <div class="row"><span class="grow"><b>${esc(c.label) || 'Untitled campaign'}</b><br>
+          <span class="small muted">${url}</span><br>${state}</span></div>
+        <div class="stat-grid" style="margin:10px 0">
+          <div class="stat"><div class="n">${fmt(c.amount_cents)}</div><div class="l">Per signup</div></div>
+          <div class="stat"><div class="n">${fmt(c.budget_cents)}</div><div class="l">Budget</div></div>
+          <div class="stat"><div class="n">${fmt(c.granted_cents)}</div><div class="l">Granted</div></div>
+          <div class="stat"><div class="n">${fmt(c.remaining_cents)}</div><div class="l">Budget left</div></div>
+          <div class="stat"><div class="n">${c.signups}</div><div class="l">Signups</div></div>
+        </div>
+        <div class="row" style="gap:6px;flex-wrap:wrap">
+          <button class="btn small" data-promo-copy="${c.code}">📋 Copy link</button>
+          <button class="btn small ghost" data-promo-toggle="${c.id}" data-active="${c.active ? 1 : 0}">${c.active ? '⏸ Pause' : '▶️ Resume'}</button>
+        </div>
+      </div>`;
+  };
+  return `
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🎁 Promo links — oversight</div>
+      <div class="muted small">Campaigns are created in the app on the <b>house account</b> (🎁 Promo links in its Settings) and every grant is paid out of the house wallet — top the wallet up in the app to keep grants flowing. This screen is read + pause only: no creation, no separate pool. Promo grants are house marketing spend and never count as fan money-in.</div>
+      <div class="row" style="margin-top:10px"><span class="grow"><b>House wallet balance</b><br>
+        <span class="small muted">Grants draw from this balance, inside the campaign budgets below.</span></span>
+        <span style="font-size:20px;font-weight:800">${fmt(houseBalance)}</span></div>
+    </div>
+    <h3>🎁 Promo campaigns (${promos.length})</h3>
+    ${promos.map(promoCard).join('') || '<div class="empty">No promo campaigns yet — create one in the app on the house account.</div>'}`;
+}
+
 async function adminPayoutsBody() {
   const { data } = await api('/admin/payouts');
   const { data: wdData } = await api('/admin/withdrawals');
@@ -1821,6 +1865,25 @@ function wireAdminBody(tab) {
     M.reload();
   });
 
+  // 🎁 Promo links — oversight actions (pause/resume + copy) only.
+  if (tab === 'promos') {
+    document.querySelectorAll('[data-promo-copy]').forEach((b) => {
+      b.onclick = async () => {
+        const url = `${window.location.origin}/#promo/${b.dataset.promoCopy}`;
+        try { await navigator.clipboard.writeText(url); toast('📋 Promo link copied!'); }
+        catch { toast(url); }
+      };
+    });
+    document.querySelectorAll('[data-promo-toggle]').forEach((b) => {
+      b.onclick = async () => {
+        const { status } = await api(`/admin/promos/${b.dataset.promoToggle}/active`, {
+          method: 'POST', body: JSON.stringify({ active: b.dataset.active !== '1' }) });
+        toast(status === 200 ? '✅ Campaign updated' : 'Could not update that campaign.');
+        if (status === 200) M.render();
+      };
+    });
+  }
+
   // Invite links
   go('#inv-gen', async () => {
     const label = $('#inv-label').value.trim();
@@ -2464,7 +2527,7 @@ function wireAdminBody(tab) {
 /* ---------------- Slut Manager shell ---------------- */
 const NAV = [
   ['dash', '📊 Overview'], ['models', '💃 Models'], ['idchecks', '🪪 ID Checks'],
-  ['invites', '✉️ Invites'], ['chats', '👀 Chats'], ['safety', '🛡️ Safety'],
+  ['invites', '✉️ Invites'], ['promos', '🎁 Promo links'], ['chats', '👀 Chats'], ['safety', '🛡️ Safety'],
   ['live', '🔴 Live'], ['payouts', '💸 Payouts'], ['tax', '🧾 Tax'],
   ['dmca', '⚖️ DMCA'], ['fans', '🧑 Fans'], ['suggestions', '💡 Suggestions'], ['bookings', '📅 Bookings'],
   ['contracts', '📝 Contracts'], ['partners', '🤝 Partners'], ['affiliates', '🔗 Affiliates'],
@@ -2480,7 +2543,7 @@ const NAV_GROUPS = [
   ['People', ['models', 'idchecks', 'fans', 'suggestions', 'partners', 'affiliates']],
   ['Money', ['payouts', 'tax', 'refunds', 'disputes', 'packages']],
   ['Safety & Content', ['chats', 'live', 'safety', 'dmca']],
-  ['Growth', ['invites', 'bookings', 'contracts', 'analytics']],
+  ['Growth', ['invites', 'promos', 'bookings', 'contracts', 'analytics']],
   ['Settings', ['more']],
 ];
 
@@ -2519,7 +2582,7 @@ async function overviewBody(stats) {
 const SCREENS = {
   dash: overviewBody,
   chats: adminChatsBody, safety: adminSafetyBody, live: adminLiveBody,
-  models: adminModelsBody, invites: adminInvitesBody, payouts: adminPayoutsBody,
+  models: adminModelsBody, invites: adminInvitesBody, promos: adminPromosBody, payouts: adminPayoutsBody,
   fans: adminFansBody, bookings: adminBookingsBody, contracts: adminContractsBody,
   packages: adminPackagesBody,
   idchecks: adminIdChecksBody, partners: adminPartnersBody, affiliates: adminAffiliatesBody, refunds: adminRefundsBody,
