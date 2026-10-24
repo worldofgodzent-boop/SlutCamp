@@ -250,7 +250,10 @@ test('router: FIRST step of every model join — front door, invite link, referr
   const authBody = sliceFn(appSrc, 'function renderAuthBody(', 'function renderSignupFields');
   assert.ok(authBody.includes("if (!modelSectionPick) return vSectionGate(() => show('auth', { mode: 'signup', role: 'model' }));"),
     'Model card tap opens the router before the form');
-  assert.ok(authBody.includes("if (r === 'model' && !modelSectionPick)"), 'pre-picked model arrival is routed too');
+  assert.ok(authBody.includes("if (r === 'model') return joinWarningGate(startModel);"),
+    'pre-picked model arrival is routed too — the join warning gates it first (entry-warning Part 2)');
+  assert.ok(authBody.includes('const startModel = () => {') && authBody.indexOf('if (!modelSectionPick) return vSectionGate') > authBody.indexOf('const startModel = () => {'),
+    'startModel runs the section router before the form — the router still precedes the form');
   assert.ok(!sliceFn(appSrc, 'function renderSignupFields', 'async function doSignup').includes('sec_title'),
     'the form itself carries no router — the step precedes it');
   const inv = sliceFn(appSrc, 'async function vInviteSignup(code)', 'async function vRecruiterSignup(code)');
