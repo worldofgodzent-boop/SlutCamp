@@ -14053,8 +14053,10 @@ async function loadCleanFeedSettings() {
     <div class="muted small" style="margin-bottom:4px">🖼 ${t('feed_count', { n: pics.length, max: maxP })} · 🎬 ${t('feed_count', { n: vids.length, max: maxV })}</div>
     ${items.length ? `<div class="set-gallery-grid">${items.map(cell).join('')}</div>` : `<div class="muted small">${t('feed_empty')}</div>`}
     <div style="margin-top:8px">
-      ${pics.length < maxP ? `<button class="btn ghost small" id="cf-add-photo">${t('feed_add_photo')}</button>` : ''}
-      ${vids.length < maxV ? `<button class="btn ghost small" id="cf-add-video" style="margin-left:6px">${t('feed_add_video')}</button>` : ''}
+      <div class="cf-add-stack">
+        ${pics.length < maxP ? `<button class="btn ghost small" id="cf-add-photo">${t('feed_add_photo')}</button>` : ''}
+        ${vids.length < maxV ? `<button class="btn ghost small" id="cf-add-video">${t('feed_add_video')}</button>` : ''}
+      </div>
       ${(pics.length >= maxP || vids.length >= maxV) ? `<div class="muted small" style="margin-top:6px">${t('feed_full')}</div>` : ''}
     </div>`;
   box.querySelectorAll('[data-feed-del]').forEach((b) => {
