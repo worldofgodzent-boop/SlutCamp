@@ -491,6 +491,8 @@ const I18N = {
     av_gate_done: '✅ Age verified — you can buy now',
     ccbill_secure_note: 'Secure checkout by CCBill — you finish on their payment page, then your credits land right here.',
     ccbill_success: '💳 Payment approved! Your credits land as soon as CCBill confirms — usually just a few seconds.',
+    promo_bonus_banner: "🎁 Sign up now and get {amount} in free credits",
+    promo_granted: "🎁 {amount} promo credits added to your wallet",
     ccbill_fail: 'That card payment didn\'t go through — no charge was made. Try again, or load with crypto instead.',
     crypto_load: 'Load',
     crypto_pay_with: 'Pay with your wallet',
@@ -1436,6 +1438,8 @@ const I18N = {
     av_gate_done: '✅ Edad verificada — ya puedes comprar',
     ccbill_secure_note: 'Pago seguro con CCBill — terminas en su página de pago y tus créditos llegan aquí.',
     ccbill_success: '💳 ¡Pago aprobado! Tus créditos llegan en cuanto CCBill confirma — normalmente unos segundos.',
+    promo_bonus_banner: "🎁 Regístrate ahora y recibe {amount} en créditos gratis",
+    promo_granted: "🎁 Se agregaron {amount} en créditos promocionales a tu billetera",
     ccbill_fail: 'Ese pago con tarjeta no pasó — no se hizo ningún cargo. Inténtalo de nuevo o carga con cripto.',
     crypto_load: 'Cargar',
     crypto_pay_with: 'Paga con tu billetera',
@@ -2381,6 +2385,8 @@ const I18N = {
     av_gate_done: '✅ Idade verificada — já pode comprar',
     ccbill_secure_note: 'Pagamento seguro pela CCBill — você finaliza na página de pagamento deles e seus créditos chegam aqui.',
     ccbill_success: '💳 Pagamento aprovado! Seus créditos chegam assim que a CCBill confirmar — normalmente alguns segundos.',
+    promo_bonus_banner: "🎁 Cadastre-se agora e ganhe {amount} em créditos grátis",
+    promo_granted: "🎁 {amount} em créditos promocionais foram adicionados à sua carteira",
     ccbill_fail: 'Esse pagamento no cartão não passou — nenhuma cobrança foi feita. Tente de novo ou carregue com cripto.',
     crypto_load: 'Carregar',
     crypto_pay_with: 'Pague com sua carteira',
@@ -3326,6 +3332,8 @@ const I18N = {
     av_gate_done: '✅ Âge vérifié — vous pouvez acheter maintenant',
     ccbill_secure_note: 'Paiement sécurisé par CCBill — vous terminez sur leur page de paiement, puis vos crédits arrivent ici même.',
     ccbill_success: '💳 Paiement approuvé ! Vos crédits arrivent dès que CCBill confirme — généralement en quelques secondes.',
+    promo_bonus_banner: "🎁 Inscrivez-vous maintenant et recevez {amount} de crédits gratuits",
+    promo_granted: "🎁 {amount} de crédits promo ajoutés à votre portefeuille",
     ccbill_fail: 'Ce paiement par carte n\'a pas abouti — aucun débit n\'a été effectué. Réessayez, ou rechargez en crypto à la place.',
     crypto_load: 'Recharger',
     crypto_pay_with: 'Payer avec votre portefeuille',
@@ -4271,6 +4279,8 @@ const I18N = {
     av_gate_done: '✅ Alter verifiziert — du kannst jetzt kaufen',
     ccbill_secure_note: 'Sicherer Checkout von CCBill — du schließt auf ihrer Zahlungsseite ab, dann landen deine Credits direkt hier.',
     ccbill_success: '💳 Zahlung genehmigt! Deine Credits landen, sobald CCBill bestätigt — normalerweise nur wenige Sekunden.',
+    promo_bonus_banner: "🎁 Melde dich jetzt an und erhalte {amount} in Gratis-Credits",
+    promo_granted: "🎁 {amount} Promo-Credits wurden deinem Wallet gutgeschrieben",
     ccbill_fail: 'Diese Kartenzahlung ist nicht durchgegangen — es wurde nichts abgebucht. Versuche es erneut oder lade stattdessen mit Krypto auf.',
     crypto_load: 'Aufladen',
     crypto_pay_with: 'Mit deiner Wallet zahlen',
@@ -5216,6 +5226,8 @@ const I18N = {
     av_gate_done: '✅ Возраст подтверждён — теперь вы можете покупать',
     ccbill_secure_note: 'Безопасная оплата через CCBill — вы завершаете оплату на их странице оплаты, затем ваши кредиты поступят прямо сюда.',
     ccbill_success: '💳 Платёж одобрен! Ваши кредиты поступят, как только CCBill подтвердит — обычно всего несколько секунд.',
+    promo_bonus_banner: "🎁 Зарегистрируйтесь сейчас и получите {amount} в бесплатных кредитах",
+    promo_granted: "🎁 {amount} промо-кредитов добавлено в ваш кошелёк",
     ccbill_fail: 'Этот платёж по карте не прошёл — списания не было. Попробуйте ещё раз или вместо этого пополните криптовалютой.',
     crypto_load: 'Пополнить',
     crypto_pay_with: 'Оплатить вашим кошельком',
@@ -6161,6 +6173,8 @@ const I18N = {
     av_gate_done: '✅ 年齢確認完了 — 購入できます',
     ccbill_secure_note: 'CCBillによる安全な決済 — 彼らの支払いページで完了すると、クレジットがここに反映されます。',
     ccbill_success: '💳 支払い承認されました！CCBillが確認次第クレジットが反映されます — 通常は数秒です。',
+    promo_bonus_banner: "🎁 今すぐ登録して {amount} の無料クレジットをゲット",
+    promo_granted: "🎁 {amount} のプロモクレジットがウォレットに追加されました",
     ccbill_fail: 'そのカード支払いは通りませんでした — 請求はされていません。再試行するか、代わりに仮想通貨でチャージしてね。',
     crypto_load: 'チャージ',
     crypto_pay_with: 'ウォレットで支払う',
@@ -7106,6 +7120,8 @@ const I18N = {
     av_gate_done: '✅ 年龄已验证 — 现在可以购买了',
     ccbill_secure_note: '由 CCBill 提供安全结账 — 你在他们的付款页面完成付款，然后点数会直接到账这里。',
     ccbill_success: '💳 付款已批准！CCBill 一确认，你的点数就会到账 — 通常只需几秒钟。',
+    promo_bonus_banner: "🎁 立即注册，获得 {amount} 免费点数",
+    promo_granted: "🎁 {amount} 促销点数已添加到你的钱包",
     ccbill_fail: '该银行卡付款未成功 — 未产生任何扣款。请重试，或改用加密货币充值。',
     crypto_load: '充值',
     crypto_pay_with: '用你的钱包付款',
@@ -8051,6 +8067,8 @@ const I18N = {
     av_gate_done: '✅ 나이 인증 완료 — 이제 구매할 수 있습니다',
     ccbill_secure_note: 'CCBill의 안전한 결제 — 그들의 결제 페이지에서 완료하면 크레딧이 바로 여기에 들어옵니다.',
     ccbill_success: '💳 결제가 승인되었습니다! CCBill이 확인하는 대로 크레딧이 들어옵니다 — 보통 몇 초면 됩니다.',
+    promo_bonus_banner: "🎁 지금 가입하고 {amount} 무료 크레딧을 받으세요",
+    promo_granted: "🎁 {amount} 프로모 크레딧이 지갑에 추가되었습니다",
     ccbill_fail: '카드 결제가 완료되지 않았습니다 — 청구되지 않았습니다. 다시 시도하거나 암호화폐로 충전하세요.',
     crypto_load: '충전',
     crypto_pay_with: '지갑으로 결제',
@@ -8996,6 +9014,8 @@ const I18N = {
     av_gate_done: '✅ Età verificata — ora puoi comprare',
     ccbill_secure_note: 'Checkout sicuro tramite CCBill — finisci sulla loro pagina di pagamento, poi i tuoi crediti arrivano qui.',
     ccbill_success: '💳 Pagamento approvato! I tuoi crediti arrivano non appena CCBill conferma — di solito pochi secondi.',
+    promo_bonus_banner: "🎁 Registrati ora e ricevi {amount} in crediti gratuiti",
+    promo_granted: "🎁 {amount} di crediti promozionali aggiunti al tuo portafoglio",
     ccbill_fail: 'Quel pagamento con carta non è andato a buon fine — nessun addebito è stato fatto. Riprova, o ricarica con crypto.',
     crypto_load: 'Ricarica',
     crypto_pay_with: 'Paga con il tuo wallet',
@@ -9941,6 +9961,8 @@ const I18N = {
     av_gate_done: '✅ Wiek zweryfikowany — możesz teraz kupować',
     ccbill_secure_note: 'Bezpieczna kasa CCBill — kończysz na ich stronie płatności, a potem Twoje kredyty trafiają prosto tutaj.',
     ccbill_success: '💳 Płatność zatwierdzona! Twoje kredyty trafią, gdy tylko CCBill potwierdzi — zwykle w kilka sekund.',
+    promo_bonus_banner: "🎁 Zarejestruj się teraz i odbierz {amount} w darmowych kredytach",
+    promo_granted: "🎁 Dodano {amount} kredytów promocyjnych do Twojego portfela",
     ccbill_fail: 'Ta płatność kartą nie przeszła — nie pobrano żadnych środków. Spróbuj ponownie lub doładuj kryptowalutą.',
     crypto_load: 'Doładuj',
     crypto_pay_with: 'Zapłać swoim portfelem',
@@ -10886,6 +10908,8 @@ const I18N = {
     av_gate_done: '✅ Leeftijd geverifieerd — je kunt nu kopen',
     ccbill_secure_note: 'Beveiligde checkout door CCBill — je rondt af op hun betaalpagina, daarna landen je credits hier.',
     ccbill_success: '💳 Betaling goedgekeurd! Je credits landen zodra CCBill bevestigt — meestal binnen een paar seconden.',
+    promo_bonus_banner: "🎁 Meld je nu aan en krijg {amount} aan gratis credits",
+    promo_granted: "🎁 {amount} aan promocredits toegevoegd aan je wallet",
     ccbill_fail: 'Die kaartbetaling is niet doorgegaan — er is niets afgeschreven. Probeer opnieuw, of laad in plaats daarvan met crypto.',
     crypto_load: 'Opladen',
     crypto_pay_with: 'Betaal met je wallet',
@@ -11831,6 +11855,8 @@ const I18N = {
     av_gate_done: '✅ Yaş doğrulandı — artık satın alabilirsin',
     ccbill_secure_note: 'CCBill ile güvenli ödeme — onların ödeme sayfasında bitirirsin, sonra kredilerin buraya gelir.',
     ccbill_success: '💳 Ödeme onaylandı! Kredilerin CCBill onaylar onaylamaz gelir — genellikle sadece birkaç saniye.',
+    promo_bonus_banner: "🎁 Hemen kaydol ve {amount} ücretsiz kredi kazan",
+    promo_granted: "🎁 Cüzdanına {amount} promosyon kredisi eklendi",
     ccbill_fail: 'Bu kart ödemesi geçmedi — ücret alınmadı. Tekrar dene veya bunun yerine kripto ile yükle.',
     crypto_load: 'Yükle',
     crypto_pay_with: 'Cüzdanınla öde',
@@ -13232,6 +13258,7 @@ function show(view, params) {
     landing: vLanding, auth: vAuth,
     fanModels: vFanModels, fanLive: vFanLive, lives: vLives, fanChats: vFanChats, wallet: vWallet, quickSignup: vQuickSignup,
     modelChats: vModelChats, modelEarnings: vModelEarnings, modelSettings: vModelSettings,
+    housePromos: vHousePromos,
     chat: vChat,
     liveBroadcast: vLiveBroadcast, liveWatch: vLiveWatch, battleStage: vBattleStage,
     bookings: vBookings, terms: vTerms, privacy: vPrivacy, billing: vBilling, statement2257: vStatement2257,
@@ -14049,6 +14076,7 @@ function renderSignupFields(role) {
     return;
   }
   host.innerHTML = `
+      ${role === 'fan' ? '<div id="promo-banner-slot"></div>' : ''}
       <label class="field">${t('display_name')}<input class="input" id="a-name" maxlength="40"></label>
       <label class="field">${t('username')}<input class="input" id="a-user" autocomplete="username"></label>
       <label class="field">${t('password_hint')}${pwField('a-pass', 'new-password')}</label>
@@ -14077,6 +14105,7 @@ function renderSignupFields(role) {
       <div class="lang-row">${langPillsHTML()}</div>
       <button class="btn" id="a-go">${t('create_account_btn')}</button>`;
   $('#a-go').onclick = () => doSignup(role);
+  paintPromoBanner();
 }
 
 async function doAffiliateSignup() {
@@ -14140,11 +14169,24 @@ async function doSignup(role) {
     partner_dob: $('#a-pdob').value,
     partner_agree18: $('#a-p18').checked,
   } : {};
+  // House promo bonus rides along on FAN signup only, when a #promo/
+  // code is stashed from this tab session. The server decides whether
+  // a grant actually lands (active campaign, pool remaining, first
+  // grant for this fan) and reports it back as promo_granted_cents.
+  const promoCode = role === 'fan' ? stashedPromoCode() : '';
   const { status, data } = await api('/auth/signup', {
     method: 'POST',
-    body: JSON.stringify({ username, password, role, display_name, dob, agree18, guest_token: S.guestToken, language: LANG, ...(role === 'model' ? { section: modelSectionPick } : {}), ...partner, ...(email ? { email } : {}) }),
+    body: JSON.stringify({ username, password, role, display_name, dob, agree18, guest_token: S.guestToken, language: LANG, ...(role === 'model' ? { section: modelSectionPick } : {}), ...partner, ...(email ? { email } : {}), ...(promoCode ? { promo_code: promoCode } : {}) }),
   });
-  if (status === 200) return afterLogin(data);
+  if (status === 200) {
+    const granted = (data && data.promo_granted_cents) || 0;
+    if (granted > 0) {
+      try { sessionStorage.removeItem('sc_promo_code'); } catch (e) {}
+      promoOffer = null;
+      setTimeout(() => toast(t('promo_granted', { amount: fmt(granted) })), 800);
+    }
+    return afterLogin(data);
+  }
   const msgs = { username_taken: t('err_username_taken'), must_be_18: t('err_must_be_18'),
     must_declare_section: t('err_must_declare_section'),
     username_is_email: t('err_username_is_email'),
@@ -16192,9 +16234,185 @@ function spendCapToast(data) {
   return false;
 }
 
+/* 🎁 Promo links — the HOUSE account's own campaign manager (owner,
+ * Oct 24 2026). House-only: the server enforces it on /api/promo-
+ * campaigns (403 for everyone else) and this view bounces non-house
+ * users straight back to their Settings. Grants are paid out of this
+ * account's wallet, so the balance sits at the top with the normal
+ * Add-money door one tap away. Owner-facing surface → plain English,
+ * like the ID-verification card; the FAN-facing promo strings (signup
+ * banner + grant toast) are the localized t() keys. */
+async function vHousePromos() {
+  if (!S.user || !S.user.is_house) return show('modelSettings', {});
+  await refreshMe();
+  const { status, data } = await api('/promo-campaigns');
+  const appr = await api('/promo-campaigns/appreciation/candidates');
+  const candidates = (appr.status === 200 && appr.data && appr.data.candidates) || [];
+  if (status !== 200 || !data) {
+    app.innerHTML = `<div class="header"><h1>🎁 Promo links</h1></div>
+      <div class="screen"><div class="card">Couldn't load your promo campaigns — try again in a moment.</div>
+      <button class="btn ghost" id="hp-back" style="width:100%">← Back to Settings</button></div>`;
+    $('#hp-back').onclick = () => show('modelSettings', {});
+    return;
+  }
+  const balance = data.house_balance_cents || 0;
+  const camps = data.campaigns || [];
+  const campCard = (c) => {
+    const url = canonOrigin() + '/#promo/' + c.code;
+    const expMs = c.expires_at ? Date.parse(String(c.expires_at).replace(' ', 'T') + 'Z') : null;
+    const daysLeft = expMs ? Math.ceil((expMs - Date.now()) / 86400000) : null;
+    const expired = daysLeft !== null && daysLeft <= 0;
+    const expLine = expMs === null ? ''
+      : expired ? '<br><span style="color:var(--red)">⌛ Expired</span>'
+      : `<br><span class="muted small">⏳ Ends in ${daysLeft}d</span>`;
+    const state = !c.active ? '<span style="color:var(--red)">⏸ Paused</span>'
+      : expired ? '<span style="color:var(--red)">⌛ Link expired</span>'
+      : c.remaining_cents < c.amount_cents ? '<span style="color:var(--red)">💸 Budget used up</span>'
+      : balance < c.amount_cents ? '<span style="color:var(--yellow)">⚠️ House wallet too low to grant</span>'
+      : '<span style="color:var(--green)">✅ Live</span>';
+    return `
+    <div class="card" style="padding:14px">
+      <div class="row" style="align-items:flex-start"><span class="grow"><b>${esc(c.label) || 'Untitled campaign'}</b><br>${state}${expLine}</span></div>
+      <div class="row" style="gap:6px;margin-top:10px">
+        <input class="input" readonly value="${url}" style="flex:1" onclick="this.select()">
+        <button class="btn small" data-hp-copy="${c.code}">📋 Copy</button>
+      </div>
+      <div class="stat-grid" style="margin:12px 0">
+        <div class="stat"><div class="n">${fmt(c.amount_cents)}</div><div class="l">Per signup</div></div>
+        <div class="stat"><div class="n">${fmt(c.budget_cents)}</div><div class="l">Budget</div></div>
+        <div class="stat"><div class="n">${fmt(c.granted_cents)}</div><div class="l">Granted</div></div>
+        <div class="stat"><div class="n">${fmt(c.remaining_cents)}</div><div class="l">Budget left</div></div>
+        <div class="stat"><div class="n">${c.signups}</div><div class="l">Signups</div></div>
+      </div>
+      <div class="row" style="gap:6px;flex-wrap:wrap;align-items:flex-end">
+        <label class="field" style="margin:0">Budget $<input class="input" id="hp-budget-${c.id}" type="number" min="1" max="100000" step="1" value="${c.budget_cents / 100}" style="width:110px"></label>
+        <button class="btn small" data-hp-budget="${c.id}">💾 Save budget</button>
+        <button class="btn small ghost" data-hp-toggle="${c.id}" data-active="${c.active ? 1 : 0}">${c.active ? '⏸ Pause' : '▶️ Resume'}</button>
+        <button class="btn small ghost" data-hp-extend="${c.id}">⏳ Extend +7d</button>
+      </div>
+    </div>`;
+  };
+  const candRow = (c) => `
+    <label class="row" style="gap:8px;align-items:center;padding:6px 0">
+      <input type="checkbox" data-ap-fan="${c.id}" ${c.has_open_grant ? 'disabled' : ''}>
+      <span class="grow"><b>@${esc(c.username)}</b><br>
+      <span class="muted small">Joined ${esc(String(c.created_at || '').slice(0, 10))} · Last login ${c.last_login_at ? esc(String(c.last_login_at).slice(0, 16).replace('T', ' ')) : 'never'}</span></span>
+      ${c.has_open_grant ? '<span class="muted small">🎁 has one open</span>' : ''}
+    </label>`;
+  app.innerHTML = `
+    <div class="header"><h1>🎁 Promo links</h1></div>
+    <div class="screen">
+      <button class="btn ghost" id="hp-back" style="margin-bottom:12px">← Back to Settings</button>
+      <div class="card" style="text-align:center">
+        <div class="muted small">House wallet balance — grants are paid from this</div>
+        <div style="font-size:30px;font-weight:900;margin:4px 0">${fmt(balance)}</div>
+        <button class="btn" id="hp-addmoney" style="width:100%">💰 Add money</button>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:6px">🎁 Create a promo link</div>
+        <div class="muted small" style="margin-bottom:10px">A new fan who signs up through the link instantly gets the bonus in his wallet — paid out of YOUR house wallet above. Grants stop when the budget is used up, the campaign is paused, or your wallet can't cover the next bonus. Signing up always works either way.</div>
+        <label class="field">Label (e.g. Launch week)<input class="input" id="hp-label" maxlength="60" placeholder="Launch week"></label>
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <label class="field" style="flex:1;min-width:130px">Bonus per signup $<input class="input" id="hp-amount" type="number" min="0.01" max="100" step="0.01" placeholder="5"></label>
+          <label class="field" style="flex:1;min-width:130px">Budget (total give-away) $<input class="input" id="hp-budget-new" type="number" min="1" max="100000" step="1" placeholder="500"></label>
+          <label class="field" style="flex:1;min-width:130px">Link life (days)<input class="input" id="hp-window" type="number" min="1" max="30" step="1" value="7"></label>
+        </div>
+        <div class="muted small" style="margin-bottom:10px">The link keeps granting for its life (default 7 days), then stops on its own — you can extend it any time from the campaign card.</div>
+        <button class="btn" id="hp-create" style="width:100%">Create promo link</button>
+      </div>
+      <h3 style="margin:16px 0 10px">🎁 Your campaigns (${camps.length})</h3>
+      ${camps.map(campCard).join('') || '<div class="empty">No promo campaigns yet.</div>'}
+      <div class="card" style="margin-top:16px">
+        <div style="font-weight:800;margin-bottom:6px">💝 Founding-fan appreciation</div>
+        <div class="muted small" style="margin-bottom:10px">A thank-you for the TRUE fans who were here before launch — paid out of your house wallet, like the signup bonuses. They get 7 days to spend it; whatever is left comes straight back to your wallet. Fans who already have one open are skipped.</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+          <label class="field" style="margin:0">Thank-you $<input class="input" id="ap-amount" type="number" min="0.01" max="100" step="0.01" value="10" style="width:110px"></label>
+          <label class="row" style="gap:6px;align-items:center;margin:0"><input type="checkbox" id="ap-all"> Select all</label>
+          <span class="grow"></span>
+          <button class="btn small" id="ap-send">💝 Send appreciation</button>
+        </div>
+        <div style="margin-top:8px">${candidates.map(candRow).join('') || '<div class="empty">No eligible fans yet.</div>'}</div>
+      </div>
+    </div>`;
+  $('#hp-back').onclick = () => show('modelSettings', {});
+  $('#hp-addmoney').onclick = () => show('wallet', {});
+  $('#hp-create').onclick = async () => {
+    const label = $('#hp-label').value.trim();
+    const amount = Math.round(parseFloat($('#hp-amount').value) * 100);
+    const budget = Math.round(parseFloat($('#hp-budget-new').value) * 100);
+    const winDays = parseInt($('#hp-window').value, 10);
+    if (!Number.isInteger(amount) || amount <= 0) return toast('Enter the bonus per signup.');
+    if (!Number.isInteger(budget) || budget <= 0) return toast('Enter the campaign budget.');
+    if (!Number.isInteger(winDays) || winDays < 1 || winDays > 30) return toast('Link life must be 1–30 days.');
+    const { status: st, data: d } = await api('/promo-campaigns', {
+      method: 'POST', body: JSON.stringify({ label, amount_cents: amount, budget_cents: budget, window_days: winDays }) });
+    if (st === 200 && d.campaign) {
+      const url = canonOrigin() + '/#promo/' + d.campaign.code;
+      try { await navigator.clipboard.writeText(url); toast('🎁 Promo link created + copied!'); }
+      catch (e) { toast('🎁 Promo link created — copy it from the list below.'); }
+      show('housePromos', {});
+    } else toast((d && d.message) || 'Could not create that promo link.');
+  };
+  app.querySelectorAll('[data-hp-copy]').forEach((b) => {
+    b.onclick = async () => {
+      const url = canonOrigin() + '/#promo/' + b.dataset.hpCopy;
+      try { await navigator.clipboard.writeText(url); toast('📋 Promo link copied!'); }
+      catch (e) { toast(url); }
+    };
+  });
+  app.querySelectorAll('[data-hp-budget]').forEach((b) => {
+    b.onclick = async () => {
+      const v = Math.round(parseFloat(($('#hp-budget-' + b.dataset.hpBudget) || {}).value) * 100);
+      if (!Number.isInteger(v) || v <= 0) return toast('Enter a budget.');
+      const { status: st, data: d } = await api(`/promo-campaigns/${b.dataset.hpBudget}/budget`, {
+        method: 'POST', body: JSON.stringify({ budget_cents: v }) });
+      toast(st === 200 ? '💾 Budget saved' : ((d && d.message) || 'Could not save that budget.'));
+      if (st === 200) show('housePromos', {});
+    };
+  });
+  app.querySelectorAll('[data-hp-toggle]').forEach((b) => {
+    b.onclick = async () => {
+      const { status: st } = await api(`/promo-campaigns/${b.dataset.hpToggle}/active`, {
+        method: 'POST', body: JSON.stringify({ active: b.dataset.active !== '1' }) });
+      toast(st === 200 ? '✅ Campaign updated' : 'Could not update that campaign.');
+      if (st === 200) show('housePromos', {});
+    };
+  });
+  app.querySelectorAll('[data-hp-extend]').forEach((b) => {
+    b.onclick = async () => {
+      const { status: st } = await api(`/promo-campaigns/${b.dataset.hpExtend}/extend`, {
+        method: 'POST', body: JSON.stringify({}) });
+      toast(st === 200 ? '⏳ Link life extended by 7 days' : 'Could not extend that link.');
+      if (st === 200) show('housePromos', {});
+    };
+  });
+  const apAll = $('#ap-all');
+  if (apAll) apAll.onchange = () => {
+    app.querySelectorAll('[data-ap-fan]').forEach((cb) => { if (!cb.disabled) cb.checked = apAll.checked; });
+  };
+  const apSend = $('#ap-send');
+  if (apSend) apSend.onclick = async () => {
+    const ids = [...app.querySelectorAll('[data-ap-fan]')]
+      .filter((cb) => cb.checked && !cb.disabled).map((cb) => Number(cb.dataset.apFan));
+    if (!ids.length) return toast('Pick at least one fan.');
+    const amount = Math.round(parseFloat($('#ap-amount').value) * 100);
+    if (!Number.isInteger(amount) || amount <= 0) return toast('Enter the thank-you amount.');
+    const { status: st, data: d } = await api('/promo-campaigns/appreciation/grant', {
+      method: 'POST', body: JSON.stringify({ user_ids: ids, amount_cents: amount }) });
+    if (st === 200 && d) {
+      toast(`💝 Appreciation sent to ${d.granted_count} fan${d.granted_count === 1 ? '' : 's'}`
+        + (d.skipped_count ? ` — ${d.skipped_count} skipped` : ''));
+      show('housePromos', {});
+    } else toast((d && d.message) || 'Could not send the appreciation.');
+  };
+}
+
 async function vWallet() {
-  // Guests can browse but must create an account to add money
-  if (!S.token || !S.user || S.user.role !== 'fan') {
+  // Guests can browse but must create an account to add money. The
+  // house account loads here too (owner, Oct 24 2026): its wallet
+  // funds the promo signup grants, and the load endpoints accept the
+  // house alongside fans — it pays full price like any fan.
+  if (!S.token || !S.user || (S.user.role !== 'fan' && !S.user.is_house)) {
     app.innerHTML = `
       <div class="header"><h1>${t('wallet_h')}</h1></div>
       <div class="screen">
@@ -18033,6 +18251,16 @@ async function vModelSettings() {
   // banner pointing here; her approval is untouched either way.
   const rel = (idvData && idvData.release) || null;
   const relHouse = !!(idvData && idvData.house);
+  // 🎁 Promo links (owner, Oct 24 2026): a HOUSE-ONLY Settings card —
+  // campaigns are created on this account, in the app, and grants are
+  // paid out of this account's wallet. Ordinary models never see it
+  // (same server-driven `house` flag as the ID-card exemption above).
+  const promoHouseCardHTML = relHouse ? `
+      <div class="card" style="border-color:var(--gold)">
+        <div style="font-weight:800;margin-bottom:6px">🎁 Promo links</div>
+        <div class="muted small" style="margin-bottom:10px">Signup-bonus links paid from THIS account's wallet: set the bonus + budget, share the link, and new fans get the credits the moment they join.</div>
+        <button class="btn" id="goto-promos" style="width:100%">🎁 Manage promo links</button>
+      </div>` : '';
   let relDismissed = false;
   try { relDismissed = localStorage.getItem('release_prompt_dismissed_' + (S.user && S.user.id)) === '1'; } catch (e) { /* ignore */ }
   const releaseBannerHTML = (!relHouse && !rel && idvStatus === 'approved' && !relDismissed)
@@ -18074,6 +18302,7 @@ async function vModelSettings() {
       ${releaseBannerHTML}
       ${idvBanner}
       ${releaseCardHTML}
+      ${promoHouseCardHTML}
       <div id="coperf-card"></div>
       <button class="btn" id="goto-home" style="width:100%;padding:16px;font-size:17px;font-weight:800;margin-bottom:12px;background:linear-gradient(135deg,var(--pink),#ff8fab);box-shadow:0 6px 22px rgba(255,92,158,.35)">🏠 Home Screen — see the girls 🔥</button>
       ${langCardHTML()}
@@ -18826,6 +19055,8 @@ async function vModelSettings() {
   // 🪪 ID verification submit (3 files via multipart)
   const gotoHome = $('#goto-home');
   if (gotoHome) gotoHome.onclick = () => show('fanModels', {});
+  const gotoPromos = $('#goto-promos');
+  if (gotoPromos) gotoPromos.onclick = () => show('housePromos', {});
   const idvBtn = $('#idv-submit');
   if (idvBtn) idvBtn.onclick = async () => {
     const front = $('#idv-front').files[0], back = $('#idv-back').files[0], selfie = $('#idv-selfie').files[0];
@@ -25778,6 +26009,34 @@ function startUpdateWatcher() {
   vWelcomeSplash(() => { bootSplashDone = true; routeInitial(); });
 })();
 
+/* House promo signup bonus (#promo/<code>): routeInitial stashes the
+ * code in sessionStorage; the offer (amount + availability) comes from
+ * the public /api/promo/:code — pool internals never reach the client.
+ * The fan signup door shows the banner and doSignup carries the code;
+ * model/affiliate/recruiter doors never see either. */
+let promoOffer = null; // { code, amount_cents } while a bonus is live
+function stashedPromoCode() {
+  try { return sessionStorage.getItem('sc_promo_code') || ''; } catch (e) { return ''; }
+}
+async function loadPromoOffer(code) {
+  if (!code) return;
+  try {
+    const { status, data } = await api('/promo/' + encodeURIComponent(code));
+    if (status === 200 && data && data.available) promoOffer = { code, amount_cents: data.amount_cents };
+    else if (promoOffer && promoOffer.code === code) promoOffer = null;
+  } catch (e) { /* no offer → signup proceeds normally, no promise shown */ }
+  paintPromoBanner();
+}
+function paintPromoBanner() {
+  const slot = document.getElementById('promo-banner-slot');
+  if (!slot) return;
+  slot.innerHTML = promoOffer
+    ? `<div class="card" style="background:linear-gradient(135deg,#3b1d6e,#1a0f2e);text-align:center;margin-bottom:12px">
+         <div style="font-size:17px;font-weight:800">${t('promo_bonus_banner', { amount: fmt(promoOffer.amount_cents) })}</div>
+       </div>`
+    : '';
+}
+
 async function routeInitial() {
   // The splash handed off — its in-place language hook is done.
   splashLangRefresh = null;
@@ -25819,6 +26078,29 @@ async function routeInitial() {
   if (affMatch) {
     try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
     return vAffiliateSignup(affMatch[1]);
+  }
+  // House promo link: #promo/CODE → fan signup with a signup bonus.
+  // Stash the code for this tab session and learn the offer; a guest
+  // lands on the fan signup door, which shows the bonus banner. The
+  // bonus is for NEW fan signups only — signed-in users just continue
+  // to their normal home below.
+  const promoLinkMatch = window.location.hash.match(/^#promo\/([a-f0-9]{12})$/i);
+  if (promoLinkMatch) {
+    const code = promoLinkMatch[1].toLowerCase();
+    try { sessionStorage.setItem('sc_promo_code', code); } catch (e) {}
+    try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
+    await loadPromoOffer(code);
+    if (!S.token) {
+      await ensureGuest();
+      wsConnect();
+      return show('auth', { mode: 'signup', role: 'fan' });
+    }
+  } else {
+    // Arriving on any other link with a code already stashed this tab
+    // session (he browsed first): load the offer quietly so the bonus
+    // banner is ready when he reaches the fan signup door.
+    const stashed = stashedPromoCode();
+    if (stashed) loadPromoOffer(stashed);
   }
   // Model promo link: #m/USERNAME → open that model's chat/live directly
   const promoMatch = window.location.hash.match(/^#m\/([a-zA-Z0-9_]+)$/);
