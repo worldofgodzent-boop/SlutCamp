@@ -1511,6 +1511,21 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 .disc-chip:active { transform: scale(.95); }
 .disc-chip.on { background: var(--pink); border-color: var(--pink); color: #fff; }
 .disc-chip.clear { border-color: rgba(248,113,113,.6); color: #fca5a5; }
+/* Age Preference sheet: dual-thumb range over one track (the two
+ * inputs stack; their tracks are invisible, thumbs stay grabbable). */
+.age-readout { text-align: center; font-weight: 800; font-size: 20px; margin-bottom: 4px; }
+.age-dual { position: relative; height: 34px; margin: 10px 0 4px; }
+.age-dual .age-track { position: absolute; left: 0; right: 0; top: 50%; height: 8px;
+  transform: translateY(-50%); border-radius: 4px; background: rgba(255,255,255,.14); }
+.age-dual .age-fill { position: absolute; top: 50%; height: 8px; transform: translateY(-50%);
+  border-radius: 4px; background: linear-gradient(90deg, #ec4899, #8b5cf6); }
+.age-dual input[type="range"] { position: absolute; left: 0; width: 100%; top: 50%;
+  transform: translateY(-50%); margin: 0; height: 8px; background: transparent;
+  pointer-events: none; }
+.age-dual input[type="range"]::-webkit-slider-thumb { pointer-events: auto; }
+.age-dual input[type="range"]::-moz-range-thumb { pointer-events: auto; }
+.age-sheet-btns { display: flex; gap: 8px; margin-top: 14px; }
+.age-sheet-btns .btn { flex: 1; }
 .tile-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
 .tag-chip {
   font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
