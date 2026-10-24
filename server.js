@@ -2335,6 +2335,20 @@ CREATE INDEX IF NOT EXISTS idx_clean_feed_model ON clean_feed_items(model_id, id
 -- credits the model earns her real 60% through the normal charges.
 -- One grant per fan per campaign, ever (UNIQUE below); a fan may
 -- still receive a different campaign's grant.
+-- LINK LIFETIME (owner, Oct 24 2026): every campaign also carries an
+-- expires_at — the LINK's granting life (default 7 days from
+-- creation, house picks 1–30). Past it the link grants nothing and
+-- the signup banner hides, exactly like a paused/drained campaign;
+-- signup itself always works. Extending adds 7 days. This is the
+-- LINK's life — NOT the same clock as a grant's spend window below.
+-- FOUNDING-FAN APPRECIATION (owner, Oct 24 2026) shares this table:
+-- rows with source='appreciation' (campaign_id NULL) are one-off
+-- $10 thank-you grants the house fires at TRUE fans who were here
+-- before launch. Their expires_at is the GRANT's 7-day spend window:
+-- whatever is still unspent when it lapses is swept back into the
+-- house wallet (returned_cents, settled_at) — see
+-- sweepAppreciationExpiries. Signup grants keep expires_at NULL:
+-- promo-link credits never expire.
 CREATE TABLE IF NOT EXISTS promo_campaigns (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   code TEXT UNIQUE NOT NULL,
@@ -2343,14 +2357,19 @@ CREATE TABLE IF NOT EXISTS promo_campaigns (
   budget_cents INTEGER NOT NULL DEFAULT 0,
   granted_cents INTEGER NOT NULL DEFAULT 0,
   active INTEGER NOT NULL DEFAULT 1,
+  expires_at TEXT,
   created_by INTEGER REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS promo_grants (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  campaign_id INTEGER NOT NULL REFERENCES promo_campaigns(id),
+  campaign_id INTEGER REFERENCES promo_campaigns(id),
   user_id INTEGER NOT NULL REFERENCES users(id),
   amount_cents INTEGER NOT NULL,
+  source TEXT NOT NULL DEFAULT 'promo_signup',
+  expires_at TEXT,
+  returned_cents INTEGER NOT NULL DEFAULT 0,
+  settled_at TEXT,
   ip TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(campaign_id, user_id)
@@ -4303,6 +4322,7 @@ const SRV = {
   bell_live_body: { en: 'Tap to watch her now.', es: 'Toca para verla ahora.', pt: 'Toque para assistir a ela agora.', fr: 'Touchez pour la regarder maintenant.', de: 'Tippen, um sie jetzt anzusehen.', ru: 'Нажмите, чтобы смотреть её сейчас.', ja: 'タップして今すぐ彼女を視聴。', zh: '点击立即观看她。', ko: '탭하여 지금 그녀를 시청하세요.', it: 'Tocca per guardarla ora.', pl: 'Dotknij, aby oglądać ją teraz.', nl: 'Tik om haar nu te kijken.', tr: 'Onu şimdi izlemek için dokun.' },
   bell_stage_title: { en: '🎥 {fan} wants to join your live!', es: '🎥 {fan} quiere unirse a tu en vivo', pt: '🎥 {fan} quer entrar na sua live!', fr: '🎥 {fan} veut rejoindre votre direct !', de: '🎥 {fan} will bei deinem Live mitmachen!', ru: '🎥 {fan} хочет присоединиться к вашему эфиру!', ja: '🎥 {fan} があなたのライブに参加したいです！', zh: '🎥 {fan} 想加入你的直播！', ko: '🎥 {fan}님이 라이브에 참여하고 싶어 합니다!', it: '🎥 {fan} vuole unirsi alla tua live!', pl: '🎥 {fan} chce dołączyć do Twojej transmisji na żywo!', nl: '🎥 {fan} wil meedoen aan je live!', tr: '🎥 {fan} canlına katılmak istiyor!' },
   bell_stage_body: { en: 'Tap to review and approve (paid {fee})', es: 'Toca para revisar y aprobar (pago de {fee})', pt: 'Toque para revisar e aprovar (pago {fee})', fr: 'Touchez pour examiner et approuver (payé {fee})', de: 'Tippen zum Überprüfen und Genehmigen (bezahlt {fee})', ru: 'Нажмите, чтобы рассмотреть и одобрить (оплачено {fee})', ja: 'タップして確認・承認（有料 {fee}）', zh: '点击查看并批准（已付费 {fee}）', ko: '탭하여 검토하고 승인하세요 (유료 {fee})', it: 'Tocca per esaminare e approvare (a pagamento {fee})', pl: 'Dotknij, aby sprawdzić i zatwierdzić (płatne {fee})', nl: 'Tik om te beoordelen en goed te keuren (betaald {fee})', tr: 'İncelemek ve onaylamak için dokun (ücretli {fee})' },
+  appreciation_thanks: { en: '🎁 You were here before launch — thank you. {amount} in credits is on us — yours to spend over the next 7 days.', es: '🎁 Estuviste aquí antes del lanzamiento — gracias. {amount} en créditos van por nuestra cuenta — son tuyos para gastar en los próximos 7 días.', pt: '🎁 Você estava aqui antes do lançamento — obrigado. {amount} em créditos são por nossa conta — são seus para gastar nos próximos 7 dias.', fr: '🎁 Vous étiez là avant le lancement — merci. {amount} de crédits sont offerts par nous — à dépenser au cours des 7 prochains jours.', de: '🎁 Du warst schon vor dem Start hier — danke. {amount} in Credits gehen auf uns — du hast 7 Tage Zeit, sie auszugeben.', ru: '🎁 Вы были с нами ещё до запуска — спасибо. {amount} в кредитах за наш счёт — потратить их можно в течение следующих 7 дней.', ja: '🎁 ローンチ前からいてくれてありがとう。{amount} のクレジットをプレゼントします — 次の7日間いつでも使えます。', zh: '🎁 你在上线之前就已经在这里了 — 谢谢你。{amount} 点数由我们买单 — 接下来 7 天内随时可用。', ko: '🎁 런칭 전부터 함께해 주셔서 감사합니다. {amount} 크레딧은 저희가 드립니다 — 앞으로 7일 동안 사용하세요.', it: '🎁 Eri qui prima del lancio — grazie. {amount} in crediti sono offerti da noi — tuoi da spendere nei prossimi 7 giorni.', pl: '🎁 Byłeś tu przed startem — dziękujemy. {amount} w kredytach jest na nasz koszt — możesz je wydać w ciągu najbliższych 7 dni.', nl: '🎁 Je was er al vóór de lancering — bedankt. {amount} aan credits is van ons — te besteden in de komende 7 dagen.', tr: '🎁 Lansmandan önce buradaydın — teşekkürler. {amount} kredi bizden — önümüzdeki 7 gün içinde harcayabilirsin.' },
   bell_booking_fan_active_title: { en: '📹 Your 1-on-1 is now active', es: '📹 Tu 1 a 1 ya está activo', pt: '📹 Seu 1 a 1 está ativo agora', fr: '📹 Votre 1-à-1 est maintenant actif', de: '📹 Dein 1-zu-1 ist jetzt aktiv', ru: '📹 Ваш 1-на-1 теперь активен', ja: '📹 あなたの1対1が有効になりました', zh: '📹 你的一对一已激活', ko: '📹 1:1이 지금 활성화되었습니다', it: '📹 Il tuo 1-a-1 è ora attivo', pl: '📹 Twoje 1 na 1 jest teraz aktywne', nl: '📹 Je 1-op-1 is nu actief', tr: '📹 Bire birin şimdi aktif' },
   bell_booking_fan_active_body: { en: '📹 Your video call with {model} is now active — you have 3 minutes to get to the call.', es: '📹 Tu videollamada con {model} ya está activa — tienes 3 minutos para llegar a la llamada.', pt: '📹 Sua videochamada com {model} está ativa agora — você tem 3 minutos para entrar na chamada.', fr: '📹 Votre appel vidéo avec {model} est maintenant actif — vous avez 3 minutes pour rejoindre l\'appel.', de: '📹 Dein Videoanruf mit {model} ist jetzt aktiv — du hast 3 Minuten, um zum Anruf zu kommen.', ru: '📹 Ваш видеозвонок с {model} теперь активен — у вас есть 3 минуты, чтобы попасть на звонок.', ja: '📹 {model} とのビデオ通話が有効になりました — 通話に参加するまで3分あります。', zh: '📹 你与 {model} 的视频通话已激活 — 你有 3 分钟时间进入通话。', ko: '📹 {model}님과의 영상 통화가 지금 활성화되었습니다 — 3분 안에 통화에 참여하세요.', it: '📹 La tua videochiamata con {model} è ora attiva — hai 3 minuti per arrivare alla chiamata.', pl: '📹 Twoja rozmowa wideo z {model} jest teraz aktywna — masz 3 minuty, aby dotrzeć na rozmowę.', nl: '📹 Je videogesprek met {model} is nu actief — je hebt 3 minuten om naar het gesprek te gaan.', tr: '📹 {model} ile görüntülü araman şimdi aktif — aramaya gitmek için 3 dakikan var.' },
   bell_booking_fan_noshow_model_title: { en: '💔 Fan no-show', es: '💔 El fan no se presentó', pt: '💔 Fã não apareceu', fr: '💔 Fan absent', de: '💔 Fan-No-Show', ru: '💔 Фанат не явился', ja: '💔 ファンのノーショー', zh: '💔 粉丝爽约', ko: '💔 팬 노쇼', it: '💔 Fan assente', pl: '💔 Fan się nie pojawił', nl: '💔 Fan no-show', tr: '💔 Hayran gelmedi' },
@@ -7167,6 +7187,20 @@ function bellAdminsNewModel(modelUserId, username, displayName, viaInvite) {
   } catch (e) { /* bells are a bonus; the signup is the deliverable */ }
 }
 
+/* Pass-2 promo columns (owner, Oct 24 2026): link lifetime on
+ * campaigns + appreciation-lot columns on grants. addColumnIfMissing
+ * covers DBs whose promo tables were created by the first promo
+ * build; brand-new DBs get the columns from the CREATE TABLEs above.
+ * Legacy campaigns (created before link lifetime existed) are
+ * backfilled to the default 7-day life counted from their creation. */
+addColumnIfMissing('promo_campaigns', 'expires_at', 'TEXT');
+db.prepare(`UPDATE promo_campaigns SET expires_at = datetime(created_at, '+7 days')
+            WHERE expires_at IS NULL`).run();
+addColumnIfMissing('promo_grants', 'source', "TEXT NOT NULL DEFAULT 'promo_signup'");
+addColumnIfMissing('promo_grants', 'expires_at', 'TEXT');
+addColumnIfMissing('promo_grants', 'returned_cents', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('promo_grants', 'settled_at', 'TEXT');
+
 /* Promo signup bonus (owner, Oct 24 2026): a NEW fan who signed up via
  * a #promo/<code> house link is granted the campaign's amount — normal
  * spendable credits PAID OUT OF THE HOUSE ACCOUNT'S OWN WALLET, booked
@@ -7185,6 +7219,9 @@ function grantPromoSignup(userId, promoCode, ip) {
   txn(() => {
     const camp = db.prepare('SELECT * FROM promo_campaigns WHERE code = ?').get(code);
     if (!camp || !camp.active) return;
+    // Link lifetime: a link past its expires_at grants nothing, even
+    // with budget and house balance to spare (signup still succeeds).
+    if (camp.expires_at && camp.expires_at <= nowSql()) return;
     if (camp.budget_cents - camp.granted_cents < camp.amount_cents) return;
     if (db.prepare('SELECT id FROM promo_grants WHERE campaign_id = ? AND user_id = ?')
       .get(camp.id, userId)) return;
@@ -7218,6 +7255,7 @@ app.get('/api/promo/:code', (req, res) => {
   const camp = /^[a-f0-9]{12}$/.test(code)
     ? db.prepare('SELECT * FROM promo_campaigns WHERE code = ?').get(code) : null;
   let available = !!(camp && camp.active
+    && !(camp.expires_at && camp.expires_at <= nowSql())
     && camp.budget_cents - camp.granted_cents >= camp.amount_cents);
   if (available) {
     const hid = houseAccountId();
@@ -7259,9 +7297,17 @@ app.post('/api/promo-campaigns', identMiddleware, requireUser, requireHouseUser,
     return res.status(400).json({ error: 'bad_budget', message: 'Budget must be more than $0 and at most $100,000 per campaign.' });
   if (budget < amount)
     return res.status(400).json({ error: 'bad_budget', message: 'The budget must cover at least one signup bonus.' });
+  // Link lifetime: the house picks how long the link keeps granting —
+  // default 7 days, allowed 1–30. This is the LINK's life, distinct
+  // from any spend window on the credits it grants.
+  const winRaw = req.body ? req.body.window_days : undefined;
+  const winDays = (winRaw === undefined || winRaw === null || winRaw === '') ? 7 : parseInt(winRaw);
+  if (!Number.isInteger(winDays) || winDays < 1 || winDays > 30)
+    return res.status(400).json({ error: 'bad_window', message: 'Link life must be between 1 and 30 days.' });
   const code = crypto.randomBytes(6).toString('hex'); // 12-char code
-  const info = db.prepare(`INSERT INTO promo_campaigns (code, label, amount_cents, budget_cents, created_by)
-                           VALUES (?,?,?,?,?)`).run(code, label, amount, budget, req.user.id);
+  const info = db.prepare(`INSERT INTO promo_campaigns (code, label, amount_cents, budget_cents, created_by, expires_at)
+                           VALUES (?,?,?,?,?, datetime('now', ?))`)
+    .run(code, label, amount, budget, req.user.id, `+${winDays} days`);
   const camp = db.prepare('SELECT * FROM promo_campaigns WHERE id = ?').get(Number(info.lastInsertRowid));
   res.json({ ok: true, campaign: promoCampaignRow(camp), url: `/#promo/${code}` });
 });
@@ -7286,6 +7332,178 @@ app.post('/api/promo-campaigns/:id/active', identMiddleware, requireUser, requir
   db.prepare('UPDATE promo_campaigns SET active = ? WHERE id = ?').run(active, camp.id);
   res.json({ ok: true, campaign: promoCampaignRow(db.prepare('SELECT * FROM promo_campaigns WHERE id = ?').get(camp.id)) });
 });
+
+/* Extend a link's life by 7 days (owner, Oct 24 2026): counted from
+ * the current expiry while it is still in the future, or from NOW
+ * when the link already expired — MAX(expires_at, now) + 7 days.
+ * Extending touches ONLY the clock: it never un-pauses a campaign,
+ * so a paused link stays dark after an extend until it is resumed,
+ * while an active-but-expired link starts granting again at once. */
+app.post('/api/promo-campaigns/:id/extend', identMiddleware, requireUser, requireHouseUser, (req, res) => {
+  const camp = db.prepare('SELECT * FROM promo_campaigns WHERE id = ?').get(req.params.id);
+  if (!camp) return res.status(404).json({ error: 'not_found' });
+  db.prepare(`UPDATE promo_campaigns
+                SET expires_at = datetime(MAX(COALESCE(expires_at, datetime('now')), datetime('now')), '+7 days')
+                WHERE id = ?`).run(camp.id);
+  res.json({ ok: true, campaign: promoCampaignRow(db.prepare('SELECT * FROM promo_campaigns WHERE id = ?').get(camp.id)) });
+});
+
+/* ---------------- Founding-fan appreciation grants -----------------
+ * (owner, Oct 24 2026): the fans who were already here BEFORE launch
+ * get a $10 thank-you, paid out of the HOUSE WALLET exactly like the
+ * signup grants — but these credits carry a 7-day SPEND WINDOW (the
+ * appreciation lot's own expires_at — a different clock from a promo
+ * LINK's lifetime): whatever the fan has not spent when the window
+ * closes is swept back into the house wallet by
+ * sweepAppreciationExpiries. TRUE fans only: role 'fan', not banned,
+ * and NEVER the protected/test accounts below — ccbillreview is
+ * CCBill's review account (never touch), fandemo is the owner's own
+ * test fan, zzpinktest2 is a throwaway test fan. Booked as
+ * 'appreciation_grant', which — exactly like 'promo_grant' — is not
+ * one of the fan-paid money-in rails, so appreciation never inflates
+ * fan revenue totals. */
+const APPRECIATION_EXCLUDED_USERNAMES = ['ccbillreview', 'fandemo', 'zzpinktest2'];
+function isTrueFanRow(u) {
+  return !!u && u.role === 'fan' && !u.banned
+    && !APPRECIATION_EXCLUDED_USERNAMES.includes(String(u.username || '').toLowerCase());
+}
+
+app.get('/api/promo-campaigns/appreciation/candidates', identMiddleware, requireUser, requireHouseUser, (req, res) => {
+  sweepAppreciationExpiries(); // keep the open-grant flags fresh
+  const rows = db.prepare(`
+    SELECT u.id, u.username, u.display_name, u.created_at, s.last_login_at,
+           EXISTS(SELECT 1 FROM promo_grants g
+                  WHERE g.user_id = u.id AND g.source = 'appreciation'
+                    AND g.settled_at IS NULL) AS has_open_grant
+    FROM users u
+    LEFT JOIN (SELECT user_id, MAX(created_at) AS last_login_at
+               FROM sessions GROUP BY user_id) s ON s.user_id = u.id
+    WHERE u.role = 'fan' AND u.banned = 0
+      AND LOWER(u.username) NOT IN (${APPRECIATION_EXCLUDED_USERNAMES.map((n) => `'${n}'`).join(',')})
+    ORDER BY u.created_at ASC, u.id ASC`).all();
+  const hw = getWallet(req.user.id);
+  res.json({
+    candidates: rows.map((r) => ({
+      id: r.id, username: r.username, display_name: r.display_name,
+      created_at: r.created_at, last_login_at: r.last_login_at,
+      has_open_grant: !!r.has_open_grant,
+    })),
+    house_balance_cents: hw ? hw.credits_cents : 0,
+  });
+});
+
+app.post('/api/promo-campaigns/appreciation/grant', identMiddleware, requireUser, requireHouseUser, (req, res) => {
+  const amount = (req.body && req.body.amount_cents !== undefined)
+    ? parseInt(req.body.amount_cents) : 1000;
+  if (!Number.isInteger(amount) || amount <= 0 || amount > 10000)
+    return res.status(400).json({ error: 'bad_amount', message: 'Appreciation per fan must be more than $0 and at most $100.' });
+  const ids = [...new Set((Array.isArray(req.body && req.body.user_ids) ? req.body.user_ids : [])
+    .map((x) => parseInt(x)).filter((x) => Number.isInteger(x) && x > 0))].slice(0, 500);
+  if (!ids.length)
+    return res.status(400).json({ error: 'no_fans', message: 'Pick at least one fan.' });
+  const hid = req.user.id;
+  const ip = clientIp(req);
+  const granted = [];
+  const skipped = [];
+  let balanceOut = false;
+  for (const uid of ids) {
+    if (balanceOut) { skipped.push({ user_id: uid, reason: 'house_balance' }); continue; }
+    let ok = false;
+    let reason = null;
+    txn(() => {
+      const u = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
+      if (!isTrueFanRow(u) || uid === hid) { reason = 'not_a_true_fan'; return; }
+      if (db.prepare(`SELECT id FROM promo_grants
+                      WHERE source = 'appreciation' AND user_id = ? AND settled_at IS NULL`)
+        .get(uid)) { reason = 'already_has_open_grant'; return; }
+      const hw = getWallet(hid);
+      if (!hw || hw.credits_cents < amount) { reason = 'house_balance'; balanceOut = true; return; }
+      db.prepare('UPDATE wallets SET credits_cents = credits_cents - ? WHERE user_id = ?')
+        .run(amount, hid);
+      db.prepare('UPDATE wallets SET credits_cents = credits_cents + ? WHERE user_id = ?')
+        .run(amount, uid);
+      db.prepare(`INSERT INTO transactions (fan_id, type, gross_cents, note, ip)
+                  VALUES (?, 'appreciation_grant', ?, ?, ?)`)
+        .run(uid, amount, 'Founding-fan appreciation — here before launch', ip);
+      db.prepare(`INSERT INTO promo_grants (campaign_id, user_id, amount_cents, source, expires_at, ip)
+                  VALUES (NULL, ?, ?, 'appreciation', datetime('now', '+7 days'), ?)`)
+        .run(uid, amount, ip);
+      ok = true;
+    });
+    if (ok) {
+      granted.push(uid);
+      // The thank-you lands in his official SlutCamp Notices thread,
+      // in HIS language. The credit is the deliverable — a message
+      // failure never unmakes a grant.
+      try {
+        postToOfficialThread(uid, srv('appreciation_thanks', userLang(uid), { amount: fmt$(amount) }));
+      } catch (e) { /* message is the card on top of the credit */ }
+    } else {
+      skipped.push({ user_id: uid, reason: reason || 'skipped' });
+    }
+  }
+  const hw = getWallet(hid);
+  res.json({ ok: true, granted_count: granted.length, skipped_count: skipped.length,
+    granted_user_ids: granted, skipped,
+    house_balance_cents: hw ? hw.credits_cents : 0 });
+});
+
+/* The appreciation expiry sweep: for every appreciation lot whose
+ * 7-day spend window has closed unsettled, return the UNSPENT
+ * remainder to the house wallet and settle the lot. "Spent" is the
+ * fan's net ledger spend (the canonical fanSpendWhere predicate —
+ * refunds net back out) since the grant, with appreciation money
+ * assumed spent FIRST (FIFO): spend that an EARLIER appreciation lot
+ * already absorbed does not count against this one. The clawback is
+ * capped at the fan's current balance and can never take a wallet
+ * negative. Settled lots never re-run — the sweep is idempotent.
+ * Runs on boot, hourly, and lazily from the candidates read. */
+function sweepAppreciationExpiries() {
+  const due = db.prepare(`SELECT * FROM promo_grants
+    WHERE source = 'appreciation' AND settled_at IS NULL
+      AND expires_at IS NOT NULL AND expires_at <= datetime('now')
+    ORDER BY created_at ASC, id ASC`).all();
+  if (!due.length) return;
+  const hid = houseAccountId();
+  for (const lot of due) {
+    try {
+      txn(() => {
+        const fresh = db.prepare('SELECT * FROM promo_grants WHERE id = ?').get(lot.id);
+        if (!fresh || fresh.settled_at) return; // already settled — never twice
+        const earlier = db.prepare(`SELECT COALESCE(SUM(amount_cents), 0) AS t FROM promo_grants
+          WHERE source = 'appreciation' AND user_id = ?
+            AND (created_at < ? OR (created_at = ? AND id < ?))`)
+          .get(fresh.user_id, fresh.created_at, fresh.created_at, fresh.id).t;
+        const spent = db.prepare(`SELECT COALESCE(SUM(gross_cents), 0) AS s FROM transactions
+          WHERE ${fanSpendWhere()} AND created_at >= ?`)
+          .get(fresh.user_id, fresh.created_at).s;
+        const againstThisLot = Math.max(0, Math.max(0, spent) - earlier);
+        let remainder = fresh.amount_cents - Math.min(fresh.amount_cents, againstThisLot);
+        const fw = getWallet(fresh.user_id);
+        remainder = Math.max(0, Math.min(remainder, fw ? fw.credits_cents : 0));
+        if (remainder > 0) {
+          db.prepare('UPDATE wallets SET credits_cents = credits_cents - ? WHERE user_id = ?')
+            .run(remainder, fresh.user_id);
+          db.prepare(`INSERT INTO transactions (fan_id, type, gross_cents, note)
+                      VALUES (?, 'promo_expire', ?, ?)`)
+            .run(fresh.user_id, remainder,
+              'Appreciation credit expired unspent — returned to the house');
+          if (hid) {
+            db.prepare('UPDATE wallets SET credits_cents = credits_cents + ? WHERE user_id = ?')
+              .run(remainder, hid);
+            db.prepare(`INSERT INTO transactions (fan_id, type, gross_cents, note)
+                        VALUES (?, 'promo_expire_return', ?, ?)`)
+              .run(hid, remainder, 'Expired appreciation credit returned');
+          }
+        }
+        db.prepare(`UPDATE promo_grants SET returned_cents = ?, settled_at = datetime('now')
+                    WHERE id = ? AND settled_at IS NULL`).run(remainder, fresh.id);
+      });
+    } catch (e) { console.error('appreciation expiry sweep', e); }
+  }
+}
+sweepAppreciationExpiries();
+setInterval(() => { try { sweepAppreciationExpiries(); } catch (e) {} }, 60 * 60 * 1000);
 
 // POST /api/auth/signup — optional guest_token migrates guest chats/trials
 // Optional invite_code: model invite link — forces role='model', tags the invite as used.
@@ -18355,6 +18573,7 @@ function promoCampaignRow(c) {
     budget_cents: c.budget_cents, granted_cents: c.granted_cents,
     remaining_cents: c.budget_cents - c.granted_cents,
     signups, active: !!c.active, created_at: c.created_at,
+    expires_at: c.expires_at || null,
   };
 }
 
@@ -18362,8 +18581,22 @@ app.get('/api/admin/promos', ...adminOnly, (req, res) => {
   const rows = db.prepare('SELECT * FROM promo_campaigns ORDER BY id DESC').all();
   const hid = houseAccountId();
   const hw = hid ? getWallet(hid) : null;
+  // Founding-fan appreciation oversight (owner, Oct 24 2026): totals
+  // + the most recent lots, so the Manager can see what went out,
+  // what is still inside its 7-day spend window, and what the expiry
+  // sweep has already returned to the house wallet.
+  const apprTotals = db.prepare(`SELECT COALESCE(SUM(amount_cents), 0) AS granted_cents,
+      COALESCE(SUM(returned_cents), 0) AS returned_cents,
+      COALESCE(SUM(CASE WHEN settled_at IS NULL THEN 1 ELSE 0 END), 0) AS open_count,
+      COALESCE(SUM(CASE WHEN settled_at IS NULL THEN amount_cents ELSE 0 END), 0) AS open_cents
+    FROM promo_grants WHERE source = 'appreciation'`).get();
+  const apprRecent = db.prepare(`SELECT g.amount_cents, g.returned_cents, g.expires_at,
+      g.settled_at, g.created_at, u.username
+    FROM promo_grants g JOIN users u ON u.id = g.user_id
+    WHERE g.source = 'appreciation' ORDER BY g.id DESC LIMIT 20`).all();
   res.json({ promos: rows.map(promoCampaignRow),
-    house_balance_cents: hw ? hw.credits_cents : 0 });
+    house_balance_cents: hw ? hw.credits_cents : 0,
+    appreciation: { ...apprTotals, recent: apprRecent } });
 });
 
 app.post('/api/admin/promos/:id/active', ...adminOnly, (req, res) => {

@@ -622,14 +622,21 @@ async function adminPromosBody() {
   const baseUrl = window.location.origin;
   const promoCard = (c) => {
     const url = `${baseUrl}/#promo/${c.code}`;
+    const expMs = c.expires_at ? Date.parse(String(c.expires_at).replace(' ', 'T') + 'Z') : null;
+    const daysLeft = expMs ? Math.ceil((expMs - Date.now()) / 86400000) : null;
+    const expired = daysLeft !== null && daysLeft <= 0;
+    const expLine = expMs === null ? ''
+      : expired ? '<br><span class="small" style="color:var(--red)">⌛ Expired</span>'
+      : `<br><span class="small muted">⏳ Ends in ${daysLeft}d</span>`;
     const state = !c.active ? '<span style="color:var(--red)">⏸ Paused</span>'
+      : expired ? '<span style="color:var(--red)">⌛ Link expired</span>'
       : c.remaining_cents < c.amount_cents ? '<span style="color:var(--red)">💸 Budget used up</span>'
       : houseBalance < c.amount_cents ? '<span style="color:var(--yellow)">⚠️ House wallet too low to grant</span>'
       : '<span style="color:var(--green)">✅ Live</span>';
     return `
       <div class="card" style="padding:12px">
         <div class="row"><span class="grow"><b>${esc(c.label) || 'Untitled campaign'}</b><br>
-          <span class="small muted">${url}</span><br>${state}</span></div>
+          <span class="small muted">${url}</span><br>${state}${expLine}</span></div>
         <div class="stat-grid" style="margin:10px 0">
           <div class="stat"><div class="n">${fmt(c.amount_cents)}</div><div class="l">Per signup</div></div>
           <div class="stat"><div class="n">${fmt(c.budget_cents)}</div><div class="l">Budget</div></div>
@@ -652,7 +659,30 @@ async function adminPromosBody() {
         <span style="font-size:20px;font-weight:800">${fmt(houseBalance)}</span></div>
     </div>
     <h3>🎁 Promo campaigns (${promos.length})</h3>
-    ${promos.map(promoCard).join('') || '<div class="empty">No promo campaigns yet — create one in the app on the house account.</div>'}`;
+    ${promos.map(promoCard).join('') || '<div class="empty">No promo campaigns yet — create one in the app on the house account.</div>'}
+    <h3>💝 Founding-fan appreciation</h3>
+    ${(() => {
+      const a = (data && data.appreciation) || {};
+      const recent = a.recent || [];
+      const lotRow = (g) => `
+        <div class="row" style="gap:8px;padding:4px 0">
+          <span class="grow"><b>@${esc(g.username)}</b> <span class="muted small">${fmt(g.amount_cents)} · ${esc(String(g.created_at || '').slice(0, 10))}</span></span>
+          ${g.settled_at
+            ? `<span class="small muted">settled · ${fmt(g.returned_cents)} returned</span>`
+            : `<span class="small">🎁 open · expires ${esc(String(g.expires_at || '').slice(0, 10))}</span>`}
+        </div>`;
+      return `
+      <div class="card" style="padding:12px">
+        <div class="muted small" style="margin-bottom:8px">The $10 founding-fan thank-you, fired from the house account in the app. Each lot has a 7-day spend window; whatever is unspent when it closes sweeps back into the house wallet. Appreciation is house spend — never fan money-in.</div>
+        <div class="stat-grid">
+          <div class="stat"><div class="n">${fmt(a.granted_cents || 0)}</div><div class="l">Granted</div></div>
+          <div class="stat"><div class="n">${fmt(a.returned_cents || 0)}</div><div class="l">Returned</div></div>
+          <div class="stat"><div class="n">${a.open_count || 0}</div><div class="l">Open lots</div></div>
+          <div class="stat"><div class="n">${fmt(a.open_cents || 0)}</div><div class="l">Still spendable</div></div>
+        </div>
+        ${recent.map(lotRow).join('') || '<div class="empty">No appreciation grants yet.</div>'}
+      </div>`;
+    })()}`;
 }
 
 async function adminPayoutsBody() {

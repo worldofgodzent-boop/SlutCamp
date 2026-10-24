@@ -15969,6 +15969,8 @@ async function vHousePromos() {
   if (!S.user || !S.user.is_house) return show('modelSettings', {});
   await refreshMe();
   const { status, data } = await api('/promo-campaigns');
+  const appr = await api('/promo-campaigns/appreciation/candidates');
+  const candidates = (appr.status === 200 && appr.data && appr.data.candidates) || [];
   if (status !== 200 || !data) {
     app.innerHTML = `<div class="header"><h1>🎁 Promo links</h1></div>
       <div class="screen"><div class="card">Couldn't load your promo campaigns — try again in a moment.</div>
@@ -15980,13 +15982,20 @@ async function vHousePromos() {
   const camps = data.campaigns || [];
   const campCard = (c) => {
     const url = canonOrigin() + '/#promo/' + c.code;
+    const expMs = c.expires_at ? Date.parse(String(c.expires_at).replace(' ', 'T') + 'Z') : null;
+    const daysLeft = expMs ? Math.ceil((expMs - Date.now()) / 86400000) : null;
+    const expired = daysLeft !== null && daysLeft <= 0;
+    const expLine = expMs === null ? ''
+      : expired ? '<br><span style="color:var(--red)">⌛ Expired</span>'
+      : `<br><span class="muted small">⏳ Ends in ${daysLeft}d</span>`;
     const state = !c.active ? '<span style="color:var(--red)">⏸ Paused</span>'
+      : expired ? '<span style="color:var(--red)">⌛ Link expired</span>'
       : c.remaining_cents < c.amount_cents ? '<span style="color:var(--red)">💸 Budget used up</span>'
       : balance < c.amount_cents ? '<span style="color:var(--yellow)">⚠️ House wallet too low to grant</span>'
       : '<span style="color:var(--green)">✅ Live</span>';
     return `
     <div class="card" style="padding:14px">
-      <div class="row" style="align-items:flex-start"><span class="grow"><b>${esc(c.label) || 'Untitled campaign'}</b><br>${state}</span></div>
+      <div class="row" style="align-items:flex-start"><span class="grow"><b>${esc(c.label) || 'Untitled campaign'}</b><br>${state}${expLine}</span></div>
       <div class="row" style="gap:6px;margin-top:10px">
         <input class="input" readonly value="${url}" style="flex:1" onclick="this.select()">
         <button class="btn small" data-hp-copy="${c.code}">📋 Copy</button>
@@ -16002,9 +16011,17 @@ async function vHousePromos() {
         <label class="field" style="margin:0">Budget $<input class="input" id="hp-budget-${c.id}" type="number" min="1" max="100000" step="1" value="${c.budget_cents / 100}" style="width:110px"></label>
         <button class="btn small" data-hp-budget="${c.id}">💾 Save budget</button>
         <button class="btn small ghost" data-hp-toggle="${c.id}" data-active="${c.active ? 1 : 0}">${c.active ? '⏸ Pause' : '▶️ Resume'}</button>
+        <button class="btn small ghost" data-hp-extend="${c.id}">⏳ Extend +7d</button>
       </div>
     </div>`;
   };
+  const candRow = (c) => `
+    <label class="row" style="gap:8px;align-items:center;padding:6px 0">
+      <input type="checkbox" data-ap-fan="${c.id}" ${c.has_open_grant ? 'disabled' : ''}>
+      <span class="grow"><b>@${esc(c.username)}</b><br>
+      <span class="muted small">Joined ${esc(String(c.created_at || '').slice(0, 10))} · Last login ${c.last_login_at ? esc(String(c.last_login_at).slice(0, 16).replace('T', ' ')) : 'never'}</span></span>
+      ${c.has_open_grant ? '<span class="muted small">🎁 has one open</span>' : ''}
+    </label>`;
   app.innerHTML = `
     <div class="header"><h1>🎁 Promo links</h1></div>
     <div class="screen">
@@ -16021,11 +16038,24 @@ async function vHousePromos() {
         <div class="row" style="gap:8px;flex-wrap:wrap">
           <label class="field" style="flex:1;min-width:130px">Bonus per signup $<input class="input" id="hp-amount" type="number" min="0.01" max="100" step="0.01" placeholder="5"></label>
           <label class="field" style="flex:1;min-width:130px">Budget (total give-away) $<input class="input" id="hp-budget-new" type="number" min="1" max="100000" step="1" placeholder="500"></label>
+          <label class="field" style="flex:1;min-width:130px">Link life (days)<input class="input" id="hp-window" type="number" min="1" max="30" step="1" value="7"></label>
         </div>
+        <div class="muted small" style="margin-bottom:10px">The link keeps granting for its life (default 7 days), then stops on its own — you can extend it any time from the campaign card.</div>
         <button class="btn" id="hp-create" style="width:100%">Create promo link</button>
       </div>
       <h3 style="margin:16px 0 10px">🎁 Your campaigns (${camps.length})</h3>
       ${camps.map(campCard).join('') || '<div class="empty">No promo campaigns yet.</div>'}
+      <div class="card" style="margin-top:16px">
+        <div style="font-weight:800;margin-bottom:6px">💝 Founding-fan appreciation</div>
+        <div class="muted small" style="margin-bottom:10px">A thank-you for the TRUE fans who were here before launch — paid out of your house wallet, like the signup bonuses. They get 7 days to spend it; whatever is left comes straight back to your wallet. Fans who already have one open are skipped.</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+          <label class="field" style="margin:0">Thank-you $<input class="input" id="ap-amount" type="number" min="0.01" max="100" step="0.01" value="10" style="width:110px"></label>
+          <label class="row" style="gap:6px;align-items:center;margin:0"><input type="checkbox" id="ap-all"> Select all</label>
+          <span class="grow"></span>
+          <button class="btn small" id="ap-send">💝 Send appreciation</button>
+        </div>
+        <div style="margin-top:8px">${candidates.map(candRow).join('') || '<div class="empty">No eligible fans yet.</div>'}</div>
+      </div>
     </div>`;
   $('#hp-back').onclick = () => show('modelSettings', {});
   $('#hp-addmoney').onclick = () => show('wallet', {});
@@ -16033,10 +16063,12 @@ async function vHousePromos() {
     const label = $('#hp-label').value.trim();
     const amount = Math.round(parseFloat($('#hp-amount').value) * 100);
     const budget = Math.round(parseFloat($('#hp-budget-new').value) * 100);
+    const winDays = parseInt($('#hp-window').value, 10);
     if (!Number.isInteger(amount) || amount <= 0) return toast('Enter the bonus per signup.');
     if (!Number.isInteger(budget) || budget <= 0) return toast('Enter the campaign budget.');
+    if (!Number.isInteger(winDays) || winDays < 1 || winDays > 30) return toast('Link life must be 1–30 days.');
     const { status: st, data: d } = await api('/promo-campaigns', {
-      method: 'POST', body: JSON.stringify({ label, amount_cents: amount, budget_cents: budget }) });
+      method: 'POST', body: JSON.stringify({ label, amount_cents: amount, budget_cents: budget, window_days: winDays }) });
     if (st === 200 && d.campaign) {
       const url = canonOrigin() + '/#promo/' + d.campaign.code;
       try { await navigator.clipboard.writeText(url); toast('🎁 Promo link created + copied!'); }
@@ -16069,6 +16101,33 @@ async function vHousePromos() {
       if (st === 200) show('housePromos', {});
     };
   });
+  app.querySelectorAll('[data-hp-extend]').forEach((b) => {
+    b.onclick = async () => {
+      const { status: st } = await api(`/promo-campaigns/${b.dataset.hpExtend}/extend`, {
+        method: 'POST', body: JSON.stringify({}) });
+      toast(st === 200 ? '⏳ Link life extended by 7 days' : 'Could not extend that link.');
+      if (st === 200) show('housePromos', {});
+    };
+  });
+  const apAll = $('#ap-all');
+  if (apAll) apAll.onchange = () => {
+    app.querySelectorAll('[data-ap-fan]').forEach((cb) => { if (!cb.disabled) cb.checked = apAll.checked; });
+  };
+  const apSend = $('#ap-send');
+  if (apSend) apSend.onclick = async () => {
+    const ids = [...app.querySelectorAll('[data-ap-fan]')]
+      .filter((cb) => cb.checked && !cb.disabled).map((cb) => Number(cb.dataset.apFan));
+    if (!ids.length) return toast('Pick at least one fan.');
+    const amount = Math.round(parseFloat($('#ap-amount').value) * 100);
+    if (!Number.isInteger(amount) || amount <= 0) return toast('Enter the thank-you amount.');
+    const { status: st, data: d } = await api('/promo-campaigns/appreciation/grant', {
+      method: 'POST', body: JSON.stringify({ user_ids: ids, amount_cents: amount }) });
+    if (st === 200 && d) {
+      toast(`💝 Appreciation sent to ${d.granted_count} fan${d.granted_count === 1 ? '' : 's'}`
+        + (d.skipped_count ? ` — ${d.skipped_count} skipped` : ''));
+      show('housePromos', {});
+    } else toast((d && d.message) || 'Could not send the appreciation.');
+  };
 }
 
 async function vWallet() {
