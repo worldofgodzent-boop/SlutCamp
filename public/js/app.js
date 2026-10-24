@@ -113,6 +113,7 @@ const I18N = {
     tab_chats: 'Chats',
     tab_bookings: 'Bookings',
     tab_wallet: 'Wallet',
+    tab_playlist: 'Playlist',
     tab_earnings: 'Earnings',
     tab_settings: 'Settings',
     tab_home: 'Home',
@@ -246,7 +247,13 @@ const I18N = {
     lives_btn: '🔴 Lives',
     lives_count: '{n} live now',
     lives_word: '🔴 Lives',
-    follow_title: 'Follow for live notifications',
+    follow_title: 'Add to Playlist',
+    playlist_add: '➕ Add to Playlist',
+    playlist_added: '✓ In your Playlist',
+    playlist_title: '🎵 My Playlist',
+    playlist_empty: 'Tap ➕ Add to Playlist on any model and she\'ll live here — plus you\'ll get her live alerts.',
+    playlist_added_toast: '🎵 {name} added to your Playlist',
+    playlist_removed_toast: '🎵 Removed from your Playlist',
     live_now_h: '🔴 Live Now',
     fanlive_h: '🔴 Live now',
     live_now_sub: 'Everyone streaming right now — tap to jump in 💋',
@@ -914,7 +921,7 @@ const I18N = {
     notifications_word: 'Notifications',
     mark_all_read: 'Mark all read',
     notif_empty_title: 'Nothing yet.',
-    notif_empty_sub: 'Follow models to get notified when they go live.',
+    notif_empty_sub: 'Add models to your Playlist to get notified when they go live.',
     notif_ft_wants: '{name} wants a video call — {min} min · {amount}',
     notif_accept: 'Accept ✅',
     notif_decline: 'Decline',
@@ -1060,6 +1067,7 @@ const I18N = {
     tab_chats: 'Chats',
     tab_bookings: 'Reservas',
     tab_wallet: 'Billetera',
+    tab_playlist: 'Playlist',
     tab_earnings: 'Ganancias',
     tab_settings: 'Ajustes',
     tab_home: 'Inicio',
@@ -1193,7 +1201,13 @@ const I18N = {
     lives_btn: '🔴 En vivo',
     lives_count: '{n} en vivo ahora',
     lives_word: '🔴 En vivo',
-    follow_title: 'Seguir para avisos de en vivo',
+    follow_title: 'Añadir a tu Playlist',
+    playlist_add: '➕ Añadir a tu Playlist',
+    playlist_added: '✓ En tu Playlist',
+    playlist_title: '🎵 Mi Playlist',
+    playlist_empty: 'Toca ➕ Añadir a tu Playlist en cualquier modelo y ella vivirá aquí — además recibirás sus avisos de en vivo.',
+    playlist_added_toast: '🎵 {name} se añadió a tu Playlist',
+    playlist_removed_toast: '🎵 Eliminada de tu Playlist',
     live_now_h: '🔴 En Vivo Ahora',
     fanlive_h: '🔴 En vivo ahora',
     live_now_sub: 'Todas transmitiendo ahora — toca para entrar 💋',
@@ -1861,7 +1875,7 @@ const I18N = {
     notifications_word: 'Notificaciones',
     mark_all_read: 'Marcar todo leído',
     notif_empty_title: 'Nada por aquí todavía.',
-    notif_empty_sub: 'Sigue a las modelos para recibir avisos cuando salgan en vivo.',
+    notif_empty_sub: 'Añade modelos a tu Playlist para recibir avisos cuando salgan en vivo.',
     notif_ft_wants: '{name} quiere una videollamada — {min} min · {amount}',
     notif_accept: 'Aceptar ✅',
     notif_decline: 'Rechazar',
@@ -2007,6 +2021,7 @@ const I18N = {
     tab_chats: 'Conversas',
     tab_bookings: 'Reservas',
     tab_wallet: 'Carteira',
+    tab_playlist: 'Playlist',
     tab_earnings: 'Ganhos',
     tab_settings: 'Configurações',
     tab_home: 'Início',
@@ -2140,7 +2155,13 @@ const I18N = {
     lives_btn: '🔴 Ao vivo',
     lives_count: '{n} ao vivo agora',
     lives_word: '🔴 Ao vivo',
-    follow_title: 'Seguir para avisos de live',
+    follow_title: 'Adicionar à sua Playlist',
+    playlist_add: '➕ Adicionar à sua Playlist',
+    playlist_added: '✓ Na sua Playlist',
+    playlist_title: '🎵 Minha Playlist',
+    playlist_empty: 'Toque em ➕ Adicionar à sua Playlist em qualquer modelo e ela ficará aqui — e você receberá os avisos de live dela.',
+    playlist_added_toast: '🎵 {name} foi adicionada à sua Playlist',
+    playlist_removed_toast: '🎵 Removida da sua Playlist',
     live_now_h: '🔴 Ao Vivo Agora',
     fanlive_h: '🔴 Ao vivo agora',
     live_now_sub: 'Todas transmitindo agora — toque para entrar 💋',
@@ -2808,7 +2829,7 @@ const I18N = {
     notifications_word: 'Notificações',
     mark_all_read: 'Marcar tudo como lido',
     notif_empty_title: 'Nada por aqui ainda.',
-    notif_empty_sub: 'Siga modelos para ser avisado quando elas entrarem ao vivo.',
+    notif_empty_sub: 'Adicione modelos à sua Playlist para ser avisado quando elas entrarem ao vivo.',
     notif_ft_wants: '{name} quer uma videochamada — {min} min · {amount}',
     notif_accept: 'Aceitar ✅',
     notif_decline: 'Recusar',
@@ -2954,6 +2975,7 @@ const I18N = {
     tab_chats: 'Discussions',
     tab_bookings: 'Réservations',
     tab_wallet: 'Portefeuille',
+    tab_playlist: 'Playlist',
     tab_earnings: 'Gains',
     tab_settings: 'Paramètres',
     tab_home: 'Accueil',
@@ -3087,7 +3109,13 @@ const I18N = {
     lives_btn: '🔴 Lives',
     lives_count: '{n} en direct maintenant',
     lives_word: '🔴 Lives',
-    follow_title: 'Suivre pour les notifications de direct',
+    follow_title: 'Ajouter à votre Playlist',
+    playlist_add: '➕ Ajouter à votre Playlist',
+    playlist_added: '✓ Dans votre Playlist',
+    playlist_title: '🎵 Ma Playlist',
+    playlist_empty: 'Touchez ➕ Ajouter à votre Playlist sur n\'importe quel modèle et elle vivra ici — en plus, vous recevrez ses alertes de direct.',
+    playlist_added_toast: '🎵 {name} ajoutée à votre Playlist',
+    playlist_removed_toast: '🎵 Retirée de votre Playlist',
     live_now_h: '🔴 En direct maintenant',
     fanlive_h: '🔴 En direct maintenant',
     live_now_sub: 'Toutes celles qui diffusent en ce moment — touchez pour entrer 💋',
@@ -3755,7 +3783,7 @@ const I18N = {
     notifications_word: 'Notifications',
     mark_all_read: 'Tout marquer comme lu',
     notif_empty_title: 'Rien pour le moment.',
-    notif_empty_sub: 'Suivez des modèles pour être avertie quand elles passent en direct.',
+    notif_empty_sub: 'Ajoutez des modèles à votre Playlist pour être avertie quand elles passent en direct.',
     notif_ft_wants: '{name} veut un appel vidéo — {min} min · {amount}',
     notif_accept: 'Accepter ✅',
     notif_decline: 'Refuser',
@@ -3901,6 +3929,7 @@ const I18N = {
     tab_chats: 'Chats',
     tab_bookings: 'Buchungen',
     tab_wallet: 'Wallet',
+    tab_playlist: 'Playlist',
     tab_earnings: 'Einnahmen',
     tab_settings: 'Einstellungen',
     tab_home: 'Start',
@@ -4034,7 +4063,13 @@ const I18N = {
     lives_btn: '🔴 Lives',
     lives_count: '{n} jetzt live',
     lives_word: '🔴 Lives',
-    follow_title: 'Für Live-Benachrichtigungen folgen',
+    follow_title: 'Zur Playlist hinzufügen',
+    playlist_add: '➕ Zur Playlist hinzufügen',
+    playlist_added: '✓ In deiner Playlist',
+    playlist_title: '🎵 Meine Playlist',
+    playlist_empty: 'Tippe bei einem Model auf ➕ Zur Playlist hinzufügen und sie lebt hier — plus du bekommst ihre Live-Benachrichtigungen.',
+    playlist_added_toast: '🎵 {name} zu deiner Playlist hinzugefügt',
+    playlist_removed_toast: '🎵 Aus deiner Playlist entfernt',
     live_now_h: '🔴 Jetzt live',
     fanlive_h: '🔴 Jetzt live',
     live_now_sub: 'Alle, die gerade streamen — tippe, um einzusteigen 💋',
@@ -4702,7 +4737,7 @@ const I18N = {
     notifications_word: 'Benachrichtigungen',
     mark_all_read: 'Alle als gelesen markieren',
     notif_empty_title: 'Noch nichts.',
-    notif_empty_sub: 'Folge Modellen, um benachrichtigt zu werden, wenn sie live gehen.',
+    notif_empty_sub: 'Füge Modelle zu deiner Playlist hinzu, um benachrichtigt zu werden, wenn sie live gehen.',
     notif_ft_wants: '{name} will einen Videoanruf — {min} Min. · {amount}',
     notif_accept: 'Akzeptieren ✅',
     notif_decline: 'Ablehnen',
@@ -4848,6 +4883,7 @@ const I18N = {
     tab_chats: 'Чаты',
     tab_bookings: 'Бронирования',
     tab_wallet: 'Кошелёк',
+    tab_playlist: 'Playlist',
     tab_earnings: 'Доход',
     tab_settings: 'Настройки',
     tab_home: 'Главная',
@@ -4981,7 +5017,13 @@ const I18N = {
     lives_btn: '🔴 Эфиры',
     lives_count: '{n} сейчас в эфире',
     lives_word: '🔴 Эфиры',
-    follow_title: 'Подписаться на уведомления об эфире',
+    follow_title: 'Добавить в Playlist',
+    playlist_add: '➕ Добавить в Playlist',
+    playlist_added: '✓ В вашем Playlist',
+    playlist_title: '🎵 Мой Playlist',
+    playlist_empty: 'Нажмите ➕ Добавить в Playlist у любой модели, и она будет жить здесь — плюс вы будете получать её уведомления об эфире.',
+    playlist_added_toast: '🎵 {name} добавлена в ваш Playlist',
+    playlist_removed_toast: '🎵 Удалена из вашего Playlist',
     live_now_h: '🔴 Сейчас в эфире',
     fanlive_h: '🔴 Сейчас в эфире',
     live_now_sub: 'Все, кто сейчас ведёт трансляцию — нажмите, чтобы присоединиться 💋',
@@ -5649,7 +5691,7 @@ const I18N = {
     notifications_word: 'Уведомления',
     mark_all_read: 'Отметить все как прочитанные',
     notif_empty_title: 'Пока ничего.',
-    notif_empty_sub: 'Подписывайтесь на моделей, чтобы получать уведомления, когда они выходят в эфир.',
+    notif_empty_sub: 'Добавляйте моделей в ваш Playlist, чтобы получать уведомления, когда они выходят в эфир.',
     notif_ft_wants: '{name} хочет видеозвонок — {min} мин · {amount}',
     notif_accept: 'Принять ✅',
     notif_decline: 'Отклонить',
@@ -5795,6 +5837,7 @@ const I18N = {
     tab_chats: 'チャット',
     tab_bookings: '予約',
     tab_wallet: 'ウォレット',
+    tab_playlist: 'Playlist',
     tab_earnings: '収益',
     tab_settings: '設定',
     tab_home: 'ホーム',
@@ -5928,7 +5971,13 @@ const I18N = {
     lives_btn: '🔴 ライブ',
     lives_count: '{n}件ライブ中',
     lives_word: '🔴 ライブ',
-    follow_title: 'ライブ通知を受け取るためにフォロー',
+    follow_title: 'プレイリストに追加',
+    playlist_add: '➕ プレイリストに追加',
+    playlist_added: '✓ プレイリストに追加済み',
+    playlist_title: '🎵 マイプレイリスト',
+    playlist_empty: 'モデルの ➕ プレイリストに追加 をタップすると彼女がここに表示されます — ライブ開始の通知も届きます。',
+    playlist_added_toast: '🎵 {name} をプレイリストに追加しました',
+    playlist_removed_toast: '🎵 プレイリストから削除しました',
     live_now_h: '🔴 ライブ中',
     fanlive_h: '🔴 現在ライブ中',
     live_now_sub: '今配信中の全員 — タップして飛び込んでね 💋',
@@ -6596,7 +6645,7 @@ const I18N = {
     notifications_word: '通知',
     mark_all_read: 'すべて既読にする',
     notif_empty_title: 'まだ何もありません。',
-    notif_empty_sub: 'モデルをフォローすると、ライブ開始時に通知が届きます。',
+    notif_empty_sub: 'モデルをプレイリストに追加すると、ライブ開始時に通知が届きます。',
     notif_ft_wants: '{name} がビデオ通話を希望 — {min}分 · {amount}',
     notif_accept: '承諾 ✅',
     notif_decline: '辞退',
@@ -6742,6 +6791,7 @@ const I18N = {
     tab_chats: '聊天',
     tab_bookings: '预约',
     tab_wallet: '钱包',
+    tab_playlist: 'Playlist',
     tab_earnings: '收入',
     tab_settings: '设置',
     tab_home: '首页',
@@ -6875,7 +6925,13 @@ const I18N = {
     lives_btn: '🔴 直播',
     lives_count: '当前 {n} 场直播',
     lives_word: '🔴 直播',
-    follow_title: '关注以接收直播通知',
+    follow_title: '添加到 Playlist',
+    playlist_add: '➕ 添加到 Playlist',
+    playlist_added: '✓ 已在你的 Playlist 中',
+    playlist_title: '🎵 我的 Playlist',
+    playlist_empty: '在任何模特页面点 ➕ 添加到 Playlist，她就会出现在这里 — 还会收到她的开播提醒。',
+    playlist_added_toast: '🎵 {name} 已添加到你的 Playlist',
+    playlist_removed_toast: '🎵 已从你的 Playlist 移除',
     live_now_h: '🔴 正在直播',
     fanlive_h: '🔴 正在直播',
     live_now_sub: '所有正在直播的人 — 点击即可加入 💋',
@@ -7543,7 +7599,7 @@ const I18N = {
     notifications_word: '通知',
     mark_all_read: '全部标为已读',
     notif_empty_title: '暂时还没有。',
-    notif_empty_sub: '关注模特，以便在她们开播时收到通知。',
+    notif_empty_sub: '将模特添加到你的 Playlist，以便在她们开播时收到通知。',
     notif_ft_wants: '{name} 想要一次视频通话 — {min} 分钟 · {amount}',
     notif_accept: '接受 ✅',
     notif_decline: '拒绝',
@@ -7689,6 +7745,7 @@ const I18N = {
     tab_chats: '채팅',
     tab_bookings: '예약',
     tab_wallet: '지갑',
+    tab_playlist: 'Playlist',
     tab_earnings: '수익',
     tab_settings: '설정',
     tab_home: '홈',
@@ -7822,7 +7879,13 @@ const I18N = {
     lives_btn: '🔴 라이브',
     lives_count: '현재 {n}개 라이브 중',
     lives_word: '🔴 라이브',
-    follow_title: '라이브 알림을 받으려면 팔로우하세요',
+    follow_title: 'Playlist에 추가',
+    playlist_add: '➕ Playlist에 추가',
+    playlist_added: '✓ 내 Playlist에 있음',
+    playlist_title: '🎵 내 Playlist',
+    playlist_empty: '모델에서 ➕ Playlist에 추가를 탭하면 그녀가 여기에 표시됩니다 — 라이브 알림도 받을 수 있어요.',
+    playlist_added_toast: '🎵 {name}님이 내 Playlist에 추가됐어요',
+    playlist_removed_toast: '🎵 Playlist에서 삭제됐어요',
     live_now_h: '🔴 지금 라이브 중',
     fanlive_h: '🔴 지금 라이브 중',
     live_now_sub: '지금 스트리밍 중인 모든 사람 — 탭하여 바로 참여하세요 💋',
@@ -8490,7 +8553,7 @@ const I18N = {
     notifications_word: '알림',
     mark_all_read: '모두 읽음으로 표시',
     notif_empty_title: '아직 아무것도 없습니다.',
-    notif_empty_sub: '모델을 팔로우하면 라이브를 시작할 때 알림을 받습니다.',
+    notif_empty_sub: '모델을 Playlist에 추가하면 라이브를 시작할 때 알림을 받습니다.',
     notif_ft_wants: '{name}님이 영상 통화를 원합니다 — {min}분 · {amount}',
     notif_accept: '수락 ✅',
     notif_decline: '거절',
@@ -8636,6 +8699,7 @@ const I18N = {
     tab_chats: 'Chat',
     tab_bookings: 'Prenotazioni',
     tab_wallet: 'Portafoglio',
+    tab_playlist: 'Playlist',
     tab_earnings: 'Guadagni',
     tab_settings: 'Impostazioni',
     tab_home: 'Home',
@@ -8769,7 +8833,13 @@ const I18N = {
     lives_btn: '🔴 Live',
     lives_count: '{n} live ora',
     lives_word: '🔴 Live',
-    follow_title: 'Segui per le notifiche live',
+    follow_title: 'Aggiungi alla tua Playlist',
+    playlist_add: '➕ Aggiungi alla tua Playlist',
+    playlist_added: '✓ Nella tua Playlist',
+    playlist_title: '🎵 La mia Playlist',
+    playlist_empty: 'Tocca ➕ Aggiungi alla tua Playlist su qualsiasi modella e lei vivrà qui — in più riceverai i suoi avvisi live.',
+    playlist_added_toast: '🎵 {name} aggiunta alla tua Playlist',
+    playlist_removed_toast: '🎵 Rimossa dalla tua Playlist',
     live_now_h: '🔴 Live ora',
     fanlive_h: '🔴 Live ora',
     live_now_sub: 'Tutte quelle in streaming ora — tocca per entrare 💋',
@@ -9437,7 +9507,7 @@ const I18N = {
     notifications_word: 'Notifiche',
     mark_all_read: 'Segna tutte come lette',
     notif_empty_title: 'Ancora nulla.',
-    notif_empty_sub: 'Segui le modelle per ricevere notifiche quando vanno live.',
+    notif_empty_sub: 'Aggiungi modelle alla tua Playlist per ricevere notifiche quando vanno live.',
     notif_ft_wants: '{name} vuole una videochiamata — {min} min · {amount}',
     notif_accept: 'Accetta ✅',
     notif_decline: 'Rifiuta',
@@ -9583,6 +9653,7 @@ const I18N = {
     tab_chats: 'Czaty',
     tab_bookings: 'Rezerwacje',
     tab_wallet: 'Portfel',
+    tab_playlist: 'Playlist',
     tab_earnings: 'Zarobki',
     tab_settings: 'Ustawienia',
     tab_home: 'Strona główna',
@@ -9716,7 +9787,13 @@ const I18N = {
     lives_btn: '🔴 Na żywo',
     lives_count: '{n} na żywo teraz',
     lives_word: '🔴 Na żywo',
-    follow_title: 'Obserwuj, aby otrzymywać powiadomienia o transmisjach na żywo',
+    follow_title: 'Dodaj do swojej playlisty',
+    playlist_add: '➕ Dodaj do swojej playlisty',
+    playlist_added: '✓ Na twojej playliście',
+    playlist_title: '🎵 Moja playlista',
+    playlist_empty: 'Dotknij ➕ Dodaj do playlisty przy dowolnej modelce, a zamieszka tutaj — dodatkowo dostaniesz jej powiadomienia o live.',
+    playlist_added_toast: '🎵 {name} dodana do twojej playlisty',
+    playlist_removed_toast: '🎵 Usunięta z twojej playlisty',
     live_now_h: '🔴 Teraz na żywo',
     fanlive_h: '🔴 Teraz na żywo',
     live_now_sub: 'Wszyscy, którzy teraz streamują — dotknij, aby wskoczyć 💋',
@@ -10384,7 +10461,7 @@ const I18N = {
     notifications_word: 'Powiadomienia',
     mark_all_read: 'Oznacz wszystkie jako przeczytane',
     notif_empty_title: 'Jeszcze nic.',
-    notif_empty_sub: 'Obserwuj modelki, aby otrzymywać powiadomienia, gdy rozpoczną transmisję na żywo.',
+    notif_empty_sub: 'Dodawaj modelki do swojej playlisty, aby otrzymywać powiadomienia, gdy rozpoczną transmisję na żywo.',
     notif_ft_wants: '{name} chce rozmowę wideo — {min} min · {amount}',
     notif_accept: 'Akceptuj ✅',
     notif_decline: 'Odrzuć',
@@ -10530,6 +10607,7 @@ const I18N = {
     tab_chats: 'Chats',
     tab_bookings: 'Boekingen',
     tab_wallet: 'Portemonnee',
+    tab_playlist: 'Playlist',
     tab_earnings: 'Inkomsten',
     tab_settings: 'Instellingen',
     tab_home: 'Home',
@@ -10663,7 +10741,13 @@ const I18N = {
     lives_btn: '🔴 Lives',
     lives_count: '{n} nu live',
     lives_word: '🔴 Lives',
-    follow_title: 'Volg voor live-meldingen',
+    follow_title: 'Voeg toe aan je Playlist',
+    playlist_add: '➕ Voeg toe aan je Playlist',
+    playlist_added: '✓ In je Playlist',
+    playlist_title: '🎵 Mijn Playlist',
+    playlist_empty: 'Tik op ➕ Voeg toe aan je Playlist bij een model en ze woont hier — plus je krijgt haar live-meldingen.',
+    playlist_added_toast: '🎵 {name} toegevoegd aan je Playlist',
+    playlist_removed_toast: '🎵 Verwijderd uit je Playlist',
     live_now_h: '🔴 Nu Live',
     fanlive_h: '🔴 Nu live',
     live_now_sub: 'Iedereen die nu streamt — tik om erbij te springen 💋',
@@ -11331,7 +11415,7 @@ const I18N = {
     notifications_word: 'Meldingen',
     mark_all_read: 'Alles als gelezen markeren',
     notif_empty_title: 'Nog niets.',
-    notif_empty_sub: 'Volg modellen om een melding te krijgen wanneer ze live gaan.',
+    notif_empty_sub: 'Voeg modellen toe aan je Playlist om een melding te krijgen wanneer ze live gaan.',
     notif_ft_wants: '{name} wil een videogesprek — {min} min · {amount}',
     notif_accept: 'Accepteren ✅',
     notif_decline: 'Afwijzen',
@@ -11477,6 +11561,7 @@ const I18N = {
     tab_chats: 'Sohbetler',
     tab_bookings: 'Rezervasyonlar',
     tab_wallet: 'Cüzdan',
+    tab_playlist: 'Playlist',
     tab_earnings: 'Kazançlar',
     tab_settings: 'Ayarlar',
     tab_home: 'Ana Sayfa',
@@ -11610,7 +11695,13 @@ const I18N = {
     lives_btn: '🔴 Canlılar',
     lives_count: '{n} şu an canlı',
     lives_word: '🔴 Canlılar',
-    follow_title: 'Canlı bildirimleri için takip et',
+    follow_title: 'Playlist\'ine ekle',
+    playlist_add: '➕ Playlist\'ine ekle',
+    playlist_added: '✓ Playlist\'inde',
+    playlist_title: '🎵 Playlist\'im',
+    playlist_empty: 'Herhangi bir modelde ➕ Playlist\'ine ekle\'ye dokun — o burada yaşasın, ayrıca canlı bildirimlerini de alırsın.',
+    playlist_added_toast: '🎵 {name} Playlist\'ine eklendi',
+    playlist_removed_toast: '🎵 Playlist\'inden kaldırıldı',
     live_now_h: '🔴 Şu An Canlı',
     fanlive_h: '🔴 Şu an canlı',
     live_now_sub: 'Şu an yayın yapan herkes — katılmak için dokun 💋',
@@ -12278,7 +12369,7 @@ const I18N = {
     notifications_word: 'Bildirimler',
     mark_all_read: 'Tümünü okundu işaretle',
     notif_empty_title: 'Henüz bir şey yok.',
-    notif_empty_sub: 'Modelleri takip et, canlıya geçtiklerinde bildirim al.',
+    notif_empty_sub: 'Modelleri Playlist\'ine ekle, canlıya geçtiklerinde bildirim al.',
     notif_ft_wants: '{name} görüntülü arama istiyor — {min} dk · {amount}',
     notif_accept: 'Kabul et ✅',
     notif_decline: 'Reddet',
@@ -13086,6 +13177,7 @@ const TABS = {
     { id: 'chats', ico: '💬', lk: 'tab_chats', view: 'fanChats' },
     { id: 'book', ico: '📅', lk: 'tab_bookings', view: 'bookings' },
     { id: 'wallet', ico: '💰', lk: 'tab_wallet', view: 'wallet' },
+    { id: 'playlist', ico: '🎵', lk: 'tab_playlist', view: 'playlist' },
   ],
   model: [
     { id: 'home', ico: '🏠', lk: 'tab_home', view: 'fanModels' },
@@ -13151,7 +13243,7 @@ function renderPreviewBanner() {
   }
 }
 function vPreviewPlaceholder() {
-  const label = { fanChats: '💬 Chats', bookings: '📅 Bookings', wallet: '💰 Wallet' }[S.view] || 'This page';
+  const label = { fanChats: '💬 Chats', bookings: '📅 Bookings', wallet: '💰 Wallet', playlist: '🎵 My Playlist' }[S.view] || 'This page';
   app.innerHTML = `
     <div class="header"><h1>${label}</h1></div>
     <div class="screen">
@@ -13256,7 +13348,7 @@ function show(view, params) {
   window.scrollTo(0, 0);
   const VIEWS = {
     landing: vLanding, auth: vAuth,
-    fanModels: vFanModels, fanLive: vFanLive, lives: vLives, fanChats: vFanChats, wallet: vWallet, quickSignup: vQuickSignup,
+    fanModels: vFanModels, fanLive: vFanLive, lives: vLives, fanChats: vFanChats, wallet: vWallet, playlist: vPlaylist, quickSignup: vQuickSignup,
     modelChats: vModelChats, modelEarnings: vModelEarnings, modelSettings: vModelSettings,
     housePromos: vHousePromos,
     chat: vChat,
@@ -13270,7 +13362,7 @@ function show(view, params) {
   };
   // Fan-preview placeholders: chats/bookings/wallet run on a fan's own data
   // and would 403 for an admin token — show the friendly note instead.
-  const viewFn = (isFanPreview() && ['fanChats', 'bookings', 'wallet'].includes(view))
+  const viewFn = (isFanPreview() && ['fanChats', 'bookings', 'wallet', 'playlist'].includes(view))
     ? vPreviewPlaceholder
     : (VIEWS[view] || vLanding);
   viewFn(params || {});
@@ -15186,6 +15278,13 @@ function openModelPeek(m, models) {
   // account rides the fan path (owner comp): it gets the bar too —
   // the server routes its chats fan-side.
   const showMsgBar = !isMe && !!S.user && (S.user.role === 'fan' || S.user.is_house || isFanPreview());
+  // Playlist button (owner, Oct 24 2026): a fan on her page adds her
+  // to his Playlist right there — the moment he "finds who he likes".
+  // True fans only: the follows API is fan-role (the house rides the
+  // fan path for chats/lives, never for follows — same rule as the
+  // directory hearts, which never render for model-role viewers).
+  // Her own page, the official page, guests and previews never see it.
+  const showPlaylistBtn = !isMe && !isOfficial && !!S.user && S.user.role === 'fan';
   // A logged-out guest gets a bar in the same pinned spot — never a
   // working chat (guests can't message), but the way forward: join /
   // log in, routed to the auth view. Signed-in users never see this
@@ -15219,6 +15318,7 @@ function openModelPeek(m, models) {
       <div class="peek-row"><span>Video calls</span><b>${fmt(m.per_minute_cents)} / min</b></div>
       ${m.schedule_summary ? `<div class="peek-row"><span>Usually live</span><b>${esc(m.schedule_summary)}</b></div>` : ''}
     </div>
+    ${showPlaylistBtn ? `<button class="btn playlist-toggle" data-peek-playlist="${m.id}" style="width:100%;margin-top:12px">${t('playlist_add')}</button>` : ''}
     <div id="peek-battles"></div>
     ${m.bio ? `<div class="muted small" style="margin-top:10px">${esc(m.bio)}</div>` : ''}
     <div id="peek-pr"></div>
@@ -15285,6 +15385,17 @@ function openModelPeek(m, models) {
         sheet.remove();
         openChatWithModel(id);
       };
+    }
+    // Playlist button: state loads async (his follows list), the tap
+    // rides the same toggleFollow as the directory hearts.
+    const plBtn = sheet.querySelector('[data-peek-playlist]');
+    if (plBtn) {
+      api('/follows').then(({ data }) => {
+        const on = ((data && data.following) || []).includes(m.id);
+        plBtn.textContent = on ? t('playlist_added') : t('playlist_add');
+        plBtn.classList.toggle('in-playlist', on);
+      }).catch(() => {});
+      plBtn.onclick = () => toggleFollow(m.id, plBtn, m.display_name);
     }
     // Phase 6: her confirmed scheduled showdowns ("⚔️ vs @name — Fri 8 PM")
     // + a fan reminder toggle. Unconfirmed events never render here —
@@ -15463,7 +15574,80 @@ async function vFanModels() {
     };
   });
   app.querySelectorAll('[data-follow]').forEach((f) => {
-    f.onclick = (e) => { e.stopPropagation(); toggleFollow(parseInt(f.dataset.follow), f); };
+    f.onclick = (e) => {
+      e.stopPropagation();
+      const fm = models.find((x) => x.id === parseInt(f.dataset.follow));
+      toggleFollow(parseInt(f.dataset.follow), f, fm ? fm.display_name : '');
+    };
+  });
+}
+
+/* ---------------- FAN: My Playlist (the follows engine, rebranded) ----------------
+   One fan, one Playlist (owner, Oct 24 2026): the models he added,
+   LIVE first — the "she's live" surface for his own girls — then by
+   her true section-rank position. Ordering is pure + unit-tested. */
+function playlistOrder(models, followingIds) {
+  const rankOf = (m) => (Number.isInteger(m.rank_position) ? m.rank_position : Number.MAX_SAFE_INTEGER);
+  return (models || [])
+    .filter((m) => (followingIds || []).includes(m.id))
+    .sort((a, b) => (Number(!!b.is_live) - Number(!!a.is_live))
+      || ((b.live_viewers || 0) - (a.live_viewers || 0))
+      || (rankOf(a) - rankOf(b)));
+}
+
+function playlistCardHTML(m) {
+  const status = m.is_live
+    ? `🔴 LIVE now — ${m.live_viewers || 0} watching`
+    : m.is_online ? '🟢 Online now' : '⚫ Offline';
+  return `
+    <div class="list-item playlist-card" data-pl-open="${m.id}">
+      <span class="avatar-wrap">${avatarHTML(m.display_name, '', m.photo_url)}${m.is_live ? '<span class="online-dot"></span>' : ''}</span>
+      <span class="grow">
+        <span class="title">${esc(m.display_name)}${m.is_live ? ' <span class="live-badge">🔴 LIVE</span>' : ''}</span><br>
+        <span class="preview">${status}</span><br>
+        <span class="small muted">${t('per_msg_rate', { price: fmt(m.per_message_cents) })}</span>
+      </span>
+      <span class="row" style="gap:6px">
+        <button class="btn small" data-pl-msg="${m.id}">${t('msg_her_btn')}</button>
+        <button class="btn small ghost" data-pl-remove="${m.id}">${t('remove_btn')}</button>
+      </span>
+    </div>`;
+}
+
+async function vPlaylist() {
+  await refreshMe();
+  const { data } = await api('/models');
+  const models = data.models || [];
+  let following = [];
+  try { const f = await api('/follows'); following = f.data.following || []; } catch (e) {}
+  const mine = playlistOrder(models, following);
+  app.innerHTML = `
+    <div class="header"><h1>${t('playlist_title')}</h1>
+      <div><span class="balance-pill">💰 ${fmt(S.wallet ? S.wallet.credits_cents : 0)}</span></div></div>
+    <div class="screen">
+      ${mine.length ? mine.map((m) => playlistCardHTML(m)).join('')
+        : `<div class="empty"><div class="big">🎵</div>${t('playlist_empty')}</div>`}
+    </div>`;
+  // Card tap: a live girl goes straight to her stream (the directory
+  // rule); otherwise her profile page opens.
+  app.querySelectorAll('[data-pl-open]').forEach((card) => {
+    card.onclick = () => {
+      const m = models.find((x) => x.id === parseInt(card.dataset.plOpen));
+      if (!m) return;
+      if (m.is_live && m.live_session_id) return watchLive(parseInt(m.live_session_id));
+      openModelPeek(m, models);
+    };
+  });
+  app.querySelectorAll('[data-pl-msg]').forEach((b) => {
+    b.onclick = (e) => { e.stopPropagation(); openChatWithModel(parseInt(b.dataset.plMsg)); };
+  });
+  app.querySelectorAll('[data-pl-remove]').forEach((b) => {
+    b.onclick = async (e) => {
+      e.stopPropagation();
+      const m = models.find((x) => x.id === parseInt(b.dataset.plRemove));
+      await toggleFollow(parseInt(b.dataset.plRemove), null, m ? m.display_name : '');
+      show('playlist', {});
+    };
   });
 }
 
@@ -23247,16 +23431,27 @@ async function vNotifications() {
   });
 }
 
-// Fan: follow/unfollow a model (enables "she's live" notifications)
-async function toggleFollow(modelId, btn) {
+// Fan: follow/unfollow a model
+// Add/remove a model on his Playlist — the follows engine in
+// Playlist language (owner, Oct 24 2026). Adding her also enables
+// "she's live" notifications; the follows rows are unchanged. btn is
+// either the directory tile heart (🤍/❤️) or a .playlist-toggle
+// button (her page / peek), whose label swaps playlist_add ⇄
+// playlist_added. name feeds the added toast.
+async function toggleFollow(modelId, btn, name) {
   const { data } = await api(`/follows/${modelId}`, { method: 'POST' });
   if (btn) {
-    btn.textContent = data.following ? '❤️' : '🤍';
-    btn.classList.toggle('following', data.following);
-    toast(data.following
-      ? "❤️ Following — you'll be notified when she goes live!"
-      : '🤍 Unfollowed');
+    if (btn.classList.contains('playlist-toggle')) {
+      btn.textContent = data.following ? t('playlist_added') : t('playlist_add');
+      btn.classList.toggle('in-playlist', data.following);
+    } else {
+      btn.textContent = data.following ? '❤️' : '🤍';
+      btn.classList.toggle('following', data.following);
+    }
   }
+  toast(data.following
+    ? t('playlist_added_toast', { name: name || '' })
+    : t('playlist_removed_toast'));
   return data.following;
 }
 
