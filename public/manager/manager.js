@@ -92,11 +92,33 @@ function fanLastLoginText(f) {
   return f && f.last_login_at ? fmtDT(f.last_login_at) : 'never';
 }
 
+/* "Last login" text for a Models card: a human relative time from
+   the SAME last_login_at source (her newest session row — the LOGIN
+   moment only, exactly like Fans), or "Never" when she has never
+   logged in since tracking began. A month or older, the date itself
+   is clearer than a count of days, so it falls back to fmtDT. The
+   card also shows the exact fmtDT next to the relative time. */
+function modelLastLoginText(m, nowMs) {
+  if (!m || !m.last_login_at) return 'Never';
+  const d = new Date(String(m.last_login_at).replace(' ', 'T') + 'Z');
+  if (isNaN(d)) return 'Never';
+  const diff = (typeof nowMs === 'number' ? nowMs : Date.now()) - d.getTime();
+  if (diff < 60000) return 'just now';
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return fmtDT(m.last_login_at);
+}
+
 /* ---------------- state + API ---------------- */
 const M = {
   token: localStorage.getItem('wc_token') || null,
   user: null,
   screen: 'dash',
+  modelsSort: 'name',   // Models tab: 'name' (A–Z, default) or 'recent' (most recent login first)
   peek: null,       // {id, title, messages} for the read-only chat peek
   live: null,       // mod-watch state
   ws: null,
@@ -499,8 +521,20 @@ function presForced(m) {
   return !!m.presence_override && m.presence_override !== 'auto';
 }
 
+/* One Models-card line: "🕐 Last login: 3h ago (Oct 24 · 9:41 AM)" —
+   relative time for a quick who's-active scan, the exact moment
+   beside it; just "🕐 Last login: Never" when she has never logged
+   in since tracking began (never a fabricated time). */
+function modelLastLoginLine(m) {
+  const rel = modelLastLoginText(m);
+  const exact = m && m.last_login_at ? fanLastLoginText(m) : '';
+  const exactBit = exact && exact !== rel ? ` <span class="muted">(${esc(exact)})</span>` : '';
+  return `🕐 Last login: ${esc(rel)}${exactBit}`;
+}
+
 async function adminModelsBody() {
-  const { data } = await api('/admin/models');
+  const recent = M.modelsSort === 'recent';
+  const { data } = await api('/admin/models' + (recent ? '?sort=recent' : ''));
   const models = data.models || [];
   return `
     <div class="card" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -509,6 +543,11 @@ async function adminModelsBody() {
         <div class="small muted">Put every model Online at once — the same switch as each model's Online button below. (Deactivated models and the featured system account aren't touched.)</div>
       </div>
       <button class="btn" id="pres-all-online">Put everyone online</button>
+    </div>
+    <div class="row" style="margin-bottom:10px;gap:6px;flex-wrap:wrap;align-items:center">
+      <span class="small muted">Sort models:</span>
+      <button class="btn small ${recent ? 'ghost' : ''}" data-m-sort="name">A–Z</button>
+      <button class="btn small ${recent ? '' : 'ghost'}" data-m-sort="recent">🕐 Most recent login</button>
     </div>
     ${models.map((m) => `
       <div class="card model-article">
@@ -519,6 +558,7 @@ async function adminModelsBody() {
           <div><b>${esc(m.display_name)}</b> <span class="small muted">@${esc(m.username)}</span><br>
             <span class="small" id="pres-status-${m.id}" style="color:${presEff(m) ? 'var(--green)' : 'var(--muted)'}">${presEff(m) ? '●' : '○'} ${presEff(m) ? 'Online' : 'Offline'}${presForced(m) ? ' (forced)' : ''}</span>
             <span class="small muted"> · ${fmt(m.per_message_cents)}/msg · ${fmt(m.per_minute_cents)}/min</span><br>
+            <span class="small muted" data-model-login="${m.id}">${modelLastLoginLine(m)}</span><br>
             <span class="small" style="color:var(--green)">Owed: ${fmt(m.pending_cents)}</span>
             ${m.recruiter_name ? `<br><span class="small" style="color:var(--gold)">🤝 via ${esc(m.recruiter_name)}</span>` : ''}
             ${m.is_hidden ? `<br><span class="small" style="color:var(--peach)">👻 Hidden from the main screen</span>` : ''}</div>
@@ -2066,6 +2106,12 @@ function wireAdminBody(tab) {
           body: JSON.stringify(payload) });
         toast('✅ Saved'); M.reload();
       };
+    };
+  });
+  document.querySelectorAll('[data-m-sort]').forEach((b) => {
+    b.onclick = () => {
+      M.modelsSort = b.dataset.mSort === 'recent' ? 'recent' : 'name';
+      M.reload();
     };
   });
   document.querySelectorAll('[data-m-toggle]').forEach((b) => {
