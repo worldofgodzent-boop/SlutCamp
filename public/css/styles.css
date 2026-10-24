@@ -1703,6 +1703,13 @@ body.in-home:has(> #phone > .sc-theme-promo):not(:has(> #phone > .sc-theme-banne
   filter: grayscale(0); transition: transform .15s;
 }
 .follow-btn:active { transform: scale(1.3); }
+/* Playlist toggle (her page / peek): the "✓ In your Playlist" state
+   reads as a quiet confirmation instead of a second loud CTA. */
+.playlist-toggle.in-playlist {
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,92,158,.55);
+  color: #ffd9e8; box-shadow: none;
+}
+.playlist-card { cursor: pointer; }
 .tip-list { display: flex; flex-direction: column; gap: 8px; }
 .tip-item {
   display: flex; align-items: center; gap: 10px; width: 100%;
