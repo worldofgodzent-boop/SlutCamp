@@ -66,6 +66,37 @@ document.addEventListener('click', (e) => {
 const T_SHIM = { wd_pending: '⏳ Pending', wd_paid: '✅ Paid', wd_rejected: '❌ Rejected' };
 function t(k) { return T_SHIM[k] || k; }
 
+/* Team channel strings (Assignment 01) in all 13 supported languages,
+ * mirroring the public app's STR shape: one key set, every language
+ * carrying every key, EN fallback. The Manager's other screens stay
+ * English-only (the established pattern); the team panel resolves
+ * the signed-in principal's stored language here. Author labels
+ * (Owner / Ms. Pink / Kay Kay) come from the server and are names,
+ * so they are not translated. */
+const TEAM_I18N = {
+  en: { team_title: 'Team channel', team_sub: 'Owner + delegate seats only. Nothing here leaves the Manager.', team_empty: 'No team messages yet.', team_placeholder: 'Write to the team…', team_send: 'Send', team_load_more: 'Load older messages', team_posted: 'Message posted', team_failed: 'Could not post that message.', team_load_failed: 'Could not load the team channel.' },
+  es: { team_title: 'Canal del equipo', team_sub: 'Solo el propietario y las cuentas delegadas. Nada de aquí sale del Manager.', team_empty: 'Aún no hay mensajes del equipo.', team_placeholder: 'Escribe al equipo…', team_send: 'Enviar', team_load_more: 'Cargar mensajes anteriores', team_posted: 'Mensaje enviado', team_failed: 'No se pudo publicar ese mensaje.', team_load_failed: 'No se pudo cargar el canal del equipo.' },
+  pt: { team_title: 'Canal da equipe', team_sub: 'Somente o proprietário e as contas delegadas. Nada daqui sai do Manager.', team_empty: 'Ainda não há mensagens da equipe.', team_placeholder: 'Escreva para a equipe…', team_send: 'Enviar', team_load_more: 'Carregar mensagens mais antigas', team_posted: 'Mensagem enviada', team_failed: 'Não foi possível publicar essa mensagem.', team_load_failed: 'Não foi possível carregar o canal da equipe.' },
+  fr: { team_title: "Canal d'équipe", team_sub: "Propriétaire et comptes délégués uniquement. Rien d'ici ne quitte le Manager.", team_empty: "Aucun message d'équipe pour le moment.", team_placeholder: "Écrire à l'équipe…", team_send: 'Envoyer', team_load_more: 'Charger les messages plus anciens', team_posted: 'Message envoyé', team_failed: 'Impossible de publier ce message.', team_load_failed: "Impossible de charger le canal d'équipe." },
+  de: { team_title: 'Team-Kanal', team_sub: 'Nur Eigentümer und delegierte Konten. Nichts hiervon verlässt den Manager.', team_empty: 'Noch keine Team-Nachrichten.', team_placeholder: 'An das Team schreiben…', team_send: 'Senden', team_load_more: 'Ältere Nachrichten laden', team_posted: 'Nachricht gesendet', team_failed: 'Diese Nachricht konnte nicht gesendet werden.', team_load_failed: 'Der Team-Kanal konnte nicht geladen werden.' },
+  ru: { team_title: 'Командный канал', team_sub: 'Только владелец и делегированные учётные записи. Ничего отсюда не выходит за пределы Manager.', team_empty: 'Пока нет командных сообщений.', team_placeholder: 'Написать команде…', team_send: 'Отправить', team_load_more: 'Загрузить старые сообщения', team_posted: 'Сообщение отправлено', team_failed: 'Не удалось отправить это сообщение.', team_load_failed: 'Не удалось загрузить командный канал.' },
+  ja: { team_title: 'チームチャンネル', team_sub: 'オーナーと代理人アカウントのみ。ここにあるものはManagerの外に出ません。', team_empty: 'まだチームメッセージがありません。', team_placeholder: 'チームに書く…', team_send: '送信', team_load_more: '古いメッセージを読み込む', team_posted: 'メッセージを送信しました', team_failed: 'そのメッセージを送信できませんでした。', team_load_failed: 'チームチャンネルを読み込めませんでした。' },
+  zh: { team_title: '团队频道', team_sub: '仅限所有者和代理账号。这里的内容不会离开 Manager。', team_empty: '还没有团队消息。', team_placeholder: '给团队写消息…', team_send: '发送', team_load_more: '加载更早的消息', team_posted: '消息已发送', team_failed: '无法发送这条消息。', team_load_failed: '无法加载团队频道。' },
+  ko: { team_title: '팀 채널', team_sub: '소유자와 대리인 계정만 이용할 수 있습니다. 이곳의 내용은 Manager를 벗어나지 않습니다.', team_empty: '아직 팀 메시지가 없습니다.', team_placeholder: '팀에 메시지 쓰기…', team_send: '보내기', team_load_more: '이전 메시지 불러오기', team_posted: '메시지가 전송되었습니다', team_failed: '메시지를 보낼 수 없습니다.', team_load_failed: '팀 채널을 불러올 수 없습니다.' },
+  it: { team_title: 'Canale del team', team_sub: 'Solo proprietario e account delegati. Nulla di qui esce dal Manager.', team_empty: 'Ancora nessun messaggio del team.', team_placeholder: 'Scrivi al team…', team_send: 'Invia', team_load_more: 'Carica i messaggi più vecchi', team_posted: 'Messaggio inviato', team_failed: 'Impossibile inviare quel messaggio.', team_load_failed: 'Impossibile caricare il canale del team.' },
+  pl: { team_title: 'Kanał zespołu', team_sub: 'Tylko właściciel i konta delegowane. Nic stąd nie opuszcza Managera.', team_empty: 'Nie ma jeszcze wiadomości zespołu.', team_placeholder: 'Napisz do zespołu…', team_send: 'Wyślij', team_load_more: 'Wczytaj starsze wiadomości', team_posted: 'Wiadomość wysłana', team_failed: 'Nie udało się wysłać tej wiadomości.', team_load_failed: 'Nie udało się wczytać kanału zespołu.' },
+  nl: { team_title: 'Teamkanaal', team_sub: 'Alleen de eigenaar en gedelegeerde accounts. Niets hiervan verlaat de Manager.', team_empty: 'Nog geen teamberichten.', team_placeholder: 'Schrijf naar het team…', team_send: 'Verzenden', team_load_more: 'Oudere berichten laden', team_posted: 'Bericht verzonden', team_failed: 'Dat bericht kon niet worden verzonden.', team_load_failed: 'Het teamkanaal kon niet worden geladen.' },
+  tr: { team_title: 'Ekip kanalı', team_sub: 'Yalnızca sahip ve delege hesapları. Buradaki hiçbir şey Manager dışına çıkmaz.', team_empty: 'Henüz ekip mesajı yok.', team_placeholder: 'Ekibe yaz…', team_send: 'Gönder', team_load_more: 'Eski mesajları yükle', team_posted: 'Mesaj gönderildi', team_failed: 'Bu mesaj gönderilemedi.', team_load_failed: 'Ekip kanalı yüklenemedi.' },
+};
+function teamT(k) {
+  const lang = (M.user && M.user.language) || 'en';
+  const row = TEAM_I18N[lang] || TEAM_I18N.en;
+  return row[k] || TEAM_I18N.en[k] || k;
+}
+function teamMsgHTML(m) {
+  return `<div class="card" style="padding:10px 12px;margin-bottom:8px"><b class="small">${esc(m.author_label || m.author || '')}</b> <span class="small muted">${fmtDT(m.created_at)}</span><div style="white-space:pre-wrap;font-size:14px">${esc(m.body || '')}</div></div>`;
+}
+
 function timeHM(iso) {
   const d = new Date((iso || '').replace(' ', 'T') + 'Z');
   if (isNaN(d)) return '';
@@ -1259,6 +1290,12 @@ async function adminMoreBody(s) {
     ? await api('/admin/delegate').catch(() => ({ data: {} }))
     : { data: {} };
   const dlg = dlgData && dlgData.delegate ? dlgData.delegate : null;
+  // Second delegate seat (Assignment 01): the Kay Kay card sits next
+  // to the Ms. Pink card, with the same owner-only controls.
+  const { data: kkData } = isOwner
+    ? await api('/admin/delegate/kaykay').catch(() => ({ data: {} }))
+    : { data: {} };
+  const kk = kkData && kkData.delegate ? kkData.delegate : null;
   const { data: auditData } = await api('/admin/audit?limit=25').catch(() => ({ data: {} }));
   const auditRows = (auditData && auditData.audit) || [];
   const { data: pkStatus } = await api('/manager/passkey/status').catch(() => ({ data: {} }));
@@ -1316,14 +1353,34 @@ async function adminMoreBody(s) {
       <div id="dlg-pw-body" style="margin-top:8px"></div>
       <div class="muted small" id="dlg-msg" style="margin-top:6px"></div>
     </div>` : ''}
+    ${isOwner && kk ? `
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🪪 Delegate seat — Kay Kay</div>
+      <div class="muted small">A separate named account (<b>@${esc(kk.username)}</b>) with full Manager access, its own password + optional Face ID, and every action audit-logged and badged as Kay Kay. It is <b>not</b> your login and <b>not</b> the Ms. Pink seat. Turning it off kills her sessions and removes her passkeys instantly — your own login and Face ID are never touched. Passkey setup is optional for this seat: password sign-in is the working route.</div>
+      <div class="row" style="margin-top:8px;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="small" style="font-weight:800;color:${kk.enabled ? 'var(--green)' : 'var(--muted)'}">${kk.enabled ? '✅ ENABLED' : '⛔ DISABLED'}</span>
+        <span class="small muted">Face ID: ${kk.has_passkey ? `✅ ${kk.passkey_count} passkey${kk.passkey_count === 1 ? '' : 's'}` : '⛔ none enrolled (optional)'}</span>
+        <span class="small muted">Active sessions: ${kk.active_sessions}</span>
+        ${kk.enroll_window_open ? '<span class="small" style="color:var(--green)">Passkey setup window: OPEN (15 min)</span>' : ''}
+      </div>
+      <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">
+        ${kk.enabled
+          ? '<button class="btn small ghost" id="kk-disable">Disable + revoke</button>'
+          : '<button class="btn small" id="kk-enable">Enable seat</button>'}
+        <button class="btn small ghost" id="kk-setpw">Set password</button>
+        <button class="btn small ghost" id="kk-enroll">Start passkey setup</button>
+      </div>
+      <div id="kk-pw-body" style="margin-top:8px"></div>
+      <div class="muted small" id="kk-msg" style="margin-top:6px"></div>
+    </div>` : ''}
     <div class="card">
       <div style="font-weight:800;margin-bottom:6px">🪪 Delegate activity — audit log</div>
-      <div class="muted small">Everything the delegate seat does in the Manager is recorded here. Rows badged <span class="dlg-badge">🪪 Ms. Pink</span> are delegate actions — never the owner's.</div>
+      <div class="muted small">Everything the delegate seats do in the Manager is recorded here. Rows badged <span class="dlg-badge">🪪 Ms. Pink</span> or <span class="dlg-badge">🪪 Kay Kay</span> are delegate actions — never the owner's.</div>
       <div style="margin-top:6px">
       ${auditRows.length ? auditRows.map((r) => `
         <div class="dlg-audit-row">
           <span class="small"><b>${esc(r.action)}</b>${r.target_id ? ` <span class="muted">#${esc(String(r.target_id))}</span>` : ''}</span>
-          ${r.actor_badge ? '<span class="dlg-badge">🪪 Ms. Pink</span>' : '<span class="small muted">owner</span>'}
+          ${r.actor_badge ? `<span class="dlg-badge">🪪 ${esc(r.actor_badge)}</span>` : '<span class="small muted">owner</span>'}
           <span class="small muted">${esc(String(r.created_at || '').slice(0, 16).replace('T', ' '))}</span>
           ${r.reason ? `<div class="small muted">Reason: ${esc(r.reason)}</div>` : ''}
         </div>`).join('') : '<div class="empty">No delegate activity yet.</div>'}
@@ -1941,6 +1998,75 @@ function wireAdminBody(tab) {
       toast('Could not set the password — try again');
     };
   });
+
+  // 🪪 Second delegate seat controls (Settings, owner only — the
+  // server refuses these for any delegate itself, same as mspink).
+  go('#kk-enable', async () => {
+    const { status } = await api('/admin/delegate/kaykay/enable', { method: 'POST', body: '{}' });
+    if (status === 200) { toast('🪪 Kay Kay seat ENABLED'); return M.reload(); }
+    toast('Could not enable the seat');
+  });
+  go('#kk-disable', async () => {
+    if (!confirm('Disable the Kay Kay seat? Her sessions end now and her passkeys are removed. Your own login is untouched.')) return;
+    const { status } = await api('/admin/delegate/kaykay/disable', { method: 'POST', body: '{}' });
+    if (status === 200) { toast('⛔ Kay Kay seat disabled + revoked'); return M.reload(); }
+    toast('Could not disable the seat');
+  });
+  go('#kk-enroll', async () => {
+    const { status } = await api('/admin/delegate/kaykay/enroll-passkey', { method: 'POST', body: '{}' });
+    const msg = $('#kk-msg');
+    if (status === 200) {
+      if (msg) msg.textContent = 'Passkey setup window is OPEN for 15 minutes — Kay Kay completes Face ID setup in her own browser now. (Optional: password sign-in already works.)';
+      toast('🪪 Passkey setup window opened (15 min)');
+      return;
+    }
+    toast('Could not open the setup window');
+  });
+  go('#kk-setpw', () => {
+    const box = $('#kk-pw-body');
+    if (!box) return;
+    box.innerHTML = `
+      <label class="field">New Kay Kay password${pwField('kk-pw-new', 'new-password')}</label>
+      <label class="field">Confirm it${pwField('kk-pw-confirm', 'new-password')}</label>
+      <button class="btn small" id="kk-pw-save">Save Kay Kay password</button>
+      <div class="muted small" style="margin-top:6px">Type the password you generated for the seat (store it in the Secure Vault — it is never shown again). Saving signs the delegate out everywhere.</div>`;
+    $('#kk-pw-save').onclick = async () => {
+      const nw = $('#kk-pw-new').value, cf = $('#kk-pw-confirm').value;
+      if (!nw || !cf) return toast('Fill in both password fields');
+      if (nw !== cf) return toast("Passwords don't match");
+      if (nw.length < 10) return toast('Delegate password needs at least 10 characters');
+      const { status, data } = await api('/admin/delegate/kaykay/set-password', {
+        method: 'POST', body: JSON.stringify({ password: nw }),
+      });
+      if (status === 200) { box.innerHTML = ''; toast('✅ Kay Kay password set'); return; }
+      if (data && data.error === 'default_password') return toast("That's a well-known default password — pick something only you know");
+      if (data && data.error === 'weak_password') return toast('Password too weak — at least 10 characters');
+      toast('Could not set the password — try again');
+    };
+  });
+
+  // 💬 Team channel screen: post + load older pages.
+  if (tab === 'team') {
+    const input = document.getElementById('team-input');
+    const count = document.getElementById('team-count');
+    if (input) input.oninput = () => { if (count) count.textContent = `${input.value.length} / 4000`; };
+    go('#team-send', async () => {
+      const body = (input ? input.value : '').trim();
+      if (!body) return;
+      const { status } = await api('/admin/team-messages', { method: 'POST', body: JSON.stringify({ body }) });
+      if (status === 200) { toast('✅ ' + teamT('team_posted')); return M.render(); }
+      toast(teamT('team_failed'));
+    });
+    go('#team-more', async () => {
+      if (!M.teamBefore) return;
+      const { status, data } = await api(`/admin/team-messages?limit=100&before=${M.teamBefore}`);
+      if (status !== 200 || !data) return toast(teamT('team_load_failed'));
+      M.teamBefore = data.before || null;
+      const thread = document.getElementById('team-thread');
+      if (thread) thread.insertAdjacentHTML('afterbegin', (data.messages || []).map(teamMsgHTML).join(''));
+      if (!data.has_more) { const b = document.getElementById('team-more'); if (b) b.remove(); }
+    });
+  }
 
   // 🔑 Change password card (Settings) — same endpoint as the public app;
   // the server re-verifies the current password and revokes other sessions.
@@ -2770,7 +2896,7 @@ const NAV = [
   ['packages', '📦 Packages'],
   ['refunds', '💳 Refunds'], ['disputes', '⚠️ Disputes'],
   ['analytics', '📈 Analytics'], ['more', '⚙️ Settings'],
-  ['requests', '📥 Requests'], ['workers', '🧑‍💼 Workers'],
+  ['requests', '📥 Requests'], ['workers', '🧑‍💼 Workers'], ['team', '💬 Team channel'],
 ];
 
 /* Sidebar grouping for the same screens (NAV above stays the flat
@@ -2781,7 +2907,7 @@ const NAV_GROUPS = [
   ['Money', ['payouts', 'tax', 'refunds', 'disputes', 'packages']],
   ['Safety & Content', ['chats', 'live', 'safety', 'dmca']],
   ['Growth', ['invites', 'promos', 'bookings', 'contracts', 'analytics']],
-  ['Settings', ['more', 'workers']],
+  ['Settings', ['more', 'workers', 'team']],
 ];
 
 const PRESENCE_CARD = `
@@ -2827,9 +2953,41 @@ const SCREENS = {
   disputes: adminDisputesBody, tax: adminTaxBody, dmca: adminDmcaBody,
   suggestions: adminSuggestionsBody,
   analytics: adminAnalyticsBody, more: adminMoreBody,
-  requests: adminRequestsBody, workers: adminWorkersBody,
+  requests: adminRequestsBody, workers: adminWorkersBody, team: adminTeamBody,
   peek: peekBody, watch: watchBody,
 };
+
+/* Team channel screen (Assignment 01): owner + delegate seats only.
+ * The server refuses moderators (403) and everyone else, and the
+ * moderator shell never lists this screen (not in MOD_NAV), so a
+ * moderator cannot even navigate here. Thread is chronological;
+ * Load older pages by the server's before-cursor and prepends. */
+async function adminTeamBody() {
+  const { status, data } = await api('/admin/team-messages?limit=100');
+  if (status !== 200 || !data) {
+    return `<div class="card"><div style="font-weight:800;margin-bottom:6px">💬 ${esc(teamT('team_title'))}</div><div class="muted small">${esc(teamT('team_load_failed'))}</div></div>`;
+  }
+  M.teamBefore = data.before || null;
+  const msgs = data.messages || [];
+  return `
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">💬 ${esc(teamT('team_title'))}</div>
+      <div class="muted small">${esc(teamT('team_sub'))}</div>
+    </div>
+    <div id="team-thread">
+      ${msgs.length ? msgs.map(teamMsgHTML).join('') : `<div class="empty">${esc(teamT('team_empty'))}</div>`}
+    </div>
+    ${data.has_more ? `<button class="btn small ghost" id="team-more" style="margin-bottom:12px">${esc(teamT('team_load_more'))}</button>` : ''}
+    <div class="card">
+      <label class="field">${esc(teamT('team_title'))}</label>
+      <textarea class="input" id="team-input" rows="3" maxlength="4000" placeholder="${esc(teamT('team_placeholder'))}" style="resize:vertical"></textarea>
+      <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">
+        <button class="btn small" id="team-send">${esc(teamT('team_send'))}</button>
+        <span class="small muted" id="team-count">0 / 4000</span>
+      </div>
+      <div class="muted small" id="team-msg" style="margin-top:6px"></div>
+    </div>`;
+}
 
 async function peekBody() {
   const p = M.peek;
@@ -3574,6 +3732,9 @@ async function passkeyGate(onPass) {
   } catch (e) { /* fall through — odd states must not lock the admin out */ }
   if (!st || st.verified) { onPass(); return; }
   if (st.enrolled) renderPasskeyGate(onPass);
+  /* Assignment 01: passkey is optional for Kay Kay — password
+   * sign-in is her route, so no setup screen may block her. */
+  else if (M.user && M.user.username === 'kaykay') onPass();
   else renderPasskeySetup(onPass);
 }
 
@@ -3761,7 +3922,7 @@ function renderShell() {
     </div>
     <div class="mgr-shell">
       <aside class="mgr-side">
-        <div class="mgr-side-user">Signed in as <b id="mgr-user">${esc(M.user ? M.user.display_name : '')}</b>${M.user && M.user.role === 'owner_delegate' ? '<br><span class="dlg-badge">🪪 Ms. Pink · Owner Delegate</span>' : ''}${isMod ? ' <span class="small muted">(Moderator)</span>' : ''}</div>
+        <div class="mgr-side-user">Signed in as <b id="mgr-user">${esc(M.user ? M.user.display_name : '')}</b>${M.user && M.user.role === 'owner_delegate' ? `<br><span class="dlg-badge">🪪 ${M.user.username === 'kaykay' ? 'Kay Kay' : 'Ms. Pink'} · Owner Delegate</span>` : ''}${isMod ? ' <span class="small muted">(Moderator)</span>' : ''}</div>
         <nav id="mgr-nav">
           ${navGroups.map(([heading, ids]) => `
             <div class="mgr-nav-group">
