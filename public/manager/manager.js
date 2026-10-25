@@ -94,7 +94,71 @@ function teamT(k) {
   return row[k] || TEAM_I18N.en[k] || k;
 }
 function teamMsgHTML(m) {
-  return `<div class="card" style="padding:10px 12px;margin-bottom:8px"><b class="small">${esc(m.author_label || m.author || '')}</b> <span class="small muted">${fmtDT(m.created_at)}</span><div style="white-space:pre-wrap;font-size:14px">${esc(m.body || '')}</div></div>`;
+  const idAttr = (m && m.id != null) ? ` data-team-id="${m.id}"` : '';
+  return `<div class="card" style="padding:10px 12px;margin-bottom:8px"${idAttr}><b class="small">${esc(m.author_label || m.author || '')}</b> <span class="small muted">${fmtDT(m.created_at)}</span><div style="white-space:pre-wrap;font-size:14px">${esc(m.body || '')}</div></div>`;
+}
+
+/* Assignment 03 — live team channel, pure merge step (no DOM, no
+ * network, so the test suite can exercise it directly).
+ * Returns the messages from a poll page that are genuinely new:
+ * an id already seen is dropped (dedupe), and only ids newer than
+ * the newest already-rendered id are kept — a poll page is the
+ * newest page, so anything older is already on screen. The kept
+ * messages come back in chronological (ascending-id) order. */
+function teamPollNew(seenIds, messages) {
+  const seen = new Set(seenIds || []);
+  const newest = seen.size ? Math.max(...seen) : 0;
+  const fresh = [];
+  for (const m of messages || []) {
+    if (!m || !Number.isFinite(m.id) || seen.has(m.id) || m.id <= newest) continue;
+    seen.add(m.id);
+    fresh.push(m);
+  }
+  fresh.sort((a, b) => a.id - b.id);
+  return { fresh, seen: [...seen] };
+}
+
+/* Assignment 03 — live team channel poller. One timer, owned by the
+ * screen: M.render stops it on every view change and starts it
+ * again only for the team screen, so leaving the channel (or a
+ * re-render to another screen) can never leave a stray timer
+ * polling. A tick does nothing while the tab is hidden — the timer
+ * stays, but no request is made until the tab is visible again.
+ * Appends only (never re-renders the thread, so a reader scrolled
+ * up is never yanked), and scrolls to the new message only when
+ * the reader was already at/near the bottom before the append. */
+function teamNearBottom() {
+  const doc = document.documentElement;
+  return (doc.scrollHeight - window.innerHeight - window.scrollY) <= 120;
+}
+function teamScrollToBottom() {
+  window.scrollTo(0, document.documentElement.scrollHeight);
+}
+async function teamPollTick() {
+  if (M.screen !== 'team' || document.hidden) return;
+  const thread = document.getElementById('team-thread');
+  if (!thread) return;
+  const { status, data } = await api('/admin/team-messages?limit=100');
+  if (status !== 200 || !data || M.screen !== 'team' || document.hidden) return;
+  const liveThread = document.getElementById('team-thread');
+  if (!liveThread) return;
+  // Measured just before the append, so a reader who scrolled up
+  // while the poll was in flight is still not yanked down.
+  const wasNearBottom = teamNearBottom();
+  const { fresh, seen } = teamPollNew(M.teamSeen, data.messages);
+  M.teamSeen = new Set(seen);
+  if (!fresh.length) return;
+  const empty = liveThread.querySelector('.empty');
+  if (empty) empty.remove();
+  liveThread.insertAdjacentHTML('beforeend', fresh.map(teamMsgHTML).join(''));
+  if (wasNearBottom) teamScrollToBottom();
+}
+function startTeamPoll() {
+  stopTeamPoll();
+  M.teamPoll = setInterval(teamPollTick, 5000);
+}
+function stopTeamPoll() {
+  if (M.teamPoll) { clearInterval(M.teamPoll); M.teamPoll = null; }
 }
 
 function timeHM(iso) {
@@ -2064,6 +2128,10 @@ function wireAdminBody(tab) {
       M.teamBefore = data.before || null;
       const thread = document.getElementById('team-thread');
       if (thread) thread.insertAdjacentHTML('afterbegin', (data.messages || []).map(teamMsgHTML).join(''));
+      // Older pages are already rendered, so they must never be
+      // re-appended by a poll: record them as seen (they are all
+      // older than the newest id, so the poll merge drops them).
+      if (M.teamSeen) for (const m of data.messages || []) M.teamSeen.add(m.id);
       if (!data.has_more) { const b = document.getElementById('team-more'); if (b) b.remove(); }
     });
   }
@@ -2969,6 +3037,9 @@ async function adminTeamBody() {
   }
   M.teamBefore = data.before || null;
   const msgs = data.messages || [];
+  // Assignment 03: the poller appends only ids newer than these,
+  // so the open page's ids are the baseline it merges against.
+  M.teamSeen = new Set(msgs.map((m) => m.id));
   return `
     <div class="card">
       <div style="font-weight:800;margin-bottom:6px">💬 ${esc(teamT('team_title'))}</div>
@@ -3033,6 +3104,7 @@ M.reload = () => M.render();
 M.render = async () => {
   if (!app) return;
   stopPresence();
+  stopTeamPoll();
   document.querySelectorAll('#mgr-nav [data-screen]').forEach((b) =>
     b.classList.toggle('active', b.dataset.screen === M.screen));
   if (M.user && M.user.role === 'moderator') {
@@ -3056,6 +3128,13 @@ M.render = async () => {
   const bodyFn = SCREENS[M.screen] || overviewBody;
   app.innerHTML = `<div class="mgr-h">${NAV.find((n) => n[0] === M.screen)?.[1] || ''}</div>` + (await bodyFn(s));
   wireAdminBody(M.screen);
+  if (M.screen === 'team') {
+    // Assignment 03: live updates while the channel is open, and
+    // opening the channel lands on the latest message, already
+    // scrolled to the bottom — no scrolling down by hand.
+    startTeamPoll();
+    teamScrollToBottom();
+  }
   if (M.screen === 'dash') startPresence();
   if (M.screen === 'chats') wireChats();
   if (M.screen === 'peek') wirePeek();
