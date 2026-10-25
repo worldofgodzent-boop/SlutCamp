@@ -97,7 +97,10 @@ test('relay: advertisement + suppression wiring on existing surfaces', () => {
   const leave = span(serverSrc, "app.post('/api/live/:id/leave'", "app.get('/api/live/schedule'");
   assert.ok(leave.includes('relayDropViewerSub(sess.id, req.user.id, true)'), 'leave drops the relay sub');
   const end = span(serverSrc, "app.post('/api/live/:id/end'", "app.post('/api/relay/publish'");
-  assert.ok(end.includes('relayTeardownSession(sess.id)'), 'live end tears the relay state down');
+  assert.ok(end.includes('endLiveSession(sess, clientIp(req))'),
+    'live end runs the shared teardown helper (Moderator build refactor: the route body moved into endLiveSession so the moderator live-cut ends a session with identical semantics)');
+  const teardown = span(serverSrc, 'function endLiveSession(sess, ip)', "app.post('/api/live/:id/end'");
+  assert.ok(teardown.includes('relayTeardownSession(sess.id)'), 'live end tears the relay state down');
 });
 
 test('relay: client wiring — publish/subscribe placement + fallback + counts', () => {

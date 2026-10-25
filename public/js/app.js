@@ -209,6 +209,16 @@ const I18N = {
     gallery_reordered: 'Picture order saved ✨',
     gallery_drag_hint: 'Hold a picture and drag it where you want — the first picture tops your profile.',
     feed_h: '📸 Clean feed',
+    deact_h: '👋 Leaving SlutCamp',
+    deact_note: 'You can hide your profile (fans stop seeing you, nothing is deleted) or deactivate your account completely. Asce reviews every request himself — your account stays fully active until he approves it.',
+    deact_hide_btn: 'Hide my profile',
+    deact_btn: 'Deactivate my account',
+    deact_reason_ph: 'Tell Asce why…',
+    deact_send: 'Send request',
+    deact_cancel: 'Cancel',
+    deact_pending: '⏳ Your request is waiting for Asce to review. Your account stays active meanwhile.',
+    deact_sent: 'Request sent to Asce 💋',
+    deact_reason_req: 'Please write a reason first.',
     feed_note: 'Your clean feed shows on your public page — clean, clothes-on posts fans and Google can see free. Separate from your profile above: that can stay wild; this one is clean only. Fans find you here and message you from your profile 💋',
     feed_add_photo: '＋ Add clean photo',
     feed_add_video: '＋ Add clean video',
@@ -1163,6 +1173,16 @@ const I18N = {
     gallery_reordered: 'Orden de fotos guardado ✨',
     gallery_drag_hint: 'Mantén presionada una foto y arrástrala donde quieras: la primera foto encabeza tu perfil.',
     feed_h: '📸 Feed limpio',
+    deact_h: '👋 Salir de SlutCamp',
+    deact_note: 'Puedes ocultar tu perfil (los fans dejan de verte, no se borra nada) o desactivar tu cuenta por completo. Asce revisa cada solicitud personalmente — tu cuenta sigue totalmente activa hasta que él la apruebe.',
+    deact_hide_btn: 'Ocultar mi perfil',
+    deact_btn: 'Desactivar mi cuenta',
+    deact_reason_ph: 'Cuéntale a Asce por qué…',
+    deact_send: 'Enviar solicitud',
+    deact_cancel: 'Cancelar',
+    deact_pending: '⏳ Tu solicitud está esperando la revisión de Asce. Tu cuenta sigue activa mientras tanto.',
+    deact_sent: 'Solicitud enviada a Asce 💋',
+    deact_reason_req: 'Escribe un motivo primero, por favor.',
     feed_note: 'Tu feed limpio se muestra en tu página pública: publicaciones limpias, con ropa, que los fans y Google pueden ver gratis. Es aparte de tu perfil de arriba: ese puede seguir atrevido; este es solo limpio. Los fans te encuentran aquí y te escriben desde tu perfil 💋',
     feed_add_photo: '＋ Añadir foto limpia',
     feed_add_video: '＋ Añadir video limpio',
@@ -2117,6 +2137,16 @@ const I18N = {
     gallery_reordered: 'Ordem das fotos salva ✨',
     gallery_drag_hint: 'Segure uma foto e arraste para onde quiser — a primeira foto fica no topo do seu perfil.',
     feed_h: '📸 Feed limpo',
+    deact_h: '👋 Sair da SlutCamp',
+    deact_note: 'Você pode ocultar seu perfil (os fãs param de te ver, nada é apagado) ou desativar sua conta por completo. O Asce analisa cada solicitação pessoalmente — sua conta continua totalmente ativa até ele aprovar.',
+    deact_hide_btn: 'Ocultar meu perfil',
+    deact_btn: 'Desativar minha conta',
+    deact_reason_ph: 'Conte ao Asce o porquê…',
+    deact_send: 'Enviar solicitação',
+    deact_cancel: 'Cancelar',
+    deact_pending: '⏳ Sua solicitação está aguardando a análise do Asce. Sua conta continua ativa enquanto isso.',
+    deact_sent: 'Solicitação enviada ao Asce 💋',
+    deact_reason_req: 'Escreva um motivo primeiro, por favor.',
     feed_note: 'Seu feed limpo aparece na sua página pública — posts limpos, com roupa, que os fãs e o Google veem de graça. É separado do seu perfil acima: ele pode continuar ousado; este é só limpo. Os fãs te encontram aqui e te mandam mensagem pelo seu perfil 💋',
     feed_add_photo: '＋ Adicionar foto limpa',
     feed_add_video: '＋ Adicionar vídeo limpo',
@@ -3071,6 +3101,16 @@ const I18N = {
     gallery_reordered: 'Ordre des photos enregistré ✨',
     gallery_drag_hint: 'Maintiens une photo et fais-la glisser où tu veux — la première photo est en haut de ton profil.',
     feed_h: '📸 Fil propre',
+    deact_h: '👋 Quitter SlutCamp',
+    deact_note: 'Vous pouvez masquer votre profil (les fans ne vous voient plus, rien n\'est supprimé) ou désactiver complètement votre compte. Asce examine chaque demande lui-même — votre compte reste pleinement actif jusqu\'à son approbation.',
+    deact_hide_btn: 'Masquer mon profil',
+    deact_btn: 'Désactiver mon compte',
+    deact_reason_ph: 'Dites à Asce pourquoi…',
+    deact_send: 'Envoyer la demande',
+    deact_cancel: 'Annuler',
+    deact_pending: '⏳ Votre demande attend l\'examen d\'Asce. Votre compte reste actif en attendant.',
+    deact_sent: 'Demande envoyée à Asce 💋',
+    deact_reason_req: 'Écrivez d\'abord une raison, s\'il vous plaît.',
     feed_note: 'Ton fil propre s\'affiche sur ta page publique — des publications propres et habillées que les fans et Google voient gratuitement. C\'est séparé de ton profil ci-dessus : lui peut rester osé ; celui-ci est propre uniquement. Les fans te trouvent ici et t\'écrivent depuis ton profil 💋',
     feed_add_photo: '＋ Ajouter une photo propre',
     feed_add_video: '＋ Ajouter une vidéo propre',
@@ -4025,6 +4065,16 @@ const I18N = {
     gallery_reordered: 'Bildreihenfolge gespeichert ✨',
     gallery_drag_hint: 'Halte ein Bild gedrückt und ziehe es an die gewünschte Stelle — das erste Bild steht oben auf deinem Profil.',
     feed_h: '📸 Sauberer Feed',
+    deact_h: '👋 SlutCamp verlassen',
+    deact_note: 'Du kannst dein Profil verbergen (Fans sehen dich nicht mehr, nichts wird gelöscht) oder dein Konto komplett deaktivieren. Asce prüft jede Anfrage selbst — dein Konto bleibt voll aktiv, bis er sie genehmigt.',
+    deact_hide_btn: 'Mein Profil verbergen',
+    deact_btn: 'Mein Konto deaktivieren',
+    deact_reason_ph: 'Sag Asce, warum…',
+    deact_send: 'Anfrage senden',
+    deact_cancel: 'Abbrechen',
+    deact_pending: '⏳ Deine Anfrage wartet auf Asces Prüfung. Dein Konto bleibt derweil aktiv.',
+    deact_sent: 'Anfrage an Asce gesendet 💋',
+    deact_reason_req: 'Bitte schreib zuerst einen Grund.',
     feed_note: 'Dein sauberer Feed erscheint auf deiner öffentlichen Seite — saubere, bekleidete Posts, die Fans und Google kostenlos sehen. Er ist getrennt von deinem Profil oben: das darf wild bleiben; dieser ist nur sauber. Fans finden dich hier und schreiben dir über dein Profil 💋',
     feed_add_photo: '＋ Sauberes Foto hinzufügen',
     feed_add_video: '＋ Sauberes Video hinzufügen',
@@ -4979,6 +5029,16 @@ const I18N = {
     gallery_reordered: 'Порядок фото сохранён ✨',
     gallery_drag_hint: 'Удерживай фото и перетаскивай его куда хочешь — первое фото будет наверху твоего профиля.',
     feed_h: '📸 Чистая лента',
+    deact_h: '👋 Покинуть SlutCamp',
+    deact_note: 'Вы можете скрыть свой профиль (поклонники перестанут вас видеть, ничего не удаляется) или полностью деактивировать аккаунт. Asce лично рассматривает каждый запрос — ваш аккаунт остаётся полностью активным, пока он его не одобрит.',
+    deact_hide_btn: 'Скрыть мой профиль',
+    deact_btn: 'Деактивировать мой аккаунт',
+    deact_reason_ph: 'Расскажите Asce, почему…',
+    deact_send: 'Отправить запрос',
+    deact_cancel: 'Отмена',
+    deact_pending: '⏳ Ваш запрос ожидает рассмотрения Asce. Ваш аккаунт пока остаётся активным.',
+    deact_sent: 'Запрос отправлен Asce 💋',
+    deact_reason_req: 'Сначала напишите причину, пожалуйста.',
     feed_note: 'Твоя чистая лента показывается на твоей публичной странице — чистые посты в одежде, которые фанаты и Google видят бесплатно. Она отделена от твоего профиля выше: он может оставаться дерзким; эта — только чистая. Фанаты находят тебя здесь и пишут тебе с твоего профиля 💋',
     feed_add_photo: '＋ Добавить чистое фото',
     feed_add_video: '＋ Добавить чистое видео',
@@ -5933,6 +5993,16 @@ const I18N = {
     gallery_reordered: '写真の順番を保存しました ✨',
     gallery_drag_hint: '写真を長押しして好きな場所にドラッグ — 最初の写真がプロフィールのトップになります。',
     feed_h: '📸 クリーンフィード',
+    deact_h: '👋 SlutCampを退会',
+    deact_note: 'プロフィールを非表示にする（ファンから見えなくなりますが、何も削除されません）か、アカウントを完全に無効化できます。Asceがすべてのリクエストを自分で確認します — 承認されるまでアカウントは完全に有効なままです。',
+    deact_hide_btn: 'プロフィールを非表示',
+    deact_btn: 'アカウントを無効化',
+    deact_reason_ph: 'Asceに理由を伝えて…',
+    deact_send: 'リクエストを送信',
+    deact_cancel: 'キャンセル',
+    deact_pending: '⏳ あなたのリクエストはAsceの確認待ちです。その間アカウントは有効なままです。',
+    deact_sent: 'Asceにリクエストを送信しました 💋',
+    deact_reason_req: 'まず理由を書いてください。',
     feed_note: 'クリーンフィードはあなたの公開ページに表示されます — ファンとGoogleが無料で見られる、服を着たクリーンな投稿です。上のプロフィールとは別物です：そちらは好きなだけ大胆でOK — フィードはクリーンのみ。ファンはここであなたを見つけて、プロフィールからメッセージします 💋',
     feed_add_photo: '＋ クリーンな写真を追加',
     feed_add_video: '＋ クリーンな動画を追加',
@@ -6887,6 +6957,16 @@ const I18N = {
     gallery_reordered: '照片顺序已保存 ✨',
     gallery_drag_hint: '按住照片并拖动到想要的位置 — 第一张照片会显示在主页顶部。',
     feed_h: '📸 纯净动态',
+    deact_h: '👋 离开 SlutCamp',
+    deact_note: '你可以隐藏你的主页（粉丝将看不到你，任何内容都不会被删除），或者完全停用你的账号。Asce 会亲自审核每个请求 — 在他批准之前，你的账号保持完全活跃。',
+    deact_hide_btn: '隐藏我的主页',
+    deact_btn: '停用我的账号',
+    deact_reason_ph: '告诉 Asce 原因…',
+    deact_send: '发送请求',
+    deact_cancel: '取消',
+    deact_pending: '⏳ 你的请求正在等待 Asce 审核。在此期间你的账号保持活跃。',
+    deact_sent: '请求已发送给 Asce 💋',
+    deact_reason_req: '请先写下原因。',
     feed_note: '你的纯净动态会显示在公开页面上 — 穿着得体的纯净内容，粉丝和 Google 可以免费查看。它与上面的资料分开：那边可以尽情大胆，这边只发纯净内容。粉丝在这里找到你，并通过你的资料给你发消息 💋',
     feed_add_photo: '＋ 添加纯净照片',
     feed_add_video: '＋ 添加纯净视频',
@@ -7841,6 +7921,16 @@ const I18N = {
     gallery_reordered: '사진 순서가 저장됐어요 ✨',
     gallery_drag_hint: '사진을 길게 눌러 원하는 위치로 드래그하세요 — 첫 번째 사진이 프로필 맨 위에 표시돼요.',
     feed_h: '📸 클린 피드',
+    deact_h: '👋 SlutCamp 떠나기',
+    deact_note: '프로필을 숨기거나(팬들이 더 이상 볼 수 없지만 아무것도 삭제되지 않습니다) 계정을 완전히 비활성화할 수 있습니다. Asce가 모든 요청을 직접 검토합니다 — 승인하기 전까지 계정은 완전히 활성 상태로 유지됩니다.',
+    deact_hide_btn: '내 프로필 숨기기',
+    deact_btn: '내 계정 비활성화',
+    deact_reason_ph: 'Asce에게 이유를 알려주세요…',
+    deact_send: '요청 보내기',
+    deact_cancel: '취소',
+    deact_pending: '⏳ 요청이 Asce의 검토를 기다리고 있습니다. 그동안 계정은 활성 상태로 유지됩니다.',
+    deact_sent: 'Asce에게 요청을 보냈습니다 💋',
+    deact_reason_req: '먼저 이유를 작성해 주세요.',
     feed_note: '클린 피드는 당신의 공개 페이지에 표시돼요 — 팬들과 Google이 무료로 볼 수 있는, 옷을 입은 클린한 게시물이에요. 위의 프로필과는 별개예요: 그쪽은 원하는 만큼 과감해도 되고 — 피드는 클린 전용이에요. 팬들은 여기서 당신을 찾고 프로필에서 메시지를 보내요 💋',
     feed_add_photo: '＋ 클린 사진 추가',
     feed_add_video: '＋ 클린 영상 추가',
@@ -8795,6 +8885,16 @@ const I18N = {
     gallery_reordered: 'Ordine delle foto salvato ✨',
     gallery_drag_hint: 'Tieni premuta una foto e trascinala dove vuoi: la prima foto va in cima al tuo profilo.',
     feed_h: '📸 Feed pulito',
+    deact_h: '👋 Lasciare SlutCamp',
+    deact_note: 'Puoi nascondere il tuo profilo (i fan non ti vedono più, non viene cancellato nulla) o disattivare completamente il tuo account. Asce esamina ogni richiesta di persona — il tuo account resta pienamente attivo finché non la approva.',
+    deact_hide_btn: 'Nascondi il mio profilo',
+    deact_btn: 'Disattiva il mio account',
+    deact_reason_ph: 'Di\' ad Asce perché…',
+    deact_send: 'Invia richiesta',
+    deact_cancel: 'Annulla',
+    deact_pending: '⏳ La tua richiesta è in attesa dell\'esame di Asce. Il tuo account resta attivo nel frattempo.',
+    deact_sent: 'Richiesta inviata ad Asce 💋',
+    deact_reason_req: 'Scrivi prima un motivo, per favore.',
     feed_note: 'Il tuo feed pulito appare sulla tua pagina pubblica — post puliti e vestiti che i fan e Google vedono gratis. È separato dal tuo profilo sopra: quello può restare audace; questo è solo pulito. I fan ti trovano qui e ti scrivono dal tuo profilo 💋',
     feed_add_photo: '＋ Aggiungi foto pulita',
     feed_add_video: '＋ Aggiungi video pulito',
@@ -9749,6 +9849,16 @@ const I18N = {
     gallery_reordered: 'Kolejność zdjęć zapisana ✨',
     gallery_drag_hint: 'Przytrzymaj zdjęcie i przeciągnij je w wybrane miejsce — pierwsze zdjęcie znajdzie się na górze profilu.',
     feed_h: '📸 Czysty feed',
+    deact_h: '👋 Opuść SlutCamp',
+    deact_note: 'Możesz ukryć swój profil (fani przestają Cię widzieć, nic nie jest usuwane) albo całkowicie dezaktywować konto. Asce osobiście rozpatruje każdą prośbę — Twoje konto pozostaje w pełni aktywne, dopóki jej nie zatwierdzi.',
+    deact_hide_btn: 'Ukryj mój profil',
+    deact_btn: 'Dezaktywuj moje konto',
+    deact_reason_ph: 'Powiedz Asce, dlaczego…',
+    deact_send: 'Wyślij prośbę',
+    deact_cancel: 'Anuluj',
+    deact_pending: '⏳ Twoja prośba czeka na rozpatrzenie przez Asce. Twoje konto pozostaje tymczasem aktywne.',
+    deact_sent: 'Prośba wysłana do Asce 💋',
+    deact_reason_req: 'Najpierw napisz powód, proszę.',
     feed_note: 'Twój czysty feed pokazuje się na Twojej publicznej stronie — czyste, ubrane posty, które fani i Google widzą za darmo. Jest oddzielony od Twojego profilu powyżej: ten może pozostać odważny; ten jest tylko czysty. Fani znajdują Cię tutaj i piszą do Ciebie z Twojego profilu 💋',
     feed_add_photo: '＋ Dodaj czyste zdjęcie',
     feed_add_video: '＋ Dodaj czysty film',
@@ -10703,6 +10813,16 @@ const I18N = {
     gallery_reordered: 'Foto-volgorde opgeslagen ✨',
     gallery_drag_hint: 'Houd een foto ingedrukt en sleep hem waar je wilt — de eerste foto staat bovenaan je profiel.',
     feed_h: '📸 Schone feed',
+    deact_h: '👋 SlutCamp verlaten',
+    deact_note: 'Je kunt je profiel verbergen (fans zien je niet meer, er wordt niets verwijderd) of je account volledig deactiveren. Asce beoordeelt elk verzoek zelf — je account blijft volledig actief tot hij het goedkeurt.',
+    deact_hide_btn: 'Mijn profiel verbergen',
+    deact_btn: 'Mijn account deactiveren',
+    deact_reason_ph: 'Vertel Asce waarom…',
+    deact_send: 'Verzoek versturen',
+    deact_cancel: 'Annuleren',
+    deact_pending: '⏳ Je verzoek wacht op beoordeling door Asce. Je account blijft ondertussen actief.',
+    deact_sent: 'Verzoek naar Asce gestuurd 💋',
+    deact_reason_req: 'Schrijf eerst een reden, alsjeblieft.',
     feed_note: 'Je schone feed staat op je openbare pagina — schone, geklede posts die fans en Google gratis zien. Hij staat los van je profiel hierboven: dat mag wild blijven; deze is alleen schoon. Fans vinden je hier en sturen je een bericht via je profiel 💋',
     feed_add_photo: '＋ Schone foto toevoegen',
     feed_add_video: '＋ Schone video toevoegen',
@@ -11657,6 +11777,16 @@ const I18N = {
     gallery_reordered: 'Fotoğraf sırası kaydedildi ✨',
     gallery_drag_hint: 'Bir fotoğrafı basılı tutup istediğin yere sürükle — ilk fotoğraf profilinin en üstünde yer alır.',
     feed_h: '📸 Temiz akış',
+    deact_h: '👋 SlutCamp\'ten ayrıl',
+    deact_note: 'Profilini gizleyebilir (hayranlar seni görmez, hiçbir şey silinmez) veya hesabını tamamen devre dışı bırakabilirsin. Asce her isteği bizzat inceler — o onaylayana kadar hesabın tamamen aktif kalır.',
+    deact_hide_btn: 'Profilimi gizle',
+    deact_btn: 'Hesabımı devre dışı bırak',
+    deact_reason_ph: 'Asce\'ye nedenini söyle…',
+    deact_send: 'İsteği gönder',
+    deact_cancel: 'İptal',
+    deact_pending: '⏳ İsteğin Asce\'nin incelemesini bekliyor. Hesabın bu arada aktif kalıyor.',
+    deact_sent: 'İstek Asce\'ye gönderildi 💋',
+    deact_reason_req: 'Lütfen önce bir neden yaz.',
     feed_note: 'Temiz akışın herkese açık sayfanda görünür — hayranların ve Google\'ın ücretsiz gördüğü temiz, giyinik paylaşımlar. Yukarıdaki profilinden ayrıdır: orası cesur kalabilir; burası yalnızca temizdir. Hayranlar seni burada bulur ve profilinden sana mesaj atar 💋',
     feed_add_photo: '＋ Temiz fotoğraf ekle',
     feed_add_video: '＋ Temiz video ekle',
@@ -14440,6 +14570,48 @@ async function doPasskeyLogin() {
 // held item (co-star packet incomplete) shows the same "waiting on
 // co-star ID" badge her gallery uses. Deleting removes the post
 // everywhere at once (public page, /feed stream, app profile).
+/* Deactivate / Hide card (Moderator Role build): she files a
+ * request with a mandatory reason; the account stays fully active
+ * until the owner approves it in the Manager. One pending request —
+ * while one waits, the card shows the pending state instead of the
+ * buttons. */
+async function loadDeactSettings() {
+  const box = $('#deact-box'); if (!box) return;
+  let cur = null;
+  try {
+    const { data } = await api('/model/deactivation-request');
+    cur = data && data.request;
+  } catch (e) { /* card falls back to the buttons */ }
+  if (cur && cur.status === 'pending') {
+    box.innerHTML = `<div class="muted small">${t('deact_pending')}</div>`;
+    return;
+  }
+  box.innerHTML = `
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <button class="btn ghost small" id="deact-hide">${t('deact_hide_btn')}</button>
+      <button class="btn ghost small" id="deact-off">${t('deact_btn')}</button>
+    </div>
+    <div id="deact-form" style="display:none;margin-top:10px">
+      <textarea class="input" id="deact-reason" rows="3" maxlength="500" placeholder="${t('deact_reason_ph')}" style="width:100%"></textarea>
+      <div class="row" style="gap:8px;margin-top:8px">
+        <button class="btn small" id="deact-submit">${t('deact_send')}</button>
+        <button class="btn ghost small" id="deact-cancel">${t('deact_cancel')}</button>
+      </div>
+    </div>`;
+  let type = null;
+  const open = (ty) => { type = ty; $('#deact-form').style.display = 'block'; const ta = $('#deact-reason'); if (ta) ta.focus(); };
+  $('#deact-hide').onclick = () => open('hide');
+  $('#deact-off').onclick = () => open('deactivate');
+  $('#deact-cancel').onclick = () => { $('#deact-form').style.display = 'none'; };
+  $('#deact-submit').onclick = async () => {
+    const reason = ($('#deact-reason').value || '').trim();
+    if (!reason) { toast(t('deact_reason_req')); return; }
+    const { status, data } = await api('/model/deactivation-request', { method: 'POST', body: JSON.stringify({ type, reason }) });
+    if (status === 200) { toast(t('deact_sent')); loadDeactSettings(); }
+    else toast((data && (data.message || data.error)) || 'Error');
+  };
+}
+
 async function loadCleanFeedSettings() {
   const box = $('#cleanfeed-box');
   if (!box) return;
@@ -18642,6 +18814,11 @@ async function vModelSettings() {
       <div class="card" id="tax-card"><div class="muted small">Loading tax info…</div></div>
       <div id="pk-card"></div>
       <div id="pw-card"></div>
+      <div class="card" id="deact-card">
+        <div style="font-weight:800;font-size:17px;margin-bottom:6px">${t('deact_h')}</div>
+        <div class="muted small" style="margin-bottom:8px">${t('deact_note')}</div>
+        <div id="deact-box"><div class="muted small">…</div></div>
+      </div>
       <button class="btn ghost" id="s-ath" style="width:100%;margin-bottom:10px">${t('ath_wallet_row')}</button>
       <button class="btn ghost" id="s-logout">${t('log_out')}</button>
       <div class="card" id="tipmenu-card" style="margin-top:12px">
@@ -18920,6 +19097,7 @@ async function vModelSettings() {
     if (r.status === 200) { toast(t('public_photo_removed_toast')); await refreshMe(); show('modelSettings', {}); }
   };
   $('#s-logout').onclick = () => logout();
+  loadDeactSettings();
   renderPkSettingsCard();
   renderPwSettingsCard();
   loadCleanFeedSettings();
