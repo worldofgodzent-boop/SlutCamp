@@ -222,7 +222,8 @@ test('full demo-money wipe: $0 right across, exactly once, then new money counts
     assert.equal(wd[1].note, 'Paid via Novo');
     assert.equal(wd[2].status, 'rejected', 'an already-rejected withdrawal is untouched');
     assert.equal(wd[2].note, 'Old rejection');
-    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users').get().n, 6, 'no account was deleted');
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users').get().n, 7,
+      'no account was deleted (6 fixtures + the mspink delegate seat the server creates at boot)');
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM model_likes WHERE model_id = ?').get(ids.modelId).n, 3,
       'likes are not money — all 3 survive');
     assert.equal(db.prepare('SELECT rank_score FROM models WHERE user_id = ?').get(ids.modelId).rank_score, 3,
