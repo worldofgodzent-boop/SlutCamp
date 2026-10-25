@@ -11,12 +11,13 @@
  *   both seats; GET/POST /api/admin/delegate/kaykay/* enable,
  *   disable, set-password, enroll-passkey — and a delegate (either
  *   seat) or a fan gets 403 on every seat-management endpoint.
- * - Kay Kay password sign-in is the proven route: with NO passkey
- *   enrolled, the enabled kaykay seat reaches /api/admin/* (the
- *   Assignment 01 exception to mspink's strict step-up rule, which
- *   is left untouched for mspink — mspink still needs its passkey,
- *   exercised here with the same software authenticator as
- *   tests/owner-delegate.test.js, verification never mocked).
+ * - Password sign-in is the proven route for BOTH delegate seats:
+ *   with NO passkey enrolled, an enabled delegate seat reaches
+ *   /api/admin/* on its password alone (Kay Kay's Assignment 01
+ *   rule, extended to mspink by owner order 2026-10-25). Enrolling
+ *   a passkey re-arms the step-up — exercised here for mspink with
+ *   the same software authenticator as tests/owner-delegate.test.js,
+ *   verification never mocked.
  * - Team channel: POST/GET /api/admin/team-messages by owner +
  *   both delegates; author identities owner / delegate:mspink /
  *   delegate:kaykay with labels Owner / Ms. Pink / Kay Kay;
@@ -339,8 +340,8 @@ test('enable → kaykay password sign-in works with NO passkey (Assignment 01 ex
   assert.equal(login.json.user.role, 'owner_delegate');
   kaykayToken = login.json.token;
 
-  // No passkey enrolled, yet the Manager surface opens — unlike
-  // mspink, whose strict rule is pinned by owner-delegate tests.
+  // No passkey enrolled, yet the Manager surface opens on her
+  // password alone — the delegate password-first rule.
   const ov = await req('GET', '/api/admin/overview', A(kaykayToken));
   assert.equal(ov.status, 200, JSON.stringify(ov.json));
 });
@@ -378,9 +379,9 @@ test('team channel: empty at first, owner + kaykay post and read chronologically
   assert.ok(all.json.messages[0].id < all.json.messages[1].id);
 });
 
-/* ---------------- mspink: passkey step-up, then channel ---------------- */
+/* ------------- mspink: password-first, then channel ------------- */
 
-test('mspink: owner sets password + enables, passkey step-up unlocks, then she posts', async () => {
+test('mspink: owner sets password + enables; password alone unlocks, enrolling a passkey re-arms the step-up, then she posts', async () => {
   const set = await req('POST', '/api/admin/delegate/set-password',
     AB(adminToken, { password: MSPINK_PW }));
   assert.equal(set.status, 200);
@@ -391,10 +392,10 @@ test('mspink: owner sets password + enables, passkey step-up unlocks, then she p
   assert.equal(login.status, 200, JSON.stringify(login.json));
   mspinkToken = login.json.token;
 
-  // Still locked without a passkey (mspink's strict rule, unchanged).
-  const locked = await req('GET', '/api/admin/team-messages', A(mspinkToken));
-  assert.equal(locked.status, 403);
-  assert.equal(locked.json.error, 'passkey_required');
+  // Password-first (owner order 2026-10-25): no passkey enrolled →
+  // her password alone opens the channel.
+  const openRead = await req('GET', '/api/admin/team-messages', A(mspinkToken));
+  assert.equal(openRead.status, 200, JSON.stringify(openRead.json));
 
   const open = await req('POST', '/api/admin/delegate/enroll-passkey', AB(adminToken, {}));
   assert.equal(open.status, 200);
@@ -406,6 +407,12 @@ test('mspink: owner sets password + enables, passkey step-up unlocks, then she p
   const verify = await req('POST', '/api/auth/passkey/register-verify',
     AOB(mspinkToken, { response, label: 'Ms. Pink browser' }));
   assert.equal(verify.status, 200, JSON.stringify(verify.json));
+
+  // The fresh passkey re-arms the step-up on her seat too: this
+  // session has not verified yet, so the channel locks again.
+  const relocked = await req('GET', '/api/admin/team-messages', A(mspinkToken));
+  assert.equal(relocked.status, 403);
+  assert.equal(relocked.json.error, 'passkey_required');
 
   const sopts = await req('POST', '/api/manager/passkey/stepup-options',
     AOB(mspinkToken, {}));

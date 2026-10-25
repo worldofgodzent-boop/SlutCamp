@@ -8,10 +8,11 @@
  * - Owner flow: GET seat state, set-password, enable — owner-only
  *   (the delegate can never manage itself; fans/models are refused).
  * - A disabled seat refuses even the correct password at /manager.
- * - NO bootstrap pass for the delegate: password alone never unlocks
- *   the Manager — with no passkey enrolled the seat stays locked
- *   (403 passkey_required), and enrollment itself only runs inside an
- *   owner-opened window.
+ * - Password-first for the delegate (owner order 2026-10-25):
+ *   password alone unlocks the Manager while no passkey is enrolled;
+ *   enrolling one re-arms the step-up (403 passkey_required until
+ *   the session verifies), and enrollment itself only runs inside
+ *   an owner-opened window.
  * - Full parity after step-up: overview, fans, models, contracts, ID
  *   checks, tax, CCBill orders, mod presence, AND the money paths
  *   (payouts, withdrawals with bank details, fan credit grants).
@@ -320,7 +321,7 @@ test('disabled seat refuses even the correct password at the Manager door', asyn
   assert.equal(r.json.error, 'delegate_disabled');
 });
 
-test('enable → password sign-in works, but the seat stays LOCKED without a passkey', async () => {
+test('enable → password sign-in works and unlocks the Manager (password-first)', async () => {
   const en = await req('POST', '/api/admin/delegate/enable', AB(adminToken, {}));
   assert.equal(en.status, 200);
   assert.equal(en.json.delegate.enabled, true);
@@ -331,12 +332,10 @@ test('enable → password sign-in works, but the seat stays LOCKED without a pas
   assert.equal(login.json.manager_account, true);
   delegateToken = login.json.token;
 
-  // No bootstrap pass for the delegate (unlike admin): no passkey
-  // enrolled → every Manager gate answers passkey_required.
+  // Password-first (owner order 2026-10-25): with no passkey
+  // enrolled, the delegate's password alone unlocks the Manager.
   const ov = await req('GET', '/api/admin/overview', A(delegateToken));
-  assert.equal(ov.status, 403);
-  assert.equal(ov.json.error, 'passkey_required');
-  assert.equal(ov.json.enrolled, false);
+  assert.equal(ov.status, 200, JSON.stringify(ov.json));
 
   // The sign-in itself was audit-logged and belled to the owner.
   const audit = readDb((db) => db.prepare(
@@ -375,6 +374,13 @@ test('passkey enrollment only runs inside an owner-opened window; step-up then u
     { ...AO(delegateToken), body: {} });
   assert.equal(again.status, 403);
   assert.equal(again.json.error, 'enrollment_requires_owner');
+
+  // Enrolling a passkey re-arms the step-up: this session is not
+  // verified yet, so the gates lock again until it steps up.
+  const lockedAgain = await req('GET', '/api/admin/overview', A(delegateToken));
+  assert.equal(lockedAgain.status, 403);
+  assert.equal(lockedAgain.json.error, 'passkey_required');
+  assert.equal(lockedAgain.json.enrolled, true);
 
   // Step-up on the SAME session: options → assertion → verified.
   const sopts = await req('POST', '/api/manager/passkey/stepup-options',

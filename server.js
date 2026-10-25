@@ -3880,10 +3880,14 @@ const requireRole = (...roles) => (req, res, next) => {
 /* Seat rules on top of parity:                                       */
 /* - Ships DISABLED (users.delegate_enabled = 0): sign-in refused     */
 /*   until the owner enables it from his own account.                 */
-/* - NO bootstrap pass: with no delegate passkey enrolled the seat    */
-/*   stays locked; every delegate session must pass the WebAuthn      */
-/*   step-up, and delegate passkey enrollment only runs inside an     */
-/*   owner-opened window (users.delegate_enroll_until).               */
+/* - Password-first (owner order 2026-10-25): with no delegate        */
+/*   passkey enrolled the seat passes on its password alone; once a   */
+/*   passkey exists, every delegate session must pass the WebAuthn    */
+/*   step-up. Delegate passkey enrollment only runs inside an         */
+/*   owner-opened window (users.delegate_enroll_until). (Shipped       */
+/*   strict in PR #104 — no bootstrap pass — until the owner ordered  */
+/*   password-only for the mspink seat: she is the only one who signs  */
+/*   into it, and the step-up needed the owner present to unlock.)    */
 /* - Delegate sessions expire after 12h (owner sessions do not).      */
 /* - Every delegate Manager mutation is written to manager_audit_log  */
 /*   and the sensitive ones bell the owner.                           */
@@ -3963,13 +3967,11 @@ const requireManager = (req, res, next) => {
 /* Manager step-up for principals. Runs AFTER requireManager
  * (req.user set). Admin keeps the long-standing bootstrap rule (no
  * enrolled passkey → pass; enrolled → session must be verified).
- * The mspink delegate is stricter, by design: no enrolled passkey
- * → locked; session must be step-up verified; sessions older than
- * 12h die. The kaykay delegate (Assignment 01) is the exception:
- * passkey enrollment is optional, so no enrolled passkey → pass
- * (password sign-in is the proven route); once a passkey exists,
- * the session must be step-up verified, and the 12h expiry still
- * applies. */
+ * Delegate seats are password-first (owner order 2026-10-25,
+ * unifying both seats on the rule Kay Kay's seat shipped with in
+ * Assignment 01): no enrolled passkey → pass on the password;
+ * once a passkey exists, the session must be step-up verified;
+ * sessions older than 12h die either way. */
 const requireManagerStepUp = (req, res, next) => {
   if (!req.user) return next();
   if (!isDelegateUser(req.user)) return requirePasskeyStepUp(req, res, next);
@@ -3983,17 +3985,11 @@ const requireManagerStepUp = (req, res, next) => {
       return res.status(403).json({ error: 'session_expired' });
     }
   }
-  /* Kay Kay seat (Assignment 01): passkey enrollment is OPTIONAL
-   * and never a blocker — password sign-in is the proven route.
-   * With no passkey enrolled she passes like the admin bootstrap
-   * above; once a passkey exists, the session must be step-up
-   * verified, exactly like the mspink seat. The mspink seat keeps
-   * its strict rule below (no bootstrap pass), unchanged. The 12h
-   * session-expiry check above still applies to both seats. */
-  if (isKayKayUser(req.user) && !adminHasPasskey(req.user.id)) return next();
-  if (!adminHasPasskey(req.user.id)) {
-    return res.status(403).json({ error: 'passkey_required', enrolled: false });
-  }
+  /* Delegate seats: password-first (see header). No passkey
+   * enrolled → the password alone carries the seat; a passkey,
+   * once enrolled, re-arms the step-up for every session. The
+   * 12h session-expiry check above still applies to both seats. */
+  if (!adminHasPasskey(req.user.id)) return next();
   if (!sessionPasskeyVerified(token)) {
     return res.status(403).json({ error: 'passkey_required', enrolled: true });
   }
