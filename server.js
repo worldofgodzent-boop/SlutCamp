@@ -3626,6 +3626,21 @@ db.exec(`CREATE TABLE IF NOT EXISTS manager_audit_log (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 )`);
 db.exec('CREATE INDEX IF NOT EXISTS idx_manager_audit_created ON manager_audit_log(created_at DESC)');
+/* Team channel (Assignment 01, 2026-10-25): the Manager-only room
+ * where the owner and the two delegate seats trade assignments and
+ * results. Author is the principal identity — 'owner',
+ * 'delegate:mspink', 'delegate:kaykay' — never a fan/model name.
+ * Nothing about this table is reachable from any fan, model, or
+ * public surface; the only API is the Manager-authenticated pair
+ * below (adminOnly chain, so moderators get 403 and everyone else
+ * 401/403 exactly as the existing Manager guards do). */
+db.exec(`CREATE TABLE IF NOT EXISTS team_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  author TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+)`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_team_messages_created ON team_messages(id DESC)');
 const bannedGuests = new Set();  // guest tokens banned by admin (in-memory, MVP)
 const socketsBySubject = new Map(); // 'u:123' | 'g:token' -> Set<ws>
 const adminTempTokens = new Map();  // tempToken -> { userId, expiresAt } (2FA pending)
@@ -3876,6 +3891,10 @@ const requireRole = (...roles) => (req, res, next) => {
 /*   settings) require a reason when the delegate does them.          */
 /* ------------------------------------------------------------------ */
 const DELEGATE_USERNAME = 'mspink';
+/* Second delegate seat (Assignment 01, 2026-10-25): Kay Kay, same
+ * role and same boot-time ensure pattern as mspink, shipped
+ * DISABLED. The two seats are distinct principals — never shared. */
+const KAYKAY_USERNAME = 'kaykay';
 const DELEGATE_SESSION_MAX_MS = 12 * 60 * 60 * 1000;
 
 const isManagerPrincipal = (user) =>
@@ -3883,8 +3902,41 @@ const isManagerPrincipal = (user) =>
 const isDelegateUser = (user) => !!user && user.role === 'owner_delegate';
 
 function delegateSeatUser() {
-  return db.prepare("SELECT * FROM users WHERE role = 'owner_delegate' ORDER BY id ASC LIMIT 1").get() || null;
+  // The original seat, by name — not merely "the first delegate row",
+  // now that a second delegate seat exists.
+  return db.prepare("SELECT * FROM users WHERE role = 'owner_delegate' AND LOWER(username) = LOWER(?)")
+    .get(DELEGATE_USERNAME) || null;
 }
+function delegateSeatUserByUsername(username) {
+  if (!username) return null;
+  return db.prepare("SELECT * FROM users WHERE role = 'owner_delegate' AND LOWER(username) = LOWER(?)")
+    .get(String(username)) || null;
+}
+function delegateSeats() {
+  return db.prepare("SELECT * FROM users WHERE role = 'owner_delegate' ORDER BY id ASC").all();
+}
+const isKayKayUser = (user) =>
+  !!user && user.role === 'owner_delegate' && String(user.username || '').toLowerCase() === KAYKAY_USERNAME;
+/* Audit badge / author label for a delegate principal, by seat —
+ * never a shared badge, so the record always knows who acted. */
+const delegateBadgeFor = (user) => {
+  if (!user || user.role !== 'owner_delegate') return null;
+  return String(user.username || '').toLowerCase() === KAYKAY_USERNAME ? 'Kay Kay' : 'Ms. Pink';
+};
+/* Team-channel author identity (Assignment 01): the principal, in
+ * the spec's own form — 'owner', 'delegate:mspink', 'delegate:kaykay'. */
+const teamAuthorFor = (user) => {
+  if (!user) return 'owner';
+  if (user.role === 'admin') return 'owner';
+  if (user.role === 'owner_delegate') return `delegate:${String(user.username || '').toLowerCase()}`;
+  return String(user.username || '');
+};
+const teamAuthorLabel = (author) => {
+  if (author === 'owner') return 'Owner';
+  if (author === 'delegate:mspink') return 'Ms. Pink';
+  if (author === 'delegate:kaykay') return 'Kay Kay';
+  return String(author || '');
+};
 function delegateSeatEnabled(user) {
   return !!user && Number(user.delegate_enabled || 0) === 1;
 }
@@ -3911,8 +3963,13 @@ const requireManager = (req, res, next) => {
 /* Manager step-up for principals. Runs AFTER requireManager
  * (req.user set). Admin keeps the long-standing bootstrap rule (no
  * enrolled passkey → pass; enrolled → session must be verified).
- * The delegate is stricter, by design: no enrolled passkey → locked;
- * session must be step-up verified; sessions older than 12h die. */
+ * The mspink delegate is stricter, by design: no enrolled passkey
+ * → locked; session must be step-up verified; sessions older than
+ * 12h die. The kaykay delegate (Assignment 01) is the exception:
+ * passkey enrollment is optional, so no enrolled passkey → pass
+ * (password sign-in is the proven route); once a passkey exists,
+ * the session must be step-up verified, and the 12h expiry still
+ * applies. */
 const requireManagerStepUp = (req, res, next) => {
   if (!req.user) return next();
   if (!isDelegateUser(req.user)) return requirePasskeyStepUp(req, res, next);
@@ -3926,6 +3983,14 @@ const requireManagerStepUp = (req, res, next) => {
       return res.status(403).json({ error: 'session_expired' });
     }
   }
+  /* Kay Kay seat (Assignment 01): passkey enrollment is OPTIONAL
+   * and never a blocker — password sign-in is the proven route.
+   * With no passkey enrolled she passes like the admin bootstrap
+   * above; once a passkey exists, the session must be step-up
+   * verified, exactly like the mspink seat. The mspink seat keeps
+   * its strict rule below (no bootstrap pass), unchanged. The 12h
+   * session-expiry check above still applies to both seats. */
+  if (isKayKayUser(req.user) && !adminHasPasskey(req.user.id)) return next();
   if (!adminHasPasskey(req.user.id)) {
     return res.status(403).json({ error: 'passkey_required', enrolled: false });
   }
@@ -3955,14 +4020,20 @@ function logManagerAudit(actor, action, opts = {}) {
 /* Bell every OWNER (role='admin' — never the delegate) about delegate
  * activity: sign-ins and sensitive actions. Wrapped like every bell:
  * a failure here never blocks the underlying action. */
-function bellOwnersDelegateActivity(actionLabel) {
+function bellOwnersDelegateActivity(actionLabel, actor) {
+  // The bell names the seat that acted — Kay Kay's activity must
+  // never arrive badged as Ms. Pink's. Callers without an actor
+  // (legacy) keep the mspink copy.
+  const kaykay = !!(actor && isKayKayUser(actor));
+  const titleKey = kaykay ? 'bell_delegate_kaykay_title' : 'bell_delegate_title';
+  const bodyKey = kaykay ? 'bell_delegate_kaykay_body' : 'bell_delegate_body';
   try {
     const admins = db.prepare("SELECT id, language FROM users WHERE role = 'admin'").all();
     for (const a of admins) {
       try {
         notifyUser(a.id, 'delegate_alert',
-          srv('bell_delegate_title', a.language),
-          srv('bell_delegate_body', a.language, { action: actionLabel }),
+          srv(titleKey, a.language),
+          srv(bodyKey, a.language, { action: actionLabel }),
           '/manager');
       } catch (e) { /* one admin's bell must not block the others */ }
     }
@@ -4014,7 +4085,7 @@ const auditDelegateMutation = (req, res, next) => {
         detail: { status: res.statusCode },
       });
       if (DELEGATE_SENSITIVE_ROUTES.includes(action)) {
-        bellOwnersDelegateActivity(action);
+        bellOwnersDelegateActivity(action, req.user);
       }
     } catch (e) { /* never break the response */ }
   });
@@ -4716,6 +4787,8 @@ const SRV = {
   bell_new_model_title: { en: '🆕 New model joined', es: '🆕 Nueva modelo registrada', pt: '🆕 Nova modelo cadastrada', fr: '🆕 Nouveau modèle inscrit', de: '🆕 Neues Model registriert', ru: '🆕 Новая модель присоединилась', ja: '🆕 新しいモデルが参加しました', zh: '🆕 新模特加入', ko: '🆕 새 모델이 가입했어요', it: '🆕 Nuova modella registrata', pl: '🆕 Nowa modelka dołączyła', nl: '🆕 Nieuw model aangemeld', tr: '🆕 Yeni model katıldı' },
   bell_delegate_title: { en: '🪪 Ms. Pink — delegate activity', es: '🪪 Ms. Pink — actividad de delegada', pt: '🪪 Ms. Pink — atividade de delegada', fr: '🪪 Ms. Pink — activité de déléguée', de: '🪪 Ms. Pink — Aktivität der Vertreterin', ru: '🪪 Ms. Pink — действия представителя', ja: '🪪 Ms. Pink — 代理人のアクティビティ', zh: '🪪 Ms. Pink — 代理人动态', ko: '🪪 Ms. Pink — 대리인 활동', it: '🪪 Ms. Pink — attività della delegata', pl: '🪪 Ms. Pink — aktywność delegatki', nl: '🪪 Ms. Pink — activiteit van gedelegeerde', tr: '🪪 Ms. Pink — delege etkinliği' },
   bell_delegate_body: { en: 'Your owner delegate (Ms. Pink) did: {action}. Full details are in the Manager audit log.', es: 'Tu delegada propietaria (Ms. Pink) hizo: {action}. Los detalles completos están en el registro de auditoría del Manager.', pt: 'Sua delegada proprietária (Ms. Pink) fez: {action}. Os detalhes completos estão no registro de auditoria do Manager.', fr: 'Votre déléguée propriétaire (Ms. Pink) a fait : {action}. Tous les détails sont dans le journal d\'audit du Manager.', de: 'Deine Eigentümer-Vertreterin (Ms. Pink) hat Folgendes getan: {action}. Alle Details stehen im Audit-Protokoll des Managers.', ru: 'Ваш представитель владельца (Ms. Pink) выполнила: {action}. Полные сведения — в журнале аудита Manager.', ja: 'オーナー代理人（Ms. Pink）が行いました：{action}。詳細はManagerの監査ログにあります。', zh: '您的所有者代理人（Ms. Pink）执行了：{action}。完整详情见 Manager 审计日志。', ko: '소유자 대리인(Ms. Pink)이 수행했어요: {action}. 전체 내역은 Manager 감사 로그에 있어요.', it: 'La tua delegata proprietaria (Ms. Pink) ha fatto: {action}. I dettagli completi sono nel registro di controllo del Manager.', pl: 'Twoja delegatka właściciela (Ms. Pink) wykonała: {action}. Pełne szczegóły znajdują się w dzienniku audytu Managera.', nl: 'Je eigenaar-gedelegeerde (Ms. Pink) deed: {action}. Alle details staan in het auditlogboek van de Manager.', tr: 'Sahip delegentiz (Ms. Pink) şunu yaptı: {action}. Tüm ayrıntılar Manager denetim günlüğünde.' },
+  bell_delegate_kaykay_title: { en: '🪪 Kay Kay — delegate activity', es: '🪪 Kay Kay — actividad de delegada', pt: '🪪 Kay Kay — atividade de delegada', fr: '🪪 Kay Kay — activité de déléguée', de: '🪪 Kay Kay — Aktivität der Vertreterin', ru: '🪪 Kay Kay — действия представителя', ja: '🪪 Kay Kay — 代理人のアクティビティ', zh: '🪪 Kay Kay — 代理人动态', ko: '🪪 Kay Kay — 대리인 활동', it: '🪪 Kay Kay — attività della delegata', pl: '🪪 Kay Kay — aktywność delegatki', nl: '🪪 Kay Kay — activiteit van gedelegeerde', tr: '🪪 Kay Kay — delege etkinliği' },
+  bell_delegate_kaykay_body: { en: 'Your owner delegate (Kay Kay) did: {action}. Full details are in the Manager audit log.', es: 'Tu delegada propietaria (Kay Kay) hizo: {action}. Los detalles completos están en el registro de auditoría del Manager.', pt: 'Sua delegada proprietária (Kay Kay) fez: {action}. Os detalhes completos estão no registro de auditoria do Manager.', fr: 'Votre déléguée propriétaire (Kay Kay) a fait : {action}. Tous les détails sont dans le journal d\'audit du Manager.', de: 'Deine Eigentümer-Vertreterin (Kay Kay) hat Folgendes getan: {action}. Alle Details stehen im Audit-Protokoll des Managers.', ru: 'Ваш представитель владельца (Kay Kay) выполнил: {action}. Полные сведения — в журнале аудита Manager.', ja: 'オーナー代理人（Kay Kay）が行いました：{action}。詳細はManagerの監査ログにあります。', zh: '您的所有者代理人（Kay Kay）执行了：{action}。完整详情见 Manager 审计日志。', ko: '소유자 대리인(Kay Kay)이 수행했어요: {action}. 전체 내역은 Manager 감사 로그에 있어요.', it: 'La tua delegata proprietaria (Kay Kay) ha fatto: {action}. I dettagli completi sono nel registro di controllo del Manager.', pl: 'Twoja delegatka właściciela (Kay Kay) wykonała: {action}. Pełne szczegóły znajdują się w dzienniku audytu Managera.', nl: 'Je eigenaar-gedelegeerde (Kay Kay) deed: {action}. Alle details staan in het auditlogboek van de Manager.', tr: 'Sahip delegentiz (Kay Kay) şunu yaptı: {action}. Tüm ayrıntılar Manager denetim günlüğünde.' },
   bell_section_female: { en: 'Female', es: 'Femenina', pt: 'Feminina', fr: 'Femmes', de: 'Frauen', ru: 'Женщины', ja: '女性', zh: '女性', ko: '여성', it: 'Donne', pl: 'Kobiety', nl: 'Vrouwen', tr: 'Kadın' },
   bell_section_male: { en: 'Male', es: 'Masculina', pt: 'Masculina', fr: 'Hommes', de: 'Männer', ru: 'Мужчины', ja: '男性', zh: '男性', ko: '남성', it: 'Uomini', pl: 'Mężczyźni', nl: 'Mannen', tr: 'Erkek' },
   bell_section_couple: { en: 'Couple', es: 'Parejas', pt: 'Casais', fr: 'Couples', de: 'Paare', ru: 'Пары', ja: 'カップル', zh: '情侣', ko: '커플', it: 'Coppie', pl: 'Pary', nl: 'Stellen', tr: 'Çift' },
@@ -6461,23 +6534,28 @@ function announceSuggestionBoxToFans() {
   return sent;
 }
 
-/* Owner Delegate seat — created on EVERY boot if missing (production
- * included), and it ships DISABLED with NO usable password: the stored
+/* Owner Delegate seats — created on EVERY boot if missing (production
+ * included), and each ships DISABLED with NO usable password: the stored
  * hash is of a random throwaway secret that is never recorded anywhere,
  * so sign-in is impossible until the owner sets a real password through
- * the Manager seat controls (POST /api/admin/delegate/set-password) and
- * enables the seat. No password is created in code, chat, or any file. */
+ * the Manager seat controls (the per-seat set-password endpoints)
+ * and enables the seat. No password is created in code, chat, or any
+ * file. Assignment 01 adds the second seat, kaykay (Kay Kay), by the
+ * same pattern as mspink — the loop below is the only change; each
+ * seat's enable/password/enroll controls stay owner-only, per seat. */
 /* NOTE: invoked AFTER seed() below — seed() only populates an EMPTY
- * users table, so the seat must never be the first row in it. */
+ * users table, so the seats must never be the first rows in it. */
 function ensureDelegateSeat() {
-  try {
-    if (db.prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)').get(DELEGATE_USERNAME)) return;
-    const throwaway = crypto.randomBytes(48).toString('hex'); // never stored, never logged
-    const id = createUser(DELEGATE_USERNAME, throwaway, 'owner_delegate', 'Ms. Pink', null);
-    db.prepare('UPDATE users SET delegate_enabled = 0 WHERE id = ?').run(id);
-    console.log('[delegate] owner-delegate seat created DISABLED (owner sets its password in the Manager)');
-  } catch (e) {
-    console.log('[delegate] seat ensure failed:', e.message);
+  for (const [username, displayName] of [[DELEGATE_USERNAME, 'Ms. Pink'], [KAYKAY_USERNAME, 'Kay Kay']]) {
+    try {
+      if (db.prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)').get(username)) continue;
+      const throwaway = crypto.randomBytes(48).toString('hex'); // never stored, never logged
+      const id = createUser(username, throwaway, 'owner_delegate', displayName, null);
+      db.prepare('UPDATE users SET delegate_enabled = 0 WHERE id = ?').run(id);
+      console.log(`[delegate] owner-delegate seat ${username} created DISABLED (owner sets its password in the Manager)`);
+    } catch (e) {
+      console.log('[delegate] seat ensure failed:', e.message);
+    }
   }
 }
 
@@ -8342,7 +8420,7 @@ app.post('/api/auth/passkey/register-verify', identMiddleware, requireUser, asyn
     // One window, one enrollment: close it and tell the owner.
     db.prepare('UPDATE users SET delegate_enroll_until = NULL WHERE id = ?').run(req.user.id);
     logManagerAudit(req.user, 'passkey_enrolled', { detail: { label } });
-    bellOwnersDelegateActivity('enrolled a Manager passkey');
+    bellOwnersDelegateActivity('enrolled a Manager passkey', req.user);
   }
   res.json({ ok: true });
 });
@@ -8520,7 +8598,7 @@ app.post('/api/manager/login', (req, res) => {
   if (isDelegateUser(user)) {
     // Owner visibility from the very first step: audit + bell.
     logManagerAudit(user, 'manager_login', { detail: { ip: clientIp(req) } });
-    bellOwnersDelegateActivity('signed in to the Manager');
+    bellOwnersDelegateActivity('signed in to the Manager', user);
   }
   res.json({ token, user: getUserPublic(user), manager_account: true });
 });
@@ -15124,8 +15202,7 @@ const ownerOnly = [identMiddleware, requireUser, requireRole('admin'), requirePa
 /* in code, never logged, and never appears in any response but the   */
 /* single set call's own { ok } (the value itself is never echoed).   */
 /* ------------------------------------------------------------------ */
-function delegateSeatState() {
-  const seat = delegateSeatUser();
+function delegateSeatStateFor(seat) {
   if (!seat) return null;
   const creds = db.prepare('SELECT COUNT(*) AS n FROM webauthn_credentials WHERE user_id = ?').get(seat.id).n;
   const sessions = db.prepare('SELECT COUNT(*) AS n FROM sessions WHERE user_id = ?').get(seat.id).n;
@@ -15141,6 +15218,19 @@ function delegateSeatState() {
     enroll_window_open: delegateEnrollWindowOpen(seat),
     created_at: seat.created_at,
   };
+}
+/* The original single-seat shape, kept for the mspink endpoints
+ * below and their tests: delegateSeatState() still means mspink. */
+function delegateSeatState() {
+  return delegateSeatStateFor(delegateSeatUser());
+}
+/* Per-seat owner endpoint helper (Assignment 01): resolves the
+ * :username seat or answers 404 — only mspink/kaykay delegate rows
+ * are ever addressable here, never an arbitrary account. */
+function delegateSeatFromParam(req, res) {
+  const seat = delegateSeatUserByUsername(req.params.username);
+  if (!seat) { res.status(404).json({ error: 'no_delegate_seat' }); return null; }
+  return seat;
 }
 
 app.get('/api/admin/delegate', ...ownerOnly, (req, res) => {
@@ -15200,10 +15290,123 @@ app.post('/api/admin/delegate/enroll-passkey', ...ownerOnly, (req, res) => {
   res.json({ ok: true, enroll_until: until, delegate: delegateSeatState() });
 });
 
+/* Per-seat delegate controls (Assignment 01): the SAME owner-only
+ * controls as the original mspink endpoints, addressed by seat
+ * username, so the owner enables/disables/passwords/enrolls each
+ * seat independently. A delegate hitting these gets 403 from
+ * ownerOnly (requireRole('admin')) — it can never manage any seat,
+ * including its own. The original unparameterized endpoints above
+ * stay untouched and still address mspink. */
+app.get('/api/admin/delegates', ...ownerOnly, (req, res) => {
+  res.json({ delegates: delegateSeats().map((s) => delegateSeatStateFor(s)) });
+});
+
+app.get('/api/admin/delegate/:username', ...ownerOnly, (req, res) => {
+  const seat = delegateSeatFromParam(req, res);
+  if (!seat) return;
+  res.json({ delegate: delegateSeatStateFor(seat) });
+});
+
+app.post('/api/admin/delegate/:username/enable', ...ownerOnly, (req, res) => {
+  const seat = delegateSeatFromParam(req, res);
+  if (!seat) return;
+  db.prepare('UPDATE users SET delegate_enabled = 1 WHERE id = ?').run(seat.id);
+  logManagerAudit(req.user, 'delegate_enable', { targetType: 'user', targetId: seat.id });
+  res.json({ ok: true, delegate: delegateSeatStateFor(delegateSeatUserByUsername(seat.username)) });
+});
+
+app.post('/api/admin/delegate/:username/disable', ...ownerOnly, (req, res) => {
+  const seat = delegateSeatFromParam(req, res);
+  if (!seat) return;
+  db.prepare('UPDATE users SET delegate_enabled = 0, delegate_enroll_until = NULL WHERE id = ?').run(seat.id);
+  deleteUserSessions(seat.id);
+  db.prepare('DELETE FROM webauthn_credentials WHERE user_id = ?').run(seat.id);
+  logManagerAudit(req.user, 'delegate_disable', { targetType: 'user', targetId: seat.id });
+  res.json({ ok: true, delegate: delegateSeatStateFor(delegateSeatUserByUsername(seat.username)) });
+});
+
+app.post('/api/admin/delegate/:username/set-password', ...ownerOnly, (req, res) => {
+  const seat = delegateSeatFromParam(req, res);
+  if (!seat) return;
+  const next = typeof (req.body || {}).password === 'string' ? req.body.password : '';
+  if (SEED_DEFAULT_PASSWORDS.includes(next.toLowerCase()))
+    return res.status(400).json({ error: 'default_password' });
+  if (next.length < 10 || next.length > 128)
+    return res.status(400).json({ error: 'weak_password' });
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+    .run(bcrypt.hashSync(next, 10), seat.id);
+  deleteUserSessions(seat.id);
+  logManagerAudit(req.user, 'delegate_password_set', { targetType: 'user', targetId: seat.id });
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/delegate/:username/enroll-passkey', ...ownerOnly, (req, res) => {
+  const seat = delegateSeatFromParam(req, res);
+  if (!seat) return;
+  const until = Date.now() + 15 * 60 * 1000;
+  db.prepare('UPDATE users SET delegate_enroll_until = ? WHERE id = ?').run(String(until), seat.id);
+  logManagerAudit(req.user, 'delegate_enroll_opened', { targetType: 'user', targetId: seat.id });
+  res.json({ ok: true, enroll_until: until, delegate: delegateSeatStateFor(delegateSeatUserByUsername(seat.username)) });
+});
+
+/* ------------------------------------------------------------------ */
+/* Team channel (Assignment 01) — Manager principals ONLY.              */
+/* GET: chronological thread, latest-N + before-cursor pagination.      */
+/*   ?limit=N (default 50, clamped 1–200) — returns the latest N,       */
+/*   oldest→newest within the page. ?before=<id> pages OLDER: only      */
+/*   rows with id < before. Response carries before (the cursor for    */
+/*   the next older page, or null) and has_more.                        */
+/* POST {body}: 1–4000 chars, trimmed. The row's author is the          */
+/*   caller's principal identity; every post also writes a              */
+/*   team_message_post audit row (owner + delegates alike — the        */
+/*   generic auditDelegateMutation row still lands for delegate posts,  */
+/*   as for every other delegate mutation).                             */
+/* Moderators reach neither: requireManager refuses them (403), and    */
+/* the X-Manager header rule + adminOnly chain handle everyone else.   */
+/* ------------------------------------------------------------------ */
+app.get('/api/admin/team-messages', ...adminOnly, (req, res) => {
+  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
+  const beforeRaw = parseInt(req.query.before);
+  const before = Number.isFinite(beforeRaw) ? beforeRaw : null;
+  const page = before === null
+    ? db.prepare(`SELECT id, author, body, created_at FROM team_messages
+        ORDER BY id DESC LIMIT ?`).all(limit)
+    : db.prepare(`SELECT id, author, body, created_at FROM team_messages
+        WHERE id < ? ORDER BY id DESC LIMIT ?`).all(before, limit);
+  page.reverse(); // chronological within the page
+  let hasMore = false;
+  if (page.length) {
+    const oldest = page[0].id;
+    hasMore = !!db.prepare('SELECT 1 AS x FROM team_messages WHERE id < ? LIMIT 1').get(oldest);
+  }
+  res.json({
+    messages: page.map((m) => ({ ...m, author_label: teamAuthorLabel(m.author) })),
+    before: hasMore ? page[0].id : null,
+    has_more: hasMore,
+  });
+});
+
+app.post('/api/admin/team-messages', ...adminOnly, (req, res) => {
+  const raw = req.body && typeof req.body.body === 'string' ? req.body.body : '';
+  const body = raw.trim();
+  if (!body) return res.status(400).json({ error: 'body_required' });
+  if (body.length > 4000) return res.status(400).json({ error: 'body_too_long' });
+  const author = teamAuthorFor(req.user);
+  const id = db.prepare('INSERT INTO team_messages (author, body) VALUES (?,?)')
+    .run(author, body).lastInsertRowid;
+  const row = db.prepare('SELECT id, author, body, created_at FROM team_messages WHERE id = ?').get(id);
+  logManagerAudit(req.user, 'team_message_post', {
+    targetType: 'team_message', targetId: id, detail: { author },
+  });
+  res.json({ ok: true, message: { ...row, author_label: teamAuthorLabel(row.author) } });
+});
+
 /* The audit view: every logged Manager action by the delegate (and
- * the owner's seat actions), newest first. Rows carry actor_role so
- * the client badges delegate rows as Ms. Pink. Readable by any
- * Manager principal; the log itself is append-only from the API. */
+ * the owner's seat actions), newest first. Rows carry actor_role and
+ * actor_username so the client badges delegate rows by SEAT —
+ * Ms. Pink for mspink, Kay Kay for kaykay — never the owner's.
+ * Readable by any Manager principal; the log itself is append-only
+ * from the API. */
 app.get('/api/admin/audit', ...adminOnly, (req, res) => {
   const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 100));
   const rows = db.prepare(`SELECT id, actor_user_id, actor_username, actor_role,
@@ -15212,7 +15415,9 @@ app.get('/api/admin/audit', ...adminOnly, (req, res) => {
   res.json({
     audit: rows.map((r) => ({
       ...r,
-      actor_badge: r.actor_role === 'owner_delegate' ? 'Ms. Pink' : null,
+      actor_badge: r.actor_role === 'owner_delegate'
+        ? delegateBadgeFor({ role: r.actor_role, username: r.actor_username })
+        : null,
       detail: (() => { try { return r.detail ? JSON.parse(r.detail) : null; } catch (e) { return null; } })(),
     })),
   });
