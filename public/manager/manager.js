@@ -1570,7 +1570,7 @@ async function adminAnalyticsBody() {
   };
   const rows = (list, label) => (list || []).map((r) =>
     `<div class="row" style="padding:8px 0;border-bottom:1px solid rgba(139,92,246,.12)">
-      <span class="grow small" style="word-break:break-all">${esc(r.ref || r.c || r.path || '')}</span>
+      <span class="grow small" style="word-break:break-all">${esc(r.city ? `${r.city}, ${r.country || ''}`.replace(/, $/, '') : (r.ref || r.c || r.path || ''))}</span>
       <b>${r.n}</b></div>`).join('') || `<div class="muted small">No ${label} yet.</div>`;
   return `
     <div class="stat-grid" style="margin-bottom:14px">
@@ -1585,6 +1585,8 @@ async function adminAnalyticsBody() {
     <div class="card" style="padding:6px 14px">${rows(a.referrers, 'referrers')}</div>
     <h3 style="margin:14px 0 6px">🌍 Countries</h3>
     <div class="card" style="padding:6px 14px">${rows(a.countries, 'countries')}</div>
+    <h3 style="margin:14px 0 6px">🏙 Top cities</h3>
+    <div class="card" style="padding:6px 14px">${rows(a.cities, 'cities')}</div>
     <h3 style="margin:14px 0 6px">📄 Top pages</h3>
     <div class="card" style="padding:6px 14px">${rows(a.pages, 'pages')}</div>`;
 }

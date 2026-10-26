@@ -15458,7 +15458,7 @@ function hashIP(ip) {
 // Public: log a page visit (called once per session from the frontend)
 app.post('/api/track/visit', async (req, res) => {
   try {
-    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const ip = clientIp(req) || 'unknown';
     const { path, referrer } = req.body || {};
     const geo = await geoFor(ip);
     db.prepare(`INSERT INTO visits (ip_hash, country, city, referrer, path, user_agent)
@@ -15486,10 +15486,14 @@ app.get('/api/admin/analytics', ...adminOnly, (req, res) => {
   const countries = db.prepare(`
     SELECT COALESCE(country, '(unknown)') AS c, COUNT(*) AS n
     FROM visits WHERE created_at >= ${since} GROUP BY c ORDER BY n DESC LIMIT 20`).all();
+  const cities = db.prepare(`
+    SELECT city, country, COUNT(*) AS n
+    FROM visits WHERE created_at >= ${since} AND city IS NOT NULL AND city != ''
+    GROUP BY city, country ORDER BY n DESC LIMIT 20`).all();
   const pages = db.prepare(`
     SELECT path, COUNT(*) AS n FROM visits WHERE created_at >= ${since}
     GROUP BY path ORDER BY n DESC LIMIT 20`).all();
-  res.json({ days, total, unique, byDay, referrers, countries, pages });
+  res.json({ days, total, unique, byDay, referrers, countries, cities, pages });
 });
 
 // 2FA status
