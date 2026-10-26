@@ -68,8 +68,16 @@ test('pins: model card renders the Last login line + recent-login sort control',
   assert.ok(body.includes('data-m-sort="recent"') && body.includes('Most recent login'),
     'sort control offers Most recent login');
   assert.ok(body.includes('data-m-sort="name"'), 'sort control offers the A–Z default');
-  assert.ok(!/Last (active|seen|activity)/.test(body),
-    'never worded as last activity — it is the login moment only');
+  // Assignment 05 supersedes the blanket form of this pin: a SEPARATE
+  // "Last active:" line is now spec'd on the same card. What is still
+  // pinned is that the Last login line itself is never worded as
+  // activity — its helper returns exactly "🕐 Last login:" and no
+  // active/seen/activity wording.
+  const loginLine = managerSrc.slice(managerSrc.indexOf('function modelLastLoginLine('),
+    managerSrc.indexOf('/* Assignment 05: one Models-card line'));
+  assert.ok(loginLine.includes('🕐 Last login:'), 'login line label unchanged');
+  assert.ok(!/\b(active|seen|activity)\b/.test(loginLine),
+    'the Last login line itself is never worded as activity');
 
   const helper = managerSrc.slice(managerSrc.indexOf('function modelLastLoginText('),
     managerSrc.indexOf('/* ---------------- state + API'));

@@ -123,6 +123,15 @@ function fanLastLoginText(f) {
   return f && f.last_login_at ? fmtDT(f.last_login_at) : 'never';
 }
 
+/* Assignment 05: "Last active" text for a Fans card — the formatted
+   moment of the fan's latest presence (their newest session's
+   last_seen_at, falling back to its created_at), or "never".
+   This is presence, NOT the login moment; the two labels stay
+   exact and separate and are never merged. */
+function fanLastActiveText(f) {
+  return f && f.last_active_at ? fmtDT(f.last_active_at) : 'never';
+}
+
 /* "Last login" text for a Models card: a human relative time from
    the SAME last_login_at source (her newest session row — the LOGIN
    moment only, exactly like Fans), or "Never" when she has never
@@ -142,6 +151,25 @@ function modelLastLoginText(m, nowMs) {
   const days = Math.floor(hrs / 24);
   if (days < 30) return `${days}d ago`;
   return fmtDT(m.last_login_at);
+}
+
+/* Assignment 05: "Last active" for a Models card, in the Models
+   card's existing last-login style — the same relative time plus
+   the exact moment beside it, or "Never" when there is none.
+   Presence, not the login moment; never merged with Last login. */
+function modelLastActiveText(m, nowMs) {
+  if (!m || !m.last_active_at) return 'Never';
+  const d = new Date(String(m.last_active_at).replace(' ', 'T') + 'Z');
+  if (isNaN(d)) return 'Never';
+  const diff = (typeof nowMs === 'number' ? nowMs : Date.now()) - d.getTime();
+  if (diff < 60000) return 'just now';
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return fmtDT(m.last_active_at);
 }
 
 /* ---------------- state + API ---------------- */
@@ -565,6 +593,15 @@ function modelLastLoginLine(m) {
   return `🕐 Last login: ${esc(rel)}${exactBit}`;
 }
 
+/* Assignment 05: one Models-card line for Last active, mirroring
+   modelLastLoginLine (relative time + exact moment in parens). */
+function modelLastActiveLine(m) {
+  const rel = modelLastActiveText(m);
+  const exact = m && m.last_active_at ? fmtDT(m.last_active_at) : '';
+  const exactBit = exact && exact !== rel ? ` <span class="muted">(${esc(exact)})</span>` : '';
+  return `🕐 Last active: ${esc(rel)}${exactBit}`;
+}
+
 async function adminModelsBody() {
   const recent = M.modelsSort === 'recent';
   const { data } = await api('/admin/models' + (recent ? '?sort=recent' : ''));
@@ -592,6 +629,7 @@ async function adminModelsBody() {
             <span class="small" id="pres-status-${m.id}" style="color:${presEff(m) ? 'var(--green)' : 'var(--muted)'}">${presEff(m) ? '●' : '○'} ${presEff(m) ? 'Online' : 'Offline'}${presForced(m) ? ' (forced)' : ''}</span>
             <span class="small muted"> · ${fmt(m.per_message_cents)}/msg · ${fmt(m.per_minute_cents)}/min</span><br>
             <span class="small muted" data-model-login="${m.id}">${modelLastLoginLine(m)}</span><br>
+            <span class="small muted" data-model-active="${m.id}">${modelLastActiveLine(m)}</span><br>
             <span class="small" style="color:var(--green)">Owed: ${fmt(m.pending_cents)}</span>
             ${m.recruiter_name ? `<br><span class="small" style="color:var(--gold)">🤝 via ${esc(m.recruiter_name)}</span>` : ''}
             ${m.is_hidden ? `<br><span class="small" style="color:var(--peach)">👻 Hidden from the main screen</span>` : ''}</div>
@@ -966,6 +1004,7 @@ async function adminFansBody() {
           <span class="small">Balance ${fmt(f.credits_cents)} · Spent ${fmt(f.spent_cents)} <span class="muted">(msgs, calls, gifts)</span></span>
           ${fanLoadsLine(f)}
           <br><span class="small muted">Last login: ${esc(fanLastLoginText(f))}</span>
+          <br><span class="small muted">Last active: ${esc(fanLastActiveText(f))}</span>
           ${f.banned ? ' <span class="small" style="color:var(--red)">⛔ banned</span>' : ''}</span></div>
         <div class="row" style="margin-top:8px">
           <input class="input" id="cr-${f.id}" type="number" step="0.01" placeholder="$ credits" style="margin-top:0;max-width:130px">

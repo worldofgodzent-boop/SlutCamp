@@ -3648,6 +3648,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS webauthn_credentials (
   last_used_at TEXT
 )`);
 addColumnIfMissing('sessions', 'passkey_verified_at', 'TEXT'); // set when this session passed the Manager Face ID step-up; enforced by requirePasskeyStepUp once the admin has a passkey enrolled
+addColumnIfMissing('sessions', 'last_seen_at', 'TEXT'); // Assignment 05: latest presence on a still-open session; NULL until first touch
 /* Manager audit log (Owner Delegate, 2026-10-23): EVERY action the
  * owner_delegate seat takes through the Manager gates lands here —
  * actor, action, target, reason/detail, timestamp — owner-visible in
@@ -3771,8 +3772,17 @@ function deleteUserSessions(userId) {
 function getIdentity(req) {
   const h = req.headers.authorization || '';
   if (h.startsWith('Bearer ')) {
-    const userId = getSessionUserId(h.slice(7));
+    const token = h.slice(7);
+    const userId = getSessionUserId(token);
     if (!userId) return null;
+    // Assignment 05: throttled presence touch — a returning user on a
+    // still-open session creates no new session row, so refresh the
+    // existing row's last_seen_at (at most once a minute). Wrapped so
+    // it can NEVER break auth; guests have no session row and are
+    // untouched (they never reach this branch).
+    try {
+      db.prepare(`UPDATE sessions SET last_seen_at = datetime('now') WHERE token = ? AND (last_seen_at IS NULL OR last_seen_at <= datetime('now','-60 seconds'))`).run(token);
+    } catch (_) { /* presence is best-effort; auth must never fail on it */ }
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
     if (!user) return null;
     if (user.banned) return { kind: 'banned' };
@@ -19913,6 +19923,8 @@ app.get('/api/admin/models', ...adminOnly, (req, res) => {
   // password or passkey), so this is the LOGIN moment only; a
   // still-open session never refreshes it. NULL when she has never
   // logged in since tracking began (Manager renders "Never").
+  // last_active_at (Assignment 05) is the same COALESCE presence
+  // rule as Fans; it never changes last_login_at.
   // Default order stays display_name; ?sort=recent puts the most
   // recent login first (never-logged-in last, name breaks ties).
   const order = String(req.query.sort || '') === 'recent'
@@ -19924,10 +19936,11 @@ app.get('/api/admin/models', ...adminOnly, (req, res) => {
            r.name AS recruiter_name,
            w.earnings_cents, w.paid_out_cents,
            (w.earnings_cents - w.paid_out_cents) AS pending_cents,
-           s.last_login_at
+           s.last_login_at, s.last_active_at
     FROM users u JOIN models m ON m.user_id = u.id JOIN wallets w ON w.user_id = u.id
     LEFT JOIN recruiters r ON r.id = m.recruiter_id
-    LEFT JOIN (SELECT user_id, MAX(created_at) AS last_login_at
+    LEFT JOIN (SELECT user_id, MAX(created_at) AS last_login_at,
+                      MAX(COALESCE(last_seen_at, created_at)) AS last_active_at
                FROM sessions GROUP BY user_id) s ON s.user_id = u.id
     WHERE u.role = 'model' ORDER BY ${order}`).all() });
 });
@@ -21993,14 +22006,18 @@ app.get('/api/admin/fans', ...adminOnly, (req, res) => {
   // last_login_at: the fan's most recent session row — a session is
   // created at login (password or passkey), so this is the LOGIN
   // moment only; a still-open session never refreshes it. NULL when
-  // the fan has never logged in.
+  // the fan has never logged in. last_active_at (Assignment 05) is
+  // the latest presence: MAX(COALESCE(last_seen_at, created_at)) —
+  // the COALESCE fallback keeps it equal to the login moment until
+  // the first touch, and it never changes last_login_at.
   const fans = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.banned, u.created_at, w.credits_cents,
            (SELECT COALESCE(SUM(gross_cents),0) FROM transactions t
              WHERE t.fan_id = u.id AND t.is_test = 0 AND t.type IN ('message','call','gift')) AS spent_cents,
-           s.last_login_at
+           s.last_login_at, s.last_active_at
     FROM users u JOIN wallets w ON w.user_id = u.id
-    LEFT JOIN (SELECT user_id, MAX(created_at) AS last_login_at
+    LEFT JOIN (SELECT user_id, MAX(created_at) AS last_login_at,
+                      MAX(COALESCE(last_seen_at, created_at)) AS last_active_at
                FROM sessions GROUP BY user_id) s ON s.user_id = u.id
     WHERE u.role = 'fan' ORDER BY spent_cents DESC LIMIT 200`).all();
   // Lifetime money-in per fan, grouped by rail (payment-source visibility).
