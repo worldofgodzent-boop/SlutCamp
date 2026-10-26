@@ -19404,14 +19404,21 @@ function chicagoStartOfDaySql(now = new Date()) {
   return new Date(utcMs).toISOString().slice(0, 19).replace('T', ' ');
 }
 
-/* Slut Manager — Overview aggregates for the Manager home screen */
+/* Slut Manager — Overview aggregates for the Manager home screen.
+ * COUNT RULE (one ruler, Asce 2026-10-26): the headline fans/models
+ * counts count EVERY account of the role — the same population the
+ * Fans and Models tabs list (their queries filter on role only).
+ * Banned accounts stay counted: they are accounts of record, their
+ * rows carry the banned state, and unbanning happens from those very
+ * lists. An earlier `banned = 0` filter here made Overview read one
+ * less than the Fans tab for every banned fan (65 vs 64 in prod). */
 app.get('/api/admin/overview', ...adminOnly, (req, res) => {
   const row = db.prepare(`
     SELECT
       (SELECT COUNT(*) FROM id_verifications WHERE status = 'pending') AS pending_id_reviews,
       (SELECT COUNT(*) FROM live_sessions WHERE status = 'live') AS live_now,
-      (SELECT COUNT(*) FROM users WHERE role = 'fan' AND banned = 0) AS fans,
-      (SELECT COUNT(*) FROM users WHERE role = 'model' AND banned = 0) AS models,
+      (SELECT COUNT(*) FROM users WHERE role = 'fan') AS fans,
+      (SELECT COUNT(*) FROM users WHERE role = 'model') AS models,
       (SELECT COUNT(*) FROM users u WHERE u.merged_into IS NULL
         AND (u.role = 'recruiter' OR EXISTS (SELECT 1 FROM recruiters r WHERE r.user_id = u.id)) AND u.status != 'deleted') AS affiliates,
       (SELECT COUNT(*) FROM dmca_notices WHERE status IN ('received','under_review')) AS open_dmca,
@@ -19442,8 +19449,8 @@ app.get('/api/admin/stats', ...adminOnly, (req, res) => {
   const stats = db.prepare('SELECT * FROM platform_stats WHERE id = 1').get();
   const counts = db.prepare(`
     SELECT
-      (SELECT COUNT(*) FROM users WHERE role = 'fan' AND banned = 0) AS fans,
-      (SELECT COUNT(*) FROM users WHERE role = 'model' AND banned = 0) AS models,
+      (SELECT COUNT(*) FROM users WHERE role = 'fan') AS fans,
+      (SELECT COUNT(*) FROM users WHERE role = 'model') AS models,
       (SELECT COUNT(*) FROM models m JOIN users u ON u.id = m.user_id
         WHERE (CASE u.presence_override WHEN 'on' THEN 1 WHEN 'off' THEN 0 ELSE m.is_online END) = 1) AS models_online,
       (SELECT COUNT(*) FROM conversations) AS conversations,
@@ -20950,8 +20957,8 @@ app.get('/api/mod/overview', ...moderatorOnly, (req, res) => {
     pending_id_reviews: pendingRows.length - escalated,
     escalated_id_reviews: escalated,
     live_now: one("SELECT COUNT(*) AS c FROM live_sessions WHERE status = 'live'"),
-    fans: one("SELECT COUNT(*) AS c FROM users WHERE role = 'fan' AND banned = 0"),
-    models: one("SELECT COUNT(*) AS c FROM users WHERE role = 'model' AND banned = 0"),
+    fans: one("SELECT COUNT(*) AS c FROM users WHERE role = 'fan'"),
+    models: one("SELECT COUNT(*) AS c FROM users WHERE role = 'model'"),
     open_incidents: one("SELECT COUNT(*) AS c FROM safety_incidents WHERE status = 'open'"),
     open_stream_flags: one("SELECT COUNT(*) AS c FROM stream_flags WHERE status = 'open'"),
     new_suggestions: one("SELECT COUNT(*) AS c FROM suggestions WHERE status = 'new'"),
