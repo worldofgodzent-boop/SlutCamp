@@ -13,7 +13,7 @@
  *  - Roster row per affiliate: signup date, models onboarded, §10
  *    quota progress (x / 10) + year-end date (signup + 1 year),
  *    lifetime earnings, banned flag. NO enforcement — the §10 review
- *    is a human year-end decision (agreement R1.3 §10).
+ *    is a human year-end decision (agreement R1.4 §10).
  *  - Overview bubble (owner clarification, Oct 17 2026: "I want is
  *    in the bubble where I can see the numbers"): /api/admin/overview
  *    carries the SAME recruiter-role count as `affiliates`, rendered

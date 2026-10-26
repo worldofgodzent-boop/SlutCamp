@@ -1358,6 +1358,7 @@ async function adminAffiliatesBody() {
           <span class="grow"><b>${esc(a.recruiter_name || a.display_name)}</b>
             ${a.banned ? ' <span class="small" style="color:var(--red)">⛔ removed</span>' : ''}<br>
             <span class="small muted">Username: <b>@${esc(a.username)}</b> · joined ${dateOf(a.signed_up_at)}</span><br>
+            <span class="small muted">Locked rate: <b>${a.rate_pct ?? 20}% of gross</b> — locked at signup, never changes</span><br>
             <span class="small muted">🔗 Link: <span style="word-break:break-all;user-select:all">${esc(a.referral_link || '—')}</span></span></span>
           <span style="text-align:right;flex-shrink:0"><b style="color:var(--green)">${fmt(a.earnings_cents || 0)}</b><br>
             <span class="small muted">earned</span></span>
@@ -1381,7 +1382,7 @@ async function adminPartnersBody() {
   return `
     <div class="card">
       <div style="font-weight:800;margin-bottom:6px">➕ Add partner</div>
-      <div class="muted small" style="margin-bottom:8px">They get a login + a referral link. Models who join through it earn them 20% of the platform's cut (you keep the other 20%).</div>
+      <div class="muted small" style="margin-bottom:8px">They get a login + a referral link. Their locked recruiter rate is set at signup: 20% of gross before Apr 26, 2027; 10% Apr 26–Jul 25, 2027; 5% from Jul 26, 2027 — it never changes.</div>
       <label class="field">Name<input class="input" id="pt-name" maxlength="40" placeholder="Marcus"></label>
       <label class="field">City<input class="input" id="pt-city" maxlength="40" placeholder="New York"></label>
       <label class="field">Username (optional — auto if blank)<input class="input" id="pt-user" autocomplete="off"></label>
@@ -1399,7 +1400,7 @@ async function adminPartnersBody() {
             <span class="small muted">@${esc(p.username)}</span><br>
             <span class="small muted">🔗 </span><span class="small" style="word-break:break-all">${esc(url)}</span><br>
             <span class="small" style="color:var(--green)">${p.model_count} model${p.model_count === 1 ? '' : 's'} · earned ${fmt(p.total_earned_cents)}</span>
-            <span class="small muted"> · your cut ${fmt(p.corrys_cut_cents)} · owes ${fmt(p.pending_cents)}</span></span>
+            <span class="small muted"> · locked rate ${p.rate_pct ?? 20}% of gross · your cut ${fmt(p.corrys_cut_cents)} · owes ${fmt(p.pending_cents)}</span></span>
         </div>
         <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
           <button class="btn small" data-pt-copy="${p.referral_code}">📋 Copy link</button>

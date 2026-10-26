@@ -587,7 +587,7 @@ test('Terms pins: the contracts and fan Terms carry the payout-protection clause
   assert.ok(server.includes('You are never required to make a manual or out-of-pocket payment for a chargeback shortfall'),
     'no manual or out-of-pocket repayment is ever demanded for a chargeback shortfall');
   assert.ok(server.includes('16. Plain-Language Disclaimer'), 'disclaimer renumbered to 16 (governing law took 14; the v1.5 section clause took 15)');
-  assert.ok(server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.3';"), 'recruiter contract at R1.3 (R1.1 added the payout window; R1.2 adds governing law; R1.3 adds the first-year quota)');
+  assert.ok(server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.4';"), 'recruiter contract at R1.4 (R1.1 added the payout window; R1.2 adds governing law; R1.3 adds the first-year quota; R1.4 adds the step-down)');
   const app = fs.readFileSync(path.join(REPO, 'public/js/app.js'), 'utf8');
   assert.ok(app.includes('10. Chargebacks & Fraud'), 'fan Terms gained §10 Chargebacks & Fraud');
   // Fan Terms live in the EN legal_terms_html i18n entry since the 13-language build.

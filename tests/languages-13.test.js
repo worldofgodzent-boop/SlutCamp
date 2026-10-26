@@ -337,7 +337,7 @@ test('agreements: model + recruiter contracts served per-language, versions unch
     await req(h.base, 'PATCH', '/api/me/language', { body: { language: 'ja' }, token: aTok });
     const rc = await req(h.base, 'GET', '/api/recruiter/contract', { token: aTok });
     assert.equal(rc.status, 200);
-    assert.equal(rc.json.version, 'R1.3', 'recruiter agreement version unchanged');
+    assert.equal(rc.json.version, 'R1.4', 'recruiter agreement version is R1.4');
     assert.equal(rc.json.sections.length, 11, 'all 11 sections served');
     assert.ok(rc.json.governs_note && rc.json.governs_note.length > 5, 'governs note present for ja');
     assert.ok(/[぀-ヿ]/.test(rc.json.sections[0].body) || rc.json.sections[0].body !== 'This Recruiter Agreement ("Agreement") is between you ("Recruiter") and World of Godz Entertainment LLC ("Company"), doing business as SlutCamp ("SlutCamp"). By signing, you agree to everything below.', 'ja body served');

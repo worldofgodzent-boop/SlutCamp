@@ -15829,7 +15829,7 @@ const AFFILIATE_AGREEMENT_SECTIONS = [
   ['1. Parties', 'This Recruiter Agreement is between you ("Recruiter") and World of Godz Entertainment LLC, doing business as SlutCamp. By signing, you agree to everything below.'],
   ['2. Independent Contractor — Not a Partner', 'You are an INDEPENDENT CONTRACTOR, not an employee. Nothing here creates an employment relationship, a legal business partnership, or agency — "partner" is just what we call the role in the app. You handle your own taxes.'],
   ['3. What You Do', 'You recruit models to join SlutCamp using your personal referral link. Be honest about the platform — no false promises about earnings.'],
-  ['4. Your Cut', 'You earn 20% of everything each model you recruit earns. The model keeps her full 60% — your cut comes from the Company\'s portion.'],
+  ['4. Your Cut', 'You earn a locked percentage of everything each model you recruit earns, based on when you sign up: 20% before April 26, 2027; 10% April 26, 2027 through July 25, 2027; and 5% on or after July 26, 2027. Your percentage is locked at signup and never changes. The model keeps her full 60% — your cut comes from the Company\'s portion.'],
   ['5. Termination — At Will', 'SlutCamp may revoke your recruiter status AT ANY TIME, for any reason or no reason, with NO NOTICE. When revoked, you stop earning on all future revenue immediately.'],
   ['6. Conduct Rules', 'You must NOT: share contact info or payment handles; try to take models or fans off-platform; use hate speech. Breaking these rules can get you deactivated immediately.'],
   ['7. Non-Solicitation — Permanent', 'If your recruiter status ends for any reason, you may NEVER recruit or solicit any model you met through SlutCamp to a competing platform. No time limit.'],
@@ -19122,6 +19122,7 @@ async function vRecruiter() {
         <div class="stat"><div class="n">${data.model_count}</div><div class="l">${t('rc_models_recruited')}</div></div>
         <div class="stat"><div class="n" style="color:var(--green)">${fmt(data.earnings_cents)}</div><div class="l">${t('rc_total_earned')}</div></div>
       </div>
+      <div class="muted small" style="text-align:center;margin:6px 0 2px">Locked recruiter rate: ${r.rate_pct ?? 20}% of gross — locked at signup, never changes.</div>
       ${data.quota_year_end ? `<div class="muted small" style="text-align:center;margin:6px 0 2px">${t('rc_quota_line', { n: data.model_count, date: new Date(data.quota_year_end).toLocaleDateString(LANG) })}</div>` : ''}
       <div class="card" style="margin-top:12px">
         <div style="font-weight:800;margin-bottom:8px">${t('rc_your_models')}</div>

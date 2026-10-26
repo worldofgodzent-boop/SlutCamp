@@ -22,7 +22,7 @@
  * exact-version signing gate: a text change bumps the version (Model
  * 1.3 → 1.4, Recruiter R1.1 → R1.2), so every existing signer reads
  * signed:false until they re-sign the new text. (The Recruiter version
- * has since moved to R1.3 for the first-year quota — the pin in the
+ * has since moved to R1.4 for the step-down (first-year quota §10 unchanged) — the pin in the
  * recruiter test below tracks the current version.)
  */
 const test = require('node:test');
@@ -67,12 +67,12 @@ test('governing law: Model Agreement §14 carries the Texas clause; version pin 
   assert.ok(!server.includes('15. Plain-Language Disclaimer'), 'model disclaimer renumbered to 16 by the v1.5 section clause');
 });
 
-test('governing law: Recruiter Agreement §9 carries the Texas clause; version pin tracks the R1.3 quota bump', () => {
-  // R1.2 was the governing-law bump; R1.3 (affiliate first-year quota,
+test('governing law: Recruiter Agreement §9 carries the Texas clause; version pin tracks the R1.4 step-down bump', () => {
+  // R1.2 was the governing-law bump; R1.3 added the first-year quota, R1.4 (step-down,
   // tests/affiliate-terms.test.js) superseded it — the version pin
   // tracks the current version, per the payout-protection precedent.
-  assert.ok(server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.3';"), 'recruiter contract version is R1.3 (R1.2 added governing law; R1.3 adds the quota)');
-  assert.ok(!server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.2';"), 'old recruiter version R1.2 is gone');
+  assert.ok(server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.4';"), 'recruiter contract version is R1.4 (R1.2 added governing law; R1.3 adds the quota; R1.4 adds the step-down)');
+  assert.ok(!server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.3';"), 'old recruiter version R1.3 is gone');
   const rec = server.slice(server.indexOf('const RECRUITER_CONTRACT = {'));
   assert.ok(rec.includes("title: '9. Governing Law & Venue'"), 'recruiter §9 is Governing Law & Venue');
   assert.ok(rec.includes(AGREEMENT_LAW_SENTENCE), 'recruiter clause: Texas governing law, no conflict-of-laws rules');

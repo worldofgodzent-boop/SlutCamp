@@ -319,7 +319,7 @@ test('attach: validations, capability live immediately, dashboard + contract wor
       r = await req(h.base, 'GET', '/api/recruiter/contract', { token: model.token });
       assert.equal(r.status, 200);
       assert.equal(r.data.signed, true);
-      assert.equal(r.data.signed_version, 'R1.3');
+      assert.equal(r.data.signed_version, 'R1.4');
       r = await dashboard(h.base, model.token);
       assert.equal(r.status, 200);
       assert.equal(r.data.recruiter.referral_code, code);
@@ -357,8 +357,8 @@ test('attach: validations, capability live immediately, dashboard + contract wor
       .all(db.prepare("SELECT id FROM users WHERE username = 'attachgal'").get().id);
     assert.equal(rows.length, 1, 'exactly one recruiters row for the attached model');
     const sig = db.prepare(`SELECT * FROM contract_signatures WHERE user_id = ?
-      AND contract_version = 'R1.3'`).get(rows[0].user_id);
-    assert.ok(sig, 'agreement signature recorded at R1.3');
+      AND contract_version = 'R1.4'`).get(rows[0].user_id);
+    assert.ok(sig, 'agreement signature recorded at R1.4');
     db.close();
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
