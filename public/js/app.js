@@ -14098,10 +14098,11 @@ async function openChatWithModel(modelId) {
   const { status, data } = await api('/conversations/start', {
     method: 'POST', body: JSON.stringify({ model_id: modelId }),
   });
-  if (status === 200) show('chat', { conv: data.conversation });
+  if (status === 200) { show('chat', { conv: data.conversation }); return true; }
   else if (data && data.error === 'region_blocked')
     toast('This model is not available in your region.');
   else toast('Could not open chat.');
+  return false;
 }
 
 /* ---------------- AUTH ---------------- */
@@ -26497,8 +26498,18 @@ async function routeInitial() {
               return openChatWithModel(target.id);
             }
           }
+          // Signed in but not a fan (or the session check failed):
+          // the directory.
+          return show('fanModels', {});
         }
-        // Guest or non-fan: show model list (they can sign up then chat)
+        // Guest: she came for THIS girl — land her in the girl's chat,
+        // not the directory (Asce, Oct 26 2026: a model's link must
+        // drop the visitor in that model's inbox once she passes the
+        // age gate). Guests can hold a conversation; it migrates into
+        // her account when she signs up. If the chat can't open
+        // (region block, server error), fall back to the directory.
+        const opened = await openChatWithModel(target.id);
+        if (opened) return;
         return show('fanModels', {});
       }
     } catch (e) {}
