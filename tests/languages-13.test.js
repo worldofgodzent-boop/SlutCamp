@@ -135,6 +135,43 @@ test('client: previously hardcoded blocks render through t()', () => {
   assert.ok(!appSrc.includes('>Change password</button>'), 'password card no longer hardcoded');
 });
 
+test('client: Fan Terms §14 Your Ideas & Feedback in all 13 languages (Assignment 04)', () => {
+  const I18N = evalConst(appSrc, 'const I18N =');
+  // EN is verbatim from the spec (English controls); the other 12 follow
+  // the same translation pattern as the neighboring sections.
+  assert.ok(I18N.en.legal_terms_html.includes('14. Your Ideas'),
+    'EN terms carry the §14 heading');
+  assert.ok(I18N.en.legal_terms_html.includes(
+    'If you suggest an idea, feature, name, design, or any other feedback to SlutCamp'),
+    'EN §14 suggestion sentence');
+  assert.ok(I18N.en.legal_terms_html.includes(
+    'you waive any claim against SlutCamp and World Of Godz Entertainment LLC arising from our use of it'),
+    'EN §14 waiver sentence');
+  const headings = {
+    en: '14. Your Ideas', es: '14. Tus ideas', pt: '14. As suas ideias', fr: '14. Vos idées',
+    de: '14. Deine Ideen', ru: '14. Ваши идеи', ja: '14. あなたのアイデア',
+    zh: '14. 你的想法', ko: '14. 당신의 아이디어', it: '14. Le tue idee',
+    pl: '14. Twoje pomysły', nl: '14. Jouw ideeën', tr: '14. Fikirleriniz',
+  };
+  const updated = {
+    en: 'Last updated October 26, 2026', es: '26 de octubre de 2026',
+    pt: '26 de outubro de 2026', fr: '26 octobre 2026', de: '26. Oktober 2026',
+    ru: '26 октября 2026', ja: '2026年10月26日', zh: '2026 年 10 月 26 日',
+    ko: '2026년 10월 26일', it: '26 ottobre 2026', pl: '26 października 2026',
+    nl: '26 oktober 2026', tr: '26 Ekim 2026',
+  };
+  for (const lang of LANG13) {
+    const html = I18N[lang].legal_terms_html;
+    assert.ok(html.includes(headings[lang]), `${lang} terms carry the §14 heading`);
+    assert.ok(html.indexOf('13.') < html.indexOf('14.'), `${lang} §14 follows §13`);
+    assert.ok(html.includes(updated[lang]), `${lang} Last updated bumped to October 26, 2026`);
+    // §14 body sits between its heading and the footer, and is substantive.
+    const body = html.slice(html.indexOf(headings[lang]), html.indexOf('<p class="muted small"'));
+    assert.ok(body.length > 200, `${lang} §14 body present`);
+    assert.ok(body.includes('SlutCamp'), `${lang} §14 names SlutCamp`);
+  }
+});
+
 test('client: every translated Fan Terms carries the governs card', () => {
   const I18N = evalConst(appSrc, 'const I18N =');
   const enCards = I18N.en.legal_terms_html.split('<div class="card">').length - 1;
