@@ -621,6 +621,19 @@ const I18N = {
     coperf_removed: 'Co-performer removed.',
     coperf_id_sent: '✅ ID submitted! SlutCamp will review it soon.',
     coperf_attach3: 'Please attach all 3 photos.',
+    coperf_signlink_h: '✍️ Signing link',
+    coperf_signlink_note: 'The easy way: send him one link — he reads the release, signs it, and snaps his ID photos right on his phone. No account, no printing.',
+    coperf_signlink_send: 'Send signing link',
+    coperf_signlink_resend: 'Resend link',
+    coperf_signlink_revoke: 'Revoke',
+    coperf_signlink_copy: 'Copy link',
+    coperf_signlink_copied: '🔗 Link copied — send it to him.',
+    coperf_signlink_ready: '🔗 Signing link ready — copy it and send it to him.',
+    coperf_signlink_revoked: 'Signing link revoked.',
+    coperf_signlink_waiting: '⏳ Link sent — waiting for him to sign and submit his ID.',
+    coperf_signlink_signed: '✍️ He signed — waiting for his ID photos.',
+    coperf_signlink_done: '✅ He signed and submitted his ID — in review now.',
+    coperf_signlink_expired: '⌛ This link expired — send a fresh one.',
     costar_prompt_title: '📸 Who’s in this?',
     costar_prompt_solo: '🧍 Just me (solo)',
     costar_prompt_costar: '👥 A co-star is in it too',
@@ -1612,6 +1625,19 @@ const I18N = {
     coperf_removed: 'Co-intérprete eliminado.',
     coperf_id_sent: '✅ ¡ID enviado! SlutCamp lo revisará pronto.',
     coperf_attach3: 'Adjunta las 3 fotos.',
+    coperf_signlink_h: '✍️ Enlace de firma',
+    coperf_signlink_note: 'La forma fácil: envíale un solo enlace — lee la autorización, la firma y toma las fotos de su ID en su teléfono. Sin cuenta, sin imprimir.',
+    coperf_signlink_send: 'Enviar enlace de firma',
+    coperf_signlink_resend: 'Reenviar enlace',
+    coperf_signlink_revoke: 'Revocar',
+    coperf_signlink_copy: 'Copiar enlace',
+    coperf_signlink_copied: '🔗 Enlace copiado — envíaselo.',
+    coperf_signlink_ready: '🔗 Enlace de firma listo — cópialo y envíaselo.',
+    coperf_signlink_revoked: 'Enlace de firma revocado.',
+    coperf_signlink_waiting: '⏳ Enlace enviado — esperando a que firme y envíe su ID.',
+    coperf_signlink_signed: '✍️ Ya firmó — esperando las fotos de su ID.',
+    coperf_signlink_done: '✅ Firmó y envió su ID — en revisión ahora.',
+    coperf_signlink_expired: '⌛ Este enlace caducó — envía uno nuevo.',
     costar_prompt_title: '📸 ¿Quién sale en esto?',
     costar_prompt_solo: '🧍 Solo yo',
     costar_prompt_costar: '👥 También sale una coestrella',
@@ -2603,6 +2629,19 @@ const I18N = {
     coperf_removed: 'Parceiro de cena removido.',
     coperf_id_sent: '✅ Documento enviado! A SlutCamp vai analisá-lo em breve.',
     coperf_attach3: 'Anexe as 3 fotos.',
+    coperf_signlink_h: '✍️ Link de assinatura',
+    coperf_signlink_note: 'O jeito fácil: envie um único link — ele lê a autorização, assina e tira as fotos do documento no celular. Sem conta, sem imprimir.',
+    coperf_signlink_send: 'Enviar link de assinatura',
+    coperf_signlink_resend: 'Reenviar link',
+    coperf_signlink_revoke: 'Revogar',
+    coperf_signlink_copy: 'Copiar link',
+    coperf_signlink_copied: '🔗 Link copiado — envie para ele.',
+    coperf_signlink_ready: '🔗 Link de assinatura pronto — copie e envie para ele.',
+    coperf_signlink_revoked: 'Link de assinatura revogado.',
+    coperf_signlink_waiting: '⏳ Link enviado — aguardando ele assinar e enviar o documento.',
+    coperf_signlink_signed: '✍️ Ele assinou — aguardando as fotos do documento.',
+    coperf_signlink_done: '✅ Ele assinou e enviou o documento — em análise agora.',
+    coperf_signlink_expired: '⌛ Este link expirou — envie um novo.',
     costar_prompt_title: '📸 Quem aparece nisto?',
     costar_prompt_solo: '🧍 Só eu (solo)',
     costar_prompt_costar: '👥 Uma coestrela também aparece',
@@ -3594,6 +3633,19 @@ const I18N = {
     coperf_removed: 'Partenaire de scène retiré.',
     coperf_id_sent: '✅ Pièce envoyée ! SlutCamp la vérifiera bientôt.',
     coperf_attach3: 'Veuillez joindre les 3 photos.',
+    coperf_signlink_h: '✍️ Lien de signature',
+    coperf_signlink_note: 'Le plus simple : envoie-lui un seul lien — il lit l\'autorisation, la signe et prend ses photos d\'identité sur son téléphone. Aucun compte, aucune impression.',
+    coperf_signlink_send: 'Envoyer le lien de signature',
+    coperf_signlink_resend: 'Renvoyer le lien',
+    coperf_signlink_revoke: 'Révoquer',
+    coperf_signlink_copy: 'Copier le lien',
+    coperf_signlink_copied: '🔗 Lien copié — envoie-le-lui.',
+    coperf_signlink_ready: '🔗 Lien de signature prêt — copie-le et envoie-le-lui.',
+    coperf_signlink_revoked: 'Lien de signature révoqué.',
+    coperf_signlink_waiting: '⏳ Lien envoyé — en attente de sa signature et de sa pièce d\'identité.',
+    coperf_signlink_signed: '✍️ Il a signé — en attente des photos de sa pièce d\'identité.',
+    coperf_signlink_done: '✅ Il a signé et envoyé sa pièce d\'identité — en cours d\'examen.',
+    coperf_signlink_expired: '⌛ Ce lien a expiré — envoie-en un nouveau.',
     costar_prompt_title: '📸 Qui est dessus ?',
     costar_prompt_solo: '🧍 Juste moi (solo)',
     costar_prompt_costar: '👥 Une co-star est dessus aussi',
@@ -4585,6 +4637,19 @@ const I18N = {
     coperf_removed: 'Co-Performer entfernt.',
     coperf_id_sent: '✅ Ausweis eingereicht! SlutCamp prüft ihn in Kürze.',
     coperf_attach3: 'Bitte alle 3 Fotos anhängen.',
+    coperf_signlink_h: '✍️ Signatur-Link',
+    coperf_signlink_note: 'Der einfache Weg: Schick ihm einen einzigen Link — er liest die Freigabe, unterschreibt sie und fotografiert seinen Ausweis direkt auf dem Handy. Kein Konto, kein Drucken.',
+    coperf_signlink_send: 'Signatur-Link senden',
+    coperf_signlink_resend: 'Link erneut senden',
+    coperf_signlink_revoke: 'Widerrufen',
+    coperf_signlink_copy: 'Link kopieren',
+    coperf_signlink_copied: '🔗 Link kopiert — schick ihn ihm.',
+    coperf_signlink_ready: '🔗 Signatur-Link bereit — kopiere ihn und schick ihn ihm.',
+    coperf_signlink_revoked: 'Signatur-Link widerrufen.',
+    coperf_signlink_waiting: '⏳ Link gesendet — warte darauf, dass er unterschreibt und seinen Ausweis übermittelt.',
+    coperf_signlink_signed: '✍️ Er hat unterschrieben — warte auf seine Ausweisfotos.',
+    coperf_signlink_done: '✅ Er hat unterschrieben und seinen Ausweis übermittelt — jetzt in Prüfung.',
+    coperf_signlink_expired: '⌛ Dieser Link ist abgelaufen — sende einen neuen.',
     costar_prompt_title: '📸 Wer ist darauf zu sehen?',
     costar_prompt_solo: '🧍 Nur ich (solo)',
     costar_prompt_costar: '👥 Ein Co-Star ist auch darauf',
@@ -5576,6 +5641,19 @@ const I18N = {
     coperf_removed: 'Партнёр по сцене удалён.',
     coperf_id_sent: '✅ Документ отправлен! SlutCamp скоро его проверит.',
     coperf_attach3: 'Прикрепите все 3 фотографии.',
+    coperf_signlink_h: '✍️ Ссылка для подписи',
+    coperf_signlink_note: 'Простой способ: отправь ему одну ссылку — он читает разрешение, подписывает его и фотографирует своё удостоверение прямо на телефоне. Без аккаунта и печати.',
+    coperf_signlink_send: 'Отправить ссылку для подписи',
+    coperf_signlink_resend: 'Отправить ссылку снова',
+    coperf_signlink_revoke: 'Отозвать',
+    coperf_signlink_copy: 'Копировать ссылку',
+    coperf_signlink_copied: '🔗 Ссылка скопирована — отправь её ему.',
+    coperf_signlink_ready: '🔗 Ссылка для подписи готова — скопируй и отправь её ему.',
+    coperf_signlink_revoked: 'Ссылка для подписи отозвана.',
+    coperf_signlink_waiting: '⏳ Ссылка отправлена — ждём, пока он подпишет и отправит удостоверение.',
+    coperf_signlink_signed: '✍️ Он подписал — ждём фото его удостоверения.',
+    coperf_signlink_done: '✅ Он подписал и отправил удостоверение — сейчас на проверке.',
+    coperf_signlink_expired: '⌛ Срок этой ссылки истёк — отправь новую.',
     costar_prompt_title: '📸 Кто на этом?',
     costar_prompt_solo: '🧍 Только я (соло)',
     costar_prompt_costar: '👥 Здесь есть ещё одна звезда',
@@ -6567,6 +6645,19 @@ const I18N = {
     coperf_removed: '共演者を削除しました。',
     coperf_id_sent: '✅ 身分証を提出しました！まもなくSlutCampが確認します。',
     coperf_attach3: '3枚すべての写真を添付してください。',
+    coperf_signlink_h: '✍️ 署名リンク',
+    coperf_signlink_note: '簡単な方法：リンクを1つ送るだけ — 彼はリリースを読んで署名し、身分証の写真をスマホで撮ります。アカウントも印刷も不要。',
+    coperf_signlink_send: '署名リンクを送る',
+    coperf_signlink_resend: 'リンクを再送信',
+    coperf_signlink_revoke: '取り消す',
+    coperf_signlink_copy: 'リンクをコピー',
+    coperf_signlink_copied: '🔗 リンクをコピーしました — 彼に送ってください。',
+    coperf_signlink_ready: '🔗 署名リンクの準備ができました — コピーして彼に送ってください。',
+    coperf_signlink_revoked: '署名リンクを取り消しました。',
+    coperf_signlink_waiting: '⏳ リンク送信済み — 彼の署名と身分証の提出を待っています。',
+    coperf_signlink_signed: '✍️ 署名済み — 身分証の写真を待っています。',
+    coperf_signlink_done: '✅ 署名して身分証を提出しました — 現在審査中です。',
+    coperf_signlink_expired: '⌛ このリンクは期限切れです — 新しいリンクを送ってください。',
     costar_prompt_title: '📸 これは誰が写っていますか？',
     costar_prompt_solo: '🧍 私だけ（ソロ）',
     costar_prompt_costar: '👥 共演者も写っています',
@@ -7558,6 +7649,19 @@ const I18N = {
     coperf_removed: '搭档演员已移除。',
     coperf_id_sent: '✅ 身份证已提交！SlutCamp会尽快审核。',
     coperf_attach3: '请附上全部3张照片。',
+    coperf_signlink_h: '✍️ 签署链接',
+    coperf_signlink_note: '最简单的方式：发给他一个链接 — 他阅读授权书、签署，并直接在手机上拍下证件照片。无需账号，无需打印。',
+    coperf_signlink_send: '发送签署链接',
+    coperf_signlink_resend: '重新发送链接',
+    coperf_signlink_revoke: '撤销',
+    coperf_signlink_copy: '复制链接',
+    coperf_signlink_copied: '🔗 链接已复制 — 发给他吧。',
+    coperf_signlink_ready: '🔗 签署链接已准备好 — 复制并发给他。',
+    coperf_signlink_revoked: '签署链接已撤销。',
+    coperf_signlink_waiting: '⏳ 链接已发送 — 等待他签署并提交证件。',
+    coperf_signlink_signed: '✍️ 他已签署 — 等待他的证件照片。',
+    coperf_signlink_done: '✅ 他已签署并提交证件 — 正在审核中。',
+    coperf_signlink_expired: '⌛ 此链接已过期 — 发送一个新链接。',
     costar_prompt_title: '📸 这里面有谁？',
     costar_prompt_solo: '🧍 只有我（单人）',
     costar_prompt_costar: '👥 还有一位搭档出镜',
@@ -8549,6 +8653,19 @@ const I18N = {
     coperf_removed: '공연 파트너가 삭제되었습니다.',
     coperf_id_sent: '✅ 신분증이 제출되었습니다! 곧 검토될 예정입니다.',
     coperf_attach3: '사진 3장을 모두 첨부해주세요.',
+    coperf_signlink_h: '✍️ 서명 링크',
+    coperf_signlink_note: '가장 쉬운 방법: 링크 하나를 보내면 그가 동의서를 읽고 서명하고, 신분증 사진을 휴대폰으로 바로 찍어요. 계정도, 인쇄도 필요 없어요.',
+    coperf_signlink_send: '서명 링크 보내기',
+    coperf_signlink_resend: '링크 다시 보내기',
+    coperf_signlink_revoke: '취소',
+    coperf_signlink_copy: '링크 복사',
+    coperf_signlink_copied: '🔗 링크가 복사됐어요 — 그에게 보내세요.',
+    coperf_signlink_ready: '🔗 서명 링크가 준비됐어요 — 복사해서 그에게 보내세요.',
+    coperf_signlink_revoked: '서명 링크가 취소됐어요.',
+    coperf_signlink_waiting: '⏳ 링크 전송 완료 — 그가 서명하고 신분증을 제출하기를 기다리는 중.',
+    coperf_signlink_signed: '✍️ 서명 완료 — 신분증 사진을 기다리는 중.',
+    coperf_signlink_done: '✅ 서명하고 신분증을 제출했어요 — 지금 검토 중입니다.',
+    coperf_signlink_expired: '⌛ 이 링크는 만료됐어요 — 새 링크를 보내세요.',
     costar_prompt_title: '📸 여기에 누가 나오나요?',
     costar_prompt_solo: '🧍 저만 (솔로)',
     costar_prompt_costar: '👥 파트너도 함께 나와요',
@@ -9540,6 +9657,19 @@ const I18N = {
     coperf_removed: 'Partner di scena rimosso.',
     coperf_id_sent: '✅ Documento inviato! SlutCamp lo esaminerà a breve.',
     coperf_attach3: 'Allega tutte e 3 le foto.',
+    coperf_signlink_h: '✍️ Link di firma',
+    coperf_signlink_note: 'Il modo semplice: mandagli un unico link — legge la liberatoria, la firma e fotografa il suo documento direttamente dal telefono. Nessun account, nessuna stampa.',
+    coperf_signlink_send: 'Invia link di firma',
+    coperf_signlink_resend: 'Reinvia link',
+    coperf_signlink_revoke: 'Revoca',
+    coperf_signlink_copy: 'Copia link',
+    coperf_signlink_copied: '🔗 Link copiato — mandaglielo.',
+    coperf_signlink_ready: '🔗 Link di firma pronto — copialo e mandaglielo.',
+    coperf_signlink_revoked: 'Link di firma revocato.',
+    coperf_signlink_waiting: '⏳ Link inviato — in attesa che firmi e invii il documento.',
+    coperf_signlink_signed: '✍️ Ha firmato — in attesa delle foto del documento.',
+    coperf_signlink_done: '✅ Ha firmato e inviato il documento — in revisione ora.',
+    coperf_signlink_expired: '⌛ Questo link è scaduto — inviane uno nuovo.',
     costar_prompt_title: '📸 Chi c’è qui dentro?',
     costar_prompt_solo: '🧍 Solo io (solista)',
     costar_prompt_costar: '👥 C’è anche una co-star',
@@ -10531,6 +10661,19 @@ const I18N = {
     coperf_removed: 'Usunięto współwykonawcę.',
     coperf_id_sent: '✅ Przesłano dokument! SlutCamp wkrótce go sprawdzi.',
     coperf_attach3: 'Załącz wszystkie 3 zdjęcia.',
+    coperf_signlink_h: '✍️ Link do podpisu',
+    coperf_signlink_note: 'Najprostszy sposób: wyślij mu jeden link — czyta zgodę, podpisuje ją i robi zdjęcia swojego dokumentu prosto na telefonie. Bez konta, bez drukowania.',
+    coperf_signlink_send: 'Wyślij link do podpisu',
+    coperf_signlink_resend: 'Wyślij link ponownie',
+    coperf_signlink_revoke: 'Cofnij',
+    coperf_signlink_copy: 'Kopiuj link',
+    coperf_signlink_copied: '🔗 Link skopiowany — wyślij mu go.',
+    coperf_signlink_ready: '🔗 Link do podpisu gotowy — skopiuj go i wyślij mu.',
+    coperf_signlink_revoked: 'Link do podpisu cofnięty.',
+    coperf_signlink_waiting: '⏳ Link wysłany — czekam, aż podpisze i prześle dokument.',
+    coperf_signlink_signed: '✍️ Podpisał — czekam na zdjęcia jego dokumentu.',
+    coperf_signlink_done: '✅ Podpisał i przesłał dokument — teraz w trakcie weryfikacji.',
+    coperf_signlink_expired: '⌛ Ten link wygasł — wyślij nowy.',
     costar_prompt_title: '📸 Kto tu występuje?',
     costar_prompt_solo: '🧍 Tylko ja (solo)',
     costar_prompt_costar: '👥 Występuje też współgwiazda',
@@ -11522,6 +11665,19 @@ const I18N = {
     coperf_removed: 'Mede-performer verwijderd.',
     coperf_id_sent: '✅ ID ingediend! SlutCamp beoordeelt het binnenkort.',
     coperf_attach3: 'Voeg alle 3 foto’s toe.',
+    coperf_signlink_h: '✍️ Ondertekenlink',
+    coperf_signlink_note: 'De makkelijke manier: stuur hem één link — hij leest de vrijwaring, ondertekent hem en maakt foto’s van zijn ID direct op zijn telefoon. Geen account, niet printen.',
+    coperf_signlink_send: 'Verstuur ondertekenlink',
+    coperf_signlink_resend: 'Link opnieuw sturen',
+    coperf_signlink_revoke: 'Intrekken',
+    coperf_signlink_copy: 'Kopieer link',
+    coperf_signlink_copied: '🔗 Link gekopieerd — stuur hem door.',
+    coperf_signlink_ready: '🔗 Ondertekenlink klaar — kopieer en stuur hem door.',
+    coperf_signlink_revoked: 'Ondertekenlink ingetrokken.',
+    coperf_signlink_waiting: '⏳ Link verstuurd — wachten tot hij tekent en zijn ID indient.',
+    coperf_signlink_signed: '✍️ Hij heeft getekend — wachten op zijn ID-foto’s.',
+    coperf_signlink_done: '✅ Hij heeft getekend en zijn ID ingediend — nu in beoordeling.',
+    coperf_signlink_expired: '⌛ Deze link is verlopen — stuur een nieuwe.',
     costar_prompt_title: '📸 Wie staat hierop?',
     costar_prompt_solo: '🧍 Alleen ik (solo)',
     costar_prompt_costar: '👥 Er staat ook een co-ster op',
@@ -12513,6 +12669,19 @@ const I18N = {
     coperf_removed: 'Sahne partneri kaldırıldı.',
     coperf_id_sent: '✅ Kimlik gönderildi! SlutCamp yakında inceleyecek.',
     coperf_attach3: 'Lütfen 3 fotoğrafın tamamını ekleyin.',
+    coperf_signlink_h: '✍️ İmza bağlantısı',
+    coperf_signlink_note: 'Kolay yolu: ona tek bir bağlantı gönder — izin belgesini okur, imzalar ve kimlik fotoğraflarını telefonundan çeker. Hesap yok, yazdırma yok.',
+    coperf_signlink_send: 'İmza bağlantısı gönder',
+    coperf_signlink_resend: 'Bağlantıyı yeniden gönder',
+    coperf_signlink_revoke: 'İptal et',
+    coperf_signlink_copy: 'Bağlantıyı kopyala',
+    coperf_signlink_copied: '🔗 Bağlantı kopyalandı — ona gönder.',
+    coperf_signlink_ready: '🔗 İmza bağlantısı hazır — kopyala ve ona gönder.',
+    coperf_signlink_revoked: 'İmza bağlantısı iptal edildi.',
+    coperf_signlink_waiting: '⏳ Bağlantı gönderildi — imzalamasını ve kimliğini göndermesini bekliyoruz.',
+    coperf_signlink_signed: '✍️ İmzaladı — kimlik fotoğrafları bekleniyor.',
+    coperf_signlink_done: '✅ İmzaladı ve kimliğini gönderdi — şimdi inceleniyor.',
+    coperf_signlink_expired: '⌛ Bu bağlantının süresi doldu — yeni bir tane gönder.',
     costar_prompt_title: '📸 Bunda kim var?',
     costar_prompt_solo: '🧍 Sadece ben (solo)',
     costar_prompt_costar: '👥 Bir yardımcı yıldız da var',
@@ -20498,6 +20667,31 @@ async function renderCoPerfCard() {
       : p.verification_status
         ? `<span style="color:var(--yellow)">${t('coperf_st_pending')}</span>`
         : `<span class="muted">${t('coperf_st_none')}</span>`;
+  // Signing link block (Co-Performer Signing Link, Oct 26 2026):
+  // she sends him ONE link and he signs + submits his ID on his own
+  // phone — the state line and buttons ride signing_link from the API.
+  const slBlock = (p) => {
+    if (p.status === 'approved') return '';
+    const sl = p.signing_link;
+    const head = `<div class="muted small" style="margin-bottom:6px">${t('coperf_signlink_h')}</div>
+      <div class="muted small" style="margin-bottom:6px">${t('coperf_signlink_note')}</div>`;
+    if (!sl || sl.state === 'revoked' || sl.state === 'superseded')
+      return `<div style="margin-top:10px">${head}<button class="btn small" data-cp-signlink="${p.id}">✍️ ${t('coperf_signlink_send')}</button></div>`;
+    if (sl.state === 'completed')
+      return `<div style="margin-top:10px">${head}<div class="small" style="color:var(--green)">${t('coperf_signlink_done')}</div></div>`;
+    const stateLine = sl.state === 'signed' ? t('coperf_signlink_signed')
+      : sl.state === 'expired' ? t('coperf_signlink_expired') : t('coperf_signlink_waiting');
+    return `<div style="margin-top:10px">${head}
+      <div class="small" style="margin-bottom:6px">${stateLine}</div>
+      <div class="row" style="gap:8px">
+        <input class="input grow" id="cp-link-${p.id}" readonly value="${esc(sl.url)}">
+        <button class="btn ghost small" data-cp-copylink="${p.id}">${t('coperf_signlink_copy')}</button>
+      </div>
+      <div class="row" style="gap:8px;margin-top:6px">
+        <button class="btn ghost small" data-cp-signlink="${p.id}">${t('coperf_signlink_resend')}</button>
+        <button class="btn ghost small danger" data-cp-revokelink="${p.id}">${t('coperf_signlink_revoke')}</button>
+      </div></div>`;
+  };
   box.innerHTML = `
     <div class="card">
       <div style="font-weight:800;margin-bottom:6px">${t('coperf_h')}</div>
@@ -20528,6 +20722,7 @@ async function renderCoPerfCard() {
             <label class="field">Selfie holding ID<input class="input" type="file" id="cp-selfie-${p.id}" accept="image/*"></label>
             <button class="btn small" data-cp-upload="${p.id}">🪪 ${t('coperf_upload_id')}</button>
           </div>` : ''}
+          ${slBlock(p)}
           <div style="margin-top:10px">
             <div class="muted small" style="margin-bottom:6px">📄 ${t('costar_consent')} — ${p.consent_on_file
               ? `<span style="color:var(--green)">${t('costar_consent_onfile')}</span>`
@@ -20610,6 +20805,34 @@ async function renderCoPerfCard() {
       b.disabled = false;
       if (status === 200 && data.ok) { toast(t('coperf_id_sent')); renderCoPerfCard(); }
       else toast(data.message || 'Upload failed — try again.');
+    };
+  });
+  // Signing link (Co-Performer Signing Link, Oct 26 2026): generate
+  // or resend (a resend kills the old link server-side), revoke, and
+  // copy-to-clipboard for pasting into a text/DM.
+  box.querySelectorAll('[data-cp-signlink]').forEach((b) => {
+    b.onclick = async () => {
+      b.disabled = true;
+      const { status, data } = await api(`/model/co-performers/${b.dataset.cpSignlink}/signing-link`, { method: 'POST', body: '{}' });
+      b.disabled = false;
+      if (status === 200) { toast(t('coperf_signlink_ready')); renderCoPerfCard(); }
+      else toast((data && data.message) || t('couldnt_save'));
+    };
+  });
+  box.querySelectorAll('[data-cp-revokelink]').forEach((b) => {
+    b.onclick = async () => {
+      const { status, data } = await api(`/model/co-performers/${b.dataset.cpRevokelink}/signing-link/revoke`, { method: 'POST', body: '{}' });
+      if (status === 200) { toast(t('coperf_signlink_revoked')); renderCoPerfCard(); }
+      else toast((data && data.message) || t('couldnt_save'));
+    };
+  });
+  box.querySelectorAll('[data-cp-copylink]').forEach((b) => {
+    b.onclick = async () => {
+      const input = $(`#cp-link-${b.dataset.cpCopylink}`);
+      if (!input) return;
+      try { await navigator.clipboard.writeText(input.value); }
+      catch (e) { input.select(); document.execCommand('copy'); }
+      toast(t('coperf_signlink_copied'));
     };
   });
   // Consent form upload (Co-Star Upload Prompt, Oct 22 2026): the

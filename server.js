@@ -2634,6 +2634,48 @@ CREATE TABLE IF NOT EXISTS media_costars (
 CREATE INDEX IF NOT EXISTS idx_media_costars_model ON media_costars(model_id);
 CREATE INDEX IF NOT EXISTS idx_media_costars_cp ON media_costars(co_performer_id);
 
+-- Co-performer signing links (Co-Performer Signing Link, Oct 26 2026;
+-- Asce's design Oct 24 2026): the model sends her co-performer ONE
+-- single-use, 7-day link (the moderator-invite token pattern) and he
+-- does the whole packet on his phone — reads the WOGENT release,
+-- clickwrap-signs it, photographs his ID + a selfie holding it. No
+-- account, no download, no printing. His signature record + photos
+-- land in the SAME id_verifications packet slots coStarPacketComplete
+-- already checks; Manager/delegate approval still applies after.
+CREATE TABLE IF NOT EXISTS co_performer_signing_links (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT UNIQUE NOT NULL,
+  co_performer_id INTEGER NOT NULL REFERENCES co_performers(id),
+  model_id INTEGER NOT NULL REFERENCES users(id),
+  status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','signed','completed','revoked','superseded')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at TEXT NOT NULL DEFAULT (datetime('now', '+7 days')),
+  signed_at TEXT,
+  completed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_cosign_links_cp ON co_performer_signing_links(co_performer_id, id);
+
+-- The co-performer's clickwrap signature record — the model_releases
+-- shape (PR #91's door standard: typed legal name + agreement +
+-- timestamp + IP, release text version pinned), keyed to the
+-- co-performer instead of a user (he has no account). record_path is
+-- the generated signature-record PDF kept in the private ID storage;
+-- the same path fills the packet's consent_form_path slot.
+CREATE TABLE IF NOT EXISTS co_performer_signatures (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  co_performer_id INTEGER NOT NULL REFERENCES co_performers(id),
+  model_id INTEGER NOT NULL REFERENCES users(id),
+  link_id INTEGER REFERENCES co_performer_signing_links(id),
+  method TEXT NOT NULL DEFAULT 'esign_link',
+  legal_name TEXT NOT NULL,
+  release_version TEXT NOT NULL,
+  attestations TEXT NOT NULL DEFAULT '',
+  record_path TEXT,
+  signed_at TEXT NOT NULL DEFAULT (datetime('now')),
+  ip TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_cosign_sigs_cp ON co_performer_signatures(co_performer_id, id);
+
 -- Clean public feed (Clean Model Feed, Oct 23 2026): the model's
 -- dedicated CLEAN posts for public surfaces — up to 10 pictures +
 -- 2 videos (12 slots, Asce's decided shape), a media set SEPARATE
@@ -5748,6 +5790,8 @@ const SRV = {
   bell_deact_done_body: { en: 'Asce approved your request and your SlutCamp account is deactivated. We wish you all the best — message us any time.', es: 'Asce aprobó tu solicitud y tu cuenta de SlutCamp está desactivada. Te deseamos lo mejor — escríbenos cuando quieras.', pt: 'Asce aprovou sua solicitação e sua conta na SlutCamp foi desativada. Desejamos tudo de bom — fale com a gente quando quiser.', fr: 'Asce a approuvé votre demande et votre compte SlutCamp est désactivé. Nous vous souhaitons le meilleur — écrivez-nous quand vous voulez.', de: 'Asce hat deine Anfrage genehmigt und dein SlutCamp-Konto ist deaktiviert. Wir wünschen dir alles Gute — schreib uns jederzeit.', ru: 'Asce одобрил ваш запрос, и ваш аккаунт SlutCamp деактивирован. Желаем вам всего наилучшего — напишите нам в любое время.', ja: 'Asceがリクエストを承認し、あなたのSlutCampアカウントは無効化されました。お元気で — いつでもメッセージしてね。', zh: 'Asce 已批准你的请求，你的 SlutCamp 账号已停用。祝你一切顺利 — 随时给我们发消息。', ko: 'Asce가 요청을 승인하여 SlutCamp 계정이 비활성화되었습니다. 항상 행복하세요 — 언제든 메시지를 보내세요.', it: 'Asce ha approvato la tua richiesta e il tuo account SlutCamp è disattivato. Ti auguriamo il meglio — scrivici quando vuoi.', pl: 'Asce zatwierdził Twoją prośbę i Twoje konto SlutCamp zostało dezaktywowane. Życzymy Ci wszystkiego dobrego — napisz do nas w każdej chwili.', nl: 'Asce heeft je verzoek goedgekeurd en je SlutCamp-account is gedeactiveerd. We wensen je het beste — stuur ons gerust een bericht.', tr: 'Asce isteğini onayladı ve SlutCamp hesabın devre dışı bırakıldı. Sana en iyisini diliyoruz — bize her zaman mesaj atabilirsin.' },
   bell_deact_denied_title: { en: 'Asce reviewed your request', es: 'Tu solicitud fue revisada', pt: 'Sua solicitação foi analisada', fr: 'Votre demande a été examinée', de: 'Deine Anfrage wurde geprüft', ru: 'Ваш запрос рассмотрен', ja: 'リクエストが確認されました', zh: '你的请求已审核', ko: '요청이 검토되었습니다', it: 'La tua richiesta è stata esaminata', pl: 'Twoja prośba została rozpatrzona', nl: 'Je verzoek is beoordeeld', tr: 'İsteğin incelendi' },
   bell_deact_denied_body: { en: 'Asce reviewed your request and your account stays as it is for now. Message us if you want to talk it over.', es: 'Asce revisó tu solicitud y tu cuenta sigue como está por ahora. Escríbenos en Mensajes si quieres hablarlo.', pt: 'Asce analisou sua solicitação e sua conta continua como está por enquanto. Fale com a gente em Mensagens se quiser conversar sobre isso.', fr: 'Asce a examiné votre demande et votre compte reste tel quel pour le moment. Écrivez-nous dans Messages si vous voulez en discuter.', de: 'Asce hat deine Anfrage geprüft und dein Konto bleibt vorerst wie es ist. Schreib uns in den Nachrichten, wenn du darüber sprechen möchtest.', ru: 'Asce рассмотрел ваш запрос, и ваш аккаунт пока остаётся как есть. Напишите нам в Сообщениях, если хотите это обсудить.', ja: 'Asceがリクエストを確認し、アカウントは当面そのままです。相談したいことがあればメッセージで話してね。', zh: 'Asce 已审核你的请求，你的账号暂时保持不变。如果你想商量，请在消息中联系我们。', ko: 'Asce가 요청을 검토했고 계정은 당분간 그대로 유지됩니다. 상의하고 싶으면 메시지로 연락하세요.', it: 'Asce ha esaminato la tua richiesta e il tuo account resta com\'è per ora. Scrivici in Messaggi se vuoi parlarne.', pl: 'Asce rozpatrzył Twoją prośbę i Twoje konto na razie pozostaje bez zmian. Napisz do nas w Wiadomościach, jeśli chcesz o tym porozmawiać.', nl: 'Asce heeft je verzoek beoordeeld en je account blijft voorlopig zoals het is. Stuur ons een bericht in Berichten als je het wilt bespreken.', tr: 'Asce isteğini inceledi ve hesabın şimdilik olduğu gibi kalıyor. Konuşmak istersen Mesajlar\'dan bize yaz.' },
+  bell_cosign_done_title: { en: '✅ {name} signed and submitted his ID', es: '✅ {name} firmó y envió su ID', pt: '✅ {name} assinou e enviou o documento', fr: '✅ {name} a signé et envoyé sa pièce d\'identité', de: '✅ {name} hat unterschrieben und seinen Ausweis übermittelt', ru: '✅ {name} подписал(а) и отправил(а) своё удостоверение', ja: '✅ {name} が署名し、身分証を提出しました', zh: '✅ {name} 已签署并提交了证件', ko: '✅ {name}님이 서명하고 신분증을 제출했습니다', it: '✅ {name} ha firmato e inviato il suo documento', pl: '✅ {name} podpisał(a) i przesłał(a) swój dokument', nl: '✅ {name} heeft getekend en zijn ID ingediend', tr: '✅ {name} imzaladı ve kimliğini gönderdi' },
+  bell_cosign_done_body: { en: 'His co-performer packet — signed WOGENT release + ID photos — is complete and in the review queue now.', es: 'Su paquete de co-intérprete — autorización WOGENT firmada + fotos del ID — está completo y ya está en la cola de revisión.', pt: 'O pacote de co-intérprete dele — autorização WOGENT assinada + fotos do documento — está completo e na fila de revisão.', fr: 'Son dossier de co-interprète — autorisation WOGENT signée + photos de la pièce d\'identité — est complet et dans la file de vérification.', de: 'Sein Co-Performer-Paket — unterschriebene WOGENT-Freigabe + Ausweisfotos — ist vollständig und jetzt in der Prüfwarteschlange.', ru: 'Его пакет соисполнителя — подписанная форма WOGENT + фото удостоверения — полон и уже в очереди на проверку.', ja: '彼の共同出演者パケット（署名済みWOGENTリリース＋身分証写真）が揃い、審査キューに入りました。', zh: '他的共同表演者资料包——已签署的 WOGENT 授权书 + 证件照片——已齐全，现已进入审核队列。', ko: '그의 공동 출연자 패킷(서명된 WOGENT 동의서 + 신분증 사진)이 완성되어 검토 대기열에 들어갔습니다.', it: 'Il suo pacchetto da co-performer — liberatoria WOGENT firmata + foto del documento — è completo ed è in coda di revisione.', pl: 'Jego pakiet współwykonawcy — podpisana zgoda WOGENT + zdjęcia dokumentu — jest kompletny i czeka w kolejce do weryfikacji.', nl: 'Zijn co-performerpakket — ondertekende WOGENT-vrijwaring + ID-foto\'s — is compleet en staat nu in de beoordelingswachtrij.', tr: 'Co-performer paketi — imzalı WOGENT izin belgesi + kimlik fotoğrafları — tamamlandı ve inceleme kuyruğunda.' },
   bell_live_ended_title: { en: '🔴 Your live was ended', es: '🔴 Tu transmisión en vivo fue terminada', pt: '🔴 Sua live foi encerrada', fr: '🔴 Votre direct a été terminé', de: '🔴 Dein Livestream wurde beendet', ru: '🔴 Ваш прямой эфир завершён', ja: '🔴 ライブが終了されました', zh: '🔴 你的直播已被结束', ko: '🔴 라이브가 종료되었습니다', it: '🔴 La tua live è stata terminata', pl: '🔴 Twoja transmisja na żywo została zakończona', nl: '🔴 Je live is beëindigd', tr: '🔴 Canlı yayının sonlandırıldı' },
   guide_video_text: { en: '🎬 Watch your 1-minute tour: https://slutcamp.app/video/model-guide.mp4', es: '🎬 Mira tu tour de 1 minuto: https://slutcamp.app/video/model-guide.mp4', pt: '🎬 Assista ao seu tour de 1 minuto: https://slutcamp.app/video/model-guide.mp4', fr: '🎬 Regardez votre visite d\'1 minute : https://slutcamp.app/video/model-guide.mp4', de: '🎬 Schau dir deine 1-minütige Tour an: https://slutcamp.app/video/model-guide.mp4', ru: '🎬 Смотрите ваш 1-минутный тур: https://slutcamp.app/video/model-guide.mp4', ja: '🎬 1分ツアーを見てね：https://slutcamp.app/video/model-guide.mp4', zh: '🎬 观看你的 1 分钟导览：https://slutcamp.app/video/model-guide.mp4', ko: '🎬 1분 투어 보기: https://slutcamp.app/video/model-guide.mp4', it: '🎬 Guarda il tuo tour di 1 minuto: https://slutcamp.app/video/model-guide.mp4', pl: '🎬 Obejrzyj swoją 1-minutową wycieczkę: https://slutcamp.app/video/model-guide.mp4', nl: '🎬 Bekijk je 1-minuut tour: https://slutcamp.app/video/model-guide.mp4', tr: '🎬 1 dakikalık turunu izle: https://slutcamp.app/video/model-guide.mp4' },
   ath_video_text: { en: '📲 Put SlutCamp on your home screen — watch this, takes 30 seconds: https://slutcamp.app/video/add-to-home-screen.mp4', es: '📲 Pon SlutCamp en tu pantalla de inicio — mira esto, toma 30 segundos: https://slutcamp.app/video/add-to-home-screen.mp4', pt: '📲 Coloque a SlutCamp na sua tela inicial — assista a isto, leva 30 segundos: https://slutcamp.app/video/add-to-home-screen.mp4', fr: '📲 Mettez SlutCamp sur votre écran d\'accueil — regardez ceci, ça prend 30 secondes : https://slutcamp.app/video/add-to-home-screen.mp4', de: '📲 SlutCamp auf deinen Startbildschirm legen — schau dir das an, dauert 30 Sekunden: https://slutcamp.app/video/add-to-home-screen.mp4', ru: '📲 Добавьте SlutCamp на главный экран — посмотрите это, займёт 30 секунд: https://slutcamp.app/video/add-to-home-screen.mp4', ja: '📲 SlutCampをホーム画面に追加 — これを見てね、30秒で終わるよ：https://slutcamp.app/video/add-to-home-screen.mp4', zh: '📲 把 SlutCamp 放到你的主屏幕 — 看看这个，只需 30 秒：https://slutcamp.app/video/add-to-home-screen.mp4', ko: '📲 홈 화면에 SlutCamp 추가하기 — 이 영상을 보세요, 30초면 됩니다: https://slutcamp.app/video/add-to-home-screen.mp4', it: '📲 Metti SlutCamp sulla tua schermata home — guarda questo, ci vogliono 30 secondi: https://slutcamp.app/video/add-to-home-screen.mp4', pl: '📲 Umieść SlutCamp na ekranie głównym — obejrzyj to, zajmuje 30 sekund: https://slutcamp.app/video/add-to-home-screen.mp4', nl: '📲 Zet SlutCamp op je startscherm — bekijk dit, duurt 30 seconden: https://slutcamp.app/video/add-to-home-screen.mp4', tr: '📲 SlutCamp\'i ana ekranına koy — bunu izle, 30 saniye sürer: https://slutcamp.app/video/add-to-home-screen.mp4' },
@@ -14305,6 +14349,7 @@ app.get('/api/admin/id-verifications', identMiddleware, requireUser, requireMana
            CASE WHEN v.co_performer_id IS NOT NULL THEN cp.display_name ELSE u.display_name END AS display_name,
            u.display_name AS owner_name, u.username,
            cp.display_name AS partner_name,
+           cs.legal_name AS signature_legal_name, cs.signed_at AS signature_signed_at,
            mr.method AS release_method, mr.legal_name AS release_legal_name,
            mr.stage_name AS release_stage_name, mr.dob AS release_dob,
            mr.release_version AS release_version, mr.signed_at AS release_signed_at,
@@ -14313,6 +14358,8 @@ app.get('/api/admin/id-verifications', identMiddleware, requireUser, requireMana
     FROM id_verifications v JOIN users u ON u.id = v.model_id
     LEFT JOIN co_performers cp ON cp.id = v.co_performer_id
     LEFT JOIN model_releases mr ON mr.model_id = v.model_id AND v.co_performer_id IS NULL
+    LEFT JOIN co_performer_signatures cs ON cs.id =
+      (SELECT MAX(id) FROM co_performer_signatures WHERE co_performer_id = v.co_performer_id)
     ORDER BY CASE v.status WHEN 'pending' THEN 0 WHEN 'rejected' THEN 1 ELSE 2 END,
              v.submitted_at DESC
   `).all();
@@ -14323,6 +14370,15 @@ app.get('/api/admin/id-verifications', identMiddleware, requireUser, requireMana
     // The release belongs to the account owner — partner rows never carry one.
     const own = !r.co_performer_id;
     return { ...rest, is_partner: own ? 0 : 1,
+      // His clickwrap signature via the signing link (partner rows):
+      // the typed legal name rides along so the reviewer can compare
+      // it against the ID photo — no shared name token with the
+      // registered partner name raises the mismatch flag (a flag for
+      // the reviewer's eye, never a silent pass or an auto-reject).
+      signature_legal_name: own ? null : (r.signature_legal_name || null),
+      signature_signed_at: own ? null : (r.signature_signed_at || null),
+      signature_name_mismatch: (!own && r.signature_legal_name && r.partner_name
+        && !namesOverlap(r.signature_legal_name, r.partner_name)) ? 1 : 0,
       release_on_file: own && r.release_method ? 1 : 0,
       release_method: own ? r.release_method : null,
       release_legal_name: own ? r.release_legal_name : null,
@@ -14505,6 +14561,18 @@ app.get('/api/admin/id-verifications/:id/2257', identMiddleware, requireUser, re
       account_owner: { user_id: u.id, username: u.username },
       note: "Co-performer of the account above; the ID document images in this record are the co-performer's.",
     };
+    // His WOGENT house release when he signed it through the signing
+    // link (Co-Performer Signing Link, Oct 26 2026): the clickwrap
+    // record — the generated record PDF is the consent_form document
+    // above; this section is its index entry.
+    const csig = db.prepare(`SELECT method, legal_name, release_version, signed_at, ip, record_path
+                             FROM co_performer_signatures WHERE co_performer_id = ?
+                             ORDER BY id DESC LIMIT 1`).get(v.co_performer_id);
+    if (csig) packet.co_performer_release = {
+      method: csig.method, legal_name: csig.legal_name,
+      release_version: csig.release_version, signed_at: csig.signed_at,
+      signed_from_ip: csig.ip, record_file: base(csig.record_path),
+    };
   }
   const fname = `2257-record-${u.username}-u${u.id}.json`;
   res.setHeader('Content-Type', 'application/json');
@@ -14536,6 +14604,10 @@ function coPerformerRow(row) {
     consent_on_file: consent,
     packet_complete: packetComplete,
     media_cleared: row.status === 'approved' && packetComplete,
+    // Co-performer signing link (Oct 26 2026): the latest link's
+    // state for this partner (null when she never sent one) — the
+    // Settings card renders Send / Resend / Revoke from it.
+    signing_link: signingLinkShape(row.id),
     created_at: row.created_at, updated_at: row.updated_at,
   };
 }
@@ -14629,10 +14701,18 @@ app.delete('/api/model/co-performers/:id', identMiddleware, requireUser, require
     .get(row.id);
   if (v) [v.id_front_path, v.id_back_path, v.selfie_path, v.consent_form_path]
     .forEach((p) => { if (p) fs.unlink(p, () => {}); });
+  // His signing-link signature records go too (the record PDF is the
+  // packet's consent file — already unlinked above when it was the
+  // consent on file; unlink any older record paths as well).
+  const sigs = db.prepare('SELECT record_path FROM co_performer_signatures WHERE co_performer_id = ?')
+    .all(row.id);
+  sigs.forEach((s) => { if (s.record_path) fs.unlink(s.record_path, () => {}); });
   txn(() => {
     // Her media declarations naming this co-star go with her record
     // (the media itself stays — un-declared, it is solo content).
     db.prepare('DELETE FROM media_costars WHERE co_performer_id = ?').run(row.id);
+    db.prepare('DELETE FROM co_performer_signatures WHERE co_performer_id = ?').run(row.id);
+    db.prepare('DELETE FROM co_performer_signing_links WHERE co_performer_id = ?').run(row.id);
     db.prepare('DELETE FROM id_verifications WHERE co_performer_id = ?').run(row.id);
     db.prepare('DELETE FROM co_performers WHERE id = ?').run(row.id);
   });
@@ -14761,6 +14841,454 @@ app.get('/api/model/media-costars', identMiddleware, requireUser, requireRole('m
     })),
     held_urls: [...held],
   });
+});
+
+/* ------------------------------------------------------------------ */
+/* Co-performer signing links (Co-Performer Signing Link, Oct 26     */
+/* 2026; Asce's design Oct 24 2026). The model sends her             */
+/* co-performer a single-use 7-day link (the moderator-invite token  */
+/* pattern); he opens it on his phone — no account, no download, no  */
+/* printing — reads the full WOGENT release in the page, signs it    */
+/* with the PR #91 clickwrap standard (typed legal name + I agree +  */
+/* timestamp + IP), photographs his ID front/back and a selfie       */
+/* holding it, and the packet fills itself: his signature record is  */
+/* generated as a PDF into the private ID storage and lands in the   */
+/* packet's consent_form_path slot, his photos in the ID slots —     */
+/* the exact slots coStarPacketComplete() checks. Manager/delegate   */
+/* approval still applies afterward. Resend supersedes the old link; */
+/* revoke kills it; generation/resend/revoke/sign/completion are    */
+/* audit-logged against the co-performer record.                     */
+/* ------------------------------------------------------------------ */
+
+function coSignState(link) {
+  if (!link) return 'not_found';
+  if (link.status === 'completed') return 'completed';
+  if (link.status === 'revoked') return 'revoked';
+  if (link.status === 'superseded') return 'superseded';
+  const nowSql = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  if (link.expires_at <= nowSql) return 'expired';
+  if (link.status === 'signed') return 'signed';
+  return 'active';
+}
+function latestCoSignLink(coPerformerId) {
+  return db.prepare(`SELECT * FROM co_performer_signing_links
+                     WHERE co_performer_id = ? ORDER BY id DESC LIMIT 1`).get(coPerformerId);
+}
+function signingLinkShape(coPerformerId) {
+  const link = latestCoSignLink(coPerformerId);
+  if (!link) return null;
+  return {
+    state: coSignState(link),
+    url: `https://slutcamp.app/cosign/${link.code}`,
+    expires_at: link.expires_at,
+    signed_at: link.signed_at || null,
+    completed_at: link.completed_at || null,
+  };
+}
+function coSignLookup(code) {
+  const link = db.prepare('SELECT * FROM co_performer_signing_links WHERE code = ?')
+    .get(String(code || ''));
+  if (!link) return null;
+  const cp = db.prepare('SELECT * FROM co_performers WHERE id = ?').get(link.co_performer_id);
+  if (!cp) return null;
+  const model = db.prepare('SELECT id, display_name, language FROM users WHERE id = ?')
+    .get(link.model_id);
+  if (!model) return null;
+  return { link, state: coSignState(link), cp, model };
+}
+// Reviewer-flag helper (Manager ID Checks): do the typed signature
+// name and the registered partner name share any name token? No
+// overlap → the reviewer is flagged to compare against the ID photo.
+function namesOverlap(a, b) {
+  const toks = (s) => new Set(String(s || '').toLowerCase()
+    .replace(/[^\p{L}\s]/gu, ' ').split(/\s+/).filter((w) => w.length >= 3));
+  const A = toks(a), B = toks(b);
+  if (!A.size || !B.size) return true;
+  for (const t of A) if (B.has(t)) return true;
+  return false;
+}
+
+/* The signature record as a standalone document in the packet: a
+ * minimal, dependency-free PDF (Helvetica, wrapped + paginated)
+ * carrying WHO signed, WHAT (the full release text he read), WHEN,
+ * and FROM WHERE — the same evidence a signed paper form carries. */
+function pdfSafe(s) {
+  return String(s == null ? '' : s).replace(/[^\x20-\x7E\xA0-\xFF]/g, '?')
+    .replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+}
+function wrapText(text, max) {
+  const words = String(text).split(/\s+/).filter(Boolean);
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    if (w.length > max) {
+      if (cur) { lines.push(cur); cur = ''; }
+      for (let i = 0; i < w.length; i += max) lines.push(w.slice(i, i + max));
+      continue;
+    }
+    if ((cur ? cur + ' ' + w : w).length > max) { lines.push(cur); cur = w; }
+    else cur = cur ? cur + ' ' + w : w;
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [''];
+}
+function buildTextPdf(rawLines) {
+  const lines = [];
+  for (const l of rawLines) for (const t of wrapText(l.t, 86)) lines.push({ t, b: !!l.b });
+  const perPage = 42;
+  const chunks = [];
+  for (let i = 0; i < lines.length; i += perPage) chunks.push(lines.slice(i, i + perPage));
+  if (!chunks.length) chunks.push([]);
+  const objs = [];
+  objs[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+  objs[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+  objs[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>';
+  objs[2] = `<< /Type /Pages /Kids [${chunks.map((_, i) => `${5 + i * 2} 0 R`).join(' ')}] /Count ${chunks.length} >>`;
+  chunks.forEach((chunk, i) => {
+    const pageNum = 5 + i * 2, contentNum = 6 + i * 2;
+    let stream = 'BT 56 756 Td 16 TL ';
+    let font = '';
+    for (const l of chunk) {
+      const f = l.b ? '/F2 12' : '/F1 11';
+      if (f !== font) { stream += `${f} Tf `; font = f; }
+      stream += `(${pdfSafe(l.t)}) Tj T* `;
+    }
+    stream += 'ET';
+    objs[pageNum] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentNum} 0 R >>`;
+    objs[contentNum] = { stream };
+  });
+  const maxObj = 4 + chunks.length * 2;
+  let out = '%PDF-1.4\n';
+  const offsets = [0];
+  for (let n = 1; n <= maxObj; n++) {
+    offsets[n] = Buffer.byteLength(out, 'latin1');
+    const o = objs[n];
+    if (typeof o === 'string') out += `${n} 0 obj\n${o}\nendobj\n`;
+    else out += `${n} 0 obj\n<< /Length ${Buffer.byteLength(o.stream, 'latin1')} >>\nstream\n${o.stream}\nendstream\nendobj\n`;
+  }
+  const xref = Buffer.byteLength(out, 'latin1');
+  out += `xref\n0 ${maxObj + 1}\n0000000000 65535 f \n`;
+  for (let n = 1; n <= maxObj; n++) out += `${String(offsets[n]).padStart(10, '0')} 00000 n \n`;
+  out += `trailer\n<< /Size ${maxObj + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return Buffer.from(out, 'latin1');
+}
+function signatureRecordPdf({ legalName, cp, model, signedAt, ip }) {
+  const lines = [
+    { t: 'WOGENT PERFORMER RELEASE — ELECTRONIC SIGNATURE RECORD', b: true },
+    { t: 'World Of Godz Entertainment LLC (the Producer) — SlutCamp' },
+    { t: '' },
+    { t: `Performer legal name (as signed): ${legalName}`, b: true },
+    { t: `Co-performer record: ${cp.display_name} — partner of ${model.display_name}` },
+    { t: `Release version signed: ${WOGENT_RELEASE.version} (${WOGENT_RELEASE.updated})` },
+    { t: `Signed at (UTC): ${signedAt}` },
+    { t: `Signed from IP: ${ip || 'unknown'}` },
+    { t: 'Method: electronic signature via a secure single-use signing link — the performer read the release in full, typed his legal name, and ticked "I agree".' },
+    { t: '' },
+    { t: 'The full release text he agreed to follows.', b: true },
+    { t: '' },
+  ];
+  for (const s of WOGENT_RELEASE.sections) {
+    lines.push({ t: s.title, b: true });
+    lines.push({ t: s.body });
+    lines.push({ t: '' });
+  }
+  lines.push({ t: 'Electronic signature: typing his legal name and submitting the form is his electronic signature, with the same legal effect as a handwritten signature (Release section 7).' });
+  return buildTextPdf(lines);
+}
+
+/* Model: send (or resend) the signing link for one co-performer.
+ * A resend supersedes every still-open link for that partner — the
+ * old link dies the moment the new one exists. */
+app.post('/api/model/co-performers/:id/signing-link', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const row = ownCoPerformer(req, req.params.id);
+  if (!row) return res.status(404).json({ error: 'not_found' });
+  if (row.status === 'approved')
+    return res.status(409).json({ error: 'already_verified',
+      message: 'This co-performer is already verified.' });
+  const code = crypto.randomBytes(9).toString('hex');
+  txn(() => {
+    db.prepare(`UPDATE co_performer_signing_links SET status = 'superseded'
+                WHERE co_performer_id = ? AND status IN ('active', 'signed')`).run(row.id);
+    db.prepare(`INSERT INTO co_performer_signing_links (code, co_performer_id, model_id)
+                VALUES (?, ?, ?)`).run(code, row.id, req.user.id);
+  });
+  logModAction(req.user.id, 'cosign_link_created', 'co_performer', row.id,
+    `partner: ${row.display_name}`);
+  res.json({ ok: true, signing_link: signingLinkShape(row.id),
+    partner: coPerformerRow(ownCoPerformer(req, row.id)) });
+});
+
+/* Model: revoke the open signing link for one co-performer. */
+app.post('/api/model/co-performers/:id/signing-link/revoke', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const row = ownCoPerformer(req, req.params.id);
+  if (!row) return res.status(404).json({ error: 'not_found' });
+  const link = db.prepare(`SELECT * FROM co_performer_signing_links
+                           WHERE co_performer_id = ? AND status IN ('active', 'signed')
+                           ORDER BY id DESC LIMIT 1`).get(row.id);
+  if (!link) return res.status(404).json({ error: 'no_active_link',
+    message: 'There is no open signing link for this co-performer.' });
+  db.prepare(`UPDATE co_performer_signing_links SET status = 'revoked' WHERE id = ?`).run(link.id);
+  logModAction(req.user.id, 'cosign_link_revoked', 'co_performer', row.id,
+    `partner: ${row.display_name}`);
+  res.json({ ok: true, signing_link: signingLinkShape(row.id),
+    partner: coPerformerRow(ownCoPerformer(req, row.id)) });
+});
+
+/* ---------------- Signing link (public, token = the credential) --- */
+
+// Link state + (for an open link) the full release text to read.
+app.get('/api/cosign/:code', (req, res) => {
+  const found = coSignLookup(req.params.code);
+  if (!found) return res.json({ valid: false, state: 'not_found' });
+  const { link, state, cp, model } = found;
+  const out = {
+    valid: state === 'active' || state === 'signed',
+    state,
+    partner_name: cp.display_name,
+    model_name: model.display_name,
+    expires_at: link.expires_at,
+  };
+  if (out.valid) out.release = {
+    version: WOGENT_RELEASE.version, updated: WOGENT_RELEASE.updated,
+    sections: WOGENT_RELEASE.sections,
+  };
+  res.json(out);
+});
+
+// Step 2 — he signs: typed legal name + I agree (the PR #91 door
+// standard), recorded with timestamp + IP. His signature record PDF
+// lands in the packet's consent slot; his ID photos complete it.
+app.post('/api/cosign/:code/sign', (req, res) => {
+  const found = coSignLookup(req.params.code);
+  if (!found) return res.status(404).json({ error: 'link_not_found' });
+  const { link, state, cp, model } = found;
+  if (state === 'completed') return res.status(409).json({ error: 'already_submitted',
+    message: 'This packet was already submitted.' });
+  if (state === 'signed') return res.status(409).json({ error: 'already_signed',
+    message: 'Already signed — add the ID photos to finish.' });
+  if (state !== 'active') return res.status(410).json({ error: 'link_' + state,
+    message: 'This link is no longer valid — ask for a fresh one.' });
+  const legalName = String((req.body || {}).legal_name || '').trim().slice(0, 120);
+  if (!legalName || legalName.length < 2)
+    return res.status(400).json({ error: 'bad_name', message: 'Type your full legal name to sign.' });
+  if ((req.body || {}).agree !== true)
+    return res.status(400).json({ error: 'agreement_required',
+      message: 'Tick "I agree" to sign.' });
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+    || req.socket.remoteAddress || '';
+  const attestations = JSON.stringify({ click_agree: true,
+    text_version: WOGENT_RELEASE.version, via: 'signing_link' });
+  let sigId = null;
+  txn(() => {
+    const info = db.prepare(`INSERT INTO co_performer_signatures
+                  (co_performer_id, model_id, link_id, method, legal_name,
+                   release_version, attestations, signed_at, ip)
+                VALUES (?, ?, ?, 'esign_link', ?, ?, ?, datetime('now'), ?)`)
+      .run(cp.id, model.id, link.id, legalName, WOGENT_RELEASE.version,
+        attestations, ip.slice(0, 60));
+    sigId = Number(info.lastInsertRowid);
+    db.prepare(`UPDATE co_performer_signing_links
+                SET status = 'signed', signed_at = datetime('now') WHERE id = ?`).run(link.id);
+  });
+  const sig = db.prepare('SELECT * FROM co_performer_signatures WHERE id = ?').get(sigId);
+  const recordPath = path.join(ID_DIR, 'cosign-' + crypto.randomBytes(16).toString('hex') + '.pdf');
+  fs.writeFileSync(recordPath, signatureRecordPdf({
+    legalName, cp, model, signedAt: sig.signed_at, ip: sig.ip || '',
+  }));
+  db.prepare('UPDATE co_performer_signatures SET record_path = ? WHERE id = ?')
+    .run(recordPath, sigId);
+  // The packet's consent slot (the fourth document
+  // coStarPacketComplete checks). Older signature records are kept —
+  // the signatures table is the history; only the slot moves.
+  const prev = db.prepare('SELECT id FROM id_verifications WHERE co_performer_id = ?').get(cp.id);
+  if (prev) {
+    db.prepare('UPDATE id_verifications SET consent_form_path = ? WHERE id = ?')
+      .run(recordPath, prev.id);
+  } else {
+    db.prepare(`INSERT INTO id_verifications
+                  (model_id, co_performer_id, consent_form_path, status, submitted_at, reviewed_at, reviewer_note)
+                VALUES (?, ?, ?, 'pending', datetime('now'), NULL, '')`)
+      .run(model.id, cp.id, recordPath);
+  }
+  logModAction(model.id, 'cosign_signed', 'co_performer', cp.id,
+    `signed as: ${legalName} (link ${link.id})`);
+  res.json({ ok: true, state: 'signed' });
+});
+
+// Step 3 — his ID photos through the SAME private upload pipeline
+// as the model's own submission (idUpload: private dir, image
+// whitelist, 8MB caps). Completion consumes the link for good.
+app.post('/api/cosign/:code/photos', (req, res) => {
+  const found = coSignLookup(req.params.code);
+  if (!found) return res.status(404).json({ error: 'link_not_found' });
+  const { link, state, cp, model } = found;
+  if (state === 'completed') return res.status(409).json({ error: 'already_submitted',
+    message: 'This packet was already submitted.' });
+  if (state === 'active') return res.status(409).json({ error: 'not_signed',
+    message: 'Sign the release first.' });
+  if (state !== 'signed') return res.status(410).json({ error: 'link_' + state,
+    message: 'This link is no longer valid — ask for a fresh one.' });
+  idUpload.fields([
+    { name: 'id_front', maxCount: 1 },
+    { name: 'id_back', maxCount: 1 },
+    { name: 'selfie', maxCount: 1 },
+  ])(req, res, (err) => {
+    if (err) return res.status(400).json({ error: 'bad_file',
+      message: 'Use JPG/PNG photos under 8MB each.' });
+    const f = req.files || {};
+    const front = f.id_front && f.id_front[0];
+    const back = f.id_back && f.id_back[0];
+    const selfie = f.selfie && f.selfie[0];
+    const cleanup = () => [front, back, selfie].forEach((x) => { if (x) fs.unlink(x.path, () => {}); });
+    if (!front || !back || !selfie) {
+      cleanup();
+      return res.status(400).json({ error: 'missing_files',
+        message: 'ID front, ID back, and a selfie holding the ID are all required.' });
+    }
+    const prev = db.prepare(`SELECT id, id_front_path, id_back_path, selfie_path
+                             FROM id_verifications WHERE co_performer_id = ?`).get(cp.id);
+    if (prev) [prev.id_front_path, prev.id_back_path, prev.selfie_path]
+      .forEach((p) => { if (p) fs.unlink(p, () => {}); });
+    txn(() => {
+      if (prev) {
+        db.prepare(`UPDATE id_verifications SET id_front_path = ?, id_back_path = ?, selfie_path = ?,
+                      status = 'pending', submitted_at = datetime('now'), reviewed_at = NULL,
+                      reviewer_note = '' WHERE id = ?`)
+          .run(front.path, back.path, selfie.path, prev.id);
+      } else {
+        db.prepare(`INSERT INTO id_verifications (model_id, co_performer_id, id_front_path, id_back_path,
+                      selfie_path, status, submitted_at, reviewed_at, reviewer_note)
+                    VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'), NULL, '')`)
+          .run(model.id, cp.id, front.path, back.path, selfie.path);
+      }
+      // A resubmission after rejection puts the partner back in line.
+      if (cp.status === 'rejected')
+        db.prepare(`UPDATE co_performers SET status = 'pending', updated_at = datetime('now')
+                    WHERE id = ?`).run(cp.id);
+      db.prepare(`UPDATE co_performer_signing_links
+                  SET status = 'completed', completed_at = datetime('now') WHERE id = ?`).run(link.id);
+    });
+    logModAction(model.id, 'cosign_completed', 'co_performer', cp.id,
+      `packet submitted via signing link ${link.id}`);
+    pushToAdmins({ type: 'id_verification:submitted', model_id: model.id,
+      model_name: model.display_name, co_performer_id: cp.id, partner_name: cp.display_name });
+    // Her bell, in her language: "✅ [Name] signed and submitted his ID."
+    try {
+      notifyUser(model.id, 'cosign_completed',
+        srv('bell_cosign_done_title', model.language, { name: cp.display_name }),
+        srv('bell_cosign_done_body', model.language, { name: cp.display_name }),
+        '/#settings');
+    } catch (e) { /* the bell is a bonus; the packet is the record */ }
+    res.json({ ok: true, state: 'completed', packet_complete: coStarPacketComplete(cp.id) });
+  });
+});
+
+/* The page he lands on from her link. Plain server-rendered page
+ * (same pattern as /moderator-invite/:code): the full release text
+ * is IN the page, scrollable — never a PDF download. Steps: read →
+ * sign → ID photos → done. A completed link shows "already
+ * submitted"; dead links show why and stop. */
+app.get('/cosign/:code', (req, res) => {
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  res.set('Cache-Control', 'no-store');
+  const found = coSignLookup(req.params.code);
+  const page = (title, inner) => res.type('html').send(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title></head>
+<body style="font-family:system-ui;background:#14101a;color:#f5eef7;min-height:100vh;margin:0;display:flex;justify-content:center">
+<div style="max-width:560px;width:100%;padding:24px;box-sizing:border-box">${inner}</div></body></html>`);
+  if (!found) {
+    return page('SlutCamp — Signing link', `
+<h1 style="color:#ff5da2">This signing link is not valid</h1>
+<p style="color:#cbb8d4">The link may be mistyped or gone. Ask the model to send you a fresh signing link.</p>`);
+  }
+  const { state, cp, model } = found;
+  if (state === 'completed') {
+    return page('SlutCamp — Already submitted', `
+<h1 style="color:#ff5da2">✅ Already submitted</h1>
+<p style="color:#cbb8d4">Your signed release and ID photos are already in — there's nothing more to do on this link. Thanks!</p>`);
+  }
+  if (state === 'revoked' || state === 'superseded') {
+    return page('SlutCamp — Signing link', `
+<h1 style="color:#ff5da2">This signing link was replaced</h1>
+<p style="color:#cbb8d4">The model sent a newer link (or cancelled this one). Ask ${esc(model.display_name)} for the fresh signing link.</p>`);
+  }
+  if (state === 'expired') {
+    return page('SlutCamp — Signing link expired', `
+<h1 style="color:#ff5da2">This signing link expired</h1>
+<p style="color:#cbb8d4">Signing links last 7 days. Ask ${esc(model.display_name)} to send a fresh one — it only takes her a tap.</p>`);
+  }
+  const sectionsHtml = WOGENT_RELEASE.sections.map((s) => `
+    <h3 style="color:#fff;margin:16px 0 4px">${esc(s.title)}</h3>
+    <p style="margin:0;color:#e8ddef;line-height:1.5">${esc(s.body)}</p>`).join('');
+  return page('SlutCamp — Sign your release', `
+<h1 style="color:#ff5da2;margin-bottom:4px">✍️ Sign your release</h1>
+<p style="color:#cbb8d4;margin-top:0">Hi ${esc(cp.display_name)} — ${esc(model.display_name)} is adding you as a co-performer on SlutCamp. Before you can appear on camera together, SlutCamp needs your signed performer release and your ID on file (age/identity records, 18 U.S.C. § 2257). It takes a couple of minutes, right here — no account, no printing.</p>
+
+<div id="step-sign">
+<h2 style="color:#fff">1 · Read the release</h2>
+<div style="max-height:320px;overflow-y:auto;border:1px solid #4a3552;border-radius:10px;padding:6px 16px 16px;background:#1e1626">${sectionsHtml}
+<p style="color:#cbb8d4;font-size:13px;margin-top:16px">World Of Godz Entertainment LLC performer release, version ${esc(WOGENT_RELEASE.version)} · ${esc(WOGENT_RELEASE.updated)}. The English text above is the controlling text.</p></div>
+
+<h2 style="color:#fff">2 · Sign it</h2>
+<label style="display:block;margin:12px 0 4px">Your full legal name (exactly as on your ID)</label>
+<input id="nm" maxlength="120" autocomplete="name" style="width:100%;padding:10px;border-radius:8px;border:1px solid #4a3552;background:#1e1626;color:#fff;box-sizing:border-box">
+<label style="display:flex;gap:8px;margin:14px 0;color:#cbb8d4;font-size:15px"><input type="checkbox" id="ag"> I have read the release above and I agree to it. Typing my name and tapping Sign is my electronic signature.</label>
+<button id="sign" style="width:100%;padding:12px;border:0;border-radius:8px;background:#ff5da2;color:#fff;font-weight:700;font-size:16px;cursor:pointer">Sign</button>
+</div>
+
+<div id="step-photos" style="display:none">
+<h2 style="color:#fff">3 · Your ID photos</h2>
+<p style="color:#cbb8d4">Take clear photos — these go only to SlutCamp's private records, never posted anywhere.</p>
+<label style="display:block;margin:12px 0 4px">Photo of your ID — front</label>
+<input id="front" type="file" accept="image/*" capture="environment" style="width:100%;color:#cbb8d4">
+<label style="display:block;margin:12px 0 4px">Photo of your ID — back</label>
+<input id="back" type="file" accept="image/*" capture="environment" style="width:100%;color:#cbb8d4">
+<label style="display:block;margin:12px 0 4px">Selfie of you holding your ID</label>
+<input id="selfie" type="file" accept="image/*" capture="environment" style="width:100%;color:#cbb8d4">
+<button id="send" style="width:100%;padding:12px;border:0;border-radius:8px;background:#ff5da2;color:#fff;font-weight:700;font-size:16px;cursor:pointer;margin-top:16px">Submit my packet</button>
+</div>
+
+<div id="step-done" style="display:none">
+<h2 style="color:#9fe8b1">✅ All done!</h2>
+<p style="color:#cbb8d4">Your signed release and ID photos are in. ${esc(model.display_name)} got a notification, and SlutCamp will review the packet shortly. You can close this page.</p>
+</div>
+<p id="err" style="color:#ff8080;min-height:20px"></p>
+<script>
+const CODE = ${JSON.stringify(String(req.params.code))};
+const err = document.getElementById('err');
+const showPhotos = () => {
+  document.getElementById('step-sign').style.display = 'none';
+  document.getElementById('step-photos').style.display = 'block';
+  window.scrollTo(0, 0);
+};
+if (${JSON.stringify(state)} === 'signed') showPhotos();
+document.getElementById('sign').addEventListener('click', async () => {
+  err.textContent = '';
+  const body = { legal_name: document.getElementById('nm').value,
+    agree: document.getElementById('ag').checked };
+  const r = await fetch('/api/cosign/' + CODE + '/sign', { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const d = await r.json().catch(() => ({}));
+  if (r.ok || d.error === 'already_signed') { showPhotos(); return; }
+  err.textContent = d.message || d.error || 'Something went wrong — try again.';
+});
+document.getElementById('send').addEventListener('click', async () => {
+  err.textContent = '';
+  const fd = new FormData();
+  const front = document.getElementById('front').files[0];
+  const back = document.getElementById('back').files[0];
+  const selfie = document.getElementById('selfie').files[0];
+  if (!front || !back || !selfie) { err.textContent = 'All three photos are required.'; return; }
+  fd.append('id_front', front); fd.append('id_back', back); fd.append('selfie', selfie);
+  const r = await fetch('/api/cosign/' + CODE + '/photos', { method: 'POST', body: fd });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { err.textContent = d.message || d.error || 'Something went wrong — try again.'; return; }
+  document.getElementById('step-photos').style.display = 'none';
+  document.getElementById('step-done').style.display = 'block';
+  window.scrollTo(0, 0);
+});
+</script>`);
 });
 
 /* ------------------------------------------------------------------ */

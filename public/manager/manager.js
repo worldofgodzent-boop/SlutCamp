@@ -1213,6 +1213,17 @@ async function adminIdChecksBody() {
         Attestations: 18+ ${a.adult ? '✓' : '—'} · free will ${a.freewill ? '✓' : '—'} · rights grant ${a.rights ? '✓' : '—'}
       </div></details></div>`;
   };
+  // His clickwrap signature from the signing link (partner rows):
+  // the typed legal name sits next to the ID photos so the reviewer
+  // compares them — a name that shares no token with the registered
+  // partner name is flagged red (a flag, never an auto-reject).
+  const signatureLine = (r) => {
+    if (!r.is_partner || !r.signature_legal_name) return '';
+    const flag = r.signature_name_mismatch
+      ? `<br><span style="color:var(--red)">⚠️ The signed name shares nothing with the registered partner name — check it against the ID photo before approving.</span>`
+      : '';
+    return `<div class="small" style="margin-bottom:10px">✍️ Signed online via signing link as <b>${esc(r.signature_legal_name)}</b> · ${esc(r.signature_signed_at || '')} <span class="muted">(the record PDF is the consent form above — compare the name with the ID photo)</span>${flag}</div>`;
+  };
   const photoRow = (r, which, label) => r._tok
     ? `<div style="flex:1;min-width:120px"><div class="small muted" style="margin-bottom:4px">${label}</div>
        <img src="/api/admin/id-verifications/${r.id}/photo/${which}?t=${r._tok}"
@@ -1239,6 +1250,7 @@ async function adminIdChecksBody() {
           ${r.is_partner ? `<div class="small" style="margin-bottom:10px">${r.consent_on_file
             ? `📄 <a href="/api/admin/id-verifications/${r.id}/photo/consent?t=${r._tok}" target="_blank" rel="noopener">Consent form on file</a> <span class="muted">(any standard signed form — opens photo or PDF)</span>`
             : '<span style="color:var(--red)">📄 No consent form on file — profile media naming this co-star stays held until it lands.</span>'}</div>` : ''}
+          ${signatureLine(r)}
           ${releaseLine(r)}
           <div class="row" style="gap:8px">
             <button class="btn small" data-idv-approve="${r.id}" style="flex:1">✅ Approve</button>
@@ -1255,7 +1267,7 @@ async function adminIdChecksBody() {
           ${r.is_partner ? '<span class="small" style="color:var(--purple)">👥 Co-performer</span>' : ''}<br>
           <span class="small">${badge(r.status)}</span>
           <span class="small muted"> · reviewed ${esc(r.reviewed_at || '')}</span>
-          ${r.is_partner ? `<br><span class="small muted">📄 Consent form: ${r.consent_on_file ? 'on file ✓' : '<span style="color:var(--red)">MISSING</span>'}</span>` : ''}
+          ${r.is_partner ? `<br><span class="small muted">📄 Consent form: ${r.consent_on_file ? 'on file ✓' : '<span style="color:var(--red)">MISSING</span>'}</span>${r.signature_legal_name ? `<br><span class="small muted">✍️ Signed online as <b>${esc(r.signature_legal_name)}</b>${r.signature_name_mismatch ? ' <span style="color:var(--red)">⚠️ name differs from the registered partner name — verify against the ID</span>' : ''}</span>` : ''}` : ''}
           ${r.is_partner ? '' : `<br><span class="small muted">📄 Release: ${r.release_on_file ? `on file ✓ (${r.release_method === 'paper' ? 'paper' : r.release_method === 'clickwrap' ? 'agreed in app' : 'signed in app'} · ${esc(r.release_version || '')} · ${esc(r.release_signed_at || '')})` : '<span style="color:var(--red)">MISSING</span>'}</span>`}
           ${r.reviewer_note ? `<br><span class="small muted">Note: ${esc(r.reviewer_note)}</span>` : ''}
           ${r.status === 'rejected' ? ` <button class="btn small ghost" data-idv-approve="${r.id}">Approve anyway</button>` : ''}
