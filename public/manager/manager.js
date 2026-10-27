@@ -2989,6 +2989,122 @@ async function adminTeamBody() {
     </div>`;
 }
 
+/* ---------------- Manager ping on team messages (Assignment 09) ----------------
+ * Shell-level poll, every Manager screen, client-side only. No server change,
+ * no sound, no push stack: the only signal is the Team channel nav badge plus
+ * the tab title, exactly as Ms. Pink spec'd.
+ *
+ * Poll: GET /admin/team-messages?limit=1 through api() (which prefixes /api,
+ * so the HTTP route is the existing /api/admin/team-messages; that route
+ * already clamps limit to 1..200 and returns the single newest message with
+ * id + author, so limit=1 polling IS enough for the ping itself — see the
+ * count note below). One timer, owned by the shell: started in renderShell,
+ * stopped on logout. Moderators never poll: the server refuses them 403 on
+ * this endpoint and the moderator shell never lists the Team channel.
+ *
+ * State: last-seen message id in localStorage ('sc_team_last_seen_id').
+ * - First sign-in (no stored id) baselines to the current newest id: no
+ *   badge storm. Logout does NOT clear the stored id, so a later sign-in on
+ *   the same browser badges messages posted since the last sign-out.
+ * - Opening the Team channel, or polling while it is the active screen,
+ *   marks seen (last-seen = newest id) and clears badge + title.
+ * - A message from this seat never badges on its own. Own author is the
+ *   Assignment 01 principal: 'owner' for admin, 'delegate:<username>' for a
+ *   delegate seat.
+ *
+ * Count note (flagged for Ms. Pink at review): team_messages ids are
+ * AUTOINCREMENT and no delete route exists, so newestId - lastSeenId is the
+ * count of messages posted since last seen — exact in the common case. In
+ * the corner where this seat's own message is the newest at poll time,
+ * the pending foreign unread count is preserved (never silently dropped)
+ * and the next foreign newest recomputes the count from lastSeen, which
+ * then includes that own message too — so n is an upper bound there, not
+ * exact. An exactly-correct count in that corner needs either a
+ * server-side unread count or fetching more than one message; neither was
+ * built, per the no-server-change rule. If Ms. Pink wants exact counts
+ * there, that is the follow-up to spec — no server change was improvised.
+ *
+ * A03 overlap (flagged for Ms. Pink to reconcile at review): A03 ships
+ * first and also touches public/manager/manager.js, adding ~5s in-channel
+ * live polling + scroll handling to the Team channel screen itself. This
+ * build does NOT include A03's code (A03 is unmerged on main) and does not
+ * touch the channel screen's rendering: the shell poll only reads the
+ * newest id and, while the channel is open, marks seen. When A03 lands,
+ * its in-channel append and this shell poll will both fetch the same
+ * endpoint; the shell poll's channel-open mark-seen already covers the
+ * append case, but Ms. Pink should confirm both timers coexist at merge.
+ */
+/* TEAM_PING_NEXT_START */
+function teamPingNext(lastSeen, unread, newest, ownAuthor, channelOpen) {
+  // Pure decision for the ping state. newest: { id, author } | null.
+  // Returns { lastSeen, unread } with unread >= 0; badge shows iff unread > 0.
+  if (!newest || !Number.isFinite(newest.id)) return { lastSeen, unread };
+  if (lastSeen === null || lastSeen === undefined) return { lastSeen: newest.id, unread: 0 };
+  if (channelOpen) return { lastSeen: newest.id, unread: 0 };
+  if (newest.id <= lastSeen) return { lastSeen, unread };
+  if (newest.author === ownAuthor) return { lastSeen, unread }; // own newest never badges; pending foreign unread preserved
+  return { lastSeen, unread: newest.id - lastSeen };
+}
+/* TEAM_PING_NEXT_END */
+const TEAM_PING_INTERVAL_MS = 15000;
+const TEAM_PING_SEEN_KEY = 'sc_team_last_seen_id';
+function teamPingOwnAuthor() {
+  if (!M.user) return '';
+  if (M.user.role === 'admin') return 'owner';
+  if (M.user.role === 'owner_delegate') return 'delegate:' + String(M.user.username || '').toLowerCase();
+  return String(M.user.username || '');
+}
+function teamPingReadSeen() {
+  try {
+    const v = localStorage.getItem(TEAM_PING_SEEN_KEY);
+    const n = v === null ? null : parseInt(v, 10);
+    return Number.isFinite(n) ? n : null;
+  } catch (e) { return null; }
+}
+function teamPingWriteSeen(id) {
+  try { localStorage.setItem(TEAM_PING_SEEN_KEY, String(id)); } catch (e) {}
+}
+function teamPingRender() {
+  const badge = document.getElementById('badge-team');
+  const unread = (M.teamPing && M.teamPing.unread) || 0;
+  if (badge) {
+    badge.textContent = unread ? String(unread) : '';
+    badge.classList.toggle('hidden', !unread);
+  }
+  if (unread > 0) {
+    if (!M.teamPingBaseTitle) M.teamPingBaseTitle = document.title;
+    document.title = '(' + unread + ') Slut Manager';
+  } else if (M.teamPingBaseTitle) {
+    document.title = M.teamPingBaseTitle;
+  }
+}
+async function teamPingTick() {
+  if (!M.user || (M.user.role !== 'admin' && M.user.role !== 'owner_delegate')) return;
+  if (!M.teamPing) M.teamPing = { lastSeen: teamPingReadSeen(), unread: 0 };
+  const { status, data } = await api('/admin/team-messages?limit=1');
+  if (status !== 200 || !data) return;
+  const msgs = data.messages || [];
+  const newest = msgs.length ? msgs[msgs.length - 1] : null;
+  const next = teamPingNext(M.teamPing.lastSeen, M.teamPing.unread, newest,
+    teamPingOwnAuthor(), M.screen === 'team');
+  M.teamPing.lastSeen = next.lastSeen;
+  M.teamPing.unread = next.unread;
+  if (next.lastSeen !== null && next.lastSeen !== undefined) teamPingWriteSeen(next.lastSeen);
+  teamPingRender();
+}
+function startTeamPing() {
+  if (M.teamPingTimer) return;
+  if (!M.user || (M.user.role !== 'admin' && M.user.role !== 'owner_delegate')) return;
+  M.teamPing = { lastSeen: teamPingReadSeen(), unread: 0 };
+  teamPingTick();
+  M.teamPingTimer = setInterval(() => { teamPingTick(); }, TEAM_PING_INTERVAL_MS);
+}
+function stopTeamPing() {
+  if (M.teamPingTimer) { clearInterval(M.teamPingTimer); M.teamPingTimer = null; }
+  M.teamPing = null;
+  if (M.teamPingBaseTitle) { document.title = M.teamPingBaseTitle; M.teamPingBaseTitle = null; }
+}
+
 async function peekBody() {
   const p = M.peek;
   if (!p) return '<div class="empty">Nothing to peek at.</div>';
@@ -3056,6 +3172,7 @@ M.render = async () => {
   const bodyFn = SCREENS[M.screen] || overviewBody;
   app.innerHTML = `<div class="mgr-h">${NAV.find((n) => n[0] === M.screen)?.[1] || ''}</div>` + (await bodyFn(s));
   wireAdminBody(M.screen);
+  if (M.screen === 'team') teamPingTick(); // opening the channel marks seen promptly, not at the next 15s tick
   if (M.screen === 'dash') startPresence();
   if (M.screen === 'chats') wireChats();
   if (M.screen === 'peek') wirePeek();
@@ -3842,6 +3959,7 @@ M.logout = async () => {
   if (M.token) { try { await api('/auth/logout', { method: 'POST' }); } catch (e) {} }
   M.token = null; M.user = null; M.live = null;
   stopPresence();
+  stopTeamPing();
   localStorage.removeItem('wc_token');
   if (M.ws) { try { M.ws.close(); } catch (e) {} M.ws = null; }
   renderLogin();
@@ -3906,7 +4024,8 @@ function renderShell() {
     const ic = sp > 0 ? label.slice(0, sp) : '';
     const tx = sp > 0 ? label.slice(sp + 1) : label;
     const badge = id === 'safety' ? ' <span class="unread-badge hidden" id="badge-safety"></span>'
-      : id === 'dmca' ? ' <span class="unread-badge hidden" id="badge-dmca"></span>' : '';
+      : id === 'dmca' ? ' <span class="unread-badge hidden" id="badge-dmca"></span>'
+      : id === 'team' ? ' <span class="unread-badge hidden" id="badge-team"></span>' : '';
     return `<button data-screen="${id}"><span class="nav-ic">${ic}</span><span class="nav-tx">${tx}</span>${badge}</button>`;
   };
   document.getElementById('mgr-root').innerHTML = `
@@ -3946,6 +4065,7 @@ function renderShell() {
     window.open('/', '_blank');
   };
   document.getElementById('mgr-logout2').onclick = () => M.logout();
+  startTeamPing();
 }
 
 (async function boot() {
