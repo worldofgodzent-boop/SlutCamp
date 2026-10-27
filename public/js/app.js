@@ -15735,6 +15735,7 @@ function openModelPeek(m, models) {
       </button>`).join('')}
     </div>` : ''}
     <button class="sheet-btn" style="margin-top:12px" onclick="document.getElementById('ft-sheet').remove()">Close</button>
+    <p class="muted small" style="text-align:center;margin:14px 0 2px"><a href="javascript:void(0)" data-peek-complaints style="color:var(--pink)">${t('complaints_label')}</a></p>
     </div>
     ${showMsgBar ? `
     <div class="peek-msgbar">
@@ -15827,6 +15828,18 @@ function openModelPeek(m, models) {
       joinBtn.onclick = () => {
         sheet.remove();
         show('auth', {});
+      };
+    }
+    // Complaints & Content Removal at the very foot of her page
+    // (owner, Oct 27 2026) — end of the scroll content, under the
+    // Close row, above the pinned Message bar. Same policy page as
+    // the Terms / Settings rows; the sheet closes first, like every
+    // other peek navigation.
+    const cpLink = sheet.querySelector('[data-peek-complaints]');
+    if (cpLink) {
+      cpLink.onclick = () => {
+        sheet.remove();
+        show('complaints', {});
       };
     }
     // Preview video hero: tap toggles the sound. Unmuting restarts from
@@ -15926,6 +15939,7 @@ async function vFanModels() {
         ? `<div class="empty"><div class="big">😴</div>${t('no_models')}</div>`
         : shown.length ? homeTilesHTML(shown, heartFor, { crown: !discActive(disc), rankBadges: !discActive(disc) })
         : `<div class="empty"><div class="big">🔍</div>${t('no_matches')}</div>`}
+      <p class="muted small" style="text-align:center;margin:18px 0 6px"><a href="javascript:void(0)" id="home-complaints" style="color:var(--pink)">${t('complaints_label')}</a></p>
     </div>`;
   wireAthCard();
   wireHouseBanner();
@@ -15953,6 +15967,11 @@ async function vFanModels() {
   if (lv) lv.onclick = () => show('lives', {});
   const hlo = $('#home-logout');
   if (hlo) hlo.onclick = () => { if (confirm('Log out of SlutCamp?')) logout(); };
+  // Complaints & Content Removal at the foot of the front page
+  // (owner, Oct 27 2026) — below the tile grid + pagination, opens
+  // the same policy page as the Terms / Settings rows.
+  const hcp = $('#home-complaints');
+  if (hcp) hcp.onclick = () => show('complaints', {});
   app.querySelectorAll('[data-model]').forEach((b) => {
     b.onclick = () => {
       if (isModelViewer && !isHouseViewer) {
@@ -18045,8 +18064,12 @@ async function vPrivateEvent({ id }) {
         <div id="pr-action" style="margin-top:12px"></div>
       </div>
       <button class="btn ghost" id="pr-back" style="margin-top:12px">←</button>
+      <p class="muted small" style="text-align:center;margin:14px 0 2px"><a href="javascript:void(0)" id="pr-complaints" style="color:var(--pink)">${t('complaints_label')}</a></p>
     </div>`;
   $('#pr-back').onclick = () => history.back();
+  // Complaints & Content Removal at the foot of the private-room
+  // page (owner, Oct 27 2026) — same link as every content surface.
+  $('#pr-complaints').onclick = () => show('complaints', {});
   const act = $('#pr-action');
   if (ev.status === 'live' && ev.has_seat && ev.session_id) {
     act.innerHTML = `<button class="btn" id="pr-join">🔴 ${t('pr_join')}</button>`;
@@ -20087,6 +20110,7 @@ async function vChat(params) {
     <div id="typing-ind" class="rate-hint hidden"><i>${t('typing')}</i></div>
     <div class="chat-footer">
     <div id="emoji-panel" class="emoji-panel hidden">${['😀','😂','😍','😘','😈','🔥','💦','🍑','❤️','💋','👏','🙏','😎','🤤','🥵','💯','🎉','💸','👀','🤪','😏','🫦','💕'].map((e) => `<button type="button" class="emoji-cell" data-emoji="${e}">${e}</button>`).join('')}</div>
+    <p class="muted small" style="text-align:center;margin:4px 0 0"><a href="javascript:void(0)" id="chat-complaints" style="color:var(--pink)">${t('complaints_label')}</a></p>
     <div class="chat-input-bar">
       ${!conv.is_paused && S.user && S.user.role === 'fan' ? `<button class="icon-btn" id="c-gift" title="Send a gift">🎁</button>` : ''}
       ${!conv.is_paused && S.user && S.user.role === 'fan' ? `<button class="icon-btn" id="c-tipmenu" title="Tip menu">💰</button>` : ''}
@@ -20119,6 +20143,15 @@ async function vChat(params) {
     else if (isModel) show('modelChats', {});
     else show('fanChats', {});
   };
+  // Complaints & Content Removal as a labeled link in the chat
+  // footer, directly above the composer (owner, Oct 27 2026 —
+  // "chat footer" in so many words; the icon-only header button
+  // from the first pass was not findable enough and was REPLACED,
+  // not supplemented). Same bottom-row pattern as the front page
+  // and profile placements. Guarded: the official notices thread
+  // swaps the whole footer for its read-only bar.
+  const ccp = $('#chat-complaints');
+  if (ccp) ccp.onclick = () => show('complaints', {});
   // Anti-copy for fans: no selecting/copying messages, no pasting into chat
   if (!isModel) lockCopyForFans(app, $('#c-input'));
   const vb = $('#c-video');
@@ -21784,8 +21817,31 @@ function hideCallError() {
   if (el) el.classList.add('hidden');
 }
 
+/* Complaints & Content Removal in the call HUD (owner, Oct 27
+ * 2026) — the video-call screen's controls area carries the same
+ * policy link as every other content surface. The HUD is static
+ * HTML in index.html, so the link is injected once per HUD on the
+ * syncExplicitBtn pattern and refreshed from updateCallHUD.
+ * Tapping it hangs the call up through the normal path first —
+ * the policy page lives in the app underneath the call layer. */
+function syncCallComplaintsLink() {
+  if (!S.call) return;
+  const hud = document.querySelector('#active-call .call-hud');
+  if (!hud || document.getElementById('call-complaints')) return;
+  const a = document.createElement('a');
+  a.id = 'call-complaints';
+  a.href = 'javascript:void(0)';
+  a.className = 'small';
+  a.style.color = 'var(--pink)';
+  a.style.marginLeft = '10px';
+  a.textContent = t('complaints_label');
+  hud.appendChild(a);
+  a.onclick = () => { hangupCall(); show('complaints', {}); };
+}
+
 function updateCallHUD() {
   if (!S.call) return;
+  syncCallComplaintsLink();
   const s = S.call.seconds || 0;
   const mm = String(Math.floor(s / 60)).padStart(2, '0');
   const ss = String(s % 60).padStart(2, '0');
@@ -23260,6 +23316,7 @@ function vLiveBroadcast() {
             <button class="btn small" id="live-pause-btn" style="background:linear-gradient(135deg,#ff5c9e,#FA4D92)">${L.brb ? t('resume_live') : t('pause_live')}</button>
             <button class="btn small danger" id="live-end-btn">${t('end_stream')}</button>
           </div>
+          <p class="muted small" style="text-align:center;margin:8px 0 0"><a href="javascript:void(0)" id="live-broadcast-complaints" style="color:var(--pink)">${t('complaints_label')}</a></p>
           <div class="muted small" style="text-align:center;margin-top:6px">${t('explicit_rate_note', { price: fmt(L.explicitRate) })}</div>
           <button class="btn small ghost" id="game-panel-btn" style="width:100%;margin-top:8px">🎲 ${t('game_category')} <span id="game-queue-badge" class="hidden" style="background:var(--pink);color:#fff;border-radius:999px;padding:1px 8px;font-weight:800"></span></button>
           <button class="btn small ghost" id="battle-open-btn" style="width:100%;margin-top:8px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;font-weight:800">⚔️ ${t('battle')}</button>
@@ -23281,6 +23338,14 @@ function vLiveBroadcast() {
   const brbEndBtn = $('#live-brb-end');
   if (brbEndBtn) brbEndBtn.onclick = liveEndConfirm;
   $('#live-end-btn').onclick = liveEndConfirm;
+  // Complaints & Content Removal in the broadcast controls (owner,
+  // Oct 27 2026) — the model's own broadcast room carries the same
+  // labeled link as every other content surface. A tap ends the
+  // broadcast through the room's own end path first (endLiveView:
+  // server end, relay + viewer PCs closed, her tracks stopped,
+  // stage state and every timer torn down), then opens the policy.
+  const bcl = $('#live-broadcast-complaints');
+  if (bcl) bcl.onclick = () => { endLiveView(); show('complaints', {}); };
   startLeaderboardPolling();
   const sendBox = $('#stream-chat-box');
   const sendIt = () => {
@@ -25059,6 +25124,7 @@ function renderBattleStage() {
       <input id="battle-chat-box" class="input" placeholder="${t('battle_chat_ph')}" maxlength="500" autocomplete="off">
       <button class="btn small" id="battle-chat-send" style="margin:0">➤</button>
     </div>
+    <p class="muted small" style="text-align:center;margin:10px 0 0"><a href="javascript:void(0)" id="battle-complaints" style="color:var(--pink)">${t('complaints_label')}</a></p>
     <button class="btn ghost" id="battle-leave" style="margin:10px">← Leave</button>`;
   paintBattleScores();
   renderBattleChat();
@@ -25085,6 +25151,15 @@ function renderBattleStage() {
     battleClientTeardown();
     battleView = null;
     show('fanLive', {});
+  };
+  // Complaints & Content Removal at the foot of the battle stage
+  // (owner, Oct 27 2026) — the random-match video surface. Tap
+  // tears the stage down first, exactly like Leave.
+  const bcp = $('#battle-complaints');
+  if (bcp) bcp.onclick = () => {
+    battleClientTeardown();
+    battleView = null;
+    show('complaints', {});
   };
 }
 
@@ -25798,10 +25873,17 @@ function vLiveWatch() {
         <div id="stage-banner" class="hidden"></div>
         <div class="live-controls">
           <button class="btn ghost" id="live-leave-btn">Leave stream</button>
+          <a href="javascript:void(0)" id="live-complaints" class="small" style="color:var(--pink);margin-left:12px">${t('complaints_label')}</a>
         </div>
       </div>
     </div>`;
   $('#live-leave-btn').onclick = () => endLiveView();
+  // Complaints & Content Removal in the live controls (owner,
+  // Oct 27 2026) — this renderer carries BOTH the public live room
+  // and private-room viewing (watchLive), so one link covers both.
+  // Tap leaves the stream through the normal cleanup first.
+  const lcp = $('#live-complaints');
+  if (lcp) lcp.onclick = () => { endLiveView(); show('complaints', {}); };
   const brbLeave = $('#live-brb-leave');
   if (brbLeave) brbLeave.onclick = () => endLiveView();
   const sf = $('#live-stay-free');
