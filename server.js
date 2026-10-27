@@ -7276,6 +7276,64 @@ function isHouseAccountId(userId) {
   return hid !== null && hid === userId;
 }
 
+/* ---------------- model Top Spenders (Assignment 11, Oct 27 2026) ----
+ * ONE computation, two surfaces: the model's wallet (Earnings) Top
+ * Spenders panel and the top-first ordering of her message list.
+ * Ranked by lifetime REAL money credited to her: SUM(transactions.
+ * model_cents) per fan — her credited share of every fan-paid spend
+ * (tips, gifts, PPV, bookings, calls, messages, voice, lives, games,
+ * priority, packages). Why model_cents and not gross: it is the money
+ * that actually landed on her — refunds, chargeback reversals and
+ * package holds all net through it automatically (a held package
+ * carries model_cents 0 until releasePackageHold credits it, a
+ * refunded/chargebacked spend carries negative model_cents), and the
+ * 60% split is flat, so ranking by credited share and ranking by
+ * gross give the same order for chargeFan spend. Displayed figure is
+ * the same credited total (labelled as such in the panel); if Ms.
+ * Pink wants gross displayed instead, it is the gross_cents column
+ * already returned alongside.
+ * EXCLUDED, deliberately:
+ *   - is_test rows — pre-launch test money never counts;
+ *   - money-in / money-out rows — 'payout', 'battle_payout',
+ *     'ccbill_load', 'crypto_load', 'credit_grant', 'promo_grant',
+ *     'appreciation_grant' are credits or withdrawals, not spend
+ *     (battle payouts also carry fan_id NULL, so they could never
+ *     rank a fan anyway);
+ *   - the house account (houseAccountId, username asceaaspade — the
+ *     app itself) and the review/test fans in
+ *     APPRECIATION_EXCLUDED_USERNAMES (ccbillreview, fandemo,
+ *     zzpinktest2): comp creates no earnings rows, and these
+ *     accounts never rank even where they paid full price;
+ *   - guest spend (fan_id NULL) and non-fan roles — the panel ranks
+ *     fans, by account.
+ * Only fans with a net credited total above $0 rank. Tie-break:
+ * earliest first spend wins, then lowest fan id (deterministic).
+ * TOP_SPENDER_LIMIT_DEFAULT (10) is the panel size AND the message
+ * prioritisation set — one list, both surfaces, by design. */
+const TOP_SPENDER_LIMIT_DEFAULT = 10;
+function modelTopSpenders(modelUserId, limit) {
+  const n = Math.max(1, Math.min(50, parseInt(limit, 10) || TOP_SPENDER_LIMIT_DEFAULT));
+  const hid = houseAccountId();
+  const rows = db.prepare(`
+    SELECT t.fan_id AS fan_id, u.display_name AS display_name, u.username AS username,
+           SUM(t.model_cents) AS spent_cents, SUM(t.gross_cents) AS gross_cents,
+           COUNT(*) AS payments, MIN(t.created_at) AS first_spent_at
+    FROM transactions t JOIN users u ON u.id = t.fan_id
+    WHERE t.model_id = ? AND t.fan_id IS NOT NULL AND t.is_test = 0
+      AND t.type NOT IN ('payout', 'battle_payout', 'ccbill_load', 'crypto_load',
+                         'credit_grant', 'promo_grant', 'appreciation_grant')
+      AND u.role = 'fan'
+      AND LOWER(u.username) NOT IN (${APPRECIATION_EXCLUDED_USERNAMES.map((x) => `'${x}'`).join(',')})
+      AND (? IS NULL OR t.fan_id <> ?)
+    GROUP BY t.fan_id HAVING spent_cents > 0
+    ORDER BY spent_cents DESC, first_spent_at ASC, t.fan_id ASC
+    LIMIT ?`).all(modelUserId, hid, hid, n);
+  return rows.map((r, i) => ({ rank: i + 1, fan_id: r.fan_id,
+    display_name: r.display_name, username: r.username,
+    spent_cents: r.spent_cents, gross_cents: r.gross_cents,
+    payments: r.payments, first_spent_at: r.first_spent_at }));
+}
+
 /* Owner comp bypass (owner, 2026-10-22): "Let my SlutCamp account able
  * to text and join all the live for free. Bypass all that money stuff
  * since I'm the platform itself." Scope: the HOUSE account only
@@ -9055,6 +9113,24 @@ app.get('/api/conversations', identMiddleware, (req, res) => {
       });
     }
   }
+  // Assignment 11 — top spenders first, model side only: the model's
+  // own message list reorders so conversations with her top spenders
+  // (the SAME ranking as the wallet panel, same 10) sit at the top,
+  // in rank order, after the pinned official thread. Every other
+  // conversation keeps its recency order, and fan/guest lists are
+  // untouched. The client marks these rows; the rank flag is only
+  // added for the model viewer.
+  const isModelViewer = req.ident.kind === 'user' && req.ident.user.role === 'model';
+  let topSpenderRankByFan = null;
+  if (isModelViewer) {
+    topSpenderRankByFan = new Map(
+      modelTopSpenders(req.ident.user.id, TOP_SPENDER_LIMIT_DEFAULT)
+        .map((s) => [s.fan_id, s.rank]));
+    const rankOf = (c) => (c.fan_id != null && topSpenderRankByFan.has(c.fan_id)
+      ? topSpenderRankByFan.get(c.fan_id) : Infinity);
+    convs.sort((a, b) => ((b.is_official ? 1 : 0) - (a.is_official ? 1 : 0))
+      || (rankOf(a) - rankOf(b)));
+  }
   const meId = req.ident.kind === 'user' ? req.ident.user.id : null;
   const out = convs.map((c) => {
     const last = db.prepare(
@@ -9068,7 +9144,9 @@ app.get('/api/conversations', identMiddleware, (req, res) => {
     return { id: c.id, other: otherParty(c, req.ident), last_message: last || null,
              unread_count: unread, is_paused: !!c.is_paused, is_official: !!c.is_official,
              free_remaining: freeRemaining(req.ident, c.model_id),
-             updated_at: c.updated_at };
+             updated_at: c.updated_at,
+             ...(isModelViewer ? { is_top_spender: topSpenderRankByFan.has(c.fan_id),
+               top_spender_rank: topSpenderRankByFan.get(c.fan_id) || null } : {}) };
   });
   res.json({ conversations: out });
 });
@@ -13770,7 +13848,15 @@ app.get('/api/model/earnings', identMiddleware, requireUser, requireRole('model'
     });
   res.json({ earnings_cents: wallet.earnings_cents, paid_out_cents: wallet.paid_out_cents,
     pending_cents: wallet.earnings_cents - wallet.paid_out_cents, by_fan: byFan, by_type: byType,
-    gifts_cents: gifts.gifts_cents, gift_count: gifts.gift_count, battles });
+    gifts_cents: gifts.gifts_cents, gift_count: gifts.gift_count, battles,
+    top_spenders: modelTopSpenders(req.user.id, TOP_SPENDER_LIMIT_DEFAULT) });
+});
+
+// GET /api/model/top-spenders — the same ranking the wallet panel and
+// the message-list ordering share (Assignment 11). ?limit= clamps 1-50.
+app.get('/api/model/top-spenders', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const limit = req.query && req.query.limit !== undefined ? req.query.limit : TOP_SPENDER_LIMIT_DEFAULT;
+  res.json({ top_spenders: modelTopSpenders(req.user.id, limit) });
 });
 
 /* ================================================================== */
