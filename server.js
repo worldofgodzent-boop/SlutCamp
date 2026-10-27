@@ -7399,6 +7399,7 @@ app.get('/api/models', (req, res) => {
            ls.id AS live_session_id, ls.explicit_rate_cents AS live_explicit_rate_cents,
            (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS live_viewers,
            (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) AS like_count,
+           (SELECT COUNT(*) FROM follows WHERE model_id = u.id) AS follower_count,
            (SELECT COALESCE(SUM(gross_cents), 0) FROM transactions
              WHERE model_id = u.id AND type <> 'payout' AND is_test = 0) AS total_sales_cents
     FROM users u JOIN models m ON m.user_id = u.id
@@ -7507,6 +7508,7 @@ app.get('/api/models', (req, res) => {
       is_live: !!r.live_session_id, is_featured: !!r.is_featured,
       live_viewers: r.live_viewers || 0, schedule_summary: summary, liked: likedSet.has(r.id),
       likes_count: r.like_count || 0,
+      followers_count: r.follower_count || 0,
       total_sales: Math.round(r.total_sales_cents || 0) / 100,
       rank_score: r.rank_score || 0,
       /* Age Preference filter input: whole years from her dob, or null
@@ -10089,10 +10091,14 @@ app.post('/api/follows/:modelId', identMiddleware, requireUser, requireRole('fan
     .get(req.user.id, modelId);
   if (existing) {
     db.prepare('DELETE FROM follows WHERE id = ?').run(existing.id);
-    return res.json({ following: false });
+  } else {
+    db.prepare('INSERT INTO follows (fan_id, model_id) VALUES (?,?)').run(req.user.id, modelId);
   }
-  db.prepare('INSERT INTO follows (fan_id, model_id) VALUES (?,?)').run(req.user.id, modelId);
-  res.json({ following: true });
+  // Her public follower count rides back so the profile number the
+  // tap just changed updates live (owner, Oct 26 2026: likes AND
+  // followers show on her page, for fans and models alike).
+  const follower_count = db.prepare('SELECT COUNT(*) AS c FROM follows WHERE model_id = ?').get(modelId).c;
+  res.json({ following: !existing, follower_count });
 });
 
 // Fan: list of model ids they follow
