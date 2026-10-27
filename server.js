@@ -9430,6 +9430,76 @@ function convPushKeys(conv, extraKey) {
 }
 
 /*
+ * POST /api/model/broadcast {body} — Assignment 13 (Broadcast to favorites,
+ * Ms. Pink, Oct 27 2026): a model writes ONE message; the server fans it
+ * out to every fan who follows her (Playlist/favorites adds), banned=0
+ * only. Delivery reuses the existing 1:1 chat rails exactly: the message
+ * lands in her existing thread with each fan as a normal message from
+ * her (thread created if none exists), with the same live push + web-push
+ * buzz a normal model reply gets, and the same unread badge (the
+ * conversation's unread_count). Models never pay for their own sends, so
+ * broadcast messages cost 0 — no price is invented here, and Asce has set
+ * NO frequency limit, so none is enforced (see the abuse-shaped edges
+ * flagged in the Assignment 13 report: no server-side dedupe, and a
+ * large follower list fans out synchronously in one request).
+ * Safety: the broadcast text is scanned ONCE with the same model-sender
+ * scan as POST /api/messages; a flagged broadcast is sent to nobody
+ * (blocked:true, like a blocked model reply). Paused threads are
+ * skipped, not forced open, and reported as skipped_paused — a normal
+ * model send into a paused thread is rejected, so a broadcast must not
+ * override the safety monitor. Official (house notices) threads are
+ * skipped defensively; they are never a model's fan thread.
+ */
+app.post('/api/model/broadcast', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  const text = ((req.body || {}).body || '').trim().slice(0, 2000);
+  if (!text) return res.status(400).json({ error: 'empty_message' });
+  const matched = chatScan(text, true);
+  if (matched) return res.status(200).json({ blocked: true, matched });
+  const model = req.user;
+  const followers = db.prepare(
+    `SELECT f.fan_id FROM follows f JOIN users u ON u.id = f.fan_id
+     WHERE f.model_id = ? AND u.role = 'fan' AND u.banned = 0 ORDER BY f.id`
+  ).all(model.id);
+  const delivered = [];
+  let skippedPaused = 0;
+  txn(() => {
+    for (const f of followers) {
+      let conv = db.prepare(
+        'SELECT * FROM conversations WHERE fan_id = ? AND model_id = ?'
+      ).get(f.fan_id, model.id);
+      if (conv) {
+        conv = maybeAutoUnpause(conv);
+        if (conv.is_paused || conv.is_official) { skippedPaused++; continue; }
+      } else {
+        const info = db.prepare(
+          'INSERT INTO conversations (fan_id, model_id) VALUES (?,?)'
+        ).run(f.fan_id, model.id);
+        conv = db.prepare('SELECT * FROM conversations WHERE id = ?')
+          .get(info.lastInsertRowid);
+      }
+      const msgId = db.prepare(
+        'INSERT INTO messages (conversation_id, sender_id, body, cost_cents) VALUES (?,?,?,0)'
+      ).run(conv.id, model.id, text).lastInsertRowid;
+      db.prepare(`UPDATE conversations SET updated_at = datetime('now') WHERE id = ?`).run(conv.id);
+      delivered.push({ fan_id: f.fan_id, conversation_id: conv.id, message_id: msgId });
+    }
+  });
+  // Deliver exactly like a normal model reply: live push + buzz per fan.
+  for (const d of delivered) {
+    const msg = db.prepare(
+      `SELECT m.*, u.display_name AS sender_name, u.role AS sender_role
+       FROM messages m LEFT JOIN users u ON u.id = m.sender_id WHERE m.id = ?`
+    ).get(d.message_id);
+    const full = { ...msg, sender_name: msg.sender_name || model.display_name,
+                   sender_role: msg.sender_role || 'model',
+                   reactions: [], edited: false, edited_at: null };
+    pushToSubject(`u:${d.fan_id}`, { type: 'chat:new', conversation_id: d.conversation_id, message: full });
+    buzzChatRecipient(d.fan_id, `💬 ${model.display_name}`, text.slice(0, 120));
+  }
+  res.json({ sent: delivered.length, skipped_paused: skippedPaused });
+});
+
+/*
  * POST /api/messages/:id/react {emoji}
  * Participant-only (the conversation's fan/model, or an admin). Guests are
  * read-only. One reaction per person per message: same emoji again removes

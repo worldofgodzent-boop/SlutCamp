@@ -278,6 +278,13 @@ const I18N = {
     check_back: 'Check back soon — your favorite models go live without warning 😈',
     coming_up: '📅 Coming up',
     your_chats: 'Your chats 💬',
+    broadcast_h: '📣 Message all your favorites',
+    broadcast_sub: 'One message to every fan who has you in their Playlist. It lands in your 1:1 chat with each of them.',
+    broadcast_ph: 'Write your announcement…',
+    broadcast_send: 'Send to all favorites',
+    broadcast_sent: '✅ Sent to {n} fans',
+    broadcast_empty: 'Write a message first.',
+    broadcast_blocked: 'This message was blocked by the safety check.',
     chats_title: 'Chats 💬',
     online_caps: '🟢 ONLINE',
     offline_caps: '⚫ OFFLINE',
@@ -1252,6 +1259,13 @@ const I18N = {
     check_back: 'Vuelve pronto — tus modelos favoritas entran en vivo sin avisar 😈',
     coming_up: '📅 Próximamente',
     your_chats: 'Tus chats 💬',
+    broadcast_h: '📣 Mensaje para todos tus favoritos',
+    broadcast_sub: 'Un mensaje para cada fan que te tiene en su Playlist. Llegará a tu chat 1 a 1 con cada uno.',
+    broadcast_ph: 'Escribe tu anuncio…',
+    broadcast_send: 'Enviar a todos los favoritos',
+    broadcast_sent: '✅ Enviado a {n} fans',
+    broadcast_empty: 'Escribe un mensaje primero.',
+    broadcast_blocked: 'Este mensaje fue bloqueado por el control de seguridad.',
     chats_title: 'Chats 💬',
     online_caps: '🟢 EN LÍNEA',
     offline_caps: '⚫ DESCONECTADA',
@@ -2226,6 +2240,13 @@ const I18N = {
     check_back: 'Volte logo — suas modelos favoritas entram ao vivo sem avisar 😈',
     coming_up: '📅 Em breve',
     your_chats: 'Suas conversas 💬',
+    broadcast_h: '📣 Mensagem para todos os seus favoritos',
+    broadcast_sub: 'Uma mensagem para cada fã que tem você na Playlist. Ela chega ao seu chat 1 a 1 com cada um.',
+    broadcast_ph: 'Escreva seu anúncio…',
+    broadcast_send: 'Enviar para todos os favoritos',
+    broadcast_sent: '✅ Enviado para {n} fãs',
+    broadcast_empty: 'Escreva uma mensagem primeiro.',
+    broadcast_blocked: 'Esta mensagem foi bloqueada pela verificação de segurança.',
     chats_title: 'Conversas 💬',
     online_caps: '🟢 ONLINE',
     offline_caps: '⚫ OFFLINE',
@@ -3200,6 +3221,13 @@ const I18N = {
     check_back: 'Revenez bientôt — vos modèles préférés passent en direct sans prévenir 😈',
     coming_up: '📅 À venir',
     your_chats: 'Vos discussions 💬',
+    broadcast_h: '📣 Message à tous vos favoris',
+    broadcast_sub: 'Un message pour chaque fan qui vous a dans sa Playlist. Il arrive dans votre discussion 1 à 1 avec chacun.',
+    broadcast_ph: 'Écrivez votre annonce…',
+    broadcast_send: 'Envoyer à tous les favoris',
+    broadcast_sent: '✅ Envoyé à {n} fans',
+    broadcast_empty: 'Écrivez d\'abord un message.',
+    broadcast_blocked: 'Ce message a été bloqué par le contrôle de sécurité.',
     chats_title: 'Discussions 💬',
     online_caps: '🟢 EN LIGNE',
     offline_caps: '⚫ HORS LIGNE',
@@ -4174,6 +4202,13 @@ const I18N = {
     check_back: 'Schau bald wieder vorbei — deine Lieblingsmodelle gehen ohne Vorwarnung live 😈',
     coming_up: '📅 Demnächst',
     your_chats: 'Deine Chats 💬',
+    broadcast_h: '📣 Nachricht an alle deine Favoriten',
+    broadcast_sub: 'Eine Nachricht an jeden Fan, der dich in seiner Playlist hat. Sie landet in deinem 1-zu-1-Chat mit jedem.',
+    broadcast_ph: 'Schreib deine Ankündigung…',
+    broadcast_send: 'An alle Favoriten senden',
+    broadcast_sent: '✅ An {n} Fans gesendet',
+    broadcast_empty: 'Schreib zuerst eine Nachricht.',
+    broadcast_blocked: 'Diese Nachricht wurde von der Sicherheitsprüfung blockiert.',
     chats_title: 'Chats 💬',
     online_caps: '🟢 ONLINE',
     offline_caps: '⚫ OFFLINE',
@@ -5148,6 +5183,13 @@ const I18N = {
     check_back: 'Загляните позже — ваши любимые модели выходят в эфир без предупреждения 😈',
     coming_up: '📅 Скоро',
     your_chats: 'Ваши чаты 💬',
+    broadcast_h: '📣 Сообщение всем вашим избранным',
+    broadcast_sub: 'Одно сообщение каждому фанату, у которого вы в Плейлисте. Оно попадёт в ваш личный чат 1 на 1 с каждым.',
+    broadcast_ph: 'Напишите объявление…',
+    broadcast_send: 'Отправить всем избранным',
+    broadcast_sent: '✅ Отправлено {n} фанатам',
+    broadcast_empty: 'Сначала напишите сообщение.',
+    broadcast_blocked: 'Это сообщение заблокировано проверкой безопасности.',
     chats_title: 'Чаты 💬',
     online_caps: '🟢 ОНЛАЙН',
     offline_caps: '⚫ НЕ В СЕТИ',
@@ -6122,6 +6164,13 @@ const I18N = {
     check_back: 'またすぐチェックしてね — お気に入りのモデルは予告なしにライブを始めるよ 😈',
     coming_up: '📅 近日予定',
     your_chats: 'あなたのチャット 💬',
+    broadcast_h: '📣 お気に入り全員へメッセージ',
+    broadcast_sub: 'あなたをプレイリストに入れているファン全員へ1通のメッセージ。各自との1対1チャットに届きます。',
+    broadcast_ph: 'お知らせを書く…',
+    broadcast_send: 'お気に入り全員に送る',
+    broadcast_sent: '✅ {n}人のファンに送信しました',
+    broadcast_empty: 'まずメッセージを書いてください。',
+    broadcast_blocked: 'このメッセージは安全チェックでブロックされました。',
     chats_title: 'チャット 💬',
     online_caps: '🟢 オンライン',
     offline_caps: '⚫ オフライン',
@@ -7096,6 +7145,13 @@ const I18N = {
     check_back: '很快再来看看吧 — 你喜欢的模特会毫无预兆地开播 😈',
     coming_up: '📅 即将开始',
     your_chats: '你的聊天 💬',
+    broadcast_h: '📣 给所有收藏你的粉丝发消息',
+    broadcast_sub: '给把你加入 Playlist 的每位粉丝发一条消息。它会出现在你与每位粉丝的一对一聊天中。',
+    broadcast_ph: '写下你的公告…',
+    broadcast_send: '发送给所有收藏粉丝',
+    broadcast_sent: '✅ 已发送给 {n} 位粉丝',
+    broadcast_empty: '请先写一条消息。',
+    broadcast_blocked: '此消息被安全检查拦截。',
     chats_title: '聊天 💬',
     online_caps: '🟢 在线',
     offline_caps: '⚫ 离线',
@@ -8070,6 +8126,13 @@ const I18N = {
     check_back: '곧 다시 확인하세요 — 좋아하는 모델이 예고 없이 라이브를 시작합니다 😈',
     coming_up: '📅 예정된 일정',
     your_chats: '내 채팅 💬',
+    broadcast_h: '📣 즐겨찾기한 모든 팬에게 메시지',
+    broadcast_sub: '나를 플레이리스트에 추가한 모든 팬에게 메시지 한 통. 각 팬과의 1:1 채팅에 도착합니다.',
+    broadcast_ph: '공지사항을 작성하세요…',
+    broadcast_send: '즐겨찾기한 모든 팬에게 보내기',
+    broadcast_sent: '✅ {n}명의 팬에게 보냈습니다',
+    broadcast_empty: '먼저 메시지를 작성하세요.',
+    broadcast_blocked: '이 메시지는 안전 검사에 의해 차단되었습니다.',
     chats_title: '채팅 💬',
     online_caps: '🟢 온라인',
     offline_caps: '⚫ 오프라인',
@@ -9044,6 +9107,13 @@ const I18N = {
     check_back: 'Torna presto — le tue modelle preferite vanno live senza preavviso 😈',
     coming_up: '📅 In arrivo',
     your_chats: 'Le tue chat 💬',
+    broadcast_h: '📣 Messaggio a tutti i tuoi preferiti',
+    broadcast_sub: 'Un messaggio per ogni fan che ti ha nella sua Playlist. Arriverà nella tua chat 1 a 1 con ciascuno.',
+    broadcast_ph: 'Scrivi il tuo annuncio…',
+    broadcast_send: 'Invia a tutti i preferiti',
+    broadcast_sent: '✅ Inviato a {n} fan',
+    broadcast_empty: 'Scrivi prima un messaggio.',
+    broadcast_blocked: 'Questo messaggio è stato bloccato dal controllo di sicurezza.',
     chats_title: 'Chat 💬',
     online_caps: '🟢 ONLINE',
     offline_caps: '⚫ OFFLINE',
@@ -10018,6 +10088,13 @@ const I18N = {
     check_back: 'Zajrzyj wkrótce — Twoje ulubione modelki wchodzą na żywo bez ostrzeżenia 😈',
     coming_up: '📅 Nadchodzące',
     your_chats: 'Twoje czaty 💬',
+    broadcast_h: '📣 Wiadomość do wszystkich ulubionych fanów',
+    broadcast_sub: 'Jedna wiadomość do każdego fana, który ma Cię na Playliście. Trafi do Twojego czatu 1 na 1 z każdym z nich.',
+    broadcast_ph: 'Napisz ogłoszenie…',
+    broadcast_send: 'Wyślij do wszystkich ulubionych',
+    broadcast_sent: '✅ Wysłano do {n} fanów',
+    broadcast_empty: 'Najpierw napisz wiadomość.',
+    broadcast_blocked: 'Ta wiadomość została zablokowana przez kontrolę bezpieczeństwa.',
     chats_title: 'Czaty 💬',
     online_caps: '🟢 ONLINE',
     offline_caps: '⚫ OFFLINE',
@@ -10992,6 +11069,13 @@ const I18N = {
     check_back: 'Kom snel terug — je favoriete modellen gaan live zonder waarschuwing 😈',
     coming_up: '📅 Binnenkort',
     your_chats: 'Jouw chats 💬',
+    broadcast_h: '📣 Bericht aan al je favorieten',
+    broadcast_sub: 'Eén bericht aan elke fan die jou in zijn Playlist heeft. Het komt in je 1-op-1-chat met elk van hen terecht.',
+    broadcast_ph: 'Schrijf je aankondiging…',
+    broadcast_send: 'Verstuur naar alle favorieten',
+    broadcast_sent: '✅ Verzonden naar {n} fans',
+    broadcast_empty: 'Schrijf eerst een bericht.',
+    broadcast_blocked: 'Dit bericht is geblokkeerd door de veiligheidscontrole.',
     chats_title: 'Chats 💬',
     online_caps: '🟢 ONLINE',
     offline_caps: '⚫ OFFLINE',
@@ -11966,6 +12050,13 @@ const I18N = {
     check_back: 'Yakında tekrar bak — favori modellerin haber vermeden canlıya geçer 😈',
     coming_up: '📅 Yaklaşanlar',
     your_chats: 'Sohbetlerin 💬',
+    broadcast_h: '📣 Tüm favorilerine mesaj',
+    broadcast_sub: 'Seni Playlist\'ine ekleyen her hayrana tek bir mesaj. Her biriyle olan bire bir sohbetine düşer.',
+    broadcast_ph: 'Duyurunu yaz…',
+    broadcast_send: 'Tüm favorilere gönder',
+    broadcast_sent: '✅ {n} hayrana gönderildi',
+    broadcast_empty: 'Önce bir mesaj yaz.',
+    broadcast_blocked: 'Bu mesaj güvenlik kontrolü tarafından engellendi.',
     chats_title: 'Sohbetler 💬',
     online_caps: '🟢 ÇEVRİMİÇİ',
     offline_caps: '⚫ ÇEVRİMDIŞI',
@@ -16226,6 +16317,13 @@ async function vChatList(role) {
     <div class="screen" style="padding:8px">
       ${sideSwitchHTML('main')}
       <div id="pkg-req-box"></div>
+      ${role === 'model' ? `
+      <div class="card" id="broadcast-box" style="margin-bottom:10px">
+        <div style="font-weight:800">${t('broadcast_h')}</div>
+        <div class="small muted" style="margin:4px 0 8px">${t('broadcast_sub')}</div>
+        <textarea class="input" id="broadcast-text" rows="3" maxlength="2000" placeholder="${t('broadcast_ph')}" style="width:100%"></textarea>
+        <button class="btn" id="broadcast-send" style="width:100%;margin-top:8px">${t('broadcast_send')}</button>
+      </div>` : ''}
       ${convs.map((c) => `
         <button class="list-item" data-conv="${c.id}">
           ${avatarHTML(c.other.display_name, 'sm', c.other.photo_url)}
@@ -16263,6 +16361,22 @@ async function vChatList(role) {
   }
   wireSideSwitch();
   loadPkgRequestBox();
+  const bcSend = $('#broadcast-send');
+  if (bcSend) bcSend.onclick = async () => {
+    const box = $('#broadcast-text');
+    const body = (box.value || '').trim();
+    if (!body) return toast(t('broadcast_empty'));
+    bcSend.disabled = true;
+    try {
+      const { status, data } = await api('/model/broadcast', {
+        method: 'POST', body: JSON.stringify({ body }) });
+      if (status === 200 && data && data.blocked) return toast(t('broadcast_blocked'));
+      if (status !== 200) return toast(t('something_wrong'));
+      box.value = '';
+      toast(t('broadcast_sent', { n: data.sent }));
+      show('modelChats', {});
+    } finally { bcSend.disabled = false; }
+  };
   app.querySelectorAll('[data-conv]').forEach((b) => {
     b.onclick = async () => {
       const c = convs.find((x) => x.id === parseInt(b.dataset.conv));
