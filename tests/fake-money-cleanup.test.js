@@ -277,7 +277,7 @@ test('purge guards: pictures, ID-verification and password fingerprint each save
     'the names Bunny and Bella are free again');
 
   const bunnySignup = await req(h.base, 'POST', '/api/auth/signup', {
-    body: { username: 'Bunny', password: 'real-bunny-pass', role: 'model',
+    body: { username: 'Bunny', password: 'real-bunny-pass', role: 'model', publicity_consent: true,
             display_name: 'Bunny', dob: '1999-04-04', agree18: true, section: 'female' },
   });
   assert.equal(bunnySignup.status, 200, 'a real model registers the name Bunny');
@@ -285,7 +285,7 @@ test('purge guards: pictures, ID-verification and password fingerprint each save
   assert.ok(Number.isInteger(bunnyId) && bunnyId !== seedBunny.id, 'she is a brand-new account, not the seed');
 
   const bellaSignup = await req(h.base, 'POST', '/api/auth/signup', {
-    body: { username: 'Bella', password: 'real-bella-pass', role: 'model',
+    body: { username: 'Bella', password: 'real-bella-pass', role: 'model', publicity_consent: true,
             display_name: 'Bella', dob: '1998-08-08', agree18: true, section: 'female' },
   });
   assert.equal(bellaSignup.status, 200, 'a real model registers the name Bella');

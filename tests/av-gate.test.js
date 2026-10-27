@@ -443,7 +443,7 @@ test('B1: AV ENABLED — gate fires at both purchase paths, verification unlocks
 
   /* --- Models are outside the gate: forbidden, never av_required --- */
   const ms = await req(base, 'POST', '/api/auth/signup', {
-    body: { username: 'avmodel', password: 'model-pass-123', role: 'model', display_name: 'AV Model', dob: '1995-05-05', agree18: true, section: 'female' },
+    body: { username: 'avmodel', password: 'model-pass-123', role: 'model', publicity_consent: true, display_name: 'AV Model', dob: '1995-05-05', agree18: true, section: 'female' },
     headers: { 'x-forwarded-for': TX_IP },
   });
   assert.equal(ms.status, 200, `model signup: ${ms.text}`);

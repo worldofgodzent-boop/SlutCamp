@@ -198,7 +198,7 @@ const mgrLogin = async (base) => {
 };
 
 const signup = (base, body) => req(base, 'POST', '/api/auth/signup', { body: {
-  password: 'promo-pass-123', display_name: 'Promo Tester', dob: '1995-05-05', agree18: true, ...body } });
+  password: 'promo-pass-123', display_name: 'Promo Tester', dob: '1995-05-05', agree18: true, publicity_consent: true, ...body } });
 
 /* ---------------- live scenario ---------------- */
 

@@ -428,7 +428,7 @@ test('moderator role: invites, allowlist, ID queue, safety, lives, deactivation 
   /* ---------- phase 2: seed the ID/safety/live fixtures ---------- */
   const signup = async (username, role) => {
     const r = await req(base, 'POST', '/api/auth/signup', {
-      body: { username, password: 'fixturepass1', display_name: username, role, dob: '1995-03-04', agreedToTerms: true, agree18: true, section: 'female' },
+      body: { username, password: 'fixturepass1', display_name: username, role, dob: '1995-03-04', agreedToTerms: true, agree18: true, section: 'female', ...(role === 'model' ? { publicity_consent: true } : {}) },
     });
     assert.equal(r.status, 200, `signup ${username}: ${r.text}`);
     return r.json.user.id;

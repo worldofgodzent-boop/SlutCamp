@@ -203,7 +203,7 @@ test('live: headline counts equal the account totals and move WITH banned fixtur
   };
   const mkModel = async (username) => {
     const r = await req(B.base, 'POST', '/api/auth/signup', {
-      body: { username, password: 'count-consistency-pass', role: 'model',
+      body: { username, password: 'count-consistency-pass', role: 'model', publicity_consent: true,
         display_name: username, dob: '1995-05-05', agree18: true, section: 'female' },
     });
     assert.equal(r.status, 200, `model signup ${username}: ${r.text}`);

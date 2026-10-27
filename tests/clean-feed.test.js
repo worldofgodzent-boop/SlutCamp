@@ -164,7 +164,7 @@ async function killServer() {
 
 async function mkModel(username, display) {
   const s = await req('POST', '/api/auth/signup', {
-    body: { username, password: 'feed-pass-123', role: 'model', display_name: display, dob: '1996-04-12', agree18: true, section: 'female' },
+    body: { username, password: 'feed-pass-123', role: 'model', publicity_consent: true, display_name: display, dob: '1996-04-12', agree18: true, section: 'female' },
   });
   assert.equal(s.status, 200, `signup ${username} failed: ${s.text}`);
   return { username, id: s.json.user.id, token: s.json.token };

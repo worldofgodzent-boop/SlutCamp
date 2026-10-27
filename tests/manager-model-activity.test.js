@@ -189,7 +189,7 @@ test('live: /admin/models reports last login, sorts recent-first on request, adm
 
   const mkModel = async (username, display_name) => {
     const r = await req(base, 'POST', '/api/auth/signup', {
-      body: { username, password: 'model-activity-pass', role: 'model',
+      body: { username, password: 'model-activity-pass', role: 'model', publicity_consent: true,
               display_name, dob: '1995-05-05', agree18: true, section: 'female' },
     });
     assert.equal(r.status, 200, `signup ${username}: ${r.text}`);

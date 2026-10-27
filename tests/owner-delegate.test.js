@@ -500,7 +500,7 @@ test('danger rails: commission needs a reason; protected models cannot be delete
   // A throwaway model (no pictures, no ID, no money) CAN be deleted
   // by the delegate — with a reason, not without.
   const signup = await req('POST', '/api/auth/signup', {
-    body: { username: 'throwmodel', password: 'throwpass123', role: 'model',
+    body: { username: 'throwmodel', password: 'throwpass123', role: 'model', publicity_consent: true,
       display_name: 'Throw Model', dob: '1999-01-01', agree18: true, section: 'female' } });
   assert.equal(signup.status, 200, JSON.stringify(signup.json));
   const throwId = signup.json.user.id;
