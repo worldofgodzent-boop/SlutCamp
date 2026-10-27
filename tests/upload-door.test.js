@@ -187,7 +187,8 @@ async function sendMediaVia(base, host, token, { convId, kind, extra = {} }) {
 async function signup(base, username, role, extra = {}) {
   const s = await req(base, 'POST', '/api/auth/signup', {
     body: { username, password: 'hunter22x', role, display_name: username,
-      dob: '1995-05-05', agree18: true, ...extra },
+      dob: '1995-05-05', agree18: true,
+      ...(role === 'model' ? { publicity_consent: true } : {}), ...extra },
   });
   assert.equal(s.status, 200, `signup ${username}: ${s.text}`);
   return { token: s.json.token, id: s.json.user.id, username };

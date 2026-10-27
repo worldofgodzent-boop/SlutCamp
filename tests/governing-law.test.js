@@ -43,12 +43,15 @@ function occurrences(haystack, needle) {
   return haystack.split(needle).length - 1;
 }
 
-test('governing law: Model Agreement §14 carries the Texas clause; version pin tracks v1.5', () => {
+test('governing law: Model Agreement §14 carries the Texas clause; version pin tracks v1.6', () => {
   // The version pin tracks the CURRENT version, per this suite's own
-  // convention: v1.5 (the §15 section & who-may-appear clause)
-  // superseded the v1.4 text this test originally pinned — the Texas
-  // clause itself is unchanged and still §14.
-  assert.ok(server.includes("const CONTRACT_VERSION = '1.5';"), 'model contract version is 1.5 (forces re-sign of the new text)');
+  // convention: v1.6 (the CCBill compliance amendments — depicted-person
+  // verification/consent duties in §3/§6 and the Standards prohibition
+  // in §7) superseded v1.5 (the §15 section & who-may-appear clause),
+  // which superseded the v1.4 text this test originally pinned — the
+  // Texas clause itself is unchanged and still §14.
+  assert.ok(server.includes("const CONTRACT_VERSION = '1.6';"), 'model contract version is 1.6 (forces re-sign of the new text)');
+  assert.ok(!server.includes("const CONTRACT_VERSION = '1.5';"), 'old model version 1.5 is gone');
   assert.ok(!server.includes("const CONTRACT_VERSION = '1.4';"), 'old model version 1.4 is gone');
   assert.ok(!server.includes("const CONTRACT_VERSION = '1.3';"), 'old model version 1.3 is gone');
   assert.ok(server.includes("title: '14. Governing Law & Venue'"), 'model §14 is Governing Law & Venue');
@@ -97,7 +100,7 @@ test('governing law: fan Terms §11 carries the Texas clause; Changes renumbered
   const i12 = terms.indexOf('12. Changes');
   assert.ok(i10 !== -1 && i11 > i10 && i12 > i11, 'fan clause sits after §10 and before the renumbered §12 Changes');
   assert.ok(!terms.includes('11. Changes'), 'fan Terms no longer number Changes as 11 (the separate Privacy Policy keeps its own §11 — untouched, out of scope)');
-  assert.ok(terms.includes('Last updated October 16, 2026'), 'fan Terms header date is October 16, 2026');
+  assert.ok(terms.includes('Last updated October 27, 2026'), 'fan Terms header date is October 27, 2026 (the CCBill compliance build added §14 and redated)');
 });
 
 test('governing law: exactly one clause per document; agreement dates unchanged', () => {
@@ -108,8 +111,9 @@ test('governing law: exactly one clause per document; agreement dates unchanged'
   // The governing-law build itself redated nothing. The Recruiter
   // Agreement still carries October 16, 2026; the Model Agreement was
   // legitimately redated to October 18, 2026 by the v1.5
-  // sections-clause bump (version bumps move the date —
+  // sections-clause bump, and again to October 27, 2026 by the v1.6
+  // CCBill compliance bump (version bumps move the date —
   // the v1.2→v1.4 bumps did the same).
   assert.equal(occurrences(server, "updated: 'October 16, 2026'"), 1, 'the recruiter agreement remains dated October 16, 2026');
-  assert.equal(occurrences(server, "updated: 'October 18, 2026'"), 1, 'the model agreement is dated October 18, 2026 (v1.5)');
+  assert.equal(occurrences(server, "updated: 'October 27, 2026'"), 1, 'the model agreement is dated October 27, 2026 (v1.6)');
 });

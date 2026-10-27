@@ -242,7 +242,7 @@ function openDb(dir, readOnly = true) {
   return __db;
 }
 const signupModel = (base, username, display, extra = {}) => req(base, 'POST', '/api/auth/signup', {
-  body: { username, password: 'hunter22', role: 'model', display_name: display, dob: '1996-03-03', agree18: true, ...extra },
+  body: { username, password: 'hunter22', role: 'model', publicity_consent: true, display_name: display, dob: '1996-03-03', agree18: true, ...extra },
 });
 const login = async (base, username, password = 'hunter22') =>
   (await req(base, 'POST', '/api/auth/login', { body: { username, password } })).json.token;

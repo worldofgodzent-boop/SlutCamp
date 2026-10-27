@@ -247,7 +247,7 @@ test('live: fan adds/removes via the follows toggle; non-fans refused; served ap
   }
 
   const signup = (body) => req(base, 'POST', '/api/auth/signup', {
-    body: { password: 'playlist-pass-1', display_name: 'Playlist Tester', dob: '1995-05-05', agree18: true, ...body },
+    body: { password: 'playlist-pass-1', display_name: 'Playlist Tester', dob: '1995-05-05', agree18: true, publicity_consent: true, ...body },
   });
   const fan = await signup({ username: 'playlistfan', role: 'fan' });
   assert.equal(fan.status, 200, `fan signup: ${fan.text}`);

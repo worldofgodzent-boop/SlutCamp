@@ -571,8 +571,8 @@ test('signup guard: an email-shaped MODEL username is kicked back and creates no
   });
   assert.notEqual(ghostLogin.status, 200, 'no ghost account behind the rejection');
 
-  const good = await signup({ ...baseBody, username: 'newmodel', role: 'model', display_name: 'New Model', section: 'female' });
-  assert.equal(good.status, 200, 'a normal model username signs up fine');
+  const good = await signup({ ...baseBody, username: 'newmodel', role: 'model', display_name: 'New Model', section: 'female', publicity_consent: true });
+  assert.equal(good.status, 200, 'a normal model username signs up fine (with the CCBill public-display consent ticked)');
   const goodBody = await good.json();
   assert.equal(goodBody.user.username, 'newmodel');
 

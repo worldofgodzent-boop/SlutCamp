@@ -250,7 +250,7 @@ test('live: prompt required, solo unchanged, co-star media held until the packet
     const signup = async (username, role) => {
       const s = await req(base, 'POST', '/api/auth/signup', {
         body: { username, password: 'hunter22', role, display_name: username,
-          dob: '1995-05-05', agree18: true, ...(role === 'model' ? { section: 'female' } : {}) },
+          dob: '1995-05-05', agree18: true, ...(role === 'model' ? { section: 'female', publicity_consent: true } : {}) },
       });
       assert.equal(s.status, 200, `signup ${username}: ${s.text}`);
       return { token: s.json.token, id: s.json.user.id };

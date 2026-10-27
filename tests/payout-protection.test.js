@@ -107,7 +107,7 @@ async function req(base, method, p, { body, token, headers, form } = {}) {
 async function signup(base, username, role) {
   const s = await req(base, 'POST', '/api/auth/signup', {
     body: { username, password: `${username}-pass-123`, role,
-      display_name: username, dob: '1995-05-05', agree18: true, ...(role === 'model' ? { section: 'female' } : {}) },
+      display_name: username, dob: '1995-05-05', agree18: true, ...(role === 'model' ? { section: 'female', publicity_consent: true } : {}) },
   });
   assert.equal(s.status, 200, `signup ${username}: ${s.text}`);
   return { token: s.json.token, id: s.json.user.id };
@@ -571,7 +571,7 @@ test('B: already-withdrawn earnings — the shortfall becomes debt and future ea
 
 test('Terms pins: the contracts and fan Terms carry the payout-protection clauses', () => {
   const server = fs.readFileSync(path.join(REPO, 'server.js'), 'utf8');
-  assert.ok(server.includes("const CONTRACT_VERSION = '1.5';"), 'model contract at 1.5 (1.3 added payout protection; 1.4 adds governing law; 1.5 adds the section & who-may-appear clause — each text bump forces re-sign)');
+  assert.ok(server.includes("const CONTRACT_VERSION = '1.6';"), 'model contract at 1.6 (1.3 added payout protection; 1.4 adds governing law; 1.5 adds the section & who-may-appear clause; 1.6 adds the CCBill depicted-person verification/consent duties + the Standards prohibition — each text bump forces re-sign)');
   assert.ok(server.includes('13. Payout Holds, Chargeback Reversals & Fraud'), 'model contract §13 present');
   assert.ok(server.includes('become eligible for withdrawal 7 days after they are earned'), 'model contract states the 7-day hold');
   assert.ok(!server.includes('Earnings you have already properly withdrawn are NOT clawed back'),
@@ -596,7 +596,7 @@ test('Terms pins: the contracts and fan Terms carry the payout-protection clause
   assert.ok(termsView.includes('12. Changes'), 'fan Terms Changes renumbered to 12 (governing law took 11)');
   assert.ok(app.includes('Model earnings become eligible for withdrawal one week (7 days) after they are earned.'),
     'fan Terms §4 carries the 7-day eligibility sentence');
-  assert.ok(app.includes('Last updated October 16, 2026'), 'fan Terms date updated');
+  assert.ok(app.includes('Last updated October 27, 2026'), 'fan Terms date updated (October 27, 2026 by the CCBill compliance build)');
   assert.ok(app.includes("New earnings become withdrawable one week (7 days) after they\\'re earned."),
     'the exact model-facing disclosure sentence ships in the earnings views');
   const mgr = fs.readFileSync(path.join(REPO, 'public/manager/manager.js'), 'utf8');

@@ -168,7 +168,7 @@ const suffix = Math.random().toString(36).slice(2, 8);
 
 async function signupModel(key, username, section) {
   const s = await req('POST', '/api/auth/signup', {
-    body: { username, password: 'congrats-pass-1', role: 'model', display_name: 'CG ' + key, dob: '1996-04-12', agree18: true, section },
+    body: { username, password: 'congrats-pass-1', role: 'model', publicity_consent: true, display_name: 'CG ' + key, dob: '1996-04-12', agree18: true, section },
   });
   assert.equal(s.status, 200, `model signup (${username}) failed: ${s.text}`);
   U[key] = { id: s.json.user.id, username, token: s.json.token };

@@ -83,7 +83,7 @@ async function req(base, method, p, { body, token, headers } = {}) {
 async function signup(base, username, role) {
   const s = await req(base, 'POST', '/api/auth/signup', {
     body: { username, password: `${username}-pass-123`, role,
-      display_name: username, dob: '1995-05-05', agree18: true, ...(role === 'model' ? { section: 'female' } : {}) },
+      display_name: username, dob: '1995-05-05', agree18: true, ...(role === 'model' ? { section: 'female', publicity_consent: true } : {}) },
   });
   assert.equal(s.status, 200, `signup ${username}: ${s.text}`);
   return { token: s.json.token, id: s.json.user.id };

@@ -144,7 +144,7 @@ test.before(async () => {
   const suffix = Math.random().toString(36).slice(2, 8);
   const mkModel = async (key, name, dob) => {
     const s = await req('POST', '/api/auth/signup', {
-      body: { username: name + suffix, password: 'age-pass-1', role: 'model', display_name: name, dob, agree18: true, section: 'female' },
+      body: { username: name + suffix, password: 'age-pass-1', role: 'model', publicity_consent: true, display_name: name, dob, agree18: true, section: 'female' },
     });
     assert.equal(s.status, 200, `model signup failed: ${s.text}`);
     M[key] = { token: s.json.token, id: s.json.user.id, username: name + suffix };
