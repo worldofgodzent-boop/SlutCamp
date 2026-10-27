@@ -152,6 +152,8 @@ const M = {
   modelsSort: 'name',   // Models tab: 'name' (A–Z, default) or 'recent' (most recent login first)
   peek: null,       // {id, title, messages} for the read-only chat peek
   live: null,       // mod-watch state
+  auditLoaded: false, // Settings audit-log folder: rows fetched on first open only
+  auditRows: null,
   ws: null,
   presenceTimer: null,
 };
@@ -1280,6 +1282,19 @@ async function adminTaxBody() {
       </div>`).join('') || '<div class="empty">No earners yet.</div>'}`;
 }
 
+/* One delegate audit-log row (Settings folder). Markup is exactly
+ * what the old always-open card rendered — only the container and
+ * the load timing changed (owner folder request, Oct 26 2026). */
+function dlgAuditRowHTML(r) {
+  return `
+        <div class="dlg-audit-row">
+          <span class="small"><b>${esc(r.action)}</b>${r.target_id ? ` <span class="muted">#${esc(String(r.target_id))}</span>` : ''}</span>
+          ${r.actor_badge ? `<span class="dlg-badge">🪪 ${esc(r.actor_badge)}</span>` : '<span class="small muted">owner</span>'}
+          <span class="small muted">${esc(String(r.created_at || '').slice(0, 16).replace('T', ' '))}</span>
+          ${r.reason ? `<div class="small muted">Reason: ${esc(r.reason)}</div>` : ''}
+        </div>`;
+}
+
 async function adminMoreBody(s) {
   const { data: tfa } = await api('/admin/2fa').catch(() => ({ data: {} }));
   const tfaOn = !!(tfa && tfa.on);
@@ -1296,8 +1311,9 @@ async function adminMoreBody(s) {
     ? await api('/admin/delegate/kaykay').catch(() => ({ data: {} }))
     : { data: {} };
   const kk = kkData && kkData.delegate ? kkData.delegate : null;
-  const { data: auditData } = await api('/admin/audit?limit=25').catch(() => ({ data: {} }));
-  const auditRows = (auditData && auditData.audit) || [];
+  // The delegate audit log is NOT fetched here: it lives in a
+  // tap-to-open folder on this screen and loads on first open
+  // (owner, Oct 26 2026 — the always-open log ate the whole page).
   const { data: pkStatus } = await api('/manager/passkey/status').catch(() => ({ data: {} }));
   const { data: pkList } = await api('/auth/passkey/list').catch(() => ({ data: { credentials: [] } }));
   const pkEnrolled = !!(pkStatus && pkStatus.enrolled);
@@ -1374,16 +1390,13 @@ async function adminMoreBody(s) {
       <div class="muted small" id="kk-msg" style="margin-top:6px"></div>
     </div>` : ''}
     <div class="card">
-      <div style="font-weight:800;margin-bottom:6px">🪪 Delegate activity — audit log</div>
-      <div class="muted small">Everything the delegate seats do in the Manager is recorded here. Rows badged <span class="dlg-badge">🪪 Ms. Pink</span> or <span class="dlg-badge">🪪 Kay Kay</span> are delegate actions — never the owner's.</div>
-      <div style="margin-top:6px">
-      ${auditRows.length ? auditRows.map((r) => `
-        <div class="dlg-audit-row">
-          <span class="small"><b>${esc(r.action)}</b>${r.target_id ? ` <span class="muted">#${esc(String(r.target_id))}</span>` : ''}</span>
-          ${r.actor_badge ? `<span class="dlg-badge">🪪 ${esc(r.actor_badge)}</span>` : '<span class="small muted">owner</span>'}
-          <span class="small muted">${esc(String(r.created_at || '').slice(0, 16).replace('T', ' '))}</span>
-          ${r.reason ? `<div class="small muted">Reason: ${esc(r.reason)}</div>` : ''}
-        </div>`).join('') : '<div class="empty">No delegate activity yet.</div>'}
+      <button class="btn ghost" id="dlg-audit-toggle" style="width:100%;margin-top:0;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left">
+        <span style="font-weight:800">🪪 Delegate activity — audit log</span>
+        <span class="small" id="dlg-audit-chev">▸ Open</span>
+      </button>
+      <div id="dlg-audit-body" style="display:none;margin-top:8px">
+        <div class="muted small">Everything the delegate seats do in the Manager is recorded here. Rows badged <span class="dlg-badge">🪪 Ms. Pink</span> or <span class="dlg-badge">🪪 Kay Kay</span> are delegate actions — never the owner's.</div>
+        <div id="dlg-audit-rows" style="margin-top:6px"><div class="empty">Loading…</div></div>
       </div>
     </div>
     <div class="card">
@@ -2067,6 +2080,28 @@ function wireAdminBody(tab) {
       if (!data.has_more) { const b = document.getElementById('team-more'); if (b) b.remove(); }
     });
   }
+
+  // 🪪 Delegate audit-log folder (Settings): collapsed by default so
+  // the log never sprawls down the page; rows load on first open and
+  // are cached for the session (re-renders re-fill from the cache).
+  go('#dlg-audit-toggle', async () => {
+    const body = document.getElementById('dlg-audit-body');
+    if (!body) return;
+    const opening = body.style.display === 'none';
+    body.style.display = opening ? 'block' : 'none';
+    const chev = document.getElementById('dlg-audit-chev');
+    if (chev) chev.textContent = opening ? '▾ Close' : '▸ Open';
+    const box = document.getElementById('dlg-audit-rows');
+    if (!opening || !box) return;
+    if (!M.auditLoaded) {
+      const { data } = await api('/admin/audit?limit=25').catch(() => ({ data: {} }));
+      M.auditRows = (data && data.audit) || [];
+      M.auditLoaded = true;
+    }
+    box.innerHTML = M.auditRows.length
+      ? M.auditRows.map(dlgAuditRowHTML).join('')
+      : '<div class="empty">No delegate activity yet.</div>';
+  });
 
   // 🔑 Change password card (Settings) — same endpoint as the public app;
   // the server re-verifies the current password and revokes other sessions.

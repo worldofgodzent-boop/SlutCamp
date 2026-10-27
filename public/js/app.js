@@ -246,6 +246,7 @@ const I18N = {
     online_now: '● Online now',
     offline: '● Offline',
     watching: '{n} watching',
+    followers_label: 'Followers', likes_label: 'Likes',
     featured: '⭐ Featured',
     official_label: 'Official',
     official_tagline: 'The app itself — lives, news & specials 💋',
@@ -1219,6 +1220,7 @@ const I18N = {
     online_now: '● En línea ahora',
     offline: '● Desconectada',
     watching: '{n} mirando',
+    followers_label: 'Seguidores', likes_label: 'Me gusta',
     featured: '⭐ Destacada',
     official_label: 'Oficial',
     official_tagline: 'La propia app — directos, novedades y especiales 💋',
@@ -2192,6 +2194,7 @@ const I18N = {
     online_now: '● Online agora',
     offline: '● Offline',
     watching: '{n} assistindo',
+    followers_label: 'Seguidores', likes_label: 'Curtidas',
     featured: '⭐ Destaque',
     official_label: 'Oficial',
     official_tagline: 'O próprio app — lives, novidades e especiais 💋',
@@ -3165,6 +3168,7 @@ const I18N = {
     online_now: '● En ligne maintenant',
     offline: '● Hors ligne',
     watching: '{n} regardent',
+    followers_label: 'Abonnés', likes_label: 'J\'aime',
     featured: '⭐ À la une',
     official_label: 'Officiel',
     official_tagline: 'L’application elle-même — directs, infos et offres spéciales 💋',
@@ -4138,6 +4142,7 @@ const I18N = {
     online_now: '● Jetzt online',
     offline: '● Offline',
     watching: '{n} schauen zu',
+    followers_label: 'Follower', likes_label: 'Likes',
     featured: '⭐ Empfohlen',
     official_label: 'Offiziell',
     official_tagline: 'Die App selbst — Lives, News & Specials 💋',
@@ -5111,6 +5116,7 @@ const I18N = {
     online_now: '● Сейчас онлайн',
     offline: '● Не в сети',
     watching: '{n} смотрят',
+    followers_label: 'Подписчики', likes_label: 'Лайки',
     featured: '⭐ Избранное',
     official_label: 'Официальный',
     official_tagline: 'Само приложение — эфиры, новости и акции 💋',
@@ -6084,6 +6090,7 @@ const I18N = {
     online_now: '● 現在オンライン',
     offline: '● オフライン',
     watching: '{n}人が視聴中',
+    followers_label: 'フォロワー', likes_label: 'いいね',
     featured: '⭐ 注目',
     official_label: '公式',
     official_tagline: 'アプリ公式 — ライブ・ニュース・特集 💋',
@@ -7057,6 +7064,7 @@ const I18N = {
     online_now: '● 当前在线',
     offline: '● 离线',
     watching: '{n} 人在看',
+    followers_label: '粉丝', likes_label: '点赞',
     featured: '⭐ 精选',
     official_label: '官方',
     official_tagline: '应用官方 — 直播、资讯与特别活动 💋',
@@ -8030,6 +8038,7 @@ const I18N = {
     online_now: '● 현재 온라인',
     offline: '● 오프라인',
     watching: '{n}명 시청 중',
+    followers_label: '팔로워', likes_label: '좋아요',
     featured: '⭐ 추천',
     official_label: '공식',
     official_tagline: '앱 공식 — 라이브, 소식 & 특집 💋',
@@ -9003,6 +9012,7 @@ const I18N = {
     online_now: '● Online ora',
     offline: '● Offline',
     watching: '{n} stanno guardando',
+    followers_label: 'Follower', likes_label: 'Mi piace',
     featured: '⭐ In evidenza',
     official_label: 'Ufficiale',
     official_tagline: 'L’app stessa — live, novità e speciali 💋',
@@ -9976,6 +9986,7 @@ const I18N = {
     online_now: '● Teraz online',
     offline: '● Offline',
     watching: '{n} ogląda',
+    followers_label: 'Obserwujący', likes_label: 'Polubienia',
     featured: '⭐ Wyróżniona',
     official_label: 'Oficjalny',
     official_tagline: 'Sama aplikacja — transmisje, nowości i promocje 💋',
@@ -10949,6 +10960,7 @@ const I18N = {
     online_now: '● Nu online',
     offline: '● Offline',
     watching: '{n} kijken',
+    followers_label: 'Volgers', likes_label: 'Likes',
     featured: '⭐ Uitgelicht',
     official_label: 'Officieel',
     official_tagline: 'De app zelf — lives, nieuws & specials 💋',
@@ -11922,6 +11934,7 @@ const I18N = {
     online_now: '● Şu an çevrimiçi',
     offline: '● Çevrimdışı',
     watching: '{n} izliyor',
+    followers_label: 'Takipçiler', likes_label: 'Beğeniler',
     featured: '⭐ Öne Çıkan',
     official_label: 'Resmi',
     official_tagline: 'Uygulamanın ta kendisi — canlı yayınlar, haberler ve özel içerikler 💋',
@@ -13760,6 +13773,7 @@ function modelTileHTML(m, opts) {
         <span class="tile-sub">@${esc(m.username)} · ${status}</span>
         ${opts.hero && m.bio ? `<span class="tile-sub">${esc(m.bio).slice(0, 80)}</span>` : ''}
         <span class="tile-sub" style="color:var(--peach);font-weight:700">${t('per_msg_rate', { price: fmt(m.per_message_cents) })} · ${t('per_min_rate', { price: fmt(m.per_minute_cents) })}</span>
+        <span class="tile-sub tile-counts">❤️ <span data-like-count="${m.id}">${m.like_count || 0}</span> · 👥 <span data-follow-count="${m.id}">${m.follower_count || 0}</span></span>
         ${(m.tags && m.tags.length) ? `<span class="tile-tags">${m.tags.slice(0, 3).map((tg) => `<span class="tag-chip">${esc(tg)}</span>`).join('')}</span>` : ''}
         ${opts.hero && m.schedule_summary ? `<span class="tile-sub">${t('usually_live', { s: esc(m.schedule_summary) })}</span>` : ''}
       </span>
@@ -14164,7 +14178,7 @@ async function vLanding() {
   const heartFor = (m) => `
             <span class="model-likes tile-heart" data-like="${m.id}">
               <span class="like-heart">${m.liked ? '❤️' : '🤍'}</span>
-              <span class="like-count">${m.like_count || 0}</span>
+              <span class="like-count" data-like-count="${m.id}">${m.like_count || 0}</span>
             </span>`;
   app.innerHTML = `
     <div class="header">
@@ -14226,6 +14240,8 @@ async function vLanding() {
       if (status === 200) {
         h.querySelector('.like-heart').textContent = data.liked ? '❤️' : '🤍';
         h.querySelector('.like-count').textContent = data.like_count;
+        // The same number printed in her tile's counts line moves too.
+        document.querySelectorAll(`[data-like-count="${modelId}"]`).forEach((el) => { el.textContent = data.like_count; });
       }
     };
   });
@@ -15712,6 +15728,8 @@ function openModelPeek(m, models) {
     </div>` : ''}
     <div class="peek-rows">
       <div class="peek-row"><span>Status</span><b>${status}</b></div>
+      <div class="peek-row"><span>❤️ ${t('likes_label')}</span><b>${m.likes_count || 0}</b></div>
+      <div class="peek-row"><span>👥 ${t('followers_label')}</span><b data-follow-count="${m.id}">${m.followers_count || 0}</b></div>
       ${rankLine ? `<div class="peek-row"><span>Home rank</span><b>${rankLine}</b></div>` : ''}
       ${isOfficial ? '' : `<div class="peek-row"><span>Messages</span><b>${fmt(m.per_message_cents)} / msg</b></div>`}
       <div class="peek-row"><span>Video calls</span><b>${fmt(m.per_minute_cents)} / min</b></div>
@@ -16467,8 +16485,8 @@ async function vPackageRequest({ id }) {
       </div>
       ${['open', 'quoted'].includes(r.status) ? `
       <div class="row" style="gap:8px;margin-top:10px">
-        <input class="input" id="pk-input" placeholder="${t('pkg_send_ph')}" maxlength="2000" style="flex:1">
-        <button class="btn" id="pk-send">${t('pkg_send')}</button>
+        <input class="input" id="pk-input" placeholder="${t('pkg_send_ph')}" maxlength="2000" style="flex:1;min-width:0">
+        <button class="btn small" id="pk-send" style="flex:none">${t('pkg_send')}</button>
       </div>
       <div id="pk-actions" style="margin-top:10px"></div>` : `<div class="muted small" style="margin-top:10px">${t('pkg_thread_closed')}</div>`}
     </div>`;
@@ -16490,8 +16508,8 @@ async function vPackageRequest({ id }) {
   if (mine === 'model') {
     act.innerHTML = `
       <div class="row" style="gap:8px">
-        <input class="input" id="pk-quote" type="number" min="1" max="1000000" step="1" placeholder="${t('pkg_quote_ph')}" style="flex:1" value="${r.quote_cents ? r.quote_cents / 100 : ''}">
-        <button class="btn" id="pk-quote-send">${t('pkg_quote_send')}</button>
+        <input class="input" id="pk-quote" type="number" min="1" max="1000000" step="1" placeholder="${t('pkg_quote_ph')}" style="flex:1;min-width:0" value="${r.quote_cents ? r.quote_cents / 100 : ''}">
+        <button class="btn small" id="pk-quote-send" style="flex:none">${t('pkg_quote_send')}</button>
       </div>
       <button class="btn ghost" id="pk-decline" style="width:100%;margin-top:8px">${t('pkg_decline')}</button>`;
     act.querySelector('#pk-quote-send').onclick = async () => {
@@ -23924,6 +23942,11 @@ async function vNotifications() {
 // playlist_added. name feeds the added toast.
 async function toggleFollow(modelId, btn, name) {
   const { data } = await api(`/follows/${modelId}`, { method: 'POST' });
+  // Her public follower number moves the moment it changes — every
+  // rendered count for her (cards + her profile) updates in place.
+  if (data && typeof data.follower_count === 'number') {
+    document.querySelectorAll(`[data-follow-count="${modelId}"]`).forEach((el) => { el.textContent = data.follower_count; });
+  }
   if (btn) {
     if (btn.classList.contains('playlist-toggle')) {
       btn.textContent = data.following ? t('playlist_added') : t('playlist_add');
