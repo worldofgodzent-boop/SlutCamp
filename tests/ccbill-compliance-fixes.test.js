@@ -228,9 +228,13 @@ test('fan Terms: §14 carries master F in all 13 languages; date is October 27, 
   assert.equal(terms.length, 13, 'terms in all 13 languages');
   for (const [i, tv] of terms.entries()) {
     const titles = [...tv.matchAll(/font-weight:800;margin-bottom:8px">([^<]+)</g)].map((m) => m[1]);
-    assert.equal(titles.length, 14, `lang ${i}: exactly 14 sections (nothing renumbered)`);
+    // Was 14 when §14 shipped; the SMS program section (§15, Telnyx
+    // 10DLC prerequisite) was appended after it — count is now 15 and
+    // §13/§14 must still sit at their original positions (nothing renumbered).
+    assert.equal(titles.length, 15, `lang ${i}: exactly 15 sections (nothing renumbered)`);
     assert.ok(titles[12].startsWith('13.'), `lang ${i}: §13 is still the anti-trafficking section`);
     assert.ok(titles[13].startsWith('14.'), `lang ${i}: the new section is §14`);
+    assert.ok(titles[14].startsWith('15.'), `lang ${i}: §15 (SMS program) appended last`);
   }
   const en = terms[0];
   assert.ok(en.includes(MASTER_F_TITLE), 'EN §14 title verbatim');
