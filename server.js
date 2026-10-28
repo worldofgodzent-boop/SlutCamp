@@ -3687,7 +3687,7 @@ const socketsBySubject = new Map(); // 'u:123' | 'g:token' -> Set<ws>
 const adminTempTokens = new Map();  // tempToken -> { userId, expiresAt } (2FA pending)
 const adminLoginAttempts = new Map(); // ip -> { count, resetAt } (rate limit)
 
-/* ---- SMS 2FA for admin (Twilio) ---- */
+/* ---- SMS 2FA for admin (Telnyx; legacy Twilio fallback) ---- */
 
 function getAdmin2FAState() {
   const r = db.prepare('SELECT admin_phone, admin_2fa_on FROM platform_stats WHERE id = 1').get();
@@ -3695,6 +3695,28 @@ function getAdmin2FAState() {
 }
 
 async function sendAdminSMS(to, body) {
+  // Telnyx is the live SMS provider (Twilio is gone): a set API key
+  // selects this transport. Per Telnyx's send-a-message reference
+  // (developers.telnyx.com/api-reference/messages/send-a-message),
+  // `from` is the sender for a phone-number send; a messaging
+  // profile id is only required for number-pool / alphanumeric
+  // sends, so the body is exactly { from, to, text }.
+  const telnyxKey = process.env.TELNYX_API_KEY, telnyxFrom = process.env.TELNYX_FROM_NUMBER;
+  if (telnyxKey) {
+    if (!telnyxFrom) return { ok: false, error: 'sms_not_configured' };
+    try {
+      const r = await fetch('https://api.telnyx.com/v2/messages', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + telnyxKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: telnyxFrom, to, text: body }),
+      });
+      if (!r.ok) return { ok: false, error: 'sms_failed' };
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: 'sms_failed' };
+    }
+  }
+  // Legacy Twilio path — selected only when Telnyx is not configured.
   const sid = process.env.TWILIO_SID, token = process.env.TWILIO_TOKEN, from = process.env.TWILIO_FROM;
   if (!sid || !token || !from) return { ok: false, error: 'sms_not_configured' };
   try {
