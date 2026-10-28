@@ -26691,6 +26691,11 @@ function startUpdateWatcher() {
       try { localStorage.setItem('sc_pay_invoice', String(window.__payInvoice)); } catch (e) {}
       dirty = true;
     }
+    // A20 promo ping tap: ?live=<sessionId> → stash; routeInitial drops
+    // a signed-in fan (incl. the house account) straight into that live
+    // room instead of the directory.
+    const lv = qs.get('live');
+    if (lv && /^\d+$/.test(lv)) { window.__promoLive = parseInt(lv, 10); dirty = true; }
     if (!window.__payInvoice) {
       try {
         const saved = localStorage.getItem('sc_pay_invoice');
@@ -26890,6 +26895,13 @@ async function routeInitial() {
         return show('wallet', {});
       }
       if (window.__payInvoice && S.user.role === 'fan') return show('wallet', {});
+      // A20: a promo-ping tap (/?live=<id>) lands a fan — the house
+      // account included — straight in her live room. A session that
+      // already ended just toasts "offline" inside watchLive.
+      if (window.__promoLive && (S.user.role === 'fan' || S.user.is_house)) {
+        const liveId = window.__promoLive; window.__promoLive = null;
+        return watchLive(liveId);
+      }
       return show('fanModels', {});
     }
     // Only a DEFINITIVE refusal (401 = the session is gone server-
