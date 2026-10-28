@@ -168,9 +168,9 @@ label.field{display:block;margin-top:14px;font-size:14px;font-weight:600;color:#
 
 /* phones: rail becomes a thumb-friendly chip bar under the top bar */
 @media (max-width:860px){
-  .mgr-shell{grid-template-columns:1fr;align-content:start}
+  .mgr-shell{grid-template-columns:minmax(0,1fr);align-content:start}
   .mgr-side{
-    position:sticky;top:calc(var(--topbar-h) + env(safe-area-inset-top));height:auto;z-index:40;
+    position:sticky;top:calc(var(--topbar-h) + env(safe-area-inset-top));height:auto;z-index:40;min-width:0;
     padding:8px 10px;border-right:none;border-bottom:1px solid var(--line);
     background:rgba(21,10,18,.96);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   }
@@ -185,6 +185,7 @@ label.field{display:block;margin-top:14px;font-size:14px;font-weight:600;color:#
   }
   #mgr-nav button.active{background:linear-gradient(135deg, rgba(255,92,158,.85), rgba(224,68,124,.85));box-shadow:0 4px 14px rgba(255,92,158,.35)}
   .mgr-main{padding:16px 12px 50px}
+  #mgr-content{min-width:0;overflow-wrap:anywhere}
   .mgr-top-brand b{font-size:16px}
 }
 @media (min-width:900px){

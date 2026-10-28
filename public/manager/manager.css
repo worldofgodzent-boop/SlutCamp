@@ -326,10 +326,10 @@ label.field { display: block; margin-top: 14px; font-size: 14px; font-weight: 60
 
 /* ---------- Phones: rail becomes a chip bar under the top bar ---------- */
 @media (max-width: 860px) {
-  .mgr-shell { grid-template-columns: 1fr; align-content: start; }
+  .mgr-shell { grid-template-columns: minmax(0, 1fr); align-content: start; }
   .mgr-side {
     position: sticky; top: calc(var(--topbar-h) + env(safe-area-inset-top));
-    height: auto; z-index: 40;
+    height: auto; z-index: 40; min-width: 0;
     padding: 8px 10px; border-right: none; border-bottom: 1px solid var(--line);
     background: rgba(21,10,18,.96);
     backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
@@ -348,6 +348,15 @@ label.field { display: block; margin-top: 14px; font-size: 14px; font-weight: 60
     box-shadow: 0 4px 14px rgba(255,92,158,.35);
   }
   .mgr-main { padding: 16px 12px 50px; }
+  /* Phone width guard: nothing a view renders may widen the page.
+     Unbreakable strings (team-message bodies, invite/promo URLs,
+     pasted hashes and paths) used to force the document wider than
+     the phone — the shell stayed phone-width and rendered squeezed
+     into the left of a ~2x-wide page that panned sideways. Making
+     the content column shrinkable and its text breakable removes
+     the widening at the source; the pill nav above still scrolls
+     inside its own row. Desktop is untouched. */
+  #mgr-content { min-width: 0; overflow-wrap: anywhere; }
   .mgr-top-brand b { font-size: 16px; }
   .model-article-photo { width: 92px; min-width: 92px; }
 }
