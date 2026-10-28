@@ -47,13 +47,13 @@ function mobileShellRule(src, label) {
 
 test('phone shell does not stretch rows (index.html inline style)', () => {
   const rule = mobileShellRule(html, 'index.html');
-  assert.match(rule, /grid-template-columns:\s*1fr/, 'single column on phones');
+  assert.match(rule, /grid-template-columns:\s*(?:1fr|minmax\(0,\s*1fr\))/, 'single column on phones');
   assert.match(rule, /align-content:\s*start/, 'rows pack at the top — no dead band');
 });
 
 test('phone shell does not stretch rows (manager.css)', () => {
   const rule = mobileShellRule(css, 'manager.css');
-  assert.match(rule, /grid-template-columns:\s*1fr/, 'single column on phones');
+  assert.match(rule, /grid-template-columns:\s*(?:1fr|minmax\(0,\s*1fr\))/, 'single column on phones');
   assert.match(rule, /align-content:\s*start/, 'rows pack at the top — no dead band');
 });
 
