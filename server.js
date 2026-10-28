@@ -2569,6 +2569,17 @@ CREATE TABLE IF NOT EXISTS team_push_subscriptions (
 );
 CREATE INDEX IF NOT EXISTS idx_teampushsubs_seat ON team_push_subscriptions(seat);
 
+-- Owner promo pings (Assignment 20): one row per explicit flip of a
+-- public Female/Couple live — the log behind the owner's promo push
+-- (see maybePromoPing). Private Room sessions are never logged here.
+CREATE TABLE IF NOT EXISTS promo_pings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id INTEGER NOT NULL REFERENCES live_sessions(id) ON DELETE CASCADE,
+  model_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_promopings_model ON promo_pings(model_id, id);
+
 -- Model tip menu: custom tip items she defines (e.g. "💋 Blow a kiss — $5")
 CREATE TABLE IF NOT EXISTS tip_menus (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -4316,6 +4327,82 @@ function notifyTeamPush(authorSeat, message) {
     body,
     link: '/manager/',
   }).catch(() => {});
+}
+
+/* Owner promo ping (Assignment 20, owner-directed 2026-10-28): the next
+   few months are promo-first, so when a Female or Couple model's PUBLIC
+   live flips explicit, the OWNER seat gets a Web Push — he jumps into
+   her live room (house account, comped) and screen-records the moment
+   for X promo. Same VAPID stack, dormancy and dead-sub pruning as
+   sendTeamPush, but the audience is exactly one seat: 'owner'. The
+   terms-side promo-use clause is a separate, later change (it lands
+   only after CCBill closes) — this build is the ping only. */
+let _promoPushWarned = false;
+async function sendOwnerPush(payload) {
+  const pub = process.env.VAPID_PUBLIC_KEY, priv = process.env.VAPID_PRIVATE_KEY;
+  if (!pub || !priv) {
+    if (!_promoPushWarned) {
+      _promoPushWarned = true;
+      console.log('[push] VAPID keys not configured — owner promo Web Push disabled. ' +
+        'Set VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY/VAPID_SUBJECT and install web-push to enable.');
+    }
+    return { sent: 0, skipped: true };
+  }
+  let webpush;
+  try { webpush = require('web-push'); }
+  catch (e) { console.log('[push] web-push package not installed — run: npm install web-push'); return { sent: 0, skipped: true }; }
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:admin@slutcamp.app', pub, priv);
+  const subs = db.prepare("SELECT * FROM team_push_subscriptions WHERE seat = 'owner'").all();
+  let sent = 0;
+  for (const s of subs) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+        JSON.stringify(payload));
+      sent++;
+    } catch (e) {
+      // 410 Gone / 404 = dead subscription — clean it up (house convention)
+      if (e.statusCode === 410 || e.statusCode === 404)
+        db.prepare('DELETE FROM team_push_subscriptions WHERE id = ?').run(s.id);
+    }
+  }
+  return { sent, skipped: false };
+}
+
+function notifyPromoPing(model, sessionId) {
+  const name = model.display_name || model.username;
+  sendOwnerPush({
+    title: `🔴 ${name} went explicit`,
+    body: `@${model.username} is live and explicit now — tap to open her live room.`,
+    link: `/?live=${sessionId}`,
+  }).catch(() => {});
+}
+
+/* The A20 gate, called on the 0→1 explicit transition of a live session
+   (POST /api/live/:id/mode). Fires ONLY for a public Female/Couple live:
+   - Private Room sessions (private_event_id set) NEVER ping — seat
+     holders paid for privacy; a promo ping there is unthinkable.
+   - The house account never pings about itself.
+   - Male-section lives never ping (owner ruling 2026-10-28).
+   Logs the moment in promo_pings, then pushes the owner seat.
+   Best-effort: returns whether it fired; never throws into the caller. */
+function maybePromoPing(sess) {
+  try {
+    if (!sess || sess.private_event_id) return false;
+    if (isHouseAccountId(sess.model_id)) return false;
+    const m = db.prepare(`SELECT u.username, u.display_name, mo.section
+                            FROM users u JOIN models mo ON mo.user_id = u.id
+                           WHERE u.id = ?`).get(sess.model_id);
+    if (!m) return false;
+    if (m.section !== 'female' && m.section !== 'couple') return false;
+    db.prepare('INSERT INTO promo_pings (session_id, model_id) VALUES (?, ?)')
+      .run(sess.id, sess.model_id);
+    notifyPromoPing(m, sess.id);
+    return true;
+  } catch (e) {
+    console.log('[push] promo ping failed:', e && e.message);
+    return false;
+  }
 }
 
 // Total unread DM messages waiting for a user — the exact math behind
@@ -16914,6 +17001,9 @@ app.post('/api/live/:id/mode', identMiddleware, requireUser, requireRole('model'
   pushLiveViewers(sess.id, { type: 'live:explicit', session_id: sess.id, is_explicit: !!isExplicit,
     explicit_rate_cents: sess.explicit_rate_cents, explicit_grace_sec: getGiftGraceSec(),
     explicit_entry_cents: getEntryCents() });
+  // A20: a fresh 0→1 flip of a public Female/Couple live pings the
+  // owner seat for promo (sess still holds the pre-update state).
+  if (isExplicit && !sess.is_explicit) maybePromoPing(sess);
   res.json({ ok: true, is_explicit: !!isExplicit });
 });
 
