@@ -2543,6 +2543,22 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
 );
 CREATE INDEX IF NOT EXISTS idx_pushsubs_user ON push_subscriptions(user_id);
 
+-- Team-channel Web Push subscriptions (Assignment 19): Manager seats are
+-- principals, not fan-app users, so their subscriptions live in their own
+-- slot keyed by the Assignment 01 seat principal ('owner' /
+-- 'delegate:<username>' — the teamAuthorFor form). Fan subscriptions in
+-- push_subscriptions never cover a seat, and a seat subscription never
+-- lands in the fan table.
+CREATE TABLE IF NOT EXISTS team_push_subscriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  seat TEXT NOT NULL,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT,
+  auth TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_teampushsubs_seat ON team_push_subscriptions(seat);
+
 -- Model tip menu: custom tip items she defines (e.g. "💋 Blow a kiss — $5")
 CREATE TABLE IF NOT EXISTS tip_menus (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -4219,6 +4235,56 @@ async function sendWebPush(userId, payload) {
     }
   }
   return { sent, skipped: false };
+}
+
+/* Team-channel Web Push (Assignment 19): when a team message lands, push
+   to every OTHER Manager seat's subscribed devices — never the author's.
+   Same VAPID stack and dormancy as sendWebPush (no keys → one-time note,
+   nothing sent, the post itself never depends on this), same dead-sub
+   pruning (410/404 deletes the row), but seat-keyed storage
+   (team_push_subscriptions) instead of fan user ids. Best-effort by
+   design: every failure is swallowed per endpoint, and the caller fires
+   and forgets after the post has already answered. */
+let _teamPushWarned = false;
+async function sendTeamPush(authorSeat, payload) {
+  const pub = process.env.VAPID_PUBLIC_KEY, priv = process.env.VAPID_PRIVATE_KEY;
+  if (!pub || !priv) {
+    if (!_teamPushWarned) {
+      _teamPushWarned = true;
+      console.log('[push] VAPID keys not configured — team Web Push disabled. ' +
+        'Set VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY/VAPID_SUBJECT and install web-push to enable.');
+    }
+    return { sent: 0, skipped: true };
+  }
+  let webpush;
+  try { webpush = require('web-push'); }
+  catch (e) { console.log('[push] web-push package not installed — run: npm install web-push'); return { sent: 0, skipped: true }; }
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:admin@slutcamp.app', pub, priv);
+  const subs = db.prepare('SELECT * FROM team_push_subscriptions WHERE seat != ?')
+    .all(authorSeat || '');
+  let sent = 0;
+  for (const s of subs) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+        JSON.stringify(payload));
+      sent++;
+    } catch (e) {
+      // 410 Gone / 404 = dead subscription — clean it up (house convention)
+      if (e.statusCode === 410 || e.statusCode === 404)
+        db.prepare('DELETE FROM team_push_subscriptions WHERE id = ?').run(s.id);
+    }
+  }
+  return { sent, skipped: false };
+}
+
+function notifyTeamPush(authorSeat, message) {
+  const body = String((message && message.body) || '').slice(0, 120);
+  sendTeamPush(authorSeat, {
+    title: `💬 Team — ${teamAuthorLabel(authorSeat)}`,
+    body,
+    link: '/manager/',
+  }).catch(() => {});
 }
 
 // Total unread DM messages waiting for a user — the exact math behind
@@ -15395,6 +15461,36 @@ app.post('/api/admin/team-messages', ...adminOnly, (req, res) => {
     targetType: 'team_message', targetId: id, detail: { author },
   });
   res.json({ ok: true, message: { ...row, author_label: teamAuthorLabel(row.author) } });
+  // Assignment 19: Web Push to every OTHER seat's devices. Fired only
+  // after the post has answered, and fire-and-forget — a push failure
+  // can never fail or delay the post.
+  notifyTeamPush(author, row);
+});
+
+/* Team-channel Web Push subscriptions (Assignment 19). Manager seats
+   only — the adminOnly chain refuses fans, models, and moderators, so a
+   fan token can never subscribe as a seat. The seat key is the caller's
+   own principal (teamAuthorFor): 'owner' or 'delegate:<username>'; a
+   seat can only ever write its OWN slot. Storage is separate from the
+   fan table (push_subscriptions) by design. */
+app.post('/api/admin/team-push/subscribe', ...adminOnly, (req, res) => {
+  const { endpoint, p256dh, auth } = req.body || {};
+  if (!endpoint || typeof endpoint !== 'string' || endpoint.length > 2000)
+    return res.status(400).json({ error: 'bad_subscription' });
+  const seat = teamAuthorFor(req.user);
+  db.prepare(`INSERT INTO team_push_subscriptions (seat, endpoint, p256dh, auth)
+              VALUES (?,?,?,?)
+              ON CONFLICT(endpoint) DO UPDATE SET seat = excluded.seat,
+                p256dh = excluded.p256dh, auth = excluded.auth`)
+    .run(seat, endpoint, String(p256dh || '').slice(0, 500), String(auth || '').slice(0, 500));
+  res.json({ ok: true, seat, web_push_ready: !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) });
+});
+
+app.post('/api/admin/team-push/unsubscribe', ...adminOnly, (req, res) => {
+  const { endpoint } = req.body || {};
+  if (endpoint) db.prepare('DELETE FROM team_push_subscriptions WHERE seat = ? AND endpoint = ?')
+    .run(teamAuthorFor(req.user), endpoint);
+  res.json({ ok: true });
 });
 
 /* The audit view: every logged Manager action by the delegate (and

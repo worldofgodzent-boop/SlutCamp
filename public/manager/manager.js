@@ -3085,12 +3085,17 @@ async function teamPingTick() {
   if (status !== 200 || !data) return;
   const msgs = data.messages || [];
   const newest = msgs.length ? msgs[msgs.length - 1] : null;
+  const ownAuthor = teamPingOwnAuthor();
+  const prevUnread = M.teamPing.unread;
   const next = teamPingNext(M.teamPing.lastSeen, M.teamPing.unread, newest,
-    teamPingOwnAuthor(), M.screen === 'team');
+    ownAuthor, M.screen === 'team');
   M.teamPing.lastSeen = next.lastSeen;
   M.teamPing.unread = next.unread;
   if (next.lastSeen !== null && next.lastSeen !== undefined) teamPingWriteSeen(next.lastSeen);
   teamPingRender();
+  // Assignment 19 sound layer: decision + playback live in the
+  // Assignment 19 section of this file; A09's transition is untouched.
+  if (teamPingSound(prevUnread, next.unread, newest, ownAuthor)) playTeamPingSound();
 }
 function startTeamPing() {
   if (M.teamPingTimer) return;
@@ -3104,6 +3109,7 @@ function stopTeamPing() {
   M.teamPing = null;
   if (M.teamPingBaseTitle) { document.title = M.teamPingBaseTitle; M.teamPingBaseTitle = null; }
 }
+
 
 async function peekBody() {
   const p = M.peek;
@@ -3141,6 +3147,132 @@ function watchBody() {
       </div>
     </div>`;
 }
+
+/*
+ * Team ping — sound + Web Push (Assignment 19, Ms. Pink 2026-10-28).
+ * Layers ON TOP of the Assignment 09 badge + title poll above; nothing
+ * about A09's behaviour changes. Two halves:
+ *
+ * SOUND — a short two-tone blip when the shell poll learns a NEW team
+ * message from another seat landed. The decision is the pure
+ * teamPingSound() below (unit-tested): it fires exactly when a
+ * teamPingNext transition GREW the unread count for a foreign newest
+ * message. Because teamPingNext recomputes unread from lastSeen, the
+ * same message re-polled yields the same count (no repeat), a baseline
+ * or a channel-open mark-seen yields 0 (no fire), and an own newest
+ * leaves the state untouched (no fire). Browsers refuse audio before a
+ * user gesture, so the AudioContext is created/resumed ONLY inside the
+ * one-time first-gesture listener (the iOS unlock rule — no autoplay
+ * hacks); until armed, sound is skipped silently. The tone is generated
+ * with WebAudio oscillators — no audio files.
+ *
+ * PUSH — a Web Push to this seat's devices when a team message lands
+ * (the server fans out on post to every OTHER seat; see
+ * /api/admin/team-push/* in server.js). Service-worker finding: the
+ * site worker /sw.js is served from the root, so its scope is "/" and
+ * it covers /manager pages too — the Manager registers that same
+ * worker here. Its fetch handler deliberately bypasses /manager/*
+ * (Manager assets are never cached), and its push handler is generic
+ * (shows the payload's title/body and opens its link), so no
+ * Manager-specific worker is needed. Subscriptions are stored
+ * server-side keyed by seat principal, separate from fan subscriptions.
+ * Permission is requested on the seat's first tap/click of the session
+ * (the same gesture that unlocks audio) — never on page load. iOS
+ * reality: Web Push needs iOS 16.4+ AND the Manager added to the Home
+ * Screen; a Manager open in a Safari tab gets no push (badge + sound
+ * still work while the tab is open). Denied permission simply means
+ * no push — nothing else changes.
+ */
+/* TEAM_PING_SOUND_START */
+function teamPingSound(prevUnread, nextUnread, newest, ownAuthor) {
+  // Pure decision: did this poll transition newly surface a foreign
+  // message? Fires once per foreign message — see the header note.
+  if (!newest || !Number.isFinite(newest.id)) return false;
+  if (newest.author === ownAuthor) return false;
+  return nextUnread > prevUnread;
+}
+/* TEAM_PING_SOUND_END */
+let teamPingAudioCtx = null;
+let teamPingAudioArmed = false;
+function armTeamPingAudio() {
+  if (teamPingAudioArmed) return;
+  teamPingAudioArmed = true;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    teamPingAudioCtx = new AC();
+    if (teamPingAudioCtx.state === 'suspended') teamPingAudioCtx.resume();
+  } catch (e) { teamPingAudioCtx = null; }
+}
+function playTeamPingSound() {
+  if (!teamPingAudioArmed || !teamPingAudioCtx) return; // not unlocked yet — skip silently
+  try {
+    if (teamPingAudioCtx.state === 'suspended') teamPingAudioCtx.resume();
+    const ctx = teamPingAudioCtx;
+    const t0 = ctx.currentTime;
+    [[880, 0], [1318.5, 0.09]].forEach(([freq, off]) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, t0 + off);
+      gain.gain.exponentialRampToValueAtTime(0.12, t0 + off + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + off + 0.16);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t0 + off);
+      osc.stop(t0 + off + 0.18);
+    });
+  } catch (e) { /* sound is best-effort — badge + title already fired */ }
+}
+let teamPushAsked = false;
+async function subscribeTeamPush() {
+  if (teamPushAsked) return;
+  // Cheap synchronous guards BEFORE latching: a tap on the login screen
+  // (no seat yet) or on a browser without the APIs must not burn the
+  // one ask for the session.
+  if (!M.user || (M.user.role !== 'admin' && M.user.role !== 'owner_delegate')) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
+  teamPushAsked = true;
+  try {
+    const { data } = await api('/push/vapid-key');
+    if (!data || !data.key) return; // VAPID not configured — badge + sound still work
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return; // denied/dismissed: no push, nothing else changes
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const key = Uint8Array.from(atob(data.key.replace(/-/g, '+').replace(/_/g, '/')),
+        (c) => c.charCodeAt(0));
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+    }
+    const j = sub.toJSON();
+    await api('/admin/team-push/subscribe', { method: 'POST',
+      body: JSON.stringify({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth }) });
+  } catch (e) { /* push is best-effort — in-app badge + sound still work */ }
+}
+async function unsubscribeTeamPush() {
+  // Called on logout while the seat token is still valid: drop this
+  // device's seat subscription server-side and at the push service, so
+  // a signed-out seat stops receiving team pushes on this device.
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) return;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return;
+    await api('/admin/team-push/unsubscribe', { method: 'POST',
+      body: JSON.stringify({ endpoint: sub.endpoint }) });
+    await sub.unsubscribe();
+  } catch (e) { /* best-effort — dead subs are pruned server-side on 410/404 */ }
+}
+function teamPingFirstGesture() {
+  armTeamPingAudio();
+  subscribeTeamPush();
+}
+window.addEventListener('pointerdown', teamPingFirstGesture);
+window.addEventListener('click', teamPingFirstGesture);
+/* TEAM_PING_A19_END */
 
 /* Screen render — fetches stats (badges + dash/more bodies) like the old panel did */
 M.go = (screen) => { M.screen = screen; M.render(); };
@@ -3956,6 +4088,7 @@ function renderPasskeySetup(onPass) {
 
 /* ---------------- login / shell / boot ---------------- */
 M.logout = async () => {
+  await unsubscribeTeamPush(); // Assignment 19: while the seat token is still valid
   if (M.token) { try { await api('/auth/logout', { method: 'POST' }); } catch (e) {} }
   M.token = null; M.user = null; M.live = null;
   stopPresence();
