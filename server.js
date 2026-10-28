@@ -1829,6 +1829,7 @@ addColumnIfMissing('platform_stats', 'flag_concentration_min_cents', 'INTEGER NO
 addColumnIfMissing('platform_stats', 'flag_concentration_days', 'INTEGER NOT NULL DEFAULT 30');
 addColumnIfMissing('platform_stats', 'flag_cb_escalate_count', 'INTEGER NOT NULL DEFAULT 2');
 addColumnIfMissing('platform_stats', 'flag_cb_escalate_rate_pct', 'INTEGER NOT NULL DEFAULT 20');
+addColumnIfMissing('platform_stats', 'launch_gate_enabled', 'INTEGER NOT NULL DEFAULT 0'); // launch-readiness flag (Assignment 18): Manager-flippable, default OFF
 addColumnIfMissing('platform_stats', 'payout_protection_at', 'TEXT'); // one-time grandfathering marker
 db.exec(`CREATE TABLE IF NOT EXISTS chargebacks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -5358,11 +5359,53 @@ function refuseDecl(req, res, decl) {
 /* ------------------------------------------------------------------ */
 const HOUSE_IN_PUBLIC_FEED_AND_INDEX = false;
 
+/* ------------------------------------------------------------------ */
+/* LAUNCH GATE (Assignment 18, Oct 28 2026) — a Manager-flippable     */
+/* platform flag, stored on the platform_stats row like the other     */
+/* Manager settings (PUT /api/admin/settings), DEFAULT OFF. While     */
+/* OFF, every surface below behaves byte-identically to before: the   */
+/* helpers short-circuit on the flag before any other read. While ON, */
+/* a model who is NOT ID-approved OR has NO profile picture is        */
+/* excluded, computed LIVE at read time, from the directory           */
+/* (GET /api/models), the clean feed (cleanFeedItemsFor / the /feed   */
+/* stream) and the public SEO index (seoIndexVisible: the /models     */
+/* grid, tag hubs, the sitemap). Nothing is stored per model and      */
+/* nothing is rewritten: the moment she is approved or sets a         */
+/* picture she is back, with nothing to re-upload — the upload-gate   */
+/* pattern. The signals are the SAME ones those surfaces already      */
+/* consult: ID approval is isIdVerified() (the upload gate's single   */
+/* point; the house short-circuits verified there, and the house is   */
+/* pulled from the directory roster separately, so the official       */
+/* object is untouched either way) and photo presence is              */
+/* models.photo_url — her profile picture, the field the directory    */
+/* tiles and avatars render (public_photo_url is her separate clean  */
+/* public photo, not her profile picture). Her individual public      */
+/* page is NOT unpublished by the gate (the house-flag precedent:     */
+/* index exclusion never unpublishes a page); her own surfaces and    */
+/* /api/me are never gated.                                           */
+/* ------------------------------------------------------------------ */
+function launchGateEnabled() {
+  const r = db.prepare('SELECT launch_gate_enabled FROM platform_stats WHERE id = 1').get();
+  return !!(r && r.launch_gate_enabled === 1);
+}
+// Launch-ready, live: ID approved AND a profile picture on file.
+function launchReadyModel(modelId) {
+  if (!isIdVerified(modelId)) return false;
+  const r = db.prepare('SELECT photo_url FROM models WHERE user_id = ?').get(modelId);
+  return !!(r && r.photo_url);
+}
+// Excluded by the launch gate right now? OFF = never.
+function launchExcluded(modelId) {
+  return launchGateEnabled() && !launchReadyModel(modelId);
+}
+
 // One predicate for every public-index consumer (the /models grid,
 // tag hubs, the sitemap): is this shaped public row part of the
-// public index under the house flag?
+// public index under the house flag — and, while it is ON, under
+// the launch gate?
 function seoIndexVisible(m) {
-  return HOUSE_IN_PUBLIC_FEED_AND_INDEX || !isHouseAccountId(m.id);
+  if (!(HOUSE_IN_PUBLIC_FEED_AND_INDEX || !isHouseAccountId(m.id))) return false;
+  return !launchExcluded(m.id);
 }
 
 const CLEAN_FEED_MAX_PHOTOS = 10;
@@ -5386,6 +5429,11 @@ function cleanFeedItemsFor(modelId, { forOwner = false } = {}) {
   }
   if (isHouseAccountId(modelId) && !HOUSE_IN_PUBLIC_FEED_AND_INDEX) return [];
   if (!isIdVerified(modelId)) return [];
+  // LAUNCH GATE (Assignment 18): while the flag is ON, a model who
+  // is not launch-ready (here: ID-approved but no profile picture —
+  // the unapproved case already returned above) posts nothing to
+  // public clean-feed consumers. OFF short-circuits: no change.
+  if (launchExcluded(modelId)) return [];
   const held = heldMediaUrls(modelId);
   let photos = 0, videos = 0;
   const out = [];
@@ -8377,6 +8425,17 @@ app.get('/api/models', (req, res) => {
   // tab she appears on — the ladders never mix.
   const bset = effectiveBrowseSet(req);
   if (bset) visible = visible.filter((r) => bset.includes(r.section || 'female'));
+  // LAUNCH GATE (Assignment 18): while the Manager flag is ON, a
+  // model who is not ID-approved or has no profile picture leaves
+  // the directory, computed live from the same signals the shaping
+  // below already consults (isIdVerified + her raw photo_url — the
+  // filter runs on the unshaped rows, before the upload gate blanks
+  // media). OFF: the flag check short-circuits and the roster is
+  // exactly as before. The house row was already pulled out of
+  // `visible` above and travels as `official`, untouched.
+  if (launchGateEnabled()) {
+    visible = visible.filter((r) => isIdVerified(r.id) && !!r.photo_url);
+  }
   // Pre-purchase shield: a model's looping preview video is explicit-
   // capable storefront media with no lock of its own, so for a shielded
   // viewer (unverified fan or guest in a regulated/unknown location,
@@ -23341,6 +23400,17 @@ app.put('/api/admin/settings', ...adminOnly, (req, res) => {
       return res.status(400).json({ error: 'bad_private_room_cap' });
     db.prepare('UPDATE platform_stats SET private_room_cap = ? WHERE id = 1').run(c);
     out.private_room_cap = c;
+  }
+  // Launch gate (Assignment 18): the launch-readiness flag — when ON,
+  // models not ID-approved or with no profile picture are hidden from
+  // the directory, the clean feed and the public SEO index. Default
+  // OFF; a plain 0/1 flip, no reason rail (it hides nobody's money).
+  if (req.body.launch_gate_enabled !== undefined) {
+    const v = parseInt(req.body.launch_gate_enabled);
+    if (!Number.isInteger(v) || (v !== 0 && v !== 1))
+      return res.status(400).json({ error: 'bad_launch_gate' });
+    db.prepare('UPDATE platform_stats SET launch_gate_enabled = ? WHERE id = 1').run(v);
+    out.launch_gate_enabled = v;
   }
   // Payout protection: earnings hold window + fraud-flag thresholds.
   const ppFields = [
