@@ -111,13 +111,14 @@ test('server: the pre-existing live + cash-out ID gates survive untouched', () =
     'withdrawal gate still consults isIdVerified for models');
 });
 
-test('recount: the announcement thread-tap pin reads exactly 32 after this build (Clean Feed announcement added one)', () => {
+test('recount: the announcement thread-tap pin reads exactly 33 after this build (Launch-update announcement added one)', () => {
   // tests/notification-thread-tap.test.js pins the global count of
   // server-side '/#chat/${conv.id}' bell links. This build edits
   // server.js, so the count is recounted against the actual tree
   // here: the upload gate adds and removes no bell links; the Clean
-  // Feed announcement (Oct 23 2026) added one.
-  assert.equal(serverSrc.split('/#chat/${conv.id}').length - 1, 32);
+  // Feed announcement (Oct 23 2026) added one; the Launch-update
+  // announcement (Oct 27 2026) added one more.
+  assert.equal(serverSrc.split('/#chat/${conv.id}').length - 1, 33);
 });
 
 /* --------------------------- functional boot --------------------------- */
