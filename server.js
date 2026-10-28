@@ -14894,7 +14894,10 @@ function coSignLookup(code) {
   const model = db.prepare('SELECT id, display_name, language FROM users WHERE id = ?')
     .get(link.model_id);
   if (!model) return null;
-  return { link, state: coSignState(link), cp, model };
+  // A partner approved through the manual route is done, whatever
+  // state his link is in: report 'approved' so the sign/photo steps
+  // refuse (410) instead of falling through to the link state.
+  return { link, state: cp.status === 'approved' ? 'approved' : coSignState(link), cp, model };
 }
 // Reviewer-flag helper (Manager ID Checks): do the typed signature
 // name and the registered partner name share any name token? No

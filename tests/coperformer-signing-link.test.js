@@ -397,3 +397,53 @@ test('live: the whole signing-link flow, end to end', { timeout: 300000 }, async
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('live: a manually approved partner — open link reports approved, sign + photos refuse 410', { timeout: 300000 }, async () => {
+  const dir = makeCopy('cosign-approved');
+  let h = null;
+  try {
+    h = await boot(dir, { SEED_DEMO: '1' });
+    const base = h.base;
+    const login = async (username, password) => {
+      const r = await req(base, 'POST', '/api/auth/login', { body: { username, password } });
+      assert.equal(r.status, 200, `login ${username}: ${r.text}`);
+      return r.json.token;
+    };
+    const bunny = await login('bunny', 'model123');
+    const add = await req(base, 'POST', '/api/model/co-performers', {
+      token: bunny, body: { display_name: 'Manual Partner', gender: 'male', agree18: true } });
+    assert.equal(add.status, 200, `add partner: ${add.text}`);
+    const cpId = add.json.co_performer.id;
+    const g = await req(base, 'POST', `/api/model/co-performers/${cpId}/signing-link`, { token: bunny, body: {} });
+    assert.equal(g.status, 200, `generate: ${g.text}`);
+    const code = g.json.signing_link.url.split('/cosign/')[1];
+
+    // before approval, the open link reads as the link state
+    const before = await req(base, 'GET', `/api/cosign/${code}`);
+    assert.equal(before.json.state, 'active');
+    assert.equal(before.json.valid, true);
+
+    // manual-route approval: the partner's record flips to approved
+    // while his link is still open (DB write between boots — the
+    // expiry case's pattern above)
+    stop(h); h = null;
+    const wdb = openDb(dir, false);
+    wdb.prepare("UPDATE co_performers SET status = 'approved' WHERE id = ?").run(cpId);
+    wdb.close();
+
+    h = await boot(dir, { SEED_DEMO: '1' });
+    const st = await req(h.base, 'GET', `/api/cosign/${code}`);
+    assert.equal(st.json.state, 'approved', 'the lookup reports approved for an approved partner');
+    assert.equal(st.json.valid, false, 'an approved link is not usable');
+    const sign = await req(h.base, 'POST', `/api/cosign/${code}/sign`,
+      { body: { legal_name: 'Manual Partner', agree: true } });
+    assert.equal(sign.status, 410, 'the sign step refuses after approval');
+    assert.equal(sign.json.error, 'link_approved');
+    const photos = await uploadPhotos(h.base, `/api/cosign/${code}/photos`);
+    assert.equal(photos.status, 410, 'the photo step refuses after approval');
+    assert.equal(photos.json.error, 'link_approved');
+  } finally {
+    stop(h);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
