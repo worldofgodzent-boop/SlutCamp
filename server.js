@@ -4769,7 +4769,7 @@ const clipXPoster = {
       const j = await r.json().catch(() => null);
       if (r.ok && j && j.data && j.data.id) {
         return { ok: true, tweetId: String(j.data.id),
-          url: `https://x.com/${process.env.X_HANDLE || 'slutcamp'}/status/${j.data.id}` };
+          url: `${SOCIAL_X_URL}/status/${j.data.id}` };
       }
       return { ok: false, reason: `x_http_${r.status}` };
     } catch (e) {

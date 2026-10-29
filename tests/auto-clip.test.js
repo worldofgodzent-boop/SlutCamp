@@ -71,6 +71,8 @@ test('A21 server pins: tables, flag, consent gate, hooks, dormant adapter, visio
     'steering watch hooks the live-chat insert');
   assert.ok(serverSrc.includes("reason: 'x_not_configured'"), 'X adapter dormant without a token');
   assert.ok(serverSrc.includes('https://slutcamp.app/models/'), 'captions carry her canonical link');
+  assert.ok(serverSrc.includes('`${SOCIAL_X_URL}/status/${j.data.id}`'),
+    'tweet URLs derive from the one brand constant (social-links pin: a single x.com base)');
   assert.ok(serverSrc.includes('Come join our SlutCamp'), 'spec caption template 1');
   assert.ok(serverSrc.includes('Sluts gon wild'), 'spec caption template 2');
   const block = serverSrc.slice(serverSrc.indexOf('AUTO-CLIP ENGINE'),
@@ -437,7 +439,6 @@ test('C: consent gate, then cap + spacing behind flag ON (X stub)',
       CLIP_SWEEP_MS: '400',
       X_BEARER_TOKEN: 'test-token',
       X_API_BASE: `http://127.0.0.1:${stub.address().port}`,
-      X_HANDLE: 'slutcamp',
     });
     t.after(() => { stop(h); fs.rmSync(dir, { recursive: true, force: true }); });
 
@@ -468,7 +469,7 @@ test('C: consent gate, then cap + spacing behind flag ON (X stub)',
     assert.ok(await waitFor(() => hits.length === 1), 'with consent, the high clip posts');
     const posted = clipsFor(dir, fem.sessionId)[0];
     assert.equal(posted.status, 'posted', 'clip marked posted');
-    assert.equal(posted.tweet_url, 'https://x.com/slutcamp/status/17999', 'tweet URL recorded');
+    assert.equal(posted.tweet_url, 'https://x.com/SlutCampApp/status/17999', 'tweet URL recorded (built from the brand constant)');
     const caption = JSON.parse(hits[0].body).text;
     assert.ok(caption.includes('https://slutcamp.app/models/a21cfem'),
       `caption carries her canonical link: ${caption}`);
