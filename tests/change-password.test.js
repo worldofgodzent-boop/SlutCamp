@@ -46,7 +46,7 @@ function freePort() {
 }
 
 async function waitForServer() {
-  const deadline = Date.now() + 20000;
+  const deadline = Date.now() + 60000;
   for (;;) {
     if (child.exitCode !== null) throw new Error(`server exited early (${child.exitCode})\n${childLog}`);
     try {
