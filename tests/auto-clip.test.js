@@ -73,6 +73,10 @@ test('A21 server pins: tables, flag, consent gate, hooks, dormant adapter, visio
     serverSrc.indexOf('Total unread DM messages'));
   assert.ok(block.includes('INTERFACE STUB'), 'vision/recorder layer is a marked interface stub');
   assert.ok(block.includes("vision: 'no_signal'"), 'the stub returns no-signal honestly');
+  assert.ok(block.includes('LOCAL-FIRST') && block.includes('NSFWJS'),
+    'vision scoring is documented LOCAL-FIRST on the in-production NSFWJS model');
+  assert.ok(block.includes('confirmed adult use in writing'),
+    'no paid vision API may score explicit frames without written adult-use confirmation');
   assert.ok(!/screen[\s-]?record/i.test(block), 'spec wording: "clips", never the banned phrase');
   assert.ok(block.includes("sess.private_event_id"), 'private-room wall in the scope gate');
   assert.ok(block.includes('isHouseAccountId(sess.model_id)'), 'house excluded in the scope gate');

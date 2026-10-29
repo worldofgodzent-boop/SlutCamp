@@ -4607,6 +4607,19 @@ function clipSupportingSignals(sessionId, start, end) {
 /* no-signal honestly: score 0, no segment. Detection therefore runs    */
 /* on the exact server-side signals only (money + chat + viewers),      */
 /* and money moments carry candidates, exactly as the spec orders.      */
+/*                                                                      */
+/* SCORING IS LOCAL-FIRST (cost research, 2026-10-29): the intended     */
+/* v1 scorer is NSFWJS — the same local model that already ships in     */
+/* production as the client-side AI nudity monitor (public/js/app.js,   */
+/* the monitor whose explicit signal A20 builds on). The spectator      */
+/* bot is a headless client, so it runs that same model on the frames   */
+/* it samples: $0 per frame, no frames ever leave the box, and no       */
+/* provider is involved. The contract above stays provider-neutral,     */
+/* but do NOT wire a paid vision API (GPT-4o-mini / Gemini /            */
+/* Rekognition class) into this interface as the scorer: under the      */
+/* owner's money rule, no paid provider may score explicit frames       */
+/* until it has confirmed adult use in writing — and none has. A         */
+/* written confirmation is the only door to a paid scorer, ever.        */
 /* ------------------------------------------------------------------ */
 const clipVisionLayer = {
   scoreWindow(sess, windowStart, windowEnd) {
