@@ -63,6 +63,10 @@ test('A21 server pins: tables, flag, consent gate, hooks, dormant adapter, visio
     'consent reads her latest model-agreement signature');
   assert.ok(serverSrc.includes('if (isExplicit && !sess.is_explicit) maybeClipWatch(sess);'),
     'engine arms on the same 0→1 flip as A20');
+  assert.ok(serverSrc.includes('if (end > nowE) continue; // window still open'),
+    'a window is scored only once it has closed (complete signal picture)');
+  assert.ok(serverSrc.includes('if (end > nowE) continue;'),
+    'merged windows defer scoring until close as well');
   assert.ok(serverSrc.includes('maybeClipSteeringFlag(sess, req.user, body, msg.id)'),
     'steering watch hooks the live-chat insert');
   assert.ok(serverSrc.includes("reason: 'x_not_configured'"), 'X adapter dormant without a token');
@@ -275,7 +279,7 @@ test('B: detection, tiers, merge, exclusions, rules watch, settings validation (
     /* --- B1: money + chat spike + viewer spike → HIGH held, no post --- */
     const f1 = await flip(h.base, fem1, fem1.sessionId, true);
     assert.equal(f1.status, 200, `fem1 flip: ${f1.text}`);
-    const t1 = nowSec();
+    const t1 = nowSec() - 120; // a fully-developed moment: its window has closed
     addGift(wdb, fem1.sessionId, fanId, gid, 2500, t1);
     addChatBurst(wdb, fem1.sessionId, fanId, 12, t1);
     // Viewer spike: every other existing user "joins" inside the window.
@@ -301,9 +305,25 @@ test('B: detection, tiers, merge, exclusions, rules watch, settings validation (
     assert.ok(mgrClips.json.clips.some((c) => c.id === clips[0].id && c.username === 'a21fem1'),
       'Manager log names the clip + model');
 
+    /* --- B1b: a moment arriving in REAL time is scored only when its
+           window closes — never frozen mid-burst at a lower tier --- */
+    const fem1b = await makeLiveModel(h.base, MGR, 'a21fem1b', 'female');
+    await flip(h.base, fem1b, fem1b.sessionId, true);
+    const tb = nowSec();
+    addGift(wdb, fem1b.sessionId, fanId, gid, 2500, tb);
+    addChatBurst(wdb, fem1b.sessionId, fanId, 12, tb);
+    await settle(2400); // several sweeps pass; the window (tb-15 .. tb+15) is still open
+    assert.equal(clipsFor(dir, fem1b.sessionId).length, 0,
+      'window still open → nothing scored yet');
+    assert.ok(await waitFor(() => clipsFor(dir, fem1b.sessionId).length === 1, 45000),
+      'once the window closes, the clip lands');
+    const b1b = clipsFor(dir, fem1b.sessionId)[0];
+    assert.equal(b1b.tier, 'high', 'scored on the complete window: money + chat spike → high');
+    assert.equal(b1b.status, 'held', 'flag OFF → held');
+
     /* --- B2: under-threshold single = nothing; burst = medium; overlap merges --- */
     await flip(h.base, fem2, fem2.sessionId, true);
-    const t2 = nowSec();
+    const t2 = nowSec() - 400; // past-anchored timeline: every window below has closed
     addGift(wdb, fem2.sessionId, fanId, gid, 1500, t2); // $15 < $20 threshold
     await settle(1600);
     assert.equal(clipsFor(dir, fem2.sessionId).length, 0, 'single under threshold → no candidate');
@@ -328,14 +348,14 @@ test('B: detection, tiers, merge, exclusions, rules watch, settings validation (
 
     /* --- B3: exclusions — male, house, private room --- */
     await flip(h.base, male, male.sessionId, true);
-    addGift(wdb, male.sessionId, fanId, gid, 5000, nowSec());
+    addGift(wdb, male.sessionId, fanId, gid, 5000, nowSec() - 120);
     await flip(h.base, house, house.sessionId, true);
-    addGift(wdb, house.sessionId, fanId, gid, 5000, nowSec());
+    addGift(wdb, house.sessionId, fanId, gid, 5000, nowSec() - 120);
     const priv = wdb.prepare(
       "INSERT INTO live_sessions (model_id, status, is_explicit, private_event_id) VALUES (?, 'live', 1, 999001)")
       .run(fem1.id);
     const privId = Number(priv.lastInsertRowid);
-    addGift(wdb, privId, fanId, gid, 5000, nowSec());
+    addGift(wdb, privId, fanId, gid, 5000, nowSec() - 120);
     await settle(2000);
     assert.equal(clipsFor(dir, male.sessionId).length, 0, 'Male section never clips');
     assert.equal(clipsFor(dir, house.sessionId).length, 0, 'house account never clips');
@@ -432,7 +452,7 @@ test('C: consent gate, then cap + spacing behind flag ON (X stub)',
 
     /* --- C1: flag ON + high clip, but NO v1.7 signature → nothing posts --- */
     await flip(h.base, fem, fem.sessionId, true);
-    const t1 = nowSec();
+    const t1 = nowSec() - 120; // a fully-developed moment: its window has closed
     addGift(wdb, fem.sessionId, fanId, gid, 2500, t1);
     addChatBurst(wdb, fem.sessionId, fanId, 12, t1); // chat spike → 70 = high
     assert.ok(await waitFor(() => clipsFor(dir, fem.sessionId).length === 1), 'high clip logged');

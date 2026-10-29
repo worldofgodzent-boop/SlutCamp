@@ -4681,6 +4681,7 @@ function clipDetectForSession(sess) {
     for (const k of sig.money_events || []) consumed.add(k);
   }
   let changed = 0;
+  const nowE = Math.floor(Date.now() / 1000);
   for (const mo of clipMoneyMoments(events, threshold)) {
     if (!mo.events.some((e) => !consumed.has(clipEventKey(e)))) continue; // already logged
     /* Window: 30–60s around the moment, padded evenly — and never
@@ -4697,6 +4698,17 @@ function clipDetectForSession(sess) {
     if (overlap) {
       start = Math.min(start, clipTsToEpoch(overlap.window_start));
       end = Math.max(end, clipTsToEpoch(overlap.window_end));
+      /* Score only once the (merged) window has CLOSED: the signals
+         that decide a tier — the chat surge and viewer joins that
+         follow a big tip — land throughout the window, so a clip
+         scored at first sight can freeze at a lower tier than the
+         full window earns (its money events are consumed at first
+         scoring and never re-read). The moment's events stay
+         unconsumed until the window closes; a later sweep scores
+         the complete picture, once. Caught by the a21 gate, pass 1:
+         test C1 froze at 'medium' when the sweep interleaved the
+         burst's inserts under load. */
+      if (end > nowE) continue;
       const sc = clipScoreForWindow(sess, start, end);
       db.prepare('UPDATE clips SET window_start = ?, window_end = ?, score = ?, tier = ?, signals = ? WHERE id = ?')
         .run(clipEpochToTs(start), clipEpochToTs(end), sc.score, sc.tier, JSON.stringify(sc.signals), overlap.id);
@@ -4705,6 +4717,7 @@ function clipDetectForSession(sess) {
       for (const k of sc.signals.money_events) consumed.add(k);
       changed++;
     } else {
+      if (end > nowE) continue; // window still open — score it whole when it closes
       const sc = clipScoreForWindow(sess, start, end);
       const status = sc.tier === 'low' ? 'discarded' : 'held';
       const info = db.prepare(`INSERT INTO clips (session_id, model_id, window_start, window_end, score, tier, signals, status)
