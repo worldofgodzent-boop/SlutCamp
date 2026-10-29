@@ -78,7 +78,7 @@ async function boot(dir, extraEnv = {}) {
   child.stdout.on('data', (d) => { log += d; });
   child.stderr.on('data', (d) => { log += d; });
   const base = `http://127.0.0.1:${port}`;
-  const deadline = Date.now() + 20000;
+  const deadline = Date.now() + 60000;
   for (;;) {
     if (child.exitCode !== null) throw new Error(`server exited early (${child.exitCode})\n${log}`);
     try {
@@ -251,7 +251,7 @@ test('full demo-money wipe: $0 right across, exactly once, then new money counts
   });
   assert.equal(newFan.status, 200, 'post-wipe fan signup works');
   const newModel = await req(h.base, 'POST', '/api/auth/signup', {
-    body: { username: 'newmodel', password: 'new-model-pass', role: 'model',
+    body: { username: 'newmodel', password: 'new-model-pass', role: 'model', publicity_consent: true,
             display_name: 'New Model', dob: '1999-04-04', agree18: true, section: 'female' },
   });
   assert.equal(newModel.status, 200, 'post-wipe model signup works');

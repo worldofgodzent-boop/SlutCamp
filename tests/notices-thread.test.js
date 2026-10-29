@@ -228,7 +228,7 @@ test('live: deploy announcement creates one official thread per user, bell opens
   const suffix = Math.random().toString(36).slice(2, 8);
   const signup = async (username, role, display) => {
     const s = await req('POST', '/api/auth/signup', {
-      body: { username, password: 'notices-pass-1', role, display_name: display, dob: '1997-05-20', agree18: true, ...(role === 'model' ? { section: 'female' } : {}) },
+      body: { username, password: 'notices-pass-1', role, display_name: display, dob: '1997-05-20', agree18: true, ...(role === 'model' ? { section: 'female', publicity_consent: true } : {}) },
     });
     assert.equal(s.status, 200, `${role} signup (${username}) failed: ${s.text}`);
     return { token: s.json.token, id: s.json.user.id, username };

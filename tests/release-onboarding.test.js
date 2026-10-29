@@ -140,8 +140,8 @@ test('manager: ID Checks renders the release state for own rows', () => {
   assert.ok(mgrSrc.includes('data.message'), 'an approve refusal surfaces the server message (release_missing)');
 });
 
-test('recount: the announcement thread-tap pin reads exactly 32 after the Clean Feed build (its announcement added one)', () => {
-  assert.equal(serverSrc.split('/#chat/${conv.id}').length - 1, 32);
+test('recount: the announcement thread-tap pin reads exactly 33 after the Launch-update build (its announcement added one)', () => {
+  assert.equal(serverSrc.split('/#chat/${conv.id}').length - 1, 33);
 });
 
 /* --------------------------- functional boot --------------------------- */
@@ -244,7 +244,7 @@ test('live: packet cannot complete without the release; e-sign + paper both sati
     const signup = async (username, role) => {
       const s = await req(base, 'POST', '/api/auth/signup', {
         body: { username, password: 'hunter22', role, display_name: username,
-          dob: '1995-05-05', agree18: true, ...(role === 'model' ? { section: 'female' } : {}) },
+          dob: '1995-05-05', agree18: true, ...(role === 'model' ? { section: 'female', publicity_consent: true } : {}) },
       });
       assert.equal(s.status, 200, `signup ${username}: ${s.text}`);
       return { token: s.json.token, id: s.json.user.id };
@@ -430,7 +430,7 @@ test('migration: a previous-schema database (no model_releases) boots clean and 
     }
     h = await boot(dir, { SEED_DEMO: '1' });
     const s = await req(h.base, 'POST', '/api/auth/signup', {
-      body: { username: 'migm', password: 'hunter22', role: 'model', display_name: 'migm',
+      body: { username: 'migm', password: 'hunter22', role: 'model', publicity_consent: true, display_name: 'migm',
         dob: '1995-05-05', agree18: true, section: 'female' },
     });
     assert.equal(s.status, 200, `signup on migrated DB: ${s.text}`);

@@ -153,7 +153,7 @@ async function signupModel(username, displayName) {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      username, password: 'social-pass-123', role: 'model',
+      username, password: 'social-pass-123', role: 'model', publicity_consent: true,
       display_name: displayName, dob: '1996-04-12', agree18: true, section: 'female',
     }),
   });

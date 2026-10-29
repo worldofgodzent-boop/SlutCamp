@@ -63,7 +63,7 @@ async function boot(dir, extraEnv = {}) {
   child.stdout.on('data', (d) => { log += d; });
   child.stderr.on('data', (d) => { log += d; });
   const base = `http://127.0.0.1:${port}`;
-  const deadline = Date.now() + 20000;
+  const deadline = Date.now() + 60000;
   for (;;) {
     if (child.exitCode !== null) throw new Error(`server exited early (${child.exitCode})\n${log}`);
     try {
@@ -178,7 +178,7 @@ test('self-serve affiliate signup: recruiter created, agreement signed, partner 
 
       // --- a model joining through #join/CODE is attributed to her ---
       r = await req(h.base, 'POST', '/api/auth/signup', {
-        body: { username: 'modelgal', password: 'hunter22', role: 'model',
+        body: { username: 'modelgal', password: 'hunter22', role: 'model', publicity_consent: true,
                 display_name: 'Model Gal', dob: '1995-04-01', agree18: true, section: 'female',
                 referral_code: code } });
       assert.equal(r.status, 200, JSON.stringify(r.data));

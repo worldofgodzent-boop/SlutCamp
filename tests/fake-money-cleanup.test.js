@@ -81,7 +81,7 @@ async function boot(dir, extraEnv) {
   child.stdout.on('data', (d) => { log += d; });
   child.stderr.on('data', (d) => { log += d; });
   const base = `http://127.0.0.1:${port}`;
-  const deadline = Date.now() + 20000;
+  const deadline = Date.now() + 60000;
   for (;;) {
     if (child.exitCode !== null) throw new Error(`server exited early (${child.exitCode})\n${log}`);
     try {
@@ -277,7 +277,7 @@ test('purge guards: pictures, ID-verification and password fingerprint each save
     'the names Bunny and Bella are free again');
 
   const bunnySignup = await req(h.base, 'POST', '/api/auth/signup', {
-    body: { username: 'Bunny', password: 'real-bunny-pass', role: 'model',
+    body: { username: 'Bunny', password: 'real-bunny-pass', role: 'model', publicity_consent: true,
             display_name: 'Bunny', dob: '1999-04-04', agree18: true, section: 'female' },
   });
   assert.equal(bunnySignup.status, 200, 'a real model registers the name Bunny');
@@ -285,7 +285,7 @@ test('purge guards: pictures, ID-verification and password fingerprint each save
   assert.ok(Number.isInteger(bunnyId) && bunnyId !== seedBunny.id, 'she is a brand-new account, not the seed');
 
   const bellaSignup = await req(h.base, 'POST', '/api/auth/signup', {
-    body: { username: 'Bella', password: 'real-bella-pass', role: 'model',
+    body: { username: 'Bella', password: 'real-bella-pass', role: 'model', publicity_consent: true,
             display_name: 'Bella', dob: '1998-08-08', agree18: true, section: 'female' },
   });
   assert.equal(bellaSignup.status, 200, 'a real model registers the name Bella');

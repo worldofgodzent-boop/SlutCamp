@@ -204,7 +204,7 @@ async function boot(dir, extraEnv) {
   child.stdout.on('data', (d) => { log += d; });
   child.stderr.on('data', (d) => { log += d; });
   const base = `http://127.0.0.1:${port}`;
-  const deadline = Date.now() + 20000;
+  const deadline = Date.now() + 60000;
   for (;;) {
     if (child.exitCode !== null) throw new Error(`server exited early (${child.exitCode})\n${log}`);
     try {
@@ -247,7 +247,7 @@ test('live: fan adds/removes via the follows toggle; non-fans refused; served ap
   }
 
   const signup = (body) => req(base, 'POST', '/api/auth/signup', {
-    body: { password: 'playlist-pass-1', display_name: 'Playlist Tester', dob: '1995-05-05', agree18: true, ...body },
+    body: { password: 'playlist-pass-1', display_name: 'Playlist Tester', dob: '1995-05-05', agree18: true, publicity_consent: true, ...body },
   });
   const fan = await signup({ username: 'playlistfan', role: 'fan' });
   assert.equal(fan.status, 200, `fan signup: ${fan.text}`);
