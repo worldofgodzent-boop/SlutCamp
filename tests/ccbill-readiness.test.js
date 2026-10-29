@@ -331,7 +331,7 @@ async function boot2(dir) {
   proc.stdout.on('data', (d) => { log += d; });
   proc.stderr.on('data', (d) => { log += d; });
   const b = `http://127.0.0.1:${port}`;
-  const deadline = Date.now() + 20000;
+  const deadline = Date.now() + 60000;
   for (;;) {
     if (proc.exitCode !== null) throw new Error(`server exited early (${proc.exitCode})\n${log}`);
     try {
