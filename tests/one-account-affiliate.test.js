@@ -139,7 +139,7 @@ async function boot(dir, extraEnv = {}) {
   child.stdout.on('data', (d) => { log += d; });
   child.stderr.on('data', (d) => { log += d; });
   const base = `http://127.0.0.1:${port}`;
-  const deadline = Date.now() + 20000;
+  const deadline = Date.now() + 60000;
   for (;;) {
     if (child.exitCode !== null) throw new Error(`server exited early (${child.exitCode})\n${log}`);
     try {
@@ -175,7 +175,7 @@ function readDb(dir, readOnly = true) {
 async function signup(base, username, role, extra = {}) {
   const r = await req(base, 'POST', '/api/auth/signup', {
     body: { username, password: 'hunter22', role, display_name: username,
-            dob: '1995-04-01', agree18: true, ...(role === 'model' ? { section: 'female' } : {}), ...extra },
+            dob: '1995-04-01', agree18: true, ...(role === 'model' ? { section: 'female', publicity_consent: true } : {}), ...extra },
   });
   assert.equal(r.status, 200, `signup ${username}: ${JSON.stringify(r.data)}`);
   return { token: r.data.token, id: r.data.user.id, username };

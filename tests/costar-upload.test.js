@@ -131,8 +131,8 @@ test('manager: the ID Checks queue surfaces the consent form', () => {
   assert.ok(mgrSrc.includes('consent_on_file'), 'the queue renders the on-file / missing state');
 });
 
-test('recount: the announcement thread-tap pin reads exactly 32 after this build (Clean Feed announcement added one)', () => {
-  assert.equal(serverSrc.split('/#chat/${conv.id}').length - 1, 32);
+test('recount: the announcement thread-tap pin reads exactly 33 after this build (Launch-update announcement added one)', () => {
+  assert.equal(serverSrc.split('/#chat/${conv.id}').length - 1, 33);
 });
 
 /* --------------------------- functional boot --------------------------- */
@@ -250,7 +250,7 @@ test('live: prompt required, solo unchanged, co-star media held until the packet
     const signup = async (username, role) => {
       const s = await req(base, 'POST', '/api/auth/signup', {
         body: { username, password: 'hunter22', role, display_name: username,
-          dob: '1995-05-05', agree18: true, ...(role === 'model' ? { section: 'female' } : {}) },
+          dob: '1995-05-05', agree18: true, ...(role === 'model' ? { section: 'female', publicity_consent: true } : {}) },
       });
       assert.equal(s.status, 200, `signup ${username}: ${s.text}`);
       return { token: s.json.token, id: s.json.user.id };

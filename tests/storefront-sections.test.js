@@ -158,10 +158,11 @@ test('server: register refuses a model without a valid section — every model d
 
 /* --------------------------- static pins: agreement --------------------------- */
 
-test('agreement: v1.5 carries the §15 section clause in EN + all 12 presentations', () => {
-  assert.ok(serverSrc.includes("const CONTRACT_VERSION = '1.5';"), 'version stays 1.5');
+test('agreement: the §15 section clause survives in EN + all 12 presentations (contract now v1.6)', () => {
+  assert.ok(serverSrc.includes("const CONTRACT_VERSION = '1.6';"), 'version is 1.6 (v1.6 = the CCBill compliance amendments; the §15 clause itself is unchanged)');
+  assert.ok(!serverSrc.includes("const CONTRACT_VERSION = '1.5';"), 'v1.5 gone');
   assert.ok(!serverSrc.includes("const CONTRACT_VERSION = '1.4';"), 'v1.4 gone');
-  assert.ok(serverSrc.includes("updated: 'October 18, 2026'"), 'date stays October 18, 2026');
+  assert.ok(serverSrc.includes("updated: 'October 27, 2026'"), 'date moved to October 27, 2026 with the v1.6 bump');
   assert.ok(serverSrc.includes("title: '15. Your Section & Who May Appear'"), '§15 is the section clause');
   const s15 = sliceFn(serverSrc, "title: '15. Your Section & Who May Appear'", "title: '16. Plain-Language Disclaimer'");
   assert.ok(s15.includes('the section you declared when you created your account'), 'clause: she performs in her declared section');
@@ -269,8 +270,8 @@ test('router: FIRST step of every model join — front door, invite link, referr
 
 test('router: the section reaches every model register call; fan calls stay clean', () => {
   const doSignup = sliceFn(appSrc, 'async function doSignup(role)', '/* ---------------- Face ID');
-  assert.ok(doSignup.includes("...(role === 'model' ? { section: modelSectionPick } : {})"),
-    'front-door register carries the section for models only');
+  assert.ok(doSignup.includes("...(role === 'model' ? { section: modelSectionPick, publicity_consent: publicityConsent } : {})"),
+    'front-door register carries the section (and the CCBill public-display consent) for models only');
   assert.ok(doSignup.includes("must_declare_section: t('err_must_declare_section')"), 'server refusal has a friendly toast');
   const inv = sliceFn(appSrc, 'async function vInviteSignup(code)', 'async function vRecruiterSignup(code)');
   assert.ok(inv.includes('section: modelSectionPick'), 'invite register carries the section');
@@ -460,7 +461,7 @@ function openDb(dir, readOnly = true) {
   return __db;
 }
 const signupModel = (base, username, display, extra = {}) => req(base, 'POST', '/api/auth/signup', {
-  body: { username, password: 'hunter22', role: 'model', display_name: display, dob: '1996-03-03', agree18: true, ...extra },
+  body: { username, password: 'hunter22', role: 'model', display_name: display, dob: '1996-03-03', agree18: true, publicity_consent: true, ...extra },
 });
 
 /* --------------------------- live: register enforcement --------------------------- */
@@ -530,7 +531,7 @@ test('live: model register refused without a valid section on every door; attest
     assert.equal(invNoPick.status, 400, 'invite door refuses without a section');
     assert.equal(invNoPick.json.error, 'must_declare_section');
     const invPick = await req(h.base, 'POST', '/api/auth/signup', {
-      body: { username: 'secinvcpl', password: 'hunter22', display_name: 'Sec Inv Couple', dob: '1997-07-07', agree18: true, section: 'couple', invite_code: 'secinvite1' },
+      body: { username: 'secinvcpl', password: 'hunter22', display_name: 'Sec Inv Couple', dob: '1997-07-07', agree18: true, section: 'couple', publicity_consent: true, invite_code: 'secinvite1' },
     });
     assert.equal(invPick.status, 200, `invite join with a section registers: ${invPick.text}`);
     // 5) The referral door: a MALE signup via an affiliate link is
@@ -694,7 +695,7 @@ test('live: filtering matrix — tabs, roles, the storefront invariant, lives, s
 
 /* --------------------------- live: contract v1.5 + re-sign --------------------------- */
 
-test('live: contract serves v1.5 with the §15 section clause; a v1.4 signature reads unsigned until re-sign', { timeout: 240000 }, async () => {
+test('live: contract serves v1.6 with the §15 section clause; a v1.4 signature reads unsigned until re-sign', { timeout: 240000 }, async () => {
   const dir = makeCopy('seccontract');
   let h = null;
   try {
@@ -703,15 +704,15 @@ test('live: contract serves v1.5 with the §15 section clause; a v1.4 signature 
     assert.equal(login.status, 200);
     const tok = login.json.token;
     let c = await req(h.base, 'GET', '/api/model/contract', { token: tok });
-    assert.equal(c.json.version, '1.5', 'current version is 1.5');
+    assert.equal(c.json.version, '1.6', 'current version is 1.6');
     assert.equal(c.json.sections.length, 16, '16 sections served');
     assert.equal(c.json.sections[14].title, '15. Your Section & Who May Appear', '§15 is the section clause');
     assert.ok(c.json.sections[14].body.includes('ID-verified co-performers'), 'clause served in the text');
     assert.ok(!c.json.sections[14].body.includes('women only'), 'no women-only text served');
-    assert.equal(c.json.signed, false, 'bunny has not signed v1.5 yet');
+    assert.equal(c.json.signed, false, 'bunny has not signed v1.6 yet');
     const sign = await req(h.base, 'POST', '/api/model/contract/sign', { token: tok, body: { display_name: 'Bunny' } });
     assert.equal(sign.status, 200, `sign works: ${sign.text}`);
-    assert.equal(sign.json.version, '1.5');
+    assert.equal(sign.json.version, '1.6');
     c = await req(h.base, 'GET', '/api/model/contract', { token: tok });
     assert.equal(c.json.signed, true, 'signed at the current version');
     stop(h); h = null;
@@ -722,12 +723,12 @@ test('live: contract serves v1.5 with the §15 section clause; a v1.4 signature 
     const login2 = await req(h.base, 'POST', '/api/auth/login', { body: { username: 'bunny', password: 'model123' } });
     const tok2 = login2.json.token;
     c = await req(h.base, 'GET', '/api/model/contract', { token: tok2 });
-    assert.equal(c.json.signed, false, 'a v1.4 signer reads signed:false under v1.5');
+    assert.equal(c.json.signed, false, 'a v1.4 signer reads signed:false under v1.6');
     assert.equal(c.json.signed_version, '1.4', 'her old signature is still on record');
     const resign = await req(h.base, 'POST', '/api/model/contract/sign', { token: tok2, body: { display_name: 'Bunny' } });
     assert.equal(resign.status, 200);
     c = await req(h.base, 'GET', '/api/model/contract', { token: tok2 });
-    assert.equal(c.json.signed, true, 're-sign at v1.5 restores signed status');
+    assert.equal(c.json.signed, true, 're-sign at v1.6 restores signed status');
     stop(h); h = null;
   } finally {
     stop(h);
@@ -859,7 +860,7 @@ test('live: new-model bell — exactly one per model signup, section × route na
     assert.equal(linkGuy.status, 200, `referral-link MALE signup: ${linkGuy.text}`);
     // 4) Invite-link COUPLE signup → the bell says Couple + invite.
     const invCpl = await req(h.base, 'POST', '/api/auth/signup', {
-      body: { username: 'bellcpl', password: 'hunter22', display_name: 'Bell Couple', dob: '1998-08-08', agree18: true, section: 'couple', invite_code: 'bellinvite1' },
+      body: { username: 'bellcpl', password: 'hunter22', display_name: 'Bell Couple', dob: '1998-08-08', agree18: true, section: 'couple', publicity_consent: true, invite_code: 'bellinvite1' },
     });
     assert.equal(invCpl.status, 200, `invite-link COUPLE signup: ${invCpl.text}`);
     stop(h); h = null;

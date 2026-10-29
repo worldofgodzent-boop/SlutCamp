@@ -305,7 +305,7 @@ test('live: flagged at the door, one tap agrees, live/battles/private rooms unlo
     const signup = async (username, role) => {
       const s = await req(base, 'POST', '/api/auth/signup', {
         body: { username, password: 'hunter22', role, display_name: username,
-          dob: '1995-05-05', agree18: true, ...(role === 'model' ? { section: 'female' } : {}) },
+          dob: '1995-05-05', agree18: true, ...(role === 'model' ? { section: 'female', publicity_consent: true } : {}) },
       });
       assert.equal(s.status, 200, `signup ${username}: ${s.text}`);
       return { token: s.json.token, id: s.json.user.id, username };
@@ -494,7 +494,7 @@ test('migration: a previous-CHECK database gains clickwrap and keeps every recor
     h = await boot(dir, { SEED_DEMO: '1' });
     const base = h.base;
     const s = await req(base, 'POST', '/api/auth/signup', {
-      body: { username: 'migsigned', password: 'hunter22', role: 'model', display_name: 'migsigned',
+      body: { username: 'migsigned', password: 'hunter22', role: 'model', publicity_consent: true, display_name: 'migsigned',
         dob: '1995-05-05', agree18: true, section: 'female' },
     });
     assert.equal(s.status, 200, `signup: ${s.text}`);
@@ -547,7 +547,7 @@ test('migration: a previous-CHECK database gains clickwrap and keeps every recor
     assert.equal(doc.json.signed, true, 'the migrated record still reads signed');
     /* …and a clickwrap record now fits the rebuilt table. */
     const s2 = await req(h.base, 'POST', '/api/auth/signup', {
-      body: { username: 'migdoor', password: 'hunter22', role: 'model', display_name: 'migdoor',
+      body: { username: 'migdoor', password: 'hunter22', role: 'model', publicity_consent: true, display_name: 'migdoor',
         dob: '1995-05-05', agree18: true, section: 'female' },
     });
     assert.equal(s2.status, 200);
@@ -576,7 +576,7 @@ test('announcement: every model DMd exactly once in her language, stamp set, no 
     /* Create the house, then boot 2 fires it. */
     h = await boot(dir, { SEED_DEMO: '1' });
     const hs = await req(h.base, 'POST', '/api/auth/signup', {
-      body: { username: 'asceaaspade', password: 'hunter22', role: 'model', display_name: 'SlutCamp',
+      body: { username: 'asceaaspade', password: 'hunter22', role: 'model', publicity_consent: true, display_name: 'SlutCamp',
         dob: '1995-05-05', agree18: true, section: 'female' },
     });
     assert.equal(hs.status, 200, `house signup: ${hs.text}`);

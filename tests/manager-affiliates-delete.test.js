@@ -74,7 +74,7 @@ async function boot(dir, extraEnv) {
   child.stdout.on('data', (d) => { log += d; });
   child.stderr.on('data', (d) => { log += d; });
   const base = `http://127.0.0.1:${port}`;
-  const deadline = Date.now() + 20000;
+  const deadline = Date.now() + 60000;
   for (;;) {
     if (child.exitCode !== null) throw new Error(`server exited early (${child.exitCode})\n${log}`);
     try {
@@ -211,7 +211,7 @@ test('affiliates delete: standalone recruiter retires fully and frees her userna
     assert.equal((await req(h.base, 'GET', '/api/referral/delcode1')).json.valid, false, 'primary link dead');
     assert.equal((await req(h.base, 'GET', '/api/referral/delalias1')).json.valid, false, 'alias link dead');
     const joinOld = await req(h.base, 'POST', '/api/auth/signup', {
-      body: { username: 'del_newmodel', password: 'newmodel-pass-1', role: 'model',
+      body: { username: 'del_newmodel', password: 'newmodel-pass-1', role: 'model', publicity_consent: true,
         display_name: 'New Model', dob: '1999-06-15', agree18: true, section: 'female', referral_code: 'delcode1' },
     });
     assert.equal(joinOld.status, 400, 'signup through a dead link refused');

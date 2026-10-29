@@ -216,6 +216,8 @@ const M = {
   modelsSort: 'name',   // Models tab: 'name' (A–Z, default) or 'recent' (most recent login first)
   peek: null,       // {id, title, messages} for the read-only chat peek
   live: null,       // mod-watch state
+  auditLoaded: false, // Settings audit-log folder: rows fetched on first open only
+  auditRows: null,
   ws: null,
   presenceTimer: null,
 };
@@ -1344,6 +1346,19 @@ async function adminTaxBody() {
       </div>`).join('') || '<div class="empty">No earners yet.</div>'}`;
 }
 
+/* One delegate audit-log row (Settings folder). Markup is exactly
+ * what the old always-open card rendered — only the container and
+ * the load timing changed (owner folder request, Oct 26 2026). */
+function dlgAuditRowHTML(r) {
+  return `
+        <div class="dlg-audit-row">
+          <span class="small"><b>${esc(r.action)}</b>${r.target_id ? ` <span class="muted">#${esc(String(r.target_id))}</span>` : ''}</span>
+          ${r.actor_badge ? `<span class="dlg-badge">🪪 ${esc(r.actor_badge)}</span>` : '<span class="small muted">owner</span>'}
+          <span class="small muted">${esc(String(r.created_at || '').slice(0, 16).replace('T', ' '))}</span>
+          ${r.reason ? `<div class="small muted">Reason: ${esc(r.reason)}</div>` : ''}
+        </div>`;
+}
+
 async function adminMoreBody(s) {
   const { data: tfa } = await api('/admin/2fa').catch(() => ({ data: {} }));
   const tfaOn = !!(tfa && tfa.on);
@@ -1360,8 +1375,9 @@ async function adminMoreBody(s) {
     ? await api('/admin/delegate/kaykay').catch(() => ({ data: {} }))
     : { data: {} };
   const kk = kkData && kkData.delegate ? kkData.delegate : null;
-  const { data: auditData } = await api('/admin/audit?limit=25').catch(() => ({ data: {} }));
-  const auditRows = (auditData && auditData.audit) || [];
+  // The delegate audit log is NOT fetched here: it lives in a
+  // tap-to-open folder on this screen and loads on first open
+  // (owner, Oct 26 2026 — the always-open log ate the whole page).
   const { data: pkStatus } = await api('/manager/passkey/status').catch(() => ({ data: {} }));
   const { data: pkList } = await api('/auth/passkey/list').catch(() => ({ data: { credentials: [] } }));
   const pkEnrolled = !!(pkStatus && pkStatus.enrolled);
@@ -1438,16 +1454,13 @@ async function adminMoreBody(s) {
       <div class="muted small" id="kk-msg" style="margin-top:6px"></div>
     </div>` : ''}
     <div class="card">
-      <div style="font-weight:800;margin-bottom:6px">🪪 Delegate activity — audit log</div>
-      <div class="muted small">Everything the delegate seats do in the Manager is recorded here. Rows badged <span class="dlg-badge">🪪 Ms. Pink</span> or <span class="dlg-badge">🪪 Kay Kay</span> are delegate actions — never the owner's.</div>
-      <div style="margin-top:6px">
-      ${auditRows.length ? auditRows.map((r) => `
-        <div class="dlg-audit-row">
-          <span class="small"><b>${esc(r.action)}</b>${r.target_id ? ` <span class="muted">#${esc(String(r.target_id))}</span>` : ''}</span>
-          ${r.actor_badge ? `<span class="dlg-badge">🪪 ${esc(r.actor_badge)}</span>` : '<span class="small muted">owner</span>'}
-          <span class="small muted">${esc(String(r.created_at || '').slice(0, 16).replace('T', ' '))}</span>
-          ${r.reason ? `<div class="small muted">Reason: ${esc(r.reason)}</div>` : ''}
-        </div>`).join('') : '<div class="empty">No delegate activity yet.</div>'}
+      <button class="btn ghost" id="dlg-audit-toggle" style="width:100%;margin-top:0;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left">
+        <span style="font-weight:800">🪪 Delegate activity — audit log</span>
+        <span class="small" id="dlg-audit-chev">▸ Open</span>
+      </button>
+      <div id="dlg-audit-body" style="display:none;margin-top:8px">
+        <div class="muted small">Everything the delegate seats do in the Manager is recorded here. Rows badged <span class="dlg-badge">🪪 Ms. Pink</span> or <span class="dlg-badge">🪪 Kay Kay</span> are delegate actions — never the owner's.</div>
+        <div id="dlg-audit-rows" style="margin-top:6px"><div class="empty">Loading…</div></div>
       </div>
     </div>
     <div class="card">
@@ -2135,6 +2148,28 @@ function wireAdminBody(tab) {
       if (!data.has_more) { const b = document.getElementById('team-more'); if (b) b.remove(); }
     });
   }
+
+  // 🪪 Delegate audit-log folder (Settings): collapsed by default so
+  // the log never sprawls down the page; rows load on first open and
+  // are cached for the session (re-renders re-fill from the cache).
+  go('#dlg-audit-toggle', async () => {
+    const body = document.getElementById('dlg-audit-body');
+    if (!body) return;
+    const opening = body.style.display === 'none';
+    body.style.display = opening ? 'block' : 'none';
+    const chev = document.getElementById('dlg-audit-chev');
+    if (chev) chev.textContent = opening ? '▾ Close' : '▸ Open';
+    const box = document.getElementById('dlg-audit-rows');
+    if (!opening || !box) return;
+    if (!M.auditLoaded) {
+      const { data } = await api('/admin/audit?limit=25').catch(() => ({ data: {} }));
+      M.auditRows = (data && data.audit) || [];
+      M.auditLoaded = true;
+    }
+    box.innerHTML = M.auditRows.length
+      ? M.auditRows.map(dlgAuditRowHTML).join('')
+      : '<div class="empty">No delegate activity yet.</div>';
+  });
 
   // 🔑 Change password card (Settings) — same endpoint as the public app;
   // the server re-verifies the current password and revokes other sessions.
@@ -3060,6 +3095,128 @@ async function adminTeamBody() {
     </div>`;
 }
 
+/* ---------------- Manager ping on team messages (Assignment 09) ----------------
+ * Shell-level poll, every Manager screen, client-side only. No server change,
+ * no sound, no push stack: the only signal is the Team channel nav badge plus
+ * the tab title, exactly as Ms. Pink spec'd.
+ *
+ * Poll: GET /admin/team-messages?limit=1 through api() (which prefixes /api,
+ * so the HTTP route is the existing /api/admin/team-messages; that route
+ * already clamps limit to 1..200 and returns the single newest message with
+ * id + author, so limit=1 polling IS enough for the ping itself — see the
+ * count note below). One timer, owned by the shell: started in renderShell,
+ * stopped on logout. Moderators never poll: the server refuses them 403 on
+ * this endpoint and the moderator shell never lists the Team channel.
+ *
+ * State: last-seen message id in localStorage ('sc_team_last_seen_id').
+ * - First sign-in (no stored id) baselines to the current newest id: no
+ *   badge storm. Logout does NOT clear the stored id, so a later sign-in on
+ *   the same browser badges messages posted since the last sign-out.
+ * - Opening the Team channel, or polling while it is the active screen,
+ *   marks seen (last-seen = newest id) and clears badge + title.
+ * - A message from this seat never badges on its own. Own author is the
+ *   Assignment 01 principal: 'owner' for admin, 'delegate:<username>' for a
+ *   delegate seat.
+ *
+ * Count note (flagged for Ms. Pink at review): team_messages ids are
+ * AUTOINCREMENT and no delete route exists, so newestId - lastSeenId is the
+ * count of messages posted since last seen — exact in the common case. In
+ * the corner where this seat's own message is the newest at poll time,
+ * the pending foreign unread count is preserved (never silently dropped)
+ * and the next foreign newest recomputes the count from lastSeen, which
+ * then includes that own message too — so n is an upper bound there, not
+ * exact. An exactly-correct count in that corner needs either a
+ * server-side unread count or fetching more than one message; neither was
+ * built, per the no-server-change rule. If Ms. Pink wants exact counts
+ * there, that is the follow-up to spec — no server change was improvised.
+ *
+ * A03 overlap (flagged for Ms. Pink to reconcile at review): A03 ships
+ * first and also touches public/manager/manager.js, adding ~5s in-channel
+ * live polling + scroll handling to the Team channel screen itself. This
+ * build does NOT include A03's code (A03 is unmerged on main) and does not
+ * touch the channel screen's rendering: the shell poll only reads the
+ * newest id and, while the channel is open, marks seen. When A03 lands,
+ * its in-channel append and this shell poll will both fetch the same
+ * endpoint; the shell poll's channel-open mark-seen already covers the
+ * append case, but Ms. Pink should confirm both timers coexist at merge.
+ */
+/* TEAM_PING_NEXT_START */
+function teamPingNext(lastSeen, unread, newest, ownAuthor, channelOpen) {
+  // Pure decision for the ping state. newest: { id, author } | null.
+  // Returns { lastSeen, unread } with unread >= 0; badge shows iff unread > 0.
+  if (!newest || !Number.isFinite(newest.id)) return { lastSeen, unread };
+  if (lastSeen === null || lastSeen === undefined) return { lastSeen: newest.id, unread: 0 };
+  if (channelOpen) return { lastSeen: newest.id, unread: 0 };
+  if (newest.id <= lastSeen) return { lastSeen, unread };
+  if (newest.author === ownAuthor) return { lastSeen, unread }; // own newest never badges; pending foreign unread preserved
+  return { lastSeen, unread: newest.id - lastSeen };
+}
+/* TEAM_PING_NEXT_END */
+const TEAM_PING_INTERVAL_MS = 15000;
+const TEAM_PING_SEEN_KEY = 'sc_team_last_seen_id';
+function teamPingOwnAuthor() {
+  if (!M.user) return '';
+  if (M.user.role === 'admin') return 'owner';
+  if (M.user.role === 'owner_delegate') return 'delegate:' + String(M.user.username || '').toLowerCase();
+  return String(M.user.username || '');
+}
+function teamPingReadSeen() {
+  try {
+    const v = localStorage.getItem(TEAM_PING_SEEN_KEY);
+    const n = v === null ? null : parseInt(v, 10);
+    return Number.isFinite(n) ? n : null;
+  } catch (e) { return null; }
+}
+function teamPingWriteSeen(id) {
+  try { localStorage.setItem(TEAM_PING_SEEN_KEY, String(id)); } catch (e) {}
+}
+function teamPingRender() {
+  const badge = document.getElementById('badge-team');
+  const unread = (M.teamPing && M.teamPing.unread) || 0;
+  if (badge) {
+    badge.textContent = unread ? String(unread) : '';
+    badge.classList.toggle('hidden', !unread);
+  }
+  if (unread > 0) {
+    if (!M.teamPingBaseTitle) M.teamPingBaseTitle = document.title;
+    document.title = '(' + unread + ') Slut Manager';
+  } else if (M.teamPingBaseTitle) {
+    document.title = M.teamPingBaseTitle;
+  }
+}
+async function teamPingTick() {
+  if (!M.user || (M.user.role !== 'admin' && M.user.role !== 'owner_delegate')) return;
+  if (!M.teamPing) M.teamPing = { lastSeen: teamPingReadSeen(), unread: 0 };
+  const { status, data } = await api('/admin/team-messages?limit=1');
+  if (status !== 200 || !data) return;
+  const msgs = data.messages || [];
+  const newest = msgs.length ? msgs[msgs.length - 1] : null;
+  const ownAuthor = teamPingOwnAuthor();
+  const prevUnread = M.teamPing.unread;
+  const next = teamPingNext(M.teamPing.lastSeen, M.teamPing.unread, newest,
+    ownAuthor, M.screen === 'team');
+  M.teamPing.lastSeen = next.lastSeen;
+  M.teamPing.unread = next.unread;
+  if (next.lastSeen !== null && next.lastSeen !== undefined) teamPingWriteSeen(next.lastSeen);
+  teamPingRender();
+  // Assignment 19 sound layer: decision + playback live in the
+  // Assignment 19 section of this file; A09's transition is untouched.
+  if (teamPingSound(prevUnread, next.unread, newest, ownAuthor)) playTeamPingSound();
+}
+function startTeamPing() {
+  if (M.teamPingTimer) return;
+  if (!M.user || (M.user.role !== 'admin' && M.user.role !== 'owner_delegate')) return;
+  M.teamPing = { lastSeen: teamPingReadSeen(), unread: 0 };
+  teamPingTick();
+  M.teamPingTimer = setInterval(() => { teamPingTick(); }, TEAM_PING_INTERVAL_MS);
+}
+function stopTeamPing() {
+  if (M.teamPingTimer) { clearInterval(M.teamPingTimer); M.teamPingTimer = null; }
+  M.teamPing = null;
+  if (M.teamPingBaseTitle) { document.title = M.teamPingBaseTitle; M.teamPingBaseTitle = null; }
+}
+
+
 async function peekBody() {
   const p = M.peek;
   if (!p) return '<div class="empty">Nothing to peek at.</div>';
@@ -3096,6 +3253,132 @@ function watchBody() {
       </div>
     </div>`;
 }
+
+/*
+ * Team ping — sound + Web Push (Assignment 19, Ms. Pink 2026-10-28).
+ * Layers ON TOP of the Assignment 09 badge + title poll above; nothing
+ * about A09's behaviour changes. Two halves:
+ *
+ * SOUND — a short two-tone blip when the shell poll learns a NEW team
+ * message from another seat landed. The decision is the pure
+ * teamPingSound() below (unit-tested): it fires exactly when a
+ * teamPingNext transition GREW the unread count for a foreign newest
+ * message. Because teamPingNext recomputes unread from lastSeen, the
+ * same message re-polled yields the same count (no repeat), a baseline
+ * or a channel-open mark-seen yields 0 (no fire), and an own newest
+ * leaves the state untouched (no fire). Browsers refuse audio before a
+ * user gesture, so the AudioContext is created/resumed ONLY inside the
+ * one-time first-gesture listener (the iOS unlock rule — no autoplay
+ * hacks); until armed, sound is skipped silently. The tone is generated
+ * with WebAudio oscillators — no audio files.
+ *
+ * PUSH — a Web Push to this seat's devices when a team message lands
+ * (the server fans out on post to every OTHER seat; see
+ * /api/admin/team-push/* in server.js). Service-worker finding: the
+ * site worker /sw.js is served from the root, so its scope is "/" and
+ * it covers /manager pages too — the Manager registers that same
+ * worker here. Its fetch handler deliberately bypasses /manager/*
+ * (Manager assets are never cached), and its push handler is generic
+ * (shows the payload's title/body and opens its link), so no
+ * Manager-specific worker is needed. Subscriptions are stored
+ * server-side keyed by seat principal, separate from fan subscriptions.
+ * Permission is requested on the seat's first tap/click of the session
+ * (the same gesture that unlocks audio) — never on page load. iOS
+ * reality: Web Push needs iOS 16.4+ AND the Manager added to the Home
+ * Screen; a Manager open in a Safari tab gets no push (badge + sound
+ * still work while the tab is open). Denied permission simply means
+ * no push — nothing else changes.
+ */
+/* TEAM_PING_SOUND_START */
+function teamPingSound(prevUnread, nextUnread, newest, ownAuthor) {
+  // Pure decision: did this poll transition newly surface a foreign
+  // message? Fires once per foreign message — see the header note.
+  if (!newest || !Number.isFinite(newest.id)) return false;
+  if (newest.author === ownAuthor) return false;
+  return nextUnread > prevUnread;
+}
+/* TEAM_PING_SOUND_END */
+let teamPingAudioCtx = null;
+let teamPingAudioArmed = false;
+function armTeamPingAudio() {
+  if (teamPingAudioArmed) return;
+  teamPingAudioArmed = true;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    teamPingAudioCtx = new AC();
+    if (teamPingAudioCtx.state === 'suspended') teamPingAudioCtx.resume();
+  } catch (e) { teamPingAudioCtx = null; }
+}
+function playTeamPingSound() {
+  if (!teamPingAudioArmed || !teamPingAudioCtx) return; // not unlocked yet — skip silently
+  try {
+    if (teamPingAudioCtx.state === 'suspended') teamPingAudioCtx.resume();
+    const ctx = teamPingAudioCtx;
+    const t0 = ctx.currentTime;
+    [[880, 0], [1318.5, 0.09]].forEach(([freq, off]) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, t0 + off);
+      gain.gain.exponentialRampToValueAtTime(0.12, t0 + off + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + off + 0.16);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t0 + off);
+      osc.stop(t0 + off + 0.18);
+    });
+  } catch (e) { /* sound is best-effort — badge + title already fired */ }
+}
+let teamPushAsked = false;
+async function subscribeTeamPush() {
+  if (teamPushAsked) return;
+  // Cheap synchronous guards BEFORE latching: a tap on the login screen
+  // (no seat yet) or on a browser without the APIs must not burn the
+  // one ask for the session.
+  if (!M.user || (M.user.role !== 'admin' && M.user.role !== 'owner_delegate')) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
+  teamPushAsked = true;
+  try {
+    const { data } = await api('/push/vapid-key');
+    if (!data || !data.key) return; // VAPID not configured — badge + sound still work
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return; // denied/dismissed: no push, nothing else changes
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const key = Uint8Array.from(atob(data.key.replace(/-/g, '+').replace(/_/g, '/')),
+        (c) => c.charCodeAt(0));
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+    }
+    const j = sub.toJSON();
+    await api('/admin/team-push/subscribe', { method: 'POST',
+      body: JSON.stringify({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth }) });
+  } catch (e) { /* push is best-effort — in-app badge + sound still work */ }
+}
+async function unsubscribeTeamPush() {
+  // Called on logout while the seat token is still valid: drop this
+  // device's seat subscription server-side and at the push service, so
+  // a signed-out seat stops receiving team pushes on this device.
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) return;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return;
+    await api('/admin/team-push/unsubscribe', { method: 'POST',
+      body: JSON.stringify({ endpoint: sub.endpoint }) });
+    await sub.unsubscribe();
+  } catch (e) { /* best-effort — dead subs are pruned server-side on 410/404 */ }
+}
+function teamPingFirstGesture() {
+  armTeamPingAudio();
+  subscribeTeamPush();
+}
+window.addEventListener('pointerdown', teamPingFirstGesture);
+window.addEventListener('click', teamPingFirstGesture);
+/* TEAM_PING_A19_END */
 
 /* Screen render — fetches stats (badges + dash/more bodies) like the old panel did */
 M.go = (screen) => { M.screen = screen; M.render(); };
@@ -3134,6 +3417,7 @@ M.render = async () => {
     // scrolled to the bottom — no scrolling down by hand.
     startTeamPoll();
     teamScrollToBottom();
+    teamPingTick(); // opening the channel marks seen promptly, not at the next 15s tick
   }
   if (M.screen === 'dash') startPresence();
   if (M.screen === 'chats') wireChats();
@@ -3918,9 +4202,11 @@ function renderPasskeySetup(onPass) {
 
 /* ---------------- login / shell / boot ---------------- */
 M.logout = async () => {
+  await unsubscribeTeamPush(); // Assignment 19: while the seat token is still valid
   if (M.token) { try { await api('/auth/logout', { method: 'POST' }); } catch (e) {} }
   M.token = null; M.user = null; M.live = null;
   stopPresence();
+  stopTeamPing();
   localStorage.removeItem('wc_token');
   if (M.ws) { try { M.ws.close(); } catch (e) {} M.ws = null; }
   renderLogin();
@@ -3985,7 +4271,8 @@ function renderShell() {
     const ic = sp > 0 ? label.slice(0, sp) : '';
     const tx = sp > 0 ? label.slice(sp + 1) : label;
     const badge = id === 'safety' ? ' <span class="unread-badge hidden" id="badge-safety"></span>'
-      : id === 'dmca' ? ' <span class="unread-badge hidden" id="badge-dmca"></span>' : '';
+      : id === 'dmca' ? ' <span class="unread-badge hidden" id="badge-dmca"></span>'
+      : id === 'team' ? ' <span class="unread-badge hidden" id="badge-team"></span>' : '';
     return `<button data-screen="${id}"><span class="nav-ic">${ic}</span><span class="nav-tx">${tx}</span>${badge}</button>`;
   };
   document.getElementById('mgr-root').innerHTML = `
@@ -4025,6 +4312,7 @@ function renderShell() {
     window.open('/', '_blank');
   };
   document.getElementById('mgr-logout2').onclick = () => M.logout();
+  startTeamPing();
 }
 
 (async function boot() {

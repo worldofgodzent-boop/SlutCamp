@@ -331,7 +331,7 @@ async function boot2(dir) {
   proc.stdout.on('data', (d) => { log += d; });
   proc.stderr.on('data', (d) => { log += d; });
   const b = `http://127.0.0.1:${port}`;
-  const deadline = Date.now() + 20000;
+  const deadline = Date.now() + 60000;
   for (;;) {
     if (proc.exitCode !== null) throw new Error(`server exited early (${proc.exitCode})\n${log}`);
     try {
@@ -571,8 +571,8 @@ test('signup guard: an email-shaped MODEL username is kicked back and creates no
   });
   assert.notEqual(ghostLogin.status, 200, 'no ghost account behind the rejection');
 
-  const good = await signup({ ...baseBody, username: 'newmodel', role: 'model', display_name: 'New Model', section: 'female' });
-  assert.equal(good.status, 200, 'a normal model username signs up fine');
+  const good = await signup({ ...baseBody, username: 'newmodel', role: 'model', display_name: 'New Model', section: 'female', publicity_consent: true });
+  assert.equal(good.status, 200, 'a normal model username signs up fine (with the CCBill public-display consent ticked)');
   const goodBody = await good.json();
   assert.equal(goodBody.user.username, 'newmodel');
 

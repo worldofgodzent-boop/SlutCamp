@@ -208,7 +208,7 @@ const mgrLogin = async (base) => {
 async function modelSignup(base, dir, name) {
   const un = `${name}${stamp}`;
   const s = await req(base, 'POST', '/api/auth/signup', {
-    body: { username: un, password: `${name}-pass-123`, role: 'model',
+    body: { username: un, password: `${name}-pass-123`, role: 'model', publicity_consent: true,
       display_name: name, dob: '1996-06-06', agree18: true, section: 'female' },
   });
   assert.equal(s.status, 200, `model signup ${name}: ${s.text}`);
@@ -482,7 +482,7 @@ test('live: packages — CRUD, escrow lifecycle, requests, privacy, house, spend
     // The demo seed has no house account; house identity is the
     // username itself, so register it through the real signup.
     const hs = await req(base, 'POST', '/api/auth/signup', {
-      body: { username: 'asceaaspade', password: 'house-pass-123', role: 'model',
+      body: { username: 'asceaaspade', password: 'house-pass-123', role: 'model', publicity_consent: true,
         display_name: 'SlutCamp Live', dob: '1990-01-01', agree18: true, section: 'female' } });
     assert.equal(hs.status, 200, `house signup: ${hs.text}`);
     const house = { id: hs.json.user.id };
