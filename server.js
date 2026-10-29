@@ -525,7 +525,7 @@ const seoBrand = `<div class="brand"><a href="/">Slut<span class="camp">Camp</sp
 const SOCIAL_X_URL = 'https://x.com/SlutCampApp';
 const SOCIAL_INSTAGRAM_URL = 'https://instagram.com/slcamp__';
 const seoSocialLinks = `<a href="${SOCIAL_X_URL}" target="_blank" rel="noopener">X</a> · <a href="${SOCIAL_INSTAGRAM_URL}" target="_blank" rel="noopener">Instagram</a>`;
-const seoFooter = `<footer>SlutCamp is an 18+ platform. You must be of legal age in your location to use it.<br><a href="/models">All models</a> · <a href="/feed">Clean feed</a> · <a href="/join">Become a model</a> · <a href="/">Open the app</a><br><a href="/#terms">Terms</a> · <a href="/#privacy">Privacy</a> · <a href="/#billing">Billing &amp; Refunds</a> · <a href="/#2257">2257</a> · <a href="/#dmca">DMCA</a><br>${seoSocialLinks}<br>Operated by World of Godz Entertainment LLC</footer>`;
+const seoFooter = `<footer>SlutCamp is an 18+ platform. You must be of legal age in your location to use it.<br><a href="/models">All models</a> · <a href="/feed">Clean feed</a> · <a href="/join">Become a model</a> · <a href="/">Open the app</a><br><a href="/#terms">Terms</a> · <a href="/#privacy">Privacy</a> · <a href="/#billing">Billing &amp; Refunds</a> · <a href="/#2257">2257</a> · <a href="/#dmca">DMCA</a> · <a href="/#complaints">Complaints &amp; Content Removal</a><br>${seoSocialLinks}<br>Operated by World of Godz Entertainment LLC</footer>`;
 
 // GET /models/:username — her public, crawlable page.
 app.get('/models/:username', (req, res) => {
@@ -1942,6 +1942,15 @@ addColumnIfMissing('users', 'spend_cap_cents', 'INTEGER');
 // yet, so nothing sends to this address until one is wired up.
 addColumnIfMissing('users', 'email', 'TEXT');
 
+/* Public-display consent (CCBill compliance, Oct 27 2026): stamped at
+ * model signup (users.publicity_consent_at + _ip) and via the one-time
+ * consent door for pre-existing models — see recordPublicityConsent.
+ * Declared HERE, with the early users-table migrations, because the
+ * dev seed stamps its demo models inside seed(), which runs long
+ * before the attestation helpers further down are reached. */
+addColumnIfMissing('users', 'publicity_consent_at', 'TEXT');
+addColumnIfMissing('users', 'publicity_consent_ip', 'TEXT');
+
 // Admin presence override per model ('auto' | 'on' | 'off'): 'auto' = her own
 // is_online toggle decides; 'on'/'off' force what fans SEE. Display/discovery
 // only — never blocks her app, messages or going live (Asce, Oct 14 2026).
@@ -2069,6 +2078,7 @@ addColumnIfMissing('platform_stats', 'private_room_announced_at', 'TEXT'); // on
 addColumnIfMissing('platform_stats', 'private_room_cap', 'INTEGER NOT NULL DEFAULT 2'); // Phase 5: max private rooms per model per week (Manager-adjustable)
 addColumnIfMissing('platform_stats', 'battles_announced_at', 'TEXT'); // one-time "live battles" model broadcast stamp (Phase 6)
 addColumnIfMissing('platform_stats', 'clean_feed_announced_at', 'TEXT'); // one-time "clean public feed" model broadcast stamp
+addColumnIfMissing('platform_stats', 'launch_update_announced_at', 'TEXT'); // one-time launch-update model broadcast stamp
 addColumnIfMissing('platform_stats', 'release_prompt_announced_at', 'TEXT'); // one-time "performer release at the door" broadcast stamp
 addColumnIfMissing('models', 'battle_invites_open', 'INTEGER NOT NULL DEFAULT 1'); // Phase 6: "Open to battle invites" Settings toggle (default ON)
 addColumnIfMissing('game_requests', 'battle_id', 'INTEGER'); // Phase 6: set when the buy was escrowed into a live battle (refund path branches on it)
@@ -2543,6 +2553,33 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
 );
 CREATE INDEX IF NOT EXISTS idx_pushsubs_user ON push_subscriptions(user_id);
 
+-- Team-channel Web Push subscriptions (Assignment 19): Manager seats are
+-- principals, not fan-app users, so their subscriptions live in their own
+-- slot keyed by the Assignment 01 seat principal ('owner' /
+-- 'delegate:<username>' — the teamAuthorFor form). Fan subscriptions in
+-- push_subscriptions never cover a seat, and a seat subscription never
+-- lands in the fan table.
+CREATE TABLE IF NOT EXISTS team_push_subscriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  seat TEXT NOT NULL,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT,
+  auth TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_teampushsubs_seat ON team_push_subscriptions(seat);
+
+-- Owner promo pings (Assignment 20): one row per explicit flip of a
+-- public Female/Couple live — the log behind the owner's promo push
+-- (see maybePromoPing). Private Room sessions are never logged here.
+CREATE TABLE IF NOT EXISTS promo_pings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id INTEGER NOT NULL REFERENCES live_sessions(id) ON DELETE CASCADE,
+  model_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_promopings_model ON promo_pings(model_id, id);
+
 -- Model tip menu: custom tip items she defines (e.g. "💋 Blow a kiss — $5")
 CREATE TABLE IF NOT EXISTS tip_menus (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2950,6 +2987,10 @@ const getUserPublic = (u) => ({
   status: u.status || 'active',
   language: u.language || 'en',
   welcomed: !!u.welcomed_at,
+  /* Public-display consent stamp (CCBill compliance, Oct 27 2026) —
+   * the client uses it to decide whether a model meets the one-time
+   * consent door before her next upload. NULL = not yet consented. */
+  publicity_consent_at: u.publicity_consent_at || null,
 });
 
 /* Optional contact email — same loose shape check as the DMCA report
@@ -3866,6 +3907,23 @@ const requireRole = (...roles) => (req, res, next) => {
   next();
 };
 
+/* Public-display consent gate (CCBill compliance, Oct 27 2026): a
+ * model may not upload content until her public-display consent is on
+ * file (users.publicity_consent_at — stamped at signup, or later via
+ * POST /api/me/publicity-consent when the client shows the one-time
+ * consent door). Sits AFTER requireRole('model') and BEFORE the multer
+ * middleware on every content-upload route, so a refused upload never
+ * writes a file. Fans, guests and the compliance-document uploads
+ * (ID verification, co-performer packets) never pass through here. */
+const requirePublicityConsent = (req, res, next) => {
+  const u = req.user || (req.ident && req.ident.kind === 'user' ? req.ident.user : null);
+  if (u && u.role === 'model' && !u.publicity_consent_at) {
+    return res.status(403).json({ error: 'publicity_consent_required',
+      message: 'Please confirm the public display consent before uploading content.' });
+  }
+  next();
+};
+
 /* ------------------------------------------------------------------ */
 /* Owner Delegate (approved by Asce 2026-10-23 — "Build the delegate  */
 /* for yourself… The moderator is for the humans").                    */
@@ -4219,6 +4277,132 @@ async function sendWebPush(userId, payload) {
     }
   }
   return { sent, skipped: false };
+}
+
+/* Team-channel Web Push (Assignment 19): when a team message lands, push
+   to every OTHER Manager seat's subscribed devices — never the author's.
+   Same VAPID stack and dormancy as sendWebPush (no keys → one-time note,
+   nothing sent, the post itself never depends on this), same dead-sub
+   pruning (410/404 deletes the row), but seat-keyed storage
+   (team_push_subscriptions) instead of fan user ids. Best-effort by
+   design: every failure is swallowed per endpoint, and the caller fires
+   and forgets after the post has already answered. */
+let _teamPushWarned = false;
+async function sendTeamPush(authorSeat, payload) {
+  const pub = process.env.VAPID_PUBLIC_KEY, priv = process.env.VAPID_PRIVATE_KEY;
+  if (!pub || !priv) {
+    if (!_teamPushWarned) {
+      _teamPushWarned = true;
+      console.log('[push] VAPID keys not configured — team Web Push disabled. ' +
+        'Set VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY/VAPID_SUBJECT and install web-push to enable.');
+    }
+    return { sent: 0, skipped: true };
+  }
+  let webpush;
+  try { webpush = require('web-push'); }
+  catch (e) { console.log('[push] web-push package not installed — run: npm install web-push'); return { sent: 0, skipped: true }; }
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:admin@slutcamp.app', pub, priv);
+  const subs = db.prepare('SELECT * FROM team_push_subscriptions WHERE seat != ?')
+    .all(authorSeat || '');
+  let sent = 0;
+  for (const s of subs) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+        JSON.stringify(payload));
+      sent++;
+    } catch (e) {
+      // 410 Gone / 404 = dead subscription — clean it up (house convention)
+      if (e.statusCode === 410 || e.statusCode === 404)
+        db.prepare('DELETE FROM team_push_subscriptions WHERE id = ?').run(s.id);
+    }
+  }
+  return { sent, skipped: false };
+}
+
+function notifyTeamPush(authorSeat, message) {
+  const body = String((message && message.body) || '').slice(0, 120);
+  sendTeamPush(authorSeat, {
+    title: `💬 Team — ${teamAuthorLabel(authorSeat)}`,
+    body,
+    link: '/manager/',
+  }).catch(() => {});
+}
+
+/* Owner promo ping (Assignment 20, owner-directed 2026-10-28): the next
+   few months are promo-first, so when a Female or Couple model's PUBLIC
+   live flips explicit, the OWNER seat gets a Web Push — he jumps into
+   her live room (house account, comped) and screen-records the moment
+   for X promo. Same VAPID stack, dormancy and dead-sub pruning as
+   sendTeamPush, but the audience is exactly one seat: 'owner'. The
+   terms-side promo-use clause is a separate, later change (it lands
+   only after CCBill closes) — this build is the ping only. */
+let _promoPushWarned = false;
+async function sendOwnerPush(payload) {
+  const pub = process.env.VAPID_PUBLIC_KEY, priv = process.env.VAPID_PRIVATE_KEY;
+  if (!pub || !priv) {
+    if (!_promoPushWarned) {
+      _promoPushWarned = true;
+      console.log('[push] VAPID keys not configured — owner promo Web Push disabled. ' +
+        'Set VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY/VAPID_SUBJECT and install web-push to enable.');
+    }
+    return { sent: 0, skipped: true };
+  }
+  let webpush;
+  try { webpush = require('web-push'); }
+  catch (e) { console.log('[push] web-push package not installed — run: npm install web-push'); return { sent: 0, skipped: true }; }
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:admin@slutcamp.app', pub, priv);
+  const subs = db.prepare("SELECT * FROM team_push_subscriptions WHERE seat = 'owner'").all();
+  let sent = 0;
+  for (const s of subs) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+        JSON.stringify(payload));
+      sent++;
+    } catch (e) {
+      // 410 Gone / 404 = dead subscription — clean it up (house convention)
+      if (e.statusCode === 410 || e.statusCode === 404)
+        db.prepare('DELETE FROM team_push_subscriptions WHERE id = ?').run(s.id);
+    }
+  }
+  return { sent, skipped: false };
+}
+
+function notifyPromoPing(model, sessionId) {
+  const name = model.display_name || model.username;
+  sendOwnerPush({
+    title: `🔴 ${name} went explicit`,
+    body: `@${model.username} is live and explicit now — tap to open her live room.`,
+    link: `/?live=${sessionId}`,
+  }).catch(() => {});
+}
+
+/* The A20 gate, called on the 0→1 explicit transition of a live session
+   (POST /api/live/:id/mode). Fires ONLY for a public Female/Couple live:
+   - Private Room sessions (private_event_id set) NEVER ping — seat
+     holders paid for privacy; a promo ping there is unthinkable.
+   - The house account never pings about itself.
+   - Male-section lives never ping (owner ruling 2026-10-28).
+   Logs the moment in promo_pings, then pushes the owner seat.
+   Best-effort: returns whether it fired; never throws into the caller. */
+function maybePromoPing(sess) {
+  try {
+    if (!sess || sess.private_event_id) return false;
+    if (isHouseAccountId(sess.model_id)) return false;
+    const m = db.prepare(`SELECT u.username, u.display_name, mo.section
+                            FROM users u JOIN models mo ON mo.user_id = u.id
+                           WHERE u.id = ?`).get(sess.model_id);
+    if (!m) return false;
+    if (m.section !== 'female' && m.section !== 'couple') return false;
+    db.prepare('INSERT INTO promo_pings (session_id, model_id) VALUES (?, ?)')
+      .run(sess.id, sess.model_id);
+    notifyPromoPing(m, sess.id);
+    return true;
+  } catch (e) {
+    console.log('[push] promo ping failed:', e && e.message);
+    return false;
+  }
 }
 
 // Total unread DM messages waiting for a user — the exact math behind
@@ -4859,6 +5043,9 @@ const SRV = {
   ann_cleanfeed_dm: { en: '📸 NEW UPDATE: Your CLEAN FEED is live!\n\nYour public SlutCamp page now has a clean feed — post clean, clothes-on pictures and short videos there, and fans (and Google) can browse them free. It is separate from your in-app profile: that one can stay exactly as wild as you like — the feed is clean only.\n\nYou get 12 slots: 10 pictures + 2 videos. Post from Settings → My Photo → Clean feed. Fans who find you in the feed tap through to your page and message you there 💋\n\nYour page: https://slutcamp.app/models/{username}', es: '📸 ¡NOVEDAD: TU FEED LIMPIO YA ESTÁ EN VIVO!\n\nTu página pública de SlutCamp ahora tiene un feed limpio: publica ahí fotos con ropa y videos cortos limpios, y los fans (y Google) podrán verlos gratis. Es aparte de tu perfil en la app: ese puede seguir tan atrevido como quieras — el feed es solo limpio.\n\nTienes 12 espacios: 10 fotos + 2 videos. Publica desde Ajustes → Mi foto → Feed limpio. Los fans que te encuentren en el feed tocan para ir a tu página y escribirte ahí 💋\n\nTu página: https://slutcamp.app/models/{username}', pt: '📸 NOVIDADE: SEU FEED LIMPO ESTÁ NO AR!\n\nSua página pública da SlutCamp agora tem um feed limpo — poste fotos com roupa e vídeos curtos limpos lá, e os fãs (e o Google) podem vê-los de graça. É separado do seu perfil no app: esse pode continuar tão ousado quanto você quiser — o feed é só limpo.\n\nVocê tem 12 espaços: 10 fotos + 2 vídeos. Poste em Configurações → Minha foto → Feed limpo. Os fãs que te acharem no feed tocam para ir à sua página e te mandar mensagem lá 💋\n\nSua página: https://slutcamp.app/models/{username}', fr: '📸 NOUVEAU : TON FIL PROPRE EST EN LIGNE !\n\nTa page publique SlutCamp a maintenant un fil propre — publie là des photos habillées et de courtes vidéos propres, et les fans (et Google) pourront les parcourir gratuitement. C\'est séparé de ton profil dans l\'app : celui-là peut rester aussi osé que tu veux — le fil est propre uniquement.\n\nTu as 12 emplacements : 10 photos + 2 vidéos. Publie depuis Réglages → Ma photo → Fil propre. Les fans qui te trouvent dans le fil touchent pour aller sur ta page et t\'écrire là 💋\n\nTa page : https://slutcamp.app/models/{username}', de: '📸 NEU: DEIN SAUBERER FEED IST LIVE!\n\nDeine öffentliche SlutCamp-Seite hat jetzt einen sauberen Feed — poste dort saubere, bekleidete Bilder und kurze Videos, und Fans (und Google) können sie kostenlos durchsehen. Er ist getrennt von deinem App-Profil: das darf so wild bleiben, wie du willst — der Feed ist nur sauber.\n\nDu hast 12 Plätze: 10 Bilder + 2 Videos. Poste über Einstellungen → Mein Foto → Sauberer Feed. Fans, die dich im Feed finden, tippen sich zu deiner Seite durch und schreiben dir dort 💋\n\nDeine Seite: https://slutcamp.app/models/{username}', ru: '📸 НОВОЕ: ТВОЯ ЧИСТАЯ ЛЕНТА УЖЕ РАБОТАЕТ!\n\nНа твоей публичной странице SlutCamp теперь есть чистая лента — публикуй там чистые фото в одежде и короткие видео, и фанаты (и Google) смогут смотреть их бесплатно. Она отделена от твоего профиля в приложении: он может оставаться таким дерзким, как хочешь — лента только чистая.\n\nУ тебя 12 слотов: 10 фото + 2 видео. Публикуй через Настройки → Моё фото → Чистая лента. Фанаты, нашедшие тебя в ленте, переходят на твою страницу и пишут тебе там 💋\n\nТвоя страница: https://slutcamp.app/models/{username}', ja: '📸 新機能：クリーンフィードが公開されました！\n\nあなたのSlutCamp公開ページにクリーンフィードができました — 服を着たクリーンな写真と短い動画を投稿すれば、ファン（とGoogle）が無料で見られます。アプリ内プロフィールとは別物です：そちらは好きなだけ大胆でOK — フィードはクリーンのみ。\n\n枠は12個：写真10枚＋動画2本。設定 → 私の写真 → クリーンフィード から投稿してね。フィードで見つけたファンはあなたのページに来てメッセージをくれます 💋\n\nあなたのページ：https://slutcamp.app/models/{username}', zh: '📸 新功能：你的纯净动态上线了！\n\n你的 SlutCamp 公开页面现在有纯净动态了 — 在那里发布穿着得体的纯净照片和短视频，粉丝（和 Google）可以免费浏览。它与应用内资料分开：那边可以尽情大胆 — 动态只发纯净内容。\n\n你有 12 个位置：10 张照片 + 2 个视频。在 设置 → 我的照片 → 纯净动态 发布。在动态里找到你的粉丝会点进你的页面给你发消息 💋\n\n你的页面：https://slutcamp.app/models/{username}', ko: '📸 새 기능: 클린 피드가 시작됐어요!\n\n이제 당신의 SlutCamp 공개 페이지에 클린 피드가 생겼어요 — 옷을 입은 클린한 사진과 짧은 영상을 올리면 팬들(과 Google)이 무료로 볼 수 있어요. 앱 내 프로필과는 별개예요: 그쪽은 원하는 만큼 과감해도 되고 — 피드는 클린 전용이에요.\n\n슬롯은 12개: 사진 10장 + 영상 2개. 설정 → 내 사진 → 클린 피드에서 올려 주세요. 피드에서 당신을 발견한 팬은 페이지로 들어와 메시지를 보내요 💋\n\n내 페이지: https://slutcamp.app/models/{username}', it: '📸 NOVITÀ: IL TUO FEED PULITO È LIVE!\n\nLa tua pagina pubblica SlutCamp ora ha un feed pulito — pubblica lì foto vestite e brevi video puliti, e i fan (e Google) potranno sfogliarli gratis. È separato dal tuo profilo in-app: quello può restare audace quanto vuoi — il feed è solo pulito.\n\nHai 12 spazi: 10 foto + 2 video. Pubblica da Impostazioni → La mia foto → Feed pulito. I fan che ti trovano nel feed toccano per arrivare alla tua pagina e scriverti lì 💋\n\nLa tua pagina: https://slutcamp.app/models/{username}', pl: '📸 NOWOŚĆ: TWÓJ CZYSTY FEED JUŻ DZIAŁA!\n\nTwoja publiczna strona SlutCamp ma teraz czysty feed — publikuj tam czyste, ubrane zdjęcia i krótkie filmy, a fani (i Google) będą mogli przeglądać je za darmo. Jest oddzielony od Twojego profilu w aplikacji: ten może pozostać tak odważny, jak chcesz — feed jest tylko czysty.\n\nMasz 12 miejsc: 10 zdjęć + 2 filmy. Publikuj przez Ustawienia → Moje zdjęcie → Czysty feed. Fani, którzy znajdą Cię w feedzie, przechodzą na Twoją stronę i piszą do Ciebie tam 💋\n\nTwoja strona: https://slutcamp.app/models/{username}', nl: '📸 NIEUW: JE SCHONE FEED IS LIVE!\n\nJe openbare SlutCamp-pagina heeft nu een schone feed — post daar schone, geklede foto\'s en korte video\'s, en fans (en Google) kunnen ze gratis bekijken. Hij staat los van je app-profiel: dat mag zo wild blijven als je wilt — de feed is alleen schoon.\n\nJe hebt 12 plekken: 10 foto\'s + 2 video\'s. Post via Instellingen → Mijn foto → Schone feed. Fans die je in de feed vinden, tikken door naar je pagina en sturen je daar een bericht 💋\n\nJe pagina: https://slutcamp.app/models/{username}', tr: '📸 YENİ: TEMİZ AKIŞIN YAYINDA!\n\nSlutCamp herkese açık sayfanda artık bir temiz akış var — oraya temiz, giyinik fotoğraflar ve kısa videolar paylaş, hayranlar (ve Google) ücretsiz göz atabilsin. Uygulama içi profilinden ayrıdır: orası istediğin kadar cesur kalabilir — akış yalnızca temizdir.\n\n12 alanın var: 10 fotoğraf + 2 video. Ayarlar → Fotoğrafım → Temiz akış üzerinden paylaş. Seni akışta bulan hayranlar sayfana dokunup sana oradan mesaj atar 💋\n\nSayfan: https://slutcamp.app/models/{username}' },
   ann_cleanfeed_bell_title: { en: '📸 Your clean feed is live!', es: '📸 ¡Tu feed limpio ya está en vivo!', pt: '📸 Seu feed limpo está no ar!', fr: '📸 Ton fil propre est en ligne !', de: '📸 Dein sauberer Feed ist live!', ru: '📸 Твоя чистая лента уже работает!', ja: '📸 クリーンフィードが公開されました！', zh: '📸 你的纯净动态上线了！', ko: '📸 클린 피드가 시작됐어요!', it: '📸 Il tuo feed pulito è live!', pl: '📸 Twój czysty feed już działa!', nl: '📸 Je schone feed is live!', tr: '📸 Temiz akışın yayında!' },
   ann_cleanfeed_bell_body: { en: 'Post clean pictures + videos — Settings → My Photo → Clean feed 💋', es: 'Publica fotos y videos limpios — Ajustes → Mi foto → Feed limpio 💋', pt: 'Poste fotos e vídeos limpos — Configurações → Minha foto → Feed limpo 💋', fr: 'Publie des photos + vidéos propres — Réglages → Ma photo → Fil propre 💋', de: 'Poste saubere Bilder + Videos — Einstellungen → Mein Foto → Sauberer Feed 💋', ru: 'Публикуй чистые фото + видео — Настройки → Моё фото → Чистая лента 💋', ja: 'クリーンな写真＋動画を投稿 — 設定 → 私の写真 → クリーンフィード 💋', zh: '发布纯净照片＋视频 — 设置 → 我的照片 → 纯净动态 💋', ko: '클린한 사진 + 영상을 올려 주세요 — 설정 → 내 사진 → 클린 피드 💋', it: 'Pubblica foto + video puliti — Impostazioni → La mia foto → Feed pulito 💋', pl: 'Publikuj czyste zdjęcia + filmy — Ustawienia → Moje zdjęcie → Czysty feed 💋', nl: 'Post schone foto\'s + video\'s — Instellingen → Mijn foto → Schone feed 💋', tr: 'Temiz fotoğraf + video paylaş — Ayarlar → Fotoğrafım → Temiz akış 💋' },
+  ann_launchupdate_dm: { en: 'Hey ladies,\n\nI want to go ahead and thank y\'all for being patient with me. SlutCamp is in the final stages of compliance before we can go live. We should be done by the end of this week.\n\nI have added new features for the models. Fans that add you to their playlist/favorites will be able to receive a broadcast message made specifically for them from you — so you can let your people know when you\'re going live.\n\nYour top spenders will be automatically added to your wallet. So whenever a top spender reaches out to you, they get sent straight to the front of the line in your messages.\n\n— Asce', es: 'Hola, chicas,\n\nQuiero agradecerles por su paciencia conmigo. SlutCamp está en las etapas finales de cumplimiento antes de que podamos salir en vivo. Deberíamos terminar para el final de esta semana.\n\nHe añadido nuevas funciones para las modelos. Los fans que te añadan a su lista de reproducción/favoritos podrán recibir de ti un mensaje de difusión hecho específicamente para ellos — para que puedas avisar a tu gente cuándo vas a salir en vivo.\n\nTus fans que más gastan se añadirán automáticamente a tu billetera. Así, cada vez que uno de ellos te escriba, pasará directamente al frente de la fila en tus mensajes.\n\n— Asce', pt: 'Oi, meninas,\n\nQuero agradecer a vocês pela paciência comigo. A SlutCamp está nas etapas finais de conformidade antes de podermos entrar no ar. Devemos terminar até o fim desta semana.\n\nAdicionei novos recursos para as modelos. Os fãs que adicionarem você à playlist/favoritos deles poderão receber de você uma mensagem de transmissão feita especificamente para eles — assim, você pode avisar seu público quando for entrar ao vivo.\n\nSeus fãs que mais gastam serão adicionados automaticamente à sua carteira. Então, sempre que um deles falar com você, ele irá direto para a frente da fila nas suas mensagens.\n\n— Asce', fr: 'Salut les filles,\n\nJe veux vous remercier pour votre patience envers moi. SlutCamp est dans les dernières étapes de conformité avant que nous puissions passer en direct. Nous devrions avoir terminé d\'ici la fin de cette semaine.\n\nJ\'ai ajouté de nouvelles fonctionnalités pour les modèles. Les fans qui vous ajoutent à leur playlist/favoris pourront recevoir de vous un message de diffusion créé spécialement pour eux — pour que vous puissiez prévenir vos gens quand vous passez en direct.\n\nVos fans qui dépensent le plus seront automatiquement ajoutés à votre portefeuille. Ainsi, chaque fois que l\'un d\'eux vous contacte, il passera directement en tête de file dans vos messages.\n\n— Asce', de: 'Hallo Mädels,\n\nich möchte mich bei euch für eure Geduld mit mir bedanken. SlutCamp befindet sich in der letzten Phase der Compliance, bevor wir live gehen können. Bis Ende dieser Woche sollten wir fertig sein.\n\nIch habe neue Funktionen für die Models hinzugefügt. Fans, die dich zu ihrer Playlist/Favoriten hinzufügen, können eine Broadcast-Nachricht erhalten, die du speziell für sie erstellt hast — damit du deinen Leuten Bescheid geben kannst, wann du live gehst.\n\nDeine Fans, die am meisten ausgeben, werden automatisch zu deiner Wallet hinzugefügt. Wenn dich also einer von ihnen kontaktiert, landet er in deinen Nachrichten direkt ganz vorne in der Reihe.\n\n— Asce', ru: 'Привет, девочки,\n\nХочу поблагодарить вас за терпение ко мне. SlutCamp находится на финальных этапах проверки соответствия, прежде чем мы сможем выйти в эфир. Мы должны закончить к концу этой недели.\n\nЯ добавил новые функции для моделей. Фаны, которые добавят вас в свой плейлист/избранное, смогут получать от вас рассылку, созданную специально для них, — чтобы вы могли сообщать своим людям, когда выходите в эфир.\n\nВаши фаны, которые тратят больше всех, будут автоматически добавляться в ваш кошелёк. Поэтому, когда такой фанат напишет вам, он сразу попадёт в начало очереди ваших сообщений.\n\n— Asce', ja: 'みなさん、こんにちは。\n\n私に辛抱強く付き合ってくれてありがとうございます。SlutCampは、ライブを開始できるようになる前のコンプライアンス最終段階にあります。今週末までには終わる予定です。\n\nモデル向けの新機能を追加しました。あなたをプレイリスト／お気に入りに追加したファンは、あなたが彼らのために特別に作った一斉送信メッセージを受け取れるようになります — ライブの開始をあなたのファンに知らせることができます。\n\nあなたに最も多く使ってくれるファンは、自動的にあなたのウォレットに追加されます。そういうファンがあなたに連絡すると、あなたのメッセージの列の先頭に直接送られます。\n\n— Asce', zh: '姑娘们，大家好，\n\n我想先谢谢你们对我的耐心。SlutCamp 在正式上线前正处于合规的最后阶段。我们应该在本周末前完成。\n\n我为模特们新增了功能。将你加入他们的播放列表/收藏的粉丝，将能够收到你专门为他们制作的广播消息 — 这样你就可以让你的粉丝知道你什么时候开播。\n\n在你这里消费最高的粉丝会自动添加到你的钱包。因此，每当一位消费最高的粉丝联系你时，他都会直接排到你消息队列的最前面。\n\n— Asce', ko: '안녕하세요, 여러분,\n\n저와 함께 기다려 주셔서 감사합니다. SlutCamp는 라이브를 시작하기 전 규정 준수의 마지막 단계에 있습니다. 이번 주 말까지는 마칠 예정입니다.\n\n모델들을 위한 새 기능을 추가했습니다. 당신을 자신의 플레이리스트/즐겨찾기에 추가한 팬들은, 당신이 그들을 위해 특별히 만든 방송 메시지를 받을 수 있습니다 — 라이브를 시작할 때 당신의 사람들에게 알릴 수 있습니다.\n\n당신에게 가장 많이 지출한 팬들은 자동으로 당신의 지갑에 추가됩니다. 그래서 그런 팬이 당신에게 연락하면, 당신의 메시지 줄 맨 앞으로 바로 이동합니다.\n\n— Asce', it: 'Ciao ragazze,\n\nVoglio ringraziarvi per la pazienza che avete avuto con me. SlutCamp è nelle fasi finali della conformità prima che possiamo andare live. Dovremmo finire entro la fine di questa settimana.\n\nHo aggiunto nuove funzioni per le modelle. I fan che ti aggiungono alla loro playlist/preferiti potranno ricevere da te un messaggio broadcast creato appositamente per loro — così potrai far sapere alla tua gente quando andrai live.\n\nI tuoi fan che spendono di più saranno aggiunti automaticamente al tuo portafoglio. Così, ogni volta che uno di loro ti contatta, finirà direttamente in cima alla fila nei tuoi messaggi.\n\n— Asce', pl: 'Cześć dziewczyny,\n\nChcę wam podziękować za cierpliwość do mnie. SlutCamp jest na końcowych etapach zgodności, zanim będziemy mogli wystartować na żywo. Powinniśmy skończyć do końca tego tygodnia.\n\nDodałem nowe funkcje dla modelek. Fani, którzy dodadzą cię do swojej playlisty/ulubionych, będą mogli otrzymywać od ciebie wiadomość rozgłoszeniową stworzoną specjalnie dla nich — dzięki temu możesz dać swoim ludziom znać, kiedy będziesz na żywo.\n\nFani, którzy wydają u ciebie najwięcej, zostaną automatycznie dodani do twojego portfela. Więc za każdym razem, gdy jeden z nich się do ciebie odezwie, trafi prosto na początek kolejki w twoich wiadomościach.\n\n— Asce', nl: 'Hoi meiden,\n\nIk wil jullie bedanken voor jullie geduld met mij. SlutCamp zit in de laatste fase van compliance voordat we live kunnen gaan. We zouden tegen het einde van deze week klaar moeten zijn.\n\nIk heb nieuwe functies toegevoegd voor de modellen. Fans die jou aan hun playlist/favorieten toevoegen, kunnen een broadcastbericht ontvangen dat je speciaal voor hen hebt gemaakt — zodat je jouw mensen kunt laten weten wanneer je live gaat.\n\nJe fans die het meest uitgeven, worden automatisch aan je wallet toegevoegd. Dus telkens als een van hen contact met je opneemt, komt hij direct vooraan in de rij in je berichten te staan.\n\n— Asce', tr: 'Selam kızlar,\n\nBana gösterdiğiniz sabır için size teşekkür etmek istiyorum. SlutCamp, canlı yayına geçmeden önce uyumluluğun son aşamalarında. Bu haftanın sonuna kadar bitirmiş olmalıyız.\n\nModeller için yeni özellikler ekledim. Sizi çalma listelerine/favorilerine ekleyen hayranlar, sizden özellikle onlar için hazırlanmış bir yayın mesajı alabilecek — böylece canlı yayına ne zaman çıkacağınızı kendi insanlarınıza bildirebilirsiniz.\n\nEn çok harcama yapan hayranlarınız otomatik olarak cüzdanınıza eklenecek. Böylece onlardan biri size ulaştığında, mesajlarınızda doğrudan sıranın en önüne gönderilecek.\n\n— Asce' },
+  ann_launchupdate_bell_title: { en: '📣 A message from Asce', es: '📣 Un mensaje de Asce', pt: '📣 Uma mensagem de Asce', fr: '📣 Un message d\'Asce', de: '📣 Eine Nachricht von Asce', ru: '📣 Сообщение от Asce', ja: '📣 Asceからのメッセージ', zh: '📣 来自 Asce 的消息', ko: '📣 Asce의 메시지', it: '📣 Un messaggio da Asce', pl: '📣 Wiadomość od Asce', nl: '📣 Een bericht van Asce', tr: '📣 Asce\'den bir mesaj' },
+  ann_launchupdate_bell_body: { en: 'News on the launch + new features for you — tap to read.', es: 'Noticias del lanzamiento + nuevas funciones para ti — toca para leer.', pt: 'Novidades do lançamento + novos recursos para você — toque para ler.', fr: 'Des nouvelles du lancement + de nouvelles fonctions pour toi — touche pour lire.', de: 'Neuigkeiten zum Start + neue Funktionen für dich — tippe zum Lesen.', ru: 'Новости о запуске + новые функции для вас — нажмите, чтобы прочитать.', ja: 'ローンチのお知らせ＋あなたへの新機能 — タップして読んでね。', zh: '发布动态 + 为你准备的新功能 — 点开阅读。', ko: '출시 소식 + 당신을 위한 새 기능 — 탭해서 읽어보세요.', it: 'Novità sul lancio + nuove funzioni per te — tocca per leggere.', pl: 'Wiadomości o starcie + nowe funkcje dla Ciebie — dotknij, aby przeczytać.', nl: 'Nieuws over de lancering + nieuwe functies voor jou — tik om te lezen.', tr: 'Lansman haberleri + senin için yeni özellikler — okumak için dokun.' },
   battle_bell_invite_title: { en: '⚔️ PumPum Verse challenge!', es: '⚔️ ¡Desafío PumPum Verse!', pt: '⚔️ Desafio PumPum Verse!', fr: '⚔️ Défi PumPum Verse !', de: '⚔️ PumPum Verse-Herausforderung!', ru: '⚔️ Вызов в PumPum Verse!', ja: '⚔️ PumPum Verseの挑戦状！', zh: '⚔️ PumPum Verse挑战！', ko: '⚔️ PumPum Verse 도전장!', it: '⚔️ Sfida PumPum Verse!', pl: '⚔️ Wyzwanie PumPum Verse!', nl: '⚔️ PumPum Verse-uitdaging!', tr: '⚔️ PumPum Verse meydan okuması!' },
   battle_bell_invite_body: { en: '{name} wants to battle you live for {minutes} minutes — winner takes the bigger cut. Open the app to answer ⚔️', es: '{name} quiere enfrentarte en vivo por {minutes} minutos — la ganadora se lleva la mayor parte. Abre la app para responder ⚔️', pt: '{name} quer batalhar com você ao vivo por {minutes} minutos — a vencedora fica com a maior parte. Abra o app para responder ⚔️', fr: '{name} veut vous affronter en direct pendant {minutes} minutes — la gagnante prend la plus grosse part. Ouvrez l\'appli pour répondre ⚔️', de: '{name} will {minutes} Minuten live gegen dich kämpfen — die Gewinnerin bekommt den größeren Anteil. Öffne die App, um zu antworten ⚔️', ru: '{name} хочет сразиться с вами в эфире на {minutes} минут — победительница забирает большую часть. Откройте приложение, чтобы ответить ⚔️', ja: '{name}が{minutes}分間のライブバトルを申し込んでいます — 勝者が大きな取り分をゲット。アプリを開いて答えてね ⚔️', zh: '{name} 想和你进行 {minutes} 分钟的直播对战 — 赢家拿大头。打开应用回复 ⚔️', ko: '{name}님이 {minutes}분 라이브 배틀을 신청했어요 — 승자가 더 큰 몫을 가져갑니다. 앱을 열어 답하세요 ⚔️', it: '{name} vuole sfidarti in live per {minutes} minuti — la vincitrice prende la fetta più grande. Apri l\'app per rispondere ⚔️', pl: '{name} chce walczyć z Tobą na żywo przez {minutes} minut — zwyciężczyni bierze większą część. Otwórz aplikację, aby odpowiedzieć ⚔️', nl: '{name} wil {minutes} minuten live tegen je battelen — de winnaar pakt het grootste deel. Open de app om te antwoorden ⚔️', tr: '{name} seninle {minutes} dakika canlı savaşmak istiyor — kazanan büyük payı alır. Cevaplamak için uygulamayı aç ⚔️' },
   battle_bell_won_title: { en: '🏆 You WON your PumPum Verse!', es: '🏆 ¡GANASTE tu PumPum Verse!', pt: '🏆 Você VENCEU seu PumPum Verse!', fr: '🏆 Vous avez GAGNÉ votre PumPum Verse !', de: '🏆 Du hast dein PumPum Verse GEWONNEN!', ru: '🏆 Вы ВЫИГРАЛИ PumPum Verse!', ja: '🏆 PumPum Verseに勝利！', zh: '🏆 你赢得了PumPum Verse！', ko: '🏆 PumPum Verse에서 승리했어요!', it: '🏆 Hai VINTO il tuo PumPum Verse!', pl: '🏆 WYGRAŁAŚ swój PumPum Verse!', nl: '🏆 Je hebt je PumPum Verse GEWONNEN!', tr: '🏆 PumPum Verse\'i KAZANDIN!' },
@@ -6428,6 +6615,38 @@ function announceCleanFeedToModels() {
 /* SlutCamp thread and the bell opens it (postToOfficialThread);      */
 /* deployments without a house account keep the bell+push-only form.  */
 /* ------------------------------------------------------------------ */
+/* Launch-update blast — ONE TIME, guarded by the
+   launch_update_announced_at stamp on platform_stats (the clean-feed
+   pattern): Asce's own message to the models — launch timing plus the
+   broadcast-to-favorites and top-spender features — one DM + one bell
+   per model in her own language. */
+function announceLaunchUpdateToModels() {
+  const st = db.prepare('SELECT launch_update_announced_at FROM platform_stats WHERE id = 1').get();
+  if (!st || st.launch_update_announced_at) return 0;
+  const admin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get();
+  if (!admin) return 0;
+  const models = db.prepare("SELECT id, username, language FROM users WHERE role = 'model' AND banned = 0").all();
+  let sent = 0;
+  for (const m of models) {
+    if (m.id === admin.id) continue;
+    try {
+      const conv = announcementThreadFor(m.id, 'model', admin.id);
+      db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?,?,?)')
+        .run(conv.id, conv.senderId, srv('ann_launchupdate_dm', m.language));
+      db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
+      try {
+        notifyUser(m.id, 'launchupdate', srv('ann_launchupdate_bell_title', m.language),
+          srv('ann_launchupdate_bell_body', m.language), `/#chat/${conv.id}`);
+      } catch (e) { /* the bell is a bonus; the message is the deliverable */ }
+      sent++;
+    } catch (e) { /* one bad thread must not block the rest */ }
+  }
+  if (sent > 0 || models.length === 0) {
+    db.prepare("UPDATE platform_stats SET launch_update_announced_at = datetime('now') WHERE id = 1").run();
+  }
+  return sent;
+}
+
 function announceFanPreviewToFans() {
   const st = db.prepare('SELECT fan_preview_announced_at FROM platform_stats WHERE id = 1').get();
   if (!st || st.fan_preview_announced_at) return 0;
@@ -6580,6 +6799,13 @@ function seed() {
               per_minute_cents = 399, is_online = 0 WHERE user_id = ?`)
     .run(`Bella Red 🌹 Ebony goddess. Premium attention for premium fans. First 3 messages FREE.`, bellaId);
 
+  /* Seeded demo personas predate the signup consent box; stamp their
+   * public-display consent so the seeded ecosystem can still upload
+   * (dev seed only — real models consent at signup or at the door). */
+  for (const seededId of [bunnyId, staceyId, bellaId]) {
+    db.prepare("UPDATE users SET publicity_consent_at = datetime('now') WHERE id = ?").run(seededId);
+  }
+
   const fanId = createUser('fandemo', 'fan123', 'fan', 'Demo Fan', '1995-07-07');
   db.prepare('UPDATE wallets SET credits_cents = 10000 WHERE user_id = ?').run(fanId); // $100
 
@@ -6629,6 +6855,7 @@ try { const n = announceSafetyToModels(); if (n) console.log(`[safety] Safety ha
 try { const n = announcePrivateRoomsToModels(); if (n) console.log(`[private-room] Private Room announced to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceBattlesToModels(); if (n) console.log(`[battles] Live Battles announced to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceCleanFeedToModels(); if (n) console.log(`[cleanfeed] Clean feed announced to ${n} models.`); } catch (e) { /* retry next boot */ }
+try { const n = announceLaunchUpdateToModels(); if (n) console.log(`[launchupdate] Launch update announced to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = announceReleasePromptToModels(); if (n) console.log(`[release] Performer-release door announced to ${n} models.`); } catch (e) { /* retry next boot */ }
 try { const n = sweepStalePrivateEvents(); if (n) console.log(`[private-room] Swept ${n} stale private event(s) with refunds.`); } catch (e) { /* retry next boot */ }
 
@@ -7362,6 +7589,7 @@ app.get('/api/models', (req, res) => {
            ls.id AS live_session_id, ls.explicit_rate_cents AS live_explicit_rate_cents,
            (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS live_viewers,
            (SELECT COUNT(*) FROM model_likes WHERE model_id = u.id) AS like_count,
+           (SELECT COUNT(*) FROM follows WHERE model_id = u.id) AS follower_count,
            (SELECT COALESCE(SUM(gross_cents), 0) FROM transactions
              WHERE model_id = u.id AND type <> 'payout' AND is_test = 0) AS total_sales_cents
     FROM users u JOIN models m ON m.user_id = u.id
@@ -7470,6 +7698,7 @@ app.get('/api/models', (req, res) => {
       is_live: !!r.live_session_id, is_featured: !!r.is_featured,
       live_viewers: r.live_viewers || 0, schedule_summary: summary, liked: likedSet.has(r.id),
       likes_count: r.like_count || 0,
+      followers_count: r.follower_count || 0,
       total_sales: Math.round(r.total_sales_cents || 0) / 100,
       rank_score: r.rank_score || 0,
       /* Age Preference filter input: whole years from her dob, or null
@@ -7577,6 +7806,23 @@ addColumnIfMissing('users', 'section_attested_at', 'TEXT');
 addColumnIfMissing('users', 'section_attested_ip', 'TEXT');
 function recordSectionAttestation(userId, req) {
   db.prepare('UPDATE users SET section_attested_at = datetime(\'now\'), section_attested_ip = ? WHERE id = ?')
+    .run(String(clientIp(req) || '').slice(0, 60), userId);
+}
+
+/* Public-display consent record (CCBill compliance, Oct 27 2026): at
+ * model signup she ticks a DISTINCT consent box — separate from the
+ * Terms — agreeing her content, images and likeness will be used and
+ * displayed publicly on the website; the register door refuses model
+ * accounts without it (enforced in POST /api/auth/signup). Like the
+ * attestations above, what is stored is what happened: the consent,
+ * when, and from what IP. Models who predate the box carry NULL and
+ * meet a one-time consent door before their next upload instead
+ * (POST /api/me/publicity-consent stamps the same columns). The
+ * columns themselves are declared with the early users-table
+ * migrations (the dev seed stamps its demo models before this point
+ * in the file is reached). */
+function recordPublicityConsent(userId, req) {
+  db.prepare('UPDATE users SET publicity_consent_at = datetime(\'now\'), publicity_consent_ip = ? WHERE id = ?')
     .run(String(clientIp(req) || '').slice(0, 60), userId);
 }
 
@@ -7989,7 +8235,7 @@ setInterval(() => { try { sweepAppreciationExpiries(); } catch (e) {} }, 60 * 60
 // POST /api/auth/signup — optional guest_token migrates guest chats/trials
 // Optional invite_code: model invite link — forces role='model', tags the invite as used.
 app.post('/api/auth/signup', (req, res) => {
-  const { username, password, role, display_name, dob, agree18, section, guest_token, invite_code, promo_code } = req.body || {};
+  const { username, password, role, display_name, dob, agree18, section, guest_token, invite_code, promo_code, publicity_consent } = req.body || {};
   if (!username || !password || !display_name || !dob)
     return res.status(400).json({ error: 'missing_fields' });
   if (String(password).length < 6) return res.status(400).json({ error: 'password_too_short' });
@@ -8032,6 +8278,13 @@ app.post('/api/auth/signup', (req, res) => {
   // model path through this endpoint passes the same gate.
   if (finalRole === 'model' && String(username).includes('@'))
     return res.status(400).json({ error: 'username_is_email', message: "Your username can't be an email address — pick a name instead." });
+  // Public-display consent (CCBill compliance, Oct 27 2026): the model
+  // join flow carries a DISTINCT consent checkbox — separate from the
+  // Terms/18+ attestation — and the register door refuses a model
+  // account without it. Acknowledged before the account exists, hence
+  // before she can upload anything. Fans never see the box.
+  if (finalRole === 'model' && !(publicity_consent === true || publicity_consent === 'true'))
+    return res.status(400).json({ error: 'publicity_consent_required', message: 'Please tick the public display consent box to join as a model.' });
   if (db.prepare('SELECT id FROM users WHERE username = ?').get(username.trim()))
     return res.status(409).json({ error: 'username_taken' });
 
@@ -8046,6 +8299,7 @@ app.post('/api/auth/signup', (req, res) => {
   recordAgeAttestation(id, req);
   if (finalRole === 'model') {
     recordSectionAttestation(id, req);
+    recordPublicityConsent(id, req);
     // Her declared section lands on her model row (createUser leaves
     // the 'female' default; the declaration is the source of truth).
     db.prepare('UPDATE models SET section = ? WHERE user_id = ?').run(section, id);
@@ -8839,6 +9093,17 @@ app.post('/api/me/welcomed', identMiddleware, requireUser, (req, res) => {
   res.json({ ok: true });
 });
 
+/* Public-display consent door (CCBill compliance, Oct 27 2026): a
+ * model who signed up before the consent box existed (no stamp) meets
+ * a one-time door before her next upload; tapping Accept here stamps
+ * the same columns the signup flow stamps. Models only — the consent
+ * is a creator consent. */
+app.post('/api/me/publicity-consent', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+  recordPublicityConsent(req.user.id, req);
+  const u = db.prepare('SELECT publicity_consent_at FROM users WHERE id = ?').get(req.user.id);
+  res.json({ ok: true, publicity_consent_at: u ? u.publicity_consent_at : null });
+});
+
 /* --- Change password (self-service, every role) ---
  * The signed-in user rotates their OWN password: proof of the current
  * password (bcrypt), a policy-checked new one, and every OTHER session
@@ -9620,6 +9885,13 @@ app.post('/api/media/send', identMiddleware, (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'no_file' });
     if (req.ident.kind === 'user' && req.ident.user.role === 'admin')
       return res.status(403).json({ error: 'admins_cannot_chat' });
+    // Public-display consent door (CCBill compliance, Oct 27 2026): a
+    // model with no consent on file is stopped before her media lands
+    // in a chat — the client shows the consent door and retries.
+    if (req.ident.kind === 'user' && req.ident.user.role === 'model' && !req.ident.user.publicity_consent_at) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(403).json({ error: 'publicity_consent_required', message: 'Please confirm the public display consent before uploading content.' });
+    }
 
     const conversation_id = parseInt(req.body.conversation_id);
     const kind = req.body.kind;
@@ -10009,10 +10281,14 @@ app.post('/api/follows/:modelId', identMiddleware, requireUser, requireRole('fan
     .get(req.user.id, modelId);
   if (existing) {
     db.prepare('DELETE FROM follows WHERE id = ?').run(existing.id);
-    return res.json({ following: false });
+  } else {
+    db.prepare('INSERT INTO follows (fan_id, model_id) VALUES (?,?)').run(req.user.id, modelId);
   }
-  db.prepare('INSERT INTO follows (fan_id, model_id) VALUES (?,?)').run(req.user.id, modelId);
-  res.json({ following: true });
+  // Her public follower count rides back so the profile number the
+  // tap just changed updates live (owner, Oct 26 2026: likes AND
+  // followers show on her page, for fans and models alike).
+  const follower_count = db.prepare('SELECT COUNT(*) AS c FROM follows WHERE model_id = ?').get(modelId).c;
+  res.json({ following: !existing, follower_count });
 });
 
 // Fan: list of model ids they follow
@@ -10311,10 +10587,10 @@ function logPurchaseAttempt(userId, pkg, amountCents, cardFingerprint, ip, statu
 }
 
 // Model independent-contractor agreement (served to models for signing)
-const CONTRACT_VERSION = '1.5';
+const CONTRACT_VERSION = '1.6';
 const MODEL_CONTRACT = {
   version: CONTRACT_VERSION,
-  updated: 'October 18, 2026',
+  updated: 'October 27, 2026',
   sections: [
     {
       title: '1. Parties',
@@ -10326,7 +10602,7 @@ const MODEL_CONTRACT = {
     },
     {
       title: '3. Age & Identity Verification',
-      body: 'You confirm you are at least 18 years old. You have completed (or will complete) government ID verification with SlutCamp before going live, as required for 18 U.S.C. §2257 recordkeeping compliance. If you cannot verify your age and identity, you may not perform on the platform.',
+      body: 'You confirm you are at least 18 years old. You have completed (or will complete) government ID verification with SlutCamp before going live, as required for 18 U.S.C. §2257 recordkeeping compliance. If you cannot verify your age and identity, you may not perform on the platform. The same verification applies to every person who appears in your content: before any content featuring another person is uploaded or performed, you must verify that person\'s identity and age from their government-issued photo ID, confirm they are at least 18, and keep the supporting documents on record. You must provide those documents to the Company on request. No person may appear in your content until this verification is complete.',
     },
     {
       title: '4. Revenue Split & Your Rates',
@@ -10338,11 +10614,11 @@ const MODEL_CONTRACT = {
     },
     {
       title: '6. Content Rights',
-      body: 'You keep ownership of the content you create on the platform. By posting or streaming on SlutCamp, you grant the Company a worldwide, royalty-free license to use, display, reproduce, and promote that content on the platform and in Company marketing (including social media and ads). You confirm you have the right to grant this license and that your content does not infringe anyone else\'s rights.',
+      body: 'You keep ownership of the content you create on the platform. By posting or streaming on SlutCamp, you grant the Company a worldwide, royalty-free license to use, display, reproduce, and promote that content on the platform and in Company marketing (including social media and ads). You confirm you have the right to grant this license and that your content does not infringe anyone else\'s rights. For every person depicted in content you upload or perform, you must first obtain their written consent and keep that consent on record, covering: (a) consent to be depicted in the content; (b) consent to the public distribution of the content and to its upload to SlutCamp; and (c) where content is offered for download, consent to the content being downloaded by other users. The Company\'s standard performer release is the approved way to record this consent, and a completed release (with ID verification) must be on file for every co-performer before they appear.',
     },
     {
       title: '7. Conduct Rules',
-      body: 'On the platform you must NOT: share contact information or payment handles with fans; attempt to take fans or transactions off-platform; use hate speech or slurs; post content featuring anyone under 18 or anyone who has not consented. Breaking these rules can get your messages blocked, your account suspended, or your account deactivated — and you may forfeit pending earnings at the Company\'s discretion.',
+      body: 'You must not engage in any activity on the platform that is illegal or that otherwise violates the Standards — the acceptable-use standards of the Company and its payment processors. On the platform you must NOT: share contact information or payment handles with fans; attempt to take fans or transactions off-platform; use hate speech or slurs; post content featuring anyone under 18 or anyone who has not consented. Breaking these rules can get your messages blocked, your account suspended, or your account deactivated — and you may forfeit pending earnings at the Company\'s discretion.',
     },
     {
       title: '8. Account Access',
@@ -10506,7 +10782,7 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "3. Verificación de edad e identidad",
-    "body": "Confirmas que tienes al menos 18 años. Has completado (o completarás) la verificación con una identificación oficial ante SlutCamp antes de salir en vivo, según lo requerido para el cumplimiento de los registros de 18 U.S.C. §2257. Si no puedes verificar tu edad e identidad, no podrás actuar en la plataforma."
+    "body": "Confirmas que tienes al menos 18 años. Has completado (o completarás) la verificación con una identificación oficial ante SlutCamp antes de salir en vivo, según lo requerido para el cumplimiento de los registros de 18 U.S.C. §2257. Si no puedes verificar tu edad e identidad, no podrás actuar en la plataforma. La misma verificación se aplica a cada persona que aparece en tu contenido: antes de que se suba o se presente cualquier contenido en el que aparezca otra persona, debes verificar la identidad y la edad de esa persona a partir de su identificación oficial con foto, confirmar que tiene al menos 18 años y conservar los documentos de respaldo en tus registros. Debes proporcionar esos documentos a la Compañía cuando te lo solicite. Ninguna persona puede aparecer en tu contenido hasta que esta verificación esté completa."
    },
    {
     "title": "4. Reparto de ingresos y tus tarifas",
@@ -10518,11 +10794,11 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "6. Derechos sobre el contenido",
-    "body": "Conservas la propiedad del contenido que creas en la plataforma. Al publicar o transmitir en SlutCamp, otorgas a la Compañía una licencia mundial y libre de regalías para usar, mostrar, reproducir y promover ese contenido en la plataforma y en el marketing de la Compañía (incluidas redes sociales y anuncios). Confirmas que tienes derecho a otorgar esta licencia y que tu contenido no infringe los derechos de ninguna otra persona."
+    "body": "Conservas la propiedad del contenido que creas en la plataforma. Al publicar o transmitir en SlutCamp, otorgas a la Compañía una licencia mundial y libre de regalías para usar, mostrar, reproducir y promover ese contenido en la plataforma y en el marketing de la Compañía (incluidas redes sociales y anuncios). Confirmas que tienes derecho a otorgar esta licencia y que tu contenido no infringe los derechos de ninguna otra persona. Por cada persona que aparezca en el contenido que subas o presentes, primero debes obtener su consentimiento por escrito y conservar ese consentimiento en tus registros, que cubra: (a) el consentimiento para aparecer en el contenido; (b) el consentimiento para la distribución pública del contenido y para su subida a SlutCamp; y (c) cuando el contenido se ofrezca para descargar, el consentimiento para que el contenido sea descargado por otros usuarios. El documento estándar de consentimiento y cesión de la Compañía para artistas es la forma aprobada de registrar este consentimiento, y debe obrar en archivo un documento completo (con verificación de identidad) por cada co-intérprete antes de su aparición."
    },
    {
     "title": "7. Normas de conducta",
-    "body": "En la plataforma NO debes: compartir datos de contacto ni identificadores de pago con los fans; intentar llevarte a los fans o las transacciones fuera de la plataforma; usar discurso de odio o insultos; publicar contenido que incluya a cualquier persona menor de 18 años o a cualquier persona que no haya dado su consentimiento. Incumplir estas normas puede hacer que tus mensajes sean bloqueados, tu cuenta suspendida o tu cuenta desactivada — y puedes perder las ganancias pendientes a discreción de la Compañía."
+    "body": "No debes participar en ninguna actividad en la plataforma que sea ilegal o que de otro modo viole los Estándares — las normas de uso aceptable de la Compañía y de sus procesadores de pago. En la plataforma NO debes: compartir datos de contacto ni identificadores de pago con los fans; intentar llevarte a los fans o las transacciones fuera de la plataforma; usar discurso de odio o insultos; publicar contenido que incluya a cualquier persona menor de 18 años o a cualquier persona que no haya dado su consentimiento. Incumplir estas normas puede hacer que tus mensajes sean bloqueados, tu cuenta suspendida o tu cuenta desactivada — y puedes perder las ganancias pendientes a discreción de la Compañía."
    },
    {
     "title": "8. Acceso a la cuenta",
@@ -10575,7 +10851,7 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "3. Verificação de Idade e Identidade",
-    "body": "Você confirma que tem pelo menos 18 anos de idade. Você concluiu (ou concluirá) a verificação com documento oficial de identidade junto à SlutCamp antes de entrar ao vivo, conforme exigido para a conformidade com os registros de 18 U.S.C. §2257. Se você não puder verificar sua idade e identidade, você não poderá se apresentar na plataforma."
+    "body": "Você confirma que tem pelo menos 18 anos de idade. Você concluiu (ou concluirá) a verificação com documento oficial de identidade junto à SlutCamp antes de entrar ao vivo, conforme exigido para a conformidade com os registros de 18 U.S.C. §2257. Se você não puder verificar sua idade e identidade, você não poderá se apresentar na plataforma. A mesma verificação se aplica a cada pessoa que aparece no seu conteúdo: antes de qualquer conteúdo com outra pessoa ser enviado ou apresentado, você deve verificar a identidade e a idade dessa pessoa a partir de seu documento oficial de identidade com foto, confirmar que ela tem pelo menos 18 anos e manter os documentos comprobatórios em arquivo. Você deve fornecer esses documentos à Empresa mediante solicitação. Nenhuma pessoa pode aparecer no seu conteúdo até que essa verificação seja concluída."
    },
    {
     "title": "4. Divisão de Receita e Suas Tarifas",
@@ -10587,11 +10863,11 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "6. Direitos sobre o Conteúdo",
-    "body": "Você mantém a propriedade do conteúdo que cria na plataforma. Ao publicar ou transmitir na SlutCamp, você concede à Empresa uma licença mundial e gratuita para usar, exibir, reproduzir e promover esse conteúdo na plataforma e no marketing da Empresa (incluindo redes sociais e anúncios). Você confirma que tem o direito de conceder esta licença e que seu conteúdo não infringe os direitos de nenhuma outra pessoa."
+    "body": "Você mantém a propriedade do conteúdo que cria na plataforma. Ao publicar ou transmitir na SlutCamp, você concede à Empresa uma licença mundial e gratuita para usar, exibir, reproduzir e promover esse conteúdo na plataforma e no marketing da Empresa (incluindo redes sociais e anúncios). Você confirma que tem o direito de conceder esta licença e que seu conteúdo não infringe os direitos de nenhuma outra pessoa. Para cada pessoa retratada no conteúdo que você envia ou apresenta, você deve primeiro obter o consentimento por escrito dela e manter esse consentimento em arquivo, abrangendo: (a) consentimento para ser retratada no conteúdo; (b) consentimento para a distribuição pública do conteúdo e para o seu envio à SlutCamp; e (c) quando o conteúdo for oferecido para download, consentimento para que o conteúdo seja baixado por outros usuários. O termo de autorização padrão de artista da Empresa é a forma aprovada de registrar esse consentimento, e um termo completo (com verificação de identidade) deve estar em arquivo para cada co-intérprete antes de sua aparição."
    },
    {
     "title": "7. Regras de Conduta",
-    "body": "Na plataforma, você NÃO deve: compartilhar informações de contato ou dados de pagamento com fãs; tentar levar fãs ou transações para fora da plataforma; usar discurso de ódio ou injúrias; publicar conteúdo com qualquer pessoa menor de 18 anos ou qualquer pessoa que não tenha consentido. Violar estas regras pode fazer suas mensagens serem bloqueadas, sua conta ser suspensa ou sua conta ser desativada — e você pode perder os ganhos pendentes, a critério da Empresa."
+    "body": "Você não deve se envolver em nenhuma atividade na plataforma que seja ilegal ou que de outra forma viole os Padrões — os padrões de uso aceitável da Empresa e de seus processadores de pagamento. Na plataforma, você NÃO deve: compartilhar informações de contato ou dados de pagamento com fãs; tentar levar fãs ou transações para fora da plataforma; usar discurso de ódio ou injúrias; publicar conteúdo com qualquer pessoa menor de 18 anos ou qualquer pessoa que não tenha consentido. Violar estas regras pode fazer suas mensagens serem bloqueadas, sua conta ser suspensa ou sua conta ser desativada — e você pode perder os ganhos pendentes, a critério da Empresa."
    },
    {
     "title": "8. Acesso à Conta",
@@ -10644,7 +10920,7 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "3. Vérification de l'âge et de l'identité",
-    "body": "Vous confirmez avoir au moins 18 ans. Vous avez effectué (ou effectuerez) une vérification d'identité au moyen d'une pièce d'identité officielle auprès de SlutCamp avant de passer en direct, comme l'exige la conformité en matière de tenue de registres au titre de 18 U.S.C. §2257. Si vous ne pouvez pas vérifier votre âge et votre identité, vous ne pouvez pas vous produire sur la plateforme."
+    "body": "Vous confirmez avoir au moins 18 ans. Vous avez effectué (ou effectuerez) une vérification d'identité au moyen d'une pièce d'identité officielle auprès de SlutCamp avant de passer en direct, comme l'exige la conformité en matière de tenue de registres au titre de 18 U.S.C. §2257. Si vous ne pouvez pas vérifier votre âge et votre identité, vous ne pouvez pas vous produire sur la plateforme. La même vérification s'applique à chaque personne qui apparaît dans votre contenu : avant que tout contenu mettant en scène une autre personne soit mis en ligne ou interprété, vous devez vérifier l'identité et l'âge de cette personne à partir de sa pièce d'identité officielle avec photo, confirmer qu'elle a au moins 18 ans et conserver les documents justificatifs dans vos dossiers. Vous devez fournir ces documents à la Société sur demande. Aucune personne ne peut apparaître dans votre contenu tant que cette vérification n'est pas terminée."
    },
    {
     "title": "4. Répartition des revenus et vos tarifs",
@@ -10656,11 +10932,11 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "6. Droits sur le contenu",
-    "body": "Vous conservez la propriété du contenu que vous créez sur la plateforme. En publiant ou en diffusant sur SlutCamp, vous accordez à la Société une licence mondiale et libre de redevances pour utiliser, afficher, reproduire et promouvoir ce contenu sur la plateforme et dans le marketing de la Société (y compris les réseaux sociaux et les publicités). Vous confirmez avoir le droit d'accorder cette licence et que votre contenu ne porte atteinte aux droits de personne d'autre."
+    "body": "Vous conservez la propriété du contenu que vous créez sur la plateforme. En publiant ou en diffusant sur SlutCamp, vous accordez à la Société une licence mondiale et libre de redevances pour utiliser, afficher, reproduire et promouvoir ce contenu sur la plateforme et dans le marketing de la Société (y compris les réseaux sociaux et les publicités). Vous confirmez avoir le droit d'accorder cette licence et que votre contenu ne porte atteinte aux droits de personne d'autre. Pour chaque personne représentée dans le contenu que vous mettez en ligne ou interprétez, vous devez d'abord obtenir son consentement écrit et conserver ce consentement dans vos dossiers, couvrant : (a) le consentement à être représentée dans le contenu ; (b) le consentement à la distribution publique du contenu et à sa mise en ligne sur SlutCamp ; et (c) lorsque le contenu est proposé au téléchargement, le consentement à ce que le contenu soit téléchargé par d'autres utilisateurs. L'autorisation standard d'artiste de la Société est le moyen approuvé pour enregistrer ce consentement, et une autorisation complète (avec vérification d'identité) doit être au dossier pour chaque co-interprète avant son apparition."
    },
    {
     "title": "7. Règles de conduite",
-    "body": "Sur la plateforme, vous ne devez PAS : partager des coordonnées ou des identifiants de paiement avec les fans ; tenter de déplacer les fans ou les transactions hors plateforme ; utiliser des discours de haine ou des insultes ; publier du contenu mettant en scène une personne de moins de 18 ans ou une personne qui n'a pas consenti. Enfreindre ces règles peut entraîner le blocage de vos messages, la suspension de votre compte ou sa désactivation — et vous pouvez perdre vos gains en attente, à la discrétion de la Société."
+    "body": "Vous ne devez exercer sur la plateforme aucune activité illégale ou qui viole autrement les Normes — les normes d'utilisation acceptable de la Société et de ses prestataires de paiement. Sur la plateforme, vous ne devez PAS : partager des coordonnées ou des identifiants de paiement avec les fans ; tenter de déplacer les fans ou les transactions hors plateforme ; utiliser des discours de haine ou des insultes ; publier du contenu mettant en scène une personne de moins de 18 ans ou une personne qui n'a pas consenti. Enfreindre ces règles peut entraîner le blocage de vos messages, la suspension de votre compte ou sa désactivation — et vous pouvez perdre vos gains en attente, à la discrétion de la Société."
    },
    {
     "title": "8. Accès au compte",
@@ -10713,7 +10989,7 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "3. Alters- & Identitätsverifizierung",
-    "body": "Sie bestätigen, dass Sie mindestens 18 Jahre alt sind. Sie haben die Verifizierung eines amtlichen Ausweises bei SlutCamp abgeschlossen (oder werden sie abschließen), bevor Sie live gehen, wie für die Compliance mit der Aufzeichnungspflicht nach 18 U.S.C. §2257 erforderlich. Wenn Sie Ihr Alter und Ihre Identität nicht verifizieren können, dürfen Sie auf der Plattform nicht auftreten."
+    "body": "Sie bestätigen, dass Sie mindestens 18 Jahre alt sind. Sie haben die Verifizierung eines amtlichen Ausweises bei SlutCamp abgeschlossen (oder werden sie abschließen), bevor Sie live gehen, wie für die Compliance mit der Aufzeichnungspflicht nach 18 U.S.C. §2257 erforderlich. Wenn Sie Ihr Alter und Ihre Identität nicht verifizieren können, dürfen Sie auf der Plattform nicht auftreten. Dieselbe Verifizierung gilt für jede Person, die in Ihren Inhalten erscheint: Bevor Inhalte, in denen eine andere Person vorkommt, hochgeladen oder aufgeführt werden, müssen Sie die Identität und das Alter dieser Person anhand ihres amtlichen Lichtbildausweises verifizieren, bestätigen, dass sie mindestens 18 Jahre alt ist, und die entsprechenden Unterlagen aufbewahren. Sie müssen diese Unterlagen dem Unternehmen auf Anfrage vorlegen. Keine Person darf in Ihren Inhalten erscheinen, bevor diese Verifizierung abgeschlossen ist."
    },
    {
     "title": "4. Umsatzaufteilung & Ihre Preise",
@@ -10725,11 +11001,11 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "6. Inhaltsrechte",
-    "body": "Sie behalten das Eigentum an den Inhalten, die Sie auf der Plattform erstellen. Indem Sie auf SlutCamp posten oder streamen, gewähren Sie dem Unternehmen eine weltweite, gebührenfreie Lizenz, diese Inhalte auf der Plattform und im Marketing des Unternehmens (einschließlich sozialer Medien und Werbung) zu nutzen, anzuzeigen, zu reproduzieren und zu bewerben. Sie bestätigen, dass Sie das Recht haben, diese Lizenz zu gewähren, und dass Ihre Inhalte die Rechte Dritter nicht verletzen."
+    "body": "Sie behalten das Eigentum an den Inhalten, die Sie auf der Plattform erstellen. Indem Sie auf SlutCamp posten oder streamen, gewähren Sie dem Unternehmen eine weltweite, gebührenfreie Lizenz, diese Inhalte auf der Plattform und im Marketing des Unternehmens (einschließlich sozialer Medien und Werbung) zu nutzen, anzuzeigen, zu reproduzieren und zu bewerben. Sie bestätigen, dass Sie das Recht haben, diese Lizenz zu gewähren, und dass Ihre Inhalte die Rechte Dritter nicht verletzen. Für jede Person, die in Inhalten dargestellt wird, die Sie hochladen oder aufführen, müssen Sie zuerst deren schriftliche Einwilligung einholen und diese Einwilligung aufbewahren, die Folgendes abdeckt: (a) die Einwilligung, in den Inhalten dargestellt zu werden; (b) die Einwilligung in die öffentliche Verbreitung der Inhalte und in deren Hochladen auf SlutCamp; und (c) sofern Inhalte zum Download angeboten werden, die Einwilligung, dass die Inhalte von anderen Nutzern heruntergeladen werden. Die Standard-Performer-Freigabe des Unternehmens ist die anerkannte Art, diese Einwilligung festzuhalten, und für jeden Co-Performer muss vor seinem Auftritt eine vollständig ausgefüllte Freigabe (mit ID-Verifizierung) vorliegen."
    },
    {
     "title": "7. Verhaltensregeln",
-    "body": "Auf der Plattform dürfen Sie NICHT: Kontaktdaten oder Zahlungs-Handles mit Fans teilen; versuchen, Fans oder Transaktionen außerhalb der Plattform zu bewegen; Hassrede oder Beleidigungen verwenden; Inhalte posten, die Personen unter 18 Jahren oder Personen zeigen, die nicht zugestimmt haben. Ein Verstoß gegen diese Regeln kann dazu führen, dass Ihre Nachrichten blockiert, Ihr Account ausgesetzt oder Ihr Account deaktiviert wird — und Sie können ausstehende Einnahmen nach Ermessen des Unternehmens verwirken."
+    "body": "Sie dürfen auf der Plattform keiner Aktivität nachgehen, die illegal ist oder anderweitig gegen die Standards verstößt — die Standards für zulässige Nutzung des Unternehmens und seiner Zahlungsabwickler. Auf der Plattform dürfen Sie NICHT: Kontaktdaten oder Zahlungs-Handles mit Fans teilen; versuchen, Fans oder Transaktionen außerhalb der Plattform zu bewegen; Hassrede oder Beleidigungen verwenden; Inhalte posten, die Personen unter 18 Jahren oder Personen zeigen, die nicht zugestimmt haben. Ein Verstoß gegen diese Regeln kann dazu führen, dass Ihre Nachrichten blockiert, Ihr Account ausgesetzt oder Ihr Account deaktiviert wird — und Sie können ausstehende Einnahmen nach Ermessen des Unternehmens verwirken."
    },
    {
     "title": "8. Account-Zugang",
@@ -10782,7 +11058,7 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "3. Подтверждение возраста и личности",
-    "body": "Вы подтверждаете, что вам не менее 18 лет. Вы прошли (или пройдёте) проверку государственного удостоверения личности в SlutCamp, прежде чем выходить в эфир, как требуется для соблюдения требований ведения учёта по 18 U.S.C. §2257. Если вы не можете подтвердить ваш возраст и личность, вы не можете выступать на платформе."
+    "body": "Вы подтверждаете, что вам не менее 18 лет. Вы прошли (или пройдёте) проверку государственного удостоверения личности в SlutCamp, прежде чем выходить в эфир, как требуется для соблюдения требований ведения учёта по 18 U.S.C. §2257. Если вы не можете подтвердить ваш возраст и личность, вы не можете выступать на платформе. Та же проверка применяется к каждому лицу, которое появляется в вашем контенте: прежде чем любой контент с участием другого лица будет загружен или исполнен, вы должны подтвердить личность и возраст этого лица по его государственному удостоверению личности с фотографией, убедиться, что ему не менее 18 лет, и хранить подтверждающие документы в своих записях. Вы должны предоставить эти документы Компании по запросу. Ни одно лицо не может появляться в вашем контенте, пока эта проверка не завершена."
    },
    {
     "title": "4. Разделение дохода и ваши тарифы",
@@ -10794,11 +11070,11 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "6. Права на контент",
-    "body": "Вы сохраняете право собственности на контент, который вы создаёте на платформе. Размещая или транслируя контент на SlutCamp, вы предоставляете Компании всемирную, безвозмездную лицензию на использование, отображение, воспроизведение и продвижение этого контента на платформе и в маркетинге Компании (включая социальные сети и рекламу). Вы подтверждаете, что у вас есть право предоставлять эту лицензию и что ваш контент не нарушает чужих прав."
+    "body": "Вы сохраняете право собственности на контент, который вы создаёте на платформе. Размещая или транслируя контент на SlutCamp, вы предоставляете Компании всемирную, безвозмездную лицензию на использование, отображение, воспроизведение и продвижение этого контента на платформе и в маркетинге Компании (включая социальные сети и рекламу). Вы подтверждаете, что у вас есть право предоставлять эту лицензию и что ваш контент не нарушает чужих прав. Для каждого лица, изображённого в контенте, который вы загружаете или исполняете, вы должны сначала получить его письменное согласие и хранить это согласие в своих записях; согласие должно охватывать: (a) согласие на изображение в контенте; (b) согласие на публичное распространение контента и на его загрузку на SlutCamp; и (c) если контент предлагается для скачивания — согласие на скачивание контента другими пользователями. Стандартное разрешение исполнителя Компании — это утверждённый способ оформления такого согласия, и полностью оформленное разрешение (с проверкой удостоверения личности) должно быть в наличии для каждого соисполнителя до его появления."
    },
    {
     "title": "7. Правила поведения",
-    "body": "На платформе вы НЕ должны: делиться контактной информацией или платёжными реквизитами с фанатами; пытаться увести фанатов или транзакции за пределы платформы; использовать язык ненависти или оскорбления; публиковать контент с участием лиц младше 18 лет или лиц, не давших согласия. Нарушение этих правил может привести к блокировке ваших сообщений, приостановке вашего аккаунта или его деактивации — и вы можете лишиться ожидающих доходов по усмотрению Компании."
+    "body": "Вы не должны заниматься на платформе никакой деятельностью, которая является незаконной или иным образом нарушает Стандарты — стандарты допустимого использования Компании и её платёжных обработчиков. На платформе вы НЕ должны: делиться контактной информацией или платёжными реквизитами с фанатами; пытаться увести фанатов или транзакции за пределы платформы; использовать язык ненависти или оскорбления; публиковать контент с участием лиц младше 18 лет или лиц, не давших согласия. Нарушение этих правил может привести к блокировке ваших сообщений, приостановке вашего аккаунта или его деактивации — и вы можете лишиться ожидающих доходов по усмотрению Компании."
    },
    {
     "title": "8. Доступ к аккаунту",
@@ -10851,7 +11127,7 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "3. 年齢および本人確認",
-    "body": "あなたは18歳以上であることを確認します。あなたは、合衆国法典第18編 §2257 の記録保持コンプライアンスのために必要なとおり、ライブ配信を開始する前にSlutCampによる政府発行身分証の確認を完了しています（または完了します）。年齢と身元を確認できない場合、プラットフォームでパフォーマンスを行うことはできません。"
+    "body": "あなたは18歳以上であることを確認します。あなたは、合衆国法典第18編 §2257 の記録保持コンプライアンスのために必要なとおり、ライブ配信を開始する前にSlutCampによる政府発行身分証の確認を完了しています（または完了します）。年齢と身元を確認できない場合、プラットフォームでパフォーマンスを行うことはできません。 同じ確認は、あなたのコンテンツに登場するすべての人に適用されます：他の人が登場するコンテンツがアップロードまたはパフォーマンスされる前に、その人の政府発行の写真付き身分証明書で身元と年齢を確認し、18歳以上であることを確認し、裏付け書類を記録として保管しなければなりません。求められた場合、それらの書類を当社に提出しなければなりません。この確認が完了するまで、いかなる人もあなたのコンテンツに登場することはできません。"
    },
    {
     "title": "4. 収益分配とあなたの料金",
@@ -10863,11 +11139,11 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "6. コンテンツの権利",
-    "body": "あなたは、プラットフォーム上で作成したコンテンツの所有権を保持します。SlutCampに投稿または配信することにより、あなたは当社に対し、そのコンテンツをプラットフォーム上および当社のマーケティング（ソーシャルメディアおよび広告を含む）で使用、表示、複製、宣伝するための、世界的でロイヤルティフリーのライセンスを付与します。あなたは、このライセンスを付与する権利を有すること、およびあなたのコンテンツが他者の権利を侵害しないことを確認します。"
+    "body": "あなたは、プラットフォーム上で作成したコンテンツの所有権を保持します。SlutCampに投稿または配信することにより、あなたは当社に対し、そのコンテンツをプラットフォーム上および当社のマーケティング（ソーシャルメディアおよび広告を含む）で使用、表示、複製、宣伝するための、世界的でロイヤルティフリーのライセンスを付与します。あなたは、このライセンスを付与する権利を有すること、およびあなたのコンテンツが他者の権利を侵害しないことを確認します。 あなたがアップロードまたはパフォーマンスするコンテンツに描写されるすべての人について、まずその人の書面による同意を取得し、その同意を記録として保管しなければなりません。その同意には以下が含まれます：（a）コンテンツに描写されることへの同意；（b）コンテンツの公開配信およびSlutCampへのアップロードへの同意；（c）コンテンツがダウンロード提供される場合、他のユーザーによるコンテンツのダウンロードへの同意。当社の標準パフォーマーリリースは、この同意を記録する承認された方法であり、すべての共演者について、登場前に完成したリリース（本人確認を含む）がファイルされていなければなりません。"
    },
    {
     "title": "7. 行動規範",
-    "body": "プラットフォーム上で、あなたは以下を行ってはなりません：ファンと連絡先情報や支払いハンドルを共有すること、ファンや取引をプラットフォーム外に移そうとすること、ヘイトスピーチや中傷を使用すること、18歳未満の者または同意していない者をフィーチャーしたコンテンツを投稿すること。これらの規則に違反すると、メッセージがブロックされ、アカウントが停止または無効化され、当社の裁量により保留中の収益を没収される場合があります。"
+    "body": "あなたは、プラットフォーム上で、違法であるか、またはその他の点で基準（当社およびその決済処理業者の利用基準）に違反する活動を行ってはなりません。プラットフォーム上で、あなたは以下を行ってはなりません：ファンと連絡先情報や支払いハンドルを共有すること、ファンや取引をプラットフォーム外に移そうとすること、ヘイトスピーチや中傷を使用すること、18歳未満の者または同意していない者をフィーチャーしたコンテンツを投稿すること。これらの規則に違反すると、メッセージがブロックされ、アカウントが停止または無効化され、当社の裁量により保留中の収益を没収される場合があります。"
    },
    {
     "title": "8. アカウントへのアクセス",
@@ -10920,7 +11196,7 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "3. 年龄与身份验证",
-    "body": "你确认你至少 18 岁。你已经完成（或将完成）SlutCamp 的政府身份证件验证，之后才能开播，这是 18 U.S.C. §2257 记录保存合规所要求的。如果你无法验证你的年龄和身份，你不得在平台上表演。"
+    "body": "你确认你至少 18 岁。你已经完成（或将完成）SlutCamp 的政府身份证件验证，之后才能开播，这是 18 U.S.C. §2257 记录保存合规所要求的。如果你无法验证你的年龄和身份，你不得在平台上表演。 同样的验证适用于出现在你内容中的每一个人：在任何包含他人的内容被上传或表演之前，你必须通过其政府签发的带照片身份证件核实该人的身份和年龄，确认其至少 18 岁，并将相关证明文件存档备查。你必须在公司要求时向公司提供这些文件。在此验证完成之前，任何人不得出现在你的内容中。"
    },
    {
     "title": "4. 收入分成与你的费率",
@@ -10932,11 +11208,11 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "6. 内容权利",
-    "body": "你保留你在平台上创建的内容的所有权。通过在 SlutCamp 上发布或直播，你授予公司一项全球性、免版税的许可，允许其在平台上和公司营销中（包括社交媒体和广告）使用、展示、复制和推广该内容。你确认你有权授予此许可，且你的内容不侵犯任何其他人的权利。"
+    "body": "你保留你在平台上创建的内容的所有权。通过在 SlutCamp 上发布或直播，你授予公司一项全球性、免版税的许可，允许其在平台上和公司营销中（包括社交媒体和广告）使用、展示、复制和推广该内容。你确认你有权授予此许可，且你的内容不侵犯任何其他人的权利。 对于你上传或表演的内容中所描绘的每一个人，你必须首先获得其书面同意并将该同意存档备查，同意涵盖：(a) 同意在内容中被描绘；(b) 同意内容的公开发布及上传至 SlutCamp；(c) 如内容提供下载，同意其他用户下载该内容。公司的标准表演者授权书是记录此同意的认可方式，每位联合表演者在出镜之前，都必须有一份完整的授权书（附身份验证）存档。"
    },
    {
     "title": "7. 行为规则",
-    "body": "在平台上，你不得：与粉丝分享联系信息或付款账号；试图将粉丝或交易转移到平台外；使用仇恨言论或侮辱性语言；发布涉及 18 岁以下任何人或任何未同意的人的内容。违反这些规则可能导致你的消息被屏蔽、你的账号被暂停或被停用 — 并且公司可酌情没收你待领取的收入。"
+    "body": "你不得在平台上从事任何非法活动或以其他方式违反标准（即公司及其支付处理商的可接受使用标准）的活动。在平台上，你不得：与粉丝分享联系信息或付款账号；试图将粉丝或交易转移到平台外；使用仇恨言论或侮辱性语言；发布涉及 18 岁以下任何人或任何未同意的人的内容。违反这些规则可能导致你的消息被屏蔽、你的账号被暂停或被停用 — 并且公司可酌情没收你待领取的收入。"
    },
    {
     "title": "8. 账号访问权限",
@@ -10989,7 +11265,7 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "3. 연령 및 신원 인증",
-    "body": "귀하는 최소 18세 이상임을 확인합니다. 귀하는 18 U.S.C. §2257 기록 보관 준수를 위해 요구되는 대로, 라이브를 시작하기 전에 SlutCamp에서 정부 발급 신분증 인증을 완료했거나 완료할 것입니다. 연령과 신원을 인증할 수 없으면 플랫폼에서 출연할 수 없습니다."
+    "body": "귀하는 최소 18세 이상임을 확인합니다. 귀하는 18 U.S.C. §2257 기록 보관 준수를 위해 요구되는 대로, 라이브를 시작하기 전에 SlutCamp에서 정부 발급 신분증 인증을 완료했거나 완료할 것입니다. 연령과 신원을 인증할 수 없으면 플랫폼에서 출연할 수 없습니다. 동일한 인증은 귀하의 콘텐츠에 등장하는 모든 사람에게 적용됩니다: 다른 사람이 등장하는 콘텐츠가 업로드되거나 공연되기 전에, 귀하는 그 사람의 정부 발급 사진 신분증으로 신원과 연령을 확인하고, 최소 18세 이상임을 확인하며, 증빙 서류를 기록으로 보관해야 합니다. 요청 시 해당 서류를 회사에 제공해야 합니다. 이 인증이 완료될 때까지 어떤 사람도 귀하의 콘텐츠에 등장할 수 없습니다."
    },
    {
     "title": "4. 수익 배분 및 요금",
@@ -11001,11 +11277,11 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "6. 콘텐츠 권리",
-    "body": "귀하는 플랫폼에서 만드는 콘텐츠의 소유권을 유지합니다. SlutCamp에 게시하거나 스트리밍함으로써 귀하는 회사에 해당 콘텐츠를 플랫폼과 회사 마케팅(소셜 미디어 및 광고 포함)에서 사용, 표시, 복제 및 홍보할 수 있는 전 세계적이고 로열티 없는 라이선스를 부여합니다. 귀하는 이 라이선스를 부여할 권리가 있으며 귀하의 콘텐츠가 타인의 권리를 침해하지 않음을 확인합니다."
+    "body": "귀하는 플랫폼에서 만드는 콘텐츠의 소유권을 유지합니다. SlutCamp에 게시하거나 스트리밍함으로써 귀하는 회사에 해당 콘텐츠를 플랫폼과 회사 마케팅(소셜 미디어 및 광고 포함)에서 사용, 표시, 복제 및 홍보할 수 있는 전 세계적이고 로열티 없는 라이선스를 부여합니다. 귀하는 이 라이선스를 부여할 권리가 있으며 귀하의 콘텐츠가 타인의 권리를 침해하지 않음을 확인합니다. 귀하가 업로드하거나 공연하는 콘텐츠에 묘사되는 모든 사람에 대해, 귀하는 먼저 그 사람의 서면 동의를 얻고 그 동의를 기록으로 보관해야 하며, 동의에는 다음이 포함되어야 합니다: (a) 콘텐츠에 묘사되는 것에 대한 동의; (b) 콘텐츠의 공개 배포 및 SlutCamp 업로드에 대한 동의; (c) 콘텐츠가 다운로드로 제공되는 경우, 다른 사용자가 콘텐츠를 다운로드하는 것에 대한 동의. 회사의 표준 출연자 릴리스는 이 동의를 기록하는 승인된 방법이며, 모든 공동 출연자는 등장하기 전에 완성된 릴리스(신원 인증 포함)가 파일에 보관되어 있어야 합니다."
    },
    {
     "title": "7. 행동 규칙",
-    "body": "플랫폼에서 귀하는 다음을 해서는 안 됩니다: 팬과 연락처 정보나 결제 정보를 공유하는 행위; 팬이나 거래를 플랫폼 밖으로 가져가려고 시도하는 행위; 혐오 발언이나 비하 발언을 사용하는 행위; 18세 미만의 사람이나 동의하지 않은 사람이 등장하는 콘텐츠를 게시하는 행위. 이러한 규칙을 위반하면 메시지가 차단되거나, 계정이 정지되거나, 계정이 비활성화될 수 있습니다 — 그리고 회사의 재량에 따라 보류 중인 수익을 몰수당할 수 있습니다."
+    "body": "귀하는 플랫폼에서 불법이거나 그 밖에 기준(회사 및 그 결제 처리업체의 허용 가능한 사용 기준)을 위반하는 어떤 활동에도 참여해서는 안 됩니다. 플랫폼에서 귀하는 다음을 해서는 안 됩니다: 팬과 연락처 정보나 결제 정보를 공유하는 행위; 팬이나 거래를 플랫폼 밖으로 가져가려고 시도하는 행위; 혐오 발언이나 비하 발언을 사용하는 행위; 18세 미만의 사람이나 동의하지 않은 사람이 등장하는 콘텐츠를 게시하는 행위. 이러한 규칙을 위반하면 메시지가 차단되거나, 계정이 정지되거나, 계정이 비활성화될 수 있습니다 — 그리고 회사의 재량에 따라 보류 중인 수익을 몰수당할 수 있습니다."
    },
    {
     "title": "8. 계정 접근",
@@ -11058,7 +11334,7 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "3. Verifica di età e identità",
-    "body": "Confermi di avere almeno 18 anni. Hai completato (o completerai) la verifica del documento d'identità governativo con SlutCamp prima di andare live, come richiesto per la conformità alla tenuta dei registri ai sensi del 18 U.S.C. §2257. Se non puoi verificare la tua età e identità, non puoi esibirti sulla piattaforma."
+    "body": "Confermi di avere almeno 18 anni. Hai completato (o completerai) la verifica del documento d'identità governativo con SlutCamp prima di andare live, come richiesto per la conformità alla tenuta dei registri ai sensi del 18 U.S.C. §2257. Se non puoi verificare la tua età e identità, non puoi esibirti sulla piattaforma. La stessa verifica si applica a ogni persona che appare nei tuoi contenuti: prima che qualsiasi contenuto che mostra un'altra persona venga caricato o eseguito, devi verificare l'identità e l'età di quella persona dal suo documento d'identità ufficiale con foto, confermare che abbia almeno 18 anni e conservare i documenti giustificativi in archivio. Devi fornire tali documenti alla Società su richiesta. Nessuna persona può apparire nei tuoi contenuti finché questa verifica non è completa."
    },
    {
     "title": "4. Ripartizione dei ricavi e le tue tariffe",
@@ -11070,11 +11346,11 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "6. Diritti sui contenuti",
-    "body": "Mantieni la proprietà dei contenuti che crei sulla piattaforma. Pubblicando o trasmettendo in streaming su SlutCamp, concedi alla Società una licenza mondiale, gratuita, per usare, mostrare, riprodurre e promuovere tali contenuti sulla piattaforma e nel marketing della Società (inclusi social media e annunci). Confermi di avere il diritto di concedere questa licenza e che i tuoi contenuti non violano i diritti di nessun altro."
+    "body": "Mantieni la proprietà dei contenuti che crei sulla piattaforma. Pubblicando o trasmettendo in streaming su SlutCamp, concedi alla Società una licenza mondiale, gratuita, per usare, mostrare, riprodurre e promuovere tali contenuti sulla piattaforma e nel marketing della Società (inclusi social media e annunci). Confermi di avere il diritto di concedere questa licenza e che i tuoi contenuti non violano i diritti di nessun altro. Per ogni persona raffigurata nei contenuti che carichi o esegui, devi prima ottenere il suo consenso scritto e conservare tale consenso in archivio, che copra: (a) il consenso a essere raffigurata nel contenuto; (b) il consenso alla distribuzione pubblica del contenuto e al suo caricamento su SlutCamp; e (c) quando il contenuto è offerto per il download, il consenso a che il contenuto sia scaricato da altri utenti. Il modulo standard di liberatoria per artisti della Società è il modo approvato per registrare questo consenso, e una liberatoria completa (con verifica dell'identità) deve essere in archivio per ogni co-interprete prima della sua apparizione."
    },
    {
     "title": "7. Regole di condotta",
-    "body": "Sulla piattaforma NON devi: condividere informazioni di contatto o coordinate di pagamento con i fan; tentare di portare fan o transazioni fuori piattaforma; usare discorsi d'odio o insulti; pubblicare contenuti che mostrano chiunque abbia meno di 18 anni o chiunque non abbia dato il consenso. Violare queste regole può far bloccare i tuoi messaggi, sospendere il tuo account o disattivarlo — e potresti perdere i guadagni in attesa a discrezione della Società."
+    "body": "Non devi svolgere sulla piattaforma alcuna attività che sia illegale o che violi in altro modo gli Standard — gli standard di utilizzo accettabile della Società e dei suoi processori di pagamento. Sulla piattaforma NON devi: condividere informazioni di contatto o coordinate di pagamento con i fan; tentare di portare fan o transazioni fuori piattaforma; usare discorsi d'odio o insulti; pubblicare contenuti che mostrano chiunque abbia meno di 18 anni o chiunque non abbia dato il consenso. Violare queste regole può far bloccare i tuoi messaggi, sospendere il tuo account o disattivarlo — e potresti perdere i guadagni in attesa a discrezione della Società."
    },
    {
     "title": "8. Accesso all'account",
@@ -11127,7 +11403,7 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "3. Weryfikacja wieku i tożsamości",
-    "body": "Potwierdzasz, że masz co najmniej 18 lat. Ukończyłaś (lub ukończysz) weryfikację na podstawie dokumentu tożsamości wydanego przez organ państwowy w SlutCamp przed rozpoczęciem transmisji na żywo, zgodnie z wymogami prowadzenia dokumentacji według 18 U.S.C. §2257. Jeśli nie możesz zweryfikować swojego wieku i tożsamości, nie możesz występować na platformie."
+    "body": "Potwierdzasz, że masz co najmniej 18 lat. Ukończyłaś (lub ukończysz) weryfikację na podstawie dokumentu tożsamości wydanego przez organ państwowy w SlutCamp przed rozpoczęciem transmisji na żywo, zgodnie z wymogami prowadzenia dokumentacji według 18 U.S.C. §2257. Jeśli nie możesz zweryfikować swojego wieku i tożsamości, nie możesz występować na platformie. Ta sama weryfikacja dotyczy każdej osoby pojawiającej się w Twoich treściach: zanim jakakolwiek treść z udziałem innej osoby zostanie przesłana lub zaprezentowana, musisz zweryfikować tożsamość i wiek tej osoby na podstawie jej wydanego przez organ państwowy dokumentu tożsamości ze zdjęciem, potwierdzić, że ma co najmniej 18 lat, i przechowywać dokumenty potwierdzające w dokumentacji. Na żądanie musisz dostarczyć te dokumenty Spółce. Żadna osoba nie może pojawić się w Twoich treściach, dopóki ta weryfikacja nie zostanie zakończona."
    },
    {
     "title": "4. Podział przychodów i Twoje stawki",
@@ -11139,11 +11415,11 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "6. Prawa do treści",
-    "body": "Zachowujesz własność treści, które tworzysz na platformie. Publikując lub streamując w SlutCamp, udzielasz Spółce ogólnoświatowej, wolnej od opłat licencyjnych licencji na używanie, wyświetlanie, powielanie i promowanie tych treści na platformie oraz w marketingu Spółki (w tym w mediach społecznościowych i reklamach). Potwierdzasz, że masz prawo udzielić tej licencji oraz że Twoje treści nie naruszają praw żadnej innej osoby."
+    "body": "Zachowujesz własność treści, które tworzysz na platformie. Publikując lub streamując w SlutCamp, udzielasz Spółce ogólnoświatowej, wolnej od opłat licencyjnych licencji na używanie, wyświetlanie, powielanie i promowanie tych treści na platformie oraz w marketingu Spółki (w tym w mediach społecznościowych i reklamach). Potwierdzasz, że masz prawo udzielić tej licencji oraz że Twoje treści nie naruszają praw żadnej innej osoby. Dla każdej osoby przedstawionej w treściach, które przesyłasz lub prezentujesz, musisz najpierw uzyskać jej pisemną zgodę i przechowywać ją w dokumentacji; zgoda musi obejmować: (a) zgodę na przedstawienie w treści; (b) zgodę na publiczne rozpowszechnianie treści i na jej przesłanie do SlutCamp; oraz (c) gdy treść jest oferowana do pobrania, zgodę na pobieranie treści przez innych użytkowników. Standardowa zgoda wykonawcy Spółki jest zatwierdzonym sposobem dokumentowania tej zgody, a kompletna zgoda (wraz z weryfikacją tożsamości) musi znajdować się w dokumentacji dla każdego współwykonawcy przed jego wystąpieniem."
    },
    {
     "title": "7. Zasady postępowania",
-    "body": "Na platformie NIE wolno Ci: udostępniać fanom danych kontaktowych ani identyfikatorów płatności; podejmować prób przeniesienia fanów lub transakcji poza platformę; używać mowy nienawiści ani wyzwisk; publikować treści przedstawiających jakąkolwiek osobę poniżej 18 roku życia lub jakąkolwiek osobę, która nie wyraziła zgody. Złamanie tych zasad może spowodować zablokowanie Twoich wiadomości, zawieszenie Twojego konta lub jego dezaktywację — a Ty możesz utracić oczekujące zarobki według uznania Spółki."
+    "body": "Nie wolno Ci angażować się na platformie w żadną działalność, która jest nielegalna lub w inny sposób narusza Standardy — standardy dopuszczalnego użytkowania Spółki i jej operatorów płatności. Na platformie NIE wolno Ci: udostępniać fanom danych kontaktowych ani identyfikatorów płatności; podejmować prób przeniesienia fanów lub transakcji poza platformę; używać mowy nienawiści ani wyzwisk; publikować treści przedstawiających jakąkolwiek osobę poniżej 18 roku życia lub jakąkolwiek osobę, która nie wyraziła zgody. Złamanie tych zasad może spowodować zablokowanie Twoich wiadomości, zawieszenie Twojego konta lub jego dezaktywację — a Ty możesz utracić oczekujące zarobki według uznania Spółki."
    },
    {
     "title": "8. Dostęp do konta",
@@ -11196,7 +11472,7 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "3. Leeftijds- & Identiteitsverificatie",
-    "body": "Je bevestigt dat je minstens 18 jaar oud bent. Je hebt overheids-ID-verificatie bij SlutCamp voltooid (of zult voltooien) voordat je live gaat, zoals vereist voor naleving van de administratieplicht onder 18 U.S.C. §2257. Als je je leeftijd en identiteit niet kunt verifiëren, mag je niet optreden op het platform."
+    "body": "Je bevestigt dat je minstens 18 jaar oud bent. Je hebt overheids-ID-verificatie bij SlutCamp voltooid (of zult voltooien) voordat je live gaat, zoals vereist voor naleving van de administratieplicht onder 18 U.S.C. §2257. Als je je leeftijd en identiteit niet kunt verifiëren, mag je niet optreden op het platform. Dezelfde verificatie geldt voor elke persoon die in je content verschijnt: voordat content met een andere persoon wordt geüpload of opgevoerd, moet je de identiteit en leeftijd van die persoon verifiëren aan de hand van diens door de overheid uitgegeven identiteitsbewijs met foto, bevestigen dat die persoon minstens 18 jaar oud is en de ondersteunende documenten bewaren. Je moet die documenten op verzoek aan het Bedrijf verstrekken. Niemand mag in je content verschijnen voordat deze verificatie is voltooid."
    },
    {
     "title": "4. Inkomstenverdeling & Jouw Tarieven",
@@ -11208,11 +11484,11 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "6. Contentrechten",
-    "body": "Je behoudt het eigendom van de content die je op het platform creëert. Door te posten of te streamen op SlutCamp verleen je het Bedrijf een wereldwijde, royaltyvrije licentie om die content te gebruiken, weer te geven, te reproduceren en te promoten op het platform en in marketing van het Bedrijf (inclusief sociale media en advertenties). Je bevestigt dat je het recht hebt om deze licentie te verlenen en dat je content geen inbreuk maakt op de rechten van iemand anders."
+    "body": "Je behoudt het eigendom van de content die je op het platform creëert. Door te posten of te streamen op SlutCamp verleen je het Bedrijf een wereldwijde, royaltyvrije licentie om die content te gebruiken, weer te geven, te reproduceren en te promoten op het platform en in marketing van het Bedrijf (inclusief sociale media en advertenties). Je bevestigt dat je het recht hebt om deze licentie te verlenen en dat je content geen inbreuk maakt op de rechten van iemand anders. Voor elke persoon die wordt afgebeeld in content die je uploadt of opvoert, moet je eerst diens schriftelijke toestemming verkrijgen en die toestemming bewaren, die het volgende dekt: (a) toestemming om in de content te worden afgebeeld; (b) toestemming voor de openbare distributie van de content en voor het uploaden ervan naar SlutCamp; en (c) wanneer content ter download wordt aangeboden, toestemming dat de content door andere gebruikers wordt gedownload. De standaard performer-release van het Bedrijf is de goedgekeurde manier om deze toestemming vast te leggen, en voor elke mede-performer moet een volledige release (met ID-verificatie) aanwezig zijn voordat die persoon verschijnt."
    },
    {
     "title": "7. Gedragsregels",
-    "body": "Op het platform mag je NIET: contactgegevens of betaalhandles delen met fans; proberen fans of transacties buiten het platform te brengen; haatspraak of beledigingen gebruiken; content plaatsen met iemand onder de 18 of iemand die geen toestemming heeft gegeven. Het overtreden van deze regels kan ertoe leiden dat je berichten worden geblokkeerd, je account wordt geschorst, of je account wordt gedeactiveerd — en je kunt openstaande inkomsten verliezen naar goeddunken van het Bedrijf."
+    "body": "Je mag op het platform geen enkele activiteit uitvoeren die illegaal is of die anderszins de Standaarden schendt — de standaarden voor aanvaardbaar gebruik van het Bedrijf en zijn betalingsverwerkers. Op het platform mag je NIET: contactgegevens of betaalhandles delen met fans; proberen fans of transacties buiten het platform te brengen; haatspraak of beledigingen gebruiken; content plaatsen met iemand onder de 18 of iemand die geen toestemming heeft gegeven. Het overtreden van deze regels kan ertoe leiden dat je berichten worden geblokkeerd, je account wordt geschorst, of je account wordt gedeactiveerd — en je kunt openstaande inkomsten verliezen naar goeddunken van het Bedrijf."
    },
    {
     "title": "8. Accounttoegang",
@@ -11265,7 +11541,7 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "3. Yaş ve Kimlik Doğrulama",
-    "body": "En az 18 yaşında olduğunu onaylarsın. 18 U.S.C. §2257 kayıt tutma uyumu için gerekli olduğu üzere, canlıya geçmeden önce SlutCamp ile resmi kimlik doğrulamasını tamamladın (veya tamamlayacaksın). Yaşını ve kimliğini doğrulayamazsan, platformda performans gösteremezsin."
+    "body": "En az 18 yaşında olduğunu onaylarsın. 18 U.S.C. §2257 kayıt tutma uyumu için gerekli olduğu üzere, canlıya geçmeden önce SlutCamp ile resmi kimlik doğrulamasını tamamladın (veya tamamlayacaksın). Yaşını ve kimliğini doğrulayamazsan, platformda performans gösteremezsin. Aynı doğrulama, içeriğinde görünen her kişi için geçerlidir: başka bir kişinin yer aldığı herhangi bir içerik yüklenmeden veya sergilenmeden önce, o kişinin kimliğini ve yaşını devlet tarafından verilmiş fotoğraflı kimliğinden doğrulamalı, en az 18 yaşında olduğunu teyit etmeli ve destekleyici belgeleri kayıtlarında saklamalısın. Talep üzerine bu belgeleri Şirkete sunmalısın. Bu doğrulama tamamlanana kadar hiç kimse içeriğinde görünemez."
    },
    {
     "title": "4. Gelir Paylaşımı ve Ücretlerin",
@@ -11277,11 +11553,11 @@ const MODEL_CONTRACT_I18N = {
    },
    {
     "title": "6. İçerik Hakları",
-    "body": "Platformda oluşturduğun içeriğin mülkiyetini korursun. SlutCamp'te paylaşarak veya yayın yaparak, Şirkete o içeriği platformda ve Şirket pazarlamasında (sosyal medya ve reklamlar dahil) kullanmak, sergilemek, çoğaltmak ve tanıtmak için dünya çapında, telifsiz bir lisans verirsin. Bu lisansı verme hakkına sahip olduğunu ve içeriğinin başka kimsenin haklarını ihlal etmediğini onaylarsın."
+    "body": "Platformda oluşturduğun içeriğin mülkiyetini korursun. SlutCamp'te paylaşarak veya yayın yaparak, Şirkete o içeriği platformda ve Şirket pazarlamasında (sosyal medya ve reklamlar dahil) kullanmak, sergilemek, çoğaltmak ve tanıtmak için dünya çapında, telifsiz bir lisans verirsin. Bu lisansı verme hakkına sahip olduğunu ve içeriğinin başka kimsenin haklarını ihlal etmediğini onaylarsın. Yüklediğin veya sergilediğin içerikte tasvir edilen her kişi için, öncelikle o kişinin yazılı rızasını almalı ve bu rızayı kayıtlarında saklamalısın; rıza şunları kapsamalıdır: (a) içerikte tasvir edilmeye rıza; (b) içeriğin herkese açık dağıtımına ve SlutCamp’e yüklenmesine rıza; ve (c) içeriğin indirmeye sunulduğu durumlarda, içeriğin diğer kullanıcılar tarafından indirilmesine rıza. Şirketin standart sanatçı muvafakatnamesi, bu rızayı kaydetmenin onaylı yoludur ve her bir sahne partneri için, görünmeden önce tamamlanmış bir muvafakatname (kimlik doğrulamasıyla birlikte) dosyada bulunmalıdır."
    },
    {
     "title": "7. Davranış Kuralları",
-    "body": "Platformda şunları YAPMAMALISIN: hayranlarla iletişim bilgisi veya ödeme bilgileri paylaşmak; hayranları veya işlemleri platform dışına taşımaya çalışmak; nefret söylemi veya hakaret kullanmak; 18 yaşından küçük herhangi birini veya rıza göstermemiş herhangi birini içeren içerik paylaşmak. Bu kuralları ihlal etmek, mesajlarının engellenmesine, hesabının askıya alınmasına veya hesabının devre dışı bırakılmasına yol açabilir — ve Şirketin takdirine bağlı olarak bekleyen kazançlarını kaybedebilirsin."
+    "body": "Platformda yasadışı olan veya Standartları — Şirketin ve ödeme işleyicilerinin kabul edilebilir kullanım standartlarını — başka şekilde ihlal eden hiçbir faaliyette bulunmamalısın. Platformda şunları YAPMAMALISIN: hayranlarla iletişim bilgisi veya ödeme bilgileri paylaşmak; hayranları veya işlemleri platform dışına taşımaya çalışmak; nefret söylemi veya hakaret kullanmak; 18 yaşından küçük herhangi birini veya rıza göstermemiş herhangi birini içeren içerik paylaşmak. Bu kuralları ihlal etmek, mesajlarının engellenmesine, hesabının askıya alınmasına veya hesabının devre dışı bırakılmasına yol açabilir — ve Şirketin takdirine bağlı olarak bekleyen kazançlarını kaybedebilirsin."
    },
    {
     "title": "8. Hesap Erişimi",
@@ -12056,7 +12332,7 @@ function setModelPhoto(userId, file) {
 // (parseAppearanceDecl) — without it the upload is refused and its
 // file removed; with co-stars, the new photo's declarations replace
 // the old photo's (its file is deleted by setModelPhoto anyway).
-app.post('/api/model/photo', identMiddleware, requireUser, requireRole('model'),
+app.post('/api/model/photo', identMiddleware, requireUser, requireRole('model'), requirePublicityConsent,
   photoUpload.single('photo'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'no_photo' });
     const decl = parseAppearanceDecl(req);
@@ -12091,7 +12367,7 @@ function setModelPublicPhoto(userId, file) {
 
 // Model uploads her own public (clean) photo — the one Google shows.
 // Carries the same Solo/Co-Star declaration as every profile upload.
-app.post('/api/model/public-photo', identMiddleware, requireUser, requireRole('model'),
+app.post('/api/model/public-photo', identMiddleware, requireUser, requireRole('model'), requirePublicityConsent,
   photoUpload.single('photo'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'no_photo' });
     const decl = parseAppearanceDecl(req);
@@ -12122,7 +12398,7 @@ app.delete('/api/model/public-photo', identMiddleware, requireUser, requireRole(
 
 // Model uploads her home-screen preview video loop (few seconds, autoplays muted).
 // Carries the same Solo/Co-Star declaration as every profile upload.
-app.post('/api/model/preview-video', identMiddleware, requireUser, requireRole('model'),
+app.post('/api/model/preview-video', identMiddleware, requireUser, requireRole('model'), requirePublicityConsent,
   previewVideoUpload.single('video'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'no_video' });
     const decl = parseAppearanceDecl(req);
@@ -12169,7 +12445,7 @@ app.delete('/api/model/preview-video', identMiddleware, requireUser, requireRole
 
 // Model uploads/replaces her SECOND main profile video (same 15MB flow).
 // Carries the same Solo/Co-Star declaration as every profile upload.
-app.post('/api/model/preview-video-2', identMiddleware, requireUser, requireRole('model'),
+app.post('/api/model/preview-video-2', identMiddleware, requireUser, requireRole('model'), requirePublicityConsent,
   previewVideoUpload.single('video'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'no_video' });
     const decl = parseAppearanceDecl(req);
@@ -12208,7 +12484,7 @@ app.delete('/api/model/preview-video-2', identMiddleware, requireUser, requireRo
 // list (her main photo + gallery) may never exceed MAX_PROFILE_PICS —
 // the 11th picture is rejected with gallery_full and its file deleted,
 // so no orphan is left behind.
-app.post('/api/model/gallery-photo', identMiddleware, requireUser, requireRole('model'),
+app.post('/api/model/gallery-photo', identMiddleware, requireUser, requireRole('model'), requirePublicityConsent,
   photoUpload.single('photo'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'no_photo' });
     const decl = parseAppearanceDecl(req);
@@ -12297,10 +12573,10 @@ function handleCleanFeedUpload(req, res, kind) {
     costar_held: decl.costarIds.some((id) => !coStarMediaCleared(id)) });
 }
 
-app.post('/api/model/feed/photo', identMiddleware, requireUser, requireRole('model'),
+app.post('/api/model/feed/photo', identMiddleware, requireUser, requireRole('model'), requirePublicityConsent,
   photoUpload.single('photo'), (req, res) => handleCleanFeedUpload(req, res, 'photo'));
 
-app.post('/api/model/feed/video', identMiddleware, requireUser, requireRole('model'),
+app.post('/api/model/feed/video', identMiddleware, requireUser, requireRole('model'), requirePublicityConsent,
   previewVideoUpload.single('video'), (req, res) => handleCleanFeedUpload(req, res, 'video'));
 
 // Remove one of her feed posts: the row, its file, and its co-star
@@ -15395,6 +15671,36 @@ app.post('/api/admin/team-messages', ...adminOnly, (req, res) => {
     targetType: 'team_message', targetId: id, detail: { author },
   });
   res.json({ ok: true, message: { ...row, author_label: teamAuthorLabel(row.author) } });
+  // Assignment 19: Web Push to every OTHER seat's devices. Fired only
+  // after the post has answered, and fire-and-forget — a push failure
+  // can never fail or delay the post.
+  notifyTeamPush(author, row);
+});
+
+/* Team-channel Web Push subscriptions (Assignment 19). Manager seats
+   only — the adminOnly chain refuses fans, models, and moderators, so a
+   fan token can never subscribe as a seat. The seat key is the caller's
+   own principal (teamAuthorFor): 'owner' or 'delegate:<username>'; a
+   seat can only ever write its OWN slot. Storage is separate from the
+   fan table (push_subscriptions) by design. */
+app.post('/api/admin/team-push/subscribe', ...adminOnly, (req, res) => {
+  const { endpoint, p256dh, auth } = req.body || {};
+  if (!endpoint || typeof endpoint !== 'string' || endpoint.length > 2000)
+    return res.status(400).json({ error: 'bad_subscription' });
+  const seat = teamAuthorFor(req.user);
+  db.prepare(`INSERT INTO team_push_subscriptions (seat, endpoint, p256dh, auth)
+              VALUES (?,?,?,?)
+              ON CONFLICT(endpoint) DO UPDATE SET seat = excluded.seat,
+                p256dh = excluded.p256dh, auth = excluded.auth`)
+    .run(seat, endpoint, String(p256dh || '').slice(0, 500), String(auth || '').slice(0, 500));
+  res.json({ ok: true, seat, web_push_ready: !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) });
+});
+
+app.post('/api/admin/team-push/unsubscribe', ...adminOnly, (req, res) => {
+  const { endpoint } = req.body || {};
+  if (endpoint) db.prepare('DELETE FROM team_push_subscriptions WHERE seat = ? AND endpoint = ?')
+    .run(teamAuthorFor(req.user), endpoint);
+  res.json({ ok: true });
 });
 
 /* The audit view: every logged Manager action by the delegate (and
@@ -16695,6 +17001,9 @@ app.post('/api/live/:id/mode', identMiddleware, requireUser, requireRole('model'
   pushLiveViewers(sess.id, { type: 'live:explicit', session_id: sess.id, is_explicit: !!isExplicit,
     explicit_rate_cents: sess.explicit_rate_cents, explicit_grace_sec: getGiftGraceSec(),
     explicit_entry_cents: getEntryCents() });
+  // A20: a fresh 0→1 flip of a public Female/Couple live pings the
+  // owner seat for promo (sess still holds the pre-update state).
+  if (isExplicit && !sess.is_explicit) maybePromoPing(sess);
   res.json({ ok: true, is_explicit: !!isExplicit });
 });
 
@@ -18801,7 +19110,7 @@ app.delete('/api/model/packages/:id', identMiddleware, requireUser, requireRole(
 /* Package photo: the SHARED profile-photo pipeline (photoUpload —
  * images only, 5MB cap, photo-<hex> names the public /uploads
  * whitelist serves — package photos are public profile content). */
-app.post('/api/model/packages/:id/photo', identMiddleware, requireUser, requireRole('model'), (req, res) => {
+app.post('/api/model/packages/:id/photo', identMiddleware, requireUser, requireRole('model'), requirePublicityConsent, (req, res) => {
   photoUpload.single('file')(req, res, (err) => {
     if (err || !req.file) return res.status(400).json({ error: 'bad_file' });
     const row = db.prepare('SELECT * FROM model_packages WHERE id = ? AND model_id = ?')
@@ -19404,14 +19713,21 @@ function chicagoStartOfDaySql(now = new Date()) {
   return new Date(utcMs).toISOString().slice(0, 19).replace('T', ' ');
 }
 
-/* Slut Manager — Overview aggregates for the Manager home screen */
+/* Slut Manager — Overview aggregates for the Manager home screen.
+ * COUNT RULE (one ruler, Asce 2026-10-26): the headline fans/models
+ * counts count EVERY account of the role — the same population the
+ * Fans and Models tabs list (their queries filter on role only).
+ * Banned accounts stay counted: they are accounts of record, their
+ * rows carry the banned state, and unbanning happens from those very
+ * lists. An earlier `banned = 0` filter here made Overview read one
+ * less than the Fans tab for every banned fan (65 vs 64 in prod). */
 app.get('/api/admin/overview', ...adminOnly, (req, res) => {
   const row = db.prepare(`
     SELECT
       (SELECT COUNT(*) FROM id_verifications WHERE status = 'pending') AS pending_id_reviews,
       (SELECT COUNT(*) FROM live_sessions WHERE status = 'live') AS live_now,
-      (SELECT COUNT(*) FROM users WHERE role = 'fan' AND banned = 0) AS fans,
-      (SELECT COUNT(*) FROM users WHERE role = 'model' AND banned = 0) AS models,
+      (SELECT COUNT(*) FROM users WHERE role = 'fan') AS fans,
+      (SELECT COUNT(*) FROM users WHERE role = 'model') AS models,
       (SELECT COUNT(*) FROM users u WHERE u.merged_into IS NULL
         AND (u.role = 'recruiter' OR EXISTS (SELECT 1 FROM recruiters r WHERE r.user_id = u.id)) AND u.status != 'deleted') AS affiliates,
       (SELECT COUNT(*) FROM dmca_notices WHERE status IN ('received','under_review')) AS open_dmca,
@@ -19442,8 +19758,8 @@ app.get('/api/admin/stats', ...adminOnly, (req, res) => {
   const stats = db.prepare('SELECT * FROM platform_stats WHERE id = 1').get();
   const counts = db.prepare(`
     SELECT
-      (SELECT COUNT(*) FROM users WHERE role = 'fan' AND banned = 0) AS fans,
-      (SELECT COUNT(*) FROM users WHERE role = 'model' AND banned = 0) AS models,
+      (SELECT COUNT(*) FROM users WHERE role = 'fan') AS fans,
+      (SELECT COUNT(*) FROM users WHERE role = 'model') AS models,
       (SELECT COUNT(*) FROM models m JOIN users u ON u.id = m.user_id
         WHERE (CASE u.presence_override WHEN 'on' THEN 1 WHEN 'off' THEN 0 ELSE m.is_online END) = 1) AS models_online,
       (SELECT COUNT(*) FROM conversations) AS conversations,
@@ -20950,8 +21266,8 @@ app.get('/api/mod/overview', ...moderatorOnly, (req, res) => {
     pending_id_reviews: pendingRows.length - escalated,
     escalated_id_reviews: escalated,
     live_now: one("SELECT COUNT(*) AS c FROM live_sessions WHERE status = 'live'"),
-    fans: one("SELECT COUNT(*) AS c FROM users WHERE role = 'fan' AND banned = 0"),
-    models: one("SELECT COUNT(*) AS c FROM users WHERE role = 'model' AND banned = 0"),
+    fans: one("SELECT COUNT(*) AS c FROM users WHERE role = 'fan'"),
+    models: one("SELECT COUNT(*) AS c FROM users WHERE role = 'model'"),
     open_incidents: one("SELECT COUNT(*) AS c FROM safety_incidents WHERE status = 'open'"),
     open_stream_flags: one("SELECT COUNT(*) AS c FROM stream_flags WHERE status = 'open'"),
     new_suggestions: one("SELECT COUNT(*) AS c FROM suggestions WHERE status = 'new'"),
