@@ -822,6 +822,60 @@ async function adminPromosBody() {
     })()}`;
 }
 
+/* 🎬 Clips — the auto-clip engine's log (Assignment 21). Every
+ * candidate the engine cut from a public explicit live, with its
+ * tier, score and status, plus the rules-watch flags (evidence
+ * excerpts — a flag never punished anyone; resolving one is the
+ * human decision it was saved for). The kill switch state shows
+ * exactly as it stands; it is flipped in Settings. */
+async function adminClipsBody() {
+  const { data } = await api('/admin/clips');
+  const clips = (data && data.clips) || [];
+  const flags = (data && data.flags) || [];
+  const tierBadge = (t) => t === 'high' ? '<span style="color:var(--green)">🟢 high</span>'
+    : t === 'medium' ? '<span style="color:var(--yellow, #fbbf24)">🟡 medium</span>'
+    : '<span class="muted">⚪ low</span>';
+  const statusBadge = (c) => c.status === 'posted'
+    ? `<span style="color:var(--green)">✅ posted</span>${c.tweet_url ? ` · <a href="${esc(c.tweet_url)}" target="_blank" rel="noopener">tweet</a>` : ''}`
+    : c.status === 'discarded' ? '<span class="muted">🗑 discarded</span>'
+    : '<span>⏸ held</span>';
+  const clipRow = (c) => {
+    let sig = {};
+    try { sig = JSON.parse(c.signals || '{}'); } catch (e) { /* keep empty */ }
+    const bits = [];
+    if (sig.money_total_cents) bits.push(`💰 ${fmt(sig.money_total_cents)} in window`);
+    if (sig.chat_spike) bits.push('💬 chat spike');
+    if (sig.viewer_spike) bits.push('👀 viewer spike');
+    if (sig.vision && sig.vision.vision === 'no_signal') bits.push('🎥 vision: no recorder yet');
+    return `
+      <div class="row" style="gap:8px;padding:7px 0;border-bottom:1px solid var(--line, #333)">
+        <span class="grow"><b>@${esc(c.username)}</b> · ${tierBadge(c.tier)} · score ${c.score} · ${statusBadge(c)}<br>
+          <span class="small muted">${esc(String(c.window_start || '').slice(5, 16))} → ${esc(String(c.window_end || '').slice(11, 16))} UTC · session #${c.session_id}${bits.length ? ' · ' + bits.join(' · ') : ''}</span></span>
+      </div>`;
+  };
+  const flagRow = (f) => `
+      <div class="row" style="gap:8px;padding:7px 0;border-bottom:1px solid var(--line, #333);align-items:flex-start">
+        <span class="grow"><b>${f.type === 'coperformer_unapproved' ? '👥 Co-performer check' : f.type === 'offplatform_steering' ? '↪️ Off-platform steering' : esc(f.type)}</b>
+          · @${esc(f.username)} · ${f.status === 'open' ? '<span style="color:var(--yellow, #fbbf24)">open</span>' : '<span class="muted">resolved</span>'}<br>
+          <span class="small">${esc(f.evidence || '')}</span><br>
+          <span class="small muted">${esc(String(f.created_at || '').slice(0, 16))} UTC · session #${f.session_id ?? '—'}</span></span>
+        ${f.status === 'open' ? `<button class="btn small ghost" data-flag-resolve="${f.id}">Resolve</button>` : ''}
+      </div>`;
+  return `
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🎬 Auto-clip engine</div>
+      <div class="muted small">The engine watches public explicit lives (Female + Couple only — never Private Rooms, never the house account), cuts clip candidates around money moments and signal spikes, and logs them here. <b>Auto-post to X is ${data && data.promo_autopost ? '<span style="color:var(--green)">ON</span>' : 'OFF'}</b> (kill switch in Settings) and a clip can only ever post when the model has also accepted Agreement v1.7 §6(d) — until then everything stays <b>held</b>, exactly as designed. Money-moment threshold: <b>${fmt((data && data.clip_money_threshold_cents) || 2000)}</b>. Vision/recorder layer is not built yet — candidates ride on exact ledger + chat/viewer signals.</div>
+    </div>
+    <h3>🎬 Clips (${clips.length})</h3>
+    <div class="card" style="padding:6px 12px">
+      ${clips.map(clipRow).join('') || '<div class="empty">No clip candidates yet — the engine logs the first money moment of the next public explicit live.</div>'}
+    </div>
+    <h3>🚩 Rules-watch flags (${flags.length})</h3>
+    <div class="card" style="padding:6px 12px">
+      ${flags.map(flagRow).join('') || '<div class="empty">No flags. The watch flags evidence for a human — it never punishes on its own.</div>'}
+    </div>`;
+}
+
 async function adminPayoutsBody() {
   const { data } = await api('/admin/payouts');
   const { data: wdData } = await api('/admin/withdrawals');
@@ -1487,6 +1541,15 @@ async function adminMoreBody(s) {
         <input class="input" id="set-prcap" type="number" min="1" max="7" value="${s.private_room_cap ?? 2}" style="margin-top:0;max-width:100px">
         <span><b>per week</b></span>
         <button class="btn small" id="set-prcap-go">Save</button>
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🎬 Auto-clip — X auto-post kill switch</div>
+      <div class="muted small">The auto-clip engine watches public explicit lives (Female + Couple) and logs clip candidates in the Clips screen. While this is OFF it can NEVER post to X — held clips only. Even ON, a clip posts only when the model has accepted Agreement v1.7 §6(d) and the clip scores high. The money-moment threshold anchors a candidate: a single tip/gift — or a 60-second burst — at or over it. Default OFF, threshold $20.</div>
+      <div class="row" style="margin-top:8px;gap:8px;align-items:center;flex-wrap:wrap">
+        <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="set-autopost" ${s.promo_autopost ? 'checked' : ''}> Auto-post ON</label>
+        <label class="small muted">Threshold $<input class="input" id="set-clipthr" type="number" min="1" max="10000" step="1" value="${Math.round((s.clip_money_threshold_cents ?? 2000) / 100)}" style="margin:0 0 0 6px;max-width:90px"></label>
+        <button class="btn small" id="set-autopost-go">Save</button>
       </div>
     </div>
     <div class="card">
@@ -2328,6 +2391,18 @@ function wireAdminBody(tab) {
     });
   }
 
+  // 🎬 Clips — rules-watch flag resolution (the human decision).
+  if (tab === 'clips') {
+    document.querySelectorAll('[data-flag-resolve]').forEach((b) => {
+      b.onclick = async () => {
+        const { status } = await api(`/admin/rules-flags/${b.dataset.flagResolve}/resolve`, {
+          method: 'POST', body: JSON.stringify({}) });
+        toast(status === 200 ? '✅ Flag resolved' : 'Could not resolve that flag.');
+        if (status === 200) M.render();
+      };
+    });
+  }
+
   // Invite links
   go('#inv-gen', async () => {
     const label = $('#inv-label').value.trim();
@@ -2835,6 +2910,16 @@ function wireAdminBody(tab) {
     toast(status === 200 ? `✅ Private room cap set to ${private_room_cap}/week` : 'Use 1–7');
     if (status === 200) M.reload();
   });
+  go('#set-autopost-go', async () => {
+    const promo_autopost = $('#set-autopost').checked ? 1 : 0;
+    const clip_money_threshold_cents = Math.round(parseFloat($('#set-clipthr').value) * 100);
+    const { status, data } = await api('/admin/settings', {
+      method: 'PUT', body: JSON.stringify({ promo_autopost, clip_money_threshold_cents }) });
+    toast(status === 200
+      ? `✅ Auto-clip ${promo_autopost ? 'ON — high clips may post for v1.7-signed models' : 'OFF — held clips only'} · threshold $${(clip_money_threshold_cents / 100).toFixed(0)}`
+      : `Could not save (${(data && data.error) || status})`);
+    if (status === 200) M.reload();
+  });
   go('#set-pp-go', async () => {
     const body = {
       earnings_hold_days: parseInt($('#set-hold').value),
@@ -2992,7 +3077,7 @@ function wireAdminBody(tab) {
 /* ---------------- Slut Manager shell ---------------- */
 const NAV = [
   ['dash', '📊 Overview'], ['models', '💃 Models'], ['idchecks', '🪪 ID Checks'],
-  ['invites', '✉️ Invites'], ['promos', '🎁 Promo links'], ['chats', '👀 Chats'], ['safety', '🛡️ Safety'],
+  ['invites', '✉️ Invites'], ['promos', '🎁 Promo links'], ['clips', '🎬 Clips'], ['chats', '👀 Chats'], ['safety', '🛡️ Safety'],
   ['live', '🔴 Live'], ['payouts', '💸 Payouts'], ['tax', '🧾 Tax'],
   ['dmca', '⚖️ DMCA'], ['fans', '🧑 Fans'], ['suggestions', '💡 Suggestions'], ['bookings', '📅 Bookings'],
   ['contracts', '📝 Contracts'], ['partners', '🤝 Partners'], ['affiliates', '🔗 Affiliates'],
@@ -3009,7 +3094,7 @@ const NAV_GROUPS = [
   ['People', ['models', 'idchecks', 'fans', 'suggestions', 'partners', 'affiliates', 'requests']],
   ['Money', ['payouts', 'tax', 'refunds', 'disputes', 'packages']],
   ['Safety & Content', ['chats', 'live', 'safety', 'dmca']],
-  ['Growth', ['invites', 'promos', 'bookings', 'contracts', 'analytics']],
+  ['Growth', ['invites', 'promos', 'clips', 'bookings', 'contracts', 'analytics']],
   ['Settings', ['more', 'workers', 'team']],
 ];
 
@@ -3049,7 +3134,7 @@ async function overviewBody(stats) {
 const SCREENS = {
   dash: overviewBody,
   chats: adminChatsBody, safety: adminSafetyBody, live: adminLiveBody,
-  models: adminModelsBody, invites: adminInvitesBody, promos: adminPromosBody, payouts: adminPayoutsBody,
+  models: adminModelsBody, invites: adminInvitesBody, promos: adminPromosBody, clips: adminClipsBody, payouts: adminPayoutsBody,
   fans: adminFansBody, bookings: adminBookingsBody, contracts: adminContractsBody,
   packages: adminPackagesBody,
   idchecks: adminIdChecksBody, partners: adminPartnersBody, affiliates: adminAffiliatesBody, refunds: adminRefundsBody,

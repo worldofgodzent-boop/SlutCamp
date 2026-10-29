@@ -2076,6 +2076,8 @@ addColumnIfMissing('platform_stats', 'faceguard_announced_at', 'TEXT'); // one-t
 addColumnIfMissing('platform_stats', 'safety_announced_at', 'TEXT'); // one-time "safety hard-block" model broadcast stamp
 addColumnIfMissing('platform_stats', 'private_room_announced_at', 'TEXT'); // one-time "Private Room" (Phase 5) model broadcast stamp
 addColumnIfMissing('platform_stats', 'private_room_cap', 'INTEGER NOT NULL DEFAULT 2'); // Phase 5: max private rooms per model per week (Manager-adjustable)
+addColumnIfMissing('platform_stats', 'promo_autopost', 'INTEGER NOT NULL DEFAULT 0'); // A21 kill switch: Manager-flippable, default OFF — while OFF the auto-clip engine logs held clips but NEVER posts to X
+addColumnIfMissing('platform_stats', 'clip_money_threshold_cents', 'INTEGER NOT NULL DEFAULT 2000'); // A21: money-moment threshold for clip candidates (Manager-adjustable, default $20)
 addColumnIfMissing('platform_stats', 'battles_announced_at', 'TEXT'); // one-time "live battles" model broadcast stamp (Phase 6)
 addColumnIfMissing('platform_stats', 'clean_feed_announced_at', 'TEXT'); // one-time "clean public feed" model broadcast stamp
 addColumnIfMissing('platform_stats', 'launch_update_announced_at', 'TEXT'); // one-time launch-update model broadcast stamp
@@ -2579,6 +2581,48 @@ CREATE TABLE IF NOT EXISTS promo_pings (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_promopings_model ON promo_pings(model_id, id);
+
+-- Auto-clip engine (Assignment 21): one row per clip candidate the
+-- engine cut from a public explicit live. status: held (logged, never
+-- posted — the default for everything until the flag + consent gates
+-- both open), posted (auto-posted to the brand X, tweet_url set),
+-- discarded (low tier). signals is the JSON evidence pack behind the
+-- score (money events, chat/viewer spikes, vision verdict) so every
+-- decision is auditable in the Manager, never vibes.
+CREATE TABLE IF NOT EXISTS clips (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id INTEGER NOT NULL REFERENCES live_sessions(id) ON DELETE CASCADE,
+  model_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  window_start TEXT NOT NULL,
+  window_end TEXT NOT NULL,
+  score INTEGER NOT NULL DEFAULT 0,
+  tier TEXT NOT NULL DEFAULT 'low' CHECK(tier IN ('high','medium','low')),
+  signals TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'held' CHECK(status IN ('held','posted','discarded')),
+  tweet_url TEXT,
+  posted_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_clips_session ON clips(session_id, id);
+CREATE INDEX IF NOT EXISTS idx_clips_model ON clips(model_id, id);
+
+-- Rules-watch flags (Assignment 21): the clip engine's second job.
+-- A flag PRESERVES evidence and alerts the owner seat; it NEVER
+-- punishes — no auto-action against the model, ever. A human reads
+-- the excerpt in the Manager and decides. status: open → resolved.
+CREATE TABLE IF NOT EXISTS rules_flags (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  type TEXT NOT NULL,
+  session_id INTEGER REFERENCES live_sessions(id) ON DELETE CASCADE,
+  model_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  evidence TEXT NOT NULL DEFAULT '',
+  segment_ref TEXT,
+  status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','resolved')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  resolved_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_rules_flags_model ON rules_flags(model_id, id);
+CREATE INDEX IF NOT EXISTS idx_rules_flags_open ON rules_flags(status, id);
 
 -- Model tip menu: custom tip items she defines (e.g. "💋 Blow a kiss — $5")
 CREATE TABLE IF NOT EXISTS tip_menus (
@@ -4404,6 +4448,516 @@ function maybePromoPing(sess) {
     return false;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* AUTO-CLIP ENGINE (Assignment 21, spec a21-auto-clip-spec-2026-10-28) */
+/*                                                                      */
+/* The in-app half of the auto-clip bot: when a Female/Couple model     */
+/* flips a PUBLIC live to explicit (the A20 trigger), the engine        */
+/* watches the session's EXACT server-side signals — ledger money       */
+/* moments (gift_events / game_requests / priority_messages), chat      */
+/* velocity and viewer-join spikes — cuts 30–60s candidate windows      */
+/* around them, scores them on multi-signal agreement, and logs every   */
+/* candidate to the clips table. Posting to the brand X is behind TWO   */
+/* hard gates, both closed today by design: the Manager flag            */
+/* promo_autopost (default OFF) AND the model's acceptance of           */
+/* Agreement v1.7 §6(d) (v1.7 does not exist yet, so the consent check  */
+/* can never pass until it ships and she signs). Everything the engine  */
+/* finds therefore lands as a HELD clip — visible in the Manager,       */
+/* never posted. The same watch runs the rules flags: it preserves      */
+/* evidence and pings the owner seat; it NEVER punishes (no strike,     */
+/* no block, no kill — a human decides). Scope is the A20 scope:        */
+/* public lives only — Private Rooms and 1-on-1s are never watched.     */
+/*                                                                      */
+/* NOT in v1 (the remaining layer): the SFU spectator recorder and      */
+/* vision/frame scoring — see clipVisionLayer below, an interface       */
+/* stub that returns no-signal. No media exists yet, so the X adapter   */
+/* posts caption + her canonical link only; media upload joins with    */
+/* the recorder.                                                        */
+/* ------------------------------------------------------------------ */
+
+const CLIP_CONSENT_VERSION = '1.7'; // Agreement v1.7 §6(d) "Promotional clips" — not live yet
+const CLIP_POST_CAP_PER_LIVE = 3;   // spec: max 3 posts per live
+const CLIP_POST_SPACING_SEC = 15 * 60; // spec: minimum 15 minutes apart
+const CLIP_MAX_POST_ATTEMPTS = 3;   // a failing X post is never retry-stormed
+
+// Kill switch (A18 pattern): Manager-flippable platform flag, default OFF.
+function promoAutopostEnabled() {
+  const r = db.prepare('SELECT promo_autopost FROM platform_stats WHERE id = 1').get();
+  return !!(r && r.promo_autopost === 1);
+}
+// Money-moment threshold: a single tip/gift (or a 60s burst) at or over
+// this many cents anchors a clip candidate. Manager-tunable, default $20.
+function getClipMoneyThresholdCents() {
+  const r = db.prepare('SELECT clip_money_threshold_cents FROM platform_stats WHERE id = 1').get();
+  const s = r && r.clip_money_threshold_cents;
+  return Number.isInteger(s) && s >= 100 && s <= 1000000 ? s : 2000;
+}
+
+/* Consent gate: her LATEST model-agreement signature is v1.7 (the
+   §6(d) promotional-clips version). Until v1.7 exists and she signs
+   it, this is false for every real model — by design. */
+function clipConsentOk(modelId) {
+  const sig = latestModelSignature(modelId);
+  return !!sig && sig.contract_version === CLIP_CONSENT_VERSION;
+}
+
+/* The A20 scope, shared by detection, posting and the rules watch:
+   public (never a Private Room session), never the house account,
+   Female/Couple sections only. */
+function clipSessionInScope(sess) {
+  if (!sess || sess.private_event_id) return false;
+  if (isHouseAccountId(sess.model_id)) return false;
+  const m = db.prepare('SELECT section FROM models WHERE user_id = ?').get(sess.model_id);
+  return !!m && (m.section === 'female' || m.section === 'couple');
+}
+
+// SQLite datetime('now') strings <-> epoch seconds (the ledger basis).
+function clipTsToEpoch(s) {
+  if (!s) return 0;
+  const ms = Date.parse(String(s).replace(' ', 'T') + 'Z');
+  return Number.isFinite(ms) ? Math.floor(ms / 1000) : 0;
+}
+function clipEpochToTs(sec) {
+  return new Date(sec * 1000).toISOString().slice(0, 19).replace('T', ' ');
+}
+function clipEventKey(e) { return `${e.src}:${e.id}`; }
+
+/* Money moments are EXACT: the session-keyed ledger tables. gift_events
+   (live gifts), game_requests (Game Category buys — refunded rows are
+   auto-refunds for requests that never happened, so they are out;
+   skipped rows were real spend at the moment, so they stay in) and
+   priority_messages (paid banner messages). */
+function clipMoneyEvents(sessionId) {
+  const out = [];
+  const grab = (sql, src) => {
+    for (const r of db.prepare(sql).all(sessionId)) {
+      out.push({ src, id: r.id, ts: clipTsToEpoch(r.created_at), cents: r.cents });
+    }
+  };
+  grab('SELECT id, gross_cents AS cents, created_at FROM gift_events WHERE session_id = ?', 'gift_events');
+  grab("SELECT id, price_cents AS cents, created_at FROM game_requests WHERE session_id = ? AND status != 'refunded'", 'game_requests');
+  grab('SELECT id, amount_cents AS cents, created_at FROM priority_messages WHERE session_id = ?', 'priority_messages');
+  out.sort((a, b) => a.ts - b.ts || a.id - b.id);
+  return out;
+}
+
+/* Group money events into moments: a single event at/over the
+   threshold is a moment on its own; a burst of smaller events whose
+   60-second sum reaches the threshold is a moment at its last event. */
+function clipMoneyMoments(events, thresholdCents) {
+  const moments = [];
+  const used = new Set();
+  for (const e of events) {
+    if (e.cents >= thresholdCents) {
+      moments.push({ ts: e.ts, total: e.cents, events: [e] });
+      used.add(clipEventKey(e));
+    }
+  }
+  const rest = events.filter((e) => !used.has(clipEventKey(e)));
+  let i = 0;
+  while (i < rest.length) {
+    const win = [];
+    let sum = 0;
+    let j = i;
+    while (j < rest.length && rest[j].ts - rest[i].ts <= 60) {
+      win.push(rest[j]); sum += rest[j].cents; j++;
+    }
+    if (win.length && sum >= thresholdCents) {
+      moments.push({ ts: win[win.length - 1].ts, total: sum, events: win });
+      i = j;
+    } else i++;
+  }
+  moments.sort((a, b) => a.ts - b.ts);
+  return moments;
+}
+
+/* Supporting signals over a window [start, end) in epoch seconds.
+   Chat velocity: messages inside the window vs the equal-length
+   window right before it. Viewer spike: joins inside the window
+   against the room's current size (a sudden influx, not a big room). */
+function clipSupportingSignals(sessionId, start, end) {
+  const a = clipEpochToTs(start), b = clipEpochToTs(end);
+  const span = Math.max(1, end - start);
+  const pa = clipEpochToTs(start - span);
+  const chatCount = db.prepare(
+    'SELECT COUNT(*) AS n FROM stream_chat WHERE session_id = ? AND created_at >= ? AND created_at < ?')
+    .get(sessionId, a, b).n;
+  const chatPrev = db.prepare(
+    'SELECT COUNT(*) AS n FROM stream_chat WHERE session_id = ? AND created_at >= ? AND created_at < ?')
+    .get(sessionId, pa, a).n;
+  const chatSpike = chatCount >= 10 && chatCount >= 2 * Math.max(1, chatPrev);
+  const viewers = db.prepare(
+    'SELECT COUNT(*) AS n FROM live_viewers WHERE session_id = ?').get(sessionId).n;
+  const joinsInWindow = db.prepare(
+    'SELECT COUNT(*) AS n FROM live_viewers WHERE session_id = ? AND joined_at >= ? AND joined_at < ?')
+    .get(sessionId, a, b).n;
+  const viewerSpike = viewers >= 8 && joinsInWindow >= 5 && joinsInWindow * 2 >= viewers;
+  return { chatCount, chatSpike, viewers, joinsInWindow, viewerSpike };
+}
+
+/* ------------------------------------------------------------------ */
+/* VISION / RECORDER LAYER — INTERFACE STUB (A21 remaining layer).      */
+/* The contract the real layer must fill: given a session + window,     */
+/* return { score: 0..40, segmentRef, signals } where score is the      */
+/* vision/audio contribution (frame sampling with build→peak shape +    */
+/* multi-frame persistence + audio-energy peaks, per the spec) and      */
+/* segmentRef points at the branded clip the SFU spectator recorder     */
+/* cut from the window. v1 has NO recorder, so this stub returns        */
+/* no-signal honestly: score 0, no segment. Detection therefore runs    */
+/* on the exact server-side signals only (money + chat + viewers),      */
+/* and money moments carry candidates, exactly as the spec orders.      */
+/*                                                                      */
+/* SCORING IS LOCAL-FIRST (cost research, 2026-10-29): the intended     */
+/* v1 scorer is NSFWJS — the same local model that already ships in     */
+/* production as the client-side AI nudity monitor (public/js/app.js,   */
+/* the monitor whose explicit signal A20 builds on). The spectator      */
+/* bot is a headless client, so it runs that same model on the frames   */
+/* it samples: $0 per frame, no frames ever leave the box, and no       */
+/* provider is involved. The contract above stays provider-neutral,     */
+/* but do NOT wire a paid vision API (GPT-4o-mini / Gemini /            */
+/* Rekognition class) into this interface as the scorer: under the      */
+/* owner's money rule, no paid provider may score explicit frames       */
+/* until it has confirmed adult use in writing — and none has. A         */
+/* written confirmation is the only door to a paid scorer, ever.        */
+/* ------------------------------------------------------------------ */
+const clipVisionLayer = {
+  scoreWindow(sess, windowStart, windowEnd) {
+    return { score: 0, segmentRef: null, signals: { vision: 'no_signal', audio: 'no_signal' } };
+  },
+};
+
+/* Score one candidate window from the signals inside it. Money is
+   exact (ledger), so a money window starts at 50; a big moment (2x
+   threshold) adds 10; each agreeing supporting signal adds 20; the
+   vision layer adds its 0..40 when it lands. Tiers: high >= 70
+   (money + at least one supporting signal — multi-signal agreement,
+   the spec's bar for auto-posting), medium >= 45, else low. */
+function clipScoreForWindow(sess, start, end) {
+  const threshold = getClipMoneyThresholdCents();
+  const events = clipMoneyEvents(sess.id).filter((e) => e.ts >= start && e.ts <= end);
+  const total = events.reduce((acc, e) => acc + e.cents, 0);
+  const maxSingle = events.reduce((acc, e) => Math.max(acc, e.cents), 0);
+  const sup = clipSupportingSignals(sess.id, start, end);
+  const vision = clipVisionLayer.scoreWindow(sess, start, end);
+  let score = 0;
+  if (total >= threshold) score += 50;
+  if (total >= 2 * threshold) score += 10;
+  if (sup.chatSpike) score += 20;
+  if (sup.viewerSpike) score += 20;
+  score += vision.score || 0;
+  const tier = score >= 70 ? 'high' : score >= 45 ? 'medium' : 'low';
+  return {
+    score, tier,
+    signals: {
+      money_events: events.map(clipEventKey),
+      money_total_cents: total,
+      money_max_cents: maxSingle,
+      threshold_cents: threshold,
+      chat_count: sup.chatCount, chat_spike: sup.chatSpike,
+      viewers: sup.viewers, joins_in_window: sup.joinsInWindow, viewer_spike: sup.viewerSpike,
+      vision: vision.signals,
+      segment_ref: vision.segmentRef,
+    },
+  };
+}
+
+/* Detection pass for one in-scope session: find money moments not yet
+   attributed to a clip, cut a 30–60s window around each, merge
+   overlapping windows into the existing HELD clip (recompute), else
+   log a new clip — held, or discarded when the tier is low. Runs
+   regardless of the promo_autopost flag: OFF means detection logs
+   held clips and nothing ever posts. */
+function clipDetectForSession(sess) {
+  const threshold = getClipMoneyThresholdCents();
+  const events = clipMoneyEvents(sess.id);
+  if (!events.length) return 0;
+  const existing = db.prepare(
+    "SELECT * FROM clips WHERE session_id = ? AND status != 'discarded'").all(sess.id);
+  const consumed = new Set();
+  for (const c of existing) {
+    let sig = {};
+    try { sig = JSON.parse(c.signals || '{}'); } catch (e) { /* keep empty */ }
+    for (const k of sig.money_events || []) consumed.add(k);
+  }
+  let changed = 0;
+  const nowE = Math.floor(Date.now() / 1000);
+  for (const mo of clipMoneyMoments(events, threshold)) {
+    if (!mo.events.some((e) => !consumed.has(clipEventKey(e)))) continue; // already logged
+    /* Window: 30–60s around the moment, padded evenly — and never
+       trimmed in a way that drops one of the moment's own events
+       (a burst's tail event is part of why the moment exists). */
+    const minTs = Math.min(...mo.events.map((e) => e.ts));
+    const maxTs = Math.max(...mo.events.map((e) => e.ts));
+    const span = maxTs - minTs;
+    const total = Math.min(60, Math.max(30, span + 20));
+    let start = Math.round(minTs - (total - span) / 2);
+    let end = start + total;
+    const overlap = existing.find((c) => c.status === 'held'
+      && clipTsToEpoch(c.window_start) <= end && clipTsToEpoch(c.window_end) >= start);
+    if (overlap) {
+      start = Math.min(start, clipTsToEpoch(overlap.window_start));
+      end = Math.max(end, clipTsToEpoch(overlap.window_end));
+      /* Score only once the (merged) window has CLOSED: the signals
+         that decide a tier — the chat surge and viewer joins that
+         follow a big tip — land throughout the window, so a clip
+         scored at first sight can freeze at a lower tier than the
+         full window earns (its money events are consumed at first
+         scoring and never re-read). The moment's events stay
+         unconsumed until the window closes; a later sweep scores
+         the complete picture, once. Caught by the a21 gate, pass 1:
+         test C1 froze at 'medium' when the sweep interleaved the
+         burst's inserts under load. */
+      if (end > nowE) continue;
+      const sc = clipScoreForWindow(sess, start, end);
+      db.prepare('UPDATE clips SET window_start = ?, window_end = ?, score = ?, tier = ?, signals = ? WHERE id = ?')
+        .run(clipEpochToTs(start), clipEpochToTs(end), sc.score, sc.tier, JSON.stringify(sc.signals), overlap.id);
+      overlap.window_start = clipEpochToTs(start);
+      overlap.window_end = clipEpochToTs(end);
+      for (const k of sc.signals.money_events) consumed.add(k);
+      changed++;
+    } else {
+      if (end > nowE) continue; // window still open — score it whole when it closes
+      const sc = clipScoreForWindow(sess, start, end);
+      const status = sc.tier === 'low' ? 'discarded' : 'held';
+      const info = db.prepare(`INSERT INTO clips (session_id, model_id, window_start, window_end, score, tier, signals, status)
+                               VALUES (?,?,?,?,?,?,?,?)`)
+        .run(sess.id, sess.model_id, clipEpochToTs(start), clipEpochToTs(end),
+          sc.score, sc.tier, JSON.stringify(sc.signals), status);
+      if (status === 'held') {
+        existing.push({ id: Number(info.lastInsertRowid), status,
+          window_start: clipEpochToTs(start), window_end: clipEpochToTs(end),
+          signals: JSON.stringify(sc.signals) });
+      }
+      for (const k of sc.signals.money_events) consumed.add(k);
+      changed++;
+    }
+  }
+  return changed;
+}
+
+/* Rotating captions in Asce's voice (spec), carrying her canonical
+   model link — the funnel lands fans in her live room. */
+function clipCaptionFor(model, clip) {
+  const name = model.display_name || model.username;
+  const link = `https://slutcamp.app/models/${encodeURIComponent(model.username)}`;
+  const templates = [
+    `Come join our SlutCamp 🔥 ${name} is LIVE rn — ${link}`,
+    `Sluts gon wild 😈 ${name} going crazy live on SlutCamp — ${link}`,
+    `${name} is explicit and LIVE on SlutCamp rn 👀 come see — ${link}`,
+  ];
+  return templates[Math.abs(clip.id || 0) % templates.length];
+}
+
+/* X posting adapter — DORMANT. With no X_BEARER_TOKEN configured it
+   refuses every post (x_not_configured) and the clip stays held.
+   Configured, it posts the caption to the X API (media upload rides
+   with the recorder layer — there is no clip media in v1). Any
+   failure is returned, never thrown, and never retried inside the
+   pass: failures log, they never storm X (spec). */
+const clipXPoster = {
+  async post({ caption }) {
+    const token = process.env.X_BEARER_TOKEN;
+    if (!token) return { ok: false, reason: 'x_not_configured' };
+    const base = process.env.X_API_BASE || 'https://api.x.com';
+    try {
+      const r = await fetch(`${base}/2/tweets`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ text: caption }),
+      });
+      const j = await r.json().catch(() => null);
+      if (r.ok && j && j.data && j.data.id) {
+        return { ok: true, tweetId: String(j.data.id),
+          url: `${SOCIAL_X_URL}/status/${j.data.id}` };
+      }
+      return { ok: false, reason: `x_http_${r.status}` };
+    } catch (e) {
+      return { ok: false, reason: 'x_error' };
+    }
+  },
+};
+
+/* Posting pass for one session. A clip posts ONLY when ALL of these
+   hold: the promo_autopost flag is ON, the model accepted Agreement
+   v1.7 §6(d), the clip tier is high, the per-live cap (3) is not
+   reached and the last post is 15+ minutes old. Priority: highest
+   score first (every v1 candidate is a money moment). At most ONE
+   post per pass — the spacing rule makes a second one illegal anyway.
+   Returns 1 when a clip posted. */
+let clipPassInFlight = false;
+async function clipPostingPass(sess) {
+  // One pass at a time, ever: overlapping sweeps must never race two
+  // posts out of the same live (the cap/spacing reads would both pass).
+  if (clipPassInFlight) return 0;
+  clipPassInFlight = true;
+  try { return await clipPostingPassRun(sess); }
+  finally { clipPassInFlight = false; }
+}
+async function clipPostingPassRun(sess) {
+  if (!promoAutopostEnabled()) return 0;
+  if (!clipSessionInScope(sess)) return 0;
+  if (!clipConsentOk(sess.model_id)) return 0;
+  const posted = db.prepare(
+    "SELECT COUNT(*) AS n, MAX(posted_at) AS last FROM clips WHERE session_id = ? AND status = 'posted'")
+    .get(sess.id);
+  if (posted.n >= CLIP_POST_CAP_PER_LIVE) return 0;
+  if (posted.last
+      && Math.floor(Date.now() / 1000) - clipTsToEpoch(posted.last) < CLIP_POST_SPACING_SEC) return 0;
+  const candidates = db.prepare(
+    `SELECT * FROM clips WHERE session_id = ? AND status = 'held' AND tier = 'high'
+      ORDER BY score DESC, window_start ASC, id ASC LIMIT 5`).all(sess.id);
+  const model = db.prepare('SELECT username, display_name FROM users WHERE id = ?').get(sess.model_id);
+  if (!model) return 0;
+  for (const clip of candidates) {
+    let sig = {};
+    try { sig = JSON.parse(clip.signals || '{}'); } catch (e) { /* keep empty */ }
+    if ((sig.post_attempts || 0) >= CLIP_MAX_POST_ATTEMPTS) continue;
+    const r = await clipXPoster.post({ caption: clipCaptionFor(model, clip), model, clip });
+    if (r.ok) {
+      db.prepare("UPDATE clips SET status = 'posted', tweet_url = ?, posted_at = datetime('now') WHERE id = ?")
+        .run(r.url, clip.id);
+      return 1;
+    }
+    if (r.reason !== 'x_not_configured') {
+      sig.post_attempts = (sig.post_attempts || 0) + 1;
+      sig.last_post_error = r.reason;
+      db.prepare('UPDATE clips SET signals = ? WHERE id = ?').run(JSON.stringify(sig), clip.id);
+    }
+    return 0; // one attempt per pass, whatever happened
+  }
+  return 0;
+}
+
+/* Rules watch (b): co-performer cross-check. If the model's declared
+   co-performers include anyone whose packet is not approved while
+   her live is public + explicit, flag it for the owner — evidence
+   only, one open flag per session, never an action against her. */
+function clipCoPerformerCheck(sess) {
+  const pending = db.prepare(
+    "SELECT id, display_name, status FROM co_performers WHERE owner_model_id = ? AND status != 'approved'")
+    .all(sess.model_id);
+  if (!pending.length) return false;
+  const open = db.prepare(
+    "SELECT id FROM rules_flags WHERE session_id = ? AND type = 'coperformer_unapproved' AND status = 'open'")
+    .get(sess.id);
+  if (open) return false;
+  const names = pending.map((p) => `${p.display_name} (${p.status})`).join(', ').slice(0, 240);
+  db.prepare(`INSERT INTO rules_flags (type, session_id, model_id, evidence, segment_ref)
+              VALUES ('coperformer_unapproved', ?, ?, ?, ?)`)
+    .run(sess.id, sess.model_id,
+      `Declared co-performer packet(s) not approved while live + explicit: ${names}`,
+      `session:${sess.id}`);
+  const m = db.prepare('SELECT username, display_name FROM users WHERE id = ?').get(sess.model_id);
+  sendOwnerPush({
+    title: '🎬 Clip watch — co-performer check',
+    body: `@${m ? m.username : sess.model_id} is explicit live with unapproved co-performer packet(s): ${names}. Flag logged — nothing auto-done.`,
+    link: `/?live=${sess.id}`,
+  }).catch(() => {});
+  return true;
+}
+
+/* Rules watch (a): off-platform payment steering in live chat. The
+   kill-tier safety scan already blocks/catches the plain forms
+   (Cash App, Venmo, $cashtags, links to known platforms) BEFORE a
+   message lands; this watch is the passive second layer for what
+   survives — obfuscated payment words, pay-me-off-app phrasing,
+   external links, bio-link steering. It observes the MODEL's own
+   posted messages only, saves the excerpt as a flag and pings the
+   owner seat. It NEVER blocks, strikes or kills: the message has
+   already posted normally when this runs. */
+const CLIP_STEERING_PATTERNS = [
+  ['steering_obfuscated_payment', /\b(c[\W_]*a[\W_]*s[\W_]*h[\W_]*a[\W_]*p[\W_]*p|v[\W_]*e[\W_]*n[\W_]*m[\W_]*o|p[\W_]*a[\W_]*y[\W_]*p[\W_]*a[\W_]*l|z[\W_]*e[\W_]*l[\W_]*l[\W_]*e)\b/i],
+  ['steering_pay_offplatform', /\b(pay|tip|send|gift)\b[^.]{0,40}\b(off|outside|off of|not on|instead of)\b[^.]{0,24}\b(app|here|slutcamp|the site|this site)\b/i],
+  ['steering_dm_for_payment', /\bdm\b[^.]{0,40}\b(pay|tip|cash|send)\b/i],
+  ['steering_bio_link', /\b(link|links)\b[^.]{0,20}\b(bio|profile|page)\b/i],
+];
+function clipSteeringScan(text) {
+  const s = String(text || '');
+  for (const [name, re] of CLIP_STEERING_PATTERNS) {
+    if (re.test(s)) return name;
+  }
+  // External links: any URL or bare domain that is not our own.
+  const links = s.match(/\b(?:https?:\/\/)?(?:[a-z0-9-]+\.)+(?:com|net|io|co|gg|me|tv|app|link|xyz|site|online)\b[^\s]*/gi) || [];
+  for (const l of links) {
+    if (!/slutcamp\.app/i.test(l)) return 'steering_external_link';
+  }
+  return null;
+}
+function maybeClipSteeringFlag(sess, sender, body, chatRowId) {
+  try {
+    if (!sess || sess.private_event_id) return false; // public lives only
+    if (!sender || sender.id !== sess.model_id) return false; // the model's own steering only
+    if (isHouseAccountId(sess.model_id)) return false;
+    const matched = clipSteeringScan(body);
+    if (!matched) return false;
+    db.prepare(`INSERT INTO rules_flags (type, session_id, model_id, evidence, segment_ref)
+                VALUES ('offplatform_steering', ?, ?, ?, ?)`)
+      .run(sess.id, sess.model_id,
+        `[${matched}] ${String(body).slice(0, 300)}`,
+        chatRowId ? `stream_chat:${chatRowId}` : `session:${sess.id}`);
+    sendOwnerPush({
+      title: '🎬 Clip watch — off-platform steering?',
+      body: `@${sender.username}: "${String(body).slice(0, 120)}" — excerpt saved in the Manager. Flag only; nothing auto-done.`,
+      link: `/?live=${sess.id}`,
+    }).catch(() => {});
+    return true;
+  } catch (e) {
+    console.log('[clips] steering flag failed:', e && e.message);
+    return false;
+  }
+}
+
+/* The A20-flip hook for the clip engine: on the 0→1 explicit flip of
+   an in-scope session, run the co-performer cross-check immediately
+   and a first detection pass. Best-effort; never throws into the
+   caller; the A20 ping beside it is untouched either way. */
+function maybeClipWatch(sess) {
+  try {
+    if (!clipSessionInScope(sess)) return false;
+    clipCoPerformerCheck(sess);
+    clipDetectForSession(sess);
+    return true;
+  } catch (e) {
+    console.log('[clips] watch failed:', e && e.message);
+    return false;
+  }
+}
+
+/* The engine's heartbeat: every sweep, each currently-live, explicit,
+   in-scope session gets detection + the co-performer check + (behind
+   both gates) a posting pass. Interval is env-tunable like the
+   crypto poller (CLIP_SWEEP_MS, default 30s). Sessions are processed
+   SEQUENTIALLY and a sweep never overlaps itself: posting passes are
+   async, and firing them off un-awaited in a loop would let the
+   first session's pass hold the one-at-a-time guard on every tick
+   and starve every later session (caught by tests/auto-clip C2). */
+let clipSweepInFlight = false;
+async function clipSweep() {
+  if (clipSweepInFlight) return;
+  clipSweepInFlight = true;
+  try {
+    const sessions = db.prepare(
+      "SELECT * FROM live_sessions WHERE status = 'live' AND is_explicit = 1").all();
+    for (const sess of sessions) {
+      if (!clipSessionInScope(sess)) continue;
+      try {
+        clipDetectForSession(sess);
+        clipCoPerformerCheck(sess);
+        await clipPostingPass(sess);
+      } catch (e) {
+        console.log('[clips] session sweep failed:', e && e.message);
+      }
+    }
+  } finally {
+    clipSweepInFlight = false;
+  }
+}
+const CLIP_SWEEP_MS = (() => {
+  const n = parseInt(process.env.CLIP_SWEEP_MS || '');
+  return Number.isInteger(n) && n >= 250 ? n : 30000;
+})();
+setInterval(() => { clipSweep().catch(() => {}); }, CLIP_SWEEP_MS);
 
 // Total unread DM messages waiting for a user — the exact math behind
 // GET /api/conversations (each conversation's unread_count summed), so the
@@ -17004,6 +17558,9 @@ app.post('/api/live/:id/mode', identMiddleware, requireUser, requireRole('model'
   // A20: a fresh 0→1 flip of a public Female/Couple live pings the
   // owner seat for promo (sess still holds the pre-update state).
   if (isExplicit && !sess.is_explicit) maybePromoPing(sess);
+  // A21: the same 0→1 flip arms the auto-clip watch (co-performer
+  // cross-check + first detection pass; the sweep does the rest).
+  if (isExplicit && !sess.is_explicit) maybeClipWatch(sess);
   res.json({ ok: true, is_explicit: !!isExplicit });
 });
 
@@ -17494,6 +18051,9 @@ app.post('/api/live/:id/chat', identMiddleware, requireUser, (req, res) => {
     sender_id: req.user.id, sender_name: req.user.display_name,
     sender_role: req.user.role, body, created_at: new Date().toISOString() };
   pushLiveAll(sess.id, { type: 'live:chat', message: msg });
+  // A21 rules watch: passive steering scan of the model's own posted
+  // message (never blocks or punishes — flag + owner ping only).
+  maybeClipSteeringFlag(sess, req.user, body, msg.id);
   res.json({ ok: true, message: msg });
 });
 
@@ -19672,6 +20232,39 @@ app.get('/api/admin/promos', ...adminOnly, (req, res) => {
   res.json({ promos: rows.map(promoCampaignRow),
     house_balance_cents: hw ? hw.credits_cents : 0,
     appreciation: { ...apprTotals, recent: apprRecent } });
+});
+
+/* Auto-clip log (Assignment 21): every clip candidate the engine cut
+   + every rules-watch flag, newest first, with the model named. The
+   flag/threshold state rides along so the Clips screen can show the
+   kill switch exactly as it stands. Read-only except flag resolve —
+   the engine's decisions are the record; nobody edits them here. */
+app.get('/api/admin/clips', ...adminOnly, (req, res) => {
+  const clips = db.prepare(
+    `SELECT c.*, u.username, u.display_name
+       FROM clips c JOIN users u ON u.id = c.model_id
+      ORDER BY c.id DESC LIMIT 200`).all();
+  const flags = db.prepare(
+    `SELECT f.*, u.username, u.display_name
+       FROM rules_flags f JOIN users u ON u.id = f.model_id
+      ORDER BY f.id DESC LIMIT 200`).all();
+  const st = db.prepare(
+    'SELECT promo_autopost, clip_money_threshold_cents FROM platform_stats WHERE id = 1').get() || {};
+  res.json({ clips, flags,
+    promo_autopost: st.promo_autopost === 1,
+    clip_money_threshold_cents: Number.isInteger(st.clip_money_threshold_cents)
+      ? st.clip_money_threshold_cents : 2000 });
+});
+
+/* Resolve a rules-watch flag (Assignment 21): the human decision the
+   flag was saved for. Resolving changes nothing for the model — it
+   only closes the flag in the log. */
+app.post('/api/admin/rules-flags/:id/resolve', ...adminOnly, (req, res) => {
+  const f = db.prepare('SELECT * FROM rules_flags WHERE id = ?').get(req.params.id);
+  if (!f) return res.status(404).json({ error: 'not_found' });
+  db.prepare("UPDATE rules_flags SET status = 'resolved', resolved_at = datetime('now') WHERE id = ?")
+    .run(f.id);
+  res.json({ ok: true });
 });
 
 app.post('/api/admin/promos/:id/active', ...adminOnly, (req, res) => {
@@ -22384,6 +22977,27 @@ app.put('/api/admin/settings', ...adminOnly, (req, res) => {
       db.prepare(`UPDATE platform_stats SET ${field} = ? WHERE id = 1`).run(v);
       out[field] = v;
     }
+  }
+  // Auto-clip kill switch (Assignment 21): the promo_autopost flag.
+  // Default OFF; while OFF the engine logs held clips and NEVER posts
+  // to X. Even ON, posting still needs the model's Agreement v1.7
+  // §6(d) acceptance — the flag alone posts nothing.
+  if (req.body.promo_autopost !== undefined) {
+    const v = parseInt(req.body.promo_autopost);
+    if (!Number.isInteger(v) || (v !== 0 && v !== 1))
+      return res.status(400).json({ error: 'bad_promo_autopost' });
+    db.prepare('UPDATE platform_stats SET promo_autopost = ? WHERE id = 1').run(v);
+    out.promo_autopost = v;
+  }
+  // Auto-clip money-moment threshold (Assignment 21): a single
+  // tip/gift — or a 60-second burst — at or over this anchors a clip
+  // candidate. Default $20.
+  if (req.body.clip_money_threshold_cents !== undefined) {
+    const v = parseInt(req.body.clip_money_threshold_cents);
+    if (!Number.isInteger(v) || v < 100 || v > 1000000)
+      return res.status(400).json({ error: 'bad_clip_threshold' });
+    db.prepare('UPDATE platform_stats SET clip_money_threshold_cents = ? WHERE id = 1').run(v);
+    out.clip_money_threshold_cents = v;
   }
   res.json(out);
 });
