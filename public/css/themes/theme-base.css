@@ -78,6 +78,13 @@
   pointer-events: none;
   z-index: 60;
 }
+/* A22 hardening: the floating decoration popup must NEVER eat a tap
+   (it renders at z-index 9990, over sheets and buttons). The kill
+   lives HERE, in the base sheet every theme loads, so it holds even
+   if a theme pack fails to load or its :root[data-theme] scoping
+   misses — the packs repeat it, and theme.js also sets it inline.
+   Decorations are eyes-only, always. */
+.sc-popup, .sc-popup * { pointer-events: none !important; }
 .sc-theme-particles span {
   position: absolute;
   top: -8%;

@@ -578,10 +578,26 @@ ${seoBrand}
   <p class="price">💬 Messages from ${seoMoney(m.per_message_cents)}</p>
   ${tagsHtml}
   <div><a class="cta" href="/">💋 Chat with her on SlutCamp</a></div>
+  <div><button class="cta" id="share-profile" type="button" style="margin-top:8px;cursor:pointer">📤 Share her profile</button></div>
   ${socialHtml}
 </div>
 ${m.bio ? `<p class="bio">${seoEsc(m.bio)}</p>` : ''}
 ${feedHtml}
+<script>
+/* A22: Share her profile — native share sheet, clipboard fallback.
+   The shared URL is this page's canonical profile URL. */
+document.getElementById('share-profile').addEventListener('click', function () {
+  var url = ${JSON.stringify(url)};
+  var btn = document.getElementById('share-profile');
+  if (navigator.share) { navigator.share({ title: document.title, text: document.title, url: url }).catch(function () {}); }
+  else if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(function () {
+      btn.textContent = '✅ Link copied';
+      setTimeout(function () { btn.textContent = '📤 Share her profile'; }, 2000);
+    }).catch(function () { prompt('Copy her profile link:', url); });
+  } else { prompt('Copy her profile link:', url); }
+});
+</script>
 ${seoFooter}
 </div></body></html>`);
 });
