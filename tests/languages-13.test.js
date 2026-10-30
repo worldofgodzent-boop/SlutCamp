@@ -135,40 +135,43 @@ test('client: previously hardcoded blocks render through t()', () => {
   assert.ok(!appSrc.includes('>Change password</button>'), 'password card no longer hardcoded');
 });
 
-test('client: Fan Terms §14 Your Ideas & Feedback in all 13 languages (Assignment 04)', () => {
+test('client: Fan Terms §16 Your Ideas & Feedback in all 13 languages (Assignment 04)', () => {
   const I18N = evalConst(appSrc, 'const I18N =');
   // EN is verbatim from the spec (English controls); the other 12 follow
   // the same translation pattern as the neighboring sections.
-  assert.ok(I18N.en.legal_terms_html.includes('14. Your Ideas'),
-    'EN terms carry the §14 heading');
+  // Re-based as §16 at the gate: the Oct 27 CCBill compliance build took
+  // §14 (Content Screening) and §15 (SMS) on main, so the ideas clause
+  // follows §15 in the merged Terms and stays the final section here.
+  assert.ok(I18N.en.legal_terms_html.includes('16. Your Ideas'),
+    'EN terms carry the §16 heading');
   assert.ok(I18N.en.legal_terms_html.includes(
     'If you suggest an idea, feature, name, design, or any other feedback to SlutCamp'),
-    'EN §14 suggestion sentence');
+    'EN §16 suggestion sentence');
   assert.ok(I18N.en.legal_terms_html.includes(
     'you waive any claim against SlutCamp and World Of Godz Entertainment LLC arising from our use of it'),
-    'EN §14 waiver sentence');
+    'EN §16 waiver sentence');
   const headings = {
-    en: '14. Your Ideas', es: '14. Tus ideas', pt: '14. As suas ideias', fr: '14. Vos idées',
-    de: '14. Deine Ideen', ru: '14. Ваши идеи', ja: '14. あなたのアイデア',
-    zh: '14. 你的想法', ko: '14. 당신의 아이디어', it: '14. Le tue idee',
-    pl: '14. Twoje pomysły', nl: '14. Jouw ideeën', tr: '14. Fikirleriniz',
+    en: '16. Your Ideas', es: '16. Tus ideas', pt: '16. As suas ideias', fr: '16. Vos idées',
+    de: '16. Deine Ideen', ru: '16. Ваши идеи', ja: '16. あなたのアイデア',
+    zh: '16. 你的想法', ko: '16. 당신의 아이디어', it: '16. Le tue idee',
+    pl: '16. Twoje pomysły', nl: '16. Jouw ideeën', tr: '16. Fikirleriniz',
   };
   const updated = {
-    en: 'Last updated October 26, 2026', es: '26 de octubre de 2026',
-    pt: '26 de outubro de 2026', fr: '26 octobre 2026', de: '26. Oktober 2026',
-    ru: '26 октября 2026', ja: '2026年10月26日', zh: '2026 年 10 月 26 日',
-    ko: '2026년 10월 26일', it: '26 ottobre 2026', pl: '26 października 2026',
-    nl: '26 oktober 2026', tr: '26 Ekim 2026',
+    en: 'Last updated October 27, 2026', es: '27 de octubre de 2026',
+    pt: '27 de outubro de 2026', fr: '27 octobre 2026', de: '27. Oktober 2026',
+    ru: '27 октября 2026', ja: '2026年10月27日', zh: '2026 年 10 月 27 日',
+    ko: '2026년 10월 27일', it: '27 ottobre 2026', pl: '27 października 2026',
+    nl: '27 oktober 2026', tr: '27 Ekim 2026',
   };
   for (const lang of LANG13) {
     const html = I18N[lang].legal_terms_html;
-    assert.ok(html.includes(headings[lang]), `${lang} terms carry the §14 heading`);
-    assert.ok(html.indexOf('13.') < html.indexOf('14.'), `${lang} §14 follows §13`);
-    assert.ok(html.includes(updated[lang]), `${lang} Last updated bumped to October 26, 2026`);
-    // §14 body sits between its heading and the footer, and is substantive.
+    assert.ok(html.includes(headings[lang]), `${lang} terms carry the §16 heading`);
+    assert.ok(html.indexOf('13.') < html.indexOf(headings[lang]), `${lang} §16 sits after §13 (final section; follows §15 once merged)`);
+    assert.ok(html.includes(updated[lang]), `${lang} Last updated is October 27, 2026`);
+    // §16 body sits between its heading and the footer, and is substantive.
     const body = html.slice(html.indexOf(headings[lang]), html.indexOf('<p class="muted small"'));
-    assert.ok(body.length > 200, `${lang} §14 body present`);
-    assert.ok(body.includes('SlutCamp'), `${lang} §14 names SlutCamp`);
+    assert.ok(body.length > 200, `${lang} §16 body present`);
+    assert.ok(body.includes('SlutCamp'), `${lang} §16 names SlutCamp`);
   }
 });
 

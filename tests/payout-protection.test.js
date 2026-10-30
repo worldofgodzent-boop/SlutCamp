@@ -596,7 +596,7 @@ test('Terms pins: the contracts and fan Terms carry the payout-protection clause
   assert.ok(termsView.includes('12. Changes'), 'fan Terms Changes renumbered to 12 (governing law took 11)');
   assert.ok(app.includes('Model earnings become eligible for withdrawal one week (7 days) after they are earned.'),
     'fan Terms §4 carries the 7-day eligibility sentence');
-  assert.ok(app.includes('Last updated October 27, 2026'), 'fan Terms date updated (October 27, 2026 by the CCBill compliance build)');
+  assert.ok(app.includes('Last updated October 27, 2026'), 'fan Terms date is October 27, 2026 (Assignment 04 §16 re-base; no-redate rule)');
   assert.ok(app.includes("New earnings become withdrawable one week (7 days) after they\\'re earned."),
     'the exact model-facing disclosure sentence ships in the earnings views');
   const mgr = fs.readFileSync(path.join(REPO, 'public/manager/manager.js'), 'utf8');
