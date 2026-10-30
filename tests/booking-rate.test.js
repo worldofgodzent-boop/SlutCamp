@@ -60,8 +60,12 @@ test('pins: schema, pricing fallback, payload resolution, settings save', () => 
   assert.ok(serverSrc.includes('booking_rate_cents: m ? (m.booking_rate_cents ?? m.per_minute_cents) : 0'),
     'otherParty resolves booking_rate_cents');
   // Settings save: validated $1–$100 (100..10000) on PUT /api/model/profile.
+  // (Window widened 2600 → 4000, Oct 30 2026: A23b's share_note block
+  // inside the same handler pushed the booking_rate lines to ~2855 —
+  // the lines are byte-identical, only their offset moved. 4000 stays
+  // well inside the handler, which runs ~6900 chars.)
   const put = serverSrc.slice(serverSrc.indexOf("app.put('/api/model/profile'"),
-    serverSrc.indexOf("app.put('/api/model/profile'") + 2600);
+    serverSrc.indexOf("app.put('/api/model/profile'") + 4000);
   assert.ok(put.includes('booking_rate_cents'), 'profile PUT accepts booking_rate_cents');
   assert.ok(put.includes('badRate(booking_rate_cents, 100, 10000)'), 'profile PUT range-validates it');
   assert.ok(put.includes("updates.push('booking_rate_cents = ?')"), 'profile PUT persists it');

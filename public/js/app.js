@@ -14538,7 +14538,7 @@ async function shareModelProfile(m) {
    * in when a surface hands us a model without one). The share
    * sheet composes the text ahead of the link. */
   const note = (m.share_note && String(m.share_note).trim())
-    || 'Cum have fun with me on SlutCamp';
+    || 'Come have fun with me at SlutCamp';
   const data = {
     title: `${m.display_name} on SlutCamp`,
     text: note,
@@ -19596,7 +19596,7 @@ async function vModelSettings() {
       <div class="card">
         <div style="font-weight:800;margin-bottom:6px">${t('share_note_h')}</div>
         <div class="muted small" style="margin-bottom:10px">${t('share_note_note')}</div>
-        <input class="input" id="s-share-note" maxlength="280" value="${esc(m.share_note || 'Cum have fun with me on SlutCamp')}">
+        <input class="input" id="s-share-note" maxlength="280" value="${esc(m.share_note || 'Come have fun with me at SlutCamp')}">
         <button class="btn" id="s-share-note-save" style="margin-top:8px">${t('save_share_note')}</button>
       </div>
       <div class="card">

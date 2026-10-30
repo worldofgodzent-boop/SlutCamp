@@ -363,10 +363,28 @@ const SEO_ORIGIN = 'https://slutcamp.app';
  * effective note is her stored note when she has written one; an
  * empty/blank stored note falls back to this, so her card and her
  * share text always carry a note. */
-const DEFAULT_SHARE_NOTE = 'Cum have fun with me on SlutCamp';
+const DEFAULT_SHARE_NOTE = 'Come have fun with me at SlutCamp';
 const shareNoteOf = (v) => {
   const n = String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
   return n || DEFAULT_SHARE_NOTE;
+};
+/* A23b REVISED (Owner, Oct 30 2026): the poster frame of her featured
+ * preview video, WHEN one is stored. A poster lives in the same
+ * uploads store under the video's own stem (preview-<hex>.mp4 →
+ * preview-<hex>.jpg|png|webp — the /uploads guard serves that class)
+ * and is resolved here by lookup only: NO frame is ever generated,
+ * extracted or transcoded in this codebase, and the .mp4 itself is
+ * never a card image. When no poster asset is stored the caller
+ * falls back (her eligible public photo → the brand logo). */
+const videoPosterAbs = (videoUrl) => {
+  const m = /^\/uploads\/(preview-[a-f0-9]+)\.mp4$/.exec(String(videoUrl || ''));
+  if (!m) return '';
+  for (const ext of ['.jpg', '.png', '.webp']) {
+    if (fs.existsSync(path.join(UPLOAD_DIR, m[1] + ext))) {
+      return SEO_ORIGIN + '/uploads/' + m[1] + ext;
+    }
+  }
+  return '';
 };
 const seoEsc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -388,6 +406,7 @@ function seoPublicModels() {
   const rows = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.presence_override, u.created_at,
            m.bio, m.per_message_cents, m.public_photo_url, m.share_note, m.tags, m.is_featured, m.is_online, m.section,
+           m.preview_video_url,
            ls.id AS live_session_id
     FROM users u JOIN models m ON m.user_id = u.id
     LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live' AND ls.private_event_id IS NULL
@@ -414,7 +433,22 @@ function seoPublicModels() {
     // blanked on the row before the derivation below reads it, so
     // the logo fallback engages identically.
     if (r.public_photo_url && heldMediaUrls(r.id).has(r.public_photo_url)) r.public_photo_url = '';
+    const heldUrls = r.preview_video_url ? heldMediaUrls(r.id) : new Set();
     const pubPhoto = isIdVerified(r.id) ? (r.public_photo_url || '') : '';
+    const photoAbs = pubPhoto ? SEO_ORIGIN + pubPhoto : SEO_ORIGIN + '/img/lips-logo.png';
+    /* A23b REVISED (Owner, Oct 30 2026): her share card's image is her
+     * FEATURED media — the media her profile leads with. Her profile
+     * and her tiles lead with her preview video (Video 1) when she
+     * has one, so a featured video's POSTER frame is the card image;
+     * a featured picture is the picture itself. Eligibility mirrors
+     * the roster shaping exactly: her ID approved (isIdVerified) and
+     * the item not co-star-held (heldMediaUrls) — a locked or
+     * unapproved featured video never leaks its poster. Fallback
+     * order when the featured video has no stored poster (or is not
+     * eligible): her eligible public photo → the brand logo. */
+    const featuredVideo = (isIdVerified(r.id) && r.preview_video_url && !heldUrls.has(r.preview_video_url))
+      ? r.preview_video_url : '';
+    const shareImageAbs = (featuredVideo ? videoPosterAbs(featuredVideo) : '') || photoAbs;
     return {
       id: r.id,
       username: r.username,
@@ -430,6 +464,7 @@ function seoPublicModels() {
       rank_position: rankPos.get(r.id) || null,
       url: '/models/' + encodeURIComponent(r.username),
       photo_abs: pubPhoto ? SEO_ORIGIN + pubPhoto : SEO_ORIGIN + '/img/lips-logo.png',
+      share_image_abs: shareImageAbs,
     };
   });
 }
@@ -554,12 +589,15 @@ app.get('/models/:username', (req, res) => {
   }
   const url = SEO_ORIGIN + m.url;
   const title = `${m.display_name} (@${m.username}) on SlutCamp`;
-  /* A23b (owner, Oct 30 2026): her link preview card IS her share
-   * card — og:image is photo_abs (her gate-cleared CLEAN public
-   * photo, the same one this page's hero shows; the logo when she
-   * has none, when it is unapproved, or while a co-star hold lasts —
-   * her in-app photo_url NEVER reaches this surface, per the
-   * Oct 16 rule), and og:description is HER share note, not her bio. */
+  /* A23b (owner, Oct 30 2026; REVISED same day): her link preview
+   * card IS her share card — og:image is share_image_abs (her
+   * FEATURED media: her featured preview video's stored poster
+   * frame when she leads with a video, else her gate-cleared CLEAN
+   * public photo — photo_abs, the same one this page's hero shows;
+   * the logo when she has no eligible media, when it is unapproved,
+   * or while a co-star hold lasts — the video file itself and her
+   * in-app photo_url NEVER reach this surface, per the Oct 16
+   * rule), and og:description is HER share note, not her bio. */
   const desc = m.share_note;
   const tagsHtml = m.tags.length
     ? `<div class="tags">${m.tags.map((t) => `<a href="/tags/${seoTagSlug(t)}">${seoEsc(t)}</a>`).join('')}</div>` : '';
@@ -588,7 +626,7 @@ app.get('/models/:username', (req, res) => {
 </div>` : '';
   res.type('html').set('Cache-Control', 'public, max-age=300').send(`<!DOCTYPE html>
 <html lang="en">
-<head>${seoHead({ title, desc, url, image: m.photo_abs })}</head>
+<head>${seoHead({ title, desc, url, image: m.share_image_abs })}</head>
 <body><div class="wrap">
 ${seoBrand}
 <div class="hero">
@@ -860,11 +898,15 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 // Public classes in uploads/: model profile photos ("photo-*") and profile
 // preview videos ("preview-*.mp4") — both are public profile content by
 // design (they render on profiles and home tiles, for guests too).
-// PPV media + voice notes stay private: only the two whitelisted patterns
-// below are served here. Everything else in uploads/ is still served only
-// via authed /api/media/:id/file.
+// A23b REVISED (Oct 30 2026): a preview video's poster frame, stored
+// beside the video under its own stem ("preview-*.jpg|png|webp"), is
+// the SAME public class — it is the still of an already-public video,
+// and her share card (og:image) points at it. PPV media + voice notes
+// stay private: only the whitelisted patterns below are served here.
+// Everything else in uploads/ is still served only via authed
+// /api/media/:id/file.
 app.use('/uploads', (req, res, next) => {
-  if (/^\/(?:photo-[a-f0-9]+\.(?:jpg|png|webp)|preview-[a-f0-9]+\.mp4)$/.test(req.path)) return next();
+  if (/^\/(?:photo-[a-f0-9]+\.(?:jpg|png|webp)|preview-[a-f0-9]+\.(?:mp4|jpg|png|webp))$/.test(req.path)) return next();
   return res.status(404).end();
 }, express.static(UPLOAD_DIR, {
   /* Whitelisted upload names are crypto-random (multer storage above:
@@ -1020,7 +1062,7 @@ CREATE TABLE IF NOT EXISTS models (
   mic_join_cents INTEGER NOT NULL DEFAULT 500,
   fan_pics_allowed INTEGER NOT NULL DEFAULT 0,
   fan_pic_price INTEGER NOT NULL DEFAULT 0,
-  share_note TEXT NOT NULL DEFAULT 'Cum have fun with me on SlutCamp'
+  share_note TEXT NOT NULL DEFAULT 'Come have fun with me at SlutCamp'
 );
 
 -- Model likes (fans tap heart on model cards)
@@ -1742,7 +1784,7 @@ addColumnIfMissing('models', 'public_photo_url', "TEXT NOT NULL DEFAULT ''");
 // text. Hers to edit in profile settings under the same content rules
 // as her bio; the column default is the owner's exact wording, so
 // every existing and new model carries it until she changes it.
-addColumnIfMissing('models', 'share_note', "TEXT NOT NULL DEFAULT 'Cum have fun with me on SlutCamp'");
+addColumnIfMissing('models', 'share_note', "TEXT NOT NULL DEFAULT 'Come have fun with me at SlutCamp'");
 addColumnIfMissing('live_sessions', 'title', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('live_sessions', 'brb', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_sessions', 'game_on', 'INTEGER NOT NULL DEFAULT 0'); // Game Category live this session
