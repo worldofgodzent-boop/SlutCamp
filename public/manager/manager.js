@@ -1751,6 +1751,36 @@ async function adminAnalyticsBody() {
     `<div class="row" style="padding:8px 0;border-bottom:1px solid rgba(139,92,246,.12)">
       <span class="grow small" style="word-break:break-all">${esc(r.ref || r.c || r.path || '')}</span>
       <b>${r.n}</b></div>`).join('') || `<div class="muted small">No ${label} yet.</div>`;
+  // Geo rows (owner ask Oct 30, 2026): flag + country name + count + bar for
+  // countries; city + country code + count + bar for cities. Codes the API
+  // returns are ISO alpha-2; a null code is an unresolvable visit (incl.
+  // every visit logged before geo capture worked) and shows as (unknown).
+  const regionNames = (() => { try { return new Intl.DisplayNames(['en'], { type: 'region' }); } catch { return null; } })();
+  const flagOf = (code) => String.fromCodePoint(...[...code].map((ch) => 127397 + ch.charCodeAt(0)));
+  const geoRow = (label, n, max) => `
+    <div style="padding:8px 0;border-bottom:1px solid rgba(139,92,246,.12)">
+      <div class="row"><span class="grow small">${esc(label)}</span><b>${n}</b></div>
+      <div style="height:4px;border-radius:2px;margin-top:6px;background:linear-gradient(90deg,var(--purple),var(--pink));width:${Math.max(3, Math.round((n / max) * 100))}%"></div>
+    </div>`;
+  const countryRows = (list) => {
+    if (!list || !list.length) return '<div class="muted small">No countries yet.</div>';
+    const max = Math.max(1, ...list.map((r) => r.n));
+    return list.map((r) => {
+      const code = String(r.code || '').toUpperCase();
+      let label = '(unknown)';
+      if (/^[A-Z]{2}$/.test(code)) {
+        let name = code;
+        try { name = (regionNames && regionNames.of(code)) || code; } catch { name = code; }
+        label = `${flagOf(code)} ${name}`;
+      } else if (r.code) label = String(r.code); // legacy stored value, shown as-is
+      return geoRow(label, r.n, max);
+    }).join('');
+  };
+  const cityRows = (list) => {
+    if (!list || !list.length) return '<div class="muted small">No cities yet.</div>';
+    const max = Math.max(1, ...list.map((r) => r.n));
+    return list.map((r) => geoRow(`${r.city}${r.code ? ' · ' + String(r.code).toUpperCase() : ''}`, r.n, max)).join('');
+  };
   return `
     <div class="stat-grid" style="margin-bottom:14px">
       <div class="stat"><div class="n">${a.total}</div><div class="l">Visits (30d)</div></div>
@@ -1763,7 +1793,9 @@ async function adminAnalyticsBody() {
     <h3 style="margin:14px 0 6px">🔗 Where they come from</h3>
     <div class="card" style="padding:6px 14px">${rows(a.referrers, 'referrers')}</div>
     <h3 style="margin:14px 0 6px">🌍 Countries</h3>
-    <div class="card" style="padding:6px 14px">${rows(a.countries, 'countries')}</div>
+    <div class="card" style="padding:6px 14px">${countryRows(a.countries)}</div>
+    <h3 style="margin:14px 0 6px">🏙️ Cities</h3>
+    <div class="card" style="padding:6px 14px">${cityRows(a.cities)}</div>
     <h3 style="margin:14px 0 6px">📄 Top pages</h3>
     <div class="card" style="padding:6px 14px">${rows(a.pages, 'pages')}</div>`;
 }
