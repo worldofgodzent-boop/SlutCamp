@@ -205,7 +205,13 @@ app.use((req, res, next) => {
   return res.redirect(301, 'https://slutcamp.app' + req.url);
 });
 
-app.use(express.json({ limit: '256kb' }));
+app.use(express.json({
+  limit: '256kb',
+  // Keep the raw body around: the AgeChecker webhook signature is an
+  // HMAC over the exact bytes sent (lib/av.js), which a parsed body
+  // cannot reproduce.
+  verify: (req, res, buf) => { req.rawBody = buf; },
+}));
 
 /* ------------------------------------------------------------------ */
 /* Invite link previews — an invite link must say WHICH kind it is    */
@@ -21469,7 +21475,11 @@ const ccbillSvc = createCcbillService({ db, txn, notifyUser,
    verify via the provider's transactional-data check; crypto buyers
    via its ID check. DORMANT unless AV_PROVIDER + AV_API_KEY are set —
    while dormant every purchase path behaves exactly as before (pinned
-   by tests/av-gate.test.js) and the /api/av/* routes refuse. */
+   by tests/av-gate.test.js) and the /api/av/* routes refuse.
+   A16 exception: with AV_PROVIDER=agechecker the gate tiers by
+   COUNTRY instead (lib/av.js agecheckerGateDecision) and dormancy
+   reads the AGECHECKER_* credential vars; pinned by
+   tests/agechecker-integration.test.js. */
 const avLib = require('./lib/av');
 const avSvc = avLib.createAvService({ db });
 
@@ -21488,6 +21498,22 @@ function avPurchaseGate(req, method) {
   if (geo && geo.country === 'US' && geo.state && geo.state !== u.fan_state) {
     db.prepare('UPDATE users SET fan_state = ? WHERE id = ?').run(geo.state, req.user.id);
     u.fan_state = geo.state;
+  }
+  if (avLib.providerName() === 'agechecker') {
+    // A16 country tiering (lib/av.js): billing country first, IP
+    // second. The hosted CCBill flow never shows us a card, so there
+    // is NO billing-country source in the codebase today — null here
+    // means the IP country decides until one lands.
+    const d = avLib.agecheckerGateDecision({
+      role: u.role, avVerifiedAt: u.av_verified_at,
+      billingCountry: null, ipCountry: geo ? geo.country : null, method,
+    });
+    if (!d.gate) return null;
+    return { status: 403, body: { error: 'av_required',
+      method: d.route === 'id' ? 'id' : 'transactional',
+      state: d.country === 'US' ? (geo && geo.state ? String(geo.state).toUpperCase() : u.fan_state) : null,
+      country: d.country,
+      message: "One quick age check before your first purchase — required by your state's law." } };
   }
   const d = avLib.gateDecision({
     role: u.role, avVerifiedAt: u.av_verified_at,
@@ -21513,14 +21539,22 @@ app.get('/api/av/status', identMiddleware, requireUser, (req, res) => {
   });
 });
 
-app.post('/api/av/start', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+app.post('/api/av/start', identMiddleware, requireUser, requireRole('fan'), async (req, res) => {
   if (!avLib.enabled()) return res.status(503).json({ error: 'av_not_configured' });
   const method = req.body && req.body.method === 'id' ? 'id' : 'transactional';
   try {
-    const s = avSvc.createVerification({ userId: req.user.id, username: req.user.username, method });
+    // Tier context for the AgeChecker adapter (ignored by the stub):
+    // billing country first — no source exists in the hosted card
+    // flow today, so null — then this request's IP country.
+    const geo = geoOfReq(req);
+    const s = await avSvc.createVerification({
+      userId: req.user.id, username: req.user.username, method,
+      billingCountry: null, ipCountry: geo ? geo.country : null,
+    });
     res.json(s);
   } catch (e) {
     if (e.code === 'av_not_configured') return res.status(503).json({ error: 'av_not_configured' });
+    if (e.code === 'av_not_required') return res.status(400).json({ error: 'av_not_required' });
     console.error('av: start failed —', e.message);
     res.status(500).json({ error: 'av_start_failed' });
   }
@@ -21530,15 +21564,21 @@ app.post('/api/av/start', identMiddleware, requireUser, requireRole('fan'), (req
  * result is resolved server-side by the adapter — a client's claim of
  * success is never trusted on its own. On a pass, the fan retries the
  * purchase that was gated. */
-app.post('/api/av/complete', identMiddleware, requireUser, requireRole('fan'), (req, res) => {
+app.post('/api/av/complete', identMiddleware, requireUser, requireRole('fan'), async (req, res) => {
   if (!avLib.enabled()) return res.status(503).json({ error: 'av_not_configured' });
   try {
-    const r = avSvc.completeVerification({
+    const r = await avSvc.completeVerification({
       userId: req.user.id, username: req.user.username,
       sessionRef: req.body && req.body.session_ref,
     });
     if (!r.ok) return res.status(404).json({ error: r.error });
-    res.json({ ok: true, passed: r.passed, verified: r.passed });
+    const out = { ok: true, passed: r.passed, verified: r.passed };
+    // AgeChecker extras (additive): still in progress at the provider,
+    // or the US data check fell back to an ID scan with a fresh
+    // hosted link to send the fan to.
+    if (r.pending) out.pending = true;
+    if (r.redirect_url) { out.redirect_url = r.redirect_url; out.session_ref = r.session_ref; }
+    res.json(out);
   } catch (e) {
     if (e.code === 'av_not_configured') return res.status(503).json({ error: 'av_not_configured' });
     console.error('av: complete failed —', e.message);
@@ -21548,12 +21588,19 @@ app.post('/api/av/complete', identMiddleware, requireUser, requireRole('fan'), (
 
 /* Provider server-to-server result delivery (webhook). INERT until a
  * real provider is configured — see lib/av.js
- * verifyWebhookSignature, which must gain real HMAC verification at
- * activation time. Always 200 for well-formed posts so a provider
- * stops retrying; decisions are recorded on the session row. */
-app.post('/api/av/webhook', (req, res) => {
+ * verifyWebhookSignature. Always 200 for well-formed posts so a
+ * provider stops retrying; decisions are recorded on the session row.
+ * AgeChecker delivers by PUT with its own signature header
+ * (X-AgeChecker-Signature, HMAC over the raw body), so the same
+ * handler is registered for PUT: the callback URL AgeChecker is
+ * configured with is THIS path. */
+function avWebhookHandler(req, res) {
   try {
-    if (!avSvc.verifyWebhookSignature(req.body || {}, req.headers['x-av-signature'])) {
+    const isAgeChecker = avLib.providerName() === 'agechecker';
+    const signature = isAgeChecker
+      ? req.headers['x-agechecker-signature'] : req.headers['x-av-signature'];
+    const payload = isAgeChecker && req.rawBody ? req.rawBody : (req.body || {});
+    if (!avSvc.verifyWebhookSignature(payload, signature)) {
       return res.status(401).json({ error: 'bad_signature' });
     }
     const r = avSvc.handleWebhook(req.body || {});
@@ -21562,7 +21609,9 @@ app.post('/api/av/webhook', (req, res) => {
     console.error('av: webhook error —', e.message);
     res.json({ ok: true, handled: 'error' });
   }
-});
+}
+app.post('/api/av/webhook', avWebhookHandler);
+app.put('/api/av/webhook', avWebhookHandler);
 
 app.get('/api/ccbill/config', (req, res) => {
   res.json({ configured: ccbillSvc.configured(), max_cents: ccbillSvc.maxCents() });
