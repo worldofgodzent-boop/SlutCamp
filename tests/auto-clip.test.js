@@ -187,6 +187,21 @@ async function waitFor(cond, ms = 12000) {
     await new Promise((r) => setTimeout(r, 120));
   }
 }
+/* A post is COMPLETE when the clips row says so — not when the X stub
+ * logs the hit. The stub records the request the moment the engine
+ * SENDS it; the engine marks the clip 'posted' only after the stub's
+ * response round-trips back and its UPDATE commits. Waiting on the
+ * hit count alone and then reading the row races that commit: under
+ * gate-level CPU contention the read can land first and see 'held'
+ * (the flake that sank the A16/A11/A12 gates and geo pass 2, always
+ * at the same assertion). Poll the real end state instead — stub
+ * hits AND the session's posted rows — with a deadline sized for a
+ * loaded box (a post needs a full sweep cycle + HTTP round trip +
+ * commit, and a starved sweep stretches seconds, not milliseconds). */
+async function waitForPosted(dir, sessionId, hits, hitCount, postedCount, ms = 90000) {
+  return waitFor(() => hits.length === hitCount
+    && clipsFor(dir, sessionId).filter((c) => c.status === 'posted').length === postedCount, ms);
+}
 const settle = (ms) => new Promise((r) => setTimeout(r, ms));
 const tsOf = (sec) => new Date(sec * 1000).toISOString().slice(0, 19).replace('T', ' ');
 const nowSec = () => Math.floor(Date.now() / 1000);
@@ -456,7 +471,7 @@ test('C: consent gate, then cap + spacing behind flag ON (X stub)',
     const t1 = nowSec() - 120; // a fully-developed moment: its window has closed
     addGift(wdb, fem.sessionId, fanId, gid, 2500, t1);
     addChatBurst(wdb, fem.sessionId, fanId, 12, t1); // chat spike → 70 = high
-    assert.ok(await waitFor(() => clipsFor(dir, fem.sessionId).length === 1), 'high clip logged');
+    assert.ok(await waitFor(() => clipsFor(dir, fem.sessionId).length === 1, 45000), 'high clip logged');
     assert.equal(clipsFor(dir, fem.sessionId)[0].tier, 'high', 'money + chat spike → high');
     await settle(2200);
     assert.equal(hits.length, 0, 'consent gate: flag ON alone posts NOTHING');
@@ -466,7 +481,7 @@ test('C: consent gate, then cap + spacing behind flag ON (X stub)',
     // exist yet; this is exactly the signature the gate will read).
     wdb.prepare("INSERT INTO contract_signatures (user_id, contract_version, display_name) VALUES (?, '1.7', 'Test Signer')")
       .run(fem.id);
-    assert.ok(await waitFor(() => hits.length === 1), 'with consent, the high clip posts');
+    assert.ok(await waitForPosted(dir, fem.sessionId, hits, 1, 1), 'with consent, the high clip posts');
     const posted = clipsFor(dir, fem.sessionId)[0];
     assert.equal(posted.status, 'posted', 'clip marked posted');
     assert.equal(posted.tweet_url, 'https://x.com/SlutCampApp/status/17999', 'tweet URL recorded (built from the brand constant)');
@@ -484,8 +499,8 @@ test('C: consent gate, then cap + spacing behind flag ON (X stub)',
       addGift(wdb, fem2.sessionId, fanId, gid, 2500, base0 + i * 200);
       addChatBurst(wdb, fem2.sessionId, fanId, 12, base0 + i * 200);
     }
-    assert.ok(await waitFor(() => clipsFor(dir, fem2.sessionId).length === 4), 'four high clips logged');
-    assert.ok(await waitFor(() => hits.length === 2), 'first post fires');
+    assert.ok(await waitFor(() => clipsFor(dir, fem2.sessionId).length === 4, 45000), 'four high clips logged');
+    assert.ok(await waitForPosted(dir, fem2.sessionId, hits, 2, 1), 'first post fires');
     await settle(2200);
     assert.equal(hits.length, 2, 'spacing: the second clip does NOT follow immediately');
     let rows = clipsFor(dir, fem2.sessionId);
@@ -499,10 +514,10 @@ test('C: consent gate, then cap + spacing behind flag ON (X stub)',
       finally { db.close(); }
     };
     backdate(rows.find((c) => c.status === 'posted').id);
-    assert.ok(await waitFor(() => hits.length === 3), 'after 15+ min, the second posts');
+    assert.ok(await waitForPosted(dir, fem2.sessionId, hits, 3, 2), 'after 15+ min, the second posts');
     rows = clipsFor(dir, fem2.sessionId);
     backdate(rows.filter((c) => c.status === 'posted').sort((a, b) => b.id - a.id)[0].id);
-    assert.ok(await waitFor(() => hits.length === 4), 'the third posts');
+    assert.ok(await waitForPosted(dir, fem2.sessionId, hits, 4, 3), 'the third posts');
     rows = clipsFor(dir, fem2.sessionId);
     assert.equal(rows.filter((c) => c.status === 'posted').length, 3, 'three posted');
     backdate(rows.filter((c) => c.status === 'posted').sort((a, b) => b.id - a.id)[0].id);
