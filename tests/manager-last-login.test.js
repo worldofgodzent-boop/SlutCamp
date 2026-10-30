@@ -53,8 +53,16 @@ test('pins: Fans card renders the Last login line; label never implies activity'
   assert.ok(body.includes('Last login: ${esc(fanLastLoginText(f))}'),
     'card renders the Last login line from the row field');
   assert.ok(body.includes('data-fan-card="${f.id}"'), 'line lives inside the fan card');
-  assert.ok(!/Last (active|seen|activity)/.test(body),
-    'never worded as last activity — it is the login moment only');
+  // Assignment 05 supersedes the blanket form of this pin: a SEPARATE
+  // "Last active:" line is now spec'd on the same card. What is still
+  // pinned is that the Last login line itself is never worded as
+  // activity — its template is exactly the login helper, which
+  // contains no active/seen/activity wording.
+  assert.ok(!/Last login: [^\n]*\b(active|seen|activity)\b/.test(body),
+    'the Last login line itself is never worded as activity');
+  const loginHelper = managerSrc.match(/function fanLastLoginText\(f\) \{[^}]*\}/)[0];
+  assert.ok(!/\b(active|seen|activity)\b/i.test(loginHelper),
+    'the login helper itself never says activity');
 
   const helper = managerSrc.slice(managerSrc.indexOf('function fanLastLoginText('),
     managerSrc.indexOf('/* ---------------- state + API'));
