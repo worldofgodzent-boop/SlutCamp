@@ -151,6 +151,7 @@ const I18N = {
     role_word_model: 'model',
     role_word_affiliate: 'affiliate',
     share_app: '📤 Share SlutCamp',
+    share_profile: '📤 Share her profile',
     ath_card_t: 'Put SlutCamp on your home screen',
     ath_card_sub: 'Opens like a real app, one tap.',
     ath_btn: 'Add the app',
@@ -1132,6 +1133,7 @@ const I18N = {
     role_word_model: 'modelo',
     role_word_affiliate: 'afiliado',
     share_app: '📤 Compartir SlutCamp',
+    share_profile: '📤 Compartir su perfil',
     ath_card_t: 'Pon SlutCamp en tu pantalla de inicio',
     ath_card_sub: 'Se abre como una app real, con un toque.',
     ath_btn: 'Añadir la app',
@@ -2113,6 +2115,7 @@ const I18N = {
     role_word_model: 'modelo',
     role_word_affiliate: 'afiliado',
     share_app: '📤 Compartilhar o SlutCamp',
+    share_profile: '📤 Compartilhar o perfil dela',
     ath_card_t: 'Coloque o SlutCamp na sua tela inicial',
     ath_card_sub: 'Abre como um app de verdade, com um toque.',
     ath_btn: 'Adicionar o app',
@@ -3094,6 +3097,7 @@ const I18N = {
     role_word_model: 'modèle',
     role_word_affiliate: 'affilié',
     share_app: '📤 Partager SlutCamp',
+    share_profile: '📤 Partager son profil',
     ath_card_t: 'Mettez SlutCamp sur votre écran d\'accueil',
     ath_card_sub: 'S\'ouvre comme une vraie appli, en un toucher.',
     ath_btn: 'Ajouter l\'appli',
@@ -4075,6 +4079,7 @@ const I18N = {
     role_word_model: 'Model',
     role_word_affiliate: 'Affiliate',
     share_app: '📤 SlutCamp teilen',
+    share_profile: '📤 Ihr Profil teilen',
     ath_card_t: 'SlutCamp auf deinen Startbildschirm legen',
     ath_card_sub: 'Öffnet sich wie eine echte App, mit einem Tipp.',
     ath_btn: 'App hinzufügen',
@@ -5056,6 +5061,7 @@ const I18N = {
     role_word_model: 'модели',
     role_word_affiliate: 'партнёра',
     share_app: '📤 Поделиться SlutCamp',
+    share_profile: '📤 Поделиться её профилем',
     ath_card_t: 'Добавьте SlutCamp на главный экран',
     ath_card_sub: 'Открывается как настоящее приложение, одним касанием.',
     ath_btn: 'Добавить приложение',
@@ -6037,6 +6043,7 @@ const I18N = {
     role_word_model: 'モデル',
     role_word_affiliate: 'アフィリエイト',
     share_app: '📤 SlutCampをシェア',
+    share_profile: '📤 彼女のプロフィールをシェア',
     ath_card_t: 'SlutCampをホーム画面に追加',
     ath_card_sub: 'ワンタップで本物のアプリみたいに開けるよ。',
     ath_btn: 'アプリを追加',
@@ -7018,6 +7025,7 @@ const I18N = {
     role_word_model: '模特',
     role_word_affiliate: '推广伙伴',
     share_app: '📤 分享 SlutCamp',
+    share_profile: '📤 分享她的资料',
     ath_card_t: '把 SlutCamp 放到你的主屏幕',
     ath_card_sub: '像真正的应用一样打开，一点即达。',
     ath_btn: '添加应用',
@@ -7999,6 +8007,7 @@ const I18N = {
     role_word_model: '모델',
     role_word_affiliate: '제휴 파트너',
     share_app: '📤 SlutCamp 공유하기',
+    share_profile: '📤 그녀의 프로필 공유하기',
     ath_card_t: '홈 화면에 SlutCamp 추가하기',
     ath_card_sub: '한 번의 탭으로 실제 앱처럼 열립니다.',
     ath_btn: '앱 추가하기',
@@ -8980,6 +8989,7 @@ const I18N = {
     role_word_model: 'modella',
     role_word_affiliate: 'affiliato',
     share_app: '📤 Condividi SlutCamp',
+    share_profile: '📤 Condividi il suo profilo',
     ath_card_t: 'Metti SlutCamp sulla tua schermata home',
     ath_card_sub: 'Si apre come una vera app, con un tocco.',
     ath_btn: 'Aggiungi l\'app',
@@ -9961,6 +9971,7 @@ const I18N = {
     role_word_model: 'modelka',
     role_word_affiliate: 'afiliant',
     share_app: '📤 Udostępnij SlutCamp',
+    share_profile: '📤 Udostępnij jej profil',
     ath_card_t: 'Umieść SlutCamp na ekranie głównym',
     ath_card_sub: 'Otwiera się jak prawdziwa aplikacja, jednym dotknięciem.',
     ath_btn: 'Dodaj aplikację',
@@ -10942,6 +10953,7 @@ const I18N = {
     role_word_model: 'model',
     role_word_affiliate: 'affiliate',
     share_app: '📤 Deel SlutCamp',
+    share_profile: '📤 Deel haar profiel',
     ath_card_t: 'Zet SlutCamp op je startscherm',
     ath_card_sub: 'Opent als een echte app, met één tik.',
     ath_btn: 'Voeg de app toe',
@@ -11923,6 +11935,7 @@ const I18N = {
     role_word_model: 'model',
     role_word_affiliate: 'ortak',
     share_app: '📤 SlutCamp\'i Paylaş',
+    share_profile: '📤 Profilini Paylaş',
     ath_card_t: 'SlutCamp\'i ana ekranına koy',
     ath_card_sub: 'Gerçek bir uygulama gibi açılır, tek dokunuşla.',
     ath_btn: 'Uygulamayı ekle',
@@ -14379,6 +14392,31 @@ async function shareApp() {
   }
 }
 
+/* Share HER profile (A22, owner Oct 30 2026): the link is the
+ * server-issued share_url — her canonical public page — and it only
+ * exists on public, non-house profiles, so a share can never point
+ * at a profile the public page would not serve. Same share-sheet /
+ * copy-link pattern as shareApp above. The link lands a signed-out
+ * visitor on HER public page (GET /models/:username), never the
+ * homepage, with the join path from there. */
+async function shareModelProfile(m) {
+  const url = (m && m.share_url) || '';
+  if (!url) return;
+  const data = {
+    title: `${m.display_name} on SlutCamp`,
+    text: `Check out ${m.display_name} (@${m.username}) on SlutCamp 🔥 18+ only`,
+    url,
+  };
+  if (navigator.share) {
+    try { await navigator.share(data); } catch (e) { /* user cancelled */ }
+  } else if (navigator.clipboard) {
+    try { await navigator.clipboard.writeText(url); toast(t('link_copied')); }
+    catch (e) { toast(url); }
+  } else {
+    prompt('Copy her SlutCamp link:', url);
+  }
+}
+
 async function openChatWithModel(modelId) {
   await ensureGuest();
   const { status, data } = await api('/conversations/start', {
@@ -15741,6 +15779,114 @@ function logout(msg) {
 
 /* ---------------- FAN: models / chats / wallet ---------------- */
 
+/* ---------------- Full-screen media viewer (A22 part 7) ----------------
+   A bigger window on the SAME media her profile already serves: the
+   caller hands in the exact shaped item list the profile rendered
+   (her gallery pictures, her two main videos, her clean-feed items)
+   and the viewer fetches NOTHING — so anything the profile holds
+   back (upload gate, co-star hold, shield) is held here too, by
+   construction. The peek underneath is never touched, so closing
+   returns to her profile at the exact scroll position he left it.
+   Close: the Back button (top-left, always visible), the ✕, a tap
+   on the backdrop, or the browser/hardware Back — opening pushes
+   one history state and popstate closes the viewer instead of
+   leaving her profile (the app's only history use, contained to
+   this overlay). Portrait-locked app: the viewer is the viewport. */
+let mediaViewer = null; // { items, index, el }
+
+function openMediaViewer(items, index) {
+  const list = (items || []).filter((i) => i && i.url);
+  if (!list.length) return;
+  closeMediaViewer(true);
+  const el = document.createElement('div');
+  el.className = 'media-viewer';
+  el.innerHTML = `
+    <button class="mv-back">${t('back')}</button>
+    <button class="mv-close" aria-label="Close">✕</button>
+    <div class="mv-stage"></div>
+    <button class="mv-nav mv-prev" aria-label="Previous">‹</button>
+    <button class="mv-nav mv-next" aria-label="Next">›</button>
+    <div class="mv-count"></div>`;
+  document.body.appendChild(el);
+  mediaViewer = { items: list, index: Math.min(Math.max(parseInt(index) || 0, 0), list.length - 1), el };
+  try { history.pushState({ scMediaViewer: 1 }, ''); } catch (e) { /* sandboxed frame */ }
+  el.querySelector('.mv-back').onclick = () => closeMediaViewer();
+  el.querySelector('.mv-close').onclick = () => closeMediaViewer();
+  el.querySelector('.mv-prev').onclick = (e) => { e.stopPropagation(); mediaViewerGo(-1); };
+  el.querySelector('.mv-next').onclick = (e) => { e.stopPropagation(); mediaViewerGo(1); };
+  el.addEventListener('click', (e) => { if (e.target === el) closeMediaViewer(); });
+  const stage = el.querySelector('.mv-stage');
+  stage.addEventListener('click', (e) => { if (e.target === stage) closeMediaViewer(); });
+  let touchX = null;
+  el.addEventListener('touchstart', (e) => { touchX = e.changedTouches[0].clientX; }, { passive: true });
+  el.addEventListener('touchend', (e) => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    touchX = null;
+    if (Math.abs(dx) > 42) mediaViewerGo(dx < 0 ? 1 : -1);
+  }, { passive: true });
+  renderMediaViewer();
+}
+
+function renderMediaViewer() {
+  if (!mediaViewer) return;
+  const { items, index, el } = mediaViewer;
+  const it = items[index];
+  const stage = el.querySelector('.mv-stage');
+  if (it.kind === 'video') {
+    stage.innerHTML = `
+      <video class="mv-media" src="${esc(it.url)}" autoplay muted loop playsinline controls></video>
+      <span class="peek-sound-pill mv-sound">🔇 ${t('tap_for_sound')}</span>`;
+    const vid = stage.querySelector('video');
+    const pill = stage.querySelector('.mv-sound');
+    // Standard controls ride the element (play/pause, seek); the
+    // pill is the sound toggle, with the part-6 fix: unmute inside
+    // the tap gesture, `muted` attribute removed before play().
+    const syncPill = () => { pill.innerHTML = vid.muted ? `🔇 ${t('tap_for_sound')}` : `🔊 ${t('tap_to_mute')}`; };
+    const toggle = () => {
+      if (vid.muted) {
+        vid.muted = false;
+        vid.removeAttribute('muted');
+        const p = vid.play(); if (p && p.catch) p.catch(() => {});
+      } else {
+        vid.muted = true;
+      }
+      syncPill();
+    };
+    pill.onclick = (e) => { e.stopPropagation(); toggle(); };
+    vid.addEventListener('volumechange', syncPill);
+  } else {
+    stage.innerHTML = `<img class="mv-media" src="${esc(it.url)}" alt="">`;
+  }
+  el.querySelector('.mv-count').textContent = items.length > 1 ? `${index + 1} / ${items.length}` : '';
+  el.querySelector('.mv-prev').style.display = items.length > 1 ? '' : 'none';
+  el.querySelector('.mv-next').style.display = items.length > 1 ? '' : 'none';
+}
+
+function mediaViewerGo(delta) {
+  if (!mediaViewer) return;
+  const n = mediaViewer.items.length;
+  if (n < 2) return;
+  mediaViewer.index = (((mediaViewer.index + delta) % n) + n) % n;
+  renderMediaViewer();
+}
+
+function closeMediaViewer(fromPop) {
+  if (!mediaViewer) return;
+  mediaViewer.el.remove();
+  mediaViewer = null;
+  // Consume the history state the open pushed, so the browser Back
+  // stays honest afterwards; the popstate it fires lands on an
+  // already-closed viewer and no-ops.
+  if (!fromPop) {
+    try { if (history.state && history.state.scMediaViewer) history.back(); } catch (e) { /* ignore */ }
+  }
+}
+
+window.addEventListener('popstate', () => {
+  if (mediaViewer) closeMediaViewer(true);
+});
+
 /* Model browsing the home screen: tap a sister's tile for her public card
    (status, home rank, rates) — look-only, no fan actions. */
 function openModelPeek(m, models) {
@@ -15801,6 +15947,7 @@ function openModelPeek(m, models) {
     ${m.preview_video_url ? `
     <div class="peek-hero">
       <video class="peek-hero-video" data-peek-video src="${esc(m.preview_video_url)}" autoplay muted loop playsinline></video>
+      <span class="peek-expand" data-peek-expand="0">⤢</span>
       <span class="peek-sound-pill" data-peek-sound>🔇 ${t('tap_for_sound')}</span>
     </div>` : ''}
     <div style="text-align:center">
@@ -15810,11 +15957,12 @@ function openModelPeek(m, models) {
     </div>
     ${galleryPics.length ? `
     <div class="peek-gallery">
-      ${galleryPics.map((p) => `<img class="peek-gallery-img" src="${esc(p)}" alt="${esc(m.display_name)}" loading="lazy">`).join('')}
+      ${galleryPics.map((p, gi) => `<img class="peek-gallery-img" data-peek-photo="${gi}" src="${esc(p)}" alt="${esc(m.display_name)}" loading="lazy">`).join('')}
     </div>` : ''}
     ${m.preview_video_url_2 ? `
     <div class="peek-hero peek-hero-second">
       <video class="peek-hero-video" data-peek-video2 src="${esc(m.preview_video_url_2)}" autoplay muted loop playsinline></video>
+      <span class="peek-expand" data-peek-expand="1">⤢</span>
       <span class="peek-sound-pill" data-peek-sound2>🔇 ${t('tap_for_sound')}</span>
     </div>` : ''}
     <div class="peek-rows">
@@ -15827,6 +15975,7 @@ function openModelPeek(m, models) {
       ${m.schedule_summary ? `<div class="peek-row"><span>Usually live</span><b>${esc(m.schedule_summary)}</b></div>` : ''}
     </div>
     ${showPlaylistBtn ? `<button class="btn playlist-toggle" data-peek-playlist="${m.id}" style="width:100%;margin-top:12px">${t('playlist_add')}</button>` : ''}
+    ${m.share_url ? `<button class="btn ghost" data-peek-share="${m.id}" style="width:100%;margin-top:8px">${t('share_profile')}</button>` : ''}
     <div id="peek-battles"></div>
     ${m.bio ? `<div class="muted small" style="margin-top:10px">${esc(m.bio)}</div>` : ''}
     <div id="peek-pr"></div>
@@ -15906,6 +16055,32 @@ function openModelPeek(m, models) {
       }).catch(() => {});
       plBtn.onclick = () => toggleFollow(m.id, plBtn, m.display_name);
     }
+    // Share button (A22 part 4): renders only when the server issued
+    // her a share_url (public, non-house) — the tap shares that link.
+    const shareBtn = sheet.querySelector('[data-peek-share]');
+    if (shareBtn) {
+      shareBtn.onclick = () => shareModelProfile(m);
+    }
+    // Full-screen viewer (A22 part 7): her gallery pictures open the
+    // viewer on the SAME shaped URLs this page already displays
+    // (galleryPics is post-gate payload data — the viewer fetches
+    // nothing, so a held/blanked picture can never reappear bigger).
+    sheet.querySelectorAll('[data-peek-photo]').forEach((img) => {
+      img.onclick = () => openMediaViewer(
+        galleryPics.map((u) => ({ kind: 'photo', url: u })),
+        parseInt(img.dataset.peekPhoto));
+    });
+    // Her main videos open full-screen from their ⤢ chip; the set is
+    // her two main videos, starting on the one he tapped. Tapping the
+    // video itself keeps the part-6 sound toggle.
+    const heroVids = [m.preview_video_url, m.preview_video_url_2]
+      .filter(Boolean).map((u) => ({ kind: 'video', url: u }));
+    sheet.querySelectorAll('[data-peek-expand]').forEach((chip) => {
+      chip.onclick = (e) => {
+        e.stopPropagation();
+        openMediaViewer(heroVids, parseInt(chip.dataset.peekExpand));
+      };
+    });
     // Phase 6: her confirmed scheduled showdowns ("⚔️ vs @name — Fri 8 PM")
     // + a fan reminder toggle. Unconfirmed events never render here —
     // the server only returns confirmed ones.
@@ -15960,6 +16135,15 @@ function openModelPeek(m, models) {
       const togglePeekSound = () => {
         if (pv.muted) {
           pv.muted = false;
+          // iOS trap (A22 part 6): the markup carries the `muted`
+          // CONTENT attribute (autoplay needs it), and on iOS Safari
+          // an attribute-muted element stays silent when only the
+          // property is flipped — the attribute must come off too,
+          // inside the tap gesture, before play(). The battle and
+          // live unmute buttons already do exactly this; the peek
+          // toggles were the ones missing it, which is why her
+          // profile videos tapped silent on iPhone.
+          pv.removeAttribute('muted');
           try { pv.currentTime = 0; } catch (e) { /* not seekable yet */ }
           const p = pv.play(); if (p && p.catch) p.catch(() => {});
         } else {
@@ -15979,6 +16163,7 @@ function openModelPeek(m, models) {
       const togglePeekSound2 = () => {
         if (pv2.muted) {
           pv2.muted = false;
+          pv2.removeAttribute('muted'); // same iOS trap as the hero toggle above
           try { pv2.currentTime = 0; } catch (e) { /* not seekable yet */ }
           const p = pv2.play(); if (p && p.catch) p.catch(() => {});
         } else {
@@ -16126,17 +16311,25 @@ function playlistCardHTML(m) {
   const status = m.is_live
     ? `🔴 LIVE now — ${m.live_viewers || 0} watching`
     : m.is_online ? '🟢 Online now' : '⚫ Offline';
+  // Layout (A22 part 5, owner Oct 30 2026): the name gets the FULL
+  // width of its own column — the old row squeezed it beside two
+  // wide buttons, so two-word names wrapped and the buttons sat on
+  // top of the wrapped line ("Nicole / Love", the button covering
+  // "Love"; the online dot half-buried). Now: avatar left, identity
+  // block (name on one line with the presence dot inline beside it,
+  // status + @username/price under it), and Message/Remove in their
+  // own normal-height row UNDER the identity block. Nothing overlaps.
   return `
     <div class="list-item playlist-card" data-pl-open="${m.id}">
-      <span class="avatar-wrap">${avatarHTML(m.display_name, '', m.photo_url)}${m.is_live ? '<span class="online-dot"></span>' : ''}</span>
-      <span class="grow">
-        <span class="title">${esc(m.display_name)}${m.is_live ? ' <span class="live-badge">🔴 LIVE</span>' : ''}</span><br>
-        <span class="preview">${status}</span><br>
-        <span class="small muted">${t('per_msg_rate', { price: fmt(m.per_message_cents) })}</span>
-      </span>
-      <span class="row" style="gap:6px">
-        <button class="btn small" data-pl-msg="${m.id}">${t('msg_her_btn')}</button>
-        <button class="btn small ghost" data-pl-remove="${m.id}">${t('remove_btn')}</button>
+      <span class="avatar-wrap">${avatarHTML(m.display_name, '', m.photo_url)}</span>
+      <span class="grow pl-id">
+        <span class="pl-name">${(m.is_live || m.is_online) ? '<span class="pl-dot"></span>' : ''}${esc(m.display_name)}${m.is_live ? ' <span class="live-badge">🔴 LIVE</span>' : ''}</span>
+        <span class="preview">${status}</span>
+        <span class="small muted">@${esc(m.username)} · ${t('per_msg_rate', { price: fmt(m.per_message_cents) })}</span>
+        <span class="pl-actions">
+          <button class="btn small" data-pl-msg="${m.id}">${t('msg_her_btn')}</button>
+          <button class="btn small ghost" data-pl-remove="${m.id}">${t('remove_btn')}</button>
+        </span>
       </span>
     </div>`;
 }
@@ -16756,10 +16949,28 @@ async function loadPeekFeed(m) {
   if (!items.length) return;
   box.innerHTML = `
     <div style="font-weight:800;margin:14px 0 8px;text-align:left">${t('feed_h')}</div>
-    <div class="peek-gallery">${items.map((i) => i.kind === 'video'
-      ? `<video class="peek-gallery-img" src="${esc(i.url)}" muted playsinline loop preload="metadata" controls></video>`
-      : `<img class="peek-gallery-img" src="${esc(i.url)}" alt="" loading="lazy">`).join('')}
+    <div class="peek-gallery">${items.map((i, fi) => i.kind === 'video'
+      ? `<span class="peek-vidwrap"><video class="peek-gallery-img" src="${esc(i.url)}" muted playsinline loop preload="metadata" controls></video><span class="peek-expand" data-feed-expand="${fi}">⤢</span></span>`
+      : `<img class="peek-gallery-img" data-feed-photo="${fi}" src="${esc(i.url)}" alt="" loading="lazy">`).join('')}
     </div>`;
+  // Full-screen viewer (A22 part 7): photos open on tap; a video's
+  // ⤢ chip opens it in the viewer, playing, with working sound.
+  // (Diagnosis, owner report Oct 30 2026: he saw a ⤢ on these tiles
+  // that "does nothing" — no expand control or handler existed in
+  // the app at all; the glyph was the platform's native-controls
+  // furniture, which is inert in the installed app. This chip is
+  // ours, and it is wired.) Items ride the SAME gate-cleared feed
+  // payload this grid renders — the viewer fetches nothing.
+  const feedItems = items.map((i) => ({ kind: i.kind, url: i.url }));
+  box.querySelectorAll('[data-feed-photo]').forEach((img) => {
+    img.onclick = () => openMediaViewer(feedItems, parseInt(img.dataset.feedPhoto));
+  });
+  box.querySelectorAll('[data-feed-expand]').forEach((chip) => {
+    chip.onclick = (e) => {
+      e.stopPropagation();
+      openMediaViewer(feedItems, parseInt(chip.dataset.feedExpand));
+    };
+  });
 }
 
 async function loadPeekPackages(m) {
