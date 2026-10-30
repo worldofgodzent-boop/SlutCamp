@@ -1507,12 +1507,18 @@ video.mv-media { width: 100%; }
 /* Both NEW pill and rank badge on one tile: the badge steps down past her. */
 .tile-rank-badge.below-new { top: 42px; }
 .tile-rank-badge.below-new.below-viewers { top: 74px; }
-/* A23a (Oct 30 2026): the info block reserves the FULL width of the
-   bottom-right action stack (10px offset + the Follow pill's 94px
-   cap), not just the heart's — at 64px the wider Following pill
-   reached back over her price and counts lines. Her name, handle,
-   price and counts can now never run under either pill. */
-.tile-info { position: absolute; left: 12px; right: 104px; bottom: 10px; z-index: 2; pointer-events: none; }
+/* A23a (Oct 30 2026): the info block reserves room for the
+   bottom-right action stack, not just the heart's — at 64px the
+   wider Following pill reached back over her price and counts
+   lines. Follow-up tune (owner, later Oct 30, from the live
+   tiles): the pill shrank again (84px cap, 10.5px type, 7px
+   padding), so the reserve eased to 88px and her name, handle
+   and price lines reclaimed 16px. A cap-width pill is the
+   runaway case only — every shipped "✓ Following" label renders
+   ~74px at this type size, inside the 78px the reserve leaves
+   past the stack's 10px offset; the heart (~60px with its
+   count) clears it with room to spare. */
+.tile-info { position: absolute; left: 12px; right: 88px; bottom: 10px; z-index: 2; pointer-events: none; }
 .tile-name {
   display: block; font-size: 17px; font-weight: 800; line-height: 1.2;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -1545,16 +1551,18 @@ video.mv-media { width: 100%; }
 /* A23a (Oct 30 2026, owner from his phone): "Fix the following or
    follow, make it smaller. Make it neat." The A22 pill (30px tall,
    12.5px/800) rendered as a big pink slab across the tile, covering
-   her name and price line. Compact now: 24px tall, 11px type, and a
-   hard max-width with ellipsis so no language's "Following" label
-   (some run long) can ever stretch the pill back over her text. */
+   her name and price line. Compact now: 24px tall, and a hard
+   max-width with ellipsis so no language's "Following" label
+   (some run long) can ever stretch the pill back over her text.
+   Follow-up tune (owner, later Oct 30): "String the follow a
+   little bit more" — 10.5px type, 7px side padding, 84px cap. */
 .tile-follow {
-  display: inline-block; height: 24px; line-height: 24px; padding: 0 9px;
-  max-width: 94px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: inline-block; height: 24px; line-height: 24px; padding: 0 7px;
+  max-width: 84px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   border-radius: 999px; background: rgba(0,0,0,.5);
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255,255,255,.16);
-  font-size: 11px; font-weight: 700; color: #fff; cursor: pointer;
+  font-size: 10.5px; font-weight: 700; color: #fff; cursor: pointer;
   transition: transform .12s ease;
 }
 .tile-follow:active { transform: scale(1.08); }
