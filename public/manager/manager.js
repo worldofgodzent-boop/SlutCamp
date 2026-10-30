@@ -1847,22 +1847,36 @@ async function refreshPresenceCard() {
     strip.innerHTML = '<div class="muted small">Collecting data — bars appear as the minutes pass.</div>';
     return;
   }
-  const buckets = presenceBuckets(samples, 48);
-  const max = Math.max(1, ...buckets);
+  const buckets = presenceBuckets(samples, 48, Date.now());
+  // Scale bars to the TRUE peak (today's), never the strip window's own
+  // max: with a flat low count (1 person online for hours, peak today 4)
+  // the window max IS that low number, which used to peg every bar to
+  // full height — a solid wall of "peaks". The buckets stay in the max
+  // so a window straddling midnight (window max > peak today) can
+  // never push a bar past full height.
+  const max = Math.max(1, data.peakToday || 0, ...buckets);
   strip.innerHTML = buckets.map((total) => {
     const h = Math.max(2, Math.round((total / max) * 44));
     return `<div style="flex:1 1 0;min-width:0;height:${h}px;background:linear-gradient(180deg,var(--purple),var(--pink));border-radius:2px 2px 0 0" title="${total} on the app"></div>`;
   }).join('');
 }
 
-function presenceBuckets(samples, n) {
-  const sorted = [...samples].sort((a, b) => a.ts - b.ts);
+/* Buckets are fixed slices of the trailing 2 hours ending NOW (48 ×
+   2.5 min), NOT slices of whatever span the samples happen to cover:
+   anchoring to the first/last sample stretched a short post-restart
+   history across the whole strip and shifted every bar's place in
+   time. A slice with no sample in it is a true 0, so quiet stretches
+   read as low/empty bars. A slice's value is the highest sample inside
+   it (samples land ~1/min, so ~2–3 per slice). Samples newer than
+   `now` (server/client clock skew) clamp into the last slice. */
+function presenceBuckets(samples, n, nowTs) {
   const buckets = new Array(n).fill(0);
-  if (!sorted.length) return buckets;
-  const minTs = sorted[0].ts;
-  const span = Math.max(1, sorted[sorted.length - 1].ts - minTs);
-  for (const sm of sorted) {
-    const idx = Math.min(n - 1, Math.floor(((sm.ts - minTs) / span) * n));
+  const WINDOW_MS = 120 * 60 * 1000;
+  const end = nowTs || Date.now();
+  const start = end - WINDOW_MS;
+  for (const sm of samples || []) {
+    if (!sm || sm.ts < start) continue;
+    const idx = Math.min(n - 1, Math.floor(((sm.ts - start) / WINDOW_MS) * n));
     if (sm.total > buckets[idx]) buckets[idx] = sm.total;
   }
   return buckets;
