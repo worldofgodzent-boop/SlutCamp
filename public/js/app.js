@@ -153,6 +153,7 @@ const I18N = {
     share_app: '📤 Share SlutCamp',
     share_profile: '📤 Share her profile',
     ath_card_t: 'Put SlutCamp on your home screen',
+    follow_slutcamp: 'Follow SlutCamp:',
     ath_card_sub: 'Opens like a real app, one tap.',
     ath_btn: 'Add the app',
     ath_sheet_t: '📲 Add SlutCamp to your home screen',
@@ -1138,6 +1139,7 @@ const I18N = {
     share_app: '📤 Compartir SlutCamp',
     share_profile: '📤 Compartir su perfil',
     ath_card_t: 'Pon SlutCamp en tu pantalla de inicio',
+    follow_slutcamp: 'Sigue a SlutCamp:',
     ath_card_sub: 'Se abre como una app real, con un toque.',
     ath_btn: 'Añadir la app',
     ath_sheet_t: '📲 Añade SlutCamp a tu pantalla de inicio',
@@ -2123,6 +2125,7 @@ const I18N = {
     share_app: '📤 Compartilhar o SlutCamp',
     share_profile: '📤 Compartilhar o perfil dela',
     ath_card_t: 'Coloque o SlutCamp na sua tela inicial',
+    follow_slutcamp: 'Siga a SlutCamp:',
     ath_card_sub: 'Abre como um app de verdade, com um toque.',
     ath_btn: 'Adicionar o app',
     ath_sheet_t: '📲 Adicionar o SlutCamp à tela inicial',
@@ -3108,6 +3111,7 @@ const I18N = {
     share_app: '📤 Partager SlutCamp',
     share_profile: '📤 Partager son profil',
     ath_card_t: 'Mettez SlutCamp sur votre écran d\'accueil',
+    follow_slutcamp: 'Suivez SlutCamp :',
     ath_card_sub: 'S\'ouvre comme une vraie appli, en un toucher.',
     ath_btn: 'Ajouter l\'appli',
     ath_sheet_t: '📲 Ajoutez SlutCamp à votre écran d\'accueil',
@@ -4093,6 +4097,7 @@ const I18N = {
     share_app: '📤 SlutCamp teilen',
     share_profile: '📤 Ihr Profil teilen',
     ath_card_t: 'SlutCamp auf deinen Startbildschirm legen',
+    follow_slutcamp: 'Folge SlutCamp:',
     ath_card_sub: 'Öffnet sich wie eine echte App, mit einem Tipp.',
     ath_btn: 'App hinzufügen',
     ath_sheet_t: '📲 SlutCamp zu deinem Startbildschirm hinzufügen',
@@ -5078,6 +5083,7 @@ const I18N = {
     share_app: '📤 Поделиться SlutCamp',
     share_profile: '📤 Поделиться её профилем',
     ath_card_t: 'Добавьте SlutCamp на главный экран',
+    follow_slutcamp: 'Подписывайтесь на SlutCamp:',
     ath_card_sub: 'Открывается как настоящее приложение, одним касанием.',
     ath_btn: 'Добавить приложение',
     ath_sheet_t: '📲 Добавьте SlutCamp на главный экран',
@@ -6063,6 +6069,7 @@ const I18N = {
     share_app: '📤 SlutCampをシェア',
     share_profile: '📤 彼女のプロフィールをシェア',
     ath_card_t: 'SlutCampをホーム画面に追加',
+    follow_slutcamp: 'SlutCampをフォロー：',
     ath_card_sub: 'ワンタップで本物のアプリみたいに開けるよ。',
     ath_btn: 'アプリを追加',
     ath_sheet_t: '📲 SlutCampをホーム画面に追加',
@@ -7048,6 +7055,7 @@ const I18N = {
     share_app: '📤 分享 SlutCamp',
     share_profile: '📤 分享她的资料',
     ath_card_t: '把 SlutCamp 放到你的主屏幕',
+    follow_slutcamp: '关注 SlutCamp：',
     ath_card_sub: '像真正的应用一样打开，一点即达。',
     ath_btn: '添加应用',
     ath_sheet_t: '📲 把 SlutCamp 添加到你的主屏幕',
@@ -8033,6 +8041,7 @@ const I18N = {
     share_app: '📤 SlutCamp 공유하기',
     share_profile: '📤 그녀의 프로필 공유하기',
     ath_card_t: '홈 화면에 SlutCamp 추가하기',
+    follow_slutcamp: 'SlutCamp 팔로우:',
     ath_card_sub: '한 번의 탭으로 실제 앱처럼 열립니다.',
     ath_btn: '앱 추가하기',
     ath_sheet_t: '📲 홈 화면에 SlutCamp 추가하기',
@@ -9018,6 +9027,7 @@ const I18N = {
     share_app: '📤 Condividi SlutCamp',
     share_profile: '📤 Condividi il suo profilo',
     ath_card_t: 'Metti SlutCamp sulla tua schermata home',
+    follow_slutcamp: 'Segui SlutCamp:',
     ath_card_sub: 'Si apre come una vera app, con un tocco.',
     ath_btn: 'Aggiungi l\'app',
     ath_sheet_t: '📲 Aggiungi SlutCamp alla tua schermata home',
@@ -10003,6 +10013,7 @@ const I18N = {
     share_app: '📤 Udostępnij SlutCamp',
     share_profile: '📤 Udostępnij jej profil',
     ath_card_t: 'Umieść SlutCamp na ekranie głównym',
+    follow_slutcamp: 'Obserwuj SlutCamp:',
     ath_card_sub: 'Otwiera się jak prawdziwa aplikacja, jednym dotknięciem.',
     ath_btn: 'Dodaj aplikację',
     ath_sheet_t: '📲 Dodaj SlutCamp do ekranu głównego',
@@ -10988,6 +10999,7 @@ const I18N = {
     share_app: '📤 Deel SlutCamp',
     share_profile: '📤 Deel haar profiel',
     ath_card_t: 'Zet SlutCamp op je startscherm',
+    follow_slutcamp: 'Volg SlutCamp:',
     ath_card_sub: 'Opent als een echte app, met één tik.',
     ath_btn: 'Voeg de app toe',
     ath_sheet_t: '📲 Voeg SlutCamp toe aan je startscherm',
@@ -11973,6 +11985,7 @@ const I18N = {
     share_app: '📤 SlutCamp\'i Paylaş',
     share_profile: '📤 Profilini Paylaş',
     ath_card_t: 'SlutCamp\'i ana ekranına koy',
+    follow_slutcamp: 'SlutCamp\'i takip et:',
     ath_card_sub: 'Gerçek bir uygulama gibi açılır, tek dokunuşla.',
     ath_btn: 'Uygulamayı ekle',
     ath_sheet_t: '📲 SlutCamp\'i ana ekranına ekle',
@@ -14310,6 +14323,25 @@ function officialCardHTML(official) {
     </button>`;
 }
 
+/* The brand's official socials at the foot of the HOME views
+   (owner, Oct 24 2026: "we need it on footer of home page. This will
+   help us grow") — the in-app twin of the public pages' footer
+   links (PR #89, server.js SOCIAL_* constants): X @SlutCampApp +
+   Instagram @slcamp__, BRAND accounts only — never the owner's
+   personal handles. ONE helper rendered by BOTH home views (the
+   signed-out landing and the signed-in fan home), so every home
+   visitor sees the same footer. Plain outbound links — new tab +
+   rel="noopener", no tracking parameters, no embeds, no feeds. The
+   labels are the brand names themselves ("X" / "Instagram"),
+   exactly like the public footer; only the "Follow SlutCamp:"
+   lead-in is prose, and it goes through STR (follow_slutcamp). */
+const APP_SOCIAL_X_URL = 'https://x.com/SlutCampApp';
+const APP_SOCIAL_INSTAGRAM_URL = 'https://instagram.com/slcamp__';
+function appSocialFooterHTML() {
+  return `
+    <div class="app-social-footer"><span class="muted small">${t('follow_slutcamp')}</span> <a href="${APP_SOCIAL_X_URL}" target="_blank" rel="noopener">X</a> <span class="muted">·</span> <a href="${APP_SOCIAL_INSTAGRAM_URL}" target="_blank" rel="noopener">Instagram</a></div>`;
+}
+
 /* ---------------- LANDING (public model grid) ---------------- */
 
 async function vLanding() {
@@ -14355,6 +14387,7 @@ async function vLanding() {
       </div>
       <div class="lang-row">${langPillsHTML()}</div>
       <p class="muted small" style="text-align:center;margin-top:16px">${t('terms_line')} <a href="javascript:void(0)" id="go-terms" style="color:var(--pink)">${t('terms')}</a> · <a href="javascript:void(0)" id="go-privacy" style="color:var(--pink)">Privacy</a> · <a href="javascript:void(0)" id="go-billing" style="color:var(--pink)">Billing & Refunds</a> · <a href="javascript:void(0)" id="go-2257" style="color:var(--pink)">2257 Statement</a> · <a href="javascript:void(0)" id="go-dmca" style="color:var(--pink)">DMCA</a>.</p>
+      ${appSocialFooterHTML()}
     </div>`;
   wireSectionTabs(() => show('landing', {}));
   wireHouseBanner();
@@ -16340,6 +16373,7 @@ async function vFanModels() {
         : shown.length ? homeTilesHTML(shown, heartFor, { crown: !discActive(disc), rankBadges: !discActive(disc) })
         : `<div class="empty"><div class="big">🔍</div>${t('no_matches')}</div>`}
       <p class="muted small" style="text-align:center;margin:18px 0 6px"><a href="javascript:void(0)" id="home-complaints" style="color:var(--pink)">${t('complaints_label')}</a></p>
+      ${appSocialFooterHTML()}
     </div>`;
   wireAthCard();
   wireHouseBanner();
