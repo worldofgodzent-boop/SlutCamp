@@ -94,7 +94,71 @@ function teamT(k) {
   return row[k] || TEAM_I18N.en[k] || k;
 }
 function teamMsgHTML(m) {
-  return `<div class="card" style="padding:10px 12px;margin-bottom:8px"><b class="small">${esc(m.author_label || m.author || '')}</b> <span class="small muted">${fmtDT(m.created_at)}</span><div style="white-space:pre-wrap;font-size:14px">${esc(m.body || '')}</div></div>`;
+  const idAttr = (m && m.id != null) ? ` data-team-id="${m.id}"` : '';
+  return `<div class="card" style="padding:10px 12px;margin-bottom:8px"${idAttr}><b class="small">${esc(m.author_label || m.author || '')}</b> <span class="small muted">${fmtDT(m.created_at)}</span><div style="white-space:pre-wrap;font-size:14px">${esc(m.body || '')}</div></div>`;
+}
+
+/* Assignment 03 — live team channel, pure merge step (no DOM, no
+ * network, so the test suite can exercise it directly).
+ * Returns the messages from a poll page that are genuinely new:
+ * an id already seen is dropped (dedupe), and only ids newer than
+ * the newest already-rendered id are kept — a poll page is the
+ * newest page, so anything older is already on screen. The kept
+ * messages come back in chronological (ascending-id) order. */
+function teamPollNew(seenIds, messages) {
+  const seen = new Set(seenIds || []);
+  const newest = seen.size ? Math.max(...seen) : 0;
+  const fresh = [];
+  for (const m of messages || []) {
+    if (!m || !Number.isFinite(m.id) || seen.has(m.id) || m.id <= newest) continue;
+    seen.add(m.id);
+    fresh.push(m);
+  }
+  fresh.sort((a, b) => a.id - b.id);
+  return { fresh, seen: [...seen] };
+}
+
+/* Assignment 03 — live team channel poller. One timer, owned by the
+ * screen: M.render stops it on every view change and starts it
+ * again only for the team screen, so leaving the channel (or a
+ * re-render to another screen) can never leave a stray timer
+ * polling. A tick does nothing while the tab is hidden — the timer
+ * stays, but no request is made until the tab is visible again.
+ * Appends only (never re-renders the thread, so a reader scrolled
+ * up is never yanked), and scrolls to the new message only when
+ * the reader was already at/near the bottom before the append. */
+function teamNearBottom() {
+  const doc = document.documentElement;
+  return (doc.scrollHeight - window.innerHeight - window.scrollY) <= 120;
+}
+function teamScrollToBottom() {
+  window.scrollTo(0, document.documentElement.scrollHeight);
+}
+async function teamPollTick() {
+  if (M.screen !== 'team' || document.hidden) return;
+  const thread = document.getElementById('team-thread');
+  if (!thread) return;
+  const { status, data } = await api('/admin/team-messages?limit=100');
+  if (status !== 200 || !data || M.screen !== 'team' || document.hidden) return;
+  const liveThread = document.getElementById('team-thread');
+  if (!liveThread) return;
+  // Measured just before the append, so a reader who scrolled up
+  // while the poll was in flight is still not yanked down.
+  const wasNearBottom = teamNearBottom();
+  const { fresh, seen } = teamPollNew(M.teamSeen, data.messages);
+  M.teamSeen = new Set(seen);
+  if (!fresh.length) return;
+  const empty = liveThread.querySelector('.empty');
+  if (empty) empty.remove();
+  liveThread.insertAdjacentHTML('beforeend', fresh.map(teamMsgHTML).join(''));
+  if (wasNearBottom) teamScrollToBottom();
+}
+function startTeamPoll() {
+  stopTeamPoll();
+  M.teamPoll = setInterval(teamPollTick, 5000);
+}
+function stopTeamPoll() {
+  if (M.teamPoll) { clearInterval(M.teamPoll); M.teamPoll = null; }
 }
 
 function timeHM(iso) {
@@ -796,6 +860,60 @@ async function adminPromosBody() {
     })()}`;
 }
 
+/* 🎬 Clips — the auto-clip engine's log (Assignment 21). Every
+ * candidate the engine cut from a public explicit live, with its
+ * tier, score and status, plus the rules-watch flags (evidence
+ * excerpts — a flag never punished anyone; resolving one is the
+ * human decision it was saved for). The kill switch state shows
+ * exactly as it stands; it is flipped in Settings. */
+async function adminClipsBody() {
+  const { data } = await api('/admin/clips');
+  const clips = (data && data.clips) || [];
+  const flags = (data && data.flags) || [];
+  const tierBadge = (t) => t === 'high' ? '<span style="color:var(--green)">🟢 high</span>'
+    : t === 'medium' ? '<span style="color:var(--yellow, #fbbf24)">🟡 medium</span>'
+    : '<span class="muted">⚪ low</span>';
+  const statusBadge = (c) => c.status === 'posted'
+    ? `<span style="color:var(--green)">✅ posted</span>${c.tweet_url ? ` · <a href="${esc(c.tweet_url)}" target="_blank" rel="noopener">tweet</a>` : ''}`
+    : c.status === 'discarded' ? '<span class="muted">🗑 discarded</span>'
+    : '<span>⏸ held</span>';
+  const clipRow = (c) => {
+    let sig = {};
+    try { sig = JSON.parse(c.signals || '{}'); } catch (e) { /* keep empty */ }
+    const bits = [];
+    if (sig.money_total_cents) bits.push(`💰 ${fmt(sig.money_total_cents)} in window`);
+    if (sig.chat_spike) bits.push('💬 chat spike');
+    if (sig.viewer_spike) bits.push('👀 viewer spike');
+    if (sig.vision && sig.vision.vision === 'no_signal') bits.push('🎥 vision: no recorder yet');
+    return `
+      <div class="row" style="gap:8px;padding:7px 0;border-bottom:1px solid var(--line, #333)">
+        <span class="grow"><b>@${esc(c.username)}</b> · ${tierBadge(c.tier)} · score ${c.score} · ${statusBadge(c)}<br>
+          <span class="small muted">${esc(String(c.window_start || '').slice(5, 16))} → ${esc(String(c.window_end || '').slice(11, 16))} UTC · session #${c.session_id}${bits.length ? ' · ' + bits.join(' · ') : ''}</span></span>
+      </div>`;
+  };
+  const flagRow = (f) => `
+      <div class="row" style="gap:8px;padding:7px 0;border-bottom:1px solid var(--line, #333);align-items:flex-start">
+        <span class="grow"><b>${f.type === 'coperformer_unapproved' ? '👥 Co-performer check' : f.type === 'offplatform_steering' ? '↪️ Off-platform steering' : esc(f.type)}</b>
+          · @${esc(f.username)} · ${f.status === 'open' ? '<span style="color:var(--yellow, #fbbf24)">open</span>' : '<span class="muted">resolved</span>'}<br>
+          <span class="small">${esc(f.evidence || '')}</span><br>
+          <span class="small muted">${esc(String(f.created_at || '').slice(0, 16))} UTC · session #${f.session_id ?? '—'}</span></span>
+        ${f.status === 'open' ? `<button class="btn small ghost" data-flag-resolve="${f.id}">Resolve</button>` : ''}
+      </div>`;
+  return `
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🎬 Auto-clip engine</div>
+      <div class="muted small">The engine watches public explicit lives (Female + Couple only — never Private Rooms, never the house account), cuts clip candidates around money moments and signal spikes, and logs them here. <b>Auto-post to X is ${data && data.promo_autopost ? '<span style="color:var(--green)">ON</span>' : 'OFF'}</b> (kill switch in Settings) and a clip can only ever post when the model has also accepted Agreement v1.7 §6(d) — until then everything stays <b>held</b>, exactly as designed. Money-moment threshold: <b>${fmt((data && data.clip_money_threshold_cents) || 2000)}</b>. Vision/recorder layer is not built yet — candidates ride on exact ledger + chat/viewer signals.</div>
+    </div>
+    <h3>🎬 Clips (${clips.length})</h3>
+    <div class="card" style="padding:6px 12px">
+      ${clips.map(clipRow).join('') || '<div class="empty">No clip candidates yet — the engine logs the first money moment of the next public explicit live.</div>'}
+    </div>
+    <h3>🚩 Rules-watch flags (${flags.length})</h3>
+    <div class="card" style="padding:6px 12px">
+      ${flags.map(flagRow).join('') || '<div class="empty">No flags. The watch flags evidence for a human — it never punishes on its own.</div>'}
+    </div>`;
+}
+
 async function adminPayoutsBody() {
   const { data } = await api('/admin/payouts');
   const { data: wdData } = await api('/admin/withdrawals');
@@ -1465,6 +1583,15 @@ async function adminMoreBody(s) {
       </div>
     </div>
     <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🎬 Auto-clip — X auto-post kill switch</div>
+      <div class="muted small">The auto-clip engine watches public explicit lives (Female + Couple) and logs clip candidates in the Clips screen. While this is OFF it can NEVER post to X — held clips only. Even ON, a clip posts only when the model has accepted Agreement v1.7 §6(d) and the clip scores high. The money-moment threshold anchors a candidate: a single tip/gift — or a 60-second burst — at or over it. Default OFF, threshold $20.</div>
+      <div class="row" style="margin-top:8px;gap:8px;align-items:center;flex-wrap:wrap">
+        <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="set-autopost" ${s.promo_autopost ? 'checked' : ''}> Auto-post ON</label>
+        <label class="small muted">Threshold $<input class="input" id="set-clipthr" type="number" min="1" max="10000" step="1" value="${Math.round((s.clip_money_threshold_cents ?? 2000) / 100)}" style="margin:0 0 0 6px;max-width:90px"></label>
+        <button class="btn small" id="set-autopost-go">Save</button>
+      </div>
+    </div>
+    <div class="card">
       <div style="font-weight:800;margin-bottom:6px">🛡️ Payout protection</div>
       <div class="muted small">New earnings become withdrawable after the hold window — the owner rule is one week behind. The flag thresholds only raise advisory warnings on the Payouts screen; they never block or delay a payout by themselves.</div>
       <div class="row" style="margin-top:8px;gap:10px;flex-wrap:wrap;align-items:flex-end">
@@ -2116,6 +2243,10 @@ function wireAdminBody(tab) {
       M.teamBefore = data.before || null;
       const thread = document.getElementById('team-thread');
       if (thread) thread.insertAdjacentHTML('afterbegin', (data.messages || []).map(teamMsgHTML).join(''));
+      // Older pages are already rendered, so they must never be
+      // re-appended by a poll: record them as seen (they are all
+      // older than the newest id, so the poll merge drops them).
+      if (M.teamSeen) for (const m of data.messages || []) M.teamSeen.add(m.id);
       if (!data.has_more) { const b = document.getElementById('team-more'); if (b) b.remove(); }
     });
   }
@@ -2294,6 +2425,18 @@ function wireAdminBody(tab) {
         const { status } = await api(`/admin/promos/${b.dataset.promoToggle}/active`, {
           method: 'POST', body: JSON.stringify({ active: b.dataset.active !== '1' }) });
         toast(status === 200 ? '✅ Campaign updated' : 'Could not update that campaign.');
+        if (status === 200) M.render();
+      };
+    });
+  }
+
+  // 🎬 Clips — rules-watch flag resolution (the human decision).
+  if (tab === 'clips') {
+    document.querySelectorAll('[data-flag-resolve]').forEach((b) => {
+      b.onclick = async () => {
+        const { status } = await api(`/admin/rules-flags/${b.dataset.flagResolve}/resolve`, {
+          method: 'POST', body: JSON.stringify({}) });
+        toast(status === 200 ? '✅ Flag resolved' : 'Could not resolve that flag.');
         if (status === 200) M.render();
       };
     });
@@ -2806,6 +2949,16 @@ function wireAdminBody(tab) {
     toast(status === 200 ? `✅ Private room cap set to ${private_room_cap}/week` : 'Use 1–7');
     if (status === 200) M.reload();
   });
+  go('#set-autopost-go', async () => {
+    const promo_autopost = $('#set-autopost').checked ? 1 : 0;
+    const clip_money_threshold_cents = Math.round(parseFloat($('#set-clipthr').value) * 100);
+    const { status, data } = await api('/admin/settings', {
+      method: 'PUT', body: JSON.stringify({ promo_autopost, clip_money_threshold_cents }) });
+    toast(status === 200
+      ? `✅ Auto-clip ${promo_autopost ? 'ON — high clips may post for v1.7-signed models' : 'OFF — held clips only'} · threshold $${(clip_money_threshold_cents / 100).toFixed(0)}`
+      : `Could not save (${(data && data.error) || status})`);
+    if (status === 200) M.reload();
+  });
   go('#set-pp-go', async () => {
     const body = {
       earnings_hold_days: parseInt($('#set-hold').value),
@@ -2963,7 +3116,7 @@ function wireAdminBody(tab) {
 /* ---------------- Slut Manager shell ---------------- */
 const NAV = [
   ['dash', '📊 Overview'], ['models', '💃 Models'], ['idchecks', '🪪 ID Checks'],
-  ['invites', '✉️ Invites'], ['promos', '🎁 Promo links'], ['chats', '👀 Chats'], ['safety', '🛡️ Safety'],
+  ['invites', '✉️ Invites'], ['promos', '🎁 Promo links'], ['clips', '🎬 Clips'], ['chats', '👀 Chats'], ['safety', '🛡️ Safety'],
   ['live', '🔴 Live'], ['payouts', '💸 Payouts'], ['tax', '🧾 Tax'],
   ['dmca', '⚖️ DMCA'], ['fans', '🧑 Fans'], ['suggestions', '💡 Suggestions'], ['bookings', '📅 Bookings'],
   ['contracts', '📝 Contracts'], ['partners', '🤝 Partners'], ['affiliates', '🔗 Affiliates'],
@@ -2980,7 +3133,7 @@ const NAV_GROUPS = [
   ['People', ['models', 'idchecks', 'fans', 'suggestions', 'partners', 'affiliates', 'requests']],
   ['Money', ['payouts', 'tax', 'refunds', 'disputes', 'packages']],
   ['Safety & Content', ['chats', 'live', 'safety', 'dmca']],
-  ['Growth', ['invites', 'promos', 'bookings', 'contracts', 'analytics']],
+  ['Growth', ['invites', 'promos', 'clips', 'bookings', 'contracts', 'analytics']],
   ['Settings', ['more', 'workers', 'team']],
 ];
 
@@ -3020,7 +3173,7 @@ async function overviewBody(stats) {
 const SCREENS = {
   dash: overviewBody,
   chats: adminChatsBody, safety: adminSafetyBody, live: adminLiveBody,
-  models: adminModelsBody, invites: adminInvitesBody, promos: adminPromosBody, payouts: adminPayoutsBody,
+  models: adminModelsBody, invites: adminInvitesBody, promos: adminPromosBody, clips: adminClipsBody, payouts: adminPayoutsBody,
   fans: adminFansBody, bookings: adminBookingsBody, contracts: adminContractsBody,
   packages: adminPackagesBody,
   idchecks: adminIdChecksBody, partners: adminPartnersBody, affiliates: adminAffiliatesBody, refunds: adminRefundsBody,
@@ -3043,6 +3196,9 @@ async function adminTeamBody() {
   }
   M.teamBefore = data.before || null;
   const msgs = data.messages || [];
+  // Assignment 03: the poller appends only ids newer than these,
+  // so the open page's ids are the baseline it merges against.
+  M.teamSeen = new Set(msgs.map((m) => m.id));
   return `
     <div class="card">
       <div style="font-weight:800;margin-bottom:6px">💬 ${esc(teamT('team_title'))}</div>
@@ -3355,6 +3511,7 @@ M.reload = () => M.render();
 M.render = async () => {
   if (!app) return;
   stopPresence();
+  stopTeamPoll();
   document.querySelectorAll('#mgr-nav [data-screen]').forEach((b) =>
     b.classList.toggle('active', b.dataset.screen === M.screen));
   if (M.user && M.user.role === 'moderator') {
@@ -3378,7 +3535,14 @@ M.render = async () => {
   const bodyFn = SCREENS[M.screen] || overviewBody;
   app.innerHTML = `<div class="mgr-h">${NAV.find((n) => n[0] === M.screen)?.[1] || ''}</div>` + (await bodyFn(s));
   wireAdminBody(M.screen);
-  if (M.screen === 'team') teamPingTick(); // opening the channel marks seen promptly, not at the next 15s tick
+  if (M.screen === 'team') {
+    // Assignment 03: live updates while the channel is open, and
+    // opening the channel lands on the latest message, already
+    // scrolled to the bottom — no scrolling down by hand.
+    startTeamPoll();
+    teamScrollToBottom();
+    teamPingTick(); // opening the channel marks seen promptly, not at the next 15s tick
+  }
   if (M.screen === 'dash') startPresence();
   if (M.screen === 'chats') wireChats();
   if (M.screen === 'peek') wirePeek();

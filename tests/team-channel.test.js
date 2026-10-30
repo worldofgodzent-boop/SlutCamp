@@ -590,3 +590,114 @@ test('source pins: principal guard unchanged, team wiring present, STR x13, no p
   assert.ok(!serverSrc.includes("app.get('/api/team-messages'"),
     'no public team route exists');
 });
+
+/* ---------------- Assignment 03: live team channel ----------------
+ * Client-side only: while the channel screen is the active view,
+ * the Manager polls GET /api/admin/team-messages about every 5s
+ * and appends only genuinely new messages. No server change, no
+ * new user-facing strings (TEAM_I18N key set is unchanged above).
+ *
+ * The merge step is a pure function in manager.js, so it is
+ * exercised here for real — extracted from the shipped source and
+ * evaluated in isolation — not just string-pinned. The poller
+ * lifecycle (start on open, stop on close, one timer, hidden-tab
+ * pause, scroll rules) is pinned against the shipped source, the
+ * way this suite pins other Manager client behaviour. */
+
+function extractFunction(src, name) {
+  const start = src.indexOf(`function ${name}(`);
+  assert.ok(start >= 0, `manager.js must define ${name}`);
+  let i = src.indexOf('{', start);
+  let depth = 0;
+  for (; i < src.length; i++) {
+    if (src[i] === '{') depth++;
+    else if (src[i] === '}') { depth--; if (depth === 0) break; }
+  }
+  assert.ok(depth === 0, `${name} braces must balance`);
+  return src.slice(start, i + 1);
+}
+
+test('Assignment 03: poll merge dedupes by id, keeps only newer ids, preserves chronological order', () => {
+  const managerSrc = fs.readFileSync(path.join(REPO, 'public/manager/manager.js'), 'utf8');
+  const teamPollNew = eval(extractFunction(managerSrc, 'teamPollNew') + '; teamPollNew');
+  // Already-seen ids and anything older than the newest seen id are dropped.
+  let r = teamPollNew([10, 11, 12], [
+    { id: 9, body: 'older page' }, { id: 11, body: 'already seen' },
+    { id: 13, body: 'new one' }, { id: 14, body: 'new two' },
+  ]);
+  assert.deepEqual(r.fresh.map((m) => m.id), [13, 14]);
+  // Duplicate ids inside one poll page collapse to a single append.
+  r = teamPollNew([20], [
+    { id: 21, body: 'dup' }, { id: 21, body: 'dup' }, { id: 22, body: 'next' },
+  ]);
+  assert.deepEqual(r.fresh.map((m) => m.id), [21, 22]);
+  // Order is chronological even if a page arrived out of order.
+  r = teamPollNew([30], [{ id: 33, body: 'c' }, { id: 31, body: 'a' }, { id: 32, body: 'b' }]);
+  assert.deepEqual(r.fresh.map((m) => m.id), [31, 32, 33]);
+  // A re-poll with nothing new appends nothing; malformed rows are ignored.
+  r = teamPollNew([40, 41], [{ id: 41, body: 'seen' }, { body: 'no id' }, null]);
+  assert.deepEqual(r.fresh, []);
+  // Empty thread: everything in the first poll page is new.
+  r = teamPollNew([], [{ id: 1, body: 'first' }, { id: 2, body: 'second' }]);
+  assert.deepEqual(r.fresh.map((m) => m.id), [1, 2]);
+});
+
+test('Assignment 03: poller starts on open, stops on close, one 5s timer, pauses when hidden', () => {
+  const managerSrc = fs.readFileSync(path.join(REPO, 'public/manager/manager.js'), 'utf8');
+  // Render stops any previous timer first, then starts exactly one
+  // for the team screen and lands on the latest message.
+  assert.ok(managerSrc.includes('stopTeamPoll();\n  stopPresence();') ||
+    managerSrc.includes('stopPresence();\n  stopTeamPoll();'),
+    'M.render stops the team poller on every view change');
+  assert.ok(managerSrc.includes("if (M.screen === 'team') {"),
+    'poller starts only for the team screen');
+  assert.ok(managerSrc.includes('startTeamPoll();\n    teamScrollToBottom();'),
+    'opening the channel starts the poller and scrolls to the bottom');
+  // One timer, owned by the screen: start clears any old timer first.
+  assert.ok(managerSrc.includes('M.teamPoll = setInterval(teamPollTick, 5000)'),
+    'poller ticks about every 5 seconds');
+  assert.ok(managerSrc.includes('function startTeamPoll()') &&
+    managerSrc.includes('stopTeamPoll();\n  M.teamPoll = setInterval'),
+    'start replaces, never stacks, a timer');
+  assert.ok(managerSrc.includes('clearInterval(M.teamPoll); M.teamPoll = null'),
+    'stop clears the timer and drops the handle');
+  // The tick itself refuses to run off-screen or while hidden.
+  const tick = extractFunction(managerSrc, 'teamPollTick');
+  assert.ok(tick.includes("M.screen !== 'team'") && tick.includes('document.hidden'),
+    'poll tick guards on active team screen and visible tab');
+  assert.ok(tick.includes("api('/admin/team-messages?limit=100')"),
+    'poll tick re-reads the newest page, no new endpoint');
+  assert.ok(tick.includes("insertAdjacentHTML('beforeend'"),
+    'poll appends at the end of the thread, never re-renders it');
+  // Scroll: only when the reader was already at/near the bottom.
+  assert.ok(managerSrc.includes('function teamNearBottom()') &&
+    managerSrc.includes('if (wasNearBottom) teamScrollToBottom();'),
+    'auto-scroll only when the reader was at/near the bottom');
+  // Rendered messages carry their id, so the client can dedupe against them.
+  assert.ok(managerSrc.includes('data-team-id='),
+    'rendered team messages carry their id');
+  // No new user-facing strings were needed for this lane.
+  assert.ok(!managerSrc.includes('team_poll') && !managerSrc.includes('team_live'),
+    'Assignment 03 adds no new team strings');
+});
+
+test('Assignment 03: the poll page itself is the newest page, chronological, stable across re-reads (no server change)', async () => {
+  const before = await req('GET', '/api/admin/team-messages?limit=100', A(adminToken));
+  assert.equal(before.status, 200);
+  const beforeIds = before.json.messages.map((m) => m.id);
+  assert.deepEqual(beforeIds, [...beforeIds].sort((a, b) => a - b),
+    'poll page is chronological');
+  const p1 = await req('POST', '/api/admin/team-messages',
+    AB(adminToken, { body: 'Assignment 03 poll check one.' }));
+  const p2 = await req('POST', '/api/admin/team-messages',
+    AB(adminToken, { body: 'Assignment 03 poll check two.' }));
+  assert.equal(p1.status, 200);
+  assert.equal(p2.status, 200);
+  const after = await req('GET', '/api/admin/team-messages?limit=100', A(adminToken));
+  const afterIds = after.json.messages.map((m) => m.id);
+  assert.deepEqual(afterIds.slice(-2), [p1.json.message.id, p2.json.message.id],
+    'new posts land at the end of the newest page, in post order');
+  const again = await req('GET', '/api/admin/team-messages?limit=100', A(adminToken));
+  assert.deepEqual(again.json.messages.map((m) => m.id), afterIds,
+    'a re-poll returns the same page — the client dedupe has a stable source');
+});
