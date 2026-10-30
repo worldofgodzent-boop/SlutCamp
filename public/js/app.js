@@ -151,6 +151,7 @@ const I18N = {
     role_word_model: 'model',
     role_word_affiliate: 'affiliate',
     share_app: '📤 Share SlutCamp',
+    share_profile: '📤 Share her profile',
     ath_card_t: 'Put SlutCamp on your home screen',
     ath_card_sub: 'Opens like a real app, one tap.',
     ath_btn: 'Add the app',
@@ -261,6 +262,9 @@ const I18N = {
     follow_title: 'Add to Playlist',
     playlist_add: '➕ Add to Playlist',
     playlist_added: '✓ In your Playlist',
+    follow_btn: 'Follow', following_btn: '✓ Following',
+    share_profile_btn: '📤 Share profile', share_profile_text: 'Come see {name} on SlutCamp 🔥',
+    fan_profile_h: '👤 Your profile', name_saved_toast: '✅ Display name saved',
     playlist_title: '🎵 My Playlist',
     playlist_empty: 'Tap ➕ Add to Playlist on any model and she\'ll live here — plus you\'ll get her live alerts.',
     playlist_added_toast: '🎵 {name} added to your Playlist',
@@ -1132,6 +1136,7 @@ const I18N = {
     role_word_model: 'modelo',
     role_word_affiliate: 'afiliado',
     share_app: '📤 Compartir SlutCamp',
+    share_profile: '📤 Compartir su perfil',
     ath_card_t: 'Pon SlutCamp en tu pantalla de inicio',
     ath_card_sub: 'Se abre como una app real, con un toque.',
     ath_btn: 'Añadir la app',
@@ -1242,6 +1247,9 @@ const I18N = {
     follow_title: 'Añadir a tu Playlist',
     playlist_add: '➕ Añadir a tu Playlist',
     playlist_added: '✓ En tu Playlist',
+    follow_btn: 'Seguir', following_btn: '✓ Siguiendo',
+    share_profile_btn: '📤 Compartir perfil', share_profile_text: 'Ven a ver a {name} en SlutCamp 🔥',
+    fan_profile_h: '👤 Tu perfil', name_saved_toast: '✅ Nombre guardado',
     playlist_title: '🎵 Mi Playlist',
     playlist_empty: 'Toca ➕ Añadir a tu Playlist en cualquier modelo y ella vivirá aquí — además recibirás sus avisos de en vivo.',
     playlist_added_toast: '🎵 {name} se añadió a tu Playlist',
@@ -2113,6 +2121,7 @@ const I18N = {
     role_word_model: 'modelo',
     role_word_affiliate: 'afiliado',
     share_app: '📤 Compartilhar o SlutCamp',
+    share_profile: '📤 Compartilhar o perfil dela',
     ath_card_t: 'Coloque o SlutCamp na sua tela inicial',
     ath_card_sub: 'Abre como um app de verdade, com um toque.',
     ath_btn: 'Adicionar o app',
@@ -2223,6 +2232,9 @@ const I18N = {
     follow_title: 'Adicionar à sua Playlist',
     playlist_add: '➕ Adicionar à sua Playlist',
     playlist_added: '✓ Na sua Playlist',
+    follow_btn: 'Seguir', following_btn: '✓ Seguindo',
+    share_profile_btn: '📤 Compartilhar perfil', share_profile_text: 'Vem ver {name} no SlutCamp 🔥',
+    fan_profile_h: '👤 Seu perfil', name_saved_toast: '✅ Nome salvo',
     playlist_title: '🎵 Minha Playlist',
     playlist_empty: 'Toque em ➕ Adicionar à sua Playlist em qualquer modelo e ela ficará aqui — e você receberá os avisos de live dela.',
     playlist_added_toast: '🎵 {name} foi adicionada à sua Playlist',
@@ -3094,6 +3106,7 @@ const I18N = {
     role_word_model: 'modèle',
     role_word_affiliate: 'affilié',
     share_app: '📤 Partager SlutCamp',
+    share_profile: '📤 Partager son profil',
     ath_card_t: 'Mettez SlutCamp sur votre écran d\'accueil',
     ath_card_sub: 'S\'ouvre comme une vraie appli, en un toucher.',
     ath_btn: 'Ajouter l\'appli',
@@ -3204,6 +3217,9 @@ const I18N = {
     follow_title: 'Ajouter à votre Playlist',
     playlist_add: '➕ Ajouter à votre Playlist',
     playlist_added: '✓ Dans votre Playlist',
+    follow_btn: 'Suivre', following_btn: '✓ Suivi',
+    share_profile_btn: '📤 Partager le profil', share_profile_text: 'Viens voir {name} sur SlutCamp 🔥',
+    fan_profile_h: '👤 Ton profil', name_saved_toast: '✅ Nom enregistré',
     playlist_title: '🎵 Ma Playlist',
     playlist_empty: 'Touchez ➕ Ajouter à votre Playlist sur n\'importe quel modèle et elle vivra ici — en plus, vous recevrez ses alertes de direct.',
     playlist_added_toast: '🎵 {name} ajoutée à votre Playlist',
@@ -4075,6 +4091,7 @@ const I18N = {
     role_word_model: 'Model',
     role_word_affiliate: 'Affiliate',
     share_app: '📤 SlutCamp teilen',
+    share_profile: '📤 Ihr Profil teilen',
     ath_card_t: 'SlutCamp auf deinen Startbildschirm legen',
     ath_card_sub: 'Öffnet sich wie eine echte App, mit einem Tipp.',
     ath_btn: 'App hinzufügen',
@@ -4185,6 +4202,9 @@ const I18N = {
     follow_title: 'Zur Playlist hinzufügen',
     playlist_add: '➕ Zur Playlist hinzufügen',
     playlist_added: '✓ In deiner Playlist',
+    follow_btn: 'Folgen', following_btn: '✓ Gefolgt',
+    share_profile_btn: '📤 Profil teilen', share_profile_text: 'Schau dir {name} auf SlutCamp an 🔥',
+    fan_profile_h: '👤 Dein Profil', name_saved_toast: '✅ Name gespeichert',
     playlist_title: '🎵 Meine Playlist',
     playlist_empty: 'Tippe bei einem Model auf ➕ Zur Playlist hinzufügen und sie lebt hier — plus du bekommst ihre Live-Benachrichtigungen.',
     playlist_added_toast: '🎵 {name} zu deiner Playlist hinzugefügt',
@@ -5056,6 +5076,7 @@ const I18N = {
     role_word_model: 'модели',
     role_word_affiliate: 'партнёра',
     share_app: '📤 Поделиться SlutCamp',
+    share_profile: '📤 Поделиться её профилем',
     ath_card_t: 'Добавьте SlutCamp на главный экран',
     ath_card_sub: 'Открывается как настоящее приложение, одним касанием.',
     ath_btn: 'Добавить приложение',
@@ -5166,6 +5187,9 @@ const I18N = {
     follow_title: 'Добавить в Playlist',
     playlist_add: '➕ Добавить в Playlist',
     playlist_added: '✓ В вашем Playlist',
+    follow_btn: 'Подписаться', following_btn: '✓ Вы подписаны',
+    share_profile_btn: '📤 Поделиться профилем', share_profile_text: 'Заходи посмотреть {name} на SlutCamp 🔥',
+    fan_profile_h: '👤 Ваш профиль', name_saved_toast: '✅ Имя сохранено',
     playlist_title: '🎵 Мой Playlist',
     playlist_empty: 'Нажмите ➕ Добавить в Playlist у любой модели, и она будет жить здесь — плюс вы будете получать её уведомления об эфире.',
     playlist_added_toast: '🎵 {name} добавлена в ваш Playlist',
@@ -6037,6 +6061,7 @@ const I18N = {
     role_word_model: 'モデル',
     role_word_affiliate: 'アフィリエイト',
     share_app: '📤 SlutCampをシェア',
+    share_profile: '📤 彼女のプロフィールをシェア',
     ath_card_t: 'SlutCampをホーム画面に追加',
     ath_card_sub: 'ワンタップで本物のアプリみたいに開けるよ。',
     ath_btn: 'アプリを追加',
@@ -6147,6 +6172,9 @@ const I18N = {
     follow_title: 'プレイリストに追加',
     playlist_add: '➕ プレイリストに追加',
     playlist_added: '✓ プレイリストに追加済み',
+    follow_btn: 'フォロー', following_btn: '✓ フォロー中',
+    share_profile_btn: '📤 プロフィールをシェア', share_profile_text: 'SlutCampで{name}を見てね 🔥',
+    fan_profile_h: '👤 あなたのプロフィール', name_saved_toast: '✅ 表示名を保存しました',
     playlist_title: '🎵 マイプレイリスト',
     playlist_empty: 'モデルの ➕ プレイリストに追加 をタップすると彼女がここに表示されます — ライブ開始の通知も届きます。',
     playlist_added_toast: '🎵 {name} をプレイリストに追加しました',
@@ -7018,6 +7046,7 @@ const I18N = {
     role_word_model: '模特',
     role_word_affiliate: '推广伙伴',
     share_app: '📤 分享 SlutCamp',
+    share_profile: '📤 分享她的资料',
     ath_card_t: '把 SlutCamp 放到你的主屏幕',
     ath_card_sub: '像真正的应用一样打开，一点即达。',
     ath_btn: '添加应用',
@@ -7128,6 +7157,9 @@ const I18N = {
     follow_title: '添加到 Playlist',
     playlist_add: '➕ 添加到 Playlist',
     playlist_added: '✓ 已在你的 Playlist 中',
+    follow_btn: '关注', following_btn: '✓ 已关注',
+    share_profile_btn: '📤 分享主页', share_profile_text: '来 SlutCamp 看看 {name} 🔥',
+    fan_profile_h: '👤 你的主页', name_saved_toast: '✅ 显示名已保存',
     playlist_title: '🎵 我的 Playlist',
     playlist_empty: '在任何模特页面点 ➕ 添加到 Playlist，她就会出现在这里 — 还会收到她的开播提醒。',
     playlist_added_toast: '🎵 {name} 已添加到你的 Playlist',
@@ -7999,6 +8031,7 @@ const I18N = {
     role_word_model: '모델',
     role_word_affiliate: '제휴 파트너',
     share_app: '📤 SlutCamp 공유하기',
+    share_profile: '📤 그녀의 프로필 공유하기',
     ath_card_t: '홈 화면에 SlutCamp 추가하기',
     ath_card_sub: '한 번의 탭으로 실제 앱처럼 열립니다.',
     ath_btn: '앱 추가하기',
@@ -8109,6 +8142,9 @@ const I18N = {
     follow_title: 'Playlist에 추가',
     playlist_add: '➕ Playlist에 추가',
     playlist_added: '✓ 내 Playlist에 있음',
+    follow_btn: '팔로우', following_btn: '✓ 팔로잉',
+    share_profile_btn: '📤 프로필 공유', share_profile_text: 'SlutCamp에서 {name}를 만나보세요 🔥',
+    fan_profile_h: '👤 내 프로필', name_saved_toast: '✅ 표시 이름이 저장됐어요',
     playlist_title: '🎵 내 Playlist',
     playlist_empty: '모델에서 ➕ Playlist에 추가를 탭하면 그녀가 여기에 표시됩니다 — 라이브 알림도 받을 수 있어요.',
     playlist_added_toast: '🎵 {name}님이 내 Playlist에 추가됐어요',
@@ -8980,6 +9016,7 @@ const I18N = {
     role_word_model: 'modella',
     role_word_affiliate: 'affiliato',
     share_app: '📤 Condividi SlutCamp',
+    share_profile: '📤 Condividi il suo profilo',
     ath_card_t: 'Metti SlutCamp sulla tua schermata home',
     ath_card_sub: 'Si apre come una vera app, con un tocco.',
     ath_btn: 'Aggiungi l\'app',
@@ -9090,6 +9127,9 @@ const I18N = {
     follow_title: 'Aggiungi alla tua Playlist',
     playlist_add: '➕ Aggiungi alla tua Playlist',
     playlist_added: '✓ Nella tua Playlist',
+    follow_btn: 'Segui', following_btn: '✓ Seguito',
+    share_profile_btn: '📤 Condividi profilo', share_profile_text: 'Vieni a vedere {name} su SlutCamp 🔥',
+    fan_profile_h: '👤 Il tuo profilo', name_saved_toast: '✅ Nome salvato',
     playlist_title: '🎵 La mia Playlist',
     playlist_empty: 'Tocca ➕ Aggiungi alla tua Playlist su qualsiasi modella e lei vivrà qui — in più riceverai i suoi avvisi live.',
     playlist_added_toast: '🎵 {name} aggiunta alla tua Playlist',
@@ -9961,6 +10001,7 @@ const I18N = {
     role_word_model: 'modelka',
     role_word_affiliate: 'afiliant',
     share_app: '📤 Udostępnij SlutCamp',
+    share_profile: '📤 Udostępnij jej profil',
     ath_card_t: 'Umieść SlutCamp na ekranie głównym',
     ath_card_sub: 'Otwiera się jak prawdziwa aplikacja, jednym dotknięciem.',
     ath_btn: 'Dodaj aplikację',
@@ -10071,6 +10112,9 @@ const I18N = {
     follow_title: 'Dodaj do swojej playlisty',
     playlist_add: '➕ Dodaj do swojej playlisty',
     playlist_added: '✓ Na twojej playliście',
+    follow_btn: 'Obserwuj', following_btn: '✓ Obserwujesz',
+    share_profile_btn: '📤 Udostępnij profil', share_profile_text: 'Zobacz {name} na SlutCamp 🔥',
+    fan_profile_h: '👤 Twój profil', name_saved_toast: '✅ Nazwa zapisana',
     playlist_title: '🎵 Moja playlista',
     playlist_empty: 'Dotknij ➕ Dodaj do playlisty przy dowolnej modelce, a zamieszka tutaj — dodatkowo dostaniesz jej powiadomienia o live.',
     playlist_added_toast: '🎵 {name} dodana do twojej playlisty',
@@ -10942,6 +10986,7 @@ const I18N = {
     role_word_model: 'model',
     role_word_affiliate: 'affiliate',
     share_app: '📤 Deel SlutCamp',
+    share_profile: '📤 Deel haar profiel',
     ath_card_t: 'Zet SlutCamp op je startscherm',
     ath_card_sub: 'Opent als een echte app, met één tik.',
     ath_btn: 'Voeg de app toe',
@@ -11052,6 +11097,9 @@ const I18N = {
     follow_title: 'Voeg toe aan je Playlist',
     playlist_add: '➕ Voeg toe aan je Playlist',
     playlist_added: '✓ In je Playlist',
+    follow_btn: 'Volgen', following_btn: '✓ Gevolgd',
+    share_profile_btn: '📤 Profiel delen', share_profile_text: 'Kom {name} bekijken op SlutCamp 🔥',
+    fan_profile_h: '👤 Je profiel', name_saved_toast: '✅ Naam opgeslagen',
     playlist_title: '🎵 Mijn Playlist',
     playlist_empty: 'Tik op ➕ Voeg toe aan je Playlist bij een model en ze woont hier — plus je krijgt haar live-meldingen.',
     playlist_added_toast: '🎵 {name} toegevoegd aan je Playlist',
@@ -11923,6 +11971,7 @@ const I18N = {
     role_word_model: 'model',
     role_word_affiliate: 'ortak',
     share_app: '📤 SlutCamp\'i Paylaş',
+    share_profile: '📤 Profilini Paylaş',
     ath_card_t: 'SlutCamp\'i ana ekranına koy',
     ath_card_sub: 'Gerçek bir uygulama gibi açılır, tek dokunuşla.',
     ath_btn: 'Uygulamayı ekle',
@@ -12033,6 +12082,9 @@ const I18N = {
     follow_title: 'Playlist\'ine ekle',
     playlist_add: '➕ Playlist\'ine ekle',
     playlist_added: '✓ Playlist\'inde',
+    follow_btn: 'Takip Et', following_btn: '✓ Takip Ediliyor',
+    share_profile_btn: '📤 Profili paylaş', share_profile_text: 'SlutCamp\'te {name}\'e göz at 🔥',
+    fan_profile_h: '👤 Profilin', name_saved_toast: '✅ Görünen ad kaydedildi',
     playlist_title: '🎵 Playlist\'im',
     playlist_empty: 'Herhangi bir modelde ➕ Playlist\'ine ekle\'ye dokun — o burada yaşasın, ayrıca canlı bildirimlerini de alırsın.',
     playlist_added_toast: '🎵 {name} Playlist\'ine eklendi',
@@ -14321,19 +14373,12 @@ async function vLanding() {
       openChatWithModel(parseInt(b.dataset.model));
     };
   });
-  // Heart likes — tap without opening chat
+  // Heart likes — tap without opening chat (A22: the shared
+  // toggleLike — the heart is LIKE only, here and everywhere).
   app.querySelectorAll('[data-like]').forEach((h) => {
-    h.onclick = async (e) => {
+    h.onclick = (e) => {
       e.stopPropagation();
-      if (!S.user || S.user.role !== 'fan') return toast(t('like_need_fan'));
-      const modelId = parseInt(h.dataset.like);
-      const { status, data } = await api(`/models/${modelId}/like`, { method: 'POST' });
-      if (status === 200) {
-        h.querySelector('.like-heart').textContent = data.liked ? '❤️' : '🤍';
-        h.querySelector('.like-count').textContent = data.like_count;
-        // The same number printed in her tile's counts line moves too.
-        document.querySelectorAll(`[data-like-count="${modelId}"]`).forEach((el) => { el.textContent = data.like_count; });
-      }
+      toggleLike(parseInt(h.dataset.like), h);
     };
   });
   wireDiscovery('landing');
@@ -14376,6 +14421,31 @@ async function shareApp() {
     catch (e) { toast(url); }
   } else {
     prompt('Copy your SlutCamp link:', url);
+  }
+}
+
+/* Share HER profile (A22, owner Oct 30 2026): the link is the
+ * server-issued share_url — her canonical public page — and it only
+ * exists on public, non-house profiles, so a share can never point
+ * at a profile the public page would not serve. Same share-sheet /
+ * copy-link pattern as shareApp above. The link lands a signed-out
+ * visitor on HER public page (GET /models/:username), never the
+ * homepage, with the join path from there. */
+async function shareModelProfile(m) {
+  const url = (m && m.share_url) || '';
+  if (!url) return;
+  const data = {
+    title: `${m.display_name} on SlutCamp`,
+    text: `Check out ${m.display_name} (@${m.username}) on SlutCamp 🔥 18+ only`,
+    url,
+  };
+  if (navigator.share) {
+    try { await navigator.share(data); } catch (e) { /* user cancelled */ }
+  } else if (navigator.clipboard) {
+    try { await navigator.clipboard.writeText(url); toast(t('link_copied')); }
+    catch (e) { toast(url); }
+  } else {
+    prompt('Copy her SlutCamp link:', url);
   }
 }
 
@@ -15100,6 +15170,50 @@ function renderLegalSettingsCard() {
    The server verifies the current password, enforces the policy and
    revokes every other session; this card mirrors the checks so the
    feedback is instant. */
+/* A22 (Oct 30 2026): the fan's own profile card, at the top of his
+   Wallet settings stack. His profile LEADS with his display name —
+   the way her profile leads with hers — with the @username under
+   it; a fan with no display name set leads with the @username
+   instead. The edit field uses the same field pattern as the other
+   settings cards and rides the EXISTING PATCH /api/me/display-name
+   endpoint (fan-only; 30-day cooldown — the server's own message,
+   e.g. the cooldown text, surfaces verbatim). Fans only: the
+   endpoint refuses other roles, so the card renders for role 'fan'
+   alone (the house account is model-role and never sees it). */
+function renderFanProfileCard() {
+  const host = document.getElementById('fan-profile-card');
+  if (!host) return;
+  if (!S.user || S.user.role !== 'fan') { host.innerHTML = ''; return; }
+  const lead = S.user.display_name || ('@' + S.user.username);
+  host.innerHTML = `
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:10px">${t('fan_profile_h')}</div>
+      <div class="row" style="gap:12px;align-items:center;margin-bottom:12px">
+        ${avatarHTML(S.user.display_name || S.user.username, 'xl', S.user.photo_url)}
+        <span class="grow">
+          <span class="title fan-profile-name">${esc(lead)}</span><br>
+          <span class="preview">@${esc(S.user.username)}</span>
+        </span>
+      </div>
+      <label class="field">${t('display_name')}<input class="input" id="fp-name" maxlength="40" value="${esc(S.user.display_name || '')}" autocomplete="name"></label>
+      <button class="btn" id="fp-save" style="width:100%;margin-top:6px">${t('contact_save')}</button>
+      <div class="muted small" id="fp-msg" style="margin-top:6px"></div>
+    </div>`;
+  $('#fp-save').onclick = async () => {
+    const v = $('#fp-name').value.trim();
+    const { status, data } = await api('/me/display-name', {
+      method: 'PATCH', body: JSON.stringify({ display_name: v }),
+    });
+    if (status === 200 && data && data.display_name) {
+      if (S.user) S.user.display_name = data.display_name;
+      toast(t('name_saved_toast'));
+      renderFanProfileCard();
+    } else {
+      toast((data && data.message) || t('contact_save_fail'));
+    }
+  };
+}
+
 function renderPwSettingsCard() {
   const host = document.getElementById('pw-card');
   if (!host) return;
@@ -15741,6 +15855,114 @@ function logout(msg) {
 
 /* ---------------- FAN: models / chats / wallet ---------------- */
 
+/* ---------------- Full-screen media viewer (A22 part 7) ----------------
+   A bigger window on the SAME media her profile already serves: the
+   caller hands in the exact shaped item list the profile rendered
+   (her gallery pictures, her two main videos, her clean-feed items)
+   and the viewer fetches NOTHING — so anything the profile holds
+   back (upload gate, co-star hold, shield) is held here too, by
+   construction. The peek underneath is never touched, so closing
+   returns to her profile at the exact scroll position he left it.
+   Close: the Back button (top-left, always visible), the ✕, a tap
+   on the backdrop, or the browser/hardware Back — opening pushes
+   one history state and popstate closes the viewer instead of
+   leaving her profile (the app's only history use, contained to
+   this overlay). Portrait-locked app: the viewer is the viewport. */
+let mediaViewer = null; // { items, index, el }
+
+function openMediaViewer(items, index) {
+  const list = (items || []).filter((i) => i && i.url);
+  if (!list.length) return;
+  closeMediaViewer(true);
+  const el = document.createElement('div');
+  el.className = 'media-viewer';
+  el.innerHTML = `
+    <button class="mv-back">${t('back')}</button>
+    <button class="mv-close" aria-label="Close">✕</button>
+    <div class="mv-stage"></div>
+    <button class="mv-nav mv-prev" aria-label="Previous">‹</button>
+    <button class="mv-nav mv-next" aria-label="Next">›</button>
+    <div class="mv-count"></div>`;
+  document.body.appendChild(el);
+  mediaViewer = { items: list, index: Math.min(Math.max(parseInt(index) || 0, 0), list.length - 1), el };
+  try { history.pushState({ scMediaViewer: 1 }, ''); } catch (e) { /* sandboxed frame */ }
+  el.querySelector('.mv-back').onclick = () => closeMediaViewer();
+  el.querySelector('.mv-close').onclick = () => closeMediaViewer();
+  el.querySelector('.mv-prev').onclick = (e) => { e.stopPropagation(); mediaViewerGo(-1); };
+  el.querySelector('.mv-next').onclick = (e) => { e.stopPropagation(); mediaViewerGo(1); };
+  el.addEventListener('click', (e) => { if (e.target === el) closeMediaViewer(); });
+  const stage = el.querySelector('.mv-stage');
+  stage.addEventListener('click', (e) => { if (e.target === stage) closeMediaViewer(); });
+  let touchX = null;
+  el.addEventListener('touchstart', (e) => { touchX = e.changedTouches[0].clientX; }, { passive: true });
+  el.addEventListener('touchend', (e) => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    touchX = null;
+    if (Math.abs(dx) > 42) mediaViewerGo(dx < 0 ? 1 : -1);
+  }, { passive: true });
+  renderMediaViewer();
+}
+
+function renderMediaViewer() {
+  if (!mediaViewer) return;
+  const { items, index, el } = mediaViewer;
+  const it = items[index];
+  const stage = el.querySelector('.mv-stage');
+  if (it.kind === 'video') {
+    stage.innerHTML = `
+      <video class="mv-media" src="${esc(it.url)}" autoplay muted loop playsinline controls></video>
+      <span class="peek-sound-pill mv-sound">🔇 ${t('tap_for_sound')}</span>`;
+    const vid = stage.querySelector('video');
+    const pill = stage.querySelector('.mv-sound');
+    // Standard controls ride the element (play/pause, seek); the
+    // pill is the sound toggle, with the part-6 fix: unmute inside
+    // the tap gesture, `muted` attribute removed before play().
+    const syncPill = () => { pill.innerHTML = vid.muted ? `🔇 ${t('tap_for_sound')}` : `🔊 ${t('tap_to_mute')}`; };
+    const toggle = () => {
+      if (vid.muted) {
+        vid.muted = false;
+        vid.removeAttribute('muted');
+        const p = vid.play(); if (p && p.catch) p.catch(() => {});
+      } else {
+        vid.muted = true;
+      }
+      syncPill();
+    };
+    pill.onclick = (e) => { e.stopPropagation(); toggle(); };
+    vid.addEventListener('volumechange', syncPill);
+  } else {
+    stage.innerHTML = `<img class="mv-media" src="${esc(it.url)}" alt="">`;
+  }
+  el.querySelector('.mv-count').textContent = items.length > 1 ? `${index + 1} / ${items.length}` : '';
+  el.querySelector('.mv-prev').style.display = items.length > 1 ? '' : 'none';
+  el.querySelector('.mv-next').style.display = items.length > 1 ? '' : 'none';
+}
+
+function mediaViewerGo(delta) {
+  if (!mediaViewer) return;
+  const n = mediaViewer.items.length;
+  if (n < 2) return;
+  mediaViewer.index = (((mediaViewer.index + delta) % n) + n) % n;
+  renderMediaViewer();
+}
+
+function closeMediaViewer(fromPop) {
+  if (!mediaViewer) return;
+  mediaViewer.el.remove();
+  mediaViewer = null;
+  // Consume the history state the open pushed, so the browser Back
+  // stays honest afterwards; the popstate it fires lands on an
+  // already-closed viewer and no-ops.
+  if (!fromPop) {
+    try { if (history.state && history.state.scMediaViewer) history.back(); } catch (e) { /* ignore */ }
+  }
+}
+
+window.addEventListener('popstate', () => {
+  if (mediaViewer) closeMediaViewer(true);
+});
+
 /* Model browsing the home screen: tap a sister's tile for her public card
    (status, home rank, rates) — look-only, no fan actions. */
 function openModelPeek(m, models) {
@@ -15791,6 +16013,11 @@ function openModelPeek(m, models) {
   // directory hearts, which never render for model-role viewers).
   // Her own page, the official page, guests and previews never see it.
   const showPlaylistBtn = !isMe && !isOfficial && !!S.user && S.user.role === 'fan';
+  // A22 (Oct 30 2026): Like + Follow action row rides the same gate
+  // as the Playlist button always did (true fans, not her own page,
+  // not the official page) — the Like button posts to the like
+  // endpoint, the Follow button IS the playlist-toggle riding
+  // toggleFollow, now wearing Follow / Following state text.
   // A logged-out guest gets a bar in the same pinned spot — never a
   // working chat (guests can't message), but the way forward: join /
   // log in, routed to the auth view. Signed-in users never see this
@@ -15801,6 +16028,7 @@ function openModelPeek(m, models) {
     ${m.preview_video_url ? `
     <div class="peek-hero">
       <video class="peek-hero-video" data-peek-video src="${esc(m.preview_video_url)}" autoplay muted loop playsinline></video>
+      <span class="peek-expand" data-peek-expand="0">⤢</span>
       <span class="peek-sound-pill" data-peek-sound>🔇 ${t('tap_for_sound')}</span>
     </div>` : ''}
     <div style="text-align:center">
@@ -15810,23 +16038,29 @@ function openModelPeek(m, models) {
     </div>
     ${galleryPics.length ? `
     <div class="peek-gallery">
-      ${galleryPics.map((p) => `<img class="peek-gallery-img" src="${esc(p)}" alt="${esc(m.display_name)}" loading="lazy">`).join('')}
+      ${galleryPics.map((p, gi) => `<img class="peek-gallery-img" data-peek-photo="${gi}" src="${esc(p)}" alt="${esc(m.display_name)}" loading="lazy">`).join('')}
     </div>` : ''}
     ${m.preview_video_url_2 ? `
     <div class="peek-hero peek-hero-second">
       <video class="peek-hero-video" data-peek-video2 src="${esc(m.preview_video_url_2)}" autoplay muted loop playsinline></video>
+      <span class="peek-expand" data-peek-expand="1">⤢</span>
       <span class="peek-sound-pill" data-peek-sound2>🔇 ${t('tap_for_sound')}</span>
     </div>` : ''}
     <div class="peek-rows">
       <div class="peek-row"><span>Status</span><b>${status}</b></div>
-      <div class="peek-row"><span>❤️ ${t('likes_label')}</span><b>${m.likes_count || 0}</b></div>
+      <div class="peek-row"><span>❤️ ${t('likes_label')}</span><b data-like-count="${m.id}">${m.likes_count || 0}</b></div>
       <div class="peek-row"><span>👥 ${t('followers_label')}</span><b data-follow-count="${m.id}">${m.followers_count || 0}</b></div>
       ${rankLine ? `<div class="peek-row"><span>Home rank</span><b>${rankLine}</b></div>` : ''}
       ${isOfficial ? '' : `<div class="peek-row"><span>Messages</span><b>${fmt(m.per_message_cents)} / msg</b></div>`}
       <div class="peek-row"><span>Video calls</span><b>${fmt(m.per_minute_cents)} / min</b></div>
       ${m.schedule_summary ? `<div class="peek-row"><span>Usually live</span><b>${esc(m.schedule_summary)}</b></div>` : ''}
     </div>
-    ${showPlaylistBtn ? `<button class="btn playlist-toggle" data-peek-playlist="${m.id}" style="width:100%;margin-top:12px">${t('playlist_add')}</button>` : ''}
+    ${showPlaylistBtn ? `
+    <div class="peek-actions">
+      <button class="btn ghost profile-like-btn ${m.liked ? 'liked' : ''}" data-peek-like="${m.id}"><span class="like-heart">${m.liked ? '❤️' : '🤍'}</span> ${t('likes_label')}</button>
+      <button class="btn playlist-toggle" data-peek-playlist="${m.id}">${t('follow_btn')}</button>
+    </div>` : ''}
+    ${m.share_url ? `<button class="btn ghost" data-peek-share="${m.id}" style="width:100%;margin-top:8px">${t('share_profile')}</button>` : ''}
     <div id="peek-battles"></div>
     ${m.bio ? `<div class="muted small" style="margin-top:10px">${esc(m.bio)}</div>` : ''}
     <div id="peek-pr"></div>
@@ -15895,17 +16129,52 @@ function openModelPeek(m, models) {
         openChatWithModel(id);
       };
     }
-    // Playlist button: state loads async (his follows list), the tap
-    // rides the same toggleFollow as the directory hearts.
+    // Follow button (the playlist-toggle): state loads async (his
+    // follows list), the tap rides the same toggleFollow as the
+    // directory Follow pills. A22: Follow / Following state text.
     const plBtn = sheet.querySelector('[data-peek-playlist]');
     if (plBtn) {
       api('/follows').then(({ data }) => {
         const on = ((data && data.following) || []).includes(m.id);
-        plBtn.textContent = on ? t('playlist_added') : t('playlist_add');
+        plBtn.textContent = on ? t('following_btn') : t('follow_btn');
         plBtn.classList.toggle('in-playlist', on);
+        plBtn.classList.toggle('following', on);
       }).catch(() => {});
       plBtn.onclick = () => toggleFollow(m.id, plBtn, m.display_name);
     }
+    // A22: her profile Like button — the same toggleLike as the tile
+    // hearts; the peek Likes row and every tile count for her carry
+    // [data-like-count] and move together.
+    const likeBtn = sheet.querySelector('[data-peek-like]');
+    if (likeBtn) {
+      likeBtn.onclick = () => toggleLike(m.id, likeBtn);
+    }
+    // Share button (A22 part 4): renders only when the server issued
+    // her a share_url (public, non-house) — the tap shares that link.
+    const shareBtn = sheet.querySelector('[data-peek-share]');
+    if (shareBtn) {
+      shareBtn.onclick = () => shareModelProfile(m);
+    }
+    // Full-screen viewer (A22 part 7): her gallery pictures open the
+    // viewer on the SAME shaped URLs this page already displays
+    // (galleryPics is post-gate payload data — the viewer fetches
+    // nothing, so a held/blanked picture can never reappear bigger).
+    sheet.querySelectorAll('[data-peek-photo]').forEach((img) => {
+      img.onclick = () => openMediaViewer(
+        galleryPics.map((u) => ({ kind: 'photo', url: u })),
+        parseInt(img.dataset.peekPhoto));
+    });
+    // Her main videos open full-screen from their ⤢ chip; the set is
+    // her two main videos, starting on the one he tapped. Tapping the
+    // video itself keeps the part-6 sound toggle.
+    const heroVids = [m.preview_video_url, m.preview_video_url_2]
+      .filter(Boolean).map((u) => ({ kind: 'video', url: u }));
+    sheet.querySelectorAll('[data-peek-expand]').forEach((chip) => {
+      chip.onclick = (e) => {
+        e.stopPropagation();
+        openMediaViewer(heroVids, parseInt(chip.dataset.peekExpand));
+      };
+    });
     // Phase 6: her confirmed scheduled showdowns ("⚔️ vs @name — Fri 8 PM")
     // + a fan reminder toggle. Unconfirmed events never render here —
     // the server only returns confirmed ones.
@@ -15959,7 +16228,15 @@ function openModelPeek(m, models) {
       const pill = sheet.querySelector('[data-peek-sound]');
       const togglePeekSound = () => {
         if (pv.muted) {
+          // A22 sound fix (layer a): the markup carries the `muted`
+          // CONTENT attribute, and on iOS Safari flipping only the
+          // muted PROPERTY leaves the element's defaultMuted (mirrored
+          // from that attribute) in charge — the video stays silent.
+          // Every working unmute in this app (battle stage, live
+          // watch) pairs the flip with removeAttribute('muted') and a
+          // play() inside the tap gesture; mirror that triple here.
           pv.muted = false;
+          pv.removeAttribute('muted');
           try { pv.currentTime = 0; } catch (e) { /* not seekable yet */ }
           const p = pv.play(); if (p && p.catch) p.catch(() => {});
         } else {
@@ -15978,7 +16255,10 @@ function openModelPeek(m, models) {
       const pill2 = sheet.querySelector('[data-peek-sound2]');
       const togglePeekSound2 = () => {
         if (pv2.muted) {
+          // A22 sound fix (layer a): same muted-attribute trap as the
+          // hero — property flip + removeAttribute + play() in-gesture.
           pv2.muted = false;
+          pv2.removeAttribute('muted');
           try { pv2.currentTime = 0; } catch (e) { /* not seekable yet */ }
           const p = pv2.play(); if (p && p.catch) p.catch(() => {});
         } else {
@@ -16025,8 +16305,19 @@ async function vFanModels() {
   }
   const isFanUser = !!(S.user && S.user.role === 'fan');
   const shown = applyDiscovery(models, disc);
+  // A22 (Oct 30 2026): the tile carries BOTH controls, separate at
+  // last — the heart is LIKE (toggleLike, moves Likes only) and the
+  // pill above it is FOLLOW with its own Follow / Following state
+  // (toggleFollow, the follows engine). Before A22 the heart WAS the
+  // follow: tapping it followed her and her Likes never moved.
   const heartFor = isModelViewer ? null : (m) => `
-            <span class="follow-btn tile-heart ${following.includes(m.id) ? 'following' : ''}" data-follow="${m.id}" title="${t('follow_title')}">${following.includes(m.id) ? '❤️' : '🤍'}</span>`;
+            <span class="tile-actions">
+              <span class="tile-follow ${following.includes(m.id) ? 'following' : ''}" data-follow-btn="${m.id}">${following.includes(m.id) ? t('following_btn') : t('follow_btn')}</span>
+              <span class="model-likes tile-heart" data-like="${m.id}">
+                <span class="like-heart">${m.liked ? '❤️' : '🤍'}</span>
+                <span class="like-count" data-like-count="${m.id}">${m.like_count || 0}</span>
+              </span>
+            </span>`;
   app.innerHTML = `
     <div class="header"><div class="home-head-row"><h1>Slut<span class="logo">Camp</span></h1>
       ${isFanUser ? `<button class="btn small ghost home-logout-btn" id="home-logout">${t('log_out')}</button>` : ''}</div>
@@ -16100,11 +16391,18 @@ async function vFanModels() {
       openChatWithModel(parseInt(b.dataset.model));
     };
   });
-  app.querySelectorAll('[data-follow]').forEach((f) => {
+  // A22: tile heart = Like only; the Follow pill rides toggleFollow.
+  app.querySelectorAll('[data-like]').forEach((h) => {
+    h.onclick = (e) => {
+      e.stopPropagation();
+      toggleLike(parseInt(h.dataset.like), h);
+    };
+  });
+  app.querySelectorAll('[data-follow-btn]').forEach((f) => {
     f.onclick = (e) => {
       e.stopPropagation();
-      const fm = models.find((x) => x.id === parseInt(f.dataset.follow));
-      toggleFollow(parseInt(f.dataset.follow), f, fm ? fm.display_name : '');
+      const fm = models.find((x) => x.id === parseInt(f.dataset.followBtn));
+      toggleFollow(parseInt(f.dataset.followBtn), f, fm ? fm.display_name : '');
     };
   });
 }
@@ -16126,17 +16424,25 @@ function playlistCardHTML(m) {
   const status = m.is_live
     ? `🔴 LIVE now — ${m.live_viewers || 0} watching`
     : m.is_online ? '🟢 Online now' : '⚫ Offline';
+  // Layout (A22 part 5, owner Oct 30 2026): the name gets the FULL
+  // width of its own column — the old row squeezed it beside two
+  // wide buttons, so two-word names wrapped and the buttons sat on
+  // top of the wrapped line ("Nicole / Love", the button covering
+  // "Love"; the online dot half-buried). Now: avatar left, identity
+  // block (name on one line with the presence dot inline beside it,
+  // status + @username/price under it), and Message/Remove in their
+  // own normal-height row UNDER the identity block. Nothing overlaps.
   return `
     <div class="list-item playlist-card" data-pl-open="${m.id}">
-      <span class="avatar-wrap">${avatarHTML(m.display_name, '', m.photo_url)}${m.is_live ? '<span class="online-dot"></span>' : ''}</span>
-      <span class="grow">
-        <span class="title">${esc(m.display_name)}${m.is_live ? ' <span class="live-badge">🔴 LIVE</span>' : ''}</span><br>
-        <span class="preview">${status}</span><br>
-        <span class="small muted">${t('per_msg_rate', { price: fmt(m.per_message_cents) })}</span>
-      </span>
-      <span class="row" style="gap:6px">
-        <button class="btn small" data-pl-msg="${m.id}">${t('msg_her_btn')}</button>
-        <button class="btn small ghost" data-pl-remove="${m.id}">${t('remove_btn')}</button>
+      <span class="avatar-wrap">${avatarHTML(m.display_name, '', m.photo_url)}</span>
+      <span class="grow pl-id">
+        <span class="pl-name">${(m.is_live || m.is_online) ? '<span class="pl-dot"></span>' : ''}${esc(m.display_name)}${m.is_live ? ' <span class="live-badge">🔴 LIVE</span>' : ''}</span>
+        <span class="preview">${status}</span>
+        <span class="small muted">@${esc(m.username)} · ${t('per_msg_rate', { price: fmt(m.per_message_cents) })}</span>
+        <span class="pl-actions">
+          <button class="btn small" data-pl-msg="${m.id}">${t('msg_her_btn')}</button>
+          <button class="btn small ghost" data-pl-remove="${m.id}">${t('remove_btn')}</button>
+        </span>
       </span>
     </div>`;
 }
@@ -16756,10 +17062,28 @@ async function loadPeekFeed(m) {
   if (!items.length) return;
   box.innerHTML = `
     <div style="font-weight:800;margin:14px 0 8px;text-align:left">${t('feed_h')}</div>
-    <div class="peek-gallery">${items.map((i) => i.kind === 'video'
-      ? `<video class="peek-gallery-img" src="${esc(i.url)}" muted playsinline loop preload="metadata" controls></video>`
-      : `<img class="peek-gallery-img" src="${esc(i.url)}" alt="" loading="lazy">`).join('')}
+    <div class="peek-gallery">${items.map((i, fi) => i.kind === 'video'
+      ? `<span class="peek-vidwrap"><video class="peek-gallery-img" src="${esc(i.url)}" muted playsinline loop preload="metadata" controls></video><span class="peek-expand" data-feed-expand="${fi}">⤢</span></span>`
+      : `<img class="peek-gallery-img" data-feed-photo="${fi}" src="${esc(i.url)}" alt="" loading="lazy">`).join('')}
     </div>`;
+  // Full-screen viewer (A22 part 7): photos open on tap; a video's
+  // ⤢ chip opens it in the viewer, playing, with working sound.
+  // (Diagnosis, owner report Oct 30 2026: he saw a ⤢ on these tiles
+  // that "does nothing" — no expand control or handler existed in
+  // the app at all; the glyph was the platform's native-controls
+  // furniture, which is inert in the installed app. This chip is
+  // ours, and it is wired.) Items ride the SAME gate-cleared feed
+  // payload this grid renders — the viewer fetches nothing.
+  const feedItems = items.map((i) => ({ kind: i.kind, url: i.url }));
+  box.querySelectorAll('[data-feed-photo]').forEach((img) => {
+    img.onclick = () => openMediaViewer(feedItems, parseInt(img.dataset.feedPhoto));
+  });
+  box.querySelectorAll('[data-feed-expand]').forEach((chip) => {
+    chip.onclick = (e) => {
+      e.stopPropagation();
+      openMediaViewer(feedItems, parseInt(chip.dataset.feedExpand));
+    };
+  });
 }
 
 async function loadPeekPackages(m) {
@@ -17235,6 +17559,7 @@ async function vWallet() {
       </div>
       <button class="btn ghost" id="w-ath" style="width:100%;margin-bottom:10px">${t('ath_wallet_row')}</button>
       <div id="av-box"></div>
+      <div id="fan-profile-card"></div>
       <div id="pk-card"></div>
       <div id="pw-card"></div>
       <div id="contact-card"></div>
@@ -17372,6 +17697,7 @@ async function vWallet() {
   const wth = $('#w-ath');
   if (wth) wth.onclick = openAthSheet;
   renderPkSettingsCard();
+  renderFanProfileCard();
   renderPwSettingsCard();
   renderContactSettingsCard();
   renderAffiliateCard();
@@ -24050,10 +24376,32 @@ async function vNotifications() {
 // Fan: follow/unfollow a model
 // Add/remove a model on his Playlist — the follows engine in
 // Playlist language (owner, Oct 24 2026). Adding her also enables
-// "she's live" notifications; the follows rows are unchanged. btn is
-// either the directory tile heart (🤍/❤️) or a .playlist-toggle
-// button (her page / peek), whose label swaps playlist_add ⇄
-// playlist_added. name feeds the added toast.
+// "she's live" notifications; the follows rows are unchanged.
+// A22 (Oct 30 2026): btn is a Follow control — the directory tile's
+// [data-follow-btn] pill or her profile's .playlist-toggle button —
+// whose label swaps follow_btn ⇄ following_btn. (The tile heart is
+// Like now, never Follow — see toggleLike.) name feeds the toast.
+// A22 (Oct 30 2026): Like and Follow are SEPARATE actions again. The
+// heart is LIKE only — it posts to the like endpoint, moves her Likes
+// count (every rendered [data-like-count] for her, tiles + profile)
+// and flips the heart glyph on the tapped control. It never touches
+// the follows table, and toggleFollow never touches Likes. btn is the
+// tapped heart/button element (tile heart or her profile Like button);
+// both carry a .like-heart glyph span. Fans only — guests and other
+// roles get the sign-in toast, same as the landing heart always did.
+async function toggleLike(modelId, btn) {
+  if (!S.user || S.user.role !== 'fan') { toast(t('like_need_fan')); return null; }
+  const { status, data } = await api(`/models/${modelId}/like`, { method: 'POST' });
+  if (status !== 200 || !data) return null;
+  document.querySelectorAll(`[data-like-count="${modelId}"]`).forEach((el) => { el.textContent = data.like_count; });
+  if (btn) {
+    const heart = btn.querySelector('.like-heart');
+    if (heart) heart.textContent = data.liked ? '❤️' : '🤍';
+    btn.classList.toggle('liked', !!data.liked);
+  }
+  return data;
+}
+
 async function toggleFollow(modelId, btn, name) {
   const { data } = await api(`/follows/${modelId}`, { method: 'POST' });
   // Her public follower number moves the moment it changes — every
@@ -24062,9 +24410,13 @@ async function toggleFollow(modelId, btn, name) {
     document.querySelectorAll(`[data-follow-count="${modelId}"]`).forEach((el) => { el.textContent = data.follower_count; });
   }
   if (btn) {
-    if (btn.classList.contains('playlist-toggle')) {
-      btn.textContent = data.following ? t('playlist_added') : t('playlist_add');
+    if (btn.classList.contains('playlist-toggle') || btn.dataset.followBtn !== undefined) {
+      // A22: her Follow control wears Follow / Following state text —
+      // on her profile (the .playlist-toggle button, riding the same
+      // follows engine) and on the directory tiles ([data-follow-btn]).
+      btn.textContent = data.following ? t('following_btn') : t('follow_btn');
       btn.classList.toggle('in-playlist', data.following);
+      btn.classList.toggle('following', data.following);
     } else {
       btn.textContent = data.following ? '❤️' : '🤍';
       btn.classList.toggle('following', data.following);

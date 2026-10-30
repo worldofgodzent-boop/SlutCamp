@@ -578,10 +578,26 @@ ${seoBrand}
   <p class="price">💬 Messages from ${seoMoney(m.per_message_cents)}</p>
   ${tagsHtml}
   <div><a class="cta" href="/">💋 Chat with her on SlutCamp</a></div>
+  <div><button class="cta" id="share-profile" type="button" style="margin-top:8px;cursor:pointer">📤 Share her profile</button></div>
   ${socialHtml}
 </div>
 ${m.bio ? `<p class="bio">${seoEsc(m.bio)}</p>` : ''}
 ${feedHtml}
+<script>
+/* A22: Share her profile — native share sheet, clipboard fallback.
+   The shared URL is this page's canonical profile URL. */
+document.getElementById('share-profile').addEventListener('click', function () {
+  var url = ${JSON.stringify(url)};
+  var btn = document.getElementById('share-profile');
+  if (navigator.share) { navigator.share({ title: document.title, text: document.title, url: url }).catch(function () {}); }
+  else if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(function () {
+      btn.textContent = '✅ Link copied';
+      setTimeout(function () { btn.textContent = '📤 Share her profile'; }, 2000);
+    }).catch(function () { prompt('Copy her profile link:', url); });
+  } else { prompt('Copy her profile link:', url); }
+});
+</script>
 ${seoFooter}
 </div></body></html>`);
 });
@@ -8292,7 +8308,16 @@ app.get('/api/models', (req, res) => {
        * age is never rendered on tiles/profiles — the number exists
        * only so the fan-side filter can slice the roster. */
       age: ageFromDob(dobRaw),
-      rank_position: rankPos.get(r.id) || null };
+      rank_position: rankPos.get(r.id) || null,
+      /* A22 (owner, Oct 30 2026): her shareable profile link — the
+       * canonical public page, present ONLY for profiles that page
+       * actually serves (this roster is role/banned/hidden-filtered
+       * exactly like seoPublicModels) and NEVER for the house: its
+       * page serves, but the house stays unshareable. The client
+       * renders her Share button only when this is non-empty, so the
+       * guard can never drift from the server's own rules. */
+      share_url: r.id === houseId ? null
+        : SEO_ORIGIN + '/models/' + encodeURIComponent(r.username) };
     // CO-STAR GATE (Co-Star Upload Prompt, Oct 22 2026): media she
     // declared a co-star in is additionally withheld — per ITEM, not
     // per model — until every declared co-star's packet is complete
