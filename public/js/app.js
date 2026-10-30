@@ -16634,7 +16634,7 @@ async function vChatList(role) {
         <button class="list-item" data-conv="${c.id}">
           ${avatarHTML(c.other.display_name, 'sm', c.other.photo_url)}
           <span class="grow">
-            <span class="title">${esc(c.other.display_name)}${c.is_official ? ` <span class="official-pill">${t('official_label')}</span>` : ''}
+            <span class="title">${esc(c.other.display_name)}${c.is_official ? ` <span class="official-pill">${t('official_label')}</span>` : ''}${c.is_top_spender ? ` <span class="official-pill">⭐ Top spender</span>` : ''}
               ${c.is_paused ? ` <span class="small" style="color:var(--red)">${t('paused_tag')}</span>` : ''}</span><br>
             <span class="preview">${c.last_message ? esc(c.last_message.body).slice(0, 60) : `<i>${t('no_messages_yet')}</i>`}</span>
           </span>
@@ -18225,6 +18225,20 @@ async function vModelEarnings() {
         <div class="stat"><div class="n" style="color:var(--green)">${fmt(data.pending_cents)}</div><div class="l">${t('avail_payout')}</div></div>
         <div class="stat"><div class="n">${fmt(data.earnings_cents)}</div><div class="l">${t('total_earned')}</div></div>
       </div>
+      ${/* Assignment 11 — Top Spenders panel: her wallet's ranked fans,
+        from the SAME modelTopSpenders ranking as the message list.
+        Amounts are the credited share (see server comment); the panel
+        text is a plain English literal — no new i18n keys were added,
+        so a translation pass can follow without touching the logic. */
+      `<div class="card" style="margin-top:12px">
+        <div style="font-weight:800;margin-bottom:4px">⭐ Top Spenders</div>
+        <div class="muted small" style="margin-bottom:8px">Lifetime real spend with you, highest first — fully automatic, no one to add.</div>
+        ${(data.top_spenders || []).length ? (data.top_spenders || []).map((s) => `
+        <div class="row" style="padding:8px 0;border-top:1px solid rgba(139,92,246,.1)">
+          <span class="grow"><b>${s.rank}. ${esc(s.display_name)}</b> <span class="muted small">@${esc(s.username)}</span></span>
+          <b style="color:var(--green)">${fmt(s.spent_cents)}</b>
+        </div>`).join('') : `<div class="muted">No top spenders yet — your first paying fans will appear here automatically.</div>`}
+      </div>`}
       ${data.gift_count ? `
       <div class="card" style="margin-top:12px">
         <div style="font-weight:800;margin-bottom:8px">${t('gifts_received')}</div>
