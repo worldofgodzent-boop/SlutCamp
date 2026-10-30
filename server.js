@@ -16325,37 +16325,65 @@ CREATE TABLE IF NOT EXISTS visits (
 );
 CREATE INDEX IF NOT EXISTS idx_visits_created ON visits(created_at);`);
 
-// In-memory geo cache (ip -> {country, city}) to avoid repeat lookups
-const geoCache = new Map();
-async function geoFor(ip) {
-  if (!ip || ip === 'unknown' || ip.startsWith('127.') || ip === '::1') return {};
-  if (geoCache.has(ip)) return geoCache.get(ip);
-  const out = {};
-  try {
-    const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), 2500);
-    const r = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,city`, { signal: ctl.signal });
-    clearTimeout(t);
-    const j = await r.json().catch(() => ({}));
-    if (j.status === 'success') { out.country = j.country || null; out.city = j.city || null; }
-  } catch { /* geo is best-effort */ }
-  geoCache.set(ip, out);
-  if (geoCache.size > 5000) geoCache.clear();
-  return out;
+// Geo for a visit (owner ask Oct 30, 2026): the Manager Analytics tab must
+// show where views come from, by country AND by city, like Silly Models.
+// SlutCamp is proxied through Cloudflare, which hands every request the
+// visitor's country in CF-IPCountry (sent by default) and — once the zone's
+// "Add visitor location headers" Managed Transform is enabled — their city
+// in CF-IPCity. Headers win; the bundled GeoLite DB (lib/geo.js, the same
+// resolver region blocking uses) is the fallback for traffic that reaches
+// the origin without them (dev, direct hits). Anything unresolvable stays
+// NULL and renders as (unknown) in the Manager — never guessed.
+//
+// This replaces the old geoFor(), which shipped req.ip — the proxy peer's
+// address, since the app sets no trust proxy — to ip-api.com. That lookup
+// could only ever resolve the proxy, so country/city landed NULL for
+// effectively every visit and the Manager showed "(unknown)" for all of
+// them. It also hashed that same proxy IP, flattening "unique visitors".
+function cfCountryCode(v) {
+  const c = String(v || '').trim().toUpperCase();
+  // XX = Cloudflare "unknown", T1 = Tor network — neither is a place.
+  if (!/^[A-Z]{2}$/.test(c) || c === 'XX' || c === 'T1') return null;
+  return c;
+}
+function cfCity(v) {
+  let s = String(v || '').trim();
+  if (!s) return null;
+  try { s = decodeURIComponent(s); } catch { /* keep the raw value */ }
+  s = s.trim().slice(0, 100);
+  return s || null;
+}
+function visitGeo(req) {
+  const h = req.headers || {};
+  let country = cfCountryCode(h['cf-ipcountry']);
+  let city = cfCity(h['cf-ipcity']);
+  if (!country || !city) {
+    try {
+      const g = geoLib.lookupIp(clientIp(req));
+      if (g) {
+        if (!country) country = cfCountryCode(g.country);
+        if (!city) city = cfCity(g.city);
+      }
+    } catch { /* geo is best-effort */ }
+  }
+  // A city is meaningless without its country (and Cloudflare never sends
+  // one that way) — an unresolvable country means the visit is unknown.
+  if (!country) city = null;
+  return { country, city };
 }
 function hashIP(ip) {
   return crypto.createHash('sha256').update(String(ip) + '|visit-salt').digest('hex').slice(0, 32);
 }
 
 // Public: log a page visit (called once per session from the frontend)
-app.post('/api/track/visit', async (req, res) => {
+app.post('/api/track/visit', (req, res) => {
   try {
-    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const ip = clientIp(req) || 'unknown';
     const { path, referrer } = req.body || {};
-    const geo = await geoFor(ip);
+    const geo = visitGeo(req);
     db.prepare(`INSERT INTO visits (ip_hash, country, city, referrer, path, user_agent)
       VALUES (?,?,?,?,?,?)`).run(
-      hashIP(ip), geo.country || null, geo.city || null,
+      hashIP(ip), geo.country, geo.city,
       String(referrer || '').slice(0, 500) || null,
       String(path || '/').slice(0, 200),
       String(req.headers['user-agent'] || '').slice(0, 300));
@@ -16375,13 +16403,20 @@ app.get('/api/admin/analytics', ...adminOnly, (req, res) => {
   const referrers = db.prepare(`
     SELECT COALESCE(NULLIF(referrer,''), '(direct)') AS ref, COUNT(*) AS n
     FROM visits WHERE created_at >= ${since} GROUP BY ref ORDER BY n DESC LIMIT 20`).all();
+  // Countries: country CODE per row (NULL = unresolvable, incl. every row
+  // written before geo capture worked — those stay unknown, no backfill).
   const countries = db.prepare(`
-    SELECT COALESCE(country, '(unknown)') AS c, COUNT(*) AS n
-    FROM visits WHERE created_at >= ${since} GROUP BY c ORDER BY n DESC LIMIT 20`).all();
+    SELECT country AS code, COUNT(*) AS n
+    FROM visits WHERE created_at >= ${since} GROUP BY country ORDER BY n DESC LIMIT 50`).all();
+  // Cities: only rows where a city actually resolved.
+  const cities = db.prepare(`
+    SELECT city, country AS code, COUNT(*) AS n
+    FROM visits WHERE created_at >= ${since} AND city IS NOT NULL AND city <> ''
+    GROUP BY city, country ORDER BY n DESC LIMIT 50`).all();
   const pages = db.prepare(`
     SELECT path, COUNT(*) AS n FROM visits WHERE created_at >= ${since}
     GROUP BY path ORDER BY n DESC LIMIT 20`).all();
-  res.json({ days, total, unique, byDay, referrers, countries, pages });
+  res.json({ days, total, unique, byDay, referrers, countries, cities, pages });
 });
 
 // 2FA status
