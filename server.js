@@ -359,6 +359,15 @@ app.use((req, res, next) => {
 /* user input, and these pages are public.                            */
 /* ------------------------------------------------------------------ */
 const SEO_ORIGIN = 'https://slutcamp.app';
+/* A23b: her share note's default — the owner's exact words. The
+ * effective note is her stored note when she has written one; an
+ * empty/blank stored note falls back to this, so her card and her
+ * share text always carry a note. */
+const DEFAULT_SHARE_NOTE = 'Cum have fun with me on SlutCamp';
+const shareNoteOf = (v) => {
+  const n = String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+  return n || DEFAULT_SHARE_NOTE;
+};
 const seoEsc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -378,7 +387,7 @@ const seoDesc = (bio, name) => {
 function seoPublicModels() {
   const rows = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.presence_override, u.created_at,
-           m.bio, m.per_message_cents, m.public_photo_url, m.tags, m.is_featured, m.is_online, m.section,
+           m.bio, m.per_message_cents, m.public_photo_url, m.share_note, m.tags, m.is_featured, m.is_online, m.section,
            ls.id AS live_session_id
     FROM users u JOIN models m ON m.user_id = u.id
     LEFT JOIN live_sessions ls ON ls.model_id = u.id AND ls.status = 'live' AND ls.private_event_id IS NULL
@@ -411,6 +420,7 @@ function seoPublicModels() {
       username: r.username,
       display_name: r.display_name,
       bio: r.bio || '',
+      share_note: shareNoteOf(r.share_note),
       per_message_cents: r.per_message_cents,
       public_photo_url: pubPhoto,
       tags: parseModelTags(r.tags),
@@ -544,7 +554,13 @@ app.get('/models/:username', (req, res) => {
   }
   const url = SEO_ORIGIN + m.url;
   const title = `${m.display_name} (@${m.username}) on SlutCamp`;
-  const desc = seoDesc(m.bio, m.display_name);
+  /* A23b (owner, Oct 30 2026): her link preview card IS her share
+   * card — og:image is photo_abs (her gate-cleared CLEAN public
+   * photo, the same one this page's hero shows; the logo when she
+   * has none, when it is unapproved, or while a co-star hold lasts —
+   * her in-app photo_url NEVER reaches this surface, per the
+   * Oct 16 rule), and og:description is HER share note, not her bio. */
+  const desc = m.share_note;
   const tagsHtml = m.tags.length
     ? `<div class="tags">${m.tags.map((t) => `<a href="/tags/${seoTagSlug(t)}">${seoEsc(t)}</a>`).join('')}</div>` : '';
   const rankHtml = m.rank_position && m.rank_position <= 10
@@ -595,7 +611,7 @@ ${feedHtml}
 document.getElementById('share-profile').addEventListener('click', function () {
   var url = ${JSON.stringify(url)};
   var btn = document.getElementById('share-profile');
-  if (navigator.share) { navigator.share({ title: document.title, text: document.title, url: url }).catch(function () {}); }
+  if (navigator.share) { navigator.share({ title: document.title, text: ${JSON.stringify(m.share_note)}, url: url }).catch(function () {}); }
   else if (navigator.clipboard) {
     navigator.clipboard.writeText(url).then(function () {
       btn.textContent = '✅ Link copied';
@@ -1003,7 +1019,8 @@ CREATE TABLE IF NOT EXISTS models (
   join_cents INTEGER NOT NULL DEFAULT 1000,
   mic_join_cents INTEGER NOT NULL DEFAULT 500,
   fan_pics_allowed INTEGER NOT NULL DEFAULT 0,
-  fan_pic_price INTEGER NOT NULL DEFAULT 0
+  fan_pic_price INTEGER NOT NULL DEFAULT 0,
+  share_note TEXT NOT NULL DEFAULT 'Cum have fun with me on SlutCamp'
 );
 
 -- Model likes (fans tap heart on model cards)
@@ -1720,6 +1737,12 @@ addColumnIfMissing('models', 'photo_url', "TEXT NOT NULL DEFAULT ''");
 // and must never reach the public pages, so the SEO surfaces read ONLY
 // this column. '' = unset → public pages show the branded logo instead.
 addColumnIfMissing('models', 'public_photo_url', "TEXT NOT NULL DEFAULT ''");
+// A23b (owner, Oct 30 2026): her share note — the line that rides on
+// her profile link preview card (og:description) and leads her share
+// text. Hers to edit in profile settings under the same content rules
+// as her bio; the column default is the owner's exact wording, so
+// every existing and new model carries it until she changes it.
+addColumnIfMissing('models', 'share_note', "TEXT NOT NULL DEFAULT 'Cum have fun with me on SlutCamp'");
 addColumnIfMissing('live_sessions', 'title', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('live_sessions', 'brb', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('live_sessions', 'game_on', 'INTEGER NOT NULL DEFAULT 0'); // Game Category live this session
@@ -8250,7 +8273,7 @@ app.get('/api/models', (req, res) => {
   const houseId = houseAccountId();
   const rows = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.presence_override, u.created_at, u.dob, m.bio, m.per_message_cents,
-           m.per_minute_cents, m.per_voice_cents, m.booking_rate_cents, m.section, m.is_online, m.photo_url, m.public_photo_url, m.tags,
+           m.per_minute_cents, m.per_voice_cents, m.booking_rate_cents, m.section, m.is_online, m.photo_url, m.public_photo_url, m.share_note, m.tags,
            m.preview_video_url, m.preview_video_url_2, m.gallery_photos, m.is_featured, m.rank_score,
            ls.id AS live_session_id, ls.explicit_rate_cents AS live_explicit_rate_cents,
            (SELECT COUNT(*) FROM live_viewers WHERE session_id = ls.id) AS live_viewers,
@@ -8381,7 +8404,11 @@ app.get('/api/models', (req, res) => {
        * renders her Share button only when this is non-empty, so the
        * guard can never drift from the server's own rules. */
       share_url: r.id === houseId ? null
-        : SEO_ORIGIN + '/models/' + encodeURIComponent(r.username) };
+        : SEO_ORIGIN + '/models/' + encodeURIComponent(r.username),
+      /* A23b: her share note rides the roster too — the client's
+       * share action leads its text with it (her stored note, or
+       * the owner's default wording when she has none). */
+      share_note: shareNoteOf(r.share_note) };
     // CO-STAR GATE (Co-Star Upload Prompt, Oct 22 2026): media she
     // declared a co-star in is additionally withheld — per ITEM, not
     // per model — until every declared co-star's packet is complete
@@ -12989,7 +13016,7 @@ app.post('/api/credits/buy', identMiddleware, requireUser, requireRole('fan'), (
 /* ------------------------------------------------------------------ */
 
 app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model'), (req, res) => {
-  const { bio, per_message_cents, per_minute_cents, per_voice_cents, booking_rate_cents,
+  const { bio, share_note, per_message_cents, per_minute_cents, per_voice_cents, booking_rate_cents,
           explicit_rate_cents,
           explicit_join_cents, explicit_mic_join_cents, join_cents, mic_join_cents,
           is_online, tags, battle_invites_open, fan_pics_allowed, fan_pic_price } = req.body || {};
@@ -13011,6 +13038,15 @@ app.put('/api/model/profile', identMiddleware, requireUser, requireRole('model')
     if (bioHit) return res.status(400).json({ error: 'bio_not_allowed', matched: bioHit });
   }
   if (typeof bio === 'string') { updates.push('bio = ?'); params.push(bio.slice(0, 280)); }
+  // A23b: her share note is edited through this same PUT and held to
+  // EXACTLY the bio's content rules — the same two scans, the same
+  // whole-save rejection, the same 280 cap — because the note is
+  // public text on her link preview card, just like her bio.
+  if (typeof share_note === 'string' && share_note.trim()) {
+    const noteHit = safetyScan(share_note) || promotionScan(share_note);
+    if (noteHit) return res.status(400).json({ error: 'share_note_not_allowed', matched: noteHit });
+  }
+  if (typeof share_note === 'string') { updates.push('share_note = ?'); params.push(share_note.slice(0, 280)); }
   if (rateRange(per_message_cents, 50, 1000)) {
     updates.push('per_message_cents = ?'); params.push(per_message_cents);
   }

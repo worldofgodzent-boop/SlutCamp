@@ -152,6 +152,11 @@ const I18N = {
     role_word_affiliate: 'affiliate',
     share_app: '📤 Share SlutCamp',
     share_profile: '📤 Share her profile',
+    share_note_h: '📤 Share note',
+    share_note_note: 'This note rides with your profile link — it shows on the preview card when anyone shares your page, and it leads the share message. Same rules as your bio.',
+    save_share_note: 'Save share note',
+    share_note_saved: '✅ Share note saved!',
+    share_note_not_allowed_info: 'That share note couldn\'t be saved 💋 Share notes can\'t mention other websites, platforms, link pages, payment apps, or contact info — SlutCamp only, same as your bio.',
     ath_card_t: 'Put SlutCamp on your home screen',
     follow_slutcamp: 'Follow SlutCamp:',
     ath_card_sub: 'Opens like a real app, one tap.',
@@ -1138,6 +1143,11 @@ const I18N = {
     role_word_affiliate: 'afiliado',
     share_app: '📤 Compartir SlutCamp',
     share_profile: '📤 Compartir su perfil',
+    share_note_h: '📤 Nota para compartir',
+    share_note_note: 'Esta nota va con tu enlace de perfil: aparece en la tarjeta de vista previa cuando alguien comparte tu página y encabeza el mensaje para compartir. Mismas reglas que tu bio.',
+    save_share_note: 'Guardar nota',
+    share_note_saved: '✅ ¡Nota guardada!',
+    share_note_not_allowed_info: 'Esa nota no se pudo guardar 💋 Las notas no pueden mencionar otros sitios web, plataformas, páginas de enlaces, apps de pago ni datos de contacto — solo SlutCamp, igual que tu bio.',
     ath_card_t: 'Pon SlutCamp en tu pantalla de inicio',
     follow_slutcamp: 'Sigue a SlutCamp:',
     ath_card_sub: 'Se abre como una app real, con un toque.',
@@ -2124,6 +2134,11 @@ const I18N = {
     role_word_affiliate: 'afiliado',
     share_app: '📤 Compartilhar o SlutCamp',
     share_profile: '📤 Compartilhar o perfil dela',
+    share_note_h: '📤 Nota de compartilhamento',
+    share_note_note: 'Esta nota vai com o link do seu perfil: aparece no cartão de prévia quando alguém compartilha sua página e abre a mensagem de compartilhamento. Mesmas regras da sua bio.',
+    save_share_note: 'Salvar nota',
+    share_note_saved: '✅ Nota salva!',
+    share_note_not_allowed_info: 'Essa nota não pôde ser salva 💋 Notas não podem mencionar outros sites, plataformas, páginas de links, apps de pagamento ou contatos — só SlutCamp, como a sua bio.',
     ath_card_t: 'Coloque o SlutCamp na sua tela inicial',
     follow_slutcamp: 'Siga a SlutCamp:',
     ath_card_sub: 'Abre como um app de verdade, com um toque.',
@@ -3110,6 +3125,11 @@ const I18N = {
     role_word_affiliate: 'affilié',
     share_app: '📤 Partager SlutCamp',
     share_profile: '📤 Partager son profil',
+    share_note_h: '📤 Note de partage',
+    share_note_note: 'Cette note accompagne le lien de ton profil : elle apparaît sur la carte d\'aperçu quand quelqu\'un partage ta page et elle ouvre le message de partage. Mêmes règles que ta bio.',
+    save_share_note: 'Enregistrer la note',
+    share_note_saved: '✅ Note enregistrée !',
+    share_note_not_allowed_info: 'Cette note n\'a pas pu être enregistrée 💋 Les notes ne peuvent pas mentionner d\'autres sites web, plateformes, pages de liens, applis de paiement ou coordonnées — SlutCamp uniquement, comme ta bio.',
     ath_card_t: 'Mettez SlutCamp sur votre écran d\'accueil',
     follow_slutcamp: 'Suivez SlutCamp :',
     ath_card_sub: 'S\'ouvre comme une vraie appli, en un toucher.',
@@ -4096,6 +4116,11 @@ const I18N = {
     role_word_affiliate: 'Affiliate',
     share_app: '📤 SlutCamp teilen',
     share_profile: '📤 Ihr Profil teilen',
+    share_note_h: '📤 Teilenotiz',
+    share_note_note: 'Diese Notiz reist mit deinem Profil-Link: Sie steht auf der Vorschau-Karte, wenn jemand deine Seite teilt, und eröffnet die Teilen-Nachricht. Gleiche Regeln wie deine Bio.',
+    save_share_note: 'Notiz speichern',
+    share_note_saved: '✅ Notiz gespeichert!',
+    share_note_not_allowed_info: 'Diese Notiz konnte nicht gespeichert werden 💋 Notizen dürfen keine anderen Websites, Plattformen, Linkseiten, Zahlungs-Apps oder Kontaktdaten nennen — nur SlutCamp, wie deine Bio.',
     ath_card_t: 'SlutCamp auf deinen Startbildschirm legen',
     follow_slutcamp: 'Folge SlutCamp:',
     ath_card_sub: 'Öffnet sich wie eine echte App, mit einem Tipp.',
@@ -5082,6 +5107,11 @@ const I18N = {
     role_word_affiliate: 'партнёра',
     share_app: '📤 Поделиться SlutCamp',
     share_profile: '📤 Поделиться её профилем',
+    share_note_h: '📤 Текст для карточки',
+    share_note_note: 'Этот текст идёт вместе со ссылкой на твой профиль: он виден на карточке предпросмотра, когда твоей страницей делятся, и стоит первым в сообщении. Правила те же, что и для био.',
+    save_share_note: 'Сохранить текст',
+    share_note_saved: '✅ Текст сохранён!',
+    share_note_not_allowed_info: 'Этот текст не удалось сохранить 💋 В тексте нельзя упоминать другие сайты, платформы, страницы ссылок, платёжные приложения или контакты — только SlutCamp, как и в био.',
     ath_card_t: 'Добавьте SlutCamp на главный экран',
     follow_slutcamp: 'Подписывайтесь на SlutCamp:',
     ath_card_sub: 'Открывается как настоящее приложение, одним касанием.',
@@ -6068,6 +6098,11 @@ const I18N = {
     role_word_affiliate: 'アフィリエイト',
     share_app: '📤 SlutCampをシェア',
     share_profile: '📤 彼女のプロフィールをシェア',
+    share_note_h: '📤 シェアメモ',
+    share_note_note: 'このメモはプロフィールリンクと一緒に表示されます。誰かがあなたのページをシェアしたときのプレビューカードに出て、シェア文の先頭になります。ルールは自己紹介と同じです。',
+    save_share_note: 'メモを保存',
+    share_note_saved: '✅ メモを保存しました！',
+    share_note_not_allowed_info: 'そのメモは保存できませんでした 💋 メモには他のウェブサイト、プラットフォーム、リンクページ、決済アプリ、連絡先を書けません — 自己紹介と同じくSlutCampだけです。',
     ath_card_t: 'SlutCampをホーム画面に追加',
     follow_slutcamp: 'SlutCampをフォロー：',
     ath_card_sub: 'ワンタップで本物のアプリみたいに開けるよ。',
@@ -7054,6 +7089,11 @@ const I18N = {
     role_word_affiliate: '推广伙伴',
     share_app: '📤 分享 SlutCamp',
     share_profile: '📤 分享她的资料',
+    share_note_h: '📤 分享文案',
+    share_note_note: '这段文案会跟着你的主页链接走：别人分享你的页面时，它会出现在预览卡片上，也是分享文字的第一句。规则和个人简介相同。',
+    save_share_note: '保存文案',
+    share_note_saved: '✅ 文案已保存！',
+    share_note_not_allowed_info: '这段文案无法保存 💋 文案不能提及其他网站、平台、链接页、支付应用或联系方式 — 和简介一样，只能是 SlutCamp。',
     ath_card_t: '把 SlutCamp 放到你的主屏幕',
     follow_slutcamp: '关注 SlutCamp：',
     ath_card_sub: '像真正的应用一样打开，一点即达。',
@@ -8040,6 +8080,11 @@ const I18N = {
     role_word_affiliate: '제휴 파트너',
     share_app: '📤 SlutCamp 공유하기',
     share_profile: '📤 그녀의 프로필 공유하기',
+    share_note_h: '📤 공유 문구',
+    share_note_note: '이 문구는 프로필 링크와 함께 나가요. 누군가 내 페이지를 공유하면 미리보기 카드에 보이고, 공유 문구의 첫 문장이 됩니다. 규칙은 소개글과 같아요.',
+    save_share_note: '문구 저장',
+    share_note_saved: '✅ 문구가 저장됐어요!',
+    share_note_not_allowed_info: '그 문구는 저장되지 않았어요 💋 문구에는 다른 웹사이트, 플랫폼, 링크 페이지, 결제 앱, 연락처를 쓸 수 없어요 — 소개글처럼 SlutCamp만 가능해요.',
     ath_card_t: '홈 화면에 SlutCamp 추가하기',
     follow_slutcamp: 'SlutCamp 팔로우:',
     ath_card_sub: '한 번의 탭으로 실제 앱처럼 열립니다.',
@@ -9026,6 +9071,11 @@ const I18N = {
     role_word_affiliate: 'affiliato',
     share_app: '📤 Condividi SlutCamp',
     share_profile: '📤 Condividi il suo profilo',
+    share_note_h: '📤 Nota di condivisione',
+    share_note_note: 'Questa nota viaggia con il link del tuo profilo: appare sulla scheda di anteprima quando qualcuno condivide la tua pagina e apre il messaggio di condivisione. Stesse regole della bio.',
+    save_share_note: 'Salva nota',
+    share_note_saved: '✅ Nota salvata!',
+    share_note_not_allowed_info: 'Impossibile salvare quella nota 💋 Le note non possono menzionare altri siti web, piattaforme, pagine di link, app di pagamento o contatti — solo SlutCamp, come la bio.',
     ath_card_t: 'Metti SlutCamp sulla tua schermata home',
     follow_slutcamp: 'Segui SlutCamp:',
     ath_card_sub: 'Si apre come una vera app, con un tocco.',
@@ -10012,6 +10062,11 @@ const I18N = {
     role_word_affiliate: 'afiliant',
     share_app: '📤 Udostępnij SlutCamp',
     share_profile: '📤 Udostępnij jej profil',
+    share_note_h: '📤 Notatka do udostępniania',
+    share_note_note: 'Ta notatka idzie z linkiem do Twojego profilu: widać ją na karcie podglądu, gdy ktoś udostępnia Twoją stronę, i otwiera wiadomość udostępniania. Te same zasady co bio.',
+    save_share_note: 'Zapisz notatkę',
+    share_note_saved: '✅ Notatka zapisana!',
+    share_note_not_allowed_info: 'Nie udało się zapisać tej notatki 💋 Notatki nie mogą wspominać innych stron, platform, stron z linkami, aplikacji płatniczych ani danych kontaktowych — tylko SlutCamp, jak bio.',
     ath_card_t: 'Umieść SlutCamp na ekranie głównym',
     follow_slutcamp: 'Obserwuj SlutCamp:',
     ath_card_sub: 'Otwiera się jak prawdziwa aplikacja, jednym dotknięciem.',
@@ -10998,6 +11053,11 @@ const I18N = {
     role_word_affiliate: 'affiliate',
     share_app: '📤 Deel SlutCamp',
     share_profile: '📤 Deel haar profiel',
+    share_note_h: '📤 Deelnotitie',
+    share_note_note: 'Deze notitie reist mee met je profiellink: hij staat op de voorbeeldkaart als iemand je pagina deelt en opent het deelbericht. Dezelfde regels als je bio.',
+    save_share_note: 'Notitie opslaan',
+    share_note_saved: '✅ Notitie opgeslagen!',
+    share_note_not_allowed_info: 'Die notitie kon niet worden opgeslagen 💋 Notities mogen geen andere websites, platforms, linkpagina\'s, betaalapps of contactgegevens noemen — alleen SlutCamp, net als je bio.',
     ath_card_t: 'Zet SlutCamp op je startscherm',
     follow_slutcamp: 'Volg SlutCamp:',
     ath_card_sub: 'Opent als een echte app, met één tik.',
@@ -11984,6 +12044,11 @@ const I18N = {
     role_word_affiliate: 'ortak',
     share_app: '📤 SlutCamp\'i Paylaş',
     share_profile: '📤 Profilini Paylaş',
+    share_note_h: '📤 Paylaşım notu',
+    share_note_note: 'Bu not profil bağlantınla birlikte gider: sayfan paylaşıldığında önizleme kartında görünür ve paylaşım mesajını açar. Kurallar biyografinle aynı.',
+    save_share_note: 'Notu kaydet',
+    share_note_saved: '✅ Not kaydedildi!',
+    share_note_not_allowed_info: 'O not kaydedilemedi 💋 Notlar başka web sitelerinden, platformlardan, bağlantı sayfalarından, ödeme uygulamalarından veya iletişim bilgilerinden bahsedemez — biyografin gibi yalnızca SlutCamp.',
     ath_card_t: 'SlutCamp\'i ana ekranına koy',
     follow_slutcamp: 'SlutCamp\'i takip et:',
     ath_card_sub: 'Gerçek bir uygulama gibi açılır, tek dokunuşla.',
@@ -14467,9 +14532,16 @@ async function shareApp() {
 async function shareModelProfile(m) {
   const url = (m && m.share_url) || '';
   if (!url) return;
+  /* A23b (owner, Oct 30 2026): the share text leads with HER note —
+   * the same note her link preview card carries (the server shapes
+   * share_note onto the roster; the owner's default wording stands
+   * in when a surface hands us a model without one). The share
+   * sheet composes the text ahead of the link. */
+  const note = (m.share_note && String(m.share_note).trim())
+    || 'Cum have fun with me on SlutCamp';
   const data = {
     title: `${m.display_name} on SlutCamp`,
-    text: `Check out ${m.display_name} (@${m.username}) on SlutCamp 🔥 18+ only`,
+    text: note,
     url,
   };
   if (navigator.share) {
@@ -16094,6 +16166,7 @@ function openModelPeek(m, models) {
       <button class="btn playlist-toggle" data-peek-playlist="${m.id}">${t('follow_btn')}</button>
     </div>` : ''}
     ${m.share_url ? `<button class="btn ghost" data-peek-share="${m.id}" style="width:100%;margin-top:8px">${t('share_profile')}</button>` : ''}
+    ${isMe && !m.share_url ? `<button class="btn ghost" data-peek-share="${m.id}" style="width:100%;margin-top:8px">${t('share_profile')}</button>` : ''}
     <div id="peek-battles"></div>
     ${m.bio ? `<div class="muted small" style="margin-top:10px">${esc(m.bio)}</div>` : ''}
     <div id="peek-pr"></div>
@@ -16187,6 +16260,16 @@ function openModelPeek(m, models) {
     const shareBtn = sheet.querySelector('[data-peek-share]');
     if (shareBtn) {
       shareBtn.onclick = () => shareModelProfile(m);
+      // A23b: her OWN profile view (isMe) — if the peek object came
+      // from a surface that didn't carry the roster's share fields,
+      // her share object is built from her own /api/me row instead,
+      // so the button on her own view always shares her note + link.
+      if (isMe && !m.share_url && S.user && S.user.username) {
+        const selfShare = { ...m,
+          share_url: canonOrigin() + '/models/' + encodeURIComponent(S.user.username),
+          share_note: (S.model && S.model.share_note) || m.share_note };
+        shareBtn.onclick = () => shareModelProfile(selfShare);
+      }
     }
     // Full-screen viewer (A22 part 7): her gallery pictures open the
     // viewer on the SAME shaped URLs this page already displays
@@ -19511,6 +19594,12 @@ async function vModelSettings() {
         <button class="btn" id="s-bio-save">${t('save_bio')}</button>
       </div>
       <div class="card">
+        <div style="font-weight:800;margin-bottom:6px">${t('share_note_h')}</div>
+        <div class="muted small" style="margin-bottom:10px">${t('share_note_note')}</div>
+        <input class="input" id="s-share-note" maxlength="280" value="${esc(m.share_note || 'Cum have fun with me on SlutCamp')}">
+        <button class="btn" id="s-share-note-save" style="margin-top:8px">${t('save_share_note')}</button>
+      </div>
+      <div class="card">
         <div style="font-weight:800;margin-bottom:6px">${t('tags_h')}</div>
         <div class="muted small" style="margin-bottom:10px">${t('tags_note')}</div>
         <div class="disc-chips" id="s-tags">
@@ -19680,6 +19769,20 @@ async function vModelSettings() {
     } else {
       toast(status === 200 ? t('bio_saved') : t('couldnt_save'));
     }
+  };
+  // A23b: her Share note saves through the same profile PUT; the
+  // server holds it to the bio's content rules, so a rejection is
+  // explained with the matching on-screen reason.
+  const snSave = $('#s-share-note-save');
+  if (snSave) snSave.onclick = async () => {
+    const { status, data } = await api('/model/profile', {
+      method: 'PUT', body: JSON.stringify({ share_note: $('#s-share-note').value }) });
+    if (status === 400 && data && data.error === 'share_note_not_allowed') {
+      toast(t('share_note_not_allowed_info'), 6000);
+    } else {
+      toast(status === 200 ? t('share_note_saved') : t('couldnt_save'));
+    }
+    if (status === 200) refreshMe();
   };
   // Discovery tags picker — tap to toggle, max 5, saved via the profile PUT
   let selTags = myTags.slice();
