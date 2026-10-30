@@ -1120,18 +1120,53 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
   background: rgba(16,6,12,.75); color: #fff; font-size: 12px; font-weight: 700;
   padding: 5px 10px; border-radius: 999px; cursor: pointer; user-select: none;
 }
-/* A22: full-screen expand affordance on her hero videos + feed tiles */
-.peek-expand {
-  position: absolute; top: 10px; right: 10px; z-index: 2;
-  background: rgba(16,6,12,.75); color: #fff; font-size: 14px; font-weight: 700;
-  padding: 5px 10px; border-radius: 999px; cursor: pointer; user-select: none;
-}
-.feed-media-wrap { position: relative; display: block; }
-.peek-gallery-img { cursor: pointer; }
-/* A22: her profile's Like + Follow action row */
+/* A22: her profile's Like + Follow action row (parts 1-2) */
 .peek-actions { display: flex; gap: 8px; margin-top: 12px; }
 .peek-actions .btn { flex: 1; }
 .profile-like-btn.liked { border-color: rgba(255,92,158,.7); color: #ffd9e8; }
+/* Expand (⤢) chip on her videos (A22 part 7): top-left of the hero
+   and of clean-feed video tiles; opens the full-screen viewer. Ours
+   and wired — the app ships no other expand control. */
+.peek-expand {
+  position: absolute; top: 10px; left: 10px; z-index: 2;
+  background: rgba(16,6,12,.75); color: #fff; font-size: 14px; font-weight: 800;
+  width: 30px; height: 30px; line-height: 30px; text-align: center;
+  border-radius: 999px; cursor: pointer; user-select: none;
+}
+.peek-vidwrap { position: relative; display: block; }
+.peek-vidwrap .peek-expand { top: 6px; left: 6px; width: 26px; height: 26px; line-height: 26px; font-size: 12px; }
+/* Full-screen media viewer (A22 part 7): the overlay IS the
+   viewport (portrait-locked app); media fits inside it, the Back
+   button rides top-left above everything, always visible. */
+.media-viewer {
+  position: fixed; inset: 0; z-index: 9990; background: rgba(5,2,8,.96);
+}
+.mv-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.mv-media { max-width: 100vw; max-height: 100dvh; object-fit: contain; display: block; }
+video.mv-media { width: 100%; }
+.mv-back, .mv-close {
+  position: absolute; top: calc(10px + env(safe-area-inset-top)); z-index: 3;
+  background: rgba(16,6,12,.8); color: #fff; border: 1px solid rgba(255,255,255,.25);
+  font-family: inherit; font-size: 15px; font-weight: 800; padding: 8px 14px;
+  border-radius: 999px; cursor: pointer;
+}
+.mv-back { left: 12px; }
+.mv-close { right: 12px; }
+.mv-nav {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 3;
+  background: rgba(16,6,12,.7); color: #fff; border: 1px solid rgba(255,255,255,.2);
+  width: 42px; height: 42px; border-radius: 50%; font-size: 24px; line-height: 1; cursor: pointer;
+}
+.mv-prev { left: 10px; }
+.mv-next { right: 10px; }
+.mv-count {
+  position: absolute; left: 50%; transform: translateX(-50%); z-index: 3;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  background: rgba(16,6,12,.8); color: #fff; font-size: 13px; font-weight: 700;
+  padding: 4px 12px; border-radius: 999px;
+}
+.mv-count:empty { display: none; }
+.mv-sound { bottom: calc(54px + env(safe-area-inset-bottom)); }
 .peek-rows { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
 .peek-row {
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
@@ -1150,6 +1185,7 @@ table.data td { padding: 10px 6px; border-bottom: 1px solid rgba(139,92,246,.1);
 .peek-gallery-img {
   width: 100%; aspect-ratio: 1; object-fit: cover; display: block;
   border-radius: 12px; border: 1px solid rgba(139,92,246,.3); background: #000;
+  cursor: pointer;
 }
 .peek-gallery-img:only-child { grid-column: 1 / -1; aspect-ratio: 16/10; }
 /* Her second main profile video sits in the scroll region under the
@@ -1740,43 +1776,18 @@ body.in-home:has(> #phone > .sc-theme-promo):not(:has(> #phone > .sc-theme-banne
   color: #ffd9e8; box-shadow: none;
 }
 .playlist-card { cursor: pointer; }
-/* A22: Playlist rows are two bands — identity block on top, the
-   Message her / Remove button row UNDER it (never beside the name,
-   where the buttons used to wrap and crowd her name on a phone). */
-.playlist-card { flex-direction: column; align-items: stretch; gap: 10px; }
-.pl-top { display: flex; align-items: center; gap: 12px; width: 100%; }
+/* Playlist rows (A22 part 5): the identity block owns the column —
+   full name on its own line, presence dot inline beside it — and
+   Message/Remove live in their own row under it. Nothing overlaps. */
+.playlist-card { align-items: flex-start; }
 .pl-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.pl-name { white-space: nowrap; }
-.pl-dot { position: static; display: inline-block; vertical-align: middle; border: none; width: 10px; height: 10px; }
-.pl-actions { display: flex; gap: 8px; width: 100%; }
+.pl-name { font-weight: 700; font-size: 16px; line-height: 1.3; }
+.pl-dot {
+  display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--green); margin-right: 6px; vertical-align: middle;
+}
+.pl-actions { display: flex; gap: 8px; margin-top: 8px; }
 .pl-actions .btn { flex: 1; }
-/* A22: full-screen media viewer (her pictures + videos) */
-.media-viewer {
-  position: fixed; inset: 0; z-index: 400; background: #000;
-  display: flex; flex-direction: column;
-}
-.mv-top {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 12px; padding-top: calc(10px + env(safe-area-inset-top));
-}
-.mv-btn {
-  background: rgba(255,255,255,.12); color: #fff; border: none;
-  width: 44px; height: 44px; border-radius: 50%; font-size: 24px; cursor: pointer;
-}
-.mv-count { color: #fff; font-weight: 700; font-size: 14px; }
-.mv-stage { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
-.mv-media { max-width: 100%; max-height: 100%; object-fit: contain; }
-video.mv-media { width: 100%; height: 100%; }
-.mv-nav {
-  position: absolute; top: 50%; transform: translateY(-50%);
-  background: rgba(0,0,0,.45); color: #fff; border: none;
-  width: 44px; height: 64px; font-size: 28px; cursor: pointer; border-radius: 10px;
-}
-.mv-prev { left: 8px; }
-.mv-next { right: 8px; }
-.mv-locked-wrap { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
-.mv-locked { filter: blur(18px) brightness(.7); }
-.mv-lock-badge { position: absolute; font-size: 44px; }
 .tip-list { display: flex; flex-direction: column; gap: 8px; }
 .tip-item {
   display: flex; align-items: center; gap: 10px; width: 100%;

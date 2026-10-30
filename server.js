@@ -8308,7 +8308,16 @@ app.get('/api/models', (req, res) => {
        * age is never rendered on tiles/profiles — the number exists
        * only so the fan-side filter can slice the roster. */
       age: ageFromDob(dobRaw),
-      rank_position: rankPos.get(r.id) || null };
+      rank_position: rankPos.get(r.id) || null,
+      /* A22 (owner, Oct 30 2026): her shareable profile link — the
+       * canonical public page, present ONLY for profiles that page
+       * actually serves (this roster is role/banned/hidden-filtered
+       * exactly like seoPublicModels) and NEVER for the house: its
+       * page serves, but the house stays unshareable. The client
+       * renders her Share button only when this is non-empty, so the
+       * guard can never drift from the server's own rules. */
+      share_url: r.id === houseId ? null
+        : SEO_ORIGIN + '/models/' + encodeURIComponent(r.username) };
     // CO-STAR GATE (Co-Star Upload Prompt, Oct 22 2026): media she
     // declared a co-star in is additionally withheld — per ITEM, not
     // per model — until every declared co-star's packet is complete

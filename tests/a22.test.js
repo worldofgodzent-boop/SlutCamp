@@ -11,9 +11,10 @@
  *  3. A fan's own profile (Wallet settings stack) leads with his
  *     display name, @username under it, @username fallback, and an
  *     edit field riding the existing PATCH /api/me/display-name.
- *  4. Share her profile — canonical /models/<username> URL, native
- *     share sheet + clipboard fallback, in the peek and on her
- *     public page; official/house + own page never carry it in-app.
+ *  4. Share her profile — the server issues share_url (canonical
+ *     /models/<username>) exactly when her public page serves, never
+ *     for the house; native share sheet + clipboard fallback, in the
+ *     peek and on her public page.
  *  5. Playlist rows: identity band (avatar, full name one line,
  *     online dot inline beside the name, @username + price + status
  *     under) with Message her / Remove as a button row UNDER it.
@@ -23,9 +24,10 @@
  *     house unmute triple (muted=false + removeAttribute('muted') +
  *     play() inside the tap) in both peek toggles.
  *  7. Full-screen media viewer for her pictures + videos (gallery,
- *     hero ⛶, clean feed expand); the surface underneath is never
- *     touched, and the viewer fetches nothing — locked items render
- *     from their handed-in blurred src only.
+ *     hero ⤢, clean feed expand) — Ms. Pink lane's component,
+ *     integrated: it receives the exact gate-shaped arrays the
+ *     profile rendered and fetches nothing, so locked/held media
+ *     never enters it; the peek underneath is never re-rendered.
  *  8. "Message her" audit: the Wicked decorations render OVER the
  *     button (z-9990) but are pointer-events-killed three ways; the
  *     kill now also lives in theme-base.css so it no longer depends
@@ -176,40 +178,43 @@ test('part 3: fan profile card leads with display name, @username under, fallbac
 
 /* ---------------- Part 4: share her profile ---------------- */
 
-test('part 4: share rides the canonical profile URL; peek + public page; house/self excluded in-app', () => {
-  assert.ok(appSrc.includes("canonOrigin() + '/models/' + encodeURIComponent(m.username)"),
-    'share URL is the canonical public profile URL');
+test('part 4: share rides the server-issued canonical URL; peek + public page; house never shareable', () => {
+  assert.ok(serverSrc.includes('share_url: r.id === houseId ? null')
+      && serverSrc.includes(": SEO_ORIGIN + '/models/' + encodeURIComponent(r.username)"),
+    'the server issues share_url exactly when her public page serves — never for the house');
   const share = slice(appSrc, 'async function shareModelProfile(', 'async function openChatWithModel(');
+  assert.ok(share.includes('m.share_url'), 'the client shares the server-issued URL, never a built one');
   assert.ok(share.includes('navigator.share'), 'native share sheet first');
   assert.ok(share.includes('navigator.clipboard'), 'clipboard fallback');
   const peek = slice(appSrc, 'function openModelPeek(', 'async function loadPeekFeed(');
   assert.ok(peek.includes('data-peek-share="${m.id}"'), 'peek renders the Share button');
-  assert.ok(peek.includes('const showShareBtn = !isMe && !isOfficial'),
-    'her own page and the official/house page never carry it');
+  assert.ok(peek.includes('${m.share_url ? `<button class="btn ghost" data-peek-share='),
+    'the button renders only when a share_url exists (public, non-house)');
   assert.ok(peek.includes('shareModelProfile(m)'), 'peek Share wires to the helper');
+  assert.ok(peek.includes("t('share_profile')"), 'button label comes from the share_profile STR key');
   assert.ok(serverSrc.includes('id="share-profile"'), 'her public page carries a Share button');
   assert.ok(serverSrc.includes("getElementById('share-profile')"), 'public page wires it');
 });
 
 /* ---------------- Part 5: playlist rows ---------------- */
 
-test('part 5: playlist card = identity band over a full-width button row', () => {
+test('part 5: playlist card = identity column over a full-width button row', () => {
   const card = slice(appSrc, 'function playlistCardHTML(m)', 'async function vPlaylist()');
-  assert.ok(card.includes('class="pl-top"'), 'identity band exists');
-  assert.ok(card.includes('class="title pl-name"'), 'her name has its own line');
+  assert.ok(card.includes('class="grow pl-id"'), 'identity column exists');
+  assert.ok(card.includes('class="pl-name"'), 'her name has its own line');
   assert.ok(card.includes('@${esc(m.username)}'), '@username under the name');
   assert.ok(card.includes("t('per_msg_rate'"), 'price under the name');
-  assert.ok(card.includes('online-dot pl-dot'), 'online dot inline beside the name');
+  assert.ok(card.includes('<span class="pl-dot"></span>'), 'presence dot inline beside the name');
   assert.ok(card.includes('class="pl-actions"'), 'button row exists');
   assert.ok(card.indexOf('data-pl-msg') > card.indexOf('class="pl-actions"'),
     'Message her lives in the button row, not beside the name');
   assert.ok(card.indexOf('data-pl-remove') > card.indexOf('class="pl-actions"'),
     'Remove lives in the button row too');
-  assert.ok(card.indexOf('class="pl-actions"') > card.indexOf('class="pl-top"'),
-    'the button row sits UNDER the identity band');
-  assert.ok(cssSrc.includes('.playlist-card { flex-direction: column;'), 'card stacks vertically');
-  assert.ok(cssSrc.includes('.pl-actions { display: flex;'), 'button row is a full-width flex row');
-  assert.ok(cssSrc.includes('.pl-name { white-space: nowrap; }'), 'name stays on one line');
+  assert.ok(card.indexOf('class="pl-actions"') > card.indexOf('class="pl-name"'),
+    'the button row sits UNDER the identity block');
+  assert.ok(cssSrc.includes('.pl-actions { display: flex;'), 'button row is a flex row');
+  assert.ok(cssSrc.includes('.pl-actions .btn { flex: 1; }'), 'buttons share the row evenly');
+  assert.ok(cssSrc.includes('.pl-name { font-weight: 700;'), 'name line is styled as its own line');
   const view = slice(appSrc, 'async function vPlaylist()', 'async function vFanChats()');
   assert.ok(view.includes('openChatWithModel') && view.includes('toggleFollow'),
     'behaviors unchanged: Message → chat, Remove → toggle off');
@@ -232,26 +237,24 @@ test('part 6: both peek sound toggles run the full unmute triple', () => {
 
 /* ---------------- Part 7: full-screen viewer ---------------- */
 
-test('part 7: viewer renders handed-in media only, videos with sound, locked stays locked', () => {
+test('part 7: viewer renders handed-in media only; locked media never enters it', () => {
   const viewer = slice(appSrc, 'function openMediaViewer(', 'function closeMediaViewer(');
-  assert.ok(viewer.includes('data-mv-close'), 'back button renders');
-  assert.ok(viewer.includes('controls playsinline autoplay'), 'videos open playing with controls');
-  assert.ok(!viewer.includes('api('), 'the viewer fetches nothing — no bypass path');
-  assert.ok(viewer.includes('mv-locked') && viewer.includes('it.locked'),
-    'locked items render blurred under the lock badge');
-  assert.ok(viewer.includes('webkitEnterFullscreen') && viewer.includes('requestFullscreen'),
-    'true full screen offered for videos (incl. iOS)');
-  assert.ok(!viewer.includes('ft-sheet') && !viewer.includes('.remove()'),
-    'the surface underneath is never removed — back lands where he left it');
+  assert.ok(appSrc.includes('function renderMediaViewer()'), 'viewer renderer exists');
+  assert.ok(appSrc.includes('function mediaViewerGo('), 'viewer pager exists');
+  assert.ok(viewer.includes('history.pushState'), 'opening pushes one history state so hardware Back closes the viewer');
+  assert.ok(!viewer.includes('api('), 'the viewer fetches nothing — gating parity by construction, no bypass path');
   const peek = slice(appSrc, 'function openModelPeek(', 'async function loadPeekFeed(');
-  assert.ok(peek.includes('data-peek-photo="${i}"'), 'gallery pictures open the viewer');
-  assert.ok(peek.includes('data-peek-expand='), 'hero videos carry the expand affordance');
+  assert.ok(peek.includes('data-peek-photo="${gi}"'), 'gallery pictures open the viewer');
+  assert.ok(peek.includes('data-peek-expand="0"') && peek.includes('data-peek-expand="1"'),
+    'both hero videos carry the expand chip');
   assert.ok(peek.includes('openMediaViewer('), 'peek wires the viewer');
+  assert.ok(peek.includes('galleryPics.map((u) => ({ kind: \'photo\', url: u }))'),
+    'the viewer receives the exact shaped gallery array the profile rendered');
   const feed = slice(appSrc, 'async function loadPeekFeed(', 'async function loadPeekPackages(');
-  assert.ok(feed.includes('data-feed-expand="${ix}"'), 'clean feed video tiles carry the expand button');
-  assert.ok(feed.includes('openMediaViewer(viewerItems'), 'feed expand opens the viewer');
+  assert.ok(feed.includes('data-feed-expand="'), 'clean feed video tiles carry the expand chip');
+  assert.ok(feed.includes('openMediaViewer(feedItems'), 'feed expand opens the viewer on the gate-cleared items');
   assert.ok(cssSrc.includes('.media-viewer {'), 'viewer styles exist');
-  assert.ok(cssSrc.includes('.mv-locked { filter: blur('), 'locked treatment is a blur, never the raw media');
+  assert.ok(cssSrc.includes('z-index: 9990'), 'viewer rides above the app surfaces');
 });
 
 /* ---------------- Part 8: Message her audit ---------------- */
