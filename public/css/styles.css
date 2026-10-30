@@ -1507,7 +1507,12 @@ video.mv-media { width: 100%; }
 /* Both NEW pill and rank badge on one tile: the badge steps down past her. */
 .tile-rank-badge.below-new { top: 42px; }
 .tile-rank-badge.below-new.below-viewers { top: 74px; }
-.tile-info { position: absolute; left: 12px; right: 64px; bottom: 10px; z-index: 2; pointer-events: none; }
+/* A23a (Oct 30 2026): the info block reserves the FULL width of the
+   bottom-right action stack (10px offset + the Follow pill's 94px
+   cap), not just the heart's — at 64px the wider Following pill
+   reached back over her price and counts lines. Her name, handle,
+   price and counts can now never run under either pill. */
+.tile-info { position: absolute; left: 12px; right: 104px; bottom: 10px; z-index: 2; pointer-events: none; }
 .tile-name {
   display: block; font-size: 17px; font-weight: 800; line-height: 1.2;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -1521,28 +1526,35 @@ video.mv-media { width: 100%; }
 .tile-heart {
   position: absolute; right: 10px; bottom: 10px; z-index: 4;
   display: inline-flex; align-items: center; gap: 4px;
-  height: 34px; padding: 0 11px; border-radius: 999px;
+  height: 28px; padding: 0 9px; border-radius: 999px;
   background: rgba(0,0,0,.5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255,255,255,.16);
-  font-size: 15px; font-weight: 700; color: #fff; cursor: pointer;
+  font-size: 13.5px; font-weight: 700; color: #fff; cursor: pointer;
   transition: transform .12s ease;
 }
-.tile-heart .like-count { font-size: 13px; font-variant-numeric: tabular-nums; }
+.tile-heart .like-count { font-size: 12px; font-variant-numeric: tabular-nums; }
 .tile-heart:active { transform: scale(1.12); }
 /* A22: the fan tile's action stack — the Follow pill sits above the
    Like heart, bottom-right of the tile. Inside the stack the heart
    gives up its absolute positioning to the stack itself. */
 .tile-actions {
   position: absolute; right: 10px; bottom: 10px; z-index: 4;
-  display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 5px;
 }
 .tile-actions .tile-heart { position: static; }
+/* A23a (Oct 30 2026, owner from his phone): "Fix the following or
+   follow, make it smaller. Make it neat." The A22 pill (30px tall,
+   12.5px/800) rendered as a big pink slab across the tile, covering
+   her name and price line. Compact now: 24px tall, 11px type, and a
+   hard max-width with ellipsis so no language's "Following" label
+   (some run long) can ever stretch the pill back over her text. */
 .tile-follow {
-  display: inline-flex; align-items: center; height: 30px; padding: 0 12px;
+  display: inline-block; height: 24px; line-height: 24px; padding: 0 9px;
+  max-width: 94px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   border-radius: 999px; background: rgba(0,0,0,.5);
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255,255,255,.16);
-  font-size: 12.5px; font-weight: 800; color: #fff; cursor: pointer;
+  font-size: 11px; font-weight: 700; color: #fff; cursor: pointer;
   transition: transform .12s ease;
 }
 .tile-follow:active { transform: scale(1.08); }
