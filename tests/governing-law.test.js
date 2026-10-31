@@ -100,7 +100,11 @@ test('governing law: fan Terms §11 carries the Texas clause; Changes renumbered
   const i12 = terms.indexOf('12. Changes');
   assert.ok(i10 !== -1 && i11 > i10 && i12 > i11, 'fan clause sits after §10 and before the renumbered §12 Changes');
   assert.ok(!terms.includes('11. Changes'), 'fan Terms no longer number Changes as 11 (the separate Privacy Policy keeps its own §11 — untouched, out of scope)');
-  assert.ok(terms.includes('Last updated October 27, 2026'), 'fan Terms header date is October 27, 2026 (the CCBill compliance build added §14 and redated)');
+  // Assignment 04 (ideas clause, re-based as §16 at the gate) carries the Fan
+  // Terms header date of October 27, 2026 — the live Terms date; the
+  // no-redate rule protects the CCBill review. The Model/Recruiter agreement
+  // dates in server.js are untouched by that change.
+  assert.ok(terms.includes('Last updated October 27, 2026'), 'fan Terms header date is October 27, 2026');
 });
 
 test('governing law: exactly one clause per document; agreement dates unchanged', () => {
