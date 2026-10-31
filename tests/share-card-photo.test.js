@@ -9,8 +9,9 @@
  *
  * Eligibility for photo_url is IDENTICAL to public_photo_url:
  * ID-verified only (isIdVerified), blanked when co-star-held
- * (heldMediaUrls). The lift is scoped to the card: photo_abs and
- * the public page hero are unchanged (pinned by seo-pages).
+ * (heldMediaUrls). photo_abs is unchanged; the public page hero
+ * now renders share_image_abs too (owner hero follow-up, Oct 30
+ * 2026, late — pinned by seo-pages and the live tests below).
  *
  * These three live tests pin the new step of the chain: an eligible
  * photo-only model gets her photo on the card; an unapproved one
@@ -40,7 +41,7 @@ test('static: the card chain carries her gated profile photo after the public ph
   assert.ok(seo.includes('|| (storePhoto ? SEO_ORIGIN + storePhoto : \'\')'),
     'the profile photo sits in the chain (poster → public photo → profile photo → logo)');
   assert.ok(seo.includes("photo_abs: pubPhoto ? SEO_ORIGIN + pubPhoto : SEO_ORIGIN + '/img/lips-logo.png',"),
-    'photo_abs (hero) is unchanged — the lift is the card only');
+    'photo_abs derivation is unchanged — the hero reads share_image_abs; photo_abs itself is untouched');
 });
 
 /* ---------------- live harness ---------------- */
@@ -194,18 +195,22 @@ test('live: eligible model with ONLY a profile photo gets it on her card', async
     'og:image = her profile photo (the directory tile photo)');
   assert.ok(page.text.includes(`<meta name="twitter:image" content="https://slutcamp.app${F.onlyphoto.photoUrl}">`),
     'twitter:image matches');
-  assert.ok(page.text.includes('<img class="photo" src="/img/lips-logo.png"'),
-    'hero unchanged — the lift is the card only');
+  assert.ok(page.text.includes(`<img class="photo" src="https://slutcamp.app${F.onlyphoto.photoUrl}"`),
+    'hero carries the same gated profile photo — not the logo (owner hero follow-up, Oct 30 2026)');
 });
 
 test('live: unapproved model with a profile photo stays on the logo', async () => {
   const page = await req('GET', '/models/' + F.unappphoto.username);
   assert.equal(page.status, 200);
   assert.equal(ogImage(page.text), LOGO_ABS, 'unapproved profile photo never reaches the card');
+  assert.ok(page.text.includes(`<img class="photo" src="${LOGO_ABS}"`),
+    'hero stays on the logo too — unapproved media never leads her page');
 });
 
 test('live: co-star-held profile photo stays on the logo', async () => {
   const page = await req('GET', '/models/' + F.heldphoto.username);
   assert.equal(page.status, 200);
   assert.equal(ogImage(page.text), LOGO_ABS, 'a held profile photo is withheld media → logo');
+  assert.ok(page.text.includes(`<img class="photo" src="${LOGO_ABS}"`),
+    'hero stays on the logo too — held media never leads her page');
 });

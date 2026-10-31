@@ -506,8 +506,10 @@ function seoPublicModels() {
      * above when co-star-held, ID-gated here), because a card that
      * shows the lips logo for a model whose tile shows her face
      * makes no sense. The lift is scoped to share_image_abs alone:
-     * photo_abs and the public page hero are unchanged, and her
-     * gallery stays off the card. Fallback order: featured video's
+     * photo_abs is unchanged, and her gallery stays off the card.
+     * (Hero follow-up, same night: the public page hero now reads
+     * share_image_abs too — see the /models/:username route.)
+     * Fallback order: featured video's
      * poster → her eligible public photo → her eligible profile
      * photo → (page route: her first clean-feed photo) → the logo. */
     const featuredVideo = (isIdVerified(r.id) && r.preview_video_url && !heldUrls.has(r.preview_video_url))
@@ -696,17 +698,23 @@ app.get('/models/:username', (req, res) => {
    * else her gated profile photo under the owner's Oct 30 card-only
    * lift; the logo when she has no eligible media, when it is
    * unapproved, or while a co-star hold lasts — the video file
-   * itself never reaches this surface, and her profile photo
-   * reaches ONLY the card image, never the hero or body), and
+   * itself never reaches this surface; the hero below renders
+   * the same share_image_abs, per the owner's hero follow-up
+   * later that night), and
    * og:description is HER share note, not her bio. */
   const desc = m.share_note;
   const tagsHtml = m.tags.length
     ? `<div class="tags">${m.tags.map((t) => `<a href="/tags/${seoTagSlug(t)}">${seoEsc(t)}</a>`).join('')}</div>` : '';
   const rankHtml = m.rank_position && m.rank_position <= 10
     ? `<div><span class="rank">🏆 Ranked #${m.rank_position} on SlutCamp</span></div>` : '';
-  const photoHtml = m.public_photo_url
-    ? `<img class="photo" src="${seoEsc(m.public_photo_url)}" alt="${seoEsc(m.display_name)} on SlutCamp">`
-    : `<img class="photo" src="/img/lips-logo.png" alt="${seoEsc(m.display_name)} on SlutCamp">`;
+  /* Hero follow-up (Owner, Oct 30 2026, late): the hero is the front
+   * of her public page — the page a fan lands on from her shared
+   * link — so it leads with the SAME featured media as her card:
+   * share_image_abs (featured-video poster → public photo → her
+   * gated profile photo → clean-feed photo → logo), fully gated by
+   * the derivation and the follow-ups above. photo_abs itself and
+   * its other consumers (index, tag pages) are untouched. */
+  const photoHtml = `<img class="photo" src="${seoEsc(m.share_image_abs)}" alt="${seoEsc(m.display_name)} on SlutCamp">`;
   // The official house page is the brand's home: it carries the
   // official social links in its hero as well as in the footer every
   // public page gets. House ONLY — a model's own page never grows
