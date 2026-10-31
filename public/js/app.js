@@ -16167,10 +16167,12 @@ function openModelPeek(m, models) {
   // not the official page) — the Like button posts to the like
   // endpoint, the Follow button IS the playlist-toggle riding
   // toggleFollow, now wearing Follow / Following state text.
-  // A logged-out guest gets a bar in the same pinned spot — never a
-  // working chat (guests can't message), but the way forward: join /
-  // log in, routed to the auth view. Signed-in users never see this
-  // one; fan / model / preview behaviour above is untouched.
+  // A logged-out guest gets a bar in the same pinned spot, and it
+  // opens her real guest chat (owner ruling, Oct 30 2026 — the Oct 17
+  // join-only bar is superseded): guests message free ×3 from the
+  // front door, then the paywall offers signup and the thread
+  // migrates. Signed-in users never see this one; fan / model /
+  // preview behaviour above is untouched.
   const showGuestBar = !S.user;
   ftSheet(`
     <div class="peek-scroll">
@@ -16240,7 +16242,7 @@ function openModelPeek(m, models) {
     <div class="peek-msgbar">
       ${isOfficial
         ? officialBarHTML
-        : `<button class="peek-msg-btn" data-peek-join>${t('msg_her_join_btn')}</button>`}
+        : `<button class="peek-msg-btn" data-peek-join>${t('msg_her_btn')}</button>`}
     </div>` : ''}`);
   const sheet = document.getElementById('ft-sheet');
   if (sheet) {
@@ -16358,14 +16360,18 @@ function openModelPeek(m, models) {
         });
       }).catch(() => {});
     }
-    // Guest bar: no conversation is started — the tap closes her
-    // page and lands on the auth view to join / log in, the same
-    // route as the landing's own Log in / Sign up button.
+    // Guest bar (owner ruling, Oct 30 2026 — supersedes the Oct 17
+    // join-only bar): the tap closes her page and opens her REAL guest
+    // chat. Guests hold a conversation server-side (3 free messages,
+    // then the paywall; the thread migrates into his account when he
+    // signs up), exactly as the front door's "no account needed to
+    // start" promises — a join wall here meant the messages the funnel
+    // advertises never reached her inbox at all.
     const joinBtn = sheet.querySelector('[data-peek-join]');
     if (joinBtn) {
       joinBtn.onclick = () => {
         sheet.remove();
-        show('auth', {});
+        openChatWithModel(m.id);
       };
     }
     // Complaints & Content Removal at the very foot of her page

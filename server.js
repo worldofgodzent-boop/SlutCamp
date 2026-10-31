@@ -746,7 +746,13 @@ ${seoBrand}
   <p class="status">${seoStatus(m)}</p>
   <p class="price">💬 Messages from ${seoMoney(m.per_message_cents)}</p>
   ${tagsHtml}
-  <div><a class="cta" href="/">💋 Chat with her on SlutCamp</a></div>
+  <!-- Front-door fix (owner, Oct 30 2026): "Chat with her" lands the
+       visitor in HER chat via the #m/ deep link — the boot flow drops a
+       guest straight into her conversation once he passes the age gate
+       (3 free messages, no account needed, exactly as the app front
+       promises; the thread migrates if he signs up). A bare "/" left
+       him at the generic front door and her inbox never heard from him. -->
+  <div><a class="cta" href="/#m/${seoEsc(m.username)}">💋 Chat with her on SlutCamp</a></div>
   <div><button class="cta" id="share-profile" type="button" style="margin-top:8px;cursor:pointer">📤 Share her profile</button></div>
   ${socialHtml}
 </div>
@@ -5192,13 +5198,17 @@ setInterval(() => { clipSweep().catch(() => {}); }, CLIP_SWEEP_MS);
 // Total unread DM messages waiting for a user — the exact math behind
 // GET /api/conversations (each conversation's unread_count summed), so the
 // home-screen icon badge can never disagree with the in-app badges.
+// Guest senders store sender_id NULL, and `sender_id != ?` is never true
+// for a NULL row in SQL — the predicate must name NULL explicitly or a
+// guest fan's messages never badge anywhere (owner fix, Oct 30 2026:
+// front-door guest messages must land in her inbox like any fan's).
 function totalUnreadDms(userId) {
   if (!userId) return 0;
   const row = db.prepare(`
     SELECT COUNT(*) AS n FROM messages m
     JOIN conversations c ON c.id = m.conversation_id
     WHERE (c.fan_id = ? OR c.model_id = ?)
-      AND m.sender_id != ? AND m.is_read = 0`).get(userId, userId, userId);
+      AND (m.sender_id IS NULL OR m.sender_id != ?) AND m.is_read = 0`).get(userId, userId, userId);
   return row ? row.n : 0;
 }
 
@@ -10226,9 +10236,12 @@ app.get('/api/conversations', identMiddleware, (req, res) => {
   const out = convs.map((c) => {
     const last = db.prepare(
       'SELECT * FROM messages WHERE conversation_id = ? ORDER BY id DESC LIMIT 1').get(c.id);
+    // Guest messages carry sender_id NULL — the NULL-safe predicate is
+    // what lets a guest fan's messages count as unread in her inbox
+    // (a bare `sender_id != ?` never matches a NULL row in SQL).
     const unread = meId
       ? db.prepare(`SELECT COUNT(*) AS n FROM messages
-                    WHERE conversation_id = ? AND sender_id != ? AND is_read = 0`).get(c.id, meId).n
+                    WHERE conversation_id = ? AND (sender_id IS NULL OR sender_id != ?) AND is_read = 0`).get(c.id, meId).n
       : db.prepare(`SELECT COUNT(*) AS n FROM messages
                     WHERE conversation_id = ? AND guest_token != ? AND is_read = 0`)
           .get(c.id, req.ident.token).n;
@@ -10337,8 +10350,10 @@ app.post('/api/conversations/:id/read', identMiddleware, (req, res) => {
   if (req.ident.kind === 'user') {
     if (conv.fan_id !== req.ident.user.id && conv.model_id !== req.ident.user.id)
       return res.status(403).json({ error: 'forbidden' });
+    // NULL-safe like the unread counts: her opening the thread must
+    // also clear a guest fan's messages (their sender_id is NULL).
     db.prepare(`UPDATE messages SET is_read = 1
-                WHERE conversation_id = ? AND sender_id != ? AND is_read = 0`)
+                WHERE conversation_id = ? AND (sender_id IS NULL OR sender_id != ?) AND is_read = 0`)
       .run(conv.id, req.ident.user.id);
     const otherKey = conv.fan_id === req.ident.user.id
       ? `u:${conv.model_id}` : (conv.fan_id ? `u:${conv.fan_id}` : `g:${conv.guest_token}`);
