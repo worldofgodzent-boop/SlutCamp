@@ -405,7 +405,7 @@ const seoDesc = (bio, name) => {
 function seoPublicModels() {
   const rows = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.presence_override, u.created_at,
-           m.bio, m.per_message_cents, m.public_photo_url, m.share_note, m.tags, m.is_featured, m.is_online, m.section,
+           m.bio, m.per_message_cents, m.public_photo_url, m.photo_url, m.share_note, m.tags, m.is_featured, m.is_online, m.section,
            m.preview_video_url,
            ls.id AS live_session_id
     FROM users u JOIN models m ON m.user_id = u.id
@@ -433,6 +433,7 @@ function seoPublicModels() {
     // blanked on the row before the derivation below reads it, so
     // the logo fallback engages identically.
     if (r.public_photo_url && heldMediaUrls(r.id).has(r.public_photo_url)) r.public_photo_url = '';
+    if (r.photo_url && heldMediaUrls(r.id).has(r.photo_url)) r.photo_url = '';
     const heldUrls = r.preview_video_url ? heldMediaUrls(r.id) : new Set();
     const pubPhoto = isIdVerified(r.id) ? (r.public_photo_url || '') : '';
     const photoAbs = pubPhoto ? SEO_ORIGIN + pubPhoto : SEO_ORIGIN + '/img/lips-logo.png';
@@ -443,12 +444,25 @@ function seoPublicModels() {
      * a featured picture is the picture itself. Eligibility mirrors
      * the roster shaping exactly: her ID approved (isIdVerified) and
      * the item not co-star-held (heldMediaUrls) — a locked or
-     * unapproved featured video never leaks its poster. Fallback
-     * order when the featured video has no stored poster (or is not
-     * eligible): her eligible public photo → the brand logo. */
+     * unapproved featured video never leaks its poster.
+     * OWNER RULE CHANGE (Oct 30 2026, later that night): the Oct 16
+     * storefront-photo bar is LIFTED for the share card only — her
+     * main profile photo (photo_url, the very image her directory
+     * tile renders) joins the chain under the SAME gates (blanked
+     * above when co-star-held, ID-gated here), because a card that
+     * shows the lips logo for a model whose tile shows her face
+     * makes no sense. The lift is scoped to share_image_abs alone:
+     * photo_abs and the public page hero are unchanged, and her
+     * gallery stays off the card. Fallback order: featured video's
+     * poster → her eligible public photo → her eligible profile
+     * photo → (page route: her first clean-feed photo) → the logo. */
     const featuredVideo = (isIdVerified(r.id) && r.preview_video_url && !heldUrls.has(r.preview_video_url))
       ? r.preview_video_url : '';
-    const shareImageAbs = (featuredVideo ? videoPosterAbs(featuredVideo) : '') || photoAbs;
+    const storePhoto = isIdVerified(r.id) ? (r.photo_url || '') : '';
+    const shareImageAbs = (featuredVideo ? videoPosterAbs(featuredVideo) : '')
+      || (pubPhoto ? photoAbs : '')
+      || (storePhoto ? SEO_ORIGIN + storePhoto : '')
+      || (SEO_ORIGIN + '/img/lips-logo.png');
     return {
       id: r.id,
       username: r.username,
@@ -595,10 +609,12 @@ app.get('/models/:username', (req, res) => {
    * and the house flag, so nothing gated can surface here). Done
    * here, on the page's own model object, NOT inside
    * seoPublicModels: that body is pinned feed-free (clean-feed
-   * suite) because the index consumers filter after it. Clean media
-   * only, like every public surface — her in-app photo_url and
-   * gallery stay off the card (Oct 16 rule), so the logo remains
-   * the last resort for a model with no clean image at all. */
+   * suite) because the index consumers filter after it. This step
+   * runs only when the derivation (poster → public photo → her
+   * gated profile photo, per the owner's card-only lift of the
+   * Oct 16 bar) still bottomed out at the logo; her gallery stays
+   * off the card, so the logo remains the last resort for a model
+   * with no eligible image at all. */
   if (m.share_image_abs === SEO_ORIGIN + '/img/lips-logo.png') {
     const feedPhoto = cleanFeedItemsFor(m.id).find((it) => it.kind === 'photo');
     if (feedPhoto) m.share_image_abs = SEO_ORIGIN + feedPhoto.url;
@@ -609,11 +625,13 @@ app.get('/models/:username', (req, res) => {
    * card IS her share card — og:image is share_image_abs (her
    * FEATURED media: her featured preview video's stored poster
    * frame when she leads with a video, else her gate-cleared CLEAN
-   * public photo — photo_abs, the same one this page's hero shows;
-   * the logo when she has no eligible media, when it is unapproved,
-   * or while a co-star hold lasts — the video file itself and her
-   * in-app photo_url NEVER reach this surface, per the Oct 16
-   * rule), and og:description is HER share note, not her bio. */
+   * public photo — photo_abs, the same one this page's hero shows —
+   * else her gated profile photo under the owner's Oct 30 card-only
+   * lift; the logo when she has no eligible media, when it is
+   * unapproved, or while a co-star hold lasts — the video file
+   * itself never reaches this surface, and her profile photo
+   * reaches ONLY the card image, never the hero or body), and
+   * og:description is HER share note, not her bio. */
   const desc = m.share_note;
   const tagsHtml = m.tags.length
     ? `<div class="tags">${m.tags.map((t) => `<a href="/tags/${seoTagSlug(t)}">${seoEsc(t)}</a>`).join('')}</div>` : '';
