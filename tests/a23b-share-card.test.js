@@ -357,6 +357,12 @@ test.before(async () => {
   assert.equal(upVu.status, 200, `vidunapp public upload: ${upVu.text}`);
   F.vidunapp.publicUrl = upVu.json.public_photo_url;
 
+  // feedstar (share-card follow-up): approved + featured video with
+  // NO stored poster + NO public photo, but a gate-cleared clean-feed
+  // photo (planted in the surgery step) — her card must lead with
+  // that photo, not the logo.
+  F.feedstar = await mkModel('a23bfeedstar', 'Feed Star');
+
   await killServer();
   const db = new DatabaseSync(path.join(tmpDir, 'wogent-chat.db'));
   db.exec('PRAGMA busy_timeout = 10000');
@@ -388,6 +394,15 @@ test.before(async () => {
   plantVideo(F.vidnoposter, 'c'.repeat(32), false);
   plantVideo(F.vidheld, 'd'.repeat(32), true);
   plantVideo(F.vidunapp, 'e'.repeat(32), true);
+  // feedstar: approved, video planted WITHOUT a poster, and a
+  // clean-feed photo planted as a row + file — no public photo.
+  db.prepare("INSERT INTO id_verifications (model_id, status) VALUES (?, 'approved')").run(F.feedstar.id);
+  plantVideo(F.feedstar, '9'.repeat(32), false);
+  const feedPhotoName = 'photo-' + '8'.repeat(32) + '.jpg';
+  fs.writeFileSync(path.join(upDir, feedPhotoName), PNG_1PX);
+  F.feedstar.feedPhotoUrl = '/uploads/' + feedPhotoName;
+  db.prepare("INSERT INTO clean_feed_items (model_id, kind, file_url) VALUES (?, 'photo', ?)")
+    .run(F.feedstar.id, F.feedstar.feedPhotoUrl);
   const cpv = db.prepare("INSERT INTO co_performers (owner_model_id, display_name, status) VALUES (?, 'Partner', 'pending')").run(F.vidheld.id);
   db.prepare('INSERT INTO media_costars (model_id, media_url, co_performer_id) VALUES (?, ?, ?)')
     .run(F.vidheld.id, F.vidheld.videoUrl, Number(cpv.lastInsertRowid));
@@ -528,4 +543,75 @@ test('live: note is capped at 280 like the bio; clearing it restores the default
   assert.equal(clear.status, 200, `clear: ${clear.text}`);
   const page = await req('GET', '/models/' + F.star.username);
   assert.equal(ogDesc(page.text), DEFAULT_NOTE, 'a blank note falls back to the owner default on the card');
+});
+
+/* ------------- follow-up: the card when she has no poster ------------- */
+/* Owner, Oct 30 2026: production cards for video-led models (Bunny,
+ * Muvaceee) served the LOGO — the poster branch is a lookup only and
+ * nothing ever stored a poster, and the fallback stopped at the
+ * separate public photo most models never uploaded. The chain now
+ * reaches her gate-cleared clean-feed photo before the logo, and the
+ * poster has a write side (her client captures the frame; the server
+ * stores it under the video's own stem after an ownership check). */
+
+test('static: poster write side — endpoint validates ownership; card consults her clean feed', () => {
+  assert.ok(serverSrc.includes("app.post('/api/model/preview-poster'"), 'the poster upload endpoint exists');
+  assert.ok(serverSrc.includes("error: 'poster_video_not_own'"), 'a poster for another model\u2019s video is refused');
+  assert.ok(serverSrc.includes("kind = 'video'"), 'her own clean-feed videos also accept a poster');
+  // The clean-feed fallback lives in the model PAGE route, on the
+  // page's own model object — seoPublicModels itself stays feed-free
+  // (the clean-feed suite pins that separation: index consumers
+  // filter after it).
+  const seo = slice(serverSrc, 'function seoPublicModels()', 'const seoTagSlug');
+  assert.ok(!seo.includes('cleanFeed'), 'seoPublicModels stays feed-free (clean-feed pin preserved)');
+  const route = slice(serverSrc, "app.get('/models/:username'", 'const desc = m.share_note;');
+  assert.ok(route.includes('cleanFeedItemsFor(m.id)'), 'the model page consults her gate-cleared clean feed');
+  assert.ok(route.includes("it.kind === 'photo'"), 'only a clean-feed PHOTO can carry the card (never a video file)');
+});
+
+test('static: client captures the poster from her own video and backfills it in Settings', () => {
+  assert.ok(appSrc.includes('async function captureVideoPoster('), 'the capture helper exists');
+  assert.ok(appSrc.includes("'/api/model/preview-poster'"), 'the helper uploads to the poster endpoint');
+  assert.ok(appSrc.includes('captureVideoPoster(S.model.preview_video_url)'), 'Settings backfills Video 1\u2019s poster');
+  assert.ok(appSrc.includes('captureVideoPoster(S.model.preview_video_url_2)'), 'Settings backfills Video 2\u2019s poster');
+});
+
+test('live: featured video, no poster, no public photo → og:image is her clean-feed photo', async () => {
+  const page = await req('GET', '/models/' + F.feedstar.username);
+  assert.equal(page.status, 200);
+  assert.equal(ogImage(page.text), 'https://slutcamp.app' + F.feedstar.feedPhotoUrl,
+    'og:image = her gate-cleared clean-feed photo — her own media, not the logo');
+});
+
+async function uploadPoster(token, videoUrl) {
+  const fd = new FormData();
+  fd.append('video_url', videoUrl);
+  fd.append('photo', new Blob([PNG_1PX], { type: 'image/png' }), 'poster.png');
+  const r = await fetch(base + '/api/model/preview-poster', {
+    method: 'POST', headers: { authorization: 'Bearer ' + token }, body: fd });
+  const text = await r.text();
+  let json = null;
+  try { json = JSON.parse(text); } catch (_) { /* not JSON */ }
+  return { status: r.status, text, json };
+}
+
+test('live: poster upload for her own video stores beside it and takes over the card', async () => {
+  const up = await uploadPoster(F.vidnoposter.token, F.vidnoposter.videoUrl);
+  assert.equal(up.status, 200, `poster upload: ${up.text}`);
+  assert.equal(up.json.poster_url, '/uploads/preview-' + 'c'.repeat(32) + '.png',
+    'the poster is stored under the video\u2019s own stem');
+  const served = await req('GET', up.json.poster_url);
+  assert.equal(served.status, 200, 'the stored poster is served by the uploads guard');
+  const page = await req('GET', '/models/' + F.vidnoposter.username);
+  assert.equal(ogImage(page.text), 'https://slutcamp.app' + up.json.poster_url,
+    'with a poster stored, her featured video leads the card again (poster beats the public photo)');
+});
+
+test('live: poster upload refuses a video that is not hers', async () => {
+  const other = await uploadPoster(F.star.token, F.vidonly.videoUrl);
+  assert.equal(other.status, 400, `refusal: ${other.text}`);
+  assert.equal(other.json.error, 'poster_video_not_own');
+  const bogus = await uploadPoster(F.star.token, '/uploads/preview-' + 'f'.repeat(32) + '.mp4');
+  assert.equal(bogus.status, 400, `bogus refusal: ${bogus.text}`);
+  assert.equal(bogus.json.error, 'poster_video_not_own');
 });

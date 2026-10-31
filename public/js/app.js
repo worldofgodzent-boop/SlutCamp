@@ -14529,6 +14529,50 @@ async function shareApp() {
  * copy-link pattern as shareApp above. The link lands a signed-out
  * visitor on HER public page (GET /models/:username), never the
  * homepage, with the join path from there. */
+/* A23b follow-up (owner, Oct 30 2026): store the poster frame for
+ * one of her preview videos. Her share card leads with the video's
+ * poster (the server only LOOKS posters up beside the video — it
+ * never generates one), so the frame is captured here, from the
+ * video itself, and uploaded to POST /api/model/preview-poster,
+ * which stores it under the video's own stem. Best-effort by
+ * design: if anything fails, nothing breaks — her card simply
+ * stays on its photo fallbacks. */
+async function captureVideoPoster(videoUrl) {
+  try {
+    const stem = /^\/uploads\/(preview-[a-f0-9]+)\.mp4$/.exec(String(videoUrl || ''));
+    if (!stem) return;
+    const head = await fetch('/uploads/' + stem[1] + '.jpg', { method: 'HEAD' });
+    if (head.ok) return; // a poster is already stored for this video
+    const blob = await new Promise((resolve) => {
+      let settled = false;
+      const done = (b) => { if (!settled) { settled = true; resolve(b); } };
+      const v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = videoUrl;
+      v.addEventListener('loadeddata', () => {
+        try { v.currentTime = Math.min(0.5, (v.duration || 1) / 2); }
+        catch (e) { done(null); }
+      });
+      v.addEventListener('seeked', () => {
+        try {
+          const c = document.createElement('canvas');
+          c.width = v.videoWidth || 640; c.height = v.videoHeight || 640;
+          c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+          c.toBlob((b) => done(b), 'image/jpeg', 0.82);
+        } catch (e) { done(null); }
+      });
+      v.addEventListener('error', () => done(null));
+      setTimeout(() => done(null), 8000);
+    });
+    if (!blob) return;
+    const fd = new FormData();
+    fd.append('video_url', videoUrl);
+    fd.append('photo', blob, 'poster.jpg');
+    const headers = {};
+    if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
+    await fetch('/api/model/preview-poster', { method: 'POST', headers, body: fd });
+  } catch (e) { /* best-effort — the card keeps its fallbacks */ }
+}
+
 async function shareModelProfile(m) {
   const url = (m && m.share_url) || '';
   if (!url) return;
@@ -19964,6 +20008,12 @@ async function vModelSettings() {
   renderPwSettingsCard();
   renderLegalSettingsCard();
   loadCleanFeedSettings();
+  /* Share-card poster backfill (A23b follow-up): store poster
+   * frames for the preview videos she already has, so her share
+   * card leads with her own frame, not the brand logo. Fires on
+   * every Settings visit until each poster exists. */
+  if (S.model && S.model.preview_video_url) captureVideoPoster(S.model.preview_video_url);
+  if (S.model && S.model.preview_video_url_2) captureVideoPoster(S.model.preview_video_url_2);
   const sAth = $('#s-ath');
   if (sAth) sAth.onclick = openAthSheet;
   // Preview video upload (offscreen input for iOS)
