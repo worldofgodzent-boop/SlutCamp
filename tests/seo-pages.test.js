@@ -26,8 +26,15 @@
  * real POST /api/model/photo (in-app photo; may be explicit by design);
  * only the star also uploads her separate CLEAN public photo through
  * POST /api/model/public-photo. The public pages must show the public
- * photo (or the logo when unset) and the storefront URL must never
- * appear in any public HTML — while /api/models keeps carrying it.
+ * photo (or the logo when unset) in the hero and cards, and the
+ * storefront URL must never appear in any public page BODY — while
+ * /api/models keeps carrying it.
+ * OWNER RULE CHANGE (Oct 30 2026): the Oct 16 storefront bar is
+ * LIFTED for the share-card image only (og:image / twitter:image,
+ * and the JSON-LD image that rides the same value) — an eligible
+ * model's gated profile photo (ID-approved, not co-star-held) may
+ * carry her card when she has no public photo, because her directory
+ * tile already shows that face. The hero/body protection stands.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -347,12 +354,21 @@ test('public photo: set → hero, OG/Twitter, JSON-LD and cards use it; storefro
   assert.ok(!tag.text.includes(F.star.storefrontUrl), 'storefront URL must NOT appear on tag pages');
 });
 
-test('public photo: unset → no model photo on public pages (logo fallback), storefront URL still absent', async () => {
+test('public photo: unset → hero stays logo, but the CARD carries her gated profile photo (owner lift, Oct 30 2026)', async () => {
   const page = await req('GET', '/models/' + F.plain.username);
   assert.equal(page.status, 200);
-  assert.ok(!page.text.includes(F.plain.storefrontUrl), 'storefront URL must NOT appear even with no public photo set');
-  assert.ok(page.text.includes('<img class="photo" src="/img/lips-logo.png"'), 'hero falls back to the branded logo');
-  assert.ok(page.text.includes('content="https://slutcamp.app/img/lips-logo.png"'), 'OG image falls back to the logo');
+  // The lift: og:image / twitter:image are her eligible profile photo.
+  const og = page.text.match(/<meta property="og:image" content="([^"]*)">/);
+  assert.ok(og, 'og:image present');
+  assert.equal(og[1], 'https://slutcamp.app' + F.plain.storefrontUrl,
+    'card image = her ID-approved, unheld profile photo when no public photo is set');
+  assert.ok(page.text.includes(`<meta name="twitter:image" content="https://slutcamp.app${F.plain.storefrontUrl}">`),
+    'twitter:image matches the card');
+  // The Oct 16 protection stands everywhere else: hero is the logo,
+  // and the storefront URL appears NOWHERE in the page body.
+  assert.ok(page.text.includes('<img class="photo" src="/img/lips-logo.png"'), 'hero still falls back to the branded logo');
+  const body = page.text.slice(page.text.indexOf('</head>'));
+  assert.ok(!body.includes(F.plain.storefrontUrl), 'storefront URL must NOT appear in the page body');
   const idx = await req('GET', '/models');
   assert.ok(!idx.text.includes(F.plain.storefrontUrl), 'storefront URL must NOT appear on the index');
 });
