@@ -372,8 +372,9 @@ const shareNoteOf = (v) => {
  * preview video, WHEN one is stored. A poster lives in the same
  * uploads store under the video's own stem (preview-<hex>.mp4 →
  * preview-<hex>.jpg|png|webp — the /uploads guard serves that class)
- * and is resolved here by lookup only: NO frame is ever generated,
- * extracted or transcoded in this codebase, and the .mp4 itself is
+ * and is resolved here by lookup only: the READ side never generates
+ * a frame (the write sides are the client-capture route and the
+ * server-side ensureVideoPoster below), and the .mp4 itself is
  * never a card image. When no poster asset is stored the caller
  * falls back (her eligible public photo → the brand logo). */
 const videoPosterAbs = (videoUrl) => {
@@ -386,6 +387,59 @@ const videoPosterAbs = (videoUrl) => {
   }
   return '';
 };
+/* Share-card coverage (Owner, Oct 30 2026): the SERVER write side of
+ * the poster store. #144 shipped the client-capture route, but the
+ * roster census that night was 2 of 18 cards carrying her media —
+ * every video-led card still waited on the model opening her app.
+ * This is the same store, filled by the server itself: one frame
+ * (~0.5s in, first frame as fallback) extracted with the system
+ * ffmpeg when a preview video lacks a poster, stored under the
+ * video's own stem exactly where videoPosterAbs looks. Triggered on
+ * preview-video upload, by an idempotent boot sweep over existing
+ * videos, and lazily by her public page when its card still bottoms
+ * out at the logo. Best-effort throughout: fire-and-forget, deduped
+ * per stem, and if ffmpeg is absent the feature disables itself for
+ * the process (the client-capture route remains as the other write
+ * side) — a missing poster must never break a request. The poster is
+ * a still of an already-public video (same public class, /uploads
+ * guard), and every CARD gate (ID approval, co-star hold) still
+ * applies at derivation time in seoPublicModels — generation only
+ * fills the store, it never publishes anything by itself. */
+const posterGenInFlight = new Set();
+let posterFfmpegDead = false;
+function ensureVideoPoster(videoUrl) {
+  if (posterFfmpegDead) return;
+  const m = /^\/uploads\/(preview-[a-f0-9]+)\.mp4$/.exec(String(videoUrl || ''));
+  if (!m) return;
+  const stem = m[1];
+  if (posterGenInFlight.has(stem)) return;
+  if (videoPosterAbs(videoUrl)) return; // a poster is already stored
+  const src = path.join(UPLOAD_DIR, stem + '.mp4');
+  if (!fs.existsSync(src)) return;
+  posterGenInFlight.add(stem);
+  const dest = path.join(UPLOAD_DIR, stem + '.jpg');
+  const { execFile } = require('child_process');
+  const attempt = (ss, done) => {
+    execFile(process.env.FFMPEG_BIN || 'ffmpeg',
+      ['-hide_banner', '-loglevel', 'error', '-ss', String(ss), '-i', src,
+        '-frames:v', '1', '-q:v', '3', '-y', dest],
+      { timeout: 30000 }, (err) => {
+        if (err && err.code === 'ENOENT') {
+          posterFfmpegDead = true;
+          console.warn('video posters: ffmpeg not found — server-side poster generation disabled for this process');
+        }
+        let ok = false;
+        try { ok = !err && fs.existsSync(dest) && fs.statSync(dest).size > 0; } catch (e) { /* treated as failed */ }
+        if (!ok) { try { fs.unlinkSync(dest); } catch (e) { /* nothing stored */ } }
+        done(ok);
+      });
+  };
+  attempt(0.5, (ok) => {
+    if (ok) { posterGenInFlight.delete(stem); return; }
+    if (posterFfmpegDead) { posterGenInFlight.delete(stem); return; }
+    attempt(0, () => { posterGenInFlight.delete(stem); });
+  });
+}
 const seoEsc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -618,6 +672,19 @@ app.get('/models/:username', (req, res) => {
   if (m.share_image_abs === SEO_ORIGIN + '/img/lips-logo.png') {
     const feedPhoto = cleanFeedItemsFor(m.id).find((it) => it.kind === 'photo');
     if (feedPhoto) m.share_image_abs = SEO_ORIGIN + feedPhoto.url;
+  }
+  /* Coverage (Owner, Oct 30 2026): still the logo and she leads with
+   * an ELIGIBLE featured video (ID approved, not co-star-held — the
+   * derivation's own gates, re-checked here)? Its poster simply
+   * isn't stored yet: kick the server-side generation so the NEXT
+   * share of this page carries her frame. This request still serves
+   * the fallback; generation is fire-and-forget and deduped. */
+  if (m.share_image_abs === SEO_ORIGIN + '/img/lips-logo.png') {
+    const vidRow = db.prepare('SELECT preview_video_url FROM models WHERE user_id = ?').get(m.id);
+    if (vidRow && vidRow.preview_video_url && isIdVerified(m.id)
+      && !heldMediaUrls(m.id).has(vidRow.preview_video_url)) {
+      ensureVideoPoster(vidRow.preview_video_url);
+    }
   }
   const url = SEO_ORIGIN + m.url;
   const title = `${m.display_name} (@${m.username}) on SlutCamp`;
@@ -13396,6 +13463,7 @@ app.post('/api/model/preview-video', identMiddleware, requireUser, requireRole('
     const preview_video_url = '/uploads/' + path.basename(req.file.path);
     db.prepare('UPDATE models SET preview_video_url = ? WHERE user_id = ?').run(preview_video_url, req.user.id);
     recordMediaDecls(req.user.id, preview_video_url, decl.costarIds);
+    ensureVideoPoster(preview_video_url); // server-side poster, fire-and-forget
     res.json({ ok: true, preview_video_url,
       costar_held: decl.costarIds.some((id) => !coStarMediaCleared(id)) });
   });
@@ -13443,6 +13511,7 @@ app.post('/api/model/preview-video-2', identMiddleware, requireUser, requireRole
     const preview_video_url_2 = '/uploads/' + path.basename(req.file.path);
     db.prepare('UPDATE models SET preview_video_url_2 = ? WHERE user_id = ?').run(preview_video_url_2, req.user.id);
     recordMediaDecls(req.user.id, preview_video_url_2, decl.costarIds);
+    ensureVideoPoster(preview_video_url_2); // server-side poster, fire-and-forget
     res.json({ ok: true, preview_video_url_2,
       costar_held: decl.costarIds.some((id) => !coStarMediaCleared(id)) });
   });
@@ -13468,9 +13537,10 @@ app.delete('/api/model/preview-video-2', identMiddleware, requireUser, requireRo
  * itself and uploads it here; the server validates that the named
  * video is HERS (one of her two profile videos, or one of her
  * clean-feed videos), then moves the image under the video's own
- * stem, where the /uploads guard already serves that class. No frame
- * is ever generated server-side, and a poster for another model's
- * video is refused and its file removed. */
+ * stem, where the /uploads guard already serves that class. (The
+ * server-side ensureVideoPoster is the other write side; this route
+ * remains for the client-captured frame.) A poster for another
+ * model's video is refused and its file removed. */
 app.post('/api/model/preview-poster', identMiddleware, requireUser, requireRole('model'), requirePublicityConsent,
   photoUpload.single('photo'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'no_photo' });
@@ -23938,6 +24008,21 @@ app.get('/api/admin/cleanup', ...adminOnly, (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`SlutCamp running → http://localhost:${PORT}`);
+  /* Share-card coverage sweep (Owner, Oct 30 2026): backfill posters
+   * for preview videos uploaded before server-side generation
+   * existed. Idempotent (ensureVideoPoster no-ops when a poster is
+   * stored), fire-and-forget, a beat after listen so boot is never
+   * delayed by it. */
+  setTimeout(() => {
+    try {
+      const rows = db.prepare(`SELECT preview_video_url, preview_video_url_2 FROM models
+        WHERE preview_video_url != '' OR preview_video_url_2 != ''`).all();
+      for (const r of rows) {
+        ensureVideoPoster(r.preview_video_url);
+        ensureVideoPoster(r.preview_video_url_2);
+      }
+    } catch (e) { /* best-effort backfill — never a boot failure */ }
+  }, 1500).unref();
   console.log(process.env.SEED_DEMO === '1'
     ? 'Seeded logins (SEED_DEMO=1, local dev only): admin/admin123 · bunny|stacey|bella/model123 · fandemo/fan123'
     : 'Demo seeding OFF — no demo accounts created (set SEED_DEMO=1 for local dev).');
