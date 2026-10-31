@@ -1592,6 +1592,14 @@ async function adminMoreBody(s) {
       </div>
     </div>
     <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">🚀 Launch gate — ID-verified + profile picture</div>
+      <div class="muted small">When ON, a model who is not ID-verified or has no profile picture is hidden from the in-app directory, the clean feed and the public pages (Google) until she finishes both — the moment she does, she is back on her own. Her account, her page and her earnings keep working either way. Default OFF — flip it on at launch.</div>
+      <div class="row" style="margin-top:8px;gap:8px;align-items:center">
+        <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="set-launchgate" ${s.launch_gate_enabled ? 'checked' : ''}> Launch gate ON</label>
+        <button class="btn small" id="set-launchgate-go">Save</button>
+      </div>
+    </div>
+    <div class="card">
       <div style="font-weight:800;margin-bottom:6px">🛡️ Payout protection</div>
       <div class="muted small">New earnings become withdrawable after the hold window — the owner rule is one week behind. The flag thresholds only raise advisory warnings on the Payouts screen; they never block or delay a payout by themselves.</div>
       <div class="row" style="margin-top:8px;gap:10px;flex-wrap:wrap;align-items:flex-end">
@@ -3003,6 +3011,13 @@ function wireAdminBody(tab) {
     toast(status === 200
       ? `✅ Auto-clip ${promo_autopost ? 'ON — high clips may post for v1.7-signed models' : 'OFF — held clips only'} · threshold $${(clip_money_threshold_cents / 100).toFixed(0)}`
       : `Could not save (${(data && data.error) || status})`);
+    if (status === 200) M.reload();
+  });
+  go('#set-launchgate-go', async () => {
+    const launch_gate_enabled = $('#set-launchgate').checked ? 1 : 0;
+    const { status } = await api('/admin/settings', {
+      method: 'PUT', body: JSON.stringify({ launch_gate_enabled }) });
+    toast(status === 200 ? `✅ Launch gate ${launch_gate_enabled ? 'ON — non-compliant models are hidden' : 'OFF — everyone listed as today'}` : 'Could not save the launch gate');
     if (status === 200) M.reload();
   });
   go('#set-pp-go', async () => {
