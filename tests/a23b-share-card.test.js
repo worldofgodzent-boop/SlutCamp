@@ -11,10 +11,14 @@
  *     image in the uploads store) is the card image — never the
  *     .mp4 itself; a featured picture is her gate-cleared
  *     public_photo_url (approved + not co-star-held). Locked /
- *     in-app-only / unapproved / held media NEVER. Fallback order:
- *     featured video without a stored poster → her eligible public
- *     photo → the brand logo. Her in-app photo_url must never
- *     appear as og:image (Oct 16 rule: it may be explicit).
+ *     unapproved / held media NEVER. Fallback order: featured
+ *     video without a stored poster → her eligible public photo →
+ *     her eligible profile photo (photo_url) → her first clean-feed
+ *     photo → the brand logo. OWNER RULE CHANGE (Oct 30 2026, later
+ *     that night): the Oct 16 bar on photo_url is LIFTED for the
+ *     card only, under the same ID + co-star gates — the photo her
+ *     directory tile renders is her card photo too. photo_abs and
+ *     the page hero are unchanged (seo-pages suite pins those).
  *  2. og:description is HER NOTE. Default = the owner's revised
  *     exact words "Come have fun with me at SlutCamp". The in-app
  *     share-sheet text leads with the note (shareModelProfile
@@ -424,17 +428,20 @@ test('live: og:image is her public photo when she has an approved, unheld one', 
   assert.equal(ogImage(page.text), 'https://slutcamp.app' + F.star.publicUrl,
     'og:image = her gate-cleared public photo');
   assert.ok(!ogImage(page.text).includes(F.star.storefrontUrl),
-    'og:image is never her in-app storefront photo');
+    'her public photo outranks her storefront photo in the chain');
   assert.ok(page.text.includes(`<meta name="twitter:image" content="https://slutcamp.app${F.star.publicUrl}">`),
     'twitter:image matches');
 });
 
-test('live: og:image falls back to the logo — in-app photo only', async () => {
+test('live: og:image is her profile photo when that is her only media (owner lift, Oct 30 2026)', async () => {
   const page = await req('GET', '/models/' + F.inapp.username);
   assert.equal(page.status, 200);
-  assert.equal(ogImage(page.text), LOGO_ABS, 'no public photo → brand logo');
-  assert.ok(!page.text.includes('og:image" content=https://slutcamp.app' + F.inapp.storefrontUrl),
-    'her in-app photo never becomes the card image');
+  assert.equal(ogImage(page.text), 'https://slutcamp.app' + F.inapp.storefrontUrl,
+    'approved + unheld profile photo carries the card when she has no public photo');
+  assert.ok(page.text.includes(`<meta name="twitter:image" content="https://slutcamp.app${F.inapp.storefrontUrl}">`),
+    'twitter:image matches');
+  assert.ok(page.text.includes('<img class="photo" src="/img/lips-logo.png"'),
+    'the hero is unchanged — the lift is the card only');
 });
 
 test('live: og:image falls back to the logo — co-star-held public photo', async () => {

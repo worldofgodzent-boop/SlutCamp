@@ -372,8 +372,9 @@ const shareNoteOf = (v) => {
  * preview video, WHEN one is stored. A poster lives in the same
  * uploads store under the video's own stem (preview-<hex>.mp4 →
  * preview-<hex>.jpg|png|webp — the /uploads guard serves that class)
- * and is resolved here by lookup only: NO frame is ever generated,
- * extracted or transcoded in this codebase, and the .mp4 itself is
+ * and is resolved here by lookup only: the READ side never generates
+ * a frame (the write sides are the client-capture route and the
+ * server-side ensureVideoPoster below), and the .mp4 itself is
  * never a card image. When no poster asset is stored the caller
  * falls back (her eligible public photo → the brand logo). */
 const videoPosterAbs = (videoUrl) => {
@@ -386,6 +387,59 @@ const videoPosterAbs = (videoUrl) => {
   }
   return '';
 };
+/* Share-card coverage (Owner, Oct 30 2026): the SERVER write side of
+ * the poster store. #144 shipped the client-capture route, but the
+ * roster census that night was 2 of 18 cards carrying her media —
+ * every video-led card still waited on the model opening her app.
+ * This is the same store, filled by the server itself: one frame
+ * (~0.5s in, first frame as fallback) extracted with the system
+ * ffmpeg when a preview video lacks a poster, stored under the
+ * video's own stem exactly where videoPosterAbs looks. Triggered on
+ * preview-video upload, by an idempotent boot sweep over existing
+ * videos, and lazily by her public page when its card still bottoms
+ * out at the logo. Best-effort throughout: fire-and-forget, deduped
+ * per stem, and if ffmpeg is absent the feature disables itself for
+ * the process (the client-capture route remains as the other write
+ * side) — a missing poster must never break a request. The poster is
+ * a still of an already-public video (same public class, /uploads
+ * guard), and every CARD gate (ID approval, co-star hold) still
+ * applies at derivation time in seoPublicModels — generation only
+ * fills the store, it never publishes anything by itself. */
+const posterGenInFlight = new Set();
+let posterFfmpegDead = false;
+function ensureVideoPoster(videoUrl) {
+  if (posterFfmpegDead) return;
+  const m = /^\/uploads\/(preview-[a-f0-9]+)\.mp4$/.exec(String(videoUrl || ''));
+  if (!m) return;
+  const stem = m[1];
+  if (posterGenInFlight.has(stem)) return;
+  if (videoPosterAbs(videoUrl)) return; // a poster is already stored
+  const src = path.join(UPLOAD_DIR, stem + '.mp4');
+  if (!fs.existsSync(src)) return;
+  posterGenInFlight.add(stem);
+  const dest = path.join(UPLOAD_DIR, stem + '.jpg');
+  const { execFile } = require('child_process');
+  const attempt = (ss, done) => {
+    execFile(process.env.FFMPEG_BIN || 'ffmpeg',
+      ['-hide_banner', '-loglevel', 'error', '-ss', String(ss), '-i', src,
+        '-frames:v', '1', '-q:v', '3', '-y', dest],
+      { timeout: 30000 }, (err) => {
+        if (err && err.code === 'ENOENT') {
+          posterFfmpegDead = true;
+          console.warn('video posters: ffmpeg not found — server-side poster generation disabled for this process');
+        }
+        let ok = false;
+        try { ok = !err && fs.existsSync(dest) && fs.statSync(dest).size > 0; } catch (e) { /* treated as failed */ }
+        if (!ok) { try { fs.unlinkSync(dest); } catch (e) { /* nothing stored */ } }
+        done(ok);
+      });
+  };
+  attempt(0.5, (ok) => {
+    if (ok) { posterGenInFlight.delete(stem); return; }
+    if (posterFfmpegDead) { posterGenInFlight.delete(stem); return; }
+    attempt(0, () => { posterGenInFlight.delete(stem); });
+  });
+}
 const seoEsc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -405,7 +459,7 @@ const seoDesc = (bio, name) => {
 function seoPublicModels() {
   const rows = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.presence_override, u.created_at,
-           m.bio, m.per_message_cents, m.public_photo_url, m.share_note, m.tags, m.is_featured, m.is_online, m.section,
+           m.bio, m.per_message_cents, m.public_photo_url, m.photo_url, m.share_note, m.tags, m.is_featured, m.is_online, m.section,
            m.preview_video_url,
            ls.id AS live_session_id
     FROM users u JOIN models m ON m.user_id = u.id
@@ -433,6 +487,7 @@ function seoPublicModels() {
     // blanked on the row before the derivation below reads it, so
     // the logo fallback engages identically.
     if (r.public_photo_url && heldMediaUrls(r.id).has(r.public_photo_url)) r.public_photo_url = '';
+    if (r.photo_url && heldMediaUrls(r.id).has(r.photo_url)) r.photo_url = '';
     const heldUrls = r.preview_video_url ? heldMediaUrls(r.id) : new Set();
     const pubPhoto = isIdVerified(r.id) ? (r.public_photo_url || '') : '';
     const photoAbs = pubPhoto ? SEO_ORIGIN + pubPhoto : SEO_ORIGIN + '/img/lips-logo.png';
@@ -443,12 +498,25 @@ function seoPublicModels() {
      * a featured picture is the picture itself. Eligibility mirrors
      * the roster shaping exactly: her ID approved (isIdVerified) and
      * the item not co-star-held (heldMediaUrls) — a locked or
-     * unapproved featured video never leaks its poster. Fallback
-     * order when the featured video has no stored poster (or is not
-     * eligible): her eligible public photo → the brand logo. */
+     * unapproved featured video never leaks its poster.
+     * OWNER RULE CHANGE (Oct 30 2026, later that night): the Oct 16
+     * storefront-photo bar is LIFTED for the share card only — her
+     * main profile photo (photo_url, the very image her directory
+     * tile renders) joins the chain under the SAME gates (blanked
+     * above when co-star-held, ID-gated here), because a card that
+     * shows the lips logo for a model whose tile shows her face
+     * makes no sense. The lift is scoped to share_image_abs alone:
+     * photo_abs and the public page hero are unchanged, and her
+     * gallery stays off the card. Fallback order: featured video's
+     * poster → her eligible public photo → her eligible profile
+     * photo → (page route: her first clean-feed photo) → the logo. */
     const featuredVideo = (isIdVerified(r.id) && r.preview_video_url && !heldUrls.has(r.preview_video_url))
       ? r.preview_video_url : '';
-    const shareImageAbs = (featuredVideo ? videoPosterAbs(featuredVideo) : '') || photoAbs;
+    const storePhoto = isIdVerified(r.id) ? (r.photo_url || '') : '';
+    const shareImageAbs = (featuredVideo ? videoPosterAbs(featuredVideo) : '')
+      || (pubPhoto ? photoAbs : '')
+      || (storePhoto ? SEO_ORIGIN + storePhoto : '')
+      || (SEO_ORIGIN + '/img/lips-logo.png');
     return {
       id: r.id,
       username: r.username,
@@ -595,13 +663,28 @@ app.get('/models/:username', (req, res) => {
    * and the house flag, so nothing gated can surface here). Done
    * here, on the page's own model object, NOT inside
    * seoPublicModels: that body is pinned feed-free (clean-feed
-   * suite) because the index consumers filter after it. Clean media
-   * only, like every public surface — her in-app photo_url and
-   * gallery stay off the card (Oct 16 rule), so the logo remains
-   * the last resort for a model with no clean image at all. */
+   * suite) because the index consumers filter after it. This step
+   * runs only when the derivation (poster → public photo → her
+   * gated profile photo, per the owner's card-only lift of the
+   * Oct 16 bar) still bottomed out at the logo; her gallery stays
+   * off the card, so the logo remains the last resort for a model
+   * with no eligible image at all. */
   if (m.share_image_abs === SEO_ORIGIN + '/img/lips-logo.png') {
     const feedPhoto = cleanFeedItemsFor(m.id).find((it) => it.kind === 'photo');
     if (feedPhoto) m.share_image_abs = SEO_ORIGIN + feedPhoto.url;
+  }
+  /* Coverage (Owner, Oct 30 2026): still the logo and she leads with
+   * an ELIGIBLE featured video (ID approved, not co-star-held — the
+   * derivation's own gates, re-checked here)? Its poster simply
+   * isn't stored yet: kick the server-side generation so the NEXT
+   * share of this page carries her frame. This request still serves
+   * the fallback; generation is fire-and-forget and deduped. */
+  if (m.share_image_abs === SEO_ORIGIN + '/img/lips-logo.png') {
+    const vidRow = db.prepare('SELECT preview_video_url FROM models WHERE user_id = ?').get(m.id);
+    if (vidRow && vidRow.preview_video_url && isIdVerified(m.id)
+      && !heldMediaUrls(m.id).has(vidRow.preview_video_url)) {
+      ensureVideoPoster(vidRow.preview_video_url);
+    }
   }
   const url = SEO_ORIGIN + m.url;
   const title = `${m.display_name} (@${m.username}) on SlutCamp`;
@@ -609,11 +692,13 @@ app.get('/models/:username', (req, res) => {
    * card IS her share card — og:image is share_image_abs (her
    * FEATURED media: her featured preview video's stored poster
    * frame when she leads with a video, else her gate-cleared CLEAN
-   * public photo — photo_abs, the same one this page's hero shows;
-   * the logo when she has no eligible media, when it is unapproved,
-   * or while a co-star hold lasts — the video file itself and her
-   * in-app photo_url NEVER reach this surface, per the Oct 16
-   * rule), and og:description is HER share note, not her bio. */
+   * public photo — photo_abs, the same one this page's hero shows —
+   * else her gated profile photo under the owner's Oct 30 card-only
+   * lift; the logo when she has no eligible media, when it is
+   * unapproved, or while a co-star hold lasts — the video file
+   * itself never reaches this surface, and her profile photo
+   * reaches ONLY the card image, never the hero or body), and
+   * og:description is HER share note, not her bio. */
   const desc = m.share_note;
   const tagsHtml = m.tags.length
     ? `<div class="tags">${m.tags.map((t) => `<a href="/tags/${seoTagSlug(t)}">${seoEsc(t)}</a>`).join('')}</div>` : '';
@@ -13378,6 +13463,7 @@ app.post('/api/model/preview-video', identMiddleware, requireUser, requireRole('
     const preview_video_url = '/uploads/' + path.basename(req.file.path);
     db.prepare('UPDATE models SET preview_video_url = ? WHERE user_id = ?').run(preview_video_url, req.user.id);
     recordMediaDecls(req.user.id, preview_video_url, decl.costarIds);
+    ensureVideoPoster(preview_video_url); // server-side poster, fire-and-forget
     res.json({ ok: true, preview_video_url,
       costar_held: decl.costarIds.some((id) => !coStarMediaCleared(id)) });
   });
@@ -13425,6 +13511,7 @@ app.post('/api/model/preview-video-2', identMiddleware, requireUser, requireRole
     const preview_video_url_2 = '/uploads/' + path.basename(req.file.path);
     db.prepare('UPDATE models SET preview_video_url_2 = ? WHERE user_id = ?').run(preview_video_url_2, req.user.id);
     recordMediaDecls(req.user.id, preview_video_url_2, decl.costarIds);
+    ensureVideoPoster(preview_video_url_2); // server-side poster, fire-and-forget
     res.json({ ok: true, preview_video_url_2,
       costar_held: decl.costarIds.some((id) => !coStarMediaCleared(id)) });
   });
@@ -13450,9 +13537,10 @@ app.delete('/api/model/preview-video-2', identMiddleware, requireUser, requireRo
  * itself and uploads it here; the server validates that the named
  * video is HERS (one of her two profile videos, or one of her
  * clean-feed videos), then moves the image under the video's own
- * stem, where the /uploads guard already serves that class. No frame
- * is ever generated server-side, and a poster for another model's
- * video is refused and its file removed. */
+ * stem, where the /uploads guard already serves that class. (The
+ * server-side ensureVideoPoster is the other write side; this route
+ * remains for the client-captured frame.) A poster for another
+ * model's video is refused and its file removed. */
 app.post('/api/model/preview-poster', identMiddleware, requireUser, requireRole('model'), requirePublicityConsent,
   photoUpload.single('photo'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'no_photo' });
@@ -23920,6 +24008,21 @@ app.get('/api/admin/cleanup', ...adminOnly, (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`SlutCamp running → http://localhost:${PORT}`);
+  /* Share-card coverage sweep (Owner, Oct 30 2026): backfill posters
+   * for preview videos uploaded before server-side generation
+   * existed. Idempotent (ensureVideoPoster no-ops when a poster is
+   * stored), fire-and-forget, a beat after listen so boot is never
+   * delayed by it. */
+  setTimeout(() => {
+    try {
+      const rows = db.prepare(`SELECT preview_video_url, preview_video_url_2 FROM models
+        WHERE preview_video_url != '' OR preview_video_url_2 != ''`).all();
+      for (const r of rows) {
+        ensureVideoPoster(r.preview_video_url);
+        ensureVideoPoster(r.preview_video_url_2);
+      }
+    } catch (e) { /* best-effort backfill — never a boot failure */ }
+  }, 1500).unref();
   console.log(process.env.SEED_DEMO === '1'
     ? 'Seeded logins (SEED_DEMO=1, local dev only): admin/admin123 · bunny|stacey|bella/model123 · fandemo/fan123'
     : 'Demo seeding OFF — no demo accounts created (set SEED_DEMO=1 for local dev).');
