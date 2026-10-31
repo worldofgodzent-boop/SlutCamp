@@ -11,6 +11,11 @@
  * The fix admits exactly two strict, anchored patterns:
  *   photo-<hex>.(jpg|png|webp)   — profile photos (public)
  *   preview-<hex>.mp4            — profile preview videos (public)
+ * A23b REVISED (Oct 30 2026) adds ONE class to the preview pattern:
+ *   preview-<hex>.(jpg|png|webp) — a preview video's poster frame,
+ *   stored beside the video under its own stem; the still of an
+ *   already-public video, admitted so her share card can point at
+ *   it. Nothing else widens: PPV / voice / generic names stay 404.
  * Everything else under /uploads stays 404 here: PPV media and voice
  * notes are served ONLY via the authed /api/media/:id/file route.
  *
@@ -69,6 +74,9 @@ const PLANTED = [
   [`photo-${HEX}.png`, 200],
   [`photo-${HEX}.webp`, 200],
   [`preview-${HEX}.mp4`, 200],      // public profile preview video (the fix)
+  [`preview-${HEX}.jpg`, 200],      // preview video poster frame (A23b revised)
+  [`preview-${HEX}.png`, 200],      // preview video poster frame (A23b revised)
+  [`preview-${HEX}.webp`, 200],     // preview video poster frame (A23b revised)
   [`ppv-${HEX}.mp4`, 404],          // PPV media — authed route only
   [`voice-${HEX}.ogg`, 404],        // voice notes — authed route only
   [`${HEX}.mp4`, 404],              // generic media name (no public prefix)
@@ -144,13 +152,13 @@ test('/uploads guard rejects subdirectory and traversal-shaped paths', async () 
   }
 });
 
-test('source pin: the /uploads guard whitelists exactly photo images + preview mp4', () => {
+test('source pin: the /uploads guard whitelists exactly photo images + preview mp4 + preview poster images', () => {
   const at = serverSrc.indexOf("app.use('/uploads'");
   assert.ok(at !== -1, '/uploads guard located in server.js');
   const block = serverSrc.slice(at, at + 400);
   assert.ok(block.includes('photo-[a-f0-9]+'), 'photo class pinned in the guard');
   assert.ok(block.includes('preview-[a-f0-9]+'), 'preview class pinned in the guard');
-  assert.ok(block.includes('preview-[a-f0-9]+\\.mp4'), 'preview is mp4-only');
+  assert.ok(block.includes('preview-[a-f0-9]+\\.(?:mp4|jpg|png|webp)'), 'preview is the video + its poster frames (A23b revised)');
   assert.ok(!/ppv-\[a-f0-9\]/.test(block), 'ppv class must NOT be whitelisted');
   assert.ok(!/voice-\[a-f0-9\]/.test(block), 'voice class must NOT be whitelisted');
 });
