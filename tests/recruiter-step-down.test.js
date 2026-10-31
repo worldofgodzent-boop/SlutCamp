@@ -158,7 +158,7 @@ function withDb(dir, fn) {
 async function signup(base, username, role, extra = {}) {
   const r = await req(base, 'POST', '/api/auth/signup', {
     body: { username, password: 'hunter22', role, display_name: username, dob: '1995-04-01', agree18: true,
-            ...(role === 'model' ? { section: 'female' } : {}), ...extra },
+            ...(role === 'model' ? { section: 'female', publicity_consent: true } : {}), ...extra },
   });
   assert.equal(r.status, 200, `signup ${username}: ${JSON.stringify(r.data)}`);
   return { token: r.data.token, id: r.data.user.id, username };
