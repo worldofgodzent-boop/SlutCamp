@@ -14815,9 +14815,35 @@ app.get('/api/model/earnings', identMiddleware, requireUser, requireRole('model'
 
 // GET /api/model/top-spenders — the same ranking the wallet panel and
 // the message-list ordering share (Assignment 11). ?limit= clamps 1-50.
+// The response also carries the private-room tracker ({ range,
+// spenders }): her fans ranked by what they spent ON HER (signed
+// ledger sum over the tracker types — charges net of refunds),
+// all-time or last-30-days (?range=30d), with spend_cents = the ranked
+// figure for the requested range. ONE route, ONE handler: the tracker
+// was a second registration of this same route further down the file
+// and Express never reached it (first match wins), so the tracker
+// panel and its tests saw no 'spenders' field at all.
 app.get('/api/model/top-spenders', identMiddleware, requireUser, requireRole('model'), (req, res) => {
   const limit = req.query && req.query.limit !== undefined ? req.query.limit : TOP_SPENDER_LIMIT_DEFAULT;
-  res.json({ top_spenders: modelTopSpenders(req.user.id, limit) });
+  const range = req.query.range === '30d' ? '30d' : 'all';
+  const rows = db.prepare(`
+    SELECT t.fan_id AS fan_id, u.username, u.display_name,
+      COALESCE(SUM(t.gross_cents), 0) AS total_cents,
+      COALESCE(SUM(CASE WHEN t.created_at >= datetime('now', '-30 days')
+                        THEN t.gross_cents ELSE 0 END), 0) AS recent_cents,
+      MAX(t.created_at) AS last_spent_at
+    FROM transactions t JOIN users u ON u.id = t.fan_id
+    WHERE t.model_id = ? AND t.fan_id IS NOT NULL AND t.is_test = 0 AND u.banned = 0
+      AND t.type IN (${TRACKER_TYPES_SQL})
+    GROUP BY t.fan_id
+    HAVING (CASE WHEN ? = '30d' THEN recent_cents ELSE total_cents END) > 0
+    ORDER BY (CASE WHEN ? = '30d' THEN recent_cents ELSE total_cents END) DESC, total_cents DESC
+    LIMIT 100`).all(req.user.id, range, range);
+  // She only ever sees her own fans' spend on her — the model_id
+  // predicate is the privacy wall.
+  const spenders = rows.map((r) => ({ ...r,
+    spend_cents: range === '30d' ? r.recent_cents : r.total_cents }));
+  res.json({ top_spenders: modelTopSpenders(req.user.id, limit), range, spenders });
 });
 
 /* ================================================================== */
@@ -16998,31 +17024,10 @@ function seatGate(res, sess, userId) {
 }
 
 /* ---------------- model: top-spenders tracker ---------------- */
-/* Her fans ranked by what they spent ON HER (signed ledger sum:      */
-/* charges net of refunds), all-time or last-30-days. She only ever   */
-/* sees her own fans' spend on her — the model_id predicate is the    */
-/* privacy wall.                                                      */
-app.get('/api/model/top-spenders', identMiddleware, requireUser, requireRole('model'), (req, res) => {
-  const range = req.query.range === '30d' ? '30d' : 'all';
-  const rows = db.prepare(`
-    SELECT t.fan_id AS fan_id, u.username, u.display_name,
-      COALESCE(SUM(t.gross_cents), 0) AS total_cents,
-      COALESCE(SUM(CASE WHEN t.created_at >= datetime('now', '-30 days')
-                        THEN t.gross_cents ELSE 0 END), 0) AS recent_cents,
-      MAX(t.created_at) AS last_spent_at
-    FROM transactions t JOIN users u ON u.id = t.fan_id
-    WHERE t.model_id = ? AND t.fan_id IS NOT NULL AND t.is_test = 0 AND u.banned = 0
-      AND t.type IN (${TRACKER_TYPES_SQL})
-    GROUP BY t.fan_id
-    HAVING (CASE WHEN ? = '30d' THEN recent_cents ELSE total_cents END) > 0
-    ORDER BY (CASE WHEN ? = '30d' THEN recent_cents ELSE total_cents END) DESC, total_cents DESC
-    LIMIT 100`).all(req.user.id, range, range);
-  // spend_cents = the ranked figure for the requested range (the client
-  // and the tracker's own arithmetic speak in that one field).
-  const spenders = rows.map((r) => ({ ...r,
-    spend_cents: range === '30d' ? r.recent_cents : r.total_cents }));
-  res.json({ range, spenders });
-});
+/* Served by the single GET /api/model/top-spenders handler (the     */
+/* Assignment 11 route above): its response carries { range,         */
+/* spenders } alongside top_spenders. A second registration of the   */
+/* same route here was unreachable — Express serves the first match. */
 
 /* ---------------- model: her private events ---------------- */
 function ownPrivateEvent(req, res) {
