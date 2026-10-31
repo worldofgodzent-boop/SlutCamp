@@ -2246,6 +2246,7 @@ addColumnIfMissing('models', 'recruiter_id', 'INTEGER REFERENCES recruiters(id) 
 addColumnIfMissing('models', 'is_featured', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('transactions', 'recruiter_id', 'INTEGER REFERENCES recruiters(id) ON DELETE SET NULL');
 addColumnIfMissing('transactions', 'recruiter_cents', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('recruiters', 'rate_pct', 'INTEGER NOT NULL DEFAULT 20'); // Assignment 07: locked % of gross at signup; existing rows backfill 20 (grandfathered forever)
 
 /* --- One account for both (owner, Oct 17 2026) ----------------------
  * "Affiliate" is a CAPABILITY, not just a role: any fan/model account
@@ -2293,6 +2294,20 @@ addColumnIfMissing('conversations', 'is_official', 'INTEGER NOT NULL DEFAULT 0')
 /* The recruiters row IS the affiliate capability (see above). */
 function getRecruiterRow(userId) {
   return db.prepare('SELECT * FROM recruiters WHERE user_id = ?').get(userId) || null;
+}
+/* Assignment 07 — recruiter rate step-down (Asce decision 2026-10-26,
+ * binding): the rate is a % of GROSS (not of the platform slice),
+ * LOCKED at signup and never changed afterward. Boundaries are by
+ * signup date (recruiters.created_at, UTC date part):
+ *   before 2027-04-26 → 20; 2027-04-26 through 2027-07-25 → 10;
+ *   on/after 2027-07-26 → 5. Existing recruiters are 20 forever
+ * (migration backfill above); a stored rate is never recomputed
+ * from a later date, including on merge. */
+function recruiterRatePctForSignupDate(dateStr) {
+  const d = String(dateStr || '').slice(0, 10);
+  if (d < '2027-04-26') return 20;
+  if (d < '2027-07-26') return 10;
+  return 5;
 }
 function isAffiliateHolder(user) {
   return !!user && (user.role === 'recruiter' || !!getRecruiterRow(user.id));
@@ -3302,12 +3317,17 @@ function splitPayment(grossCents, modelUserId) {
   let platformCents = grossCents - modelCents;
   let recruiterCents = 0, recruiterId = null, recruiterUserId = null;
   if (modelUserId) {
-    const r = db.prepare(`SELECT r.id, r.user_id FROM recruiters r
+    const r = db.prepare(`SELECT r.id, r.user_id, r.rate_pct FROM recruiters r
                           JOIN models m ON m.recruiter_id = r.id
                           WHERE m.user_id = ?`).get(modelUserId);
     if (r) {
       recruiterId = r.id; recruiterUserId = r.user_id;
-      recruiterCents = Math.round(platformCents / 2);
+      // ALL recruiter earnings math reads the STORED rate — no global
+      // rate constant in the payout path. Capped at the platform slice
+      // so the cut always comes from the platform's portion, never
+      // from the model's 60%.
+      const pct = r.rate_pct == null ? 20 : Number(r.rate_pct);
+      recruiterCents = Math.min(platformCents, Math.round(grossCents * pct / 100));
       platformCents -= recruiterCents;
     }
   }
@@ -6652,10 +6672,10 @@ function sendPendingModelIdVerifies() {
 /* agreement, and gets a recruiters row with a personal referral      */
 /* code — her recruiting link is /#join/<code>, shown on her          */
 /* recruiter dashboard. Models who join through it are attributed to  */
-/* her (models.recruiter_id) and she earns 20% — her cut comes out    */
+/* her (models.recruiter_id) and she earns her locked rate — her cut comes out */
 /* of the platform's share; the recruited model keeps her full cut    */
-/* (recruiter agreement §4; splitPayment pays recruiters half the     */
-/* platform slice). A MODEL account has NO self-serve path to a       */
+/* (recruiter agreement §4; splitPayment pays the stored rate_pct).  */
+/* A MODEL account has NO self-serve path to a                        */
 /* link — so this DM's call-to-action is the real one: reply in this  */
 /* thread and admin sets her up. Same newness gate as the ID DM: the  */
 /* affiliate_msg_sent_at column is pre-stamped for every account      */
@@ -11817,7 +11837,7 @@ const WOGENT_RELEASE = {
 };
 
 /* Recruiter agreement — for models/partners who recruit other models */
-const RECRUITER_CONTRACT_VERSION = 'R1.3';
+const RECRUITER_CONTRACT_VERSION = 'R1.4';
 const RECRUITER_CONTRACT = {
   version: RECRUITER_CONTRACT_VERSION,
   updated: 'October 16, 2026',
@@ -11836,7 +11856,7 @@ const RECRUITER_CONTRACT = {
     },
     {
       title: '4. Your Cut',
-      body: 'You earn 20% of everything each model you recruit earns on the platform (their 60% share — your cut comes from the Company\'s portion, not from the model). The model keeps her full 60%. Payments are processed on the Company\'s payout schedule. Your earnings become eligible for payout 7 days after they are earned, under the same payout window the models see in the app.',
+      body: 'You earn a locked percentage of everything each model you recruit earns on the platform, based on when you sign up: 20% if you sign up before April 26, 2027; 10% if you sign up April 26, 2027 through July 25, 2027; and 5% if you sign up on or after July 26, 2027. Your percentage is locked at signup and never changes, even after a later tier takes effect for new signups. Your cut comes from the Company\'s portion, not from the model (their 60% share — the model keeps her full 60%). Payments are processed on the Company\'s payout schedule. Your earnings become eligible for payout 7 days after they are earned, under the same payout window the models see in the app.',
     },
     {
       title: '5. Termination — At Will',
@@ -13860,6 +13880,7 @@ app.post('/api/model/contract/sign', identMiddleware, requireUser, requireRole('
 app.get('/api/recruiter/contract', identMiddleware, requireUser, requireAffiliate, (req, res) => {
   const sig = latestRecruiterSignature(req.user.id);
   const loc = localizedContract(RECRUITER_CONTRACT, RECRUITER_CONTRACT_I18N, req.user.language);
+  const row = getRecruiterRow(req.user.id);
   res.json({
     version: RECRUITER_CONTRACT.version,
     updated: RECRUITER_CONTRACT.updated,
@@ -13868,6 +13889,7 @@ app.get('/api/recruiter/contract', identMiddleware, requireUser, requireAffiliat
     signed: !!sig && String(sig.contract_version || '').startsWith('R'),
     signed_version: sig ? sig.contract_version : null,
     signed_at: sig ? sig.signed_at : null,
+    recruiter_rate_pct: row ? (row.rate_pct == null ? 20 : Number(row.rate_pct)) : null,
   });
 });
 
@@ -13928,8 +13950,8 @@ function createRecruiterAccount(uname, dname, pwd, req) {
   let rcode;
   do { rcode = crypto.randomBytes(4).toString('hex'); }
   while (db.prepare('SELECT id FROM recruiters WHERE referral_code = ?').get(rcode));
-  db.prepare('INSERT INTO recruiters (user_id, name, referral_code) VALUES (?,?,?)')
-    .run(userId, dname, rcode);
+  db.prepare('INSERT INTO recruiters (user_id, name, referral_code, rate_pct) VALUES (?,?,?,?)')
+    .run(userId, dname, rcode, recruiterRatePctForSignupDate(new Date().toISOString()));
   // Auto-sign the recruiter agreement (she agreed on the signup screen)
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
   db.prepare(`INSERT INTO contract_signatures (user_id, contract_version, display_name, ip)
@@ -14014,8 +14036,8 @@ app.post('/api/affiliate/attach', identMiddleware, requireUser, (req, res) => {
     do { rcode = crypto.randomBytes(4).toString('hex'); }
     while (db.prepare('SELECT id FROM recruiters WHERE referral_code = ?').get(rcode)
         || db.prepare('SELECT code FROM recruiter_code_aliases WHERE code = ?').get(rcode));
-    db.prepare('INSERT INTO recruiters (user_id, name, referral_code) VALUES (?,?,?)')
-      .run(u.id, u.display_name, rcode);
+    db.prepare('INSERT INTO recruiters (user_id, name, referral_code, rate_pct) VALUES (?,?,?,?)')
+      .run(u.id, u.display_name, rcode, recruiterRatePctForSignupDate(new Date().toISOString()));
     return rcode;
   });
   const fresh = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
@@ -22086,8 +22108,8 @@ app.post('/api/admin/recruiters', ...adminOnly, (req, res) => {
   let code;
   do { code = crypto.randomBytes(4).toString('hex'); }
   while (db.prepare('SELECT id FROM recruiters WHERE referral_code = ?').get(code));
-  db.prepare('INSERT INTO recruiters (user_id, name, city, referral_code) VALUES (?,?,?,?)')
-    .run(id, String(name).trim().slice(0, 40), String(city || '').trim().slice(0, 40), code);
+  db.prepare('INSERT INTO recruiters (user_id, name, city, referral_code, rate_pct) VALUES (?,?,?,?,?)')
+    .run(id, String(name).trim().slice(0, 40), String(city || '').trim().slice(0, 40), code, recruiterRatePctForSignupDate(new Date().toISOString()));
   const rid = db.prepare('SELECT id FROM recruiters WHERE user_id = ?').get(id).id;
   const base = req.body.base_url ? String(req.body.base_url).replace(/\/$/, '') : '';
   res.json({ ok: true, id: rid, user_id: id, username: uname, password: pwd, referral_code: code,
@@ -22097,7 +22119,7 @@ app.post('/api/admin/recruiters', ...adminOnly, (req, res) => {
 // Admin: list partners with model counts and earnings
 app.get('/api/admin/recruiters', ...adminOnly, (req, res) => {
   res.json({ recruiters: db.prepare(`
-    SELECT r.id, r.name, r.city, r.referral_code, r.created_at,
+    SELECT r.id, r.name, r.city, r.referral_code, r.created_at, r.rate_pct,
            u.id AS user_id, u.username, u.display_name, u.banned,
            w.earnings_cents, w.paid_out_cents,
            (w.earnings_cents - w.paid_out_cents) AS pending_cents,
@@ -22113,7 +22135,7 @@ app.get('/api/admin/recruiters', ...adminOnly, (req, res) => {
 /* Admin — Affiliates tracking (Manager 🔗 Affiliates screen): how many
    affiliates have signed up + each affiliate's §10 first-year quota
    progress. READ-ONLY — the quota review at year end is a human/Manager
-   decision (Recruiter Agreement R1.3 §10); nothing here revokes or
+   decision (Recruiter Agreement R1.4 §10); nothing here revokes or
    enforces anything. WHO COUNTS as an affiliate mirrors the one-account
    capability model (PR #45): merged_into IS NULL AND (role='recruiter'
    OR the account holds a recruiters row) — a merged model/fan appears
@@ -22143,7 +22165,7 @@ app.get('/api/admin/affiliates', ...adminOnly, (req, res) => {
   const affiliates = db.prepare(`
     SELECT u.id AS user_id, u.username, u.display_name, u.banned, u.role AS role,
            COALESCE(r.created_at, u.created_at) AS signed_up_at,
-           r.id AS recruiter_id, r.name AS recruiter_name, r.city, r.referral_code,
+           r.id AS recruiter_id, r.name AS recruiter_name, r.city, r.referral_code, r.rate_pct,
            (SELECT COUNT(*) FROM models m WHERE m.recruiter_id = r.id) AS models_onboarded,
            (SELECT COALESCE(SUM(t.recruiter_cents), 0) FROM transactions t
              WHERE t.recruiter_id = r.id AND t.is_test = 0
@@ -22389,7 +22411,7 @@ app.get('/api/recruiter/dashboard', identMiddleware, requireUser, requireAffilia
   const quotaStart = new Date(String(r.created_at).replace(' ', 'T') + 'Z');
   const yearEnd = new Date(quotaStart); yearEnd.setUTCFullYear(yearEnd.getUTCFullYear() + 1);
   res.json({
-    recruiter: { name: r.name, city: r.city, referral_code: r.referral_code },
+    recruiter: { name: r.name, city: r.city, referral_code: r.referral_code, rate_pct: r.rate_pct == null ? 20 : Number(r.rate_pct) },
     models,
     model_count: models.length,
     earnings_cents: wallet.earnings_cents,

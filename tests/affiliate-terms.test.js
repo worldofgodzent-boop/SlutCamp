@@ -19,8 +19,8 @@
  * Recruiter Agreement (server.js), placed after §9 Governing Law &
  * Venue and before the closing disclaimer (renumbered §10 → §11 —
  * the same placement precedent as governing law / payout protection),
- * the version bump R1.2 → R1.3 that forces every current recruiter to
- * re-sign through the exact-version gate, and a short plain-language
+ * the version bump R1.2 → R1.3 that added the quota section, and the
+ * later R1.3 → R1.4 step-down bump (Assignment 07) — and a short plain-language
  * notice (aff_quota_notice, EN/ES/PT) rendered directly at the
  * acceptance checkbox on BOTH affiliate signup forms (the entry
  * screen's Affiliate tab and the Manager invite form, which share
@@ -51,9 +51,9 @@ const recStart = server.indexOf('const RECRUITER_CONTRACT = {');
 const recEnd = server.indexOf("app.get('/api/credits/packages'", recStart);
 const rec = server.slice(recStart, recEnd);
 
-test('affiliate terms: Recruiter Agreement version bumped R1.2 → R1.3 (forces re-sign)', () => {
-  assert.ok(server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.3';"),
-    'recruiter contract version is R1.3');
+test('affiliate terms: Recruiter Agreement version bumped R1.3 → R1.4 (Assignment 07 step-down)', () => {
+  assert.ok(server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.4';"),
+    'recruiter contract version is R1.4');
   assert.ok(!server.includes("const RECRUITER_CONTRACT_VERSION = 'R1.2';"),
     'old recruiter version R1.2 is gone');
   assert.ok(recStart !== -1 && recEnd > recStart, 'recruiter agreement located in server.js');
@@ -199,7 +199,7 @@ async function req(base, method, p, { body, token } = {}) {
   return { status: r.status, data };
 }
 
-test('affiliate terms: served contract is R1.3, auto-signed at R1.3, and serves the quota section', async () => {
+test('affiliate terms: served contract is R1.4, auto-signed at R1.4, and serves the quota section', async () => {
   const dir = makeCopy();
   try {
     const h = await boot(dir);
@@ -211,9 +211,9 @@ test('affiliate terms: served contract is R1.3, auto-signed at R1.3, and serves 
 
       r = await req(h.base, 'GET', '/api/recruiter/contract', { token });
       assert.equal(r.status, 200);
-      assert.equal(r.data.version, 'R1.3', 'served agreement version is R1.3');
+      assert.equal(r.data.version, 'R1.4', 'served agreement version is R1.4');
       assert.equal(r.data.signed, true, 'self-serve signup auto-signs the current version');
-      assert.equal(r.data.signed_version, 'R1.3', 'signature recorded at R1.3');
+      assert.equal(r.data.signed_version, 'R1.4', 'signature recorded at R1.4');
       assert.equal(r.data.sections.length, 11, 'served agreement has 11 sections');
       const titles = r.data.sections.map((s) => s.title);
       assert.equal(titles[4], '5. Termination — At Will');
