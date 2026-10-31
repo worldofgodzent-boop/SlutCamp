@@ -16,14 +16,17 @@
  * somehow absent from the payload (parity with the home grid).
  *
  * Guest bar: the peek's pinned Message bar is fan-only, so a
- * logged-out guest opening her profile from the landing used to get
- * NO bar and no way forward. Guests now get a join bar in the same
- * pinned spot: it never opens a conversation (guests can't message)
- * — it closes her page and routes to the existing auth view, the
- * same route as the landing's own Log in / Sign up button. Fan /
- * model / fan-preview behaviour is untouched: the guest bar is
- * gated on !S.user, so a signed-in user of any role never sees it,
- * and the fan bar still requires a signed-in fan or fan-preview.
+ * logged-out guest opening her profile from the landing gets a bar
+ * in the same pinned spot. Oct 17 2026 it was join-only (tap routed
+ * to the auth view; guests were never handed a conversation).
+ * SUPERSEDED Oct 30 2026 (owner: front-door messages must land in
+ * her inbox): the guest bar now opens her REAL guest chat via
+ * openChatWithModel — guests hold a conversation server-side, 3
+ * free messages, then the paywall; the thread migrates into his
+ * account when he signs up. Fan / model / fan-preview behaviour is
+ * untouched: the guest bar is gated on !S.user, so a signed-in user
+ * of any role never sees it, and the fan bar still requires a
+ * signed-in fan or fan-preview.
  *
  * Static source pins (suite convention for client behaviour).
  */
@@ -73,26 +76,28 @@ test('peek guest bar: gated to logged-out guests; fan bar gating untouched', () 
 test('peek guest bar: renders in the same pinned bar, outside the scroll region', () => {
   assert.ok(peek.includes('${showGuestBar ?'), 'guest bar renders conditionally');
   assert.ok(peek.includes('data-peek-join'), 'guest bar button carries the join hook');
-  assert.ok(peek.includes("t('msg_her_join_btn')"), 'guest bar label is i18n-keyed');
+  assert.ok(peek.includes("t('msg_her_btn')"), 'guest bar label is the Message-her label, i18n-keyed');
   const bars = peek.match(/class="peek-msgbar"/g) || [];
-  assert.equal(bars.length, 2, 'exactly two pinned bars exist: fan Message bar + guest join bar');
+  assert.equal(bars.length, 2, 'exactly two pinned bars exist: fan Message bar + guest bar');
   const scrollAt = peek.indexOf('<div class="peek-scroll">');
   const guestAt = peek.indexOf('data-peek-join');
   assert.ok(guestAt > scrollAt, 'guest bar renders after/outside the scroll region, like the fan bar');
 });
 
-test('peek guest bar: tap routes to the auth view and never opens a chat', () => {
+test('peek guest bar: tap opens her real guest chat (Oct 30 2026 front-door fix)', () => {
   const jStart = peek.indexOf("sheet.querySelector('[data-peek-join]')");
-  const jEnd = peek.indexOf("sheet.querySelector('[data-peek-video]')", jStart);
+  const jEnd = peek.indexOf("sheet.querySelector('[data-peek-complaints]')", jStart);
   assert.ok(jStart !== -1 && jEnd > jStart, 'guest bar wiring located');
   const joinWire = peek.slice(jStart, jEnd);
   assert.ok(joinWire.includes('sheet.remove();'), 'her page closes first');
-  assert.ok(joinWire.includes("show('auth', {});"), 'guest lands on the existing auth view');
-  assert.ok(!joinWire.includes('openChatWithModel'), 'guests are never handed a conversation');
+  assert.ok(joinWire.includes('openChatWithModel(m.id);'),
+    'the guest is handed her conversation — his free messages land in her inbox');
+  assert.ok(!joinWire.includes("show('auth', {});"),
+    'the old join-wall route is gone from the guest bar');
 });
 
-test('msg_her_join_btn i18n key exists in all 13 language tables', () => {
-  const hits = app.match(/msg_her_join_btn: '/g) || [];
-  assert.equal(hits.length, 13, 'one msg_her_join_btn per language');
-  assert.ok(app.includes("msg_her_join_btn: '💬 Join free to message her'"), 'en label present');
+test('msg_her_btn i18n key exists in all 13 language tables', () => {
+  const hits = app.match(/msg_her_btn: '/g) || [];
+  assert.equal(hits.length, 13, 'one msg_her_btn per language');
+  assert.ok(app.includes("msg_her_btn: '💬 Message her'"), 'en label present');
 });
