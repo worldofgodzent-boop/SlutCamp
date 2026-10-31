@@ -587,6 +587,22 @@ app.get('/models/:username', (req, res) => {
     return res.status(404).type('html').set('Cache-Control', 'public, max-age=300')
       .send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Model not found — SlutCamp</title><meta name="robots" content="noindex"></head><body style="background:#1a0d18;color:#f5eef4;font-family:sans-serif;text-align:center;padding:60px 20px"><h1>Model not found</h1><p>That profile isn't public. <a href="/models" style="color:#ff5c9e">Browse all models</a></p></body></html>`);
   }
+  /* A23b follow-up (Owner, Oct 30 2026): when the base derivation
+   * bottoms out at the brand logo — no stored poster for her
+   * featured video, no clean public photo — her card still leads
+   * with HER media: the first gate-cleared photo from her clean
+   * public feed (cleanFeedItemsFor applies the ID + co-star gates
+   * and the house flag, so nothing gated can surface here). Done
+   * here, on the page's own model object, NOT inside
+   * seoPublicModels: that body is pinned feed-free (clean-feed
+   * suite) because the index consumers filter after it. Clean media
+   * only, like every public surface — her in-app photo_url and
+   * gallery stay off the card (Oct 16 rule), so the logo remains
+   * the last resort for a model with no clean image at all. */
+  if (m.share_image_abs === SEO_ORIGIN + '/img/lips-logo.png') {
+    const feedPhoto = cleanFeedItemsFor(m.id).find((it) => it.kind === 'photo');
+    if (feedPhoto) m.share_image_abs = SEO_ORIGIN + feedPhoto.url;
+  }
   const url = SEO_ORIGIN + m.url;
   const title = `${m.display_name} (@${m.username}) on SlutCamp`;
   /* A23b (owner, Oct 30 2026; REVISED same day): her link preview
@@ -13322,6 +13338,38 @@ app.delete('/api/model/preview-video-2', identMiddleware, requireUser, requireRo
   db.prepare('UPDATE models SET preview_video_url_2 = ? WHERE user_id = ?').run('', req.user.id);
   res.json({ ok: true });
 });
+
+/* A23b follow-up (Owner, Oct 30 2026): the WRITE side of the share
+ * card's poster lookup. videoPosterAbs only ever READS a stored
+ * poster (preview-<hex>.jpg beside the video) — this endpoint is how
+ * one gets stored: her client captures the frame from the video
+ * itself and uploads it here; the server validates that the named
+ * video is HERS (one of her two profile videos, or one of her
+ * clean-feed videos), then moves the image under the video's own
+ * stem, where the /uploads guard already serves that class. No frame
+ * is ever generated server-side, and a poster for another model's
+ * video is refused and its file removed. */
+app.post('/api/model/preview-poster', identMiddleware, requireUser, requireRole('model'), requirePublicityConsent,
+  photoUpload.single('photo'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'no_photo' });
+    const refuse = (code, payload) => {
+      try { fs.unlinkSync(req.file.path); } catch (e) { /* already gone */ }
+      return res.status(code).json(payload);
+    };
+    const videoUrl = String((req.body && req.body.video_url) || '');
+    const vm = /^\/uploads\/(preview-[a-f0-9]+)\.mp4$/.exec(videoUrl);
+    if (!vm) return refuse(400, { error: 'poster_video_invalid' });
+    const row = db.prepare('SELECT preview_video_url, preview_video_url_2 FROM models WHERE user_id = ?').get(req.user.id);
+    const ownFeedVideo = db.prepare("SELECT 1 FROM clean_feed_items WHERE model_id = ? AND file_url = ? AND kind = 'video'").get(req.user.id, videoUrl);
+    if (!row || (row.preview_video_url !== videoUrl && row.preview_video_url_2 !== videoUrl && !ownFeedVideo)) {
+      return refuse(400, { error: 'poster_video_not_own' });
+    }
+    const ext = path.extname(req.file.path).toLowerCase();
+    if (!['.jpg', '.png', '.webp'].includes(ext)) return refuse(400, { error: 'poster_bad_type' });
+    const dest = path.join(UPLOAD_DIR, vm[1] + ext);
+    try { fs.renameSync(req.file.path, dest); } catch (e) { return refuse(500, { error: 'poster_store_failed' }); }
+    return res.json({ ok: true, poster_url: '/uploads/' + vm[1] + ext });
+  });
 
 // Model adds ONE picture to her profile gallery. The composed profile
 // list (her main photo + gallery) may never exceed MAX_PROFILE_PICS —
