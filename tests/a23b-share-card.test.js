@@ -17,8 +17,9 @@
  *     photo → the brand logo. OWNER RULE CHANGE (Oct 30 2026, later
  *     that night): the Oct 16 bar on photo_url is LIFTED for the
  *     card only, under the same ID + co-star gates — the photo her
- *     directory tile renders is her card photo too. photo_abs and
- *     the page hero are unchanged (seo-pages suite pins those).
+ *     directory tile renders is her card photo too. photo_abs is
+ *     unchanged; the page hero renders share_image_abs too (owner
+ *     hero follow-up, later that night; seo-pages suite pins it).
  *  2. og:description is HER NOTE. Default = the owner's revised
  *     exact words "Come have fun with me at SlutCamp". The in-app
  *     share-sheet text leads with the note (shareModelProfile
@@ -440,8 +441,8 @@ test('live: og:image is her profile photo when that is her only media (owner lif
     'approved + unheld profile photo carries the card when she has no public photo');
   assert.ok(page.text.includes(`<meta name="twitter:image" content="https://slutcamp.app${F.inapp.storefrontUrl}">`),
     'twitter:image matches');
-  assert.ok(page.text.includes('<img class="photo" src="/img/lips-logo.png"'),
-    'the hero is unchanged — the lift is the card only');
+  assert.ok(page.text.includes(`<img class="photo" src="https://slutcamp.app${F.inapp.storefrontUrl}"`),
+    'the hero leads with the same gated profile photo (owner hero follow-up, Oct 30 2026)');
 });
 
 test('live: og:image falls back to the logo — co-star-held public photo', async () => {
@@ -467,6 +468,8 @@ test('live: featured public video → og:image is its poster (an image, never th
   assert.ok(!img.endsWith('.mp4'), 'the card image is never the video file itself');
   assert.ok(img !== 'https://slutcamp.app' + F.vidstar.publicUrl,
     'the poster wins over her public photo when she leads with a video');
+  assert.ok(page.text.includes(`<img class="photo" src="https://slutcamp.app${F.vidstar.posterUrl}"`),
+    'the hero leads with her featured video\u2019s poster too (owner hero follow-up, Oct 30 2026)');
   const poster = await req('GET', F.vidstar.posterUrl);
   assert.equal(poster.status, 200, 'the poster URL the card points at is actually served');
 });
